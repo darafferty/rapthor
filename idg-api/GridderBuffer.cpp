@@ -8,6 +8,14 @@
 #include "BufferSetImpl.h"
 
 #include <mutex>
+#include <csignal>
+
+#include <omp.h>
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_NAN_FLUSH_ATERM 0
 
 using namespace std;
 
@@ -263,6 +271,23 @@ namespace api {
             aterm_correction = &m_default_aterm_correction;
         }
 
+        // Check m_aterms_array for NaN values
+        #if DEBUG_NAN_FLUSH_ATERM
+        for (unsigned int time = 0; time < m_aterms_array.get_w_dim(); time++) {
+            #pragma omp parallel for
+            for (unsigned int station = 0; station < m_aterms_array.get_z_dim(); station++) {
+                for (unsigned int y = 0; y < m_aterms_array.get_y_dim(); y++) {
+                    for (unsigned int x = 0; x < m_aterms_array.get_x_dim(); x++) {
+                        if (isnan(m_aterms_array(time, station, y, x))) {
+                            std::cerr << "NaN detected in aterm!" << std::endl;
+                            std::raise(SIGFPE);
+                        }
+                    }
+                }
+            }
+        }
+        #endif
+
         // Set Plan options
         Plan::Options options;
         options.w_step      = m_wStepInLambda;
@@ -270,6 +295,7 @@ namespace api {
         options.plan_strict = false;
 
         // Create plan
+        m_bufferset->m_plan_watch->Start();
         Plan plan(
             m_kernel_size,
             m_subgridsize,
@@ -280,11 +306,11 @@ namespace api {
             m_bufferStationPairs2,
             m_aterm_offsets_array,
             options);
+        m_bufferset->m_plan_watch->Pause();
 
+        // Run gridding
         m_bufferset->m_gridding_watch->Start();
-
-        // Initialize gridding
-        m_proxy->initialize(
+        m_proxy->gridding(
             plan,
             m_wStepInLambda,
             m_shift,
@@ -299,27 +325,6 @@ namespace api {
             m_aterms_array,
             m_aterm_offsets_array,
             m_spheroidal);
-
-        // Start flush
-        m_proxy->run_gridding(
-            plan,
-            m_wStepInLambda,
-            m_shift,
-            m_cellHeight,
-            m_kernel_size,
-            m_subgridsize,
-            m_frequencies,
-            m_bufferVisibilities2,
-            m_bufferUVW2,
-            m_bufferStationPairs2,
-            *m_grid,
-            m_aterms_array,
-            m_aterm_offsets_array,
-            m_spheroidal);
-
-        // Wait for all plans to be executed
-        m_proxy->finish_gridding();
-
         m_bufferset->m_gridding_watch->Pause();
     }
 

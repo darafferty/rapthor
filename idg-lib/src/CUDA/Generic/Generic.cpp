@@ -247,13 +247,14 @@ namespace idg {
                     // Copy static data structures
                     if (local_id == 0) {
                         device.set_report(report);
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
+                        auto sizeof_aterm_indices = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
+                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
                         htodstream.synchronize();
                         if (device_id == 0) {
-                            htodstream.memcpyHtoDAsync(d_grid, grid.data());
+                            htodstream.memcpyHtoDAsync(d_grid, grid.data(), grid.bytes());
                         } else {
                             d_grid.zero(htodstream);
                         }
@@ -450,11 +451,12 @@ namespace idg {
                     // Copy static data structures
                     if (local_id == 0) {
                         device.set_report(report);
-                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data());
-                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data());
-                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data());
-                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr());
-                        htodstream.memcpyHtoDAsync(d_grid, grid.data());
+                        auto sizeof_aterm_indices = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                        htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
+                        htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
+                        htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+                        htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
+                        htodstream.memcpyHtoDAsync(d_grid, grid.data(), grid.bytes());
                         htodstream.synchronize();
                     }
 

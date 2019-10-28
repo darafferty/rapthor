@@ -568,6 +568,16 @@ namespace idg {
                 }
     };
 
+    /* Debugging */
+    template<typename T>
+    inline bool isnan(const std::complex<T>& value) {
+        return (std::isnan(value.real()) || std::isnan(value.imag()));
+    }
+
+    template<typename T>
+    inline bool isnan(const Matrix2x2<std::complex<T>>& m) {
+        return (isnan(m.xx) || isnan(m.xy) || isnan(m.yx) || isnan(m.yy));
+    }
 
     /* Output */
     std::ostream& operator<<(std::ostream& os, Baseline& b);

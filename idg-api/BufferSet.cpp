@@ -7,6 +7,7 @@
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+#include <csignal>
 
 #include <omp.h>
 
@@ -24,6 +25,11 @@
 #include "taper.h"
 #include "idg-fft.h"
 #include "npy.hpp"
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_NAN_GET_IMAGE 0
 
 extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
                     int* lda, int* ipiv, int *info );
@@ -65,6 +71,7 @@ namespace api {
         m_get_image_watch(Stopwatch::create()),
         m_set_image_watch(Stopwatch::create()),
         m_avg_beam_watch(Stopwatch::create()),
+        m_plan_watch(Stopwatch::create()),
         m_gridding_watch(Stopwatch::create()),
         m_degridding_watch(Stopwatch::create())
     {}
@@ -485,6 +492,31 @@ namespace api {
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
+        // Debugging
+        #if DEBUG_NAN_GET_IMAGE
+        std::vector<float> grid_real(nr_w_layers * 4 * m_size * m_size * sizeof(float));
+        std::vector<float> grid_imag(nr_w_layers * 4 * m_size * m_size * sizeof(float));
+        for (int w = 0; w < nr_w_layers; w++) {
+            #pragma omp parallel for
+            for (int y = 0; y < m_size; y++) {
+                for (int x = 0; x < m_size; x++) {
+                    for (int pol = 0; pol < 4; pol++) {
+                        size_t idx = w * 4 * m_size * m_size +
+                                     pol * m_size * m_size +
+                                     y * m_size +
+                                     x;
+                        grid_real[idx] = m_grid(w, pol, y, x).real();
+                        grid_imag[idx] = m_grid(w, pol, y, x).imag();
+                    }
+                }
+            }
+        }
+        std::cout << "writing grid to grid_real.npy and grid_imag.npy" << std::endl;
+        const long unsigned leshape [] = {(long unsigned int) nr_w_layers, 4, m_size, m_size};
+        npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape, grid_real);
+        npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
+        #endif
+
         // Fourier transform w layers
 #ifndef NDEBUG
         std::cout << "ifft w_layers";
@@ -522,6 +554,18 @@ namespace api {
 
                     // Compute inverse spheroidal
                     float inv_taper = m_inv_taper[y] * m_inv_taper[x];
+
+                    // Check for NaN
+                    #if DEBUG_NAN_GET_IMAGE
+                    if (isnan(m_grid(w, 0, y+y0, x+x0)) ||
+                        isnan(m_grid(w, 1, y+y0, x+x0)) ||
+                        isnan(m_grid(w, 2, y+y0, x+x0)) ||
+                        isnan(m_grid(w, 3, y+y0, x+x0)))
+                    {
+                        std::cerr << "NaN detected during w-stacking!" << std::endl;
+                        std::raise(SIGFPE);
+                    }
+                    #endif
 
                     // Apply correction
                     m_grid(w, 0, y+y0, x+x0) = m_grid(w, 0, y+y0, x+x0) * inv_taper * phasor;
@@ -561,6 +605,19 @@ namespace api {
             image[2*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).real() + m_grid(0,2,y+y0,x+x0).real());
             // Stokes V
             image[3*m_size*m_size + m_size*y+x] = 0.5 * (-m_grid(0,1,y+y0,x+x0).imag() + m_grid(0,2,y+y0,x+x0).imag());
+
+            // Check for NaN
+            #if DEBUG_NAN_GET_IMAGE
+            if (std::isnan(image[0*m_size*m_size + m_size*y+x]) ||
+                std::isnan(image[1*m_size*m_size + m_size*y+x]) ||
+                std::isnan(image[2*m_size*m_size + m_size*y+x]) ||
+                std::isnan(image[3*m_size*m_size + m_size*y+x]))
+            {
+                std::cerr << "NaN detected during setting stokes!" << std::endl;
+                std::raise(SIGFPE);
+            }
+            #endif
+
             } // end for x
         } // end for y
         runtime_copy += omp_get_wtime();
@@ -763,6 +820,7 @@ namespace api {
 
     void BufferSetImpl::report_runtime() {
         std::clog << "avg beam:   " << m_avg_beam_watch->ToString() << std::endl;
+        std::clog << "plan:       " << m_plan_watch->ToString() << std::endl;
         std::clog << "gridding:   " << m_gridding_watch->ToString() << std::endl;
         std::clog << "degridding: " << m_degridding_watch->ToString() << std::endl;
         std::clog << "set image:  " << m_get_image_watch->ToString() << std::endl;

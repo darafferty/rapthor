@@ -7,6 +7,8 @@
 
 #include "InstanceCUDA.h"
 
+//#define DEBUG_COMPUTE_JOBSIZE
+
 using namespace idg::kernel::cuda;
 
 namespace idg {
@@ -136,9 +138,16 @@ namespace idg {
                 if (subgrid_size != m_gridding_state.subgrid_size) { reset = true; };
                 if (grid_size    != m_gridding_state.grid_size)    { reset = true; };
 
+                for (unsigned i = 0; i < m_gridding_state.jobsize.size(); i++) {
+                    unsigned int jobsize = m_gridding_state.jobsize[i];
+                    unsigned int nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    unsigned int max_nr_subgrids = m_gridding_state.max_nr_subgrids[i];
+                    if (nr_subgrids > max_nr_subgrids) { reset = true; };
+                }
+
                 // Reuse same jobsize if no parameters have changed
                 if (!reset) {
-                    #if defined(DEBUG)
+                    #if defined(DEBUG_COMPUTE_JOBSIZE)
                     std::clog << "Reuse previous jobsize" << std::endl;
                     #endif
                     return m_gridding_state.jobsize;
@@ -162,7 +171,7 @@ namespace idg {
                 m_gridding_state.nr_baselines = nr_baselines;
 
                 // Print parameters
-                #if defined(DEBUG)
+                #if defined(DEBUG_COMPUTE_JOBSIZE)
                 std::cout << "nr_stations  = " << nr_stations  << std::endl;
                 std::cout << "nr_timeslots = " << nr_timeslots << std::endl;
                 std::cout << "nr_timesteps = " << nr_timesteps << std::endl;
@@ -175,7 +184,7 @@ namespace idg {
                 // Read maximum jobsize from environment
                 char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
                 auto max_jobsize = cstr_max_jobsize ? atoi(cstr_max_jobsize) : 0;
-                #if defined(DEBUG)
+                #if defined(DEBUG_COMPUTE_JOBSIZE)
                 std::cout << "max_jobsize  = " << max_jobsize << std::endl;
                 #endif
 
@@ -200,7 +209,7 @@ namespace idg {
                 bytes_static += auxiliary::sizeof_avg_aterm_correction(subgrid_size);
 
                 // Print amount of bytes required
-                #if defined(DEBUG)
+                #if defined(DEBUG_COMPUTE_JOBSIZE)
                 std::clog << "Bytes required for static data: " << bytes_static << std::endl;
                 std::clog << "Bytes required for job data: "    << bytes_jobs << std::endl;
                 #endif
@@ -216,20 +225,20 @@ namespace idg {
 
                     // Print device number
                     if (nr_devices > 1) {
-                        #if defined(DEBUG)
+                        #if defined(DEBUG_COMPUTE_JOBSIZE)
                         std::clog << "GPU " << i << ", ";
                         #endif
                     }
 
                     // Get amount of memory available on device
                     auto bytes_free = device->get_device().get_total_memory();
-                    #if defined(DEBUG)
+                    #if defined(DEBUG_COMPUTE_JOBSIZE)
                     std::clog << "Bytes free: " << bytes_free << std::endl;
                     #endif
 
                     // Print reserved memory
                     if (fraction_reserved > 0) {
-                        #if defined(DEBUG)
+                        #if defined(DEBUG_COMPUTE_JOBSIZE)
                         std::clog << "Bytes reserved: " << (long) (bytes_free * fraction_reserved) << std::endl;
                         #endif
                     }
@@ -250,7 +259,7 @@ namespace idg {
                     jobsize[i] = min(jobsize[i], nr_baselines);
 
                     // Print jobsize
-                    #if defined(DEBUG)
+                    #if defined(DEBUG_COMPUTE_JOBSIZE)
                     printf("Jobsize: %d\n", jobsize[i]);
                     #endif
 
