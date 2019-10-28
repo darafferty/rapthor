@@ -138,6 +138,13 @@ namespace idg {
                 if (subgrid_size != m_gridding_state.subgrid_size) { reset = true; };
                 if (grid_size    != m_gridding_state.grid_size)    { reset = true; };
 
+                for (unsigned i = 0; i < m_gridding_state.jobsize.size(); i++) {
+                    unsigned int jobsize = m_gridding_state.jobsize[i];
+                    unsigned int nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    unsigned int max_nr_subgrids = m_gridding_state.max_nr_subgrids[i];
+                    if (nr_subgrids > max_nr_subgrids) { reset = true; };
+                }
+
                 // Reuse same jobsize if no parameters have changed
                 if (!reset) {
                     #if defined(DEBUG_COMPUTE_JOBSIZE)
