@@ -193,15 +193,12 @@ namespace idg {
                         unsigned int subgrid_size);
 
                     cu::HostMemory& allocate_host_visibilities(
-                        unsigned int id,
-                        unsigned int jobsize,
+                        unsigned int nr_baselines,
                         unsigned int nr_timesteps,
                         unsigned int nr_channels);
 
                     cu::HostMemory& allocate_host_uvw(
-                        unsigned int id,
-                        unsigned int jobsize,
-                        unsigned int nr_timesteps);
+                        size_t bytes);
 
                     cu::HostMemory& allocate_host_metadata(
                         unsigned int id,
@@ -231,27 +228,13 @@ namespace idg {
                     cu::HostMemory& allocate_host_grid(
                         unsigned int grid_size);
 
-                    cu::HostMemory& register_host_grid(
-                        unsigned int grid_size,
-                        void *ptr);
-
-                    cu::HostMemory& register_host_visibilities(
-                        unsigned int nr_baselines,
-                        unsigned int nr_timesteps,
-                        unsigned int nr_channels,
-                        void *ptr);
-
-                    cu::HostMemory& register_host_uvw(
-                        unsigned int nr_baselines,
-                        unsigned int nr_timesteps,
-                        void *ptr);
-
                     // Memory management for misc device buffers
                     unsigned int allocate_device_memory(unsigned int size);
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
                     // Retrieve pre-allocated buffers (per device)
                     cu::HostMemory& retrieve_host_grid() { return *h_grid; }
+                    cu::HostMemory& retrieve_host_visibilities() { return *h_visibilities; }
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
@@ -262,8 +245,7 @@ namespace idg {
 
                     // Retrieve pre-allocated buffers (per stream)
                     cu::HostMemory& retrieve_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
-                    cu::HostMemory& retrieve_host_visibilities(unsigned int id) { return *h_visibilities_[id]; }
-                    cu::HostMemory& retrieve_host_uvw(unsigned int id) { return *h_uvw_[id]; }
+                    cu::HostMemory& retrieve_host_uvw() { return *h_uvw; }
                     cu::HostMemory& retrieve_host_metadata(unsigned int id) { return *h_metadata_[id]; }
                     cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
                     cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
@@ -317,10 +299,10 @@ namespace idg {
                     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
                     std::unique_ptr<cu::DeviceMemory> d_grid;
                     std::unique_ptr<cu::HostMemory>   h_grid;
+                    std::unique_ptr<cu::HostMemory>   h_visibilities;
+                    std::unique_ptr<cu::HostMemory>   h_uvw;
 
                     // One instance per stream
-                    std::vector<std::unique_ptr<cu::HostMemory>> h_visibilities_;
-                    std::vector<std::unique_ptr<cu::HostMemory>> h_uvw_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_metadata_;
                     std::vector<std::unique_ptr<cu::HostMemory>> h_subgrids_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
@@ -385,6 +367,32 @@ namespace idg {
                         cu::Stream &stream,
                         int nr_timesteps,
                         int nr_subgrids);
+
+                    template<typename T>
+                    void copy_memory(T *dst, T *src, size_t n)
+                    {
+                        char message[80];
+                        snprintf(message, 80, "memcpy(%p, %p, %lu)", dst, src, n);
+                        cu::Marker marker(message, 0xffff0000);
+                        marker.start();
+                        #pragma omp parallel for
+                        for (size_t i = 0; i < n; i++) {
+                            dst[i] = src[i];
+                        }
+                        marker.end();
+                    }
+
+                    void copy_dtoh(
+                        cu::Stream &stream,
+                        void *dst,
+                        cu::DeviceMemory &src,
+                        size_t bytes);
+
+                    void copy_htod(
+                        cu::Stream &stream,
+                        cu::DeviceMemory &dst,
+                        void *src,
+                        size_t bytes);
 
                 private:
                     void start_measurement(void *data);

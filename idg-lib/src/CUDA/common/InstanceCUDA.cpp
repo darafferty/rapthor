@@ -922,6 +922,41 @@ namespace idg {
                 stream.addCallback((CUstreamCallback) &report_job, data);
             }
 
+            void InstanceCUDA::copy_dtoh(
+                cu::Stream &stream,
+                void *dst,
+                cu::DeviceMemory &src,
+                size_t bytes)
+            {
+                size_t batch = 1024 * 1024 * 1024; // 1024 Mb
+                cu::HostMemory tmp(batch);
+                for (size_t i = 0; i < bytes; i += batch) {
+                    size_t n = i + batch < bytes ? batch : bytes - i;
+                    size_t src_ptr = (size_t) src + i;
+                    size_t dst_ptr = (size_t) dst + i;
+                    stream.memcpyDtoHAsync((void *) tmp, (CUdeviceptr) src_ptr, n);
+                    stream.synchronize();
+                    memcpy((void *) dst_ptr, tmp, n);
+                }
+            }
+
+            void InstanceCUDA::copy_htod(
+                cu::Stream &stream,
+                cu::DeviceMemory &dst,
+                void *src,
+                size_t bytes)
+            {
+                size_t batch = 1024 * 1024 * 1024; // 1024 Mb
+                cu::HostMemory tmp(batch);
+                for (size_t i = 0; i < bytes; i += batch) {
+                    size_t n = i + batch < bytes ? batch : bytes - i;
+                    size_t src_ptr = (size_t) src + i;
+                    size_t dst_ptr = (size_t) dst + i;
+                    memcpy(tmp, (void *) src_ptr, n);
+                    stream.memcpyHtoDAsync((CUdeviceptr) dst_ptr, tmp, n);
+                    stream.synchronize();
+                }
+            }
 
             /*
              *  Memory management per device
@@ -954,6 +989,22 @@ namespace idg {
                 auto size = auxiliary::sizeof_grid(grid_size);
                 reuse_memory(size, h_grid);
                 return *h_grid;
+            }
+
+            cu::HostMemory& InstanceCUDA::allocate_host_visibilities(
+                unsigned int nr_baselines,
+                unsigned int nr_timesteps,
+                unsigned int nr_channels)
+            {
+                auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                reuse_memory(size, h_visibilities);
+                return *h_visibilities;
+            }
+
+            cu::HostMemory& InstanceCUDA::allocate_host_uvw(
+                size_t bytes)
+            {
+                return *reuse_memory(bytes, h_uvw);
             }
 
             cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(
@@ -1034,25 +1085,6 @@ namespace idg {
                 return *reuse_memory(h_subgrids_, id, size);
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_visibilities(
-                unsigned int id,
-                unsigned int jobsize,
-                unsigned int nr_timesteps,
-                unsigned int nr_channels)
-            {
-                auto size = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
-                return *reuse_memory(h_visibilities_, id, size);
-            }
-
-            cu::HostMemory& InstanceCUDA::allocate_host_uvw(
-                unsigned int id,
-                unsigned int jobsize,
-                unsigned int nr_timesteps)
-            {
-                auto size = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-                return *reuse_memory(h_uvw_, id, size);
-            }
-
             cu::HostMemory& InstanceCUDA::allocate_host_metadata(
                 unsigned int id,
                 unsigned int nr_subgrids)
@@ -1118,84 +1150,11 @@ namespace idg {
             }
 
             /*
-             *  Memory management for large (host) buffers
-             *      Maintains a history of previously allocated
-             *      memory objects so that multiple buffers can be
-             *      used in round-robin fashion without the need
-             *      to re-allocate page-locked memory every invocation
-             */
-            template<typename T>
-            T* InstanceCUDA::reuse_memory(
-                std::vector<std::unique_ptr<T>>& memories,
-                uint64_t size,
-                void* ptr)
-            {
-                // detect whether this pointer is used before
-                for (unsigned i = 0; i < memories.size(); i++) {
-                    T* m = memories[i].get();
-                    void *m_ptr = m->get();
-                    uint64_t m_size = m->size();
-
-                    // same pointer, smaller or equal size
-                    if (ptr == m_ptr && size <= m_size) {
-                        // the memory can safely be reused
-                        return m;
-                    }
-
-                    // check pointer aliasing
-                    if ((((size_t) ptr + size) < (size_t) m_ptr) || (size_t) ptr > ((size_t) m_ptr + m_size)) {
-                        // pointer outside of current memory
-                    } else {
-                        // overlap between current memory
-                        std::cerr << "pointer aliasing detected!" << std::endl;
-                        std::cerr << "  ptr: " << ptr << ", size: " << size << std::endl;
-                        std::cerr << "m_ptr: " << m_ptr << ", size: " << m_size << std::endl;
-                        std::cerr << "unregistering offending pointer" << std::endl;
-                        delete m;
-                        memories.erase(memories.begin() + i);
-                        i--;
-                    }
-                }
-
-                // create new memory
-                T* m = ptr == NULL ? new T(size) : new T(ptr, size);
-                memories.push_back(std::unique_ptr<T>(m));
-                return m;
-            }
-
-            cu::HostMemory& InstanceCUDA::register_host_grid(
-                unsigned int grid_size,
-                void *ptr)
-            {
-                auto size = auxiliary::sizeof_grid(grid_size);
-                return *reuse_memory(h_registered_, size, ptr);
-            }
-
-            cu::HostMemory& InstanceCUDA::register_host_visibilities(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                unsigned int nr_channels,
-                void *ptr)
-            {
-                auto size = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-                return *reuse_memory(h_registered_, size, ptr);
-            }
-
-            cu::HostMemory& InstanceCUDA::register_host_uvw(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps,
-                void *ptr)
-            {
-                auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-                return *reuse_memory(h_registered_, size, ptr);
-            }
-
-            /*
              * Host memory destructor
              */
             void InstanceCUDA::free_host_memory() {
-                h_visibilities_.clear();
-                h_uvw_.clear();
+                h_visibilities.reset();
+                h_uvw.reset();
                 h_metadata_.clear();
                 h_subgrids_.clear();
                 h_registered_.clear();
