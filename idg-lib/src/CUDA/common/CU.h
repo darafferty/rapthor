@@ -77,31 +77,46 @@ namespace cu {
             CUdevice _device;
     };
 
-
-    class HostMemory {
+    class Memory {
         public:
-            HostMemory(size_t size, int flags = 0);
-            HostMemory(void *ptr, size_t size, int flags = 0, bool register_memory = true);
-            ~HostMemory();
-
-            size_t capacity();
-            size_t size();
-            void resize(size_t size);
-            void* get(size_t offset = 0);
-            void zero();
-
+            size_t capacity() { return _capacity; }
+            void* ptr() { return _ptr; }
+            size_t size() { return _size; }
+            virtual void resize(size_t size) = 0;
             template <typename T> operator T *() {
                 return static_cast<T *>(_ptr);
             }
 
+        protected:
+            void* _ptr = nullptr;
+            size_t _capacity = 0;
+            size_t _size = 0;
+    };
+
+    class HostMemory : public virtual Memory {
+        public:
+            HostMemory(size_t size = 0, int flags = CU_MEMHOSTALLOC_PORTABLE);
+            virtual ~HostMemory();
+
+            void resize(size_t size) override;
+            void zero();
+
         private:
             void release();
-            void *_ptr;
-            size_t _capacity;
-            size_t _size;
             int _flags;
-            bool allocated = false;
-            bool registered = false;
+    };
+
+    class RegisteredMemory : public virtual Memory {
+        public:
+            RegisteredMemory(void *ptr, size_t size, int flags = CU_MEMHOSTALLOC_PORTABLE);
+            virtual ~RegisteredMemory();
+
+            void resize(size_t size) override;
+            void zero();
+
+        private:
+            void release();
+            int _flags;
     };
 
 

@@ -148,19 +148,6 @@ namespace cu {
         _size = size;
         _flags = flags;
         assertCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
-        allocated = true;
-    }
-
-    HostMemory::HostMemory(void *ptr, size_t size, int flags, bool register_memory) {
-        _capacity = size;
-        _size = size;
-        _flags = flags;
-        assert(ptr != NULL);
-        _ptr = ptr;
-        if (register_memory) {
-            checkCudaCall(cuMemHostRegister(ptr, size, _flags));
-        }
-        registered = register_memory;
     }
 
     HostMemory::~HostMemory() {
@@ -173,40 +160,54 @@ namespace cu {
             _size = size;
         } else if (size > _capacity) {
             release();
-            if (allocated) {
-                assertCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
-            }
-            if (registered) {
-                checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
-            }
+            assertCudaCall(cuMemHostAlloc(&_ptr, size, _flags));
             _size = size;
             _capacity = size;
         }
     }
 
     void HostMemory::release() {
-        if (allocated) {
-            assertCudaCall(cuMemFreeHost(_ptr));
-        }
-        if (registered) {
-            checkCudaCall(cuMemHostUnregister(_ptr));
-        }
-    }
-
-    size_t HostMemory::capacity() {
-        return _capacity;
-    }
-
-    size_t HostMemory::size() {
-        return _size;
+        assertCudaCall(cuMemFreeHost(_ptr));
     }
 
     void HostMemory::zero() {
         memset(_ptr, 0, _size);
     }
 
-    void* HostMemory::get(size_t offset) {
-        return (void *) ((size_t) _ptr + offset);
+    /*
+        RegisteredMemory
+    */
+    RegisteredMemory::RegisteredMemory(void *ptr, size_t size, int flags) {
+        _capacity = size;
+        _size = size;
+        _flags = flags;
+        assert(ptr != NULL);
+        _ptr = ptr;
+        checkCudaCall(cuMemHostRegister(ptr, size, _flags));
+    }
+
+    RegisteredMemory::~RegisteredMemory() {
+        release();
+    }
+
+    void RegisteredMemory::resize(size_t size) {
+        assert(size > 0);
+        if (size < _capacity) {
+            _size = size;
+        } else if (size > _capacity) {
+            release();
+            checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
+            _size = size;
+            _capacity = size;
+        }
+    }
+
+    void RegisteredMemory::release() {
+        checkCudaCall(cuMemHostUnregister(_ptr));
+    }
+
+    void RegisteredMemory::zero() {
+        memset(_ptr, 0, _size);
     }
 
 
