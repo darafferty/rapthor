@@ -35,9 +35,9 @@ namespace idg {
                         const int nr_timeslots,
                         const int subgrid_size,
                         const int grid_size,
-                        void *visibilities,
-                        void *uvw,
-                        void *grid);
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVW<float>>& uvw,
+                        const Grid& grid);
 
                     virtual void do_gridding(
                         const Plan& plan,

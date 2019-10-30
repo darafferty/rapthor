@@ -44,10 +44,14 @@ namespace idg {
                 const int nr_timeslots,
                 const int subgrid_size,
                 const int grid_size,
-                void *visibilities,
-                void *uvw,
-                void *grid)
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVW<float>>& uvw,
+                const Grid& grid)
             {
+                InstanceCUDA& device = get_device(0);
+                device.allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                device.allocate_host_uvw(uvw.bytes());
+
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.set_context();
@@ -70,14 +74,10 @@ namespace idg {
                         device.allocate_device_uvw(t, jobsize[d], nr_timesteps);
                         device.allocate_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.allocate_device_metadata(t, max_nr_subgrids);
-                        device.allocate_host_visibilities(t, jobsize[d], nr_timesteps, nr_channels);
                     }
 
                     // Host memory
-                    if (d == 0) {
-                        device.register_host_uvw(nr_baselines, nr_timesteps, uvw);
-                        device.register_host_grid(grid_size, grid);
-                    } else {
+                    if (d > 0) {
                         device.allocate_host_grid(grid_size);
                     }
                 }
@@ -107,9 +107,6 @@ namespace idg {
                 // Device memory
                 cu::DeviceMemory& d_grid = device.allocate_device_grid(grid_size);
 
-                // Host memory
-                cu::HostMemory& h_grid = device.register_host_grid(grid_size, grid.data());
-
                 // Performance measurements
                 report.initialize(0, 0, grid_size);
                 device.set_report(report);
@@ -122,9 +119,8 @@ namespace idg {
                 device.shift(grid);
 
                 // Copy grid to device
-                auto sizeof_grid = auxiliary::sizeof_grid(grid_size);
                 device.measure(powerRecords[0], stream);
-                stream.memcpyHtoDAsync(d_grid, h_grid, sizeof_grid);
+                device.copy_htod(stream, d_grid, grid.data(), grid.bytes());
                 device.measure(powerRecords[1], stream);
 
                 // Execute fft
@@ -132,7 +128,7 @@ namespace idg {
 
                 // Copy grid to host
                 device.measure(powerRecords[2], stream);
-                stream.memcpyDtoHAsync(h_grid, d_grid, sizeof_grid);
+                device.copy_dtoh(stream, grid.data(), d_grid, grid.bytes());
                 device.measure(powerRecords[3], stream);
                 stream.synchronize();
 
@@ -207,7 +203,16 @@ namespace idg {
                 initialize_memory(
                     plan, jobsize_, max_nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
-                    visibilities.data(), uvw.data(), grid.data());
+                    visibilities, uvw, grid);
+
+                // Page-locked host memory
+                InstanceCUDA& device = get_device(0);
+                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
+                cu::HostMemory& h_uvw = device.retrieve_host_uvw();
+                Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
+                Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
+                device.copy_memory<Visibility<std::complex<float>>>(visibilities2.data(), visibilities.data(), visibilities.size());
+                device.copy_memory<UVW<float>>(uvw2.data(), uvw.data(), uvw.size());
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
@@ -237,7 +242,6 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
                     cu::DeviceMemory& d_grid         = device.retrieve_device_grid();
-                    cu::HostMemory&   h_visibilities = device.retrieve_host_visibilities(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -286,8 +290,8 @@ namespace idg {
                         auto current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
-                        void *uvw_ptr             = uvw.data(first_bl, 0);
-                        void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
+                        void *uvw_ptr             = uvw2.data(first_bl, 0);
+                        void *visibilities_ptr    = visibilities2.data(first_bl, 0, 0);
 
                         #pragma omp critical (lock)
                         {
@@ -295,8 +299,7 @@ namespace idg {
                             auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                             auto sizeof_uvw          = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                             auto sizeof_metadata     = auxiliary::sizeof_metadata(current_nr_subgrids);
-                            enqueue_copy(htodstream, h_visibilities, visibilities_ptr, sizeof_visibilities);
-                            htodstream.memcpyHtoDAsync(d_visibilities, h_visibilities, sizeof_visibilities);
+                            htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                             htodstream.record(inputReady);
@@ -412,7 +415,12 @@ namespace idg {
                 initialize_memory(
                     plan, jobsize_, max_nr_streams,
                     nr_baselines, nr_timesteps, nr_channels, nr_stations, nr_timeslots, subgrid_size, grid_size,
-                    visibilities.data(), uvw.data(), grid.data());
+                    visibilities, uvw, grid);
+
+                // Page-locked host memory
+                InstanceCUDA& device  = get_device(0);
+                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
+                Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
@@ -441,7 +449,6 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
                     cu::DeviceMemory& d_grid         = device.retrieve_device_grid();
-                    cu::HostMemory&   h_visibilities = device.retrieve_host_visibilities(local_id);
 
                     // Load streams
                     cu::Stream& executestream = device.get_execute_stream();
@@ -490,7 +497,7 @@ namespace idg {
                         auto current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                         void *metadata_ptr        = (void *) plan.get_metadata_ptr(first_bl);
                         void *uvw_ptr             = uvw.data(first_bl, 0);
-                        void *visibilities_ptr    = visibilities.data(first_bl, 0, 0);
+                        void *visibilities_ptr    = visibilities2.data(first_bl, 0, 0);
 
                         #pragma omp critical (lock)
                         {
@@ -525,8 +532,7 @@ namespace idg {
 
         					// Copy visibilities to host
         					dtohstream.waitEvent(outputReady);
-                            dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
-                            enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
+                            dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
         					dtohstream.record(outputFree);
                         }
 
@@ -545,6 +551,9 @@ namespace idg {
                 // End measurement
                 endStates[nr_devices] = hostPowerSensor->read();
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
+
+                // Copy visibilities
+                device.copy_memory<Visibility<std::complex<float>>>(visibilities.data(), visibilities2.data(), visibilities.size());
 
                 // Report performance
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
