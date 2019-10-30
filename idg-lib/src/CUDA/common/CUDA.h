@@ -6,10 +6,6 @@
 
 #include "idg-common.h"
 
-namespace cu {
-    class Stream;
-}
-
 namespace idg {
     namespace kernel {
         namespace cuda {
@@ -44,12 +40,6 @@ namespace idg {
                         const unsigned int nr_streams,
                         const unsigned int grid_size = 0,
                         const float fraction_reserved = 0.1);
-
-                    void enqueue_copy(
-                        cu::Stream& stream,
-                        void *dst,
-                        void *src,
-                        size_t bytes);
 
                 protected:
                     void init_devices();

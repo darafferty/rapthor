@@ -279,34 +279,6 @@ namespace idg {
                 size_t bytes;
             } MemData;
 
-            void copy_memory(CUstream, CUresult, void *userData)
-            {
-                MemData *data = static_cast<MemData*>(userData);
-                char message[80];
-                snprintf(message, 80, "memcpy(%p, %p, %zu)", data->dst, data->src, data->bytes);
-                cu::Marker marker(message, 0xffff0000);
-                marker.start();
-                memcpy(data->dst, data->src, data->bytes);
-                marker.end();
-                delete data;
-            }
-
-            void CUDA::enqueue_copy(
-                cu::Stream& stream,
-                void *dst,
-                void *src,
-                size_t bytes)
-            {
-                // Fill MemData struct
-                MemData *data = new MemData();
-                data->dst     = dst;
-                data->src     = src;
-                data->bytes   = bytes;
-
-                // Enqueue memory copy
-                stream.addCallback((CUstreamCallback) &copy_memory, data);
-            } // end enqueue_copy
-
         } // end namespace cuda
     } // end namespace proxy
 } // end namespace idg
