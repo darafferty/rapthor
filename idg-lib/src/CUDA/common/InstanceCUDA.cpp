@@ -922,6 +922,26 @@ namespace idg {
                 stream.addCallback((CUstreamCallback) &report_job, data);
             }
 
+            void InstanceCUDA::copy_htoh(
+                void *dst,
+                void *src,
+                size_t bytes)
+            {
+                char message[80];
+                snprintf(message, 80, "copy_htoh(%p, %p, %lu)", dst, src, bytes);
+                cu::Marker marker(message, 0xffff0000);
+                marker.start();
+                size_t batch = 1024 * 1024 * 1024; // 1024 Mb
+                #pragma omp parallel for
+                for (size_t i = 0; i < bytes; i += batch) {
+                    size_t n = i + batch < bytes ? batch : bytes - i;
+                    size_t src_ptr = (size_t) src + i;
+                    size_t dst_ptr = (size_t) dst + i;
+                    memcpy((void *) dst_ptr, (void *) src_ptr, n);
+                }
+                marker.end();
+            }
+
             void InstanceCUDA::copy_dtoh(
                 cu::Stream &stream,
                 void *dst,

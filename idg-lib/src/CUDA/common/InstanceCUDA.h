@@ -368,19 +368,10 @@ namespace idg {
                         int nr_timesteps,
                         int nr_subgrids);
 
-                    template<typename T>
-                    void copy_memory(T *dst, T *src, size_t n)
-                    {
-                        char message[80];
-                        snprintf(message, 80, "memcpy(%p, %p, %lu)", dst, src, n);
-                        cu::Marker marker(message, 0xffff0000);
-                        marker.start();
-                        #pragma omp parallel for
-                        for (size_t i = 0; i < n; i++) {
-                            dst[i] = src[i];
-                        }
-                        marker.end();
-                    }
+                    void copy_htoh(
+                        void *dst,
+                        void *src,
+                        size_t bytes);
 
                     void copy_dtoh(
                         cu::Stream &stream,

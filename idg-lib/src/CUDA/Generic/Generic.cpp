@@ -211,8 +211,8 @@ namespace idg {
                 cu::HostMemory& h_uvw = device.retrieve_host_uvw();
                 Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
                 Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
-                device.copy_memory<Visibility<std::complex<float>>>(visibilities2.data(), visibilities.data(), visibilities.size());
-                device.copy_memory<UVW<float>>(uvw2.data(), uvw.data(), uvw.size());
+                device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
+                device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
@@ -553,7 +553,7 @@ namespace idg {
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
 
                 // Copy visibilities
-                device.copy_memory<Visibility<std::complex<float>>>(visibilities.data(), visibilities2.data(), visibilities.size());
+                device.copy_htoh(visibilities.data(), visibilities2.data(), visibilities.bytes());
 
                 // Report performance
                 auto total_nr_subgrids          = plan.get_nr_subgrids();
