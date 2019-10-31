@@ -928,7 +928,7 @@ namespace idg {
                 size_t bytes)
             {
                 char message[80];
-                snprintf(message, 80, "copy_htoh(%p, %p, %lu)", dst, src, bytes);
+                snprintf(message, 80, "copy_htoh(%lu)", bytes);
                 cu::Marker marker(message, 0xffff0000);
                 marker.start();
                 size_t batch = 1024 * 1024 * 1024; // 1024 Mb
@@ -948,6 +948,10 @@ namespace idg {
                 cu::DeviceMemory &src,
                 size_t bytes)
             {
+                char message[80];
+                snprintf(message, 80, "copy_dtoh(%lu)", bytes);
+                cu::Marker marker(message, 0xffff0000);
+                marker.start();
                 size_t batch = 1024 * 1024 * 1024; // 1024 Mb
                 cu::HostMemory tmp(batch);
                 for (size_t i = 0; i < bytes; i += batch) {
@@ -958,6 +962,7 @@ namespace idg {
                     stream.synchronize();
                     memcpy((void *) dst_ptr, tmp, n);
                 }
+                marker.end();
             }
 
             void InstanceCUDA::copy_htod(
@@ -966,6 +971,10 @@ namespace idg {
                 void *src,
                 size_t bytes)
             {
+                char message[80];
+                snprintf(message, 80, "copy_htod(%lu)", bytes);
+                cu::Marker marker(message, 0xffff0000);
+                marker.start();
                 size_t batch = 1024 * 1024 * 1024; // 1024 Mb
                 cu::HostMemory tmp(batch);
                 for (size_t i = 0; i < bytes; i += batch) {
@@ -976,6 +985,7 @@ namespace idg {
                     stream.memcpyHtoDAsync((CUdeviceptr) dst_ptr, tmp, n);
                     stream.synchronize();
                 }
+                marker.end();
             }
 
             /*
