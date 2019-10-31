@@ -472,6 +472,15 @@ namespace idg {
             {}
 
             Array4D(
+                std::vector<size_t> shape) :
+                m_x_dim(shape[0]),
+                m_y_dim(shape[1]),
+                m_z_dim(shape[2]),
+                m_w_dim(shape[3]),
+                m_buffer(allocate_memory<T>(shape[0]*shape[1]*shape[2]*shape[3]), &free)  // shared_ptr with custom deleter that deletes an array
+            {}
+
+            Array4D(
                 std::shared_ptr<T> data,
                 size_t w_dim,
                 size_t z_dim,
@@ -499,7 +508,7 @@ namespace idg {
 
             Array4D(
                 T* data,
-                std::vector<size_t>& shape) :
+                std::vector<size_t> shape) :
                 m_x_dim(shape[0]),
                 m_y_dim(shape[1]),
                 m_z_dim(shape[2]),
@@ -606,6 +615,16 @@ namespace idg {
                                                  array.get_z_dim(),
                                                  array.get_y_dim(),
                                                  array.get_x_dim())
+                {}
+
+                Grid(std::vector<size_t> shape) :
+                    Array4D<std::complex<float>>(shape)
+                {}
+
+                Grid(
+                    std::complex<float>* data,
+                    std::vector<size_t> shape) :
+                    Array4D<std::complex<float>>(data, shape)
                 {}
 
                 Grid(std::complex<float>* data,
