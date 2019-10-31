@@ -1,7 +1,8 @@
 #ifndef IDG_HYBRID_GENERIC_OPTIMIZED_H_
 #define IDG_HYBRID_GENERIC_OPTIMIZED_H_
 
-#include "idg-hybrid-cuda.h"
+#include "idg-cpu.h"
+#include "CUDA/common/CUDA.h"
 
 namespace cu {
     class Stream;

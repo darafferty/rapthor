@@ -1,7 +1,8 @@
 #ifndef IDG_CUDA_GENERIC_H_
 #define IDG_CUDA_GENERIC_H_
 
-#include "idg-cuda.h"
+#include "idg-common.h"
+#include "CUDA/common/CUDA.h"
 
 namespace cu {
     class HostMemory;
@@ -22,6 +23,8 @@ namespace idg {
 
                     // Destructor
                     ~Generic();
+
+                    void enable_unified_memory() { m_use_unified_memory = true; }
 
                 private:
                     void initialize_memory(
@@ -76,6 +79,10 @@ namespace idg {
                         Array3D<std::complex<float>>& grid) override;
 
                     powersensor::PowerSensor *hostPowerSensor;
+
+                protected:
+                    bool m_use_unified_memory = false;
+
             }; // class Generic
 
         } // namespace cuda

@@ -63,7 +63,9 @@ namespace idg {
                     device.allocate_device_spheroidal(subgrid_size);
                     device.allocate_device_aterms(nr_stations, nr_timeslots, subgrid_size);
                     device.allocate_device_aterms_indices(nr_baselines, nr_timesteps);
-                    device.allocate_device_grid(grid_size);
+                    if (!m_use_unified_memory) {
+                        device.allocate_device_grid(grid_size);
+                    }
 
                     unsigned int avg_aterm_correction_subgrid_size = m_avg_aterm_correction.size() ? subgrid_size : 0;
                     device.allocate_device_avg_aterm_correction(avg_aterm_correction_subgrid_size);
@@ -77,7 +79,7 @@ namespace idg {
                     }
 
                     // Host memory
-                    if (d > 0) {
+                    if (!m_use_unified_memory && d > 0) {
                         device.allocate_host_grid(grid_size);
                     }
                 }
@@ -257,10 +259,12 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
                         htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
                         htodstream.synchronize();
-                        if (device_id == 0) {
-                            htodstream.memcpyHtoDAsync(d_grid, grid.data(), grid.bytes());
-                        } else {
-                            d_grid.zero(htodstream);
+                        if (!m_use_unified_memory) {
+                            if (device_id == 0) {
+                                htodstream.memcpyHtoDAsync(d_grid, grid.data(), grid.bytes());
+                            } else {
+                                d_grid.zero(htodstream);
+                            }
                         }
                     }
 
@@ -315,9 +319,15 @@ namespace idg {
                             device.launch_fft(d_subgrids, FourierDomainToImageDomain);
 
                             // Launch adder kernel
-                            device.launch_adder(
-                                current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, d_grid);
+                            if (m_use_unified_memory) {
+                                device.launch_adder_unified(
+                                    current_nr_subgrids, grid_size, subgrid_size,
+                                    d_metadata, d_subgrids, grid.data());
+                            } else {
+                                device.launch_adder(
+                                    current_nr_subgrids, grid_size, subgrid_size,
+                                    d_metadata, d_subgrids, d_grid);
+                            }
                             executestream.record(outputReady);
                             device.enqueue_report(executestream, current_nr_timesteps, current_nr_subgrids);
                         }
@@ -338,7 +348,7 @@ namespace idg {
                     }
 
                     // Copy grid to host
-                    if (local_id == 0) {
+                    if (!m_use_unified_memory && local_id == 0) {
                         dtohstream.memcpyDtoHAsync(grid.data(), d_grid, auxiliary::sizeof_grid(grid_size));
                     }
 
@@ -346,14 +356,16 @@ namespace idg {
                     endStates[nr_devices] = hostPowerSensor->read();
                 } // end omp parallel
 
-                // Add grids
-                for (unsigned d = 1; d < get_num_devices(); d++) {
-                    float2 *grid_src = (float2 *) get_device(d).retrieve_host_grid();
-                    float2 *grid_dst = (float2 *) grid.data();
+                if (!m_use_unified_memory) {
+                    // Add grids
+                    for (unsigned d = 1; d < get_num_devices(); d++) {
+                        float2 *grid_src = (float2 *) get_device(d).retrieve_host_grid();
+                        float2 *grid_dst = (float2 *) grid.data();
 
-                    #pragma omp parallel for
-                    for (unsigned i = 0; i < grid_size * grid_size * nr_correlations; i++) {
-                        grid_dst[i] += grid_src[i];
+                        #pragma omp parallel for
+                        for (unsigned i = 0; i < grid_size * grid_size * nr_correlations; i++) {
+                            grid_dst[i] += grid_src[i];
+                        }
                     }
                 }
 
@@ -463,7 +475,9 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
                         htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
                         htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
-                        htodstream.memcpyHtoDAsync(d_grid, grid.data(), grid.bytes());
+                        if (!m_use_unified_memory) {
+                            htodstream.memcpyHtoDAsync(d_grid, grid.data(), grid.bytes());
+                        }
                         htodstream.synchronize();
                     }
 
@@ -514,9 +528,15 @@ namespace idg {
 
                             // Launch splitter kernel
                             executestream.waitEvent(inputReady);
-                            device.launch_splitter(
-                                current_nr_subgrids, grid_size, subgrid_size,
-                                d_metadata, d_subgrids, d_grid);
+                            if (m_use_unified_memory) {
+                                device.launch_splitter_unified(
+                                    current_nr_subgrids, grid_size, subgrid_size,
+                                    d_metadata, d_subgrids, grid.data());
+                            } else {
+                                device.launch_splitter(
+                                    current_nr_subgrids, grid_size, subgrid_size,
+                                    d_metadata, d_subgrids, d_grid);
+                            }
 
                             // Launch FFT
                             device.launch_fft(d_subgrids, ImageDomainToFourierDomain);

@@ -167,6 +167,9 @@ namespace cu {
             UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
             ~UnifiedMemory();
 
+            template <typename T> operator T *() {
+                return static_cast<T *>((void *) _ptr);
+            }
             void* ptr() { return (void *) _ptr; }
             void set_advice(CUmem_advise advise);
             void set_advice(CUmem_advise advise, Device& device);

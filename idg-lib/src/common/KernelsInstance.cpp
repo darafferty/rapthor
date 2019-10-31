@@ -70,25 +70,21 @@ namespace idg {
         }
 
         void KernelsInstance::tile_backward(
-            const int tile_size,
+            const unsigned long grid_size,
+            const unsigned int tile_size,
             const Grid& grid_src,
                   Grid& grid_dst) const
         {
             ASSERT(grid_src.bytes() == grid_dst.bytes());
-            const int nr_correlations = grid_src.get_z_dim();
-            const int height = grid_src.get_y_dim();
-            const int width  = grid_dst.get_x_dim();
-            ASSERT(height == width);
-            const int grid_size = height;
 
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
             #pragma omp parallel for
-            for (int pixel = 0; pixel < grid_size*grid_size; pixel++) {
+            for (unsigned long pixel = 0; pixel < grid_size*grid_size; pixel++) {
                 int y = pixel / grid_size;
                 int x = pixel % grid_size;
-                for (int pol = 0; pol < nr_correlations; pol++) {
+                for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
                     long src_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
                     long dst_idx = index_grid(grid_size, 0, pol, y, x);
 
@@ -98,25 +94,21 @@ namespace idg {
         }
 
         void KernelsInstance::tile_forward(
-            const int tile_size,
+            const unsigned long grid_size,
+            const unsigned int tile_size,
             const Grid& grid_src,
                   Grid& grid_dst) const
         {
             ASSERT(grid_src.bytes() == grid_dst.bytes());
-            const int nr_correlations = grid_src.get_z_dim();
-            const int height = grid_src.get_y_dim();
-            const int width  = grid_dst.get_x_dim();
-            ASSERT(height == width);
-            const int grid_size = height;
 
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
             #pragma omp parallel for
-            for (int pixel = 0; pixel < grid_size*grid_size; pixel++) {
+            for (unsigned long pixel = 0; pixel < grid_size*grid_size; pixel++) {
                 int y = pixel / grid_size;
                 int x = pixel % grid_size;
-                for (int pol = 0; pol < nr_correlations; pol++) {
+                for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
                     long src_idx = index_grid(grid_size, 0, pol, y, x);
                     long dst_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
                     dst_ptr[dst_idx] = src_ptr[src_idx];

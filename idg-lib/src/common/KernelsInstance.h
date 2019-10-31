@@ -31,12 +31,14 @@ namespace idg {
                     std::complex<float> scale) const;
 
                 void tile_backward(
-                    const int tile_size,
+                    const unsigned long grid_size,
+                    const unsigned int tile_size,
                     const Grid& grid_src,
                           Grid& grid_dst) const;
 
                 void tile_forward(
-                    const int tile_size,
+                    const unsigned long grid_size,
+                    const unsigned int tile_size,
                     const Grid& grid_src,
                           Grid& grid_dst) const;
 
