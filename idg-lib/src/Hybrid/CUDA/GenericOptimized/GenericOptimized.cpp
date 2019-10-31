@@ -8,12 +8,6 @@
 
 #include "InstanceCUDA.h"
 
-/*
- * Option to enable/disable the _wwstack
- * version of the adder and splitter kernels.
- */
-#define ENABLE_WSTACKING 1
-
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
