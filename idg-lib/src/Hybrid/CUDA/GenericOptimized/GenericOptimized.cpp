@@ -283,12 +283,6 @@ namespace idg {
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
 
-                // Page-lock host memory
-                #if defined(REGISTER_HOST_MEMORY)
-                device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                device.register_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-                #endif
-
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 std::vector<int> jobsize_(nr_devices);
                 for (unsigned d = 0; d < nr_devices; d++) {
@@ -565,12 +559,6 @@ namespace idg {
 
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
-
-                // Page-lock host memory
-                #if defined(REGISTER_HOST_MEMORY)
-                device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities.data());
-                device.register_host_uvw(nr_baselines, nr_timesteps, uvw.data());
-                #endif
 
                 // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
                 std::vector<int> jobsize_(nr_devices);
