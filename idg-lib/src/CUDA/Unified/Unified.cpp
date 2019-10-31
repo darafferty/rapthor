@@ -87,12 +87,6 @@ namespace idg {
                         device.allocate_device_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.allocate_device_metadata(t, max_nr_subgrids);
                     }
-
-                    // Host memory
-                    if (d == 0) {
-                        device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
-                        device.register_host_uvw(nr_baselines, nr_timesteps, uvw);
-                    }
                 }
 
             } // end initialize_memory
