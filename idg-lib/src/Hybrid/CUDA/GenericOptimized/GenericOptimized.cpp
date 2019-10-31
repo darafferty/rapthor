@@ -177,9 +177,7 @@ namespace idg {
                         device.allocate_device_metadata(t, max_nr_subgrids);
                         device.allocate_host_subgrids(t, max_nr_subgrids, subgrid_size);
                         device.allocate_host_metadata(t, max_nr_subgrids);
-                        #if !defined(REGISTER_HOST_MEMORY)
-                        device.allocate_host_visibilities(t, jobsize, nr_timesteps, nr_channels);
-                        #endif
+                        device.allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
                     }
 
                     // Plan subgrid fft
@@ -283,16 +281,10 @@ namespace idg {
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
 
-                // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
-                std::vector<int> jobsize_(nr_devices);
-                for (unsigned d = 0; d < nr_devices; d++) {
-                    auto jobsize = m_gridding_state.jobsize[d];
-                    auto max_nr_subgrids = m_gridding_state.max_nr_subgrids[d];
-                    while (max_nr_subgrids < plan.get_max_nr_subgrids(0, nr_baselines, jobsize)) {
-                        jobsize *= 0.9;
-                    }
-                    jobsize_[d] = jobsize;
-                }
+                // Page-locked host memory
+                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
+                Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
+                device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
 
                 // Performance measurements
                 StateData *stateData = new StateData();
@@ -304,7 +296,7 @@ namespace idg {
                 // Enqueue start device measurement
                 hostStream->addCallback((CUstreamCallback) &start_device_measurement, stateData);
 
-                int jobsize = jobsize_[0];
+                int jobsize = m_gridding_state.jobsize[0];
 
                 // Events
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
@@ -332,7 +324,7 @@ namespace idg {
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                     job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
                     job.uvw_ptr              = uvw.data(first_bl, 0);
-                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
+                    job.visibilities_ptr     = visibilities2.data(first_bl, 0, 0);
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
@@ -560,16 +552,10 @@ namespace idg {
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
 
-                // Reduce jobsize when the maximum number of subgrids for the current plan exceeds the planned number
-                std::vector<int> jobsize_(nr_devices);
-                for (unsigned d = 0; d < nr_devices; d++) {
-                    auto jobsize = m_gridding_state.jobsize[d];
-                    auto max_nr_subgrids = m_gridding_state.max_nr_subgrids[d];
-                    while (max_nr_subgrids < plan.get_max_nr_subgrids(0, nr_baselines, jobsize)) {
-                        jobsize *= 0.9;
-                    }
-                    jobsize_[d] = jobsize;
-                }
+                // Page-locked host memory
+                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
+                Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
+                visibilities2.zero();
 
                 // Performance measurements
                 StateData *stateData = new StateData();
@@ -581,7 +567,7 @@ namespace idg {
                 // Enqueue start device measurement
                 hostStream->addCallback((CUstreamCallback) &start_device_measurement, stateData);
 
-                int jobsize = jobsize_[0];
+                int jobsize = m_gridding_state.jobsize[0];
 
                 // Events
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
@@ -609,7 +595,7 @@ namespace idg {
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                     job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
                     job.uvw_ptr              = uvw.data(first_bl, 0);
-                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
+                    job.visibilities_ptr     = visibilities2.data(first_bl, 0, 0);
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
@@ -648,13 +634,11 @@ namespace idg {
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
+                    d_visibilities.zero(htodstream);
                     cu::DeviceMemory& d_uvw          = device.retrieve_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
                     cu::HostMemory&   h_subgrids     = device.retrieve_host_subgrids(local_id);
-                    #if !defined(REGISTER_HOST_MEMORY)
-                    cu::HostMemory&   h_visibilities = device.retrieve_host_visibilities(local_id);
-                    #endif
 
                     // Copy input data for first job to device
                     if (job_id == 0) {
@@ -667,6 +651,7 @@ namespace idg {
                     // Run splitter on host
                     cu::Marker marker("run_splitter_wstack");
                     marker.start();
+
                     cpuKernels.run_splitter_wstack(
                         current_nr_subgrids, grid_size, subgrid_size,
                         metadata_ptr, h_subgrids, grid.data());
@@ -718,16 +703,11 @@ namespace idg {
                     // Copy visibilities to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
-                    #if defined(REGISTER_HOST_MEMORY)
                     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
-                    #else
-                    dtohstream.memcpyDtoHAsync(h_visibilities, d_visibilities, sizeof_visibilities);
-                    enqueue_copy(dtohstream, visibilities_ptr, h_visibilities, sizeof_visibilities);
-                    #endif
                     dtohstream.record(*outputCopied[job_id]);
 
                     // Wait for degridder to finish
-                    gpuFinished[job_id]->synchronize();
+                    outputCopied[job_id]->synchronize();
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
 
                     // Update local id
@@ -736,6 +716,9 @@ namespace idg {
 
                 // Enqueue end device measurement
                 hostStream->addCallback((CUstreamCallback) &end_device_measurement, stateData);
+
+                // Copy visibilities
+                device.copy_htoh(visibilities.data(), visibilities2.data(), visibilities.bytes());
 
                 // Update report
                 auto total_nr_subgrids     = plan.get_nr_subgrids();

@@ -94,8 +94,8 @@ namespace idg {
 
                     // Host memory
                     if (d == 0) {
-                        device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
-                        device.register_host_uvw(nr_baselines, nr_timesteps, uvw);
+                        //device.register_host_visibilities(nr_baselines, nr_timesteps, nr_channels, visibilities);
+                        //device.register_host_uvw(nr_baselines, nr_timesteps, uvw);
                     }
                 }
 
