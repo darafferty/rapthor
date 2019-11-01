@@ -1005,20 +1005,14 @@ namespace idg {
                 return memory.get();
             }
 
-            cu::DeviceMemory& InstanceCUDA::allocate_device_grid(
-                unsigned int grid_size)
+            cu::DeviceMemory& InstanceCUDA::allocate_device_grid(size_t bytes)
             {
-                auto size = auxiliary::sizeof_grid(grid_size);
-                reuse_memory(size, d_grid);
-                return *d_grid;
+                return *reuse_memory(bytes, d_grid);
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_grid(
-                unsigned int grid_size)
+            cu::HostMemory& InstanceCUDA::allocate_host_grid(size_t bytes)
             {
-                auto size = auxiliary::sizeof_grid(grid_size);
-                reuse_memory(size, h_grid);
-                return *h_grid;
+                return *reuse_memory(bytes, h_grid);
             }
 
             cu::HostMemory& InstanceCUDA::allocate_host_visibilities(
@@ -1031,53 +1025,34 @@ namespace idg {
                 return *h_visibilities;
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_uvw(
-                size_t bytes)
+            cu::HostMemory& InstanceCUDA::allocate_host_uvw(size_t bytes)
             {
                 return *reuse_memory(bytes, h_uvw);
             }
 
-            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(
-                unsigned int nr_stations,
-                unsigned int nr_timeslots,
-                unsigned int subgrid_size)
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(size_t bytes)
             {
-                auto size = auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
-                reuse_memory(size, d_aterms);
-                return *d_aterms;
+                return *reuse_memory(bytes, d_aterms);
             }
 
-            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms_indices(
-                unsigned int nr_baselines,
-                unsigned int nr_timesteps)
+            cu::DeviceMemory& InstanceCUDA::allocate_device_aterms_indices(size_t bytes)
             {
-                auto size = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-                reuse_memory(size, d_aterms_indices);
-                return *d_aterms_indices;
+                return *reuse_memory(bytes, d_aterms_indices);
             }
 
-            cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(
-                unsigned int nr_channels)
+            cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(size_t bytes)
             {
-                auto size = auxiliary::sizeof_wavenumbers(nr_channels);
-                reuse_memory(size, d_wavenumbers);
-                return *d_wavenumbers;
+                return *reuse_memory(bytes, d_wavenumbers);
             }
 
-            cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(
-                unsigned int subgrid_size)
+            cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(size_t bytes)
             {
-                auto size = auxiliary::sizeof_spheroidal(subgrid_size);
-                reuse_memory(size, d_spheroidal);
-                return *d_spheroidal;
+                return *reuse_memory(bytes, d_spheroidal);
             }
 
-            cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(
-                unsigned int subgrid_size)
+            cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(size_t bytes)
             {
-                auto size = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
-                reuse_memory(size, d_avg_aterm_correction);
-                return *d_avg_aterm_correction;
+                return *reuse_memory(bytes, d_avg_aterm_correction);
             }
 
             /*

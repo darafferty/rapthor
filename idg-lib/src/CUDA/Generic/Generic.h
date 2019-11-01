@@ -4,10 +4,6 @@
 #include "idg-common.h"
 #include "CUDA/common/CUDA.h"
 
-namespace cu {
-    class HostMemory;
-}
-
 namespace powersensor {
     class PowerSensor;
 }
@@ -27,21 +23,6 @@ namespace idg {
                     void enable_unified_memory() { m_use_unified_memory = true; }
 
                 private:
-                    void initialize_memory(
-                        const Plan& plan,
-                        const std::vector<int> jobsize,
-                        const int nr_streams,
-                        const int nr_baselines,
-                        const int nr_timesteps,
-                        const int nr_channels,
-                        const int nr_stations,
-                        const int nr_timeslots,
-                        const int subgrid_size,
-                        const int grid_size,
-                        const Array3D<Visibility<std::complex<float>>>& visibilities,
-                        const Array2D<UVW<float>>& uvw,
-                        const Grid& grid);
-
                     virtual void do_gridding(
                         const Plan& plan,
                         const float w_step, // in lambda

@@ -165,26 +165,17 @@ namespace idg {
                         void *u_subgrid);
 
                     // Memory management per device
-                    cu::DeviceMemory& allocate_device_grid(
-                        unsigned int grid_size);
+                    cu::DeviceMemory& allocate_device_grid(size_t bytes);
 
-                    cu::DeviceMemory& allocate_device_wavenumbers(
-                        unsigned int nr_channels = 0);
+                    cu::DeviceMemory& allocate_device_wavenumbers(size_t bytes);
 
-                    cu::DeviceMemory& allocate_device_aterms(
-                        unsigned int nr_stations,
-                        unsigned int nr_timeslots,
-                        unsigned int subgrid_size);
+                    cu::DeviceMemory& allocate_device_aterms(size_t bytes);
 
-                    cu::DeviceMemory& allocate_device_aterms_indices(
-                        unsigned int nr_baselines,
-                        unsigned int nr_timesteps);
+                    cu::DeviceMemory& allocate_device_aterms_indices(size_t bytes);
 
-                    cu::DeviceMemory& allocate_device_spheroidal(
-                        unsigned int subgrid_size);
+                    cu::DeviceMemory& allocate_device_spheroidal(size_t bytes);
 
-                    cu::DeviceMemory& allocate_device_avg_aterm_correction(
-                        unsigned int subgrid_size);
+                    cu::DeviceMemory& allocate_device_avg_aterm_correction(size_t bytes);
 
                     // Memory management per stream
                     cu::HostMemory& allocate_host_subgrids(
@@ -197,8 +188,7 @@ namespace idg {
                         unsigned int nr_timesteps,
                         unsigned int nr_channels);
 
-                    cu::HostMemory& allocate_host_uvw(
-                        size_t bytes);
+                    cu::HostMemory& allocate_host_uvw(size_t bytes);
 
                     cu::HostMemory& allocate_host_metadata(
                         unsigned int id,
@@ -225,8 +215,7 @@ namespace idg {
                         unsigned int nr_subgrids);
 
                     // Memory management for large (host) buffers
-                    cu::HostMemory& allocate_host_grid(
-                        unsigned int grid_size);
+                    cu::HostMemory& allocate_host_grid(size_t bytes);
 
                     // Memory management for misc device buffers
                     unsigned int allocate_device_memory(unsigned int size);

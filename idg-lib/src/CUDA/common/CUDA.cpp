@@ -273,11 +273,92 @@ namespace idg {
                 return jobsize;
             } // end compute_jobsize
 
-            typedef struct {
-                void *dst;
-                void *src;
-                size_t bytes;
-            } MemData;
+            void CUDA::initialize(
+                const Plan& plan,
+                const float w_step,
+                const Array1D<float>& shift,
+                const float cell_size,
+                const unsigned int kernel_size,
+                const unsigned int subgrid_size,
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVW<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal,
+                const unsigned short max_nr_streams = 3)
+            {
+                #if defined(DEBUG)
+                std::cout << "CUDA::" << __func__ << std::endl;
+                #endif
+
+                // Arguments
+                auto nr_channels  = frequencies.get_x_dim();
+                auto nr_stations  = aterms.get_z_dim();
+                auto nr_timeslots = aterms.get_w_dim();
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
+
+                // Convert frequencies to wavenumbers
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+                // Compute jobsize
+                compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+
+                // Page-locked host buffers
+                InstanceCUDA& device = get_device(0);
+                device.allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                device.allocate_host_uvw(uvw.bytes());
+
+                for (unsigned d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.set_context();
+                    auto jobsize = m_gridding_state.jobsize[d];
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    cu::Stream& htodstream = device.get_htod_stream();
+
+                    // Wavenumbers
+                    cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(wavenumbers.bytes());
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
+
+                    // Spheroidal
+                    cu::DeviceMemory& d_spheroidal = device.allocate_device_spheroidal(spheroidal.bytes());
+                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
+
+                    // Aterms
+                    cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms.bytes());
+                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+
+                    // Aterms indicies
+                    size_t sizeof_aterm_indices = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                    cu::DeviceMemory& d_aterms_indices = device.allocate_device_aterms_indices(sizeof_aterm_indices);
+                    htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
+
+                    // Average aterm correction
+                    if (m_avg_aterm_correction.size()) {
+                        size_t sizeof_avg_aterm_correction = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
+                        cu::DeviceMemory& d_avg_aterm_correction = device.allocate_device_avg_aterm_correction(sizeof_avg_aterm_correction);
+                        htodstream.memcpyHtoDAsync(d_avg_aterm_correction, m_avg_aterm_correction.data(), sizeof_avg_aterm_correction);
+                    } else {
+                        device.allocate_device_avg_aterm_correction(0);
+                    }
+
+                    // Dynamic memory (per thread)
+                    for (unsigned t = 0; t < max_nr_streams; t++) {
+                        device.allocate_device_visibilities(t, jobsize, nr_timesteps, nr_channels);
+                        device.allocate_device_uvw(t, jobsize, nr_timesteps);
+                        device.allocate_device_subgrids(t, max_nr_subgrids, subgrid_size);
+                        device.allocate_device_metadata(t, max_nr_subgrids);
+                    }
+
+                    // Plan subgrid fft
+                    device.plan_fft(subgrid_size, max_nr_subgrids);
+
+                    // Wait for memory copies
+                    htodstream.synchronize();
+                }
+            } // end initialize
 
         } // end namespace cuda
     } // end namespace proxy
