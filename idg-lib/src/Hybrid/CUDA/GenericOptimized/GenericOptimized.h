@@ -1,12 +1,8 @@
 #ifndef IDG_HYBRID_GENERIC_OPTIMIZED_H_
 #define IDG_HYBRID_GENERIC_OPTIMIZED_H_
 
-#include "idg-hybrid-cuda.h"
-
-namespace cu {
-    class Stream;
-    class Event;
-}
+#include "idg-cpu.h"
+#include "CUDA/common/CUDA.h"
 
 namespace idg {
     namespace proxy {
@@ -109,16 +105,6 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal) override;
 
-                    virtual void finish_gridding() override
-                    {
-                        finish(auxiliary::name_gridding);
-                    };
-
-                    virtual void finish_degridding() override
-                    {
-                        finish(auxiliary::name_degridding);
-                    };
-
                     virtual void do_calibrate_init(
                         std::vector<std::unique_ptr<Plan>> &&plans,
                         float w_step, // in lambda
@@ -170,17 +156,10 @@ namespace idg {
                         Plan::Options options);
 
                     void synchronize();
-                    void finish(std::string name);
 
                 protected:
                     powersensor::PowerSensor* hostPowerSensor;
                     idg::proxy::cpu::CPU* cpuProxy;
-
-                    /*
-                     * Gridding/degridding state
-                     */
-                    cu::Stream* hostStream;
-                    powersensor::State hostStartState;
 
                     /*
                      * Calibration state

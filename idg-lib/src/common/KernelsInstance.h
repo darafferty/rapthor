@@ -31,18 +31,26 @@ namespace idg {
                     std::complex<float> scale) const;
 
                 void tile_backward(
-                    const int tile_size,
+                    const unsigned long grid_size,
+                    const unsigned int tile_size,
                     const Grid& grid_src,
                           Grid& grid_dst) const;
 
                 void tile_forward(
-                    const int tile_size,
+                    const unsigned long grid_size,
+                    const unsigned int tile_size,
                     const Grid& grid_src,
                           Grid& grid_dst) const;
 
                 void transpose_aterm(
                     const Array4D<Matrix2x2<std::complex<float>>>& aterms_src,
                           Array4D<std::complex<float>>& aterms_dst) const;
+
+                void check_aterms(
+                    Array4D<Matrix2x2<std::complex<float>>>& aterms) const;
+
+                void check_avg_aterm_correction(
+                    Array4D<std::complex<float>>& avg_aterm_correction) const;
 
                 /*
                     Debug

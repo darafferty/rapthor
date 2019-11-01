@@ -1,11 +1,8 @@
 #ifndef IDG_CUDA_UNIFIED_H_
 #define IDG_CUDA_UNIFIED_H_
 
-#include "idg-cuda.h"
-
-namespace cu {
-    class UnifiedMemory;
-}
+#include "CUDA/common/CUDA.h"
+#include "CUDA/Generic/Generic.h"
 
 namespace powersensor {
     class PowerSensor;
@@ -14,7 +11,8 @@ namespace powersensor {
 namespace idg {
     namespace proxy {
         namespace cuda {
-            class Unified : public CUDA {
+
+            class Unified : public cuda::CUDA {
                 public:
                     // Constructor
                     Unified(
@@ -22,31 +20,6 @@ namespace idg {
 
                     // Destructor
                     ~Unified();
-
-                    // Methods for memory management
-                    Grid get_grid(
-                        size_t nr_w_layers,
-                        size_t nr_correlations,
-                        size_t height,
-                        size_t width);
-
-                    void free_grid(
-                        Grid& grid);
-
-                private:
-                    void initialize_memory(
-                        const Plan& plan,
-                        const std::vector<int> jobsize,
-                        const int nr_streams,
-                        const int nr_baselines,
-                        const int nr_timesteps,
-                        const int nr_channels,
-                        const int nr_stations,
-                        const int nr_timeslots,
-                        const int subgrid_size,
-                        const int grid_size,
-                        void *visibilities,
-                        void *uvw);
 
                     virtual void do_gridding(
                         const Plan& plan,
@@ -84,16 +57,14 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
+                private:
+                    idg::proxy::cuda::Generic* gpuProxy;
                     powersensor::PowerSensor *hostPowerSensor;
 
-                private:
-                    void* allocate_memory(size_t bytes);
-                    void free_memory(void *ptr);
-                    void free_memory();
-                    std::vector<cu::UnifiedMemory*> memory;
             }; // class Unified
 
         } // namespace cuda
     } // namespace proxy
 } // namespace idg
+
 #endif

@@ -70,25 +70,21 @@ namespace idg {
         }
 
         void KernelsInstance::tile_backward(
-            const int tile_size,
+            const unsigned long grid_size,
+            const unsigned int tile_size,
             const Grid& grid_src,
                   Grid& grid_dst) const
         {
             ASSERT(grid_src.bytes() == grid_dst.bytes());
-            const int nr_correlations = grid_src.get_z_dim();
-            const int height = grid_src.get_y_dim();
-            const int width  = grid_dst.get_x_dim();
-            ASSERT(height == width);
-            const int grid_size = height;
 
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
             #pragma omp parallel for
-            for (int pixel = 0; pixel < grid_size*grid_size; pixel++) {
+            for (unsigned long pixel = 0; pixel < grid_size*grid_size; pixel++) {
                 int y = pixel / grid_size;
                 int x = pixel % grid_size;
-                for (int pol = 0; pol < nr_correlations; pol++) {
+                for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
                     long src_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
                     long dst_idx = index_grid(grid_size, 0, pol, y, x);
 
@@ -98,25 +94,21 @@ namespace idg {
         }
 
         void KernelsInstance::tile_forward(
-            const int tile_size,
+            const unsigned long grid_size,
+            const unsigned int tile_size,
             const Grid& grid_src,
                   Grid& grid_dst) const
         {
             ASSERT(grid_src.bytes() == grid_dst.bytes());
-            const int nr_correlations = grid_src.get_z_dim();
-            const int height = grid_src.get_y_dim();
-            const int width  = grid_dst.get_x_dim();
-            ASSERT(height == width);
-            const int grid_size = height;
 
             std::complex<float>* src_ptr = (std::complex<float> *) grid_src.data();
             std::complex<float>* dst_ptr = (std::complex<float> *) grid_dst.data();
 
             #pragma omp parallel for
-            for (int pixel = 0; pixel < grid_size*grid_size; pixel++) {
+            for (unsigned long pixel = 0; pixel < grid_size*grid_size; pixel++) {
                 int y = pixel / grid_size;
                 int x = pixel % grid_size;
-                for (int pol = 0; pol < nr_correlations; pol++) {
+                for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
                     long src_idx = index_grid(grid_size, 0, pol, y, x);
                     long dst_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
                     dst_ptr[dst_idx] = src_ptr[src_idx];
@@ -148,6 +140,95 @@ namespace idg {
                         aterms_dst(term_nr, 1, y, x) = term.xy;
                         aterms_dst(term_nr, 2, y, x) = term.yx;
                         aterms_dst(term_nr, 3, y, x) = term.yy;
+                    }
+                }
+            }
+        }
+
+        void KernelsInstance::check_aterms(
+            Array4D<Matrix2x2<std::complex<float>>>& aterms) const
+        {
+            const unsigned nr_timeslots = aterms.get_w_dim();
+            const unsigned nr_stations = aterms.get_z_dim();
+            const unsigned height = aterms.get_y_dim();
+            const unsigned width = aterms.get_x_dim();
+            assert(height == width);
+            const unsigned int nr_aterms = nr_timeslots * nr_stations;
+            const unsigned int subgrid_size = height;
+
+            #pragma omp parallel for
+            for (unsigned int aterm_nr = 0; aterm_nr < nr_aterms; aterm_nr++) {
+                unsigned int timeslot = aterm_nr / nr_stations;
+                unsigned int station = aterm_nr % nr_stations;
+
+                for (unsigned int pixel = 0; pixel < subgrid_size*subgrid_size; pixel++) {
+                    unsigned int y = pixel / subgrid_size;
+                    unsigned int x = pixel % subgrid_size;
+
+                    Matrix2x2<std::complex<float>> aterm = aterms(timeslot, station, y, x);
+                    float* aterm_ptr = (float *) &aterm;
+
+                    // Check whether aterm values are in range
+                    bool invalid = false;
+                    for (unsigned int i = 0; i < 8; i++) {
+                        float upper_limit = 1.0f;
+                        if (std::isnan(aterm_ptr[i]) ||
+                            aterm_ptr[i] > upper_limit) {
+                            invalid = true;
+                        }
+                    }
+
+                    #pragma omp critical
+                    if (invalid) {
+                        // Report
+                        std::clog << "Invalid aterm detected!";
+                        std::clog << " aterm_nr = " << aterm_nr;
+                        std::clog << ", pixel = " << pixel;
+                        std::clog << ", value = " << aterm << std::endl;
+
+                        // Set aterm to identity
+                        const Matrix2x2<std::complex<float>> identity = {1.0f, 0.0f, 0.0f, 1.0f};
+                        aterms(timeslot, station, y, x) = identity;
+                    }
+                } // end for pixel
+            } // end for aterm_nr
+        }
+
+        void KernelsInstance::check_avg_aterm_correction(
+            Array4D<std::complex<float>>& avg_aterm_correction) const
+        {
+            const unsigned int height = avg_aterm_correction.get_w_dim();
+            const unsigned int width = avg_aterm_correction.get_z_dim();
+
+            assert(height == width);
+            assert(avg_aterm_correction.get_y_dim() == 4);
+            assert(avg_aterm_correction.get_x_dim() == 4);
+
+            unsigned int subgrid_size = height;
+
+            #pragma omp parallel for
+            for (unsigned int pixel = 0; pixel < subgrid_size*subgrid_size; pixel++) {
+                unsigned int y = pixel / subgrid_size;
+                unsigned int x = pixel % subgrid_size;
+
+                for (unsigned int i = 0; i < 16; i++) {
+                    float upper_limit = 1.0f;
+                    std::complex<float> value = avg_aterm_correction(y, x, 0, i);
+
+                    if (isnan(value) ||
+                        value.real() > upper_limit ||
+                        value.imag() > upper_limit)
+                    {
+                        #pragma omp critical
+                        {
+                            std::clog << "Invalid avg aterm detected!";
+                            std::clog << " pixel = " << pixel;
+                            std::clog << " idx = " << i;
+                            std::clog << ", value = " << value;
+                        }
+
+                        // Set to one
+                        avg_aterm_correction(y, x, 0, i) = {1.0f, 1.0f};
                     }
                 }
             }

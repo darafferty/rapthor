@@ -6,10 +6,6 @@
 
 #include "idg-common.h"
 
-namespace cu {
-    class Stream;
-}
-
 namespace idg {
     namespace kernel {
         namespace cuda {
@@ -43,13 +39,23 @@ namespace idg {
                         const unsigned int subgrid_size,
                         const unsigned int nr_streams,
                         const unsigned int grid_size = 0,
-                        const float fraction_reserved = 0.1);
+                        const float fraction_reserved = 0.15);
 
-                    void enqueue_copy(
-                        cu::Stream& stream,
-                        void *dst,
-                        void *src,
-                        size_t bytes);
+                    void initialize(
+                        const Plan& plan,
+                        const float w_step,
+                        const Array1D<float>& shift,
+                        const float cell_size,
+                        const unsigned int kernel_size,
+                        const unsigned int subgrid_size,
+                        const Array1D<float>& frequencies,
+                        const Array3D<Visibility<std::complex<float>>>& visibilities,
+                        const Array2D<UVW<float>>& uvw,
+                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                        const Array1D<unsigned int>& aterms_offsets,
+                        const Array2D<float>& spheroidal,
+                        const unsigned short max_nr_streams);
 
                 protected:
                     void init_devices();

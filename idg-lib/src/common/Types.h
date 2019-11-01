@@ -7,6 +7,7 @@
 #include <cassert>
 #include <cstring>
 #include <memory>
+#include <vector>
 
 #define ALIGNMENT       64
 #define WTILE_SIZE      128
@@ -125,6 +126,16 @@ namespace idg {
                 m_buffer(data)
             {}
 
+            Array1D(
+                T* data,
+                std::vector<size_t> shape) :
+                m_x_dim(shape[0]),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {
+                assert(shape.size() == 1);
+            }
+
             Array1D(const Array1D& v) = delete;
             Array1D& operator=(const Array1D& rhs) = delete;
 
@@ -186,6 +197,10 @@ namespace idg {
                 return get_x_dim() * sizeof(T);
             }
 
+            std::vector<size_t> shape() const {
+                return std::vector<size_t>{get_x_dim()};
+            }
+
         protected:
             size_t m_x_dim;
             bool   m_delete_buffer;
@@ -216,6 +231,17 @@ namespace idg {
                 m_delete_buffer(false),
                 m_buffer(data)
             {}
+
+            Array2D(
+                T* data,
+                std::vector<size_t> shape) :
+                m_x_dim(shape[0]),
+                m_y_dim(shape[1]),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {
+                assert(shape.size() == 2);
+            }
 
             Array2D(const Array2D& v) = delete;
             Array2D& operator=(const Array2D& rhs) = delete;
@@ -286,6 +312,10 @@ namespace idg {
                        get_x_dim() * sizeof(T);
             }
 
+            std::vector<size_t> shape() const {
+                return std::vector<size_t>{get_x_dim(), get_y_dim()};
+            }
+
         protected:
             size_t m_x_dim;
             size_t m_y_dim;
@@ -321,6 +351,18 @@ namespace idg {
                 m_delete_buffer(false),
                 m_buffer(data)
             {}
+
+            Array3D(
+                T* data,
+                std::vector<size_t> shape) :
+                m_x_dim(shape[0]),
+                m_y_dim(shape[1]),
+                m_z_dim(shape[2]),
+                m_delete_buffer(false),
+                m_buffer(data)
+            {
+                assert(shape.size() == 3);
+            }
 
             Array3D(const Array3D& other) = delete;
             Array3D& operator=(const Array3D& rhs) = delete;
@@ -399,6 +441,10 @@ namespace idg {
                 memset((void *) m_buffer, 0, bytes());
             }
 
+            std::vector<size_t> shape() const {
+                return std::vector<size_t>{get_x_dim(), get_y_dim(), get_z_dim()};
+            }
+
         protected:
             size_t m_x_dim;
             size_t m_y_dim;
@@ -426,6 +472,15 @@ namespace idg {
             {}
 
             Array4D(
+                std::vector<size_t> shape) :
+                m_x_dim(shape[0]),
+                m_y_dim(shape[1]),
+                m_z_dim(shape[2]),
+                m_w_dim(shape[3]),
+                m_buffer(allocate_memory<T>(shape[0]*shape[1]*shape[2]*shape[3]), &free)  // shared_ptr with custom deleter that deletes an array
+            {}
+
+            Array4D(
                 std::shared_ptr<T> data,
                 size_t w_dim,
                 size_t z_dim,
@@ -450,6 +505,18 @@ namespace idg {
                 m_w_dim(w_dim),
                 m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
             {}
+
+            Array4D(
+                T* data,
+                std::vector<size_t> shape) :
+                m_x_dim(shape[0]),
+                m_y_dim(shape[1]),
+                m_z_dim(shape[2]),
+                m_w_dim(shape[3]),
+                m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
+            {
+                assert(shape.size() == 4);
+            }
 
             Array4D(const Array4D& other) = delete;
             Array4D& operator=(const Array4D& rhs) = delete;
@@ -523,6 +590,10 @@ namespace idg {
                        get_y_dim() * get_x_dim() * sizeof(T);
             }
 
+            std::vector<size_t> shape() const {
+                return std::vector<size_t>{get_x_dim(), get_y_dim(), get_z_dim(), get_w_dim()};
+            }
+
             // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
             // Need to return a copy in that case.
             const std::shared_ptr<const T> get() const {return m_buffer;}
@@ -544,6 +615,16 @@ namespace idg {
                                                  array.get_z_dim(),
                                                  array.get_y_dim(),
                                                  array.get_x_dim())
+                {}
+
+                Grid(std::vector<size_t> shape) :
+                    Array4D<std::complex<float>>(shape)
+                {}
+
+                Grid(
+                    std::complex<float>* data,
+                    std::vector<size_t> shape) :
+                    Array4D<std::complex<float>>(data, shape)
                 {}
 
                 Grid(std::complex<float>* data,
@@ -583,6 +664,16 @@ namespace idg {
     std::ostream& operator<<(std::ostream& os, Baseline& b);
     std::ostream& operator<<(std::ostream& os, Coordinate& c);
     std::ostream& operator<<(std::ostream& os, Metadata& m);
+
+    template<class T>
+    std::ostream& operator<<(std::ostream &out, Matrix2x2<std::complex<T>>& m) {
+        out << "("
+            << m.xx << ","
+            << m.xy << ","
+            << m.yx << ","
+            << m.yy << ")";
+        return out;
+    }
 
     template<class T>
     std::ostream& operator<<(std::ostream& os, UVW<T>& uvw);

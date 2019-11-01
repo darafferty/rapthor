@@ -8,6 +8,7 @@
 #include "InstanceCUDA.h"
 
 //#define DEBUG_COMPUTE_JOBSIZE
+//#define DEBUG_NAN_ATERM
 
 using namespace idg::kernel::cuda;
 
@@ -273,39 +274,111 @@ namespace idg {
                 return jobsize;
             } // end compute_jobsize
 
-            typedef struct {
-                void *dst;
-                void *src;
-                size_t bytes;
-            } MemData;
-
-            void copy_memory(CUstream, CUresult, void *userData)
+            void CUDA::initialize(
+                const Plan& plan,
+                const float w_step,
+                const Array1D<float>& shift,
+                const float cell_size,
+                const unsigned int kernel_size,
+                const unsigned int subgrid_size,
+                const Array1D<float>& frequencies,
+                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array2D<UVW<float>>& uvw,
+                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
+                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+                const Array1D<unsigned int>& aterms_offsets,
+                const Array2D<float>& spheroidal,
+                const unsigned short max_nr_streams = 3)
             {
-                MemData *data = static_cast<MemData*>(userData);
-                char message[80];
-                snprintf(message, 80, "memcpy(%p, %p, %zu)", data->dst, data->src, data->bytes);
-                cu::Marker marker(message, 0xffff0000);
-                marker.start();
-                memcpy(data->dst, data->src, data->bytes);
-                marker.end();
-                delete data;
-            }
+                #if defined(DEBUG)
+                std::cout << "CUDA::" << __func__ << std::endl;
+                #endif
 
-            void CUDA::enqueue_copy(
-                cu::Stream& stream,
-                void *dst,
-                void *src,
-                size_t bytes)
-            {
-                // Fill MemData struct
-                MemData *data = new MemData();
-                data->dst     = dst;
-                data->src     = src;
-                data->bytes   = bytes;
+                // Arguments
+                auto nr_channels  = frequencies.get_x_dim();
+                auto nr_stations  = aterms.get_z_dim();
+                auto nr_timeslots = aterms.get_w_dim();
+                auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
 
-                // Enqueue memory copy
-                stream.addCallback((CUstreamCallback) &copy_memory, data);
-            } // end enqueue_copy
+                // Convert frequencies to wavenumbers
+                Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+                // Compute jobsize
+                compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+
+                // Page-locked host buffers
+                InstanceCUDA& device = get_device(0);
+                device.allocate_host_visibilities(visibilities.bytes());
+                device.allocate_host_uvw(uvw.bytes());
+
+                // Sanity checks
+                #if defined(DEBUG_NAN_ATERM)
+                device.check_aterms((Array4D<Matrix2x2<std::complex<float>>>&) aterms);
+                if (m_avg_aterm_correction.size()) {
+                    device.check_avg_aterm_correction((Array4D<std::complex<float>>&) m_avg_aterm_correction);
+                }
+                #endif
+
+                for (unsigned d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.set_context();
+                    auto jobsize = m_gridding_state.jobsize[d];
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+                    cu::Stream& htodstream = device.get_htod_stream();
+
+                    // Wavenumbers
+                    cu::DeviceMemory& d_wavenumbers = device.allocate_device_wavenumbers(wavenumbers.bytes());
+                    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
+
+                    // Spheroidal
+                    cu::DeviceMemory& d_spheroidal = device.allocate_device_spheroidal(spheroidal.bytes());
+                    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
+
+                    // Aterms
+                    cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms.bytes());
+                    htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+
+                    // Aterms indicies
+                    size_t sizeof_aterm_indices = auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+                    cu::DeviceMemory& d_aterms_indices = device.allocate_device_aterms_indices(sizeof_aterm_indices);
+                    htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterm_indices);
+
+                    // Average aterm correction
+                    if (m_avg_aterm_correction.size()) {
+                        size_t sizeof_avg_aterm_correction = auxiliary::sizeof_avg_aterm_correction(subgrid_size);
+                        cu::DeviceMemory& d_avg_aterm_correction = device.allocate_device_avg_aterm_correction(sizeof_avg_aterm_correction);
+                        htodstream.memcpyHtoDAsync(d_avg_aterm_correction, m_avg_aterm_correction.data(), sizeof_avg_aterm_correction);
+                    } else {
+                        device.allocate_device_avg_aterm_correction(0);
+                    }
+
+                    // Dynamic memory (per thread)
+                    for (unsigned t = 0; t < max_nr_streams; t++) {
+                        // Visibilities
+                        size_t sizeof_visibilities = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                        device.allocate_device_visibilities(t, sizeof_visibilities);
+
+                        // UVW coordinates
+                        size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+                        device.allocate_device_uvw(t, sizeof_uvw);
+
+                        // Subgrids
+                        size_t sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                        device.allocate_device_subgrids(t, sizeof_subgrids);
+
+                        // Metadata
+                        size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
+                        device.allocate_device_metadata(t, sizeof_metadata);
+                    }
+
+                    // Plan subgrid fft
+                    device.plan_fft(subgrid_size, max_nr_subgrids);
+
+                    // Wait for memory copies
+                    htodstream.synchronize();
+                }
+            } // end initialize
 
         } // end namespace cuda
     } // end namespace proxy
