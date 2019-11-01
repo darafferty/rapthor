@@ -3,7 +3,6 @@
 #include "Generic.h"
 #include "InstanceCUDA.h"
 
-using namespace std;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
@@ -21,7 +20,7 @@ namespace idg {
                 CUDA(info)
             {
                 #if defined(DEBUG)
-                cout << "Generic::" << __func__ << endl;
+                std::cout << "Generic::" << __func__ << std::endl;
                 #endif
 
                 // Initialize host PowerSensor
@@ -39,8 +38,8 @@ namespace idg {
                 Array3D<std::complex<float>>& grid)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
-                cout << "Transform direction: " << direction << endl;
+                std::cout << __func__ << std::endl;
+                std::cout << "Transform direction: " << direction << std::endl;
                 #endif
 
                 // Constants
@@ -85,7 +84,7 @@ namespace idg {
                 device.shift(grid);
 
                 // Perform fft scaling
-                complex<float> scale = complex<float>(2.0/(grid_size*grid_size), 0);
+                std::complex<float> scale = std::complex<float>(2.0/(grid_size*grid_size), 0);
                 if (direction == FourierDomainToImageDomain) {
                     device.scale(grid, scale);
                 }
@@ -121,7 +120,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Arguments
@@ -166,8 +165,8 @@ namespace idg {
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
-                vector<State> startStates(nr_devices+1);
-                vector<State> endStates(nr_devices+1);
+                std::vector<State> startStates(nr_devices+1);
+                std::vector<State> endStates(nr_devices+1);
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
@@ -333,7 +332,7 @@ namespace idg {
                 const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
-                cout << __func__ << endl;
+                std::cout << __func__ << std::endl;
                 #endif
 
                 // Arguments
@@ -377,8 +376,8 @@ namespace idg {
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
-                vector<State> startStates(nr_devices+1);
-                vector<State> endStates(nr_devices+1);
+                std::vector<State> startStates(nr_devices+1);
+                std::vector<State> endStates(nr_devices+1);
 
                 #pragma omp parallel num_threads(nr_devices * nr_streams)
                 {
