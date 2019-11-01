@@ -666,6 +666,16 @@ namespace idg {
     std::ostream& operator<<(std::ostream& os, Metadata& m);
 
     template<class T>
+    std::ostream& operator<<(std::ostream &out, Matrix2x2<std::complex<T>>& m) {
+        out << "("
+            << m.xx << ","
+            << m.xy << ","
+            << m.yx << ","
+            << m.yy << ")";
+        return out;
+    }
+
+    template<class T>
     std::ostream& operator<<(std::ostream& os, UVW<T>& uvw);
 
     std::ostream& operator<<(std::ostream& os, const float2& x);
