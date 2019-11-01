@@ -308,7 +308,7 @@ namespace idg {
 
                 // Page-locked host buffers
                 InstanceCUDA& device = get_device(0);
-                device.allocate_host_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                device.allocate_host_visibilities(visibilities.bytes());
                 device.allocate_host_uvw(uvw.bytes());
 
                 for (unsigned d = 0; d < get_num_devices(); d++) {
@@ -346,10 +346,21 @@ namespace idg {
 
                     // Dynamic memory (per thread)
                     for (unsigned t = 0; t < max_nr_streams; t++) {
-                        device.allocate_device_visibilities(t, jobsize, nr_timesteps, nr_channels);
-                        device.allocate_device_uvw(t, jobsize, nr_timesteps);
-                        device.allocate_device_subgrids(t, max_nr_subgrids, subgrid_size);
-                        device.allocate_device_metadata(t, max_nr_subgrids);
+                        // Visibilities
+                        size_t sizeof_visibilities = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+                        device.allocate_device_visibilities(t, sizeof_visibilities);
+
+                        // UVW coordinates
+                        size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+                        device.allocate_device_uvw(t, sizeof_uvw);
+
+                        // Subgrids
+                        size_t sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                        device.allocate_device_subgrids(t, sizeof_subgrids);
+
+                        // Metadata
+                        size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
+                        device.allocate_device_metadata(t, sizeof_metadata);
                     }
 
                     // Plan subgrid fft

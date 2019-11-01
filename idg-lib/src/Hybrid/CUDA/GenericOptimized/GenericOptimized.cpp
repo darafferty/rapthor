@@ -117,7 +117,8 @@ namespace idg {
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     for (unsigned t = 0; t < max_nr_streams; t++) {
-                        device.allocate_host_subgrids(t, max_nr_subgrids, subgrid_size);
+                        size_t sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+                        device.allocate_host_subgrids(t, sizeof_subgrids);
                     }
                 }
 
