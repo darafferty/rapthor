@@ -39,7 +39,7 @@ namespace idg {
                         const unsigned int subgrid_size,
                         const unsigned int nr_streams,
                         const unsigned int grid_size = 0,
-                        const float fraction_reserved = 0.1);
+                        const float fraction_reserved = 0.15);
 
                     void initialize(
                         const Plan& plan,
