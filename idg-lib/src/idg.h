@@ -8,6 +8,13 @@
 #if defined(BUILD_LIB_CUDA)
 #include "idg-cuda.h"
 #endif
+
+#if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
+#include "idg-hybrid-cuda.h"
+#endif
+
+
+
 #if defined(BUILD_LIB_OPENCL)
 #include "idg-opencl.h"
 #endif

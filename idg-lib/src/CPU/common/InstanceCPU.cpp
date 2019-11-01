@@ -526,9 +526,10 @@ namespace idg {
             {
                 for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids; ) {
                     unsigned int subgrid_index_front = wtile_initialize_set.front().subgrid_index;
-                    if (subgrid_index_front == subgrid_index)
+                    if (subgrid_index_front == (subgrid_index + subgrid_offset))
                     {
                         wtile_initialize_set.pop_front();
+                        subgrid_index_front = wtile_initialize_set.front().subgrid_index;
                         WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
                         run_splitter_wtiles_from_grid(
                             grid_size,
@@ -545,9 +546,9 @@ namespace idg {
                     unsigned int nr_subgrids_ = nr_subgrids - subgrid_index;
                     if (subgrid_index_front - (subgrid_offset + subgrid_index) < nr_subgrids_)
                     {
-                        nr_subgrids_ = wtile_initialize_set.front().subgrid_index - subgrid_index;
+                        nr_subgrids_ = subgrid_index_front - (subgrid_offset + subgrid_index);
                     }
-
+                    if (nr_subgrids_ == 0) throw 1;
                     run_splitter_subgrids_from_wtiles(
                         nr_subgrids_,
                         grid_size,
