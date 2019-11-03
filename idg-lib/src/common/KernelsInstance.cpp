@@ -1,5 +1,7 @@
 #include "KernelsInstance.h"
 
+#include <csignal>
+
 #include "Index.h"
 
 namespace idg {
@@ -231,6 +233,37 @@ namespace idg {
                         avg_aterm_correction(y, x, 0, i) = {1.0f, 1.0f};
                     }
                 }
+            }
+        }
+
+        void KernelsInstance::check_grid(
+            Grid& grid) const
+        {
+            const unsigned int nr_w_layers = grid.get_w_dim();
+            const unsigned int nr_correlations = grid.get_z_dim();
+            const unsigned long height = grid.get_y_dim();
+            const unsigned long width = grid.get_x_dim();
+
+            assert(nr_correlations == NR_CORRELATIONS);
+            assert(height == width);
+
+            unsigned long grid_size = height;
+
+            #pragma omp parallel for
+            for (unsigned long pixel = 0; pixel < grid_size*grid_size; pixel++) {
+                unsigned long y = pixel / grid_size;
+                unsigned long x = pixel % grid_size;
+
+                for (unsigned int w = 0; w < nr_w_layers; w++) {
+                    for (unsigned int pol = 0; pol < nr_correlations; pol++) {
+                        std::complex<float> value = grid(w, pol, y, x);
+                        if (isnan(value)) {
+                            std::cerr << "NaN detected during w-stacking!" << std::endl;
+                            std::raise(SIGFPE);
+                        }
+                    }
+                }
+
             }
         }
 
