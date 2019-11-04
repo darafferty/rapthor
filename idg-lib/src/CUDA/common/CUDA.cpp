@@ -8,7 +8,6 @@
 #include "InstanceCUDA.h"
 
 //#define DEBUG_COMPUTE_JOBSIZE
-//#define DEBUG_NAN_ATERM
 
 using namespace idg::kernel::cuda;
 
@@ -311,14 +310,6 @@ namespace idg {
                 InstanceCUDA& device = get_device(0);
                 device.allocate_host_visibilities(visibilities.bytes());
                 device.allocate_host_uvw(uvw.bytes());
-
-                // Sanity checks
-                #if defined(DEBUG_NAN_ATERM)
-                device.check_aterms((Array4D<Matrix2x2<std::complex<float>>>&) aterms);
-                if (m_avg_aterm_correction.size()) {
-                    device.check_avg_aterm_correction((Array4D<std::complex<float>>&) m_avg_aterm_correction);
-                }
-                #endif
 
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
