@@ -170,18 +170,17 @@ namespace idg {
                     Matrix2x2<std::complex<float>> aterm = aterms(timeslot, station, y, x);
                     float* aterm_ptr = (float *) &aterm;
 
+                    bool nan_detected = false;
+
                     // Check whether aterm values are in range
-                    bool invalid = false;
                     for (unsigned int i = 0; i < 8; i++) {
-                        float upper_limit = 1.0f;
-                        if (std::isnan(aterm_ptr[i]) ||
-                            aterm_ptr[i] > upper_limit) {
-                            invalid = true;
+                        if (std::isnan(aterm_ptr[i])) {
+                            nan_detected = true;
                         }
                     }
 
                     #pragma omp critical
-                    if (invalid) {
+                    if (nan_detected) {
                         // Report
                         std::clog << "Invalid aterm detected!";
                         std::clog << " aterm_nr = " << aterm_nr;
@@ -214,13 +213,9 @@ namespace idg {
                 unsigned int x = pixel % subgrid_size;
 
                 for (unsigned int i = 0; i < 16; i++) {
-                    float upper_limit = 1.0f;
                     std::complex<float> value = avg_aterm_correction(y, x, 0, i);
 
-                    if (isnan(value) ||
-                        value.real() > upper_limit ||
-                        value.imag() > upper_limit)
-                    {
+                    if (isnan(value)) {
                         #pragma omp critical
                         {
                             std::clog << "Invalid avg aterm detected!";
@@ -236,7 +231,7 @@ namespace idg {
             }
         }
 
-        void KernelsInstance::check_grid(
+        bool KernelsInstance::check_grid(
             Grid& grid) const
         {
             const unsigned int nr_w_layers = grid.get_w_dim();
@@ -249,6 +244,8 @@ namespace idg {
 
             unsigned long grid_size = height;
 
+            bool nan_detected = false;
+
             #pragma omp parallel for
             for (unsigned long pixel = 0; pixel < grid_size*grid_size; pixel++) {
                 unsigned long y = pixel / grid_size;
@@ -258,13 +255,13 @@ namespace idg {
                     for (unsigned int pol = 0; pol < nr_correlations; pol++) {
                         std::complex<float> value = grid(w, pol, y, x);
                         if (isnan(value)) {
-                            std::cerr << "NaN detected during w-stacking!" << std::endl;
-                            std::raise(SIGFPE);
+                            nan_detected = true;
                         }
                     }
                 }
-
             }
+
+            return nan_detected;
         }
 
         void KernelsInstance::print_memory_info() {
