@@ -295,11 +295,7 @@ __device__ void
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         // Compute phasor
                         float phase = phase_offset[j] - (phase_index[j] * wavenumber);
-                        #if defined(RAW_SINCOS)
-                        float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
-                        #else
                         float2 phasor = make_float2(cosf(phase), sinf(phase));
-                        #endif
 
                         // Multiply visibility by phasor
                         cmac(pixelsXX[j], phasor, visXX);
