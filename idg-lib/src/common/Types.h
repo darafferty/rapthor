@@ -105,6 +105,29 @@ namespace idg {
         return (T *) ptr;
     }
 
+
+    /* Debugging */
+    template<typename T>
+    inline bool isnan(T& value) {
+        return (std::isnan(value));
+    }
+
+    template<typename T>
+    inline bool isnan(std::complex<T>& value) {
+        return (std::isnan(value.real()) || std::isnan(value.imag()));
+    }
+
+    template<typename T>
+    inline bool isnan(Matrix2x2<std::complex<T>>& m) {
+        return (isnan(m.xx) || isnan(m.xy) || isnan(m.yx) || isnan(m.yy));
+    }
+
+    template<typename T>
+    inline bool isnan(UVW<T>& uvw) {
+        return (std::isnan(uvw.u) || std::isnan(uvw.v) || std::isnan(uvw.w));
+    }
+
+
     /* Classes */
     template<class T>
     class Array1D {
@@ -208,7 +231,7 @@ namespace idg {
                     if (contains_nan) {
                         continue;
                     }
-                    T value = m_buffer.get()[i];
+                    T value = m_buffer[i];
                     if (isnan(value)) {
                         contains_nan = true;
                     }
@@ -338,7 +361,7 @@ namespace idg {
                     if (contains_nan) {
                         continue;
                     }
-                    T value = m_buffer.get()[i];
+                    T value = m_buffer[i];
                     if (isnan(value)) {
                         contains_nan = true;
                     }
@@ -482,7 +505,7 @@ namespace idg {
                     if (contains_nan) {
                         continue;
                     }
-                    T value = m_buffer.get()[i];
+                    T value = m_buffer[i];
                     if (isnan(value)) {
                         contains_nan = true;
                     }
@@ -713,17 +736,6 @@ namespace idg {
                     init(zero);
                 }
     };
-
-    /* Debugging */
-    template<typename T>
-    inline bool isnan(const std::complex<T>& value) {
-        return (std::isnan(value.real()) || std::isnan(value.imag()));
-    }
-
-    template<typename T>
-    inline bool isnan(const Matrix2x2<std::complex<T>>& m) {
-        return (isnan(m.xx) || isnan(m.xy) || isnan(m.yx) || isnan(m.yy));
-    }
 
     /* Output */
     std::ostream& operator<<(std::ostream& os, Baseline& b);
