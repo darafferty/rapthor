@@ -119,8 +119,7 @@ namespace idg {
                 const unsigned int nr_channels,
                 const unsigned int subgrid_size,
                 const unsigned int nr_streams,
-                const unsigned int grid_size,
-                const float fraction_reserved)
+                const unsigned int grid_size)
             {
                 #if defined(DEBUG)
                 std::cout << "CUDA::" << __func__ << std::endl;
@@ -237,7 +236,7 @@ namespace idg {
                     #endif
 
                     // Print reserved memory
-                    if (fraction_reserved > 0) {
+                    if (m_fraction_reserved > 0) {
                         #if defined(DEBUG_COMPUTE_JOBSIZE)
                         std::clog << "Bytes reserved: " << (long) (bytes_free * fraction_reserved) << std::endl;
                         #endif
@@ -254,7 +253,7 @@ namespace idg {
                     bytes_free -= bytes_static;
 
                     // Compute jobsize
-                    jobsize[i] = (bytes_free * (1 - fraction_reserved)) /  bytes_jobs;
+                    jobsize[i] = (bytes_free * (1 - m_fraction_reserved)) /  bytes_jobs;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     jobsize[i] = min(jobsize[i], nr_baselines);
 
