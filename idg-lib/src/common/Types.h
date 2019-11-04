@@ -201,6 +201,21 @@ namespace idg {
                 return std::vector<size_t>{get_x_dim()};
             }
 
+            bool contains_nan() {
+                volatile bool contains_nan = false;
+                #pragma omp parallel for
+                for (size_t i = 0; i < size(); i++) {
+                    if (contains_nan) {
+                        continue;
+                    }
+                    T value = m_buffer.get()[i];
+                    if (isnan(value)) {
+                        contains_nan = true;
+                    }
+                }
+                return contains_nan;
+            }
+
         protected:
             size_t m_x_dim;
             bool   m_delete_buffer;
@@ -314,6 +329,21 @@ namespace idg {
 
             std::vector<size_t> shape() const {
                 return std::vector<size_t>{get_x_dim(), get_y_dim()};
+            }
+
+            bool contains_nan() {
+                volatile bool contains_nan = false;
+                #pragma omp parallel for
+                for (size_t i = 0; i < size(); i++) {
+                    if (contains_nan) {
+                        continue;
+                    }
+                    T value = m_buffer.get()[i];
+                    if (isnan(value)) {
+                        contains_nan = true;
+                    }
+                }
+                return contains_nan;
             }
 
         protected:
@@ -443,6 +473,21 @@ namespace idg {
 
             std::vector<size_t> shape() const {
                 return std::vector<size_t>{get_x_dim(), get_y_dim(), get_z_dim()};
+            }
+
+            bool contains_nan() {
+                volatile bool contains_nan = false;
+                #pragma omp parallel for
+                for (size_t i = 0; i < size(); i++) {
+                    if (contains_nan) {
+                        continue;
+                    }
+                    T value = m_buffer.get()[i];
+                    if (isnan(value)) {
+                        contains_nan = true;
+                    }
+                }
+                return contains_nan;
             }
 
         protected:
@@ -597,6 +642,21 @@ namespace idg {
 
             std::vector<size_t> shape() const {
                 return std::vector<size_t>{get_x_dim(), get_y_dim(), get_z_dim(), get_w_dim()};
+            }
+
+            bool contains_nan() {
+                volatile bool contains_nan = false;
+                #pragma omp parallel for
+                for (size_t i = 0; i < size(); i++) {
+                    if (contains_nan) {
+                        continue;
+                    }
+                    T value = m_buffer.get()[i];
+                    if (isnan(value)) {
+                        contains_nan = true;
+                    }
+                }
+                return contains_nan;
             }
 
             // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
