@@ -5,6 +5,7 @@
 
 #include <algorithm> // max_element
 #include <mutex>
+#include <csignal>
 
 #include "InstanceCUDA.h"
 
@@ -14,6 +15,11 @@ using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_GRID_NAN 0
 
 namespace idg {
     namespace proxy {
@@ -357,6 +363,16 @@ namespace idg {
                 std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
+                #if defined(DEBUG_GRID_NAN)
+                std::clog << "### Check grid before gridding" << std::endl;
+                InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+                bool nan_in_grid = cpuKernels.check_grid(grid);
+                if (nan_in_grid) {
+                    std::cerr << "NaN in grid detected!" << std::endl;
+                    std::raise(SIGFPE);
+                }
+                #endif
+
                 std::clog << "### Initialize gridding" << std::endl;
                 initialize(
                     plan,
@@ -393,6 +409,15 @@ namespace idg {
 
                 std::clog << "### Finish gridding" << std::endl;
                 finish_gridding();
+
+                #if defined(DEBUG_GRID_NAN)
+                std::clog << "### Check grid after gridding" << std::endl;
+                nan_in_grid = cpuKernels.check_grid(grid);
+                if (nan_in_grid) {
+                    std::cerr << "NaN in grid detected!" << std::endl;
+                    std::raise(SIGFPE);
+                }
+                #endif
             } // end do_gridding
 
 

@@ -52,7 +52,7 @@ namespace idg {
                 void check_avg_aterm_correction(
                     Array4D<std::complex<float>>& avg_aterm_correction) const;
 
-                void check_grid(
+                bool check_grid(
                         Grid& grid) const;
 
                 /*
