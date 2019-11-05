@@ -262,6 +262,9 @@ namespace idg {
                         htodstream.record(*inputCopied[job_id]);
                     }
 
+                    // Initialize subgrids to zero
+                    d_subgrids.zero(executestream);
+
                     // Wait for input to be copied
                     executestream.waitEvent(*inputCopied[job_id]);
 
