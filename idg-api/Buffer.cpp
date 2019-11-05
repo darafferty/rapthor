@@ -6,6 +6,13 @@
 #include "BufferImpl.h"
 #include "BufferSetImpl.h"
 
+#include <csignal>
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_NAN_SET_ATERM 0
+
 
 using namespace std;
 
@@ -309,6 +316,47 @@ namespace api {
         int local_time = timeIndex - m_timeStartThisBatch;
         size_t n_old_aterms = m_aterm_offsets.size()-1;
         size_t atermBlockSize = m_nrStations*m_subgridsize*m_subgridsize;
+
+        // Debug
+        #if defined(DEBUG_NAN_SET_ATERM)
+        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_((idg::Matrix2x2<std::complex<float>> *) aterms, 1, m_nrStations, m_subgridsize, m_subgridsize);
+        if (aterms_.contains_nan()) {
+            std::cerr << "NaN detected in set_aterms!" << std::endl;
+            std::raise(SIGFPE);
+        }
+
+        for (auto station = 0; station < m_nrStations; station++) {
+            bool invalid_value = false;
+            for (auto pixel = 0; pixel < m_subgridsize*m_subgridsize; pixel++) {
+                auto y = pixel / m_subgridsize;
+                auto x = pixel % m_subgridsize;
+                idg::Matrix2x2<std::complex<float>> aterm = aterms_(0, station, y, x);
+                std::complex<float> values[] = { aterm.xx, aterm.xy, aterm.yx, aterm.yy };
+                for (auto value : values) {
+                    float lower_limit = 1e-4;
+                    float upper_limit = 1;
+                    if (value.real() > upper_limit || value.imag() > upper_limit ||
+                        value.real() < lower_limit || value.imag() < lower_limit) {
+                        invalid_value = true;
+                        break;
+                    }
+                }
+            }
+            if (invalid_value) {
+                std::cerr << "Invalid value detected in set_aterms!";
+                std::cerr << " station = " << station << " setting to zero.";
+                std::cerr << std::endl;
+
+                for (auto pixel = 0; pixel < m_subgridsize*m_subgridsize; pixel++) {
+                    auto y = pixel / m_subgridsize;
+                    auto x = pixel % m_subgridsize;
+                    const std::complex<float> zero = std::complex<float>(0.0f, 0.0f);
+                    aterms_(0, station, y, x) = {zero, zero, zero, zero};
+                }
+            }
+        }
+        #endif
+
         // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
         if (local_time != m_aterm_offsets[m_aterm_offsets.size()-2]) {
           assert(local_time > m_aterm_offsets[m_aterm_offsets.size()-2]);

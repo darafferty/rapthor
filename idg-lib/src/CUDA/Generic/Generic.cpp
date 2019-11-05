@@ -241,6 +241,11 @@ namespace idg {
                             htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
                             htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                             htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+
+                            // Initialize subgrids to zero
+                            d_subgrids.zero(executestream);
+
+                            // Wait for input to be copied
                             htodstream.record(inputReady);
 
                             // Launch gridder kernel

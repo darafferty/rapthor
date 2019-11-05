@@ -141,25 +141,6 @@ __device__ void
     const int y_coordinate = m.coordinate.y;
     const int station1 = m.baseline.station1;
     const int station2 = m.baseline.station2;
-    const int channel_begin = m.channel_begin; \
-
-	// Set subgrid to zero
-	if (channel_offset == channel_begin) {
-		for (int i = tid; i < subgrid_size * subgrid_size; i += nr_threads) {
-            int y = i / subgrid_size;
-            int x = i % subgrid_size;
-            if (y < subgrid_size) {
-			    int idx_xx = index_subgrid(subgrid_size, s, 0, y, x);
-			    int idx_xy = index_subgrid(subgrid_size, s, 1, y, x);
-			    int idx_yx = index_subgrid(subgrid_size, s, 2, y, x);
-			    int idx_yy = index_subgrid(subgrid_size, s, 3, y, x);
-                subgrid[idx_xx] = make_float2(0, 0);
-                subgrid[idx_xy] = make_float2(0, 0);
-                subgrid[idx_yx] = make_float2(0, 0);
-                subgrid[idx_yy] = make_float2(0, 0);
-            }
-		}
-	}
 
     // Compute u,v,w offset in wavelenghts
     const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
@@ -295,11 +276,7 @@ __device__ void
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         // Compute phasor
                         float phase = phase_offset[j] - (phase_index[j] * wavenumber);
-                        #if defined(RAW_SINCOS)
-                        float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
-                        #else
                         float2 phasor = make_float2(cosf(phase), sinf(phase));
-                        #endif
 
                         // Multiply visibility by phasor
                         cmac(pixelsXX[j], phasor, visXX);

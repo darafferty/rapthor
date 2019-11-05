@@ -15,7 +15,7 @@
 /*
  * Enable checking for NaN values
  */
-#define DEBUG_NAN_FLUSH_ATERM 0
+#define DEBUG_NAN_FLUSH_THREAD_WORKER 0
 
 using namespace std;
 
@@ -228,10 +228,13 @@ namespace api {
                                 update_imag += weights[p] * (kp1_real * kp2_imag + kp1_imag * kp2_real);
                             }
 
-                            // Add kronecker product to sum
-                            if (!std::isnan(update_real) && !std::isnan(update_imag)) {
-                                sum[ii][jj] += std::complex<float>(update_real, update_imag);
+                            if (std::isnan(update_real) || std::isnan(update_imag)) {
+                                std::cerr << "NaN detected in computation of average beam!" << std::endl;
+                                std::raise(SIGFPE);
                             }
+
+                            // Add kronecker product to sum
+                            sum[ii][jj] += std::complex<float>(update_real, update_imag);
                         }
                     }
                 } // end for baselines
@@ -271,23 +274,6 @@ namespace api {
             aterm_correction = &m_default_aterm_correction;
         }
 
-        // Check m_aterms_array for NaN values
-        #if DEBUG_NAN_FLUSH_ATERM
-        for (unsigned int time = 0; time < m_aterms_array.get_w_dim(); time++) {
-            #pragma omp parallel for
-            for (unsigned int station = 0; station < m_aterms_array.get_z_dim(); station++) {
-                for (unsigned int y = 0; y < m_aterms_array.get_y_dim(); y++) {
-                    for (unsigned int x = 0; x < m_aterms_array.get_x_dim(); x++) {
-                        if (isnan(m_aterms_array(time, station, y, x))) {
-                            std::cerr << "NaN detected in aterm!" << std::endl;
-                            std::raise(SIGFPE);
-                        }
-                    }
-                }
-            }
-        }
-        #endif
-
         // Set Plan options
         Plan::Options options;
         options.w_step      = m_wStepInLambda;
@@ -307,6 +293,34 @@ namespace api {
             m_aterm_offsets_array,
             options);
         m_bufferset->m_plan_watch->Pause();
+
+        // Check data for NaN values
+        #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
+        if (m_frequencies.contains_nan()) {
+            std::cerr << "NaN detected in m_frequencies!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        if (m_bufferVisibilities2.contains_nan()) {
+            std::cerr << "NaN detected in m_bufferVisibilities2!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        if (m_bufferUVW2.contains_nan()) {
+            std::cerr << "NaN detected in m_bufferUVW2!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        if (m_grid->contains_nan()) {
+            std::cerr << "NaN detected in m_grid!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        if (m_aterms_array.contains_nan()) {
+            std::cerr << "NaN detected in m_aterms_array!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        if (m_spheroidal.contains_nan()) {
+            std::cerr << "NaN detected in m_spheroidal!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        #endif
 
         // Run gridding
         m_bufferset->m_gridding_watch->Start();

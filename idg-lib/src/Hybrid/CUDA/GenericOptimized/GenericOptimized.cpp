@@ -5,6 +5,7 @@
 
 #include <algorithm> // max_element
 #include <mutex>
+#include <csignal>
 
 #include "InstanceCUDA.h"
 
@@ -260,6 +261,9 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.record(*inputCopied[job_id]);
                     }
+
+                    // Initialize subgrids to zero
+                    d_subgrids.zero(executestream);
 
                     // Wait for input to be copied
                     executestream.waitEvent(*inputCopied[job_id]);
