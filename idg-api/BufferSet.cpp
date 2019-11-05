@@ -479,6 +479,40 @@ namespace api {
         m_set_image_watch->Pause();
     };
 
+    void BufferSetImpl::write_grid(
+        idg::Grid& grid) const
+    {
+        auto nr_w_layers = grid.get_w_dim();
+        auto nr_correlations = grid.get_z_dim();
+        auto height = grid.get_y_dim();
+        auto width = grid.get_y_dim();
+        assert(nr_correlations == 4);
+        assert(height == width);
+        auto grid_size = height;
+
+        std::vector<float> grid_real(nr_w_layers * nr_correlations * grid_size * grid_size * sizeof(float));
+        std::vector<float> grid_imag(nr_w_layers * nr_correlations * grid_size * grid_size * sizeof(float));
+        for (int w = 0; w < nr_w_layers; w++) {
+            //#pragma omp parallel for
+            for (int y = 0; y < grid_size; y++) {
+                for (int x = 0; x < grid_size; x++) {
+                    for (int pol = 0; pol < nr_correlations; pol++) {
+                        size_t idx = w * nr_correlations * grid_size * grid_size +
+                                     pol * grid_size * grid_size +
+                                     y * grid_size +
+                                     x;
+                        grid_real[idx] = grid(w, pol, y, x).real();
+                        grid_imag[idx] = grid(w, pol, y, x).imag();
+                    }
+                }
+            }
+        }
+        std::cout << "writing grid to grid_real.npy and grid_imag.npy" << std::endl;
+        const long unsigned leshape [] = {(long unsigned int) nr_w_layers, 4, grid_size, grid_size};
+        npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape, grid_real);
+        npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
+    }
+
     void BufferSetImpl::get_image(double* image) 
     {
         m_get_image_watch->Start();
@@ -494,27 +528,7 @@ namespace api {
 
         // Debugging
         #if DEBUG_NAN_GET_IMAGE
-        std::vector<float> grid_real(nr_w_layers * 4 * m_size * m_size * sizeof(float));
-        std::vector<float> grid_imag(nr_w_layers * 4 * m_size * m_size * sizeof(float));
-        for (int w = 0; w < nr_w_layers; w++) {
-            #pragma omp parallel for
-            for (int y = 0; y < m_size; y++) {
-                for (int x = 0; x < m_size; x++) {
-                    for (int pol = 0; pol < 4; pol++) {
-                        size_t idx = w * 4 * m_size * m_size +
-                                     pol * m_size * m_size +
-                                     y * m_size +
-                                     x;
-                        grid_real[idx] = m_grid(w, pol, y, x).real();
-                        grid_imag[idx] = m_grid(w, pol, y, x).imag();
-                    }
-                }
-            }
-        }
-        std::cout << "writing grid to grid_real.npy and grid_imag.npy" << std::endl;
-        const long unsigned leshape [] = {(long unsigned int) nr_w_layers, 4, m_size, m_size};
-        npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape, grid_real);
-        npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
+        write_grid(m_grid);
         #endif
 
         // Fourier transform w layers
