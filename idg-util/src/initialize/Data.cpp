@@ -14,6 +14,9 @@ namespace idg{
         // Set station_coordinates
         set_station_coordinates(layout_file, nr_stations_limit);
 
+        // Shuffle stations
+        shuffle_stations();
+
         // Set baselines and max_uv
         set_baselines(station_coordinates, baseline_length_limit);
     }
