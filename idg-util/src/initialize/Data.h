@@ -42,7 +42,7 @@ namespace idg {
             /*
              * Get methods
              */
-            unsigned int get_nr_stations() const { return station_coordinates.size(); };
+            unsigned int get_nr_stations() const { return m_station_coordinates.size(); };
 
             unsigned int get_nr_baselines() const { return m_baselines.size(); };
 
@@ -78,7 +78,7 @@ namespace idg {
                 std::string layout_file,
                 unsigned nr_stations_limit = -1);
 
-            std::vector<StationCoordinate> station_coordinates;
+            std::vector<StationCoordinate> m_station_coordinates;
 
             /*
              * Set baselines and max_uv

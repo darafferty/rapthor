@@ -18,7 +18,7 @@ namespace idg{
         shuffle_stations();
 
         // Set baselines and max_uv
-        set_baselines(station_coordinates, baseline_length_limit);
+        set_baselines(m_station_coordinates, baseline_length_limit);
     }
 
     void Data::set_station_coordinates(
@@ -60,7 +60,7 @@ namespace idg{
         // Create vector of station coordinates
         for (unsigned i = 0; i < nr_stations; i++) {
             Data::StationCoordinate coordinate = { x[i], y[i], z[i] };
-            station_coordinates.push_back(coordinate);
+            m_station_coordinates.push_back(coordinate);
         }
 
         // Free memory
@@ -68,7 +68,7 @@ namespace idg{
     }
 
     void Data::shuffle_stations() {
-        auto nr_stations = station_coordinates.size();
+        auto nr_stations = m_station_coordinates.size();
 
         // Pick random station indices
         std::srand(0);
@@ -81,15 +81,15 @@ namespace idg{
         std::vector<StationCoordinate> station_coordinates_shuffled;
 
         for (auto i : station_indices) {
-            station_coordinates_shuffled.push_back(station_coordinates[i]);
+            station_coordinates_shuffled.push_back(m_station_coordinates[i]);
         }
 
-        std::swap(station_coordinates, station_coordinates_shuffled);
+        std::swap(m_station_coordinates, station_coordinates_shuffled);
     }
 
     void Data::print_info() {
         std::cout << "number of stations: "
-                  << station_coordinates.size() << std::endl;
+                  << m_station_coordinates.size() << std::endl;
         std::cout << "number of baselines: "
                   << m_baselines.size() << std::endl;
         std::cout << "longest baseline = " << max_uv << std::endl;
@@ -154,7 +154,7 @@ namespace idg{
         bool selected_baselines[m_baselines.size()];
 
         // Keep track of stations corresponding to these baselines
-        bool selected_stations[station_coordinates.size()];
+        bool selected_stations[m_station_coordinates.size()];
         memset(selected_baselines, 0, sizeof(selected_baselines));
 
         #pragma omp parallel for
@@ -183,15 +183,15 @@ namespace idg{
         // Put all selected stations into a new vector
         std::vector<StationCoordinate> station_coordinates_;
 
-        for (unsigned i = 0; i < station_coordinates.size(); i++) {
+        for (unsigned i = 0; i < m_station_coordinates.size(); i++) {
             if (selected_stations[i]) {
-                station_coordinates_.push_back(station_coordinates[i]);
+                station_coordinates_.push_back(m_station_coordinates[i]);
             }
         }
 
         // Replace members
         std::swap(m_baselines, baselines_);
-        station_coordinates = station_coordinates_;
+        std::swap(m_station_coordinates, station_coordinates_);
     }
 
     void Data::get_frequencies(
@@ -260,12 +260,12 @@ namespace idg{
     {
         unsigned station1 = baseline.station1;
         unsigned station2 = baseline.station2;
-        double x1 = station_coordinates[station1].x;
-        double y1 = station_coordinates[station1].y;
-        double z1 = station_coordinates[station1].z;
-        double x2 = station_coordinates[station2].x;
-        double y2 = station_coordinates[station2].y;
-        double z2 = station_coordinates[station2].z;
+        double x1 = m_station_coordinates[station1].x;
+        double y1 = m_station_coordinates[station1].y;
+        double z1 = m_station_coordinates[station1].z;
+        double x2 = m_station_coordinates[station2].x;
+        double y2 = m_station_coordinates[station2].y;
+        double z2 = m_station_coordinates[station2].z;
         double x[2] = {x1, x2};
         double y[2] = {y1, y2};
         double z[2] = {z1, z2};
