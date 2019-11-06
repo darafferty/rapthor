@@ -49,6 +49,24 @@ namespace idg{
             exit(EXIT_FAILURE);
         }
 
+        // Limit number of stations
+        if (nr_stations_limit > 0 && nr_stations_limit < nr_stations) {
+            nr_stations = nr_stations_limit;
+        }
+
+        // Create vector of station coordinates
+        for (unsigned i = 0; i < nr_stations; i++) {
+            Data::StationCoordinate coordinate = { x[i], y[i], z[i] };
+            station_coordinates.push_back(coordinate);
+        }
+
+        // Free memory
+        free(x); free(y); free(z);
+    }
+
+    void Data::shuffle_stations() {
+        auto nr_stations = station_coordinates.size();
+
         // Pick random station indices
         std::srand(0);
         std::vector<unsigned> station_indices(nr_stations);
@@ -57,20 +75,13 @@ namespace idg{
         }
         std::random_shuffle(station_indices.begin(), station_indices.end());
 
-        // Limit number of stations
-        if (nr_stations_limit > 0 && nr_stations_limit < nr_stations) {
-            nr_stations = nr_stations_limit;
+        std::vector<StationCoordinate> station_coordinates_shuffled;
+
+        for (auto i : station_indices) {
+            station_coordinates_shuffled.push_back(station_coordinates[i]);
         }
 
-        // Create vector of shuffled station indices
-        for (unsigned i = 0; i < nr_stations; i++) {
-            unsigned station_index = station_indices[i];
-            Data::StationCoordinate coordinate = { x[station_index], y[station_index], z[station_index] };
-            station_coordinates.push_back(coordinate);
-        }
-
-        // Free memory
-        free(x); free(y); free(z);
+        std::swap(station_coordinates, station_coordinates_shuffled);
     }
 
     float Data::compute_image_size(unsigned grid_size)

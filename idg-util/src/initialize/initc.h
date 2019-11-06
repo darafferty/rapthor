@@ -185,4 +185,10 @@ extern "C" {
         data->get_uvw(uvw, baseline_offset, time_offset, integration_time);
     }
 
+    void DATA_shuffle_stations(
+        idg::Data* data)
+    {
+        data->shuffle_stations();
+    }
+
 }  // end extern "C"

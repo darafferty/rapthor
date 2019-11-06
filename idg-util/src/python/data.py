@@ -118,3 +118,11 @@ class Data():
             ctypes.c_uint(baseline_offset),
             ctypes.c_uint(time_offset),
             ctypes.c_float(integration_time))
+
+    def shuffle_stations(
+        self):
+        lib.DATA_shuffle_stations.argtypes = [
+            ctypes.c_void_p]
+        lib.DATA_shuffle_stations(
+                self.obj)
+

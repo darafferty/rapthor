@@ -64,6 +64,8 @@ namespace idg {
                 unsigned int time_offset = 0,
                 float integration_time = 1.0f) const;
 
+            void shuffle_stations();
+
         private:
             /*
              * Set station_coordinates
