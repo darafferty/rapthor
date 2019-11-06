@@ -168,13 +168,10 @@ namespace idg{
         // Put all selected baselines into a new vector
         std::vector<std::pair<float, Baseline>> baselines_;
 
-        float max_uv = 0;
         for (unsigned i = 0; i < m_baselines.size(); i++) {
             if (selected_baselines[i]) {
                 baselines_.push_back(m_baselines[i]);
-                float length = m_baselines[i].first;
-                Baseline bl =  m_baselines[i].second;
-                max_uv = std::max(max_uv, length);
+                Baseline bl = m_baselines[i].second;
                 selected_stations[bl.station1] = true;
                 selected_stations[bl.station2] = true;
             }
