@@ -17,7 +17,7 @@ namespace idg{
         // Shuffle stations
         shuffle_stations();
 
-        // Set baselines and max_uv
+        // Set baselines
         set_baselines(m_station_coordinates, baseline_length_limit);
     }
 
@@ -92,16 +92,18 @@ namespace idg{
                   << m_station_coordinates.size() << std::endl;
         std::cout << "number of baselines: "
                   << m_baselines.size() << std::endl;
-        std::cout << "longest baseline = " << max_uv << std::endl;
+        std::cout << "longest baseline = " << get_max_uv() << std::endl;
     }
 
     float Data::compute_image_size(unsigned grid_size)
     {
+        auto max_uv = get_max_uv();
         return grid_size / max_uv * (SPEED_OF_LIGHT / start_frequency);
     }
 
     float Data::compute_grid_size(float image_size)
     {
+        auto max_uv = get_max_uv();
         return (image_size * pixel_padding) / (SPEED_OF_LIGHT / start_frequency) * max_uv;
     };
 
@@ -111,7 +113,7 @@ namespace idg{
     {
         // Compute (maximum) baseline length and select baselines
         unsigned nr_stations = station_coordinates.size();
-        max_uv = 0;
+
         for (unsigned station1 = 0; station1 < nr_stations; station1++) {
             for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
                 Baseline baseline = {station1, station2};
@@ -120,11 +122,11 @@ namespace idg{
                 // Compute uvw values for 12 hours of observation (with steps of 1 hours)
                 // The baseline is only added when all samples are in range
                 bool add_baseline = true;
-                float max_uv_ = max_uv;
+                float max_uv = 0.0f;
                 for (unsigned time = 0; time < 12; time++) {
                     evaluate_uvw(baseline, time, 3600, &u, &v, &w);
                     float baseline_length = sqrtf(u*u + v*v);
-                    max_uv_ = std::max(baseline_length, max_uv_);
+                    max_uv = std::max(max_uv, baseline_length);
 
                     if (baseline_length_limit > 0 && baseline_length > baseline_length_limit) {
                         add_baseline = false;
@@ -134,8 +136,7 @@ namespace idg{
 
                 // Add baseline
                 if (add_baseline) {
-                    m_baselines.push_back(std::pair<float, Baseline>(max_uv_, baseline));
-                    max_uv = std::max(max_uv, max_uv_);
+                    m_baselines.push_back(std::pair<float, Baseline>(max_uv, baseline));
                 }
             } // end for station 2
         } // end for station 1
@@ -197,6 +198,7 @@ namespace idg{
         unsigned int channel_offset) const
     {
         auto nr_channels = frequencies.get_x_dim();
+        auto max_uv = get_max_uv();
         float frequency_increment = SPEED_OF_LIGHT / (max_uv * image_size);
         for (unsigned chan = 0; chan < nr_channels; chan++) {
             frequencies(chan) = start_frequency + frequency_increment * (chan + channel_offset);
@@ -247,6 +249,15 @@ namespace idg{
                 uvw(bl, time) = {(float) u, (float) v, (float) w};
             } // end for time
         } // end for bl
+    }
+
+    float Data::get_max_uv() const
+    {
+        float max_uv = 0;
+        for (auto baseline : m_baselines) {
+            max_uv = std::max(max_uv, baseline.first);
+        }
+        return max_uv;
     }
 
     void Data::evaluate_uvw(

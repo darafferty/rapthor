@@ -64,6 +64,8 @@ namespace idg {
                 unsigned int time_offset = 0,
                 float integration_time = 1.0f) const;
 
+            float get_max_uv() const;
+
             /*
              * Misc methods
              */
@@ -81,14 +83,13 @@ namespace idg {
             std::vector<StationCoordinate> m_station_coordinates;
 
             /*
-             * Set baselines and max_uv
+             * Set baselines
              */
             void set_baselines(
                 std::vector<StationCoordinate>& station_coordinates,
                 unsigned int baseline_length_limit);
 
             std::vector<std::pair<float, Baseline>> m_baselines;
-            float max_uv; // Meters
 
             /*
              * Helper methods
