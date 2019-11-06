@@ -9,9 +9,9 @@
 #include <csignal>
 
 /*
- * Enable checking for NaN values
+ * Uncomment to enable checking for NaN values
  */
-#define DEBUG_NAN_SET_ATERM 0
+// #define DEBUG_NAN_SET_ATERM
 
 
 using namespace std;
