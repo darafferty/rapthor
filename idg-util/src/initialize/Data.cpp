@@ -91,7 +91,7 @@ namespace idg{
         std::cout << "number of stations: "
                   << station_coordinates.size() << std::endl;
         std::cout << "number of baselines: "
-                  << baselines.size() << std::endl;
+                  << m_baselines.size() << std::endl;
         std::cout << "longest baseline = " << max_uv << std::endl;
     }
 
@@ -134,7 +134,7 @@ namespace idg{
 
                 // Add baseline
                 if (add_baseline) {
-                    baselines.push_back(std::pair<float, Baseline>(max_uv_, baseline));
+                    m_baselines.push_back(std::pair<float, Baseline>(max_uv_, baseline));
                     max_uv = std::max(max_uv, max_uv_);
                 }
             } // end for station 2
@@ -151,15 +151,15 @@ namespace idg{
         #endif
 
         // Select the baselnes that fit in the grid
-        bool selected_baselines[baselines.size()];
+        bool selected_baselines[m_baselines.size()];
 
         // Keep track of stations corresponding to these baselines
         bool selected_stations[station_coordinates.size()];
         memset(selected_baselines, 0, sizeof(selected_baselines));
 
         #pragma omp parallel for
-        for (unsigned i = 0; i < baselines.size(); i++) {
-            std::pair<float, Baseline> entry = baselines[i];
+        for (unsigned i = 0; i < m_baselines.size(); i++) {
+            std::pair<float, Baseline> entry = m_baselines[i];
             float baseline_length_meters = entry.first;
             float baseline_length_pixels = baseline_length_meters * image_size * (start_frequency / SPEED_OF_LIGHT);
             selected_baselines[i] = baseline_length_pixels < grid_size;
@@ -169,11 +169,11 @@ namespace idg{
         std::vector<std::pair<float, Baseline>> baselines_;
 
         float max_uv = 0;
-        for (unsigned i = 0; i < baselines.size(); i++) {
+        for (unsigned i = 0; i < m_baselines.size(); i++) {
             if (selected_baselines[i]) {
-                baselines_.push_back(baselines[i]);
-                float length =baselines[i].first;
-                Baseline bl = baselines[i].second;
+                baselines_.push_back(m_baselines[i]);
+                float length = m_baselines[i].first;
+                Baseline bl =  m_baselines[i].second;
                 max_uv = std::max(max_uv, length);
                 selected_stations[bl.station1] = true;
                 selected_stations[bl.station2] = true;
@@ -190,7 +190,7 @@ namespace idg{
         }
 
         // Replace members
-        baselines = baselines_;
+        std::swap(m_baselines, baselines_);
         station_coordinates = station_coordinates_;
     }
 
@@ -224,7 +224,7 @@ namespace idg{
         unsigned int time_offset,
         float integration_time) const
     {
-        unsigned int nr_baselines_total = baselines.size();
+        unsigned int nr_baselines_total = m_baselines.size();
         unsigned int nr_baselines = uvw.get_y_dim();
         unsigned int nr_timesteps = uvw.get_x_dim();
 
@@ -241,7 +241,7 @@ namespace idg{
         // Evaluate uvw per baseline
         #pragma omp parallel for
         for (unsigned bl = 0; bl < nr_baselines; bl++) {
-            std::pair<float, Baseline> e = baselines[baseline_offset + bl];
+            std::pair<float, Baseline> e = m_baselines[baseline_offset + bl];
             Baseline& baseline = e.second;
 
             for (unsigned time = 0; time < nr_timesteps; time++) {

@@ -44,7 +44,7 @@ namespace idg {
              */
             unsigned int get_nr_stations() const { return station_coordinates.size(); };
 
-            unsigned int get_nr_baselines() const { return baselines.size(); };
+            unsigned int get_nr_baselines() const { return m_baselines.size(); };
 
             void get_frequencies(
                 Array1D<float>& frequencies,
@@ -87,7 +87,7 @@ namespace idg {
                 std::vector<StationCoordinate>& station_coordinates,
                 unsigned int baseline_length_limit);
 
-            std::vector<std::pair<float, Baseline>> baselines;
+            std::vector<std::pair<float, Baseline>> m_baselines;
             float max_uv; // Meters
 
             /*
