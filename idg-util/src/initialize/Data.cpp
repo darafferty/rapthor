@@ -87,6 +87,14 @@ namespace idg{
         std::swap(station_coordinates, station_coordinates_shuffled);
     }
 
+    void Data::print_info() {
+        std::cout << "number of stations: "
+                  << station_coordinates.size() << std::endl;
+        std::cout << "number of baselines: "
+                  << baselines.size() << std::endl;
+        std::cout << "longest baseline = " << max_uv << std::endl;
+    }
+
     float Data::compute_image_size(unsigned grid_size)
     {
         return grid_size / max_uv * (SPEED_OF_LIGHT / start_frequency);
@@ -181,21 +189,9 @@ namespace idg{
             }
         }
 
-        // Report
-        //#if defined(DEBUG)
-        std::cout << "number of stations: "
-                  << station_coordinates.size() << " -> "
-                  << station_coordinates_.size() << std::endl;
-        std::cout << "number of baselines: "
-                  << baselines.size() <<  " -> "
-                  << baselines_.size() << std::endl;
-        std::cout << "longest baseline = " << max_uv << std::endl;
-        //#endif
-
         // Replace members
         baselines = baselines_;
         station_coordinates = station_coordinates_;
-
     }
 
     void Data::get_frequencies(

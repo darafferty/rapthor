@@ -126,3 +126,9 @@ class Data():
         lib.DATA_shuffle_stations(
                 self.obj)
 
+    def print_info(
+        self):
+        lib.DATA_print_info.argtypes = [
+            ctypes.c_void_p]
+        lib.DATA_print_info(
+                self.obj)

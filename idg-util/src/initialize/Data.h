@@ -64,7 +64,11 @@ namespace idg {
                 unsigned int time_offset = 0,
                 float integration_time = 1.0f) const;
 
+            /*
+             * Misc methods
+             */
             void shuffle_stations();
+            void print_info();
 
         private:
             /*

@@ -79,4 +79,10 @@ extern "C" {
         data->shuffle_stations();
     }
 
+    void DATA_print_info(
+        idg::Data* data)
+    {
+        data->print_info();
+    }
+
 }  // end extern "C"
