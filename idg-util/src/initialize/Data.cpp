@@ -151,10 +151,9 @@ namespace idg{
         std::cout << "grid_size = " << grid_size << ", image_size = " << image_size << std::endl;
         #endif
 
-        // Select the baselnes that fit in the grid
+        // Select the baselnes that fit in the grid,
+        // keep track of stations corresponding to these baselines
         bool selected_baselines[m_baselines.size()];
-
-        // Keep track of stations corresponding to these baselines
         bool selected_stations[m_station_coordinates.size()];
         memset(selected_baselines, 0, sizeof(selected_baselines));
 
@@ -176,6 +175,41 @@ namespace idg{
                 selected_stations[bl.station1] = true;
                 selected_stations[bl.station2] = true;
             }
+        }
+
+        // Put all selected stations into a new vector
+        std::vector<StationCoordinate> station_coordinates_;
+
+        for (unsigned i = 0; i < m_station_coordinates.size(); i++) {
+            if (selected_stations[i]) {
+                station_coordinates_.push_back(m_station_coordinates[i]);
+            }
+        }
+
+        // Replace members
+        std::swap(m_baselines, baselines_);
+        std::swap(m_station_coordinates, station_coordinates_);
+    }
+
+    void Data::limit_nr_baselines(
+        unsigned int n)
+    {
+        #if defined(DEBUG)
+        std::cout << "Data::" << __func__ << std::endl;
+        #endif
+
+        // Select the first n baselnes,
+        // keep track of stations corresponding to these baselines
+        bool selected_stations[m_station_coordinates.size()];
+
+        // Put the first n baselines into a new vector
+        std::vector<std::pair<float, Baseline>> baselines_;
+
+        for (unsigned i = 0; i <n; i++) {
+            baselines_.push_back(m_baselines[i]);
+            Baseline bl = m_baselines[i].second;
+            selected_stations[bl.station1] = true;
+            selected_stations[bl.station2] = true;
         }
 
         // Put all selected stations into a new vector

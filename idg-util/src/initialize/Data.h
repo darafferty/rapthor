@@ -39,6 +39,8 @@ namespace idg {
                 unsigned grid_size,
                 float image_size);
 
+            void limit_nr_baselines(unsigned int n);
+
             /*
              * Get methods
              */

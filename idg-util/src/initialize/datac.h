@@ -37,6 +37,13 @@ extern "C" {
         data->filter_baselines(grid_size, image_size);
     }
 
+    void DATA_limit_nr_baselines(
+        idg::Data* data,
+        unsigned int n)
+    {
+        data->limit_nr_baselines(n);
+    }
+
     float DATA_get_nr_stations(
         idg::Data* data)
     {

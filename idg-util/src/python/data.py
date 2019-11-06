@@ -64,6 +64,16 @@ class Data():
             ctypes.c_uint(grid_size),
             ctypes.c_float(image_size))
 
+    def limit_nr_baselines(
+        self,
+        n):
+        lib.DATA_limit_nr_baselines.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint]
+        lib.DATA_limit_nr_baselines(
+            self.obj,
+            ctypes.c_uint(n))
+
     def get_nr_stations(
         self):
         lib.DATA_get_nr_stations.restype = ctypes.c_uint
