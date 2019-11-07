@@ -1071,7 +1071,7 @@ namespace idg {
 
                 // Copy input data to device
                 htodstream.memcpyHtoDAsync(d_aterms, aterms_transposed.data(), aterms_transposed.bytes());
-                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivatives.data(), aterm_derivatives.bytes());
+                htodstream.memcpyHtoDAsync(d_aterms_deriv, aterm_derivatives_transposed.data(), aterm_derivatives_transposed.bytes());
                 htodstream.memcpyHtoDAsync(d_hessian, hessian.data(), hessian.bytes());
                 htodstream.memcpyHtoDAsync(d_gradient, gradient.data(), gradient.bytes());
                 htodstream.memcpyHtoDAsync(d_residual, &residual, sizeof(double));
