@@ -7,23 +7,20 @@
 namespace idg{
 
     Data::Data(
-        unsigned int nr_stations_limit,
-        unsigned int baseline_length_limit,
         std::string layout_file)
     {
         // Set station_coordinates
-        set_station_coordinates(layout_file, nr_stations_limit);
+        set_station_coordinates(layout_file);
 
         // Shuffle stations
         shuffle_stations();
 
         // Set baselines
-        set_baselines(m_station_coordinates, baseline_length_limit);
+        set_baselines(m_station_coordinates);
     }
 
     void Data::set_station_coordinates(
-        std::string layout_file = "SKA1_low_ecef",
-        unsigned int nr_stations_limit)
+        std::string layout_file = "SKA1_low_ecef")
     {
         // Check whether layout file exists
         std::string filename = std::string(IDG_DATA_DIR) + "/" + layout_file;
@@ -50,11 +47,6 @@ namespace idg{
         if (nr_stations_read != nr_stations) {
             std::cerr << "Failed to read antenna coordinates." << std::endl;
             exit(EXIT_FAILURE);
-        }
-
-        // Limit number of stations
-        if (nr_stations_limit > 0 && nr_stations_limit < nr_stations) {
-            nr_stations = nr_stations_limit;
         }
 
         // Create vector of station coordinates
@@ -108,8 +100,7 @@ namespace idg{
     };
 
     void Data::set_baselines(
-        std::vector<StationCoordinate>& station_coordinates,
-        unsigned int baseline_length_limit)
+        std::vector<StationCoordinate>& station_coordinates)
     {
         // Compute (maximum) baseline length and select baselines
         unsigned nr_stations = station_coordinates.size();
@@ -120,24 +111,15 @@ namespace idg{
                 double u, v, w;
 
                 // Compute uvw values for 12 hours of observation (with steps of 1 hours)
-                // The baseline is only added when all samples are in range
-                bool add_baseline = true;
                 float max_uv = 0.0f;
                 for (unsigned time = 0; time < 12; time++) {
                     evaluate_uvw(baseline, time, 3600, &u, &v, &w);
                     float baseline_length = sqrtf(u*u + v*v);
                     max_uv = std::max(max_uv, baseline_length);
-
-                    if (baseline_length_limit > 0 && baseline_length > baseline_length_limit) {
-                        add_baseline = false;
-                        break;
-                    }
                 } // end for time
 
                 // Add baseline
-                if (add_baseline) {
-                    m_baselines.push_back(std::pair<float, Baseline>(max_uv, baseline));
-                }
+                m_baselines.push_back(std::pair<float, Baseline>(max_uv, baseline));
             } // end for station 2
         } // end for station 1
     }

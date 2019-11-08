@@ -10,16 +10,10 @@ lib = ctypes.cdll.LoadLibrary('libidg-util.so')
 class Data():
     def __init__(
         self,
-        nr_stations_limit,
-        baseline_length_limit,
         layout_file):
         lib.DATA_init.argtypes = [
-            ctypes.c_uint,
-            ctypes.c_uint,
             ctypes.c_char_p]
         self.obj = lib.DATA_init(
-            ctypes.c_uint(nr_stations_limit),
-            ctypes.c_uint(baseline_length_limit),
             ctypes.c_char_p(layout_file))
 
     def compute_image_size(

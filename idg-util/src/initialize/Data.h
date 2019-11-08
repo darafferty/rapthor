@@ -17,8 +17,6 @@ namespace idg {
              * Constructor
              */
             Data(
-                unsigned int nr_stations_limit = 0, // infinite
-                unsigned int baseline_length_limit = 0, // Meter
                 std::string layout_file = "SKA1_low_ecef"
             );
 
@@ -79,8 +77,7 @@ namespace idg {
              * Set station_coordinates
              */
             void set_station_coordinates(
-                std::string layout_file,
-                unsigned nr_stations_limit = -1);
+                std::string layout_file);
 
             std::vector<StationCoordinate> m_station_coordinates;
 
@@ -88,8 +85,7 @@ namespace idg {
              * Set baselines
              */
             void set_baselines(
-                std::vector<StationCoordinate>& station_coordinates,
-                unsigned int baseline_length_limit);
+                std::vector<StationCoordinate>& station_coordinates);
 
             std::vector<std::pair<float, Baseline>> m_baselines;
 

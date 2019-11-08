@@ -1,11 +1,9 @@
 extern "C" {
 
     idg::Data* DATA_init(
-       unsigned int nr_stations_limit,
-       unsigned int baseline_length_limit,
        const char *layout_file)
     {
-        return new idg::Data(nr_stations_limit, baseline_length_limit, layout_file);
+        return new idg::Data(layout_file);
     }
 
     float DATA_compute_image_size(
