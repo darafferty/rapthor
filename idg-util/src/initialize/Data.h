@@ -94,7 +94,7 @@ namespace idg {
              */
             void evaluate_uvw(
                 Baseline& baseline,
-                unsigned int time,
+                unsigned int timestep,
                 float integration_time,
                 double* u, double* v, double* w) const;
 

@@ -278,7 +278,7 @@ namespace idg{
 
     void Data::evaluate_uvw(
         Baseline& baseline,
-        unsigned int time,
+        unsigned int timestep,
         float integration_time,
         double* u, double* v, double* w) const
     {
@@ -293,10 +293,18 @@ namespace idg{
         double x[2] = {x1, x2};
         double y[2] = {y1, y2};
         double z[2] = {z1, z2};
-        double seconds  = observation_seconds + (time * integration_time);
+        unsigned long time = observation_hour * (3600) +
+                             observation_minute * 60 +
+                             observation_seconds +
+                             timestep * integration_time;
+	    int hour    = time / 3600;
+	    time        = time % 3600;
+	    int minute  = time / 60;
+	    time        = time % 60;
+	    int seconds = time;
         double time_mjd = uvwsim_datetime_to_mjd(
                 observation_year, observation_month, observation_day,
-                observation_hour, observation_minute, seconds);
+                hour, minute, seconds);
         uvwsim_evaluate_baseline_uvw(
                 u, v, w,
                 2, x, y, z,
