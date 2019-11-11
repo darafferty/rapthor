@@ -13,9 +13,13 @@ coordinatetype = numpy.dtype([('x', numpy.intc),
                               ('z', numpy.intc)])
 metadatatype = numpy.dtype([ ('time_index', numpy.intc),
                              ('nr_timesteps', numpy.intc),
-                             ('aterm_index', numpy.intc),
+                             ('channel_begin', numpy.intc),
+                             ('channel_end', numpy.intc),
                              ('baseline', baselinetype),
-                             ('coordinate', coordinatetype)])
+                             ('coordinate', coordinatetype),
+                             ('wtile_coordinate', coordinatetype),
+                             ('wtile_index', numpy.intc),
+                             ('nr_aterms', numpy.intc)])
 atermtype = numpy.complex64
 atermoffsettype = numpy.intc
 spheroidaltype = numpy.float32

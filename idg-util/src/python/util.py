@@ -205,23 +205,6 @@ def init_grid_of_point_sources(N, image_size, visibilities, uvw,
 def get_figure_name(name):
     return "Figure %d: %s" % (len(plt.get_fignums()) + 1, name)
 
-
-def plot_uvw(uvw):
-    """Plot UVW data as (u,v)-plot
-    Input:
-    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
-                        dtype = idg.uvwtype)
-    """
-    u = uvw['u'].flatten()
-    v = uvw['v'].flatten()
-    uvlim = 1.2*max(max(abs(u)), max(abs(v)))
-    fig = plt.figure(get_figure_name("uvw"))
-    plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.')
-    plt.xlim([-uvlim, uvlim])
-    plt.ylim([-uvlim, uvlim])
-    plt.grid(True)
-    plt.axes().set_aspect('equal')
-
 def plot_uvw_pixels(uvw, frequencies, image_size):
     """Plot UVW data as (u,v)-plot, scaled to pixel coordinates
     Input:
@@ -236,7 +219,7 @@ def plot_uvw_pixels(uvw, frequencies, image_size):
         v_ = numpy.append(v_, uvw['v'].flatten() * image_size * (frequency / speed_of_light))
     uvlim = 1.2*max(max(abs(u_)), max(abs(v_)))
     fig = plt.figure(get_figure_name("uvw"))
-    plt.plot(u_, v_,'.')
+    plt.plot(u_, -v_,'.')
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
     plt.grid(True)
@@ -252,7 +235,7 @@ def plot_uvw_meters(uvw):
     v = uvw['v'].flatten()
     uvlim = 1.2*max(max(abs(u)), max(abs(v)))
     fig = plt.figure(get_figure_name("uvw"))
-    plt.plot(u, v,'.')
+    plt.plot(u, -v,'.')
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
     plt.grid(True)
