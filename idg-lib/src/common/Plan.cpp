@@ -438,7 +438,15 @@ namespace idg {
                         }
                     } else if (plan_strict) {
                         #pragma omp critical
-                        throw std::runtime_error("subgrid falls not within grid");
+                        {
+                            Coordinate coordinate = subgrid.get_coordinate();
+                            std::stringstream message;
+                            message << "subgrid out of range: "
+                                    << "coordinate = (" << coordinate.x
+                                    << ", " << coordinate.y << ")";
+                            std::cout << message.str() << std::endl;
+                            throw std::runtime_error(message.str());
+                        }
                     }
                 } // end while
             } // end for channel_groups
