@@ -31,7 +31,7 @@ std::tuple<int, int, int, int, int, int, int, int, int, int, int, float>read_par
     const unsigned int DEFAULT_GRIDSIZE     = 4096;
     const unsigned int DEFAULT_SUBGRIDSIZE  = 32;
     const unsigned int DEFAULT_NR_CYCLES    = 1;
-    const float        DEFAULT_GRID_PADDING = 0.1;
+    const float        DEFAULT_GRID_PADDING = 1.0;
 
     char *cstr_nr_stations = getenv("NR_STATIONS");
     auto nr_stations = cstr_nr_stations ? atoi(cstr_nr_stations): DEFAULT_NR_STATIONS;
@@ -171,6 +171,17 @@ void run()
     // Initialize Data object
     clog << "Initialize data" << endl;
     idg::Data data;
+
+    // Determine the max baseline length for given grid_size
+    auto max_uv = data.compute_max_uv(grid_padding * grid_size);
+
+    // Select only baselines up to max_uv meters long
+    data.limit_max_baseline_length(max_uv);
+
+    // Restrict the number of baselines to nr_baselines
+    data.limit_nr_baselines(nr_baselines);
+
+    // Get remaining parameters
     float image_size = data.compute_image_size(grid_padding * grid_size);
     float cell_size = image_size / grid_size;
     unsigned int total_nr_baselines_ = data.get_nr_baselines();
