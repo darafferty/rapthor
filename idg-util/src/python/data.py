@@ -25,38 +25,24 @@ class Data():
         lib.DATA_compute_image_size.restype = ctypes.c_float
         return lib.DATA_compute_image_size(self.obj, grid_size)
 
-    def compute_grid_size(
-        self,
-        image_size):
-        lib.DATA_compute_grid_size.argtypes = [
-            ctypes.c_void_p,
-            ctypes.c_float]
-        lib.DATA_compute_grid_size.restype = ctypes.c_float
-        return lib.DATA_compute_grid_size(self.obj, image_size)
-
     def compute_max_uv(
         self,
-        grid_size,
-        image_size):
+        grid_size):
         lib.DATA_compute_max_uv.argtypes = [
             ctypes.c_void_p,
-            ctypes.c_uint,
-            ctypes.c_float]
+            ctypes.c_ulong]
         lib.DATA_compute_max_uv.restype = ctypes.c_float
-        return lib.DATA_compute_max_uv(self.obj, grid_size, image_size)
+        return lib.DATA_compute_max_uv(self.obj, grid_size)
 
-    def filter_baselines(
+    def limit_max_baseline_length(
         self,
-        grid_size,
-        image_size):
-        lib.DATA_filter_baselines.argtypes = [
+        max_uv):
+        lib.DATA_limit_max_baseline_length.argtypes = [
             ctypes.c_void_p,
-            ctypes.c_uint,
             ctypes.c_float]
-        lib.DATA_filter_baselines(
+        lib.DATA_limit_max_baseline_length(
             self.obj,
-            ctypes.c_uint(grid_size),
-            ctypes.c_float(image_size))
+            ctypes.c_float(max_uv))
 
     def limit_nr_baselines(
         self,
@@ -122,13 +108,6 @@ class Data():
             ctypes.c_uint(baseline_offset),
             ctypes.c_uint(time_offset),
             ctypes.c_float(integration_time))
-
-    def shuffle_stations(
-        self):
-        lib.DATA_shuffle_stations.argtypes = [
-            ctypes.c_void_p]
-        lib.DATA_shuffle_stations(
-                self.obj)
 
     def print_info(
         self):

@@ -13,26 +13,18 @@ extern "C" {
         return data->compute_image_size(grid_size);
     }
 
-    float DATA_compute_grid_size(
-        idg::Data* data,
-        float image_size)
-    {
-        return data->compute_grid_size(image_size);
-    }
-
     float DATA_compute_max_uv(
-        unsigned grid_size,
-        float image_size)
+        idg::Data* data,
+        unsigned long grid_size)
     {
-        return idg::Data::compute_max_uv(grid_size, image_size);
+        return data->compute_max_uv(grid_size);
     }
 
-    void DATA_filter_baselines(
+    void DATA_limit_max_baseline_length(
         idg::Data* data,
-        unsigned grid_size,
-        float image_size)
+        float max_uv)
     {
-        data->filter_baselines(grid_size, image_size);
+        data->limit_max_baseline_length(max_uv);
     }
 
     void DATA_limit_nr_baselines(
@@ -76,12 +68,6 @@ extern "C" {
     {
         idg::Array2D<idg::UVW<float>> uvw((idg::UVW<float> *) ptr, nr_baselines, nr_timesteps);
         data->get_uvw(uvw, baseline_offset, time_offset, integration_time);
-    }
-
-    void DATA_shuffle_stations(
-        idg::Data* data)
-    {
-        data->shuffle_stations();
     }
 
     void DATA_print_info(
