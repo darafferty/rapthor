@@ -17,8 +17,7 @@ class Plan(object):
         frequencies,
         uvw,
         baselines,
-        aterms_offsets,
-        max_nr_timesteps_per_subgrid):
+        aterms_offsets):
 
         # extract dimensions
         nr_channels                  = frequencies.shape[0]
@@ -44,8 +43,7 @@ class Plan(object):
             ctypes.c_uint(baselines_nr_baselines),
             ctypes.c_uint(baselines_two),
             aterms_offsets.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_uint(aterms_offsets_nr_timeslots),
-            ctypes.c_int(max_nr_timesteps_per_subgrid))
+            ctypes.c_uint(aterms_offsets_nr_timeslots))
 
 
     def __del__(self):

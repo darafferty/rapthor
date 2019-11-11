@@ -16,8 +16,7 @@ extern "C" {
         const unsigned int baselines_nr_baselines,
         const unsigned int baselines_two,
         unsigned int* aterms_offsets,
-        const unsigned int aterms_offsets_nr_timeslots_plus_one,
-        const int max_nr_timesteps_per_subgrid = std::numeric_limits<int>::max())
+        const unsigned int aterms_offsets_nr_timeslots_plus_one)
     {
 
         idg::Array1D<float> frequencies_(
