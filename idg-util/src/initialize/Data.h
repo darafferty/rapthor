@@ -4,9 +4,6 @@
 #include "idg-util-config.h"
 #include "idg-common.h" // idg data types
 
-/* Constants */
-#define SPEED_OF_LIGHT      299792458.0
-
 namespace idg {
 
     class Data {
@@ -23,20 +20,17 @@ namespace idg {
             /*
              * Parameters
              */
-            float compute_image_size(unsigned grid_size);
-            float compute_grid_size(float image_size);
-            static float compute_max_uv(unsigned grid_size, float image_size)
-            {
-                return (grid_size / image_size) / (SPEED_OF_LIGHT / start_frequency);
-            }
+            float compute_image_size(unsigned long grid_size);
+            float compute_max_uv(unsigned long grid_size);
 
             /*
-             * Filter baselines
+             * Select baselines
              */
-            void filter_baselines(
-                unsigned grid_size,
-                float image_size);
+            // Maintain only the baselines up to max_uv meters
+            void limit_max_baseline_length(float max_uv);
 
+            // Main only n baselines, make sure to keep at least
+            // a few long baselines (see fraction_long below)
             void limit_nr_baselines(unsigned int n);
 
             /*
@@ -69,7 +63,6 @@ namespace idg {
             /*
              * Misc methods
              */
-            void shuffle_stations();
             void print_info();
 
         private:
@@ -98,11 +91,6 @@ namespace idg {
                 float integration_time,
                 double* u, double* v, double* w) const;
 
-            /*
-             * Misc
-             */
-            const float pixel_padding = 0.8;
-
         public:
             /*
              * Observation parameters
@@ -118,6 +106,14 @@ namespace idg {
             static const int observation_hour    = 1;
             static const int observation_minute  = 57;
             static const int observation_seconds = 0;
+
+            /*
+             * Imagaging parameters
+             */
+            static constexpr float fov_deg       = 8.0;
+            static constexpr float weight        = 1.0;
+            static constexpr float grid_padding  = 1.25;
+            static constexpr float fraction_long = 0.05; // fraction of long baselines to use
     };
 } // namespace idg
 

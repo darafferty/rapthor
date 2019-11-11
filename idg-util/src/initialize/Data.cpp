@@ -1,8 +1,14 @@
 #include <algorithm>
+#include <random>
 
 #include "uvwsim.h"
 
 #include "Data.h"
+
+
+/* Constants */
+#define SPEED_OF_LIGHT      299792458.0
+
 
 namespace idg{
 
@@ -11,9 +17,6 @@ namespace idg{
     {
         // Set station_coordinates
         set_station_coordinates(layout_file);
-
-        // Shuffle stations
-        shuffle_stations();
 
         // Set baselines
         set_baselines(m_station_coordinates);
@@ -59,45 +62,32 @@ namespace idg{
         free(x); free(y); free(z);
     }
 
-    void Data::shuffle_stations() {
-        auto nr_stations = m_station_coordinates.size();
-
-        // Pick random station indices
-        std::srand(0);
-        std::vector<unsigned> station_indices(nr_stations);
-        for (unsigned i = 0; i < nr_stations; i++) {
-            station_indices[i] = i;
-        }
-        std::random_shuffle(station_indices.begin(), station_indices.end());
-
-        std::vector<StationCoordinate> station_coordinates_shuffled;
-
-        for (auto i : station_indices) {
-            station_coordinates_shuffled.push_back(m_station_coordinates[i]);
-        }
-
-        std::swap(m_station_coordinates, station_coordinates_shuffled);
-    }
-
     void Data::print_info() {
         std::cout << "number of stations: "
                   << m_station_coordinates.size() << std::endl;
         std::cout << "number of baselines: "
                   << m_baselines.size() << std::endl;
-        std::cout << "longest baseline = " << get_max_uv() << std::endl;
+        std::cout << "longest baseline = "
+                  <<  get_max_uv() * 1e-3 << " km" << std::endl;
     }
 
-    float Data::compute_image_size(unsigned grid_size)
+    float Data::compute_image_size(unsigned long grid_size)
     {
+        // the origin of the grid is at the center, therefore any baseline
+        // should fit within half of the diameter of the grid
+        grid_size /= 2;
         auto max_uv = get_max_uv();
         return grid_size / max_uv * (SPEED_OF_LIGHT / start_frequency);
     }
 
-    float Data::compute_grid_size(float image_size)
-    {
-        auto max_uv = get_max_uv();
-        return (image_size * pixel_padding) / (SPEED_OF_LIGHT / start_frequency) * max_uv;
-    };
+    float Data::compute_max_uv(unsigned long grid_size) {
+        grid_size *= grid_padding;
+        float fov_arcsec = fov_deg * 3600;
+        float wavelength = SPEED_OF_LIGHT / start_frequency;
+        float res_arcsec = fov_arcsec / grid_size;
+        float max_uv     = (180*3600)*weight*wavelength/(M_PI * res_arcsec);
+        return max_uv;
+    }
 
     void Data::set_baselines(
         std::vector<StationCoordinate>& station_coordinates)
@@ -110,10 +100,12 @@ namespace idg{
                 Baseline baseline = {station1, station2};
                 double u, v, w;
 
-                // Compute uvw values for 12 hours of observation (with steps of 1 hours)
+                // Compute uvw values for 24 hours of observation (with steps of 1 hours)
                 float max_uv = 0.0f;
-                for (unsigned time = 0; time < 12; time++) {
-                    evaluate_uvw(baseline, time, 3600, &u, &v, &w);
+                for (unsigned time = 0; time < 24; time++) {
+                    float integration_time = 0.9;
+                    unsigned int timestep = time * 3600;
+                    evaluate_uvw(baseline, timestep, integration_time, &u, &v, &w);
                     float baseline_length = sqrtf(u*u + v*v);
                     max_uv = std::max(max_uv, baseline_length);
                 } // end for time
@@ -124,53 +116,33 @@ namespace idg{
         } // end for station 1
     }
 
-    void Data::filter_baselines(
-        unsigned grid_size,
-        float image_size)
+    void Data::limit_max_baseline_length(
+        float max_uv)
     {
-        #if defined(DEBUG)
-        std::cout << "Data::" << __func__ << std::endl;
-        std::cout << "grid_size = " << grid_size << ", image_size = " << image_size << std::endl;
-        #endif
-
-        // Select the baselnes that fit in the grid,
-        // keep track of stations corresponding to these baselines
-        bool selected_baselines[m_baselines.size()];
-        bool selected_stations[m_station_coordinates.size()];
-        memset(selected_baselines, 0, sizeof(selected_baselines));
-
-        #pragma omp parallel for
-        for (unsigned i = 0; i < m_baselines.size(); i++) {
-            std::pair<float, Baseline> entry = m_baselines[i];
-            float baseline_length_meters = entry.first;
-            float baseline_length_pixels = baseline_length_meters * image_size * (start_frequency / SPEED_OF_LIGHT);
-            selected_baselines[i] = baseline_length_pixels < grid_size;
-        }
-
-        // Put all selected baselines into a new vector
-        std::vector<std::pair<float, Baseline>> baselines_;
-
-        for (unsigned i = 0; i < m_baselines.size(); i++) {
-            if (selected_baselines[i]) {
-                baselines_.push_back(m_baselines[i]);
-                Baseline bl = m_baselines[i].second;
-                selected_stations[bl.station1] = true;
-                selected_stations[bl.station2] = true;
+        // Select the baselines up to max_uv meters long
+        std::vector<std::pair<float, Baseline>> baselines_selected;
+        for (auto entry : m_baselines) {
+            if (entry.first < max_uv) {
+                baselines_selected.push_back(entry);
             }
         }
 
-        // Put all selected stations into a new vector
-        std::vector<StationCoordinate> station_coordinates_;
+        // Update baselines
+        std::swap(m_baselines, baselines_selected);
+    }
 
-        for (unsigned i = 0; i < m_station_coordinates.size(); i++) {
-            if (selected_stations[i]) {
-                station_coordinates_.push_back(m_station_coordinates[i]);
-            }
-        }
+    bool sort_baseline_ascending(
+        const std::pair<float,Baseline> &a,
+        const std::pair<float,Baseline> &b)
+    {
+        return (a.first < b.first);
+    }
 
-        // Replace members
-        std::swap(m_baselines, baselines_);
-        std::swap(m_station_coordinates, station_coordinates_);
+    bool sort_baseline_descending(
+        const std::pair<float,Baseline> &a,
+        const std::pair<float,Baseline> &b)
+    {
+        return (a.first > b.first);
     }
 
     void Data::limit_nr_baselines(
@@ -180,32 +152,43 @@ namespace idg{
         std::cout << "Data::" << __func__ << std::endl;
         #endif
 
-        // Select the first n baselnes,
-        // keep track of stations corresponding to these baselines
-        bool selected_stations[m_station_coordinates.size()];
+        // The selected baselines
+        std::vector<std::pair<float, Baseline>> baselines_selected;
 
-        // Put the first n baselines into a new vector
-        std::vector<std::pair<float, Baseline>> baselines_;
+        // Make copy of baselines
+        std::vector<std::pair<float, Baseline>> baselines_copy = m_baselines;
 
-        for (unsigned i = 0; i <n; i++) {
-            baselines_.push_back(m_baselines[i]);
-            Baseline bl = m_baselines[i].second;
-            selected_stations[bl.station1] = true;
-            selected_stations[bl.station2] = true;
+        // Sort baselines on length
+        std::sort(baselines_copy.begin(), baselines_copy.end(), sort_baseline_ascending);
+
+        // Random number generator
+        std::random_device device;
+        std::mt19937 generator(device());
+
+        // Select from the longest baselines
+        unsigned n_long = n * fraction_long;
+        for (unsigned i = 0; i < n_long; i++) {
+            auto min = (1.0 - fraction_long) * baselines_copy.size();
+            auto max = baselines_copy.size();
+            std::uniform_int_distribution<> distribution(min, max);
+            auto idx = distribution(generator);
+            baselines_selected.push_back(baselines_copy[idx]);
+            baselines_copy.erase(baselines_copy.begin() + idx);
         }
 
-        // Put all selected stations into a new vector
-        std::vector<StationCoordinate> station_coordinates_;
-
-        for (unsigned i = 0; i < m_station_coordinates.size(); i++) {
-            if (selected_stations[i]) {
-                station_coordinates_.push_back(m_station_coordinates[i]);
-            }
+        // Select remaining baselines (any length)
+        auto min = 0;
+        auto max = baselines_copy.size();
+        std::uniform_int_distribution<> distribution(min, max);
+        unsigned n_random = n - n_long;
+        for (unsigned i = 0; i < n_random; i++) {
+            auto idx = distribution(generator);
+            baselines_selected.push_back(baselines_copy[idx]);
+            baselines_copy.erase(baselines_copy.begin() + idx);
         }
 
-        // Replace members
-        std::swap(m_baselines, baselines_);
-        std::swap(m_station_coordinates, station_coordinates_);
+        // Update baselines
+        std::swap(m_baselines, baselines_selected);
     }
 
     void Data::get_frequencies(
@@ -259,7 +242,7 @@ namespace idg{
             std::pair<float, Baseline> e = m_baselines[baseline_offset + bl];
             Baseline& baseline = e.second;
 
-            for (unsigned time = 0; time < nr_timesteps; time++) {
+            for (unsigned long time = 0; time < nr_timesteps; time++) {
                 double u, v, w;
                 evaluate_uvw(baseline, time_offset + time, integration_time, &u, &v, &w);
                 uvw(bl, time) = {(float) u, (float) v, (float) w};
