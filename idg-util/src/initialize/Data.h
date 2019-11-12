@@ -29,7 +29,7 @@ namespace idg {
             // Maintain only the baselines up to max_uv meters
             void limit_max_baseline_length(float max_uv);
 
-            // Main only n baselines, make sure to keep at least
+            // Maintain only n baselines, make sure to keep at least
             // a few long baselines (see fraction_long below)
             void limit_nr_baselines(unsigned int n);
 
@@ -108,7 +108,7 @@ namespace idg {
             static const int observation_seconds = 0;
 
             /*
-             * Imagaging parameters
+             * Imaging parameters
              */
             static constexpr float fov_deg       = 8.0;
             static constexpr float weight        = 1.0;
