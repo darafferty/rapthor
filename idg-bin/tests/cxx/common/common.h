@@ -100,19 +100,32 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     // Parameters
     unsigned int nr_correlations = 4;
     float w_offset               = 0;
-    unsigned int nr_stations     = 12;
+    unsigned int nr_stations     = 9;
     unsigned int nr_channels     = 9;
     unsigned int nr_timesteps    = 2048;
     unsigned int nr_timeslots    = 7;
-    unsigned int grid_size       = 1024;
+    unsigned int grid_size       = 2048;
     unsigned int subgrid_size    = 32;
     unsigned int kernel_size     = 9;
     unsigned int nr_baselines    = (nr_stations * (nr_stations - 1)) / 2;
-    float grid_padding           = 0.8;
 
     // Initialize Data object
     idg::Data data;
-    float image_size             = data.compute_image_size(grid_padding * grid_size);
+
+    // Determine the max baseline length for given grid_size
+    auto max_uv = data.compute_max_uv(grid_size);
+    data.print_info();
+
+    // Select only baselines up to max_uv meters long
+    data.limit_max_baseline_length(max_uv);
+    data.print_info();
+
+    // Restrict the number of baselines to nr_baselines
+    data.limit_nr_baselines(nr_baselines);
+    data.print_info();
+
+    // Get remaining parameters
+    float image_size             = data.compute_image_size(grid_size);
     float cell_size              = image_size / grid_size;
 
     // Print parameters
@@ -128,16 +141,16 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
-    idg::Array1D<float> frequencies =
-        idg::get_example_frequencies(nr_channels);
+    idg::Array1D<float> frequencies(nr_channels);
+        data.get_frequencies(frequencies, image_size);
+    idg::Array2D<idg::UVW<float>> uvw =
+        data.get_uvw(nr_baselines, nr_timesteps);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
         idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
         idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
         idg::get_example_baselines(nr_stations, nr_baselines);
-    idg::Array2D<idg::UVW<float>> uvw =
-        idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
         idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
