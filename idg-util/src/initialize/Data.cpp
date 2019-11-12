@@ -157,10 +157,6 @@ namespace idg{
     void Data::limit_nr_baselines(
         unsigned int n)
     {
-        #if defined(DEBUG)
-        std::cout << "Data::" << __func__ << std::endl;
-        #endif
-
         // The selected baselines
         std::vector<std::pair<float, Baseline>> baselines_selected;
 
