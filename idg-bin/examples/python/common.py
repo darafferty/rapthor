@@ -131,6 +131,10 @@ def main(proxyname):
     print ">> Dataset full: "
     data.print_info()
 
+    # Determine the maximum suggested grid_size using this dataset
+    grid_size_max = data.compute_grid_size()
+    print "maximum grid size: %d" % (grid_size_max)
+
     # Determine the max baseline length for given grid_size
     max_uv = data.compute_max_uv(grid_size) # m
     print "longest baseline required: %.2f km" % (max_uv * 1e-3)

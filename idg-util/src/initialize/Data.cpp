@@ -93,6 +93,16 @@ namespace idg{
         return max_uv;
     }
 
+    unsigned int Data::compute_grid_size() {
+        float max_uv = get_max_uv();
+        float fov_arcsec = fov_deg * 3600;
+        float wavelength = SPEED_OF_LIGHT / start_frequency;
+        float res_arcsec = ((180*3600)*weight*wavelength/M_PI)/max_uv;
+        unsigned int grid_size = fov_arcsec / res_arcsec;
+        grid_size *= grid_padding;
+        return grid_size;
+    }
+
     void Data::set_baselines(
         std::vector<StationCoordinate>& station_coordinates)
     {

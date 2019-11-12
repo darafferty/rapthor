@@ -34,6 +34,13 @@ class Data():
         lib.DATA_compute_max_uv.restype = ctypes.c_float
         return lib.DATA_compute_max_uv(self.obj, grid_size)
 
+    def compute_grid_size(
+        self):
+        lib.DATA_compute_grid_size.argtypes = [
+            ctypes.c_void_p]
+        lib.DATA_compute_grid_size.restype = ctypes.c_uint
+        return lib.DATA_compute_grid_size(self.obj)
+
     def limit_max_baseline_length(
         self,
         max_uv):

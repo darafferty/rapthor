@@ -20,6 +20,12 @@ extern "C" {
         return data->compute_max_uv(grid_size);
     }
 
+    unsigned int DATA_compute_grid_size(
+        idg::Data* data)
+    {
+        return data->compute_grid_size();
+    }
+
     void DATA_limit_max_baseline_length(
         idg::Data* data,
         float max_uv)
