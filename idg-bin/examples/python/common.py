@@ -20,7 +20,7 @@ _grid_size        = 2048
 _integration_time = 0.9
 _kernel_size      = (_subgrid_size / 2) + 1
 _nr_correlations  = 4
-_layout_file      = "SKA1_low_ecef"
+_layout_file      = "LOFAR_etrs"
 _nr_stations      = 20
 _nr_baselines     = (_nr_stations * (_nr_stations - 1)) / 2
 
@@ -130,6 +130,10 @@ def main(proxyname):
     data = Data(layout_file)
     print ">> Dataset full: "
     data.print_info()
+
+    # Determine the maximum suggested grid_size using this dataset
+    grid_size_max = data.compute_grid_size()
+    print "maximum grid size: %d" % (grid_size_max)
 
     # Determine the max baseline length for given grid_size
     max_uv = data.compute_max_uv(grid_size) # m

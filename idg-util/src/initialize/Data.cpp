@@ -18,6 +18,10 @@ namespace idg{
         // Set station_coordinates
         set_station_coordinates(layout_file);
 
+        if (m_station_coordinates.size() > max_nr_stations) {
+            limit_nr_stations(max_nr_stations);
+        }
+
         // Set baselines
         set_baselines(m_station_coordinates);
     }
@@ -89,31 +93,50 @@ namespace idg{
         return max_uv;
     }
 
+    unsigned int Data::compute_grid_size() {
+        float max_uv = get_max_uv();
+        float fov_arcsec = fov_deg * 3600;
+        float wavelength = SPEED_OF_LIGHT / start_frequency;
+        float res_arcsec = ((180*3600)*weight*wavelength/M_PI)/max_uv;
+        unsigned int grid_size = fov_arcsec / res_arcsec;
+        grid_size *= grid_padding;
+        return grid_size;
+    }
+
     void Data::set_baselines(
         std::vector<StationCoordinate>& station_coordinates)
     {
-        // Compute (maximum) baseline length and select baselines
-        unsigned nr_stations = station_coordinates.size();
+        unsigned int nr_stations  = station_coordinates.size();
 
+        // Set baselines from station pairs
         for (unsigned station1 = 0; station1 < nr_stations; station1++) {
             for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
                 Baseline baseline = {station1, station2};
-                double u, v, w;
+                m_baselines.push_back(std::pair<float, Baseline>(0, baseline));
+            }
+        }
 
-                // Compute uvw values for 24 hours of observation (with steps of 1 hours)
-                float max_uv = 0.0f;
-                for (unsigned time = 0; time < 24; time++) {
-                    float integration_time = 0.9;
-                    unsigned int timestep = time * 3600;
-                    evaluate_uvw(baseline, timestep, integration_time, &u, &v, &w);
-                    float baseline_length = sqrtf(u*u + v*v);
-                    max_uv = std::max(max_uv, baseline_length);
-                } // end for time
+        unsigned int nr_baselines = m_baselines.size();
 
-                // Add baseline
-                m_baselines.push_back(std::pair<float, Baseline>(max_uv, baseline));
-            } // end for station 2
-        } // end for station 1
+        // Fill in the maximum uv length (in meters)
+        #pragma omp parallel for
+        for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+            Baseline baseline = m_baselines[bl].second;
+            double u, v, w;
+
+            // Compute uvw values for 24 hours of observation (with steps of 1 hours)
+            float max_uv = 0.0f;
+            for (unsigned time = 0; time < 24; time++) {
+                float integration_time = 0.9;
+                unsigned int timestep = time * 3600;
+                evaluate_uvw(baseline, timestep, integration_time, &u, &v, &w);
+                float baseline_length = sqrtf(u*u + v*v);
+                max_uv = std::max(max_uv, baseline_length);
+            } // end for time
+
+            // Set max_uv for current baseline
+            m_baselines[bl].first = max_uv;
+        } // end for bl
     }
 
     void Data::limit_max_baseline_length(
@@ -145,13 +168,36 @@ namespace idg{
         return (a.first > b.first);
     }
 
+    void Data::limit_nr_stations(
+        unsigned int n)
+    {
+
+        // The selected stations
+        std::vector<StationCoordinate> stations_selected;
+
+        // Make copy of stations
+        std::vector<StationCoordinate> stations_copy = m_station_coordinates;
+
+        // Random number generator
+        std::mt19937 generator(0);
+
+        // Select random stations
+        for (unsigned i = 0; i < n; i++) {
+            auto min = 0;
+            auto max = stations_copy.size();
+            std::uniform_int_distribution<> distribution(min, max);
+            auto idx = distribution(generator);
+            stations_selected.push_back(stations_copy[idx]);
+            stations_copy.erase(stations_copy.begin() + idx);
+        }
+
+        // Update stations
+        std::swap(m_station_coordinates, stations_selected);
+    }
+
     void Data::limit_nr_baselines(
         unsigned int n)
     {
-        #if defined(DEBUG)
-        std::cout << "Data::" << __func__ << std::endl;
-        #endif
-
         // The selected baselines
         std::vector<std::pair<float, Baseline>> baselines_selected;
 
@@ -162,8 +208,7 @@ namespace idg{
         std::sort(baselines_copy.begin(), baselines_copy.end(), sort_baseline_ascending);
 
         // Random number generator
-        std::random_device device;
-        std::mt19937 generator(device());
+        std::mt19937 generator(0);
 
         // Select from the longest baselines
         unsigned n_long = n * fraction_long;

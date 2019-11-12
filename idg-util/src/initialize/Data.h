@@ -14,7 +14,7 @@ namespace idg {
              * Constructor
              */
             Data(
-                std::string layout_file = "SKA1_low_ecef"
+                std::string layout_file = "LOFAR_etrs"
             );
 
             /*
@@ -22,6 +22,7 @@ namespace idg {
              */
             float compute_image_size(unsigned long grid_size);
             float compute_max_uv(unsigned long grid_size);
+            unsigned int compute_grid_size();
 
             /*
              * Select baselines
@@ -29,9 +30,12 @@ namespace idg {
             // Maintain only the baselines up to max_uv meters
             void limit_max_baseline_length(float max_uv);
 
-            // Main only n baselines, make sure to keep at least
+            // Maintain only n baselines, make sure to keep at least
             // a few long baselines (see fraction_long below)
             void limit_nr_baselines(unsigned int n);
+
+            // Maintain only n stations, at random
+            void limit_nr_stations(unsigned int n);
 
             /*
              * Get methods
@@ -108,12 +112,13 @@ namespace idg {
             static const int observation_seconds = 0;
 
             /*
-             * Imagaging parameters
+             * Imaging parameters
              */
             static constexpr float fov_deg       = 8.0;
             static constexpr float weight        = 1.0;
             static constexpr float grid_padding  = 1.25;
             static constexpr float fraction_long = 0.05; // fraction of long baselines to use
+            static const int max_nr_stations     = 1000;
     };
 } // namespace idg
 
