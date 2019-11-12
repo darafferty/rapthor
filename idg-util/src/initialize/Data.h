@@ -14,7 +14,7 @@ namespace idg {
              * Constructor
              */
             Data(
-                std::string layout_file = "SKA1_low_ecef"
+                std::string layout_file = "LOFAR_etrs"
             );
 
             /*
