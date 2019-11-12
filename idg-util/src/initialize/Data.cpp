@@ -179,8 +179,7 @@ namespace idg{
         std::vector<StationCoordinate> stations_copy = m_station_coordinates;
 
         // Random number generator
-        std::random_device device;
-        std::mt19937 generator(device());
+        std::mt19937 generator(0);
 
         // Select random stations
         for (unsigned i = 0; i < n; i++) {
@@ -209,8 +208,7 @@ namespace idg{
         std::sort(baselines_copy.begin(), baselines_copy.end(), sort_baseline_ascending);
 
         // Random number generator
-        std::random_device device;
-        std::mt19937 generator(device());
+        std::mt19937 generator(0);
 
         // Select from the longest baselines
         unsigned n_long = n * fraction_long;
