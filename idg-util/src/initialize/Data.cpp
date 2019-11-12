@@ -92,28 +92,37 @@ namespace idg{
     void Data::set_baselines(
         std::vector<StationCoordinate>& station_coordinates)
     {
-        // Compute (maximum) baseline length and select baselines
-        unsigned nr_stations = station_coordinates.size();
+        unsigned int nr_stations  = station_coordinates.size();
 
+        // Set baselines from station pairs
         for (unsigned station1 = 0; station1 < nr_stations; station1++) {
             for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
                 Baseline baseline = {station1, station2};
-                double u, v, w;
+                m_baselines.push_back(std::pair<float, Baseline>(0, baseline));
+            }
+        }
 
-                // Compute uvw values for 24 hours of observation (with steps of 1 hours)
-                float max_uv = 0.0f;
-                for (unsigned time = 0; time < 24; time++) {
-                    float integration_time = 0.9;
-                    unsigned int timestep = time * 3600;
-                    evaluate_uvw(baseline, timestep, integration_time, &u, &v, &w);
-                    float baseline_length = sqrtf(u*u + v*v);
-                    max_uv = std::max(max_uv, baseline_length);
-                } // end for time
+        unsigned int nr_baselines = m_baselines.size();
 
-                // Add baseline
-                m_baselines.push_back(std::pair<float, Baseline>(max_uv, baseline));
-            } // end for station 2
-        } // end for station 1
+        // Fill in the maximum uv length (in meters)
+        #pragma omp parallel for
+        for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+            Baseline baseline = m_baselines[bl].second;
+            double u, v, w;
+
+            // Compute uvw values for 24 hours of observation (with steps of 1 hours)
+            float max_uv = 0.0f;
+            for (unsigned time = 0; time < 24; time++) {
+                float integration_time = 0.9;
+                unsigned int timestep = time * 3600;
+                evaluate_uvw(baseline, timestep, integration_time, &u, &v, &w);
+                float baseline_length = sqrtf(u*u + v*v);
+                max_uv = std::max(max_uv, baseline_length);
+            } // end for time
+
+            // Set max_uv for current baseline
+            m_baselines[bl].first = max_uv;
+        } // end for bl
     }
 
     void Data::limit_max_baseline_length(
