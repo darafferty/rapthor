@@ -8,8 +8,6 @@ using namespace std;
 
 // Compare to analytical solution in case A-terms are identity and w=0
 // This test covers the degridder without the A-term and w-terms computation
-// See also test-degridder-001.py, which also visualizes the imaging
-// of predicted visibilities
 
 int test01()
 {
@@ -29,24 +27,36 @@ int test01()
 
     // Initialize Data object
     idg::Data data;
-    float image_size             = data.compute_image_size(grid_size);
-    float cell_size              = image_size / grid_size;
+
+    // Determine the max baseline length for given grid_size
+    auto max_uv = data.compute_max_uv(grid_size);
+
+    // Select only baselines up to max_uv meters long
+    data.limit_max_baseline_length(max_uv);
+    data.print_info();
+
+    // Restrict the number of baselines to nr_baselines
+    data.limit_nr_baselines(nr_baselines);
+    data.print_info();
+
+    // Get remaining parameters
+    auto image_size             = data.compute_image_size(grid_size);
+    double cell_size            = image_size / grid_size;
 
     // Print parameters
     print_parameters(
         nr_stations, nr_channels, nr_timesteps, nr_timeslots,
         image_size, grid_size, subgrid_size, kernel_size);
 
-
     // error tolerance, which might need to be adjusted if parameters are changed
     float tol = 0.1f;
 
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
-    idg::Array1D<float> frequencies =
-        idg::get_example_frequencies(nr_channels);
+    idg::Array1D<float> frequencies(nr_channels);
+        data.get_frequencies(frequencies, image_size);
     idg::Array2D<idg::UVW<float>> uvw =
-        idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
+        data.get_uvw(nr_baselines, nr_timesteps);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
         idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
