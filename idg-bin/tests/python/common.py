@@ -15,11 +15,14 @@ import random
 _nr_channels      = 1
 _nr_timesteps     = 1*60*60        # samples per baseline
 _nr_timeslots     = 16             # A-term time slots
-_subgrid_size     = 24
+_subgrid_size     = 32
+_grid_size        = 2048
 _integration_time = 0.9
-_kernel_size      = (_subgrid_size / 2) + 1
+_kernel_size      = 9
 _nr_correlations  = 4
 _layout_file      = "SKA1_low_ecef"
+_nr_stations      = 12
+_nr_baselines     = (_nr_stations * (_nr_stations - 1)) / 2
 
 def get_nr_channels():
     return _nr_channels
@@ -33,6 +36,9 @@ def get_nr_timeslots():
 def get_subgrid_size():
     return _subgrid_size
 
+def get_grid_size():
+    return _grid_size
+
 def get_integration_time():
     return _integration_time
 
@@ -44,6 +50,12 @@ def get_nr_correlations():
 
 def get_layout_file():
     return _layout_file
+
+def get_nr_stations():
+    return _nr_stations
+
+def get_nr_baselines():
+    return _nr_baselines
 
 
 ###########
@@ -99,11 +111,14 @@ def main(proxyname):
     nr_timesteps     = get_nr_timesteps()
     nr_timeslots     = get_nr_timeslots()
     subgrid_size     = get_subgrid_size()
+    grid_size        = get_grid_size()
     integration_time = get_integration_time()
     kernel_size      = get_kernel_size()
     nr_correlations  = get_nr_correlations()
     w_step           = 0.0
     layout_file      = get_layout_file()
+    nr_stations      = get_nr_stations()
+    nr_baselines     = get_nr_baselines()
 
     ######################################################################
     # initialize proxies
@@ -113,20 +128,18 @@ def main(proxyname):
     opt = proxyname(nr_correlations, subgrid_size)
 
     ######################################################################
-    # initialize data generator
+    # initialize data
     ######################################################################
-    # Consider all stations and do not restrict baseline length
-    nr_stations_limit     = 0
-    baseline_length_limit = 0
-    data                  = Data(nr_stations_limit, baseline_length_limit, layout_file)
-    grid_size             = 1024
-    padding               = 0.9
-    image_size            = round(data.compute_image_size(int(grid_size * padding)), 3)
-    cell_size             = image_size / grid_size
+    data                  = Data(layout_file)
 
-    # Reduce number of stations and baselines to use
-    nr_stations           = 10
-    nr_baselines          = (nr_stations * (nr_stations - 1)) / 2
+    # Limit baselines in length and number
+    max_uv = data.compute_max_uv(int(grid_size)) # m
+    data.limit_max_baseline_length(max_uv)
+    data.limit_nr_baselines(nr_baselines)
+
+    # Get remaining parameters
+    image_size = data.compute_image_size(grid_size)
+    cell_size  = image_size / grid_size
 
     ######################################################################
     # print parameters
@@ -162,6 +175,7 @@ def main(proxyname):
     spheroidal     = util.get_identity_spheroidal(subgrid_size)
     shift          = numpy.zeros(3, dtype=float)
 
+    uvw['w'] = 0
     ######################################################################
     # initialize visibilities
     ######################################################################
@@ -193,24 +207,31 @@ def main(proxyname):
     ######################################################################
     util.plot_grid(opt_grid, scaling='log')
     util.plot_grid(ref_grid, scaling='log')
-    util.plot_grid(opt_grid - ref_grid, scaling='log')
-    plt.show()
+    diff_grid = opt_grid - ref_grid
+    nnz = len(abs(diff_grid) > 0)
+    diff_grid = diff_grid / max(1, nnz)
+    util.plot_grid(diff_grid)
+    #plt.show()
 
     ######################################################################
     # run degridding
     ######################################################################
-    #degridding(
-    #    opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, ref_visibilities,
-    #    uvw, baselines, ref_grid, aterms, aterms_offsets, spheroidal)
+    degridding(
+        opt, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, ref_visibilities,
+        uvw, baselines, ref_grid, aterms, aterms_offsets, spheroidal)
 
-    #degridding(
-    #    ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, opt_visibilities,
-    #    uvw, baselines, opt_grid, aterms, aterms_offsets, spheroidal)
+    degridding(
+        ref, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, opt_visibilities,
+        uvw, baselines, opt_grid, aterms, aterms_offsets, spheroidal)
 
     ######################################################################
     # plot difference between visibilities
     ######################################################################
-    #util.plot_visibilities(ref_visibilities)
-    #util.plot_visibilities(opt_visibilities)
-    #util.plot_visibilities(opt_visibilities - ref_visibilities)
-    #plt.show()
+    util.plot_visibilities(ref_visibilities)
+    util.plot_visibilities(opt_visibilities)
+    diff_visibilities = opt_visibilities - ref_visibilities
+    nnz = len(abs(diff_visibilities) > 0)
+    diff_visibilities = diff_visibilities / max(1, nnz)
+    util.plot_visibilities(diff_visibilities)
+
+    plt.show()
