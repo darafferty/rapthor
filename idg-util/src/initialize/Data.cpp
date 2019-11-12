@@ -18,6 +18,10 @@ namespace idg{
         // Set station_coordinates
         set_station_coordinates(layout_file);
 
+        if (m_station_coordinates.size() > max_nr_stations) {
+            limit_nr_stations(max_nr_stations);
+        }
+
         // Set baselines
         set_baselines(m_station_coordinates);
     }
@@ -152,6 +156,34 @@ namespace idg{
         const std::pair<float,Baseline> &b)
     {
         return (a.first > b.first);
+    }
+
+    void Data::limit_nr_stations(
+        unsigned int n)
+    {
+
+        // The selected stations
+        std::vector<StationCoordinate> stations_selected;
+
+        // Make copy of stations
+        std::vector<StationCoordinate> stations_copy = m_station_coordinates;
+
+        // Random number generator
+        std::random_device device;
+        std::mt19937 generator(device());
+
+        // Select random stations
+        for (unsigned i = 0; i < n; i++) {
+            auto min = 0;
+            auto max = stations_copy.size();
+            std::uniform_int_distribution<> distribution(min, max);
+            auto idx = distribution(generator);
+            stations_selected.push_back(stations_copy[idx]);
+            stations_copy.erase(stations_copy.begin() + idx);
+        }
+
+        // Update stations
+        std::swap(m_station_coordinates, stations_selected);
     }
 
     void Data::limit_nr_baselines(

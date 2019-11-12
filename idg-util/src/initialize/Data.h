@@ -33,6 +33,9 @@ namespace idg {
             // a few long baselines (see fraction_long below)
             void limit_nr_baselines(unsigned int n);
 
+            // Maintain only n stations, at random
+            void limit_nr_stations(unsigned int n);
+
             /*
              * Get methods
              */
@@ -114,6 +117,7 @@ namespace idg {
             static constexpr float weight        = 1.0;
             static constexpr float grid_padding  = 1.25;
             static constexpr float fraction_long = 0.05; // fraction of long baselines to use
+            static const int max_nr_stations     = 1000;
     };
 } // namespace idg
 

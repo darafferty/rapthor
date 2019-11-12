@@ -34,6 +34,13 @@ extern "C" {
         data->limit_nr_baselines(n);
     }
 
+     void DATA_limit_nr_stations(
+        idg::Data* data,
+        unsigned int n)
+    {
+        data->limit_nr_stations(n);
+    }
+
     float DATA_get_nr_stations(
         idg::Data* data)
     {

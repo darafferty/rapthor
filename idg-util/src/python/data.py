@@ -54,6 +54,16 @@ class Data():
             self.obj,
             ctypes.c_uint(n))
 
+    def limit_nr_stations(
+        self,
+        n):
+        lib.DATA_limit_nr_stations.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_uint]
+        lib.DATA_limit_nr_stations(
+            self.obj,
+            ctypes.c_uint(n))
+
     def get_nr_stations(
         self):
         lib.DATA_get_nr_stations.restype = ctypes.c_uint
