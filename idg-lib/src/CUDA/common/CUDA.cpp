@@ -238,7 +238,7 @@ namespace idg {
                     // Print reserved memory
                     if (m_fraction_reserved > 0) {
                         #if defined(DEBUG_COMPUTE_JOBSIZE)
-                        std::clog << "Bytes reserved: " << (long) (bytes_free * fraction_reserved) << std::endl;
+                        std::clog << "Bytes reserved: " << (long) (bytes_free * m_fraction_reserved) << std::endl;
                         #endif
                     }
 
