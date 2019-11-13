@@ -18,10 +18,6 @@ namespace idg{
         // Set station_coordinates
         set_station_coordinates(layout_file);
 
-        if (m_station_coordinates.size() > max_nr_stations) {
-            limit_nr_stations(max_nr_stations);
-        }
-
         // Set baselines
         set_baselines(m_station_coordinates);
     }
