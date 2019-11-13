@@ -102,7 +102,8 @@ namespace idg{
     void Data::set_baselines(
         std::vector<StationCoordinate>& station_coordinates)
     {
-        unsigned int nr_stations  = station_coordinates.size();
+        unsigned int nr_stations = station_coordinates.size();
+        printf("nr_stations = %d, nr_baselines = %lu\n", nr_stations, m_baselines.size());
 
         // Set baselines from station pairs
         for (unsigned station1 = 0; station1 < nr_stations; station1++) {
@@ -194,6 +195,10 @@ namespace idg{
     void Data::limit_nr_baselines(
         unsigned int n)
     {
+        if (n > m_baselines.size()) {
+            return;
+        }
+
         // The selected baselines
         std::vector<std::pair<float, Baseline>> baselines_selected;
 
