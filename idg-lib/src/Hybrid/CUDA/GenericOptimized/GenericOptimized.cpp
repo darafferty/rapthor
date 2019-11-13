@@ -623,13 +623,17 @@ namespace idg {
                     dtohstream.record(*outputCopied[job_id]);
 
                     // Wait for degridder to finish
-                    outputCopied[job_id]->synchronize();
+                    gpuFinished[job_id]->synchronize();
 
                     // Report performance
-                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
                     // Update local id
                     local_id = local_id_next;
                 } // end for bl
+
+                // Wait for all visibilities to be copied
+                dtohstream.synchronize();
 
                 // End performance measurement
                 endStates[device_id] = device.measure();
