@@ -342,9 +342,13 @@ namespace idg {
 
                     // Report performance
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
                     // Update local id
                     local_id = local_id_next;
                 } // end for bl
+
+                // Wait for all reports to be printed
+                dtohstream.synchronize();
 
                 // End performance measurement
                 endStates[device_id] = device.measure();
