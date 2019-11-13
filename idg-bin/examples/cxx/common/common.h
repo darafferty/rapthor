@@ -21,6 +21,13 @@
  */
 #define USE_DUMMY_VISIBILITIES 1
 
+/*
+ * Plan creation
+ *  0, create plans sequentially
+ *  1, overlap plan creation and execution
+ */
+#define INTERLEAVE_PLAN 0
+
 using namespace std;
 
 std::tuple<int, int, int, int, int, int, int, int, int, int, int, float>read_parameters() {
@@ -261,6 +268,7 @@ void run()
     // Iterate all cycles
     for (unsigned i = 0; i < nr_cycles; i++) {
 
+        #if INTERLEAVE_PLAN
         /*
          * Start two threads:
          * thread 0: create plans
@@ -268,6 +276,7 @@ void run()
          */
         #pragma omp parallel num_threads(2)
         {
+        #endif
             // create plans
             if (omp_get_thread_num() == 0) {
 
@@ -304,7 +313,9 @@ void run()
             } // end create plans
 
             // execute imaging cycle
+            #if INTERLEAVE_PLAN
             if (omp_get_thread_num() == 1) {
+            #endif
 
                 // Initialize visibilities
                 auto nr_channels_ = simulate_spectral_line ? 1 : nr_channels;
@@ -390,8 +401,10 @@ void run()
                         delete uvw_current;
                     } // end for channel_offset
                 } // end for time_offset
+        #if INTERLEAVE_PLAN
             } // end execute imaging cycle
         } // end omp parallel
+        #endif
     } // end for i (nr_cycles)
 
     // Compute maximum runtime
