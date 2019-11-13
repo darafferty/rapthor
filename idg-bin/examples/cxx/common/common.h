@@ -169,7 +169,7 @@ void run()
     unsigned int total_nr_baselines = (total_nr_stations * (total_nr_stations - 1)) / 2;
 
     // Initialize Data object
-    clog << "Initialize data" << endl;
+    clog << ">>> Initialize data" << endl;
     idg::Data data;
 
     // Determine the max baseline length for given grid_size
@@ -180,6 +180,9 @@ void run()
 
     // Restrict the number of baselines to nr_baselines
     data.limit_nr_baselines(nr_baselines);
+
+    // Print data info
+    data.print_info();
 
     // Get remaining parameters
     float image_size = data.compute_image_size(grid_padding * grid_size);
