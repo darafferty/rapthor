@@ -31,4 +31,5 @@ def convert_layout(file_in, file_out):
     np.savetxt(file_out, layout_itrf, fmt='%.3f', delimiter=',')
 
 
-
+# For SKA1_low, only the coordinate of the center element
+# of any station is used: layout_itrf[:,::8]

@@ -14,7 +14,7 @@ namespace idg {
              * Constructor
              */
             Data(
-                std::string layout_file = "LOFAR_etrs"
+                std::string layout_file = "LOFAR_lba.txt"
             );
 
             /*
