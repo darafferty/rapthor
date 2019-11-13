@@ -30,9 +30,13 @@ namespace idg {
             // throw error when visibilities do not fit onto subgrid
             bool plan_strict = false;
 
-            // limit the maximum amount of timesteps per subgrid
+            // limit the maximum number of timesteps per subgrid
             // zero means no limit
             unsigned max_nr_timesteps_per_subgrid = 0;
+
+            // limit the maximum number of channels per subgrid
+            // zero means no limit
+            unsigned max_nr_channels_per_subgrid = 0;
 
             // consider only first channel when creating subgrids,
             // add additional subgrids for every subsequent frequencies

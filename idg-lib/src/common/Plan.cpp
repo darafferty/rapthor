@@ -210,7 +210,13 @@ namespace idg {
         return meters * (frequency / speed_of_light);
     }
 
-    std::vector<std::pair<int,int>> make_channel_groups(float baseline_length, float uv_span_frequency, float image_size, const Array1D<float>& frequencies) {
+    std::vector<std::pair<int,int>> make_channel_groups(
+        float baseline_length,
+        float uv_span_frequency,
+        float image_size,
+        const Array1D<float>& frequencies,
+        unsigned int max_nr_channels = 0)
+    {
         std::vector<std::pair<int,int>> result;
 
         unsigned int nr_channels = frequencies.get_x_dim();
@@ -228,6 +234,7 @@ namespace idg {
             {
                 end_pos = meters_to_pixels(baseline_length, image_size, frequencies(end_channel));
                 if (std::abs(begin_pos - end_pos) > uv_span_frequency) break;
+                if (max_nr_channels > 0 && (end_channel - begin_channel + 1) > max_nr_channels) break;
             }
             result.push_back({begin_channel, end_channel});
             begin_channel = end_channel;
@@ -259,6 +266,7 @@ namespace idg {
         float w_step = options.w_step;
         int nr_w_layers = options.nr_w_layers;
         int max_nr_timesteps_per_subgrid = options.max_nr_timesteps_per_subgrid;
+        int max_nr_channels_per_subgrid = options.max_nr_channels_per_subgrid;
         bool plan_strict = options.plan_strict;
 
         // Check arguments
@@ -312,7 +320,9 @@ namespace idg {
 
             float baseline_length = std::sqrt(u*u + v*v + w*w);
 
-            std::vector<std::pair<int,int>> channel_groups = make_channel_groups(baseline_length, uv_frequency_span, image_size, frequencies);
+            std::vector<std::pair<int,int>> channel_groups = make_channel_groups(
+                baseline_length, uv_frequency_span, image_size, frequencies,
+                max_nr_channels_per_subgrid);
 
             for(auto &channel_group: channel_groups) {
 

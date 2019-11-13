@@ -14,7 +14,7 @@ namespace idg {
              * Constructor
              */
             Data(
-                std::string layout_file = "LOFAR_etrs"
+                std::string layout_file = "LOFAR_lba.txt"
             );
 
             /*
@@ -118,7 +118,6 @@ namespace idg {
             static constexpr float weight        = 1.0;
             static constexpr float grid_padding  = 1.25;
             static constexpr float fraction_long = 0.05; // fraction of long baselines to use
-            static const int max_nr_stations     = 1000;
     };
 } // namespace idg
 
