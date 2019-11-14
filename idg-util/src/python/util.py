@@ -559,8 +559,9 @@ def plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size, image_siz
     def format_coord(x, y):
         col = int(x+0.5)
         row = int(y+0.5)
-        z = grid[row,col]
-        if z is not numpy.nan:
+        if x > 0 and x < grid_size and \
+           y > 0 and y < grid_size:
+            z = grid[row,col]
             return 'x=%1.1f, y=%1.1f, z=%1.1f' % (x, y, z)
         else:
             return 'x=%1.1f, y=%1.1f' % (x, y)

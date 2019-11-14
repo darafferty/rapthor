@@ -75,13 +75,12 @@ namespace idg{
     {
         // the origin of the grid is at the center, therefore any baseline
         // should fit within half of the diameter of the grid
-        grid_size /= 2;
+        grid_size /= (2 * grid_padding);
         auto max_uv = get_max_uv();
         return grid_size / max_uv * (SPEED_OF_LIGHT / start_frequency);
     }
 
     float Data::compute_max_uv(unsigned long grid_size) {
-        grid_size *= grid_padding;
         float fov_arcsec = fov_deg * 3600;
         float wavelength = SPEED_OF_LIGHT / start_frequency;
         float res_arcsec = fov_arcsec / grid_size;
@@ -168,7 +167,6 @@ namespace idg{
     void Data::limit_nr_stations(
         unsigned int n)
     {
-
         // The selected stations
         std::vector<StationCoordinate> stations_selected;
 
@@ -206,31 +204,20 @@ namespace idg{
         std::vector<std::pair<float, Baseline>> baselines_copy = m_baselines;
 
         // Sort baselines on length
-        std::sort(baselines_copy.begin(), baselines_copy.end(), sort_baseline_ascending);
+        std::sort(baselines_copy.begin(), baselines_copy.end(), sort_baseline_descending);
 
-        // Random number generator
-        std::mt19937 generator(0);
-
-        // Select from the longest baselines
+        // Select a number of long baselines
         unsigned n_long = n * fraction_long;
         for (unsigned i = 0; i < n_long; i++) {
-            auto min = (1.0 - fraction_long) * baselines_copy.size();
-            auto max = baselines_copy.size();
-            std::uniform_int_distribution<> distribution(min, max);
-            auto idx = distribution(generator);
-            baselines_selected.push_back(baselines_copy[idx]);
-            baselines_copy.erase(baselines_copy.begin() + idx);
+            baselines_selected.push_back(baselines_copy[0]);
+            baselines_copy.erase(baselines_copy.begin());
         }
 
         // Select remaining baselines (any length)
-        auto min = 0;
-        auto max = baselines_copy.size();
-        std::uniform_int_distribution<> distribution(min, max);
+        std::random_shuffle(baselines_copy.begin(), baselines_copy.end());
         unsigned n_random = n - n_long;
         for (unsigned i = 0; i < n_random; i++) {
-            auto idx = distribution(generator);
-            baselines_selected.push_back(baselines_copy[idx]);
-            baselines_copy.erase(baselines_copy.begin() + idx);
+            baselines_selected.push_back(baselines_copy[i]);
         }
 
         // Update baselines

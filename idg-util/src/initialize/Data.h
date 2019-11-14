@@ -101,14 +101,14 @@ namespace idg {
              */
             static constexpr float start_frequency     = 150e6; // Mhz
             static constexpr float frequency_increment = 1e6; // Mhz
-            static constexpr float observation_ra      = (10.0 * (M_PI/180.));
-            static constexpr float observation_dec     = (70.0 * (M_PI/180.));
+            static constexpr float observation_ra      = (20.0 * (M_PI/180.));
+            static constexpr float observation_dec     = (42.0 * (M_PI/180.));
             static constexpr float integration_time    = 1.0;
-            static const int observation_year    = 2014;
-            static const int observation_month   = 3;
-            static const int observation_day     = 20;
-            static const int observation_hour    = 1;
-            static const int observation_minute  = 57;
+            static const int observation_year    = 2019;
+            static const int observation_month   = 11;
+            static const int observation_day     = 14;
+            static const int observation_hour    = 9;
+            static const int observation_minute  = 22;
             static const int observation_seconds = 0;
 
             /*
@@ -116,7 +116,7 @@ namespace idg {
              */
             static constexpr float fov_deg       = 8.0;
             static constexpr float weight        = 1.0;
-            static constexpr float grid_padding  = 1.25;
+            static constexpr float grid_padding  = 1.20;
             static constexpr float fraction_long = 0.05; // fraction of long baselines to use
     };
 } // namespace idg
