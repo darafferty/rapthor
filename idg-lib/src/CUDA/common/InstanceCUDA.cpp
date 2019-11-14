@@ -1020,6 +1020,11 @@ namespace idg {
                 return *reuse_memory(bytes, h_visibilities);
             }
 
+            cu::HostMemory& InstanceCUDA::allocate_host_subgrids(size_t bytes)
+            {
+                return *reuse_memory(bytes, h_subgrids);
+            }
+
             cu::HostMemory& InstanceCUDA::allocate_host_uvw(size_t bytes)
             {
                 return *reuse_memory(bytes, h_uvw);
@@ -1076,11 +1081,6 @@ namespace idg {
                 return ptr;
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_subgrids(unsigned int id, size_t bytes)
-            {
-                return *reuse_memory(h_subgrids_, id, bytes);
-            }
-
             cu::DeviceMemory& InstanceCUDA::allocate_device_visibilities(unsigned int id, size_t bytes)
             {
                 return *reuse_memory(d_visibilities_, id, bytes);
@@ -1125,7 +1125,7 @@ namespace idg {
             void InstanceCUDA::free_host_memory() {
                 h_visibilities.reset();
                 h_uvw.reset();
-                h_subgrids_.clear();
+                h_subgrids.reset();
                 h_registered_.clear();
             }
 

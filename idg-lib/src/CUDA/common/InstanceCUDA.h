@@ -173,7 +173,7 @@ namespace idg {
                     cu::DeviceMemory& allocate_device_avg_aterm_correction(size_t bytes);
 
                     // Memory management per stream
-                    cu::HostMemory& allocate_host_subgrids(unsigned int id, size_t bytes);
+                    cu::HostMemory& allocate_host_subgrids(size_t bytes);
                     cu::HostMemory& allocate_host_visibilities(size_t bytes);
                     cu::HostMemory& allocate_host_uvw(size_t bytes);
                     cu::DeviceMemory& allocate_device_visibilities(unsigned int id, size_t bytes);
@@ -191,6 +191,7 @@ namespace idg {
                     // Retrieve pre-allocated buffers (per device)
                     cu::HostMemory& retrieve_host_grid() { return *h_grid; }
                     cu::HostMemory& retrieve_host_visibilities() { return *h_visibilities; }
+                    cu::HostMemory& retrieve_host_subgrids() { return *h_subgrids; }
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
@@ -200,7 +201,6 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
                     // Retrieve pre-allocated buffers (per stream)
-                    cu::HostMemory& retrieve_host_subgrids(unsigned int id) { return *h_subgrids_[id]; }
                     cu::HostMemory& retrieve_host_uvw() { return *h_uvw; }
                     cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
                     cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
@@ -256,9 +256,9 @@ namespace idg {
                     std::unique_ptr<cu::HostMemory>   h_grid;
                     std::unique_ptr<cu::HostMemory>   h_visibilities;
                     std::unique_ptr<cu::HostMemory>   h_uvw;
+                    std::unique_ptr<cu::HostMemory>   h_subgrids;
 
                     // One instance per stream
-                    std::vector<std::unique_ptr<cu::HostMemory>> h_subgrids_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
