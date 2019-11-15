@@ -48,13 +48,16 @@ void kernel_degridder(
         n_[i] = compute_n(-l_[i], m_[i], shift);
     }
 
+    // Load metadata for first subgrid
+    const idg::Metadata &m0 = metadata[0];
+
     // Iterate all subgrids
     #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
 
-        // Load metadata
+        // Load metadata for current subgrid
         const idg::Metadata m   = metadata[s];
-        const int time_offset   = m.time_index;
+        const int time_offset   = m.time_index - m0.time_index;
         const int nr_timesteps  = m.nr_timesteps;
         const int channel_begin = m.channel_begin;
         const int channel_end   = m.channel_end;

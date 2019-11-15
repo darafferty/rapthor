@@ -1,6 +1,8 @@
 #ifndef IDG_HYBRID_GENERIC_OPTIMIZED_H_
 #define IDG_HYBRID_GENERIC_OPTIMIZED_H_
 
+#include <thread>
+
 #include "idg-cpu.h"
 #include "CUDA/common/CUDA.h"
 
@@ -192,6 +194,10 @@ namespace idg {
                     //     kernel_calibrate internally assumes max_nr_terms = 8
                     //     and will process larger values of nr_terms in batches
                     const unsigned int m_calibrate_max_nr_terms = 8;
+
+                    // Thread that is used for asynchronous computations on the host
+                    // (e.g. the adder and splitter kernel)
+                    std::thread m_host_thread;
 
             }; // class GenericOptimized
 

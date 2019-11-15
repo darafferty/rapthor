@@ -15,6 +15,14 @@ using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
+/*
+ * Option to run the subgrid fft on the host,
+ * rather than on the device. This is a workaround
+ * for Tesla V100, where creating a subgrid fft
+ * might hang, depending on the driver used.
+ */
+#define RUN_SUBGRID_FFT_ON_HOST 0
+
 
 namespace idg {
     namespace proxy {
@@ -108,20 +116,11 @@ namespace idg {
                     aterms, aterms_offsets, spheroidal,
                     max_nr_streams);
 
-                // Arguments
-                auto nr_baselines = visibilities.get_z_dim();
-
                 // Host subgrids
-                for (unsigned d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    auto jobsize = m_gridding_state.jobsize[d];
-                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-
-                    for (unsigned t = 0; t < max_nr_streams; t++) {
-                        size_t sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-                        device.allocate_host_subgrids(t, sizeof_subgrids);
-                    }
-                }
+                InstanceCUDA& device = get_device(0);
+                auto nr_subgrids = plan.get_nr_subgrids();
+                auto sizeof_subgrids = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+                device.allocate_host_subgrids(sizeof_subgrids);
 
                 marker.end();
             } // end initialize
@@ -157,7 +156,9 @@ namespace idg {
                 auto nr_channels     = visibilities.get_x_dim();
                 auto nr_stations     = aterms.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
+                auto nr_correlations = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
+                auto nr_subgrids     = plan.get_nr_subgrids();
 
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
@@ -167,8 +168,10 @@ namespace idg {
                 // Page-locked host memory
                 cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
                 cu::HostMemory& h_uvw = device.retrieve_host_uvw();
+                cu::HostMemory& h_subgrids = device.retrieve_host_subgrids();
                 Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
                 Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
+                Array4D<std::complex<float>> subgrids(h_subgrids, nr_subgrids, nr_correlations, subgrid_size, subgrid_size);
                 device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
                 device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
 
@@ -192,12 +195,14 @@ namespace idg {
                     void *metadata_ptr;
                     void *uvw_ptr;
                     void *visibilities_ptr;
+                    void *subgrids_ptr;
                 };
 
                 std::vector<JobData> jobs;
                 for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
                     unsigned int first_bl, last_bl, current_nr_baselines;
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                    unsigned int first_subgrid = plan.get_subgrid_offset(first_bl);
                     if (current_nr_baselines == 0) continue;
                     JobData job;
                     job.current_nr_baselines = current_nr_baselines;
@@ -206,6 +211,7 @@ namespace idg {
                     job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
                     job.uvw_ptr              = uvw2.data(first_bl, 0);
                     job.visibilities_ptr     = visibilities2.data(first_bl, 0, 0);
+                    job.subgrids_ptr         = subgrids.data(first_subgrid, 0, 0, 0);
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
@@ -243,13 +249,13 @@ namespace idg {
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
+                    void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
                     cu::DeviceMemory& d_uvw          = device.retrieve_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
-                    cu::HostMemory&   h_subgrids     = device.retrieve_host_subgrids(local_id);
 
                     // Copy input data for first job to device
                     if (job_id == 0) {
@@ -274,15 +280,20 @@ namespace idg {
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
+                    #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
                     device.launch_fft(d_subgrids, FourierDomainToImageDomain);
 
                     // Launch scaler
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
+                    #endif
                     executestream.record(*gpuFinished[job_id]);
 
                     // Copy input data for next job
                     if (job_id_next < jobs.size()) {
+
+                        // Wait for job to finish before overwriting buffers
+                        htodstream.waitEvent(*gpuFinished[job_id]);
 
                         // Load memory objects
                         cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
@@ -308,25 +319,58 @@ namespace idg {
                     // Copy subgrid to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
                     auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                    dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
+                    dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
                     dtohstream.record(*outputCopied[job_id]);
 
-                    // Wait for subgrid to be copied
-                    outputCopied[job_id]->synchronize();
+                    // Wait for host thread
+                    if (m_host_thread.joinable()) {
+                        m_host_thread.join();
+                    }
 
-                    // Run adder on host
-                    cu::Marker marker("run_adder_wstack");
-                    marker.start();
-                    cpuKernels.run_adder_wstack(
-                        current_nr_subgrids, grid_size, subgrid_size,
-                        metadata_ptr, h_subgrids, grid.data());
-                    marker.end();
+                    void *grid_ptr = grid.data();
+                    InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
+                    cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
+
+                    // Start asynchronous computation on the host
+                    m_host_thread = std::thread([
+                            cpuKernels_ptr, event_ptr,
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr]()
+                    {
+                        // Wait for subgrid to be copied
+                        event_ptr->synchronize();
+
+                        #if RUN_SUBGRID_FFT_ON_HOST
+                        // Run FFT on host
+                        cu::Marker marker_fft("run_subgrid_fft");
+                        marker_fft.start();
+                        cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_INVERSE);
+                        marker_fft.end();
+                        #endif
+
+                        // Run adder on host
+                        cu::Marker marker_adder("run_adder_wstack");
+                        marker_adder.start();
+                        cpuKernels_ptr->run_adder_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr);
+                        marker_adder.end();
+                    });
 
                     // Report performance
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
                     // Update local id
                     local_id = local_id_next;
                 } // end for bl
+
+                // Wait for all reports to be printed
+                dtohstream.synchronize();
+
+                // Wait for host thread
+                if (m_host_thread.joinable()) {
+                    m_host_thread.join();
+                }
 
                 // End performance measurement
                 endStates[device_id] = device.measure();
@@ -434,7 +478,9 @@ namespace idg {
                 auto nr_channels     = visibilities.get_x_dim();
                 auto nr_stations     = aterms.get_z_dim();
                 auto grid_size       = grid.get_x_dim();
+                auto nr_correlations = grid.get_z_dim();
                 auto image_size      = cell_size * grid_size;
+                auto nr_subgrids     = plan.get_nr_subgrids();
 
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
@@ -444,8 +490,10 @@ namespace idg {
                 // Page-locked host memory
                 cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
                 cu::HostMemory& h_uvw = device.retrieve_host_uvw();
+                cu::HostMemory& h_subgrids = device.retrieve_host_subgrids();
                 Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
                 Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
+                Array4D<std::complex<float>> subgrids(h_subgrids, nr_subgrids, nr_correlations, subgrid_size, subgrid_size);
                 device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
                 device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
                 visibilities2.zero();
@@ -470,12 +518,14 @@ namespace idg {
                     void *metadata_ptr;
                     void *uvw_ptr;
                     void *visibilities_ptr;
+                    void *subgrids_ptr;
                 };
 
                 std::vector<JobData> jobs;
                 for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
                     unsigned int first_bl, last_bl, current_nr_baselines;
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                    unsigned int first_subgrid = plan.get_subgrid_offset(first_bl);
                     if (current_nr_baselines == 0) continue;
                     JobData job;
                     job.current_nr_baselines = current_nr_baselines;
@@ -484,6 +534,7 @@ namespace idg {
                     job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
                     job.uvw_ptr              = uvw2.data(first_bl, 0);
                     job.visibilities_ptr     = visibilities2.data(first_bl, 0, 0);
+                    job.subgrids_ptr         = subgrids.data(first_subgrid, 0, 0, 0);
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
@@ -520,6 +571,7 @@ namespace idg {
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
+                    void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
@@ -527,7 +579,6 @@ namespace idg {
                     cu::DeviceMemory& d_uvw          = device.retrieve_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
-                    cu::HostMemory&   h_subgrids     = device.retrieve_host_subgrids(local_id);
 
                     // Copy input data for first job to device
                     if (job_id == 0) {
@@ -537,18 +588,33 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                     }
 
-                    // Run splitter on host
-                    cu::Marker marker("run_splitter_wstack");
-                    marker.start();
+                    // Wait for host thread
+                    if (job_id > 0 && m_host_thread.joinable()) {
+                        m_host_thread.join();
+                    }
 
-                    cpuKernels.run_splitter_wstack(
-                        current_nr_subgrids, grid_size, subgrid_size,
-                        metadata_ptr, h_subgrids, grid.data());
-                    marker.end();
+                    // Create subgrids for first job
+                    if (job_id == 0) {
+                        // Run splitter on host
+                        cu::Marker marker_splitter("run_splitter_wstack");
+                        marker_splitter.start();
+                        cpuKernels.run_splitter_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid.data());
+                        marker_splitter.end();
+
+                        #if RUN_SUBGRID_FFT_ON_HOST
+                        // Run fft on host
+                        cu::Marker marker_fft("run_subgrid_fft");
+                        marker_fft.start();
+                        cpuKernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_FORWARD);
+                        marker_fft.end();
+                        #endif
+                    }
 
                     // Copy subgrids to device
                     auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                    htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
+                    htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
                     htodstream.record(*inputCopied[job_id]);
 
                     // Wait for input to be copied
@@ -559,8 +625,10 @@ namespace idg {
                         executestream.waitEvent(*outputCopied[job_id - 2]);
                     }
 
+                    #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
                     device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+                    #endif
 
                     // Launch degridder kernel
                     device.launch_degridder(
@@ -589,6 +657,44 @@ namespace idg {
                         htodstream.record(*inputCopied[job_id_next]);
                     }
 
+                    // Prepare subgrids for next job
+                    if (job_id_next < jobs.size()) {
+
+                        // Wait for host thread
+                        if (m_host_thread.joinable()) {
+                            m_host_thread.join();
+                        }
+
+                        void *grid_ptr = grid.data();
+                        InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
+                        cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
+                        auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
+                        void *subgrids_ptr_next = jobs[job_id_next].subgrids_ptr;
+
+                        // Start asynchronous computation on the host
+                        m_host_thread = std::thread([
+                                cpuKernels_ptr, event_ptr,
+                                nr_subgrids_next, grid_size, subgrid_size,
+                                metadata_ptr, subgrids_ptr_next, grid_ptr]()
+                        {
+                            // Run splitter on host
+                            cu::Marker marker_splitter("run_splitter_wstack");
+                            marker_splitter.start();
+                            cpuKernels_ptr->run_splitter_wstack(
+                                nr_subgrids_next, grid_size, subgrid_size,
+                                metadata_ptr, subgrids_ptr_next, grid_ptr);
+                            marker_splitter.end();
+
+                            #if RUN_SUBGRID_FFT_ON_HOST
+                            // Run fft on host
+                            cu::Marker marker_fft("run_subgrid_fft");
+                            marker_fft.start();
+                            cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids_next, subgrids_ptr_next, CUFFT_FORWARD);
+                            marker_fft.end();
+                            #endif
+                        });
+                    }
+
                     // Copy visibilities to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
@@ -596,13 +702,17 @@ namespace idg {
                     dtohstream.record(*outputCopied[job_id]);
 
                     // Wait for degridder to finish
-                    outputCopied[job_id]->synchronize();
+                    gpuFinished[job_id]->synchronize();
 
                     // Report performance
-                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
                     // Update local id
                     local_id = local_id_next;
                 } // end for bl
+
+                // Wait for all visibilities to be copied
+                dtohstream.synchronize();
 
                 // End performance measurement
                 endStates[device_id] = device.measure();
@@ -617,7 +727,7 @@ namespace idg {
                 auto total_nr_timesteps    = plan.get_nr_timesteps();
                 auto total_nr_visibilities = plan.get_nr_visibilities();
                 report.print_total(total_nr_timesteps, total_nr_subgrids);
-                report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+                report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
             } // end run_degridding
 
             void GenericOptimized::do_degridding(

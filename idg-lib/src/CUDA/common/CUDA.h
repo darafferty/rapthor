@@ -38,8 +38,7 @@ namespace idg {
                         const unsigned int nr_channels,
                         const unsigned int subgrid_size,
                         const unsigned int nr_streams,
-                        const unsigned int grid_size = 0,
-                        const float fraction_reserved = 0.15);
+                        const unsigned int grid_size = 0);
 
                     void initialize(
                         const Plan& plan,
@@ -73,6 +72,13 @@ namespace idg {
                         std::vector<int> jobsize;
                         std::vector<int> max_nr_subgrids;
                     } m_gridding_state;
+
+                    // Fraction of device memory reserved
+                    // for e.g. cuFFT. This memory is not taken
+                    // into account when computing  in compute_jobsize.
+                    float m_fraction_reserved = 0.15;
+
+                    void set_fraction_reserved(float f) { m_fraction_reserved = f; }
 
                 private:
                     ProxyInfo &mInfo;

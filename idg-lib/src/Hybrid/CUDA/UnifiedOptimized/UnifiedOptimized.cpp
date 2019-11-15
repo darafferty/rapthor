@@ -34,6 +34,9 @@ namespace idg {
                 cpuProxy = new idg::proxy::cpu::Optimized();
                 gpuProxy = new idg::proxy::cuda::Generic();
                 gpuProxy->enable_unified_memory();
+
+                // Increase the fraction of reserved memory
+                set_fraction_reserved(0.4);
             }
 
             // Destructor

@@ -34,6 +34,9 @@ namespace idg {
 
                 // Initialize host PowerSensor
                 hostPowerSensor = get_power_sensor(sensor_host);
+
+                // Increase the fraction of reserved memory
+                set_fraction_reserved(0.4);
             }
 
             // Destructor
