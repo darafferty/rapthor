@@ -20,10 +20,13 @@ namespace idg {
 
     ostream& operator<<(ostream &out, Metadata &m) {
         out << "["
-            << "time_index = "<< m.time_index << ",\n"
-            << "nr_timesteps = "<< m.nr_timesteps << ",\n"
-            << "baseline = "<< m.baseline << ",\n"
-            << "coordinate = "<< m.coordinate
+            << "time_index = "    << m.time_index << ", "
+            << "nr_timesteps = "  << m.nr_timesteps << ", "
+            << "channel_begin = " << m.channel_begin << ", "
+            << "channel_end = "   << m.channel_end << ", "
+            << "baseline = "      << m.baseline << ", "
+            << "coordinate = "    << m.coordinate << ", "
+            << "nr_aterms = "     << m.nr_aterms
             << "]";
         return out;
     }
