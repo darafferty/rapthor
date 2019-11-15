@@ -319,24 +319,40 @@ namespace idg {
                     dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
                     dtohstream.record(*outputCopied[job_id]);
 
-                    // Wait for subgrid to be copied
-                    outputCopied[job_id]->synchronize();
+                    // Wait for host thread
+                    if (m_host_thread.joinable()) {
+                        m_host_thread.join();
+                    }
 
-                    #if RUN_SUBGRID_FFT_ON_HOST
-                    // Run FFT on host
-                    cu::Marker marker_fft("run_subgrid_fft");
-                    marker_fft.start();
-                    cpuKernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_INVERSE);
-                    marker_fft.end();
-                    #endif
+                    void *grid_ptr = grid.data();
+                    InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
+                    cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
 
-                    // Run adder on host
-                    cu::Marker marker_adder("run_adder_wstack");
-                    marker_adder.start();
-                    cpuKernels.run_adder_wstack(
-                        current_nr_subgrids, grid_size, subgrid_size,
-                        metadata_ptr, subgrids_ptr, grid.data());
-                    marker_adder.end();
+                    // Start asynchronous computation on the host
+                    m_host_thread = std::thread([
+                            cpuKernels_ptr, event_ptr,
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr]()
+                    {
+                        // Wait for subgrid to be copied
+                        event_ptr->synchronize();
+
+                        #if RUN_SUBGRID_FFT_ON_HOST
+                        // Run FFT on host
+                        cu::Marker marker_fft("run_subgrid_fft");
+                        marker_fft.start();
+                        cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_INVERSE);
+                        marker_fft.end();
+                        #endif
+
+                        // Run adder on host
+                        cu::Marker marker_adder("run_adder_wstack");
+                        marker_adder.start();
+                        cpuKernels_ptr->run_adder_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr);
+                        marker_adder.end();
+                    });
 
                     // Report performance
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
@@ -347,6 +363,11 @@ namespace idg {
 
                 // Wait for all reports to be printed
                 dtohstream.synchronize();
+
+                // Wait for host thread
+                if (m_host_thread.joinable()) {
+                    m_host_thread.join();
+                }
 
                 // End performance measurement
                 endStates[device_id] = device.measure();
