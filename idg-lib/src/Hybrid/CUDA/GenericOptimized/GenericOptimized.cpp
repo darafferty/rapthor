@@ -292,6 +292,9 @@ namespace idg {
                     // Copy input data for next job
                     if (job_id_next < jobs.size()) {
 
+                        // Wait for job to finish before overwriting buffers
+                        htodstream.waitEvent(*gpuFinished[job_id]);
+
                         // Load memory objects
                         cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
                         cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
