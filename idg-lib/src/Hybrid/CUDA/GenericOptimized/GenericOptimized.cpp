@@ -585,21 +585,29 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                     }
 
-                    // Run splitter on host
-                    cu::Marker marker_splitter("run_splitter_wstack");
-                    marker_splitter.start();
-                    cpuKernels.run_splitter_wstack(
-                        current_nr_subgrids, grid_size, subgrid_size,
-                        metadata_ptr, subgrids_ptr, grid.data());
-                    marker_splitter.end();
+                    // Wait for host thread
+                    if (job_id > 0 && m_host_thread.joinable()) {
+                        m_host_thread.join();
+                    }
 
-                    #if RUN_SUBGRID_FFT_ON_HOST
-                    // Run fft on host
-                    cu::Marker marker_fft("run_subgrid_fft");
-                    marker_fft.start();
-                    cpuKernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_FORWARD);
-                    marker_fft.end();
-                    #endif
+                    // Create subgrids for first job
+                    if (job_id == 0) {
+                        // Run splitter on host
+                        cu::Marker marker_splitter("run_splitter_wstack");
+                        marker_splitter.start();
+                        cpuKernels.run_splitter_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid.data());
+                        marker_splitter.end();
+
+                        #if RUN_SUBGRID_FFT_ON_HOST
+                        // Run fft on host
+                        cu::Marker marker_fft("run_subgrid_fft");
+                        marker_fft.start();
+                        cpuKernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_FORWARD);
+                        marker_fft.end();
+                        #endif
+                    }
 
                     // Copy subgrids to device
                     auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
@@ -644,6 +652,44 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
                         htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
                         htodstream.record(*inputCopied[job_id_next]);
+                    }
+
+                    // Prepare subgrids for next job
+                    if (job_id_next < jobs.size()) {
+
+                        // Wait for host thread
+                        if (m_host_thread.joinable()) {
+                            m_host_thread.join();
+                        }
+
+                        void *grid_ptr = grid.data();
+                        InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
+                        cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
+                        auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
+                        void *subgrids_ptr_next = jobs[job_id_next].subgrids_ptr;
+
+                        // Start asynchronous computation on the host
+                        m_host_thread = std::thread([
+                                cpuKernels_ptr, event_ptr,
+                                nr_subgrids_next, grid_size, subgrid_size,
+                                metadata_ptr, subgrids_ptr_next, grid_ptr]()
+                        {
+                            // Run splitter on host
+                            cu::Marker marker_splitter("run_splitter_wstack");
+                            marker_splitter.start();
+                            cpuKernels_ptr->run_splitter_wstack(
+                                nr_subgrids_next, grid_size, subgrid_size,
+                                metadata_ptr, subgrids_ptr_next, grid_ptr);
+                            marker_splitter.end();
+
+                            #if RUN_SUBGRID_FFT_ON_HOST
+                            // Run fft on host
+                            cu::Marker marker_fft("run_subgrid_fft");
+                            marker_fft.start();
+                            cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids_next, subgrids_ptr_next, CUFFT_FORWARD);
+                            marker_fft.end();
+                            #endif
+                        });
                     }
 
                     // Copy visibilities to host
