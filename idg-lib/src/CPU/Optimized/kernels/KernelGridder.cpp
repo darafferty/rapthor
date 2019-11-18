@@ -96,9 +96,6 @@ void kernel_gridder(
         n_[i] = compute_n(-l_[i], m_[i], shift);
     }
 
-    // Load metadata for first subgrid
-    const idg::Metadata &m0 = metadata[0];
-
     // Iterate all subgrids
     #pragma omp parallel for schedule(guided)
     for (int s = 0; s < nr_subgrids; s++) {
@@ -111,9 +108,9 @@ void kernel_gridder(
         idg::float2 subgrid_local[NR_POLARIZATIONS][subgrid_size][subgrid_size];
         memset(subgrid_local, 0, NR_POLARIZATIONS*nr_pixels*sizeof(idg::float2));
 
-        // Load metadata for current subgrid
+        // Load metadata
         const idg::Metadata m  = metadata[s];
-        const int time_offset_global = m.time_index - m0.time_index;
+        const int time_offset_global = m.time_index;
         const int nr_timesteps  = m.nr_timesteps;
         const int channel_begin = m.channel_begin;
         const int channel_end   = m.channel_end;
