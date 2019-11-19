@@ -405,7 +405,10 @@ namespace idg {
                 std::cout << "GenericOptimized::" << __func__ << std::endl;
                 #endif
 
+                #if defined(DEBUG)
+                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 std::clog << "### Initialize gridding" << std::endl;
+                #endif
                 initialize(
                     plan,
                     w_step,
@@ -422,7 +425,9 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
+                #if defined(DEBUG)
                 std::clog << "### Run gridding" << std::endl;
+                #endif
                 run_gridding(
                     plan,
                     w_step,
@@ -439,7 +444,9 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
+                #if defined(DEBUG)
                 std::clog << "### Finish gridding" << std::endl;
+                #endif
                 finish_gridding();
             } // end do_gridding
 
@@ -748,9 +755,8 @@ namespace idg {
             {
                 #if defined(DEBUG)
                 std::cout << "GenericOptimized::" << __func__ << std::endl;
-                #endif
-
                 std::clog << "### Initialize degridding" << std::endl;
+                #endif
                 initialize(
                     plan,
                     w_step,
@@ -767,7 +773,9 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
+                #if defined(DEBUG)
                 std::clog << "### Run degridding" << std::endl;
+                #endif
                 run_degridding(
                     plan,
                     w_step,
@@ -784,7 +792,9 @@ namespace idg {
                     aterms_offsets,
                     spheroidal);
 
+                #if defined(DEBUG)
                 std::clog << "### Finish degridding" << std::endl;
+                #endif
                 finish_degridding();
             } // end do_degridding
 
