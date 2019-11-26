@@ -674,13 +674,12 @@ namespace idg {
 
                         void *grid_ptr = grid.data();
                         InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
-                        cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
                         auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
                         void *subgrids_ptr_next = jobs[job_id_next].subgrids_ptr;
 
                         // Start asynchronous computation on the host
                         m_host_thread = std::thread([
-                                cpuKernels_ptr, event_ptr,
+                                cpuKernels_ptr,
                                 nr_subgrids_next, grid_size, subgrid_size,
                                 metadata_ptr, subgrids_ptr_next, grid_ptr]()
                         {
