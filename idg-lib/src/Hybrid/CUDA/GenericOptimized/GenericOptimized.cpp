@@ -661,7 +661,6 @@ namespace idg {
                         auto sizeof_metadata_next    = auxiliary::sizeof_metadata(nr_subgrids_next);
                         htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
                         htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
-                        htodstream.record(*inputCopied[job_id_next]);
                     }
 
                     // Prepare subgrids for next job
@@ -674,22 +673,22 @@ namespace idg {
 
                         void *grid_ptr = grid.data();
                         InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
-                        cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
                         auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr_next = jobs[job_id_next].metadata_ptr;
                         void *subgrids_ptr_next = jobs[job_id_next].subgrids_ptr;
 
                         // Start asynchronous computation on the host
                         m_host_thread = std::thread([
-                                cpuKernels_ptr, event_ptr,
+                                cpuKernels_ptr,
                                 nr_subgrids_next, grid_size, subgrid_size,
-                                metadata_ptr, subgrids_ptr_next, grid_ptr]()
+                                metadata_ptr_next, subgrids_ptr_next, grid_ptr]()
                         {
                             // Run splitter on host
                             cu::Marker marker_splitter("run_splitter_wstack");
                             marker_splitter.start();
                             cpuKernels_ptr->run_splitter_wstack(
                                 nr_subgrids_next, grid_size, subgrid_size,
-                                metadata_ptr, subgrids_ptr_next, grid_ptr);
+                                metadata_ptr_next, subgrids_ptr_next, grid_ptr);
                             marker_splitter.end();
 
                             #if RUN_SUBGRID_FFT_ON_HOST
