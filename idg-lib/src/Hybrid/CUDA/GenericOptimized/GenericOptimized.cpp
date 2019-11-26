@@ -661,7 +661,6 @@ namespace idg {
                         auto sizeof_metadata_next    = auxiliary::sizeof_metadata(nr_subgrids_next);
                         htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
                         htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
-                        htodstream.record(*inputCopied[job_id_next]);
                     }
 
                     // Prepare subgrids for next job
