@@ -97,7 +97,12 @@ void kernel_degridder(
             size_t aterm_idx_current = aterms_indices[time_offset + time];
 
             // Determine whether aterm has changed
-            bool aterm_changed = aterm_idx_previous != aterm_idx_current;
+            #if defined(__PPC__) // workaround compiler bug
+            unsigned int aterm_changed;
+            #else
+            bool aterm_changed;
+            #endif
+            aterm_changed = aterm_idx_previous != aterm_idx_current;
 
             float phase_index[nr_pixels];
 
