@@ -814,8 +814,6 @@ __m128 vec_dotproduct4sp (__m128 left, __m128 right, const intlit8 multiply_and_
   #ifdef __ibmxl__
     #pragma option_override (vec_dotproduct4sp, "opt(level,0)")
   #endif
-  __m128_union left_union; left_union.as_m128 = left;
-  __m128_union right_union; right_union.as_m128 = right;
   __m128_all_union result_union;
   static const vector unsigned char all64s =
   { 64,64,64,64, 64,64,64,64, 64,64,64,64, 64,64,64,64 };

@@ -613,10 +613,10 @@ VECLIB_INLINE __m128i vec_converttruncating4spto4sw (__m128 from)
 /* If VECLIB_ROUND_USING_FPSCR_RM is not defined (default), rounds to nearest with ties away from zero (faster and usually ok). */
 VECLIB_INLINE __m128i vec_convert4spto4sw (__m128 from)
 {
-  __m128_union from_union;
-  from_union.as_m128 = from;
   __m128i_union result;
   #ifdef VECLIB_ROUND_USING_FPSCR_RM
+    __m128_union from_union;
+    from_union.as_m128 = from;
     /* Round using current FPSCR rounding mode */
     result.as_int[0] = (int) from_union.as_float[0];
     result.as_int[1] = (int) from_union.as_float[1];
