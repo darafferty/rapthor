@@ -70,6 +70,7 @@ __m256 _mm256_gather_ps(float const* base_addr, __m256i vindex)
 }
 #endif
 
+#if defined(__AVX__)
 inline void compute_sincos_avx(
     unsigned*                 offset,
     const unsigned            n,
@@ -77,7 +78,6 @@ inline void compute_sincos_avx(
     float*       __restrict__ sin,
     float*       __restrict__ cos)
 {
-#if defined(__AVX__)
     const unsigned vector_length = 8;
 
 	__m256 two_pi_f      = _mm256_set1_ps(TWO_PI);
@@ -115,8 +115,8 @@ inline void compute_sincos_avx(
     }
 
     *offset += vector_length * ((n - *offset) / vector_length);
-#endif
 }
+#endif
 
 inline void compute_sincos_scalar(
     unsigned*                 offset,
@@ -160,6 +160,11 @@ inline void compute_sincos(
     float*       __restrict__ cos)
 {
     unsigned offset = 0;
+#if defined(__AVX__)
     compute_sincos_avx(&offset, n, x, sin, cos);
+#endif
+#if defined(__PPC__)
+    compute_sincos_altivec(&offset, n, x, sin, cos);
+#endif
     compute_sincos_scalar(&offset, n, x, sin, cos);
 }
