@@ -10,6 +10,7 @@
 #include "Index.h"
 #include "Math.h"
 
+#if not defined(__PPC__)
 inline size_t index_phasors(
     unsigned int nr_timesteps,
     unsigned int nr_channels,
@@ -405,3 +406,4 @@ void kernel_phasor(
 } // end kernel_phasor
 
 } // end extern "C"
+#endif

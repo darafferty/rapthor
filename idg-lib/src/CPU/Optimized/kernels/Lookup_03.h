@@ -2,6 +2,11 @@
 #include <immintrin.h>
 #endif
 
+#if defined(__PPC__)
+#include "powerveclib/powerveclib.h"
+#endif
+
+
 // Floating-point PI values
 #define PI     float(M_PI)
 #define TWO_PI float(2 * M_PI)
@@ -25,7 +30,7 @@ inline void initialize_lookup()
     }
 }
 
-#if not defined(__AVX2__)
+#if defined(__AVX__) && not defined(__AVX2__)
 __m256i _mm256_and_si256(__m256i a, __m256i b)
 {
 	__m128i ah = _mm256_extractf128_si256(a, 0);
@@ -57,6 +62,7 @@ __m256i _mm256_add_epi32(__m256i a, __m256i b)
 }
 #endif
 
+#if defined(__AVX__)
 __m256 _mm256_gather_ps(float const* base_addr, __m256i vindex)
 {
 	float dst[8];
@@ -67,6 +73,7 @@ __m256 _mm256_gather_ps(float const* base_addr, __m256i vindex)
 	}
 	return _mm256_load_ps(dst);
 }
+#endif
 
 inline void compute_sincos_avx(
     unsigned*                 offset,
@@ -116,6 +123,36 @@ inline void compute_sincos_avx(
 #endif
 }
 
+inline void compute_sincos_altivec(
+    unsigned*                 offset,
+    const unsigned            n,
+    const float* __restrict__ x,
+    float*       __restrict__ sin,
+    float*       __restrict__ cos)
+{
+#if defined(__PPC__)
+    const unsigned vector_length = 4;
+
+    for (unsigned i = *offset; i < (n / vector_length) * vector_length; i += vector_length) {
+        __m128  f0 = vec_load4sp(&x[i]);              // input
+        __m128  f1 = vec_splat4sp(TWO_PI_INT/TWO_PI); // compute scale
+        __m128  f2 = vec_multiply4sp(f0, f1);         // apply scale
+        __m128i u0 = vec_splat4sw(HLF_PI_INT);        // constant 0.5 * pi
+        __m128i u1 = vec_splat4sw(TWO_PI_INT - 1);    // mask 2 * pi
+        __m128i u2 = vec_convert4spto4sw(f2);         // round float to int
+        __m128i u3 = vec_add(u2, u0);                 // add 0.5 * pi
+        __m128i u4 = vec_bitand1q(u1, u3);            // apply mask of 2 * pi, second index
+        __m128i u5 = vec_bitand1q(u1, u2);            // apply mask of 2 * pi, first index
+        __m128  f3 = vec_gather4sp(lookup, u4);       // perform lookup of real
+        __m128  f4 = vec_gather4sp(lookup, u5);       // perform lookup of imag
+        vec_store4sp(&cos[i], f3);
+        vec_store4sp(&sin[i], f4);
+    }
+
+    *offset += vector_length * ((n - *offset) / vector_length);
+#endif
+}
+
 inline void compute_sincos_scalar(
     unsigned*                 offset,
     const unsigned            n,
@@ -158,6 +195,8 @@ inline void compute_sincos(
     float*       __restrict__ cos)
 {
     unsigned offset = 0;
+
+    compute_sincos_altivec(&offset, n, x, sin, cos);
     compute_sincos_avx(&offset, n, x, sin, cos);
     compute_sincos_scalar(&offset, n, x, sin, cos);
 }

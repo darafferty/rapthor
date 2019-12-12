@@ -261,6 +261,7 @@ void run()
     idg::Plan::Options options;
     options.plan_strict = true;
     options.simulate_spectral_line = simulate_spectral_line;
+    options.max_nr_timesteps_per_subgrid = 128;
     options.max_nr_channels_per_subgrid = 8;
     Queue<idg::Plan*> plans;
     omp_set_nested(true);

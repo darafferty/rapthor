@@ -138,7 +138,12 @@ void kernel_gridder(
             int aterm_idx_current = aterms_indices[time_current];
 
             // Determine whether aterm has changed
-            bool aterm_changed = aterm_idx_previous != aterm_idx_current;
+            #if defined(__PPC__) // workaround compiler bug
+            unsigned int aterm_changed;
+            #else
+            bool aterm_changed;
+            #endif
+            aterm_changed = aterm_idx_previous != aterm_idx_current;
 
             // Determine number of timesteps to process
             current_nr_timesteps = 0;
