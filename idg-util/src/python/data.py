@@ -11,6 +11,7 @@ class Data():
     def __init__(
         self,
         layout_file):
+        lib.DATA_init.restype = ctypes.c_void_p
         lib.DATA_init.argtypes = [
             ctypes.c_char_p]
         self.obj = lib.DATA_init(
@@ -130,5 +131,4 @@ class Data():
         self):
         lib.DATA_print_info.argtypes = [
             ctypes.c_void_p]
-        lib.DATA_print_info(
-                self.obj)
+        lib.DATA_print_info(self.obj)
