@@ -28,6 +28,7 @@ class Plan(object):
         baselines_two                = 2
         aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
 
+        lib.Plan_init.restype = ctypes.c_void_p
         self.obj = lib.Plan_init(
             ctypes.c_int(kernel_size),
             ctypes.c_int(subgrid_size),

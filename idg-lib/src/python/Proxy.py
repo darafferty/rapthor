@@ -7,6 +7,7 @@ class Proxy(object):
 
     def __del__(self):
         """Destroy"""
+        self.lib.Proxy_destroy.argtypes = ctypes.c_void_p
         self.lib.Proxy_destroy(self.obj)
 
     def gridding(
@@ -76,8 +77,44 @@ class Proxy(object):
         spheroidal_width             = spheroidal.shape[1]
 
         # call C function to do the work
+        self.lib.Proxy_gridding.argtypes = [
+            ctypes.c_void_p, # proxy
+            ctypes.c_float,  # w_step
+            ctypes.c_void_p, # shift
+            ctypes.c_float,  # cell_size
+            ctypes.c_int,    # kernel_size
+            ctypes.c_int,    # subgrid_size
+            ctypes.c_void_p, # frequencies
+            ctypes.c_int,
+            ctypes.c_void_p, # visibilities
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # uvw
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # baselines
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # grid
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # aterms
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # aterms_offsets
+            ctypes.c_int,
+            ctypes.c_void_p, # spheroidal
+            ctypes.c_int,
+            ctypes.c_int]
         self.lib.Proxy_gridding(
-            self.obj,
+            ctypes.c_void_p(self.obj),
             ctypes.c_float(w_step),
             shift.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_float(cell_size),
@@ -180,6 +217,42 @@ class Proxy(object):
         spheroidal_width             = spheroidal.shape[1]
 
         # call C function to do the work
+        self.lib.Proxy_degridding.argtypes = [
+            ctypes.c_void_p, # proxy
+            ctypes.c_float,  # w_step
+            ctypes.c_void_p, # shift
+            ctypes.c_float,  # cell_size
+            ctypes.c_int,    # kernel_size
+            ctypes.c_int,    # subgrid_size
+            ctypes.c_void_p, # frequencies
+            ctypes.c_int,
+            ctypes.c_void_p, # visibilities
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # uvw
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # baselines
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # grid
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # aterms
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_void_p, # aterms_offsets
+            ctypes.c_int,
+            ctypes.c_void_p, # spheroidal
+            ctypes.c_int,
+            ctypes.c_int]
         self.lib.Proxy_degridding(
             self.obj,
             ctypes.c_float(w_step),
@@ -507,6 +580,12 @@ class Proxy(object):
         width           = grid.shape[2]
 
         # call C function to do the work
+        self.lib.Proxy_transform.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int]
         self.lib.Proxy_transform(
             self.obj,
             ctypes.c_int(direction),
@@ -521,7 +600,11 @@ class Proxy(object):
         grid_size):
 
         # Get pointer to grid data
-        self.lib.Proxy_get_grid.restype = ctypes.c_voidp
+        self.lib.Proxy_get_grid.restype = ctypes.c_void_p
+        self.lib.Proxy_get_grid.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int]
         ptr = self.lib.Proxy_get_grid(
             self.obj,
             ctypes.c_int(nr_correlations),
