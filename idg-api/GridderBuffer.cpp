@@ -176,7 +176,7 @@ namespace api {
                     unsigned int antenna2 = (*station_pairs)[bl][1];
 
                     // Check whether stationPair is initialized
-                    if (antenna1 > m_nrStations || antenna2 > m_nrStations) {
+                    if (antenna1 >= nr_antennas || antenna2 >= nr_antennas) {
                         continue;
                     }
 
@@ -226,11 +226,6 @@ namespace api {
                                 float kp2_imag =  kp[4*jj+p].imag();
                                 update_real += weights[p] * (kp1_real * kp2_real - kp1_imag * kp2_imag);
                                 update_imag += weights[p] * (kp1_real * kp2_imag + kp1_imag * kp2_real);
-                            }
-
-                            if (std::isnan(update_real) || std::isnan(update_imag)) {
-                                std::cerr << "NaN detected in computation of average beam!" << std::endl;
-                                std::raise(SIGFPE);
                             }
 
                             // Add kronecker product to sum

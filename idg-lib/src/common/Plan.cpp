@@ -296,7 +296,12 @@ namespace idg {
         #pragma omp parallel for
         for (unsigned bl = 0; bl < nr_baselines; bl++) {
             // Get baseline
-            Baseline baseline = (Baseline) {baselines(bl).first, baselines(bl).second};
+            unsigned int antenna1 = baselines(bl).first;
+            unsigned int antenna2 = baselines(bl).second;
+            Baseline baseline = (Baseline) {antenna1, antenna2};
+
+            // If the baseline is not valid continue with next baseline
+            if (antenna1 == antenna2) continue;
 
             // Increment time_offset0 until a valid value is found
             unsigned int time_offset0 = 0;

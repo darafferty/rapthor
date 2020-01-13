@@ -127,6 +127,25 @@ namespace idg {
         return (std::isnan(uvw.u) || std::isnan(uvw.v) || std::isnan(uvw.w));
     }
 
+    template<typename T>
+    inline bool isfinite(T& value) {
+        return (std::isfinite(value));
+    }
+
+    template<typename T>
+    inline bool isfinite(std::complex<T>& value) {
+        return (std::isfinite(value.real()) && std::isfinite(value.imag()));
+    }
+
+    template<typename T>
+    inline bool isfinite(Matrix2x2<std::complex<T>>& m) {
+        return (isfinite(m.xx) && isfinite(m.xy) && isfinite(m.yx) && isfinite(m.yy));
+    }
+
+    template<typename T>
+    inline bool isfinite(UVW<T>& uvw) {
+        return (std::isfinite(uvw.u) && std::isfinite(uvw.v) && std::isfinite(uvw.w));
+    }
 
     /* Classes */
     template<class T>
@@ -680,6 +699,21 @@ namespace idg {
                     }
                 }
                 return contains_nan;
+            }
+
+            bool contains_inf() {
+                volatile bool contains_inf = false;
+                #pragma omp parallel for
+                for (size_t i = 0; i < size(); i++) {
+                    if (contains_inf) {
+                        continue;
+                    }
+                    T value = m_buffer.get()[i];
+                    if (!isfinite(value)) {
+                        contains_inf = true;
+                    }
+                }
+                return contains_inf;
             }
 
             // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
