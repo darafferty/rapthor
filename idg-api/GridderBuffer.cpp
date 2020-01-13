@@ -176,7 +176,7 @@ namespace api {
                     unsigned int antenna2 = (*station_pairs)[bl][1];
 
                     // Check whether stationPair is initialized
-                    if (antenna1 > m_nrStations || antenna2 > m_nrStations) {
+                    if (antenna1 >= nr_antennas || antenna2 >= nr_antennas) {
                         continue;
                     }
 
