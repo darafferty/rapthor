@@ -228,11 +228,6 @@ namespace api {
                                 update_imag += weights[p] * (kp1_real * kp2_imag + kp1_imag * kp2_real);
                             }
 
-                            if (std::isnan(update_real) || std::isnan(update_imag)) {
-                                std::cerr << "NaN detected in computation of average beam!" << std::endl;
-                                std::raise(SIGFPE);
-                            }
-
                             // Add kronecker product to sum
                             sum[ii][jj] += std::complex<float>(update_real, update_imag);
                         }
