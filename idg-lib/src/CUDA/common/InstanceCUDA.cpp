@@ -686,6 +686,11 @@ namespace idg {
                 unsigned stride = 1;
                 unsigned dist = size * size;
 
+                // Force plan (re-)creation if subgrid size changed
+                if (size != fft_subgrid_size) {
+                    fft_subgrid_batch = 0;
+                }
+
                 while (fft_subgrid_batch == 0) {
                     try {
                         // Plan bulk fft
