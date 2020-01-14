@@ -305,6 +305,7 @@ namespace api {
         }
         if (m_grid->contains_nan()) {
             std::cerr << "NaN detected in m_grid!" << std::endl;
+            BufferSetImpl::write_grid(*m_grid);
             std::raise(SIGFPE);
         }
         if (m_aterms_array.contains_nan()) {

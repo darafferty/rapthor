@@ -104,7 +104,7 @@ namespace api {
         friend DegridderBufferImpl;
 
         // debug
-        void write_grid(idg::Grid& grid) const;
+        static void write_grid(idg::Grid& grid);
     };
 
 } // namespace api
