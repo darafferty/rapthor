@@ -286,16 +286,16 @@ namespace idg {
                     int tile_size_grid;
 
                     // Grid FFT
-                    int fft_grid_size;
+                    int fft_grid_size = 0;
                     std::unique_ptr<cufft::C2C_2D> fft_plan_grid;
 
                     // Subgrid FFT
-                    const unsigned fft_bulk_default = 1024;
-                    unsigned fft_bulk  = fft_bulk_default;
-                    unsigned fft_batch = 0;
-                    unsigned fft_size  = 0;
-                    std::unique_ptr<cufft::C2C_2D> fft_plan_bulk;
-                    std::unique_ptr<cufft::C2C_2D> fft_plan_misc;
+                    const unsigned fft_subgrid_bulk_default = 1024;
+                    unsigned fft_subgrid_bulk  = fft_subgrid_bulk_default;
+                    unsigned fft_subgrid_batch = 0;
+                    unsigned fft_subgrid_size  = 0;
+                    std::unique_ptr<cufft::C2C_2D> fft_subbgrid_plan_bulk;
+                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_misc;
 
                 private:
                     // Memory allocation/reuse methods

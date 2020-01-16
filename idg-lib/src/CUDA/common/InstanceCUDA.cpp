@@ -677,8 +677,8 @@ namespace idg {
             {
                 #if USE_CUSTOM_FFT
                 if (size == 32) {
-                    fft_size  = size;
-                    fft_batch = batch;
+                    fft_subgrid_size  = size;
+                    fft_subgrid_batch = batch;
                     return;
                 }
                 #endif
@@ -686,33 +686,38 @@ namespace idg {
                 unsigned stride = 1;
                 unsigned dist = size * size;
 
-                while (fft_batch == 0) {
+                // Force plan (re-)creation if subgrid size changed
+                if (size != fft_subgrid_size) {
+                    fft_subgrid_batch = 0;
+                }
+
+                while (fft_subgrid_batch == 0) {
                     try {
                         // Plan bulk fft
-                        if (batch >= fft_bulk) {
-                            fft_plan_bulk.reset(new cufft::C2C_2D(
+                        if (batch >= fft_subgrid_bulk) {
+                            fft_subbgrid_plan_bulk.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
-                                fft_bulk * NR_CORRELATIONS));
+                                fft_subgrid_bulk * NR_CORRELATIONS));
                         }
 
                         // Plan remainder fft
-                        int fft_remainder_size = batch % fft_bulk;
+                        int fft_remainder_size = batch % fft_subgrid_bulk;
 
                         if (fft_remainder_size) {
-                            fft_plan_misc.reset(new cufft::C2C_2D(
+                            fft_subgrid_plan_misc.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
                                 fft_remainder_size * NR_CORRELATIONS));
                         }
 
                         // Store parameters
-                        fft_size = size;
-                        fft_batch = batch;
+                        fft_subgrid_size = size;
+                        fft_subgrid_batch = batch;
 
                     } catch (cufft::Error& e) {
                         // bulk might be too large, try again using half the bulk size
-                        fft_bulk /= 2;
-                        if (fft_bulk > 0) {
-                            std::clog << __func__ << ": reducing subgrid-fft bulk size to: " << fft_bulk << std::endl;
+                        fft_subgrid_bulk /= 2;
+                        if (fft_subgrid_bulk > 0) {
+                            std::clog << __func__ << ": reducing subgrid-fft bulk size to: " << fft_subgrid_bulk << std::endl;
                         } else {
                             std::cerr << __func__ << ": could not plan subgrid-fft." << std::endl;
                             throw e;
@@ -729,17 +734,17 @@ namespace idg {
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
                 #if USE_CUSTOM_FFT
-                if (fft_size == 32) {
+                if (fft_subgrid_size == 32) {
                     const void *parameters[] = { &data_ptr, &data_ptr, &sign};
                     dim3 block(128);
-                    dim3 grid(NR_CORRELATIONS * fft_batch);
+                    dim3 grid(NR_CORRELATIONS * fft_subgrid_batch);
                     executestream->launchKernel(*function_fft, grid, block, 0, parameters);
                     return;
                 }
                 #endif
 
-                if (fft_plan_bulk) {
-                    fft_plan_bulk->setStream(*executestream);
+                if (fft_subbgrid_plan_bulk) {
+                    fft_subbgrid_plan_bulk->setStream(*executestream);
                 }
 
                 // Enqueue start of measurement
@@ -747,13 +752,13 @@ namespace idg {
                 start_measurement(data);
 
                 unsigned s = 0;
-                for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
-                    fft_plan_bulk->execute(data_ptr, data_ptr, sign);
-                    data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
+                for (; (s + fft_subgrid_bulk) <= fft_subgrid_batch; s += fft_subgrid_bulk) {
+                    fft_subbgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    data_ptr += fft_subgrid_size * fft_subgrid_size * NR_CORRELATIONS * fft_subgrid_bulk;
                 }
-                if (s < fft_batch) {
-                    fft_plan_misc->setStream(*executestream);
-                    fft_plan_misc->execute(data_ptr, data_ptr, sign);
+                if (s < fft_subgrid_batch) {
+                    fft_subgrid_plan_misc->setStream(*executestream);
+                    fft_subgrid_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
 
                 // Enqueue end of measurement
@@ -767,18 +772,18 @@ namespace idg {
                 cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(data);
                 int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
-                if (fft_plan_bulk) {
-                    fft_plan_bulk->setStream(*executestream);
+                if (fft_subbgrid_plan_bulk) {
+                    fft_subbgrid_plan_bulk->setStream(*executestream);
                 }
 
                 unsigned s = 0;
-                for (; (s + fft_bulk) <= fft_batch; s += fft_bulk) {
-                    fft_plan_bulk->execute(data_ptr, data_ptr, sign);
-                    data_ptr += fft_size * fft_size * NR_CORRELATIONS * fft_bulk;
+                for (; (s + fft_subgrid_bulk) <= fft_subgrid_batch; s += fft_subgrid_bulk) {
+                    fft_subbgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    data_ptr += fft_subgrid_size * fft_subgrid_size * NR_CORRELATIONS * fft_subgrid_bulk;
                 }
-                if (s < fft_batch) {
-                    fft_plan_misc->setStream(*executestream);
-                    fft_plan_misc->execute(data_ptr, data_ptr, sign);
+                if (s < fft_subgrid_batch) {
+                    fft_subgrid_plan_misc->setStream(*executestream);
+                    fft_subgrid_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
             }
 
@@ -1162,12 +1167,13 @@ namespace idg {
              * FFT plan destructor
              */
             void InstanceCUDA::free_fft_plans() {
-                fft_plan_bulk.reset();
-                fft_plan_misc.reset();
+                fft_grid_size = 0;
                 fft_plan_grid.reset();
-                fft_bulk  = fft_bulk_default;
-                fft_batch = 0;
-                fft_size  = 0;
+                fft_subgrid_bulk  = fft_subgrid_bulk_default;
+                fft_subgrid_batch = 0;
+                fft_subgrid_size  = 0;
+                fft_subbgrid_plan_bulk.reset();
+                fft_subgrid_plan_misc.reset();
             }
 
             /*

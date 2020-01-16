@@ -26,10 +26,6 @@
 #include "idg-fft.h"
 #include "npy.hpp"
 
-/*
- * Enable checking for NaN values
- */
-#define DEBUG_NAN_GET_IMAGE 0
 
 extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
                     int* lda, int* ipiv, int *info );
@@ -480,7 +476,7 @@ namespace api {
     };
 
     void BufferSetImpl::write_grid(
-        idg::Grid& grid) const
+        idg::Grid& grid)
     {
         auto nr_w_layers = grid.get_w_dim();
         auto nr_correlations = grid.get_z_dim();
@@ -525,11 +521,6 @@ namespace api {
         const int nr_w_layers = m_grid.get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
-
-        // Debugging
-        #if DEBUG_NAN_GET_IMAGE
-        write_grid(m_grid);
-        #endif
 
         // Fourier transform w layers
 #ifndef NDEBUG

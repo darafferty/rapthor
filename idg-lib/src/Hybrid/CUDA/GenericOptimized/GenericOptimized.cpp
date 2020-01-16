@@ -268,6 +268,11 @@ namespace idg {
                         htodstream.record(*inputCopied[job_id]);
                     }
 
+                    // Wait for output buffer to be free
+                    if (job_id > 1) {
+                        executestream.waitEvent(*outputCopied[job_id - 2]);
+                    }
+
                     // Initialize subgrids to zero
                     d_subgrids.zero(executestream);
 
@@ -582,7 +587,6 @@ namespace idg {
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
-                    d_visibilities.zero(htodstream);
                     cu::DeviceMemory& d_uvw          = device.retrieve_device_uvw(local_id);
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
@@ -624,13 +628,16 @@ namespace idg {
                     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
                     htodstream.record(*inputCopied[job_id]);
 
-                    // Wait for input to be copied
-                    executestream.waitEvent(*inputCopied[job_id]);
-
                     // Wait for output buffer to be free
                     if (job_id > 1) {
                         executestream.waitEvent(*outputCopied[job_id - 2]);
                     }
+
+                    // Initialize visibilities to zero
+                    d_visibilities.zero(htodstream);
+
+                    // Wait for input to be copied
+                    executestream.waitEvent(*inputCopied[job_id]);
 
                     #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT

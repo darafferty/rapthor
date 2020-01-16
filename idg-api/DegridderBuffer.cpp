@@ -6,6 +6,12 @@
 #include "BufferSetImpl.h"
 
 #include <mutex>
+#include <csignal>
+
+/*
+ * Enable checking for NaN values
+ */
+#define DEBUG_NAN_FLUSH
 
 using namespace std;
 
@@ -149,6 +155,14 @@ namespace api {
             m_aterm_offsets_array,
             m_spheroidal);
         m_bufferset->m_degridding_watch->Pause();
+
+        // Check data for NaN values
+        #if defined(DEBUG_NAN_FLUSH)
+        if (m_bufferVisibilities.contains_nan()) {
+            std::cerr << "NaN detected in m_bufferVisibilities!" << std::endl;
+            std::raise(SIGFPE);
+        }
+        #endif
 
         // Prepare next batch
         m_timeStartThisBatch += m_bufferTimesteps;
