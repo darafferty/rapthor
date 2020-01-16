@@ -15,7 +15,7 @@
 /*
  * Enable checking for NaN values
  */
-#define DEBUG_NAN_FLUSH_THREAD_WORKER 0
+#define DEBUG_NAN_FLUSH_THREAD_WORKER
 
 using namespace std;
 
@@ -291,29 +291,18 @@ namespace api {
 
         // Check data for NaN values
         #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
-        if (m_frequencies.contains_nan()) {
-            std::cerr << "NaN detected in m_frequencies!" << std::endl;
-            std::raise(SIGFPE);
-        }
-        if (m_bufferVisibilities2.contains_nan()) {
-            std::cerr << "NaN detected in m_bufferVisibilities2!" << std::endl;
-            std::raise(SIGFPE);
-        }
-        if (m_bufferUVW2.contains_nan()) {
-            std::cerr << "NaN detected in m_bufferUVW2!" << std::endl;
-            std::raise(SIGFPE);
-        }
         if (m_grid->contains_nan()) {
             std::cerr << "NaN detected in m_grid!" << std::endl;
             BufferSetImpl::write_grid(*m_grid);
             std::raise(SIGFPE);
         }
-        if (m_aterms_array.contains_nan()) {
-            std::cerr << "NaN detected in m_aterms_array!" << std::endl;
-            std::raise(SIGFPE);
-        }
-        if (m_spheroidal.contains_nan()) {
-            std::cerr << "NaN detected in m_spheroidal!" << std::endl;
+        #endif
+
+        // Check grid for NaN values
+        #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
+        if (m_grid->contains_nan()) {
+            std::cerr << "NaN detected in m_grid!" << std::endl;
+            BufferSetImpl::write_grid(*m_grid);
             std::raise(SIGFPE);
         }
         #endif
@@ -336,6 +325,15 @@ namespace api {
             m_aterm_offsets_array,
             m_spheroidal);
         m_bufferset->m_gridding_watch->Pause();
+
+        // Check grid for NaN values
+        #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
+        if (m_grid->contains_nan()) {
+            std::cerr << "NaN detected in m_grid!" << std::endl;
+            BufferSetImpl::write_grid(*m_grid);
+            std::raise(SIGFPE);
+        }
+        #endif
     }
 
     // Must be called whenever the buffer is full or no more data added
@@ -349,7 +347,7 @@ namespace api {
         if (m_flush_thread.joinable()) m_flush_thread.join();
 
         std::swap(m_bufferUVW, m_bufferUVW2);
-        std::swap(m_bufferStationPairs, m_bufferStationPairs2); 
+        std::swap(m_bufferStationPairs, m_bufferStationPairs2);
         std::swap(m_bufferVisibilities, m_bufferVisibilities2);
         std::swap(m_buffer_weights, m_buffer_weights2);
         std::swap(m_aterm_offsets, m_aterm_offsets2);
@@ -402,7 +400,7 @@ namespace api {
     void GridderBufferImpl::malloc_buffers()
     {
         BufferImpl::malloc_buffers();
-        
+
         m_bufferUVW2 = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
         m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
         m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
