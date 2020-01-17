@@ -644,6 +644,10 @@ namespace idg {
         return &(metadata[offset]);
     }
 
+    size_t Plan::get_sizeof_metadata() const {
+        return get_nr_subgrids() * sizeof(idg::Metadata);
+    }
+
     void Plan::copy_metadata(void *ptr) const {
         memcpy(ptr, get_metadata_ptr(), get_nr_subgrids() * sizeof(Metadata));
     }
