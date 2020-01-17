@@ -453,7 +453,6 @@ namespace idg {
                 #if defined(DEBUG)
                 std::clog << "### Finish gridding" << std::endl;
                 #endif
-                finish_gridding();
             } // end do_gridding
 
 
@@ -803,7 +802,6 @@ namespace idg {
                 #if defined(DEBUG)
                 std::clog << "### Finish degridding" << std::endl;
                 #endif
-                finish_degridding();
             } // end do_degridding
 
             void GenericOptimized::do_calibrate_init(

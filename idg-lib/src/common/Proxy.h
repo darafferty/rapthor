@@ -325,12 +325,6 @@ namespace idg {
                     );
                 }
 
-                //! Dummy method
-                virtual void finish_gridding() {};
-
-                //! Dummy method
-                virtual void finish_degridding() {};
-
             private:
                 //! Degrid the visibilities from a uniform grid
                 virtual void do_gridding(
