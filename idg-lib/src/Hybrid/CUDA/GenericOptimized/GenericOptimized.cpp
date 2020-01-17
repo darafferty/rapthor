@@ -174,6 +174,7 @@ namespace idg {
                 Array4D<std::complex<float>> subgrids(h_subgrids, nr_subgrids, nr_correlations, subgrid_size, subgrid_size);
                 device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
                 device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
+                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
@@ -509,6 +510,7 @@ namespace idg {
                 device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
                 device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
                 visibilities2.zero();
+                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);

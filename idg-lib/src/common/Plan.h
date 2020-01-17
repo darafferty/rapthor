@@ -130,6 +130,8 @@ namespace idg {
 
         const Metadata* get_metadata_ptr(int baseline = 0) const;
 
+        size_t get_sizeof_metadata() const;
+
         void copy_metadata(void *ptr) const;
 
         const int* get_aterm_indices_ptr(int baseline = 0) const;
