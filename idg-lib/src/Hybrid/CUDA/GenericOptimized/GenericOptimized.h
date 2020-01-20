@@ -57,7 +57,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    virtual void initialize(
+                    void initialize(
                         const Plan& plan,
                         const float w_step,
                         const Array1D<float>& shift,
@@ -71,10 +71,9 @@ namespace idg {
                         const Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal) override;
+                        const Array2D<float>& spheroidal);
 
-
-                    virtual void run_gridding(
+                    void run_gridding(
                         const Plan& plan,
                         const float w_step,
                         const Array1D<float>& shift,
@@ -88,10 +87,9 @@ namespace idg {
                         Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal) override;
+                        const Array2D<float>& spheroidal);
 
-
-                    virtual void run_degridding(
+                    void run_degridding(
                         const Plan& plan,
                         const float w_step,
                         const Array1D<float>& shift,
@@ -105,7 +103,7 @@ namespace idg {
                         const Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal) override;
+                        const Array2D<float>& spheroidal);
 
                     virtual void do_calibrate_init(
                         std::vector<std::unique_ptr<Plan>> &&plans,

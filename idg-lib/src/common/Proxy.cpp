@@ -575,7 +575,7 @@ namespace idg {
         }
 
         void Proxy::transform(
-            DomainAtoDomainB direction, 
+            DomainAtoDomainB direction,
             Array3D<std::complex<float>>& grid)
         {
             do_transform(direction, grid);
@@ -710,73 +710,6 @@ namespace idg {
             free(grid_ptr);
             grid_ptr = NULL;
         }
-
-        void Proxy::run_gridding(
-            const Plan& plan,
-            const float w_step,
-            const Array1D<float>& shift,
-            const float cell_size,
-            const unsigned int kernel_size,
-            const unsigned int subgrid_size,
-            const Array1D<float>& frequencies,
-            const Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVW<float>>& uvw,
-            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid& grid,
-            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-            const Array1D<unsigned int>& aterms_offsets,
-            const Array2D<float>& spheroidal)
-        {
-            gridding(
-                plan,
-                w_step,
-                shift,
-                cell_size,
-                kernel_size,
-                subgrid_size,
-                frequencies,
-                visibilities,
-                uvw,
-                baselines,
-                grid,
-                aterms,
-                aterms_offsets,
-                spheroidal);
-        }
-
-        void Proxy::run_degridding(
-            const Plan& plan,
-            const float w_step,
-            const Array1D<float>& shift,
-            const float cell_size,
-            const unsigned int kernel_size,
-            const unsigned int subgrid_size,
-            const Array1D<float>& frequencies,
-            Array3D<Visibility<std::complex<float>>>& visibilities,
-            const Array2D<UVW<float>>& uvw,
-            const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            const Grid& grid,
-            const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-            const Array1D<unsigned int>& aterms_offsets,
-            const Array2D<float>& spheroidal)
-        {
-            degridding(
-                plan,
-                w_step,
-                shift,
-                cell_size,
-                kernel_size,
-                subgrid_size,
-                frequencies,
-                visibilities,
-                uvw,
-                baselines,
-                grid,
-                aterms,
-                aterms_offsets,
-                spheroidal);
-        }
-
 
     } // end namespace proxy
 } // end namespace idg

@@ -166,7 +166,7 @@ namespace idg {
                 #endif
 
                 // Run gridding
-                gpuProxy->run_gridding(
+                gpuProxy->gridding(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
                     grid_tiled, aterms, aterms_offsets, spheroidal);
@@ -212,7 +212,7 @@ namespace idg {
                 #endif
 
                 // Run degridding
-                gpuProxy->run_degridding(
+                gpuProxy->degridding(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
                     grid_tiled, aterms, aterms_offsets, spheroidal);
