@@ -10,14 +10,6 @@ using namespace idg::kernel::cuda;
 using namespace powersensor;
 
 
-/*
- * Option to enable/disable reordering of the grid
- * to the host grid format, rather than the tiled
- * format used in the adder and splitter kernels.
- */
-#define ENABLE_TILING 1
-
-
 namespace idg {
     namespace proxy {
         namespace hybrid {
@@ -92,9 +84,9 @@ namespace idg {
                 // Apply tiling
                 cu::UnifiedMemory u_grid(grid.bytes());
                 Grid grid_tiled(u_grid, grid.shape());
-                #if ENABLE_TILING
-                device.tile_forward(grid_size, tile_size, grid, grid_tiled);
-                #endif
+                if (m_enable_tiling) {
+                    device.tile_forward(grid_size, tile_size, grid, grid_tiled);
+                }
 
                 // Run gridding
                 gpuProxy->gridding(
@@ -103,9 +95,9 @@ namespace idg {
                     grid_tiled, aterms, aterms_offsets, spheroidal);
 
                 // Undo tiling
-                #if ENABLE_TILING
-                device.tile_backward(grid_size, tile_size, grid_tiled, grid);
-                #endif
+                if (m_enable_tiling) {
+                    device.tile_backward(grid_size, tile_size, grid_tiled, grid);
+                }
             } // end gridding
 
 
@@ -138,9 +130,9 @@ namespace idg {
                 // Apply tiling
                 cu::UnifiedMemory u_grid(grid.bytes());
                 Grid grid_tiled(u_grid, grid.shape());
-                #if ENABLE_TILING
-                device.tile_forward(grid_size, tile_size, grid, grid_tiled);
-                #endif
+                if (m_enable_tiling) {
+                    device.tile_forward(grid_size, tile_size, grid, grid_tiled);
+                }
 
                 // Run degridding
                 gpuProxy->degridding(
@@ -149,9 +141,9 @@ namespace idg {
                     grid_tiled, aterms, aterms_offsets, spheroidal);
 
                 // Undo tiling
-                #if ENABLE_TILING
-                device.tile_backward(grid_size, tile_size, grid_tiled, (Grid&) grid);
-                #endif
+                if (m_enable_tiling) {
+                    device.tile_backward(grid_size, tile_size, grid_tiled, (Grid&) grid);
+                }
             } // end degridding
 
         } // namespace hybrid

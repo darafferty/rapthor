@@ -73,12 +73,27 @@ namespace idg {
                         std::vector<int> max_nr_subgrids;
                     } m_gridding_state;
 
+                    /*
+                    * Options used internally by the CUDA proxies
+                    */
                     // Fraction of device memory reserved
                     // for e.g. cuFFT. This memory is not taken
                     // into account when computing  in compute_jobsize.
                     float m_fraction_reserved = 0.15;
 
+                    // Use Unified Memory to store the grid, instead of having
+                    // a copy on the grid on the device.
+                    bool m_use_unified_memory = false;
+
+                    // Option to enable/disable reordering of the grid
+                    // to the host grid format, rather than the tiled
+                    // format used in the adder and splitter kernels.
+                    bool m_enable_tiling = true;
+
+                public:
                     void set_fraction_reserved(float f) { m_fraction_reserved = f; }
+                    void enable_unified_memory() { m_use_unified_memory = true; }
+
 
                 private:
                     ProxyInfo &mInfo;

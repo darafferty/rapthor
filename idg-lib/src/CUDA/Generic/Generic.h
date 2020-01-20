@@ -20,8 +20,6 @@ namespace idg {
                     // Destructor
                     ~Generic();
 
-                    void enable_unified_memory() { m_use_unified_memory = true; }
-
                 private:
                     virtual void do_gridding(
                         const Plan& plan,
@@ -92,8 +90,6 @@ namespace idg {
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal);
-
-                    bool m_use_unified_memory = false;
 
             }; // class Generic
 
