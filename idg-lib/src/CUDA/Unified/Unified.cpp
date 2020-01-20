@@ -78,21 +78,12 @@ namespace idg {
 
                 // Perform fft shift
                 double time_shift = -omp_get_wtime();
-				#if ENABLE_MEM_ADVISE
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY);
-				#endif
                 device.shift(grid);
                 time_shift += omp_get_wtime();
 
                 // Execute fft
                 device.measure(powerRecords[0], stream);
-				#if ENABLE_MEM_ADVISE
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY, device.get_device());
-				#endif
                 device.launch_fft_unified(grid_size, nr_correlations, grid, direction);
-				#if ENABLE_MEM_ADVISE
-                u_grid.set_advice(CU_MEM_ADVISE_SET_ACCESSED_BY);
-				#endif
                 device.measure(powerRecords[1], stream);
                 stream.synchronize();
 
