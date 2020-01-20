@@ -61,7 +61,6 @@ namespace idg {
 
                     powersensor::PowerSensor *hostPowerSensor;
 
-                public:
                     void run_gridding(
                         const Plan& plan,
                         const float w_step,
