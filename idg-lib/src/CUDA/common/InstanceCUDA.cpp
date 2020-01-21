@@ -765,28 +765,6 @@ namespace idg {
                 end_measurement(data);
             }
 
-             void InstanceCUDA::launch_fft_unified(
-                void *data,
-                DomainAtoDomainB direction)
-            {
-                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(data);
-                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
-
-                if (fft_subbgrid_plan_bulk) {
-                    fft_subbgrid_plan_bulk->setStream(*executestream);
-                }
-
-                unsigned s = 0;
-                for (; (s + fft_subgrid_bulk) <= fft_subgrid_batch; s += fft_subgrid_bulk) {
-                    fft_subbgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
-                    data_ptr += fft_subgrid_size * fft_subgrid_size * NR_CORRELATIONS * fft_subgrid_bulk;
-                }
-                if (s < fft_subgrid_batch) {
-                    fft_subgrid_plan_misc->setStream(*executestream);
-                    fft_subgrid_plan_misc->execute(data_ptr, data_ptr, sign);
-                }
-            }
-
             void InstanceCUDA::launch_fft_unified(
                 unsigned long size,
                 unsigned int batch,

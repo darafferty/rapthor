@@ -113,10 +113,6 @@ namespace idg {
                         DomainAtoDomainB direction);
 
                     void launch_fft_unified(
-                        void *data,
-                        DomainAtoDomainB direction);
-
-                    void launch_fft_unified(
                         unsigned long size,
                         unsigned batch,
                         Array3D<std::complex<float>>& grid,
