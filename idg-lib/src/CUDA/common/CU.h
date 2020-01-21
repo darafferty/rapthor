@@ -108,7 +108,7 @@ namespace cu {
 
     class RegisteredMemory : public virtual Memory {
         public:
-            RegisteredMemory(void *ptr, size_t size, int flags = CU_MEMHOSTALLOC_PORTABLE);
+            RegisteredMemory(void *ptr, size_t size, int flags = CU_MEMHOSTREGISTER_PORTABLE);
             virtual ~RegisteredMemory();
 
             void resize(size_t size) override;

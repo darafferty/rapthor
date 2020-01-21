@@ -181,6 +181,9 @@ namespace idg {
                     unsigned int allocate_device_memory(size_t bytes);
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
+                    // Memory management for misc page-locked host buffers
+                    void register_host_memory(void* ptr, size_t bytes);
+
                     // Retrieve pre-allocated buffers (per device)
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
@@ -253,7 +256,7 @@ namespace idg {
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
 
                     // Registered host memory
-                    std::vector<std::unique_ptr<cu::HostMemory>> h_registered_;
+                    std::vector<std::unique_ptr<cu::RegisteredMemory>> h_registered_;
 
                     // Misc device memory
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;

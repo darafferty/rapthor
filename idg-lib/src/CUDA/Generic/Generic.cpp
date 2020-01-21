@@ -139,13 +139,9 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[device_id];
 
                 // Page-locked host memory
-                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
-                cu::HostMemory& h_uvw = device.retrieve_host_uvw();
-                Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
-                Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
-                device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
-                device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
-                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
+                device.register_host_memory(visibilities.data(), visibilities.bytes());
+                device.register_host_memory(uvw.data(), uvw.bytes());
+                device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
                 // Device grid
                 if (!m_use_unified_memory) {
@@ -185,8 +181,8 @@ namespace idg {
                     job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                     job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
-                    job.uvw_ptr              = uvw2.data(first_bl, 0);
-                    job.visibilities_ptr     = visibilities2.data(first_bl, 0, 0);
+                    job.uvw_ptr              = uvw.data(first_bl, 0);
+                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
@@ -424,14 +420,9 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
-                cu::HostMemory& h_uvw = device.retrieve_host_uvw();
-                Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
-                Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
-                device.copy_htoh(visibilities2.data(), visibilities.data(), visibilities.bytes());
-                device.copy_htoh(uvw2.data(), uvw.data(), uvw.bytes());
-                visibilities2.zero();
-                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
+                device.register_host_memory(visibilities.data(), visibilities.bytes());
+                device.register_host_memory(uvw.data(), uvw.bytes());
+                device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
                 // Device grid
                 if (!m_use_unified_memory) {
@@ -471,8 +462,8 @@ namespace idg {
                     job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
                     job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
-                    job.uvw_ptr              = uvw2.data(first_bl, 0);
-                    job.visibilities_ptr     = visibilities2.data(first_bl, 0, 0);
+                    job.uvw_ptr              = uvw.data(first_bl, 0);
+                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
@@ -601,9 +592,6 @@ namespace idg {
                 endStates[device_id] = device.measure();
                 endStates[nr_devices] = hostPowerSensor->read();
                 report.update_host(startStates[nr_devices], endStates[nr_devices]);
-
-                // Copy visibilities
-                device.copy_htoh(visibilities.data(), visibilities2.data(), visibilities.bytes());
 
                 // Update report
                 auto total_nr_subgrids     = plan.get_nr_subgrids();
