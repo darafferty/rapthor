@@ -292,6 +292,9 @@ namespace idg {
                 std::cout << "CUDA::" << __func__ << std::endl;
                 #endif
 
+                cu::Marker marker("initialize");
+                marker.start();
+
                 // Arguments
                 auto nr_channels  = frequencies.get_x_dim();
                 auto nr_stations  = aterms.get_z_dim();
@@ -304,11 +307,6 @@ namespace idg {
 
                 // Compute jobsize
                 compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
-
-                // Page-locked host buffers
-                InstanceCUDA& device = get_device(0);
-                device.allocate_host_visibilities(visibilities.bytes());
-                device.allocate_host_uvw(uvw.bytes());
 
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
@@ -368,6 +366,8 @@ namespace idg {
                     // Wait for memory copies
                     htodstream.synchronize();
                 }
+
+                marker.end();
             } // end initialize
 
         } // end namespace cuda

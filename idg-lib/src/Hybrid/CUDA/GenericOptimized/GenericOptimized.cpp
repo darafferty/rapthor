@@ -76,55 +76,6 @@ namespace idg {
             /*
              * Gridding
              */
-            void GenericOptimized::synchronize() {
-                for (unsigned d = 0; d < get_num_devices(); d++) {
-                    InstanceCUDA& device = get_device(d);
-                    device.get_htod_stream().synchronize();
-                    device.get_execute_stream().synchronize();
-                    device.get_dtoh_stream().synchronize();
-                }
-            }
-
-            void GenericOptimized::initialize(
-                const Plan& plan,
-                const float w_step,
-                const Array1D<float>& shift,
-                const float cell_size,
-                const unsigned int kernel_size,
-                const unsigned int subgrid_size,
-                const Array1D<float>& frequencies,
-                const Array3D<Visibility<std::complex<float>>>& visibilities,
-                const Array2D<UVW<float>>& uvw,
-                const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                const Grid& grid,
-                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array1D<unsigned int>& aterms_offsets,
-                const Array2D<float>& spheroidal)
-            {
-                #if defined(DEBUG)
-                std::cout << "GenericOptimized::" << __func__ << std::endl;
-                #endif
-
-                synchronize();
-
-                cu::Marker marker("initialize");
-                marker.start();
-
-                CUDA::initialize(
-                    plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                    frequencies, visibilities, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal,
-                    max_nr_streams);
-
-                // Host subgrids
-                InstanceCUDA& device = get_device(0);
-                auto nr_subgrids = plan.get_nr_subgrids();
-                auto sizeof_subgrids = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
-                device.allocate_host_subgrids(sizeof_subgrids);
-
-                marker.end();
-            } // end initialize
-
             void GenericOptimized::run_gridding(
                 const Plan& plan,
                 const float w_step,
@@ -166,9 +117,10 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
-                cu::HostMemory& h_uvw = device.retrieve_host_uvw();
-                cu::HostMemory& h_subgrids = device.retrieve_host_subgrids();
+                cu::HostMemory& h_visibilities = device.allocate_host_visibilities(visibilities.bytes());
+                cu::HostMemory& h_uvw = device.allocate_host_uvw(uvw.bytes());
+                auto sizeof_subgrids = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+                cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
                 Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
                 Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
                 Array4D<std::complex<float>> subgrids(h_subgrids, nr_subgrids, nr_correlations, subgrid_size, subgrid_size);
@@ -412,24 +364,13 @@ namespace idg {
                 #endif
 
                 #if defined(DEBUG)
-                std::cout << "GenericOptimized::" << __func__ << std::endl;
                 std::clog << "### Initialize gridding" << std::endl;
                 #endif
-                initialize(
-                    plan,
-                    w_step,
-                    shift,
-                    cell_size,
-                    kernel_size,
-                    subgrid_size,
-                    frequencies,
-                    visibilities,
-                    uvw,
-                    baselines,
-                    grid,
-                    aterms,
-                    aterms_offsets,
-                    spheroidal);
+                CUDA::initialize(
+                    plan, w_step, shift, cell_size, kernel_size, subgrid_size,
+                    frequencies, visibilities, uvw, baselines,
+                    aterms, aterms_offsets, spheroidal,
+                    max_nr_streams);
 
                 #if defined(DEBUG)
                 std::clog << "### Run gridding" << std::endl;
@@ -500,9 +441,10 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                cu::HostMemory& h_visibilities = device.retrieve_host_visibilities();
-                cu::HostMemory& h_uvw = device.retrieve_host_uvw();
-                cu::HostMemory& h_subgrids = device.retrieve_host_subgrids();
+                cu::HostMemory& h_visibilities = device.allocate_host_visibilities(visibilities.bytes());
+                cu::HostMemory& h_uvw = device.allocate_host_uvw(uvw.bytes());
+                auto sizeof_subgrids = auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+                cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
                 Array3D<Visibility<std::complex<float>>> visibilities2(h_visibilities, visibilities.shape());
                 Array2D<UVW<float>> uvw2(h_uvw, uvw.shape());
                 Array4D<std::complex<float>> subgrids(h_subgrids, nr_subgrids, nr_correlations, subgrid_size, subgrid_size);
@@ -764,21 +706,11 @@ namespace idg {
                 std::cout << "GenericOptimized::" << __func__ << std::endl;
                 std::clog << "### Initialize degridding" << std::endl;
                 #endif
-                initialize(
-                    plan,
-                    w_step,
-                    shift,
-                    cell_size,
-                    kernel_size,
-                    subgrid_size,
-                    frequencies,
-                    visibilities,
-                    uvw,
-                    baselines,
-                    grid,
-                    aterms,
-                    aterms_offsets,
-                    spheroidal);
+                CUDA::initialize(
+                    plan, w_step, shift, cell_size, kernel_size, subgrid_size,
+                    frequencies, visibilities, uvw, baselines,
+                    aterms, aterms_offsets, spheroidal,
+                    max_nr_streams);
 
                 #if defined(DEBUG)
                 std::clog << "### Run degridding" << std::endl;
