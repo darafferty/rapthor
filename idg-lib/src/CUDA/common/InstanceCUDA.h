@@ -177,15 +177,11 @@ namespace idg {
                     cu::DeviceMemory& allocate_device_subgrids(unsigned int id, size_t bytes);
                     cu::DeviceMemory& allocate_device_metadata(unsigned int id, size_t bytes);
 
-                    // Memory management for large (host) buffers
-                    cu::HostMemory& allocate_host_grid(size_t bytes);
-
                     // Memory management for misc device buffers
                     unsigned int allocate_device_memory(size_t bytes);
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
                     // Retrieve pre-allocated buffers (per device)
-                    cu::HostMemory& retrieve_host_grid() { return *h_grid; }
                     cu::HostMemory& retrieve_host_visibilities() { return *h_visibilities; }
                     cu::HostMemory& retrieve_host_subgrids() { return *h_subgrids; }
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
@@ -249,7 +245,6 @@ namespace idg {
                     std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
                     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
                     std::unique_ptr<cu::DeviceMemory> d_grid;
-                    std::unique_ptr<cu::HostMemory>   h_grid;
                     std::unique_ptr<cu::HostMemory>   h_visibilities;
                     std::unique_ptr<cu::HostMemory>   h_uvw;
                     std::unique_ptr<cu::HostMemory>   h_subgrids;

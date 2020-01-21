@@ -1003,11 +1003,6 @@ namespace idg {
                 return *reuse_memory(bytes, d_grid);
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_grid(size_t bytes)
-            {
-                return *reuse_memory(bytes, h_grid);
-            }
-
             cu::HostMemory& InstanceCUDA::allocate_host_visibilities(size_t bytes)
             {
                 return *reuse_memory(bytes, h_visibilities);
