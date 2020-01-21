@@ -285,7 +285,7 @@ namespace idg {
                     unsigned fft_subgrid_bulk  = fft_subgrid_bulk_default;
                     unsigned fft_subgrid_batch = 0;
                     unsigned fft_subgrid_size  = 0;
-                    std::unique_ptr<cufft::C2C_2D> fft_subbgrid_plan_bulk;
+                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_bulk;
                     std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_misc;
 
                 private:

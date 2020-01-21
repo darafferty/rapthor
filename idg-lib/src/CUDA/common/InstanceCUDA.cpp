@@ -695,9 +695,10 @@ namespace idg {
                     try {
                         // Plan bulk fft
                         if (batch >= fft_subgrid_bulk) {
-                            fft_subbgrid_plan_bulk.reset(new cufft::C2C_2D(
+                            fft_subgrid_plan_bulk.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
                                 fft_subgrid_bulk * NR_CORRELATIONS));
+                            fft_subgrid_plan_bulk->setStream(*executestream);
                         }
 
                         // Plan remainder fft
@@ -707,6 +708,7 @@ namespace idg {
                             fft_subgrid_plan_misc.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
                                 fft_remainder_size * NR_CORRELATIONS));
+                            fft_subgrid_plan_misc->setStream(*executestream);
                         }
 
                         // Store parameters
@@ -743,21 +745,16 @@ namespace idg {
                 }
                 #endif
 
-                if (fft_subbgrid_plan_bulk) {
-                    fft_subbgrid_plan_bulk->setStream(*executestream);
-                }
-
                 // Enqueue start of measurement
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_subgrid_fft);
                 start_measurement(data);
 
                 unsigned s = 0;
                 for (; (s + fft_subgrid_bulk) <= fft_subgrid_batch; s += fft_subgrid_bulk) {
-                    fft_subbgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    fft_subgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
                     data_ptr += fft_subgrid_size * fft_subgrid_size * NR_CORRELATIONS * fft_subgrid_bulk;
                 }
                 if (s < fft_subgrid_batch) {
-                    fft_subgrid_plan_misc->setStream(*executestream);
                     fft_subgrid_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
 
@@ -1167,7 +1164,7 @@ namespace idg {
                 fft_subgrid_bulk  = fft_subgrid_bulk_default;
                 fft_subgrid_batch = 0;
                 fft_subgrid_size  = 0;
-                fft_subbgrid_plan_bulk.reset();
+                fft_subgrid_plan_bulk.reset();
                 fft_subgrid_plan_misc.reset();
             }
 
