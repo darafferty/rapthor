@@ -182,8 +182,6 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
                     // Retrieve pre-allocated buffers (per device)
-                    cu::HostMemory& retrieve_host_visibilities() { return *h_visibilities; }
-                    cu::HostMemory& retrieve_host_subgrids() { return *h_subgrids; }
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
@@ -193,7 +191,6 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
                     // Retrieve pre-allocated buffers (per stream)
-                    cu::HostMemory& retrieve_host_uvw() { return *h_uvw; }
                     cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
                     cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
                     cu::DeviceMemory& retrieve_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
