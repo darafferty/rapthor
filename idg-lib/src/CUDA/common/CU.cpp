@@ -178,7 +178,6 @@ namespace cu {
         RegisteredMemory
     */
     RegisteredMemory::RegisteredMemory(void *ptr, size_t size, int flags) {
-        _capacity = size;
         _size = size;
         _flags = flags;
         assert(ptr != NULL);
@@ -191,15 +190,7 @@ namespace cu {
     }
 
     void RegisteredMemory::resize(size_t size) {
-        assert(size > 0);
-        if (size < _capacity) {
-            _size = size;
-        } else if (size > _capacity) {
-            release();
-            checkCudaCall(cuMemHostRegister(_ptr, size, _flags));
-            _size = size;
-            _capacity = size;
-        }
+        throw std::runtime_error("RegisteredMemory can not be resized!");
     }
 
     void RegisteredMemory::release() {
