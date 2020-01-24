@@ -26,6 +26,12 @@ if (BUILD_WITH_PYTHON)
 endif()
 
 
+#########################################################
+# enable rpath for all of the libidg-*.so files         #
+#########################################################
+set(CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 
 #########################################################
 # build libidg-external, containing all external code   #
@@ -183,9 +189,6 @@ endif()
 ##########################################################
 if (BUILD_LIB_CUDA)
 
-set(CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-
 add_library (
     idg-cuda
     $<TARGET_OBJECTS:cuda-common>
@@ -226,9 +229,6 @@ endif (BUILD_LIB_CUDA)
 # build libidg-hybrid-cuda: containing all for CPU/CUDA code #
 ##############################################################
 if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-
-set(CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library (
     idg-hybrid-cuda
