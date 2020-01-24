@@ -105,6 +105,10 @@ set (${PROJECT_NAME}_sources
     taper.cpp
 )
 
+# enable rpath
+set(CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 add_library(
   ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                   ${${PROJECT_NAME}_sources}
