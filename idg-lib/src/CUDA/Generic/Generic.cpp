@@ -12,7 +12,7 @@ namespace idg {
         namespace cuda {
 
             // The maximum number of CUDA streams in any routine
-            const int max_nr_streams = 3;
+            const int max_nr_streams = 2;
 
             // Constructor
             Generic::Generic(
@@ -159,7 +159,6 @@ namespace idg {
                 // Events
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
                 std::vector<std::unique_ptr<cu::Event>> gpuFinished;
-                std::vector<std::unique_ptr<cu::Event>> outputCopied;
 
                 // Prepare job data
                 struct JobData {
@@ -186,7 +185,6 @@ namespace idg {
                     jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
-                    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
                 }
 
                 // Load memory objects
@@ -238,9 +236,32 @@ namespace idg {
                         htodstream.record(*inputCopied[job_id]);
                     }
 
+                    // Copy input data for next job
+                    if (job_id_next < jobs.size()) {
+                        // Load memory objects
+                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
+                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
+
+                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
+                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
+                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
+                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+
+                        // Copy input data to device
+                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
+                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
+                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
+                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
+                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
+                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
+                        htodstream.record(*inputCopied[job_id_next]);
+                    }
+
                     // Wait for output buffer to be free
                     if (job_id > 1) {
-                        executestream.waitEvent(*outputCopied[job_id - 2]);
+                        executestream.waitEvent(*gpuFinished[job_id - 2]);
                     }
 
                     // Initialize subgrids to zero
@@ -269,39 +290,12 @@ namespace idg {
                             current_nr_subgrids, grid_size, subgrid_size,
                             d_metadata, d_subgrids, d_grid);
                     }
-
                     executestream.record(*gpuFinished[job_id]);
 
-                    // Copy input data for next job
-                    if (job_id_next < jobs.size()) {
-
-                        // Wait for job to finish before overwriting buffers
-                        htodstream.waitEvent(*gpuFinished[job_id]);
-
-                        // Load memory objects
-                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
-                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
-
-                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
-                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
-                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
-                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
-                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
-
-                        // Copy input data to device
-                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
-                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
-                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
-                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
-                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
-                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
-                        htodstream.record(*inputCopied[job_id_next]);
-                    }
-
                     // Report performance
-                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
 
+                    // Wait for adder to finish
                     gpuFinished[job_id]->synchronize();
 
                     // Update local id
@@ -417,7 +411,7 @@ namespace idg {
                 // Configuration
                 const unsigned nr_devices = get_num_devices();
                 int device_id = 0; // only one GPU is used
-                int jobsize = m_gridding_state.jobsize[0];
+                int jobsize = m_gridding_state.jobsize[device_id];
 
                 // Page-locked host memory
                 device.register_host_memory(visibilities.data(), visibilities.bytes());
@@ -516,43 +510,8 @@ namespace idg {
                         htodstream.record(*inputCopied[job_id]);
                     }
 
-                    // Launch splitter kernel
-                    executestream.waitEvent(*inputCopied[job_id]);
-                    if (m_use_unified_memory) {
-                        device.launch_splitter_unified(
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            d_metadata, d_subgrids, grid.data());
-                    } else {
-                        cu::DeviceMemory& d_grid = device.retrieve_device_grid();
-                        device.launch_splitter(
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            d_metadata, d_subgrids, d_grid);
-                    }
-
-                    // Wait for output buffer to be free
-                    if (job_id > 1) {
-                        executestream.waitEvent(*outputCopied[job_id - 2]);
-                    }
-
-                    // Initialize visibilities to zero
-                    d_visibilities.zero(htodstream);
-
-                    // Wait for input to be copied
-                    executestream.waitEvent(*inputCopied[job_id]);
-
-                    // Launch FFT
-                    device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
-
-                    // Launch degridder kernel
-                    device.launch_degridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
-                        d_aterms, d_aterms_indices, d_metadata, d_subgrids);
-                    executestream.record(*gpuFinished[job_id]);
-
                     // Copy input data for next job
                     if (job_id_next < jobs.size()) {
-
                         // Load memory objects
                         cu::DeviceMemory& d_uvw_next      = device.retrieve_device_uvw(local_id_next);
                         cu::DeviceMemory& d_metadata_next = device.retrieve_device_metadata(local_id_next);
@@ -567,7 +526,41 @@ namespace idg {
                         auto sizeof_metadata_next    = auxiliary::sizeof_metadata(nr_subgrids_next);
                         htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
                         htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
+                        htodstream.record(*inputCopied[job_id_next]);
                     }
+
+                    // Wait for input to be copied
+                    executestream.waitEvent(*inputCopied[job_id]);
+
+                    // Wait for output buffer to be free
+                    if (job_id > 1) {
+                        executestream.waitEvent(*outputCopied[job_id - 2]);
+                    }
+
+                    // Launch splitter kernel
+                    if (m_use_unified_memory) {
+                        device.launch_splitter_unified(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            d_metadata, d_subgrids, grid.data());
+                    } else {
+                        cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+                        device.launch_splitter(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            d_metadata, d_subgrids, d_grid);
+                    }
+
+                    // Initialize visibilities to zero
+                    d_visibilities.zero(executestream);
+
+                    // Launch FFT
+                    device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+
+                    // Launch degridder kernel
+                    device.launch_degridder(
+                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+                        d_aterms, d_aterms_indices, d_metadata, d_subgrids);
+                    executestream.record(*gpuFinished[job_id]);
 
                     // Copy visibilities to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
@@ -579,7 +572,7 @@ namespace idg {
                     gpuFinished[job_id]->synchronize();
 
                     // Report performance
-                    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
 
                     // Update local id
                     local_id = local_id_next;
