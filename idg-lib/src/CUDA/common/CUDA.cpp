@@ -230,7 +230,7 @@ namespace idg {
                     }
 
                     // Get amount of memory available on device
-                    auto bytes_free = device->get_device().get_total_memory();
+                    auto bytes_free = device->get_device().get_free_memory();
                     #if defined(DEBUG_COMPUTE_JOBSIZE)
                     std::clog << "Bytes free: " << bytes_free << std::endl;
                     #endif
