@@ -106,7 +106,8 @@ namespace idg {
                         DomainAtoDomainB direction);
 
                     void plan_fft(
-                        unsigned size, unsigned batch);
+                        unsigned size,
+                        unsigned batch);
 
                     void launch_fft(
                         cu::DeviceMemory& d_data,
