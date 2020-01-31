@@ -35,6 +35,19 @@ namespace api {
 
         virtual ~BufferSet() {};
 
+        static size_t get_allocatable_ntimesteps(uint64_t freeMemInBytes, size_t nStations, size_t nChannels)
+        {
+          size_t nBaselines = ((nStations - 1) * nStations) / 2;
+          uint64_t memPerTimestep =
+            // Visibilities
+            uint64_t(nBaselines) * uint64_t(nChannels) * uint64_t(8) /* bytes per vis */
+            +
+            // UVW values
+            uint64_t(nBaselines) * uint64_t(3 * 4); // (3 values of 4 bytes)
+            
+          return freeMemInBytes / memPerTimestep;
+        }
+
         virtual void init(
             size_t width,
             float cellsize,
