@@ -50,7 +50,7 @@ namespace api {
           m_aterms_array(0,0,0,0),
           m_bufferUVW(0,0),
           m_bufferStationPairs(0),
-          m_visibilities(0, 0, 0),
+          m_bufferVisibilities(0, 0, 0),
           m_proxy(proxy)
     {
         #if defined(DEBUG)
@@ -263,7 +263,6 @@ namespace api {
     {
         m_bufferUVW = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
         m_bufferVisibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
-        m_visibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
         m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_bufferStationPairs.init({m_nrStations, m_nrStations});
         // already done: m_spheroidal.reserve(m_subgridsize, m_subgridsize);
