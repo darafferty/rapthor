@@ -57,24 +57,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                    virtual void initialize(
-                        const Plan& plan,
-                        const float w_step,
-                        const Array1D<float>& shift,
-                        const float cell_size,
-                        const unsigned int kernel_size,
-                        const unsigned int subgrid_size,
-                        const Array1D<float>& frequencies,
-                        const Array3D<Visibility<std::complex<float>>>& visibilities,
-                        const Array2D<UVW<float>>& uvw,
-                        const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-                        const Grid& grid,
-                        const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                        const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal) override;
-
-
-                    virtual void run_gridding(
+                   void run_gridding(
                         const Plan& plan,
                         const float w_step,
                         const Array1D<float>& shift,
@@ -88,10 +71,9 @@ namespace idg {
                         Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal) override;
+                        const Array2D<float>& spheroidal);
 
-
-                    virtual void run_degridding(
+                    void run_degridding(
                         const Plan& plan,
                         const float w_step,
                         const Array1D<float>& shift,
@@ -105,7 +87,7 @@ namespace idg {
                         const Grid& grid,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal) override;
+                        const Array2D<float>& spheroidal);
 
                     virtual void do_calibrate_init(
                         std::vector<std::unique_ptr<Plan>> &&plans,
@@ -156,8 +138,6 @@ namespace idg {
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                         const Array1D<unsigned int>& aterms_offsets,
                         Plan::Options options);
-
-                    void synchronize();
 
                 protected:
                     powersensor::PowerSensor* hostPowerSensor;

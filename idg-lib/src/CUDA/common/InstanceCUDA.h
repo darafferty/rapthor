@@ -106,14 +106,11 @@ namespace idg {
                         DomainAtoDomainB direction);
 
                     void plan_fft(
-                        unsigned size, unsigned batch);
+                        unsigned size,
+                        unsigned batch);
 
                     void launch_fft(
                         cu::DeviceMemory& d_data,
-                        DomainAtoDomainB direction);
-
-                    void launch_fft_unified(
-                        void *data,
                         DomainAtoDomainB direction);
 
                     void launch_fft_unified(
@@ -181,17 +178,14 @@ namespace idg {
                     cu::DeviceMemory& allocate_device_subgrids(unsigned int id, size_t bytes);
                     cu::DeviceMemory& allocate_device_metadata(unsigned int id, size_t bytes);
 
-                    // Memory management for large (host) buffers
-                    cu::HostMemory& allocate_host_grid(size_t bytes);
-
                     // Memory management for misc device buffers
                     unsigned int allocate_device_memory(size_t bytes);
                     cu::DeviceMemory& retrieve_device_memory(unsigned int id);
 
+                    // Memory management for misc page-locked host buffers
+                    void register_host_memory(void* ptr, size_t bytes);
+
                     // Retrieve pre-allocated buffers (per device)
-                    cu::HostMemory& retrieve_host_grid() { return *h_grid; }
-                    cu::HostMemory& retrieve_host_visibilities() { return *h_visibilities; }
-                    cu::HostMemory& retrieve_host_subgrids() { return *h_subgrids; }
                     cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
@@ -201,7 +195,6 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_avg_aterm_correction() { return *d_avg_aterm_correction; }
 
                     // Retrieve pre-allocated buffers (per stream)
-                    cu::HostMemory& retrieve_host_uvw() { return *h_uvw; }
                     cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) { return *d_visibilities_[id]; }
                     cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
                     cu::DeviceMemory& retrieve_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
@@ -253,7 +246,6 @@ namespace idg {
                     std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
                     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
                     std::unique_ptr<cu::DeviceMemory> d_grid;
-                    std::unique_ptr<cu::HostMemory>   h_grid;
                     std::unique_ptr<cu::HostMemory>   h_visibilities;
                     std::unique_ptr<cu::HostMemory>   h_uvw;
                     std::unique_ptr<cu::HostMemory>   h_subgrids;
@@ -265,7 +257,7 @@ namespace idg {
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
 
                     // Registered host memory
-                    std::vector<std::unique_ptr<cu::HostMemory>> h_registered_;
+                    std::vector<std::unique_ptr<cu::RegisteredMemory>> h_registered_;
 
                     // Misc device memory
                     std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
@@ -294,8 +286,8 @@ namespace idg {
                     unsigned fft_subgrid_bulk  = fft_subgrid_bulk_default;
                     unsigned fft_subgrid_batch = 0;
                     unsigned fft_subgrid_size  = 0;
-                    std::unique_ptr<cufft::C2C_2D> fft_subbgrid_plan_bulk;
-                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_misc;
+                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_bulk = nullptr;
+                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_misc = nullptr;
 
                 private:
                     // Memory allocation/reuse methods

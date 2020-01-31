@@ -695,9 +695,10 @@ namespace idg {
                     try {
                         // Plan bulk fft
                         if (batch >= fft_subgrid_bulk) {
-                            fft_subbgrid_plan_bulk.reset(new cufft::C2C_2D(
+                            fft_subgrid_plan_bulk.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
                                 fft_subgrid_bulk * NR_CORRELATIONS));
+                            fft_subgrid_plan_bulk->setStream(*executestream);
                         }
 
                         // Plan remainder fft
@@ -707,6 +708,7 @@ namespace idg {
                             fft_subgrid_plan_misc.reset(new cufft::C2C_2D(
                                 size, size, stride, dist,
                                 fft_remainder_size * NR_CORRELATIONS));
+                            fft_subgrid_plan_misc->setStream(*executestream);
                         }
 
                         // Store parameters
@@ -743,48 +745,21 @@ namespace idg {
                 }
                 #endif
 
-                if (fft_subbgrid_plan_bulk) {
-                    fft_subbgrid_plan_bulk->setStream(*executestream);
-                }
-
                 // Enqueue start of measurement
                 UpdateData *data = get_update_data(powerSensor, report, &Report::update_subgrid_fft);
                 start_measurement(data);
 
                 unsigned s = 0;
                 for (; (s + fft_subgrid_bulk) <= fft_subgrid_batch; s += fft_subgrid_bulk) {
-                    fft_subbgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
+                    fft_subgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
                     data_ptr += fft_subgrid_size * fft_subgrid_size * NR_CORRELATIONS * fft_subgrid_bulk;
                 }
                 if (s < fft_subgrid_batch) {
-                    fft_subgrid_plan_misc->setStream(*executestream);
                     fft_subgrid_plan_misc->execute(data_ptr, data_ptr, sign);
                 }
 
                 // Enqueue end of measurement
                 end_measurement(data);
-            }
-
-             void InstanceCUDA::launch_fft_unified(
-                void *data,
-                DomainAtoDomainB direction)
-            {
-                cufftComplex *data_ptr = reinterpret_cast<cufftComplex *>(data);
-                int sign = (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
-
-                if (fft_subbgrid_plan_bulk) {
-                    fft_subbgrid_plan_bulk->setStream(*executestream);
-                }
-
-                unsigned s = 0;
-                for (; (s + fft_subgrid_bulk) <= fft_subgrid_batch; s += fft_subgrid_bulk) {
-                    fft_subbgrid_plan_bulk->execute(data_ptr, data_ptr, sign);
-                    data_ptr += fft_subgrid_size * fft_subgrid_size * NR_CORRELATIONS * fft_subgrid_bulk;
-                }
-                if (s < fft_subgrid_batch) {
-                    fft_subgrid_plan_misc->setStream(*executestream);
-                    fft_subgrid_plan_misc->execute(data_ptr, data_ptr, sign);
-                }
             }
 
             void InstanceCUDA::launch_fft_unified(
@@ -1025,11 +1000,6 @@ namespace idg {
                 return *reuse_memory(bytes, d_grid);
             }
 
-            cu::HostMemory& InstanceCUDA::allocate_host_grid(size_t bytes)
-            {
-                return *reuse_memory(bytes, h_grid);
-            }
-
             cu::HostMemory& InstanceCUDA::allocate_host_visibilities(size_t bytes)
             {
                 return *reuse_memory(bytes, h_visibilities);
@@ -1134,6 +1104,28 @@ namespace idg {
                 return *d_misc_[id];
             }
 
+
+            /*
+             * Memory management for misc page-locked host buffers
+             *      Page-locking arbitrary buffers is potentially very dangerous
+             *      as buffers may (partially) overlap, which will result in CUDA
+             *      errors. This mechanism should only be used to register buffers
+             *      that are guaranteed to be distinct and have a lifetime longer
+             *      than the current InstanceCUDA object.
+             */
+            void InstanceCUDA::register_host_memory(void* ptr, size_t bytes)
+            {
+                for (auto& memory : h_registered_) {
+                    if (memory->ptr() == ptr &&
+                        memory->size() == bytes)
+                    {
+                        return;
+                    }
+                }
+                cu::RegisteredMemory *h_registered = new cu::RegisteredMemory(ptr, bytes);
+                h_registered_.push_back(std::unique_ptr<cu::RegisteredMemory>(h_registered));
+            }
+
             /*
              * Host memory destructor
              */
@@ -1172,7 +1164,7 @@ namespace idg {
                 fft_subgrid_bulk  = fft_subgrid_bulk_default;
                 fft_subgrid_batch = 0;
                 fft_subgrid_size  = 0;
-                fft_subbgrid_plan_bulk.reset();
+                fft_subgrid_plan_bulk.reset();
                 fft_subgrid_plan_misc.reset();
             }
 
