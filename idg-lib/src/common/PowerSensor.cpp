@@ -1,6 +1,11 @@
-#include "PowerSensor.h"
+#include <vector>
+#include <iostream>
 
-#include "idg-common.h"
+#include "omp.h"
+
+#include "idg-config.h"
+
+#include "auxiliary.h"
 
 #if defined(HAVE_POWERSENSOR)
 #include "powersensor/LikwidPowerSensor.h"
@@ -8,9 +13,24 @@
 #include "powersensor/NVMLPowerSensor.h"
 #include "powersensor/ArduinoPowerSensor.h"
 #include "powersensor/AMDGPUPowerSensor.h"
+#define POWERSENSOR_DEFINED
 #endif
 
+#include "PowerSensor.h"
+
 namespace powersensor {
+
+    static std::string name_likwid("likwid");
+    static std::string name_rapl("rapl");
+    static std::string name_nvml("nvml");
+    static std::string name_arduino("tty");
+    static std::string name_amdgpu("amdgpu");
+
+    class DummyPowerSensor : public PowerSensor {
+        public:
+            DummyPowerSensor();
+            virtual State read();
+    };
 
     PowerSensor* get_power_sensor(
         const std::string name,
@@ -54,6 +74,7 @@ namespace powersensor {
         #endif
 
         // Use the DummyPowerSensor as backup
+        std::cout << "creating DummyPowerSensor" << std::endl;
         return new DummyPowerSensor();
     }
 
