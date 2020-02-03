@@ -238,7 +238,7 @@ namespace idg {
                 void unset_avg_aterm_correction();
 
                 //! Methods for memory management
-                virtual Grid get_grid(
+                virtual Grid allocate_grid(
                     size_t nr_w_layers,
                     size_t nr_correlations,
                     size_t height,

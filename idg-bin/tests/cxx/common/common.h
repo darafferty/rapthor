@@ -160,9 +160,9 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     idg::Array1D<float> shift =
         idg::get_zero_shift();
     idg::Grid grid =
-        optimized.get_grid(1, nr_correlations, grid_size, grid_size);
+        optimized.allocate_grid(1, nr_correlations, grid_size, grid_size);
     idg::Grid grid_ref =
-        reference.get_grid(1, nr_correlations, grid_size, grid_size);
+        reference.allocate_grid(1, nr_correlations, grid_size, grid_size);
     clog << endl;
 
     // Set w-terms to zero

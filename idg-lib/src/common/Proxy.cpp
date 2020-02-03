@@ -688,7 +688,7 @@ namespace idg {
             return wavenumbers;
         }
 
-         Grid Proxy::get_grid(
+         Grid Proxy::allocate_grid(
             size_t nr_w_layers,
             size_t nr_correlations,
             size_t height,

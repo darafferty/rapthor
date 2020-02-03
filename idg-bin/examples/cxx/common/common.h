@@ -227,7 +227,7 @@ void run()
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Grid grid =
-        proxy.get_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+        proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
