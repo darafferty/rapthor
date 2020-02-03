@@ -8,13 +8,9 @@ namespace idg {
     namespace proxy {
         Proxy::Proxy()
         {
-            grid_ptr = NULL;
         }
 
         Proxy::~Proxy() {
-            if (grid_ptr != NULL) {
-                delete[] grid_ptr;
-            }
         }
 
         void Proxy::gridding(
@@ -688,27 +684,36 @@ namespace idg {
             return wavenumbers;
         }
 
-         Grid Proxy::allocate_grid(
+        Grid& Proxy::allocate_grid(
             size_t nr_w_layers,
             size_t nr_correlations,
             size_t height,
             size_t width)
         {
-            if (grid_ptr != NULL) {
-                delete grid_ptr;
+            if (m_grid != NULL) {
+                m_grid.reset();
             }
-            grid_ptr = allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
-            Grid grid(grid_ptr, nr_w_layers, nr_correlations, height, width);
-            grid.zero();
-            return grid;
+            auto* ptr = allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
+            m_grid.reset(new Grid(ptr, nr_w_layers, nr_correlations, height, width));
+            return *m_grid.get();
         }
 
         void Proxy::free_grid(
             Grid& grid)
         {
-            assert(grid_ptr == grid.data());
-            free(grid_ptr);
-            grid_ptr = NULL;
+            assert(m_grid->data() == grid.data());
+            m_grid.reset();
+        }
+
+        void Proxy::set_grid(
+            Grid& grid)
+        {
+            m_grid.reset(&grid);
+        }
+
+        Grid& Proxy::get_grid()
+        {
+            return *m_grid;
         }
 
     } // end namespace proxy

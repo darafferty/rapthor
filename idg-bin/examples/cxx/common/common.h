@@ -226,7 +226,7 @@ void run()
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
-    idg::Grid grid =
+    idg::Grid& grid =
         proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();

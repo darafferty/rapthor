@@ -159,9 +159,9 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();
-    idg::Grid grid =
+    idg::Grid& grid =
         optimized.allocate_grid(1, nr_correlations, grid_size, grid_size);
-    idg::Grid grid_ref =
+    idg::Grid& grid_ref =
         reference.allocate_grid(1, nr_correlations, grid_size, grid_size);
     clog << endl;
 

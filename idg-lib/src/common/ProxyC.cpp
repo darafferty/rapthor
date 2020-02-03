@@ -306,13 +306,13 @@ extern "C" {
        delete reinterpret_cast<idg::proxy::Proxy*>(p);
     }
 
-    void* Proxy_get_grid(
+    void* Proxy_allocate_grid(
         Proxy* p,
         unsigned int nr_correlations,
         unsigned int grid_size)
     {
         const unsigned int nr_w_layers = 1;
-        idg::Grid grid = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+        idg::Grid& grid = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
         return grid.data();
     }
 }
