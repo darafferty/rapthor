@@ -51,6 +51,10 @@ namespace idg {
                 cout << "Transform direction: " << direction << endl;
                 #endif
 
+                // TODO: fix this method
+                // (1) does the m_grid_tiled need to be untiled before use?
+                // (2) even though m_grid_tiled is Unified Memory, cuFFT fails
+
                 // Constants
                 auto nr_correlations = grid.get_z_dim();;
                 auto grid_size       = grid.get_x_dim();
@@ -58,11 +62,8 @@ namespace idg {
                 // Load device
                 InstanceCUDA &device = get_device(0);
 
-                // Free device memory
-                device.free_device_memory();
-
                 // Get UnifiedMemory object for grid data
-                cu::UnifiedMemory u_grid(grid.data(), grid.bytes());
+                cu::UnifiedMemory u_grid(m_grid_tiled->data(), m_grid_tiled->bytes());
 
                 // Initialize
                 cu::Stream& stream = device.get_execute_stream();
@@ -83,7 +84,7 @@ namespace idg {
 
                 // Execute fft
                 device.measure(powerRecords[0], stream);
-                device.launch_fft_unified(grid_size, nr_correlations, grid, direction);
+                device.launch_grid_fft_unified(grid_size, nr_correlations, grid, direction);
                 device.measure(powerRecords[1], stream);
                 stream.synchronize();
 
@@ -135,29 +136,13 @@ namespace idg {
                 std::cout << "UnifiedOptimized::" << __func__ << std::endl;
                 #endif
 
-                InstanceCUDA& device = get_device(0);
-
-                // Arguments
-                auto grid_size = grid.get_x_dim();
-                auto tile_size = device.get_tile_size_grid();
-
-                // Apply tiling
-                cu::UnifiedMemory u_grid(grid.bytes());
-                Grid grid_tiled(u_grid, grid.shape());
-                if (m_enable_tiling) {
-                    device.tile_forward(grid_size, tile_size, grid, grid_tiled);
-                }
+                Grid* grid_ptr = m_enable_tiling ? m_grid_tiled.get() : m_grid.get();
 
                 // Run gridding
                 gpuProxy->gridding(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
-                    grid_tiled, aterms, aterms_offsets, spheroidal);
-
-                // Undo tiling
-                if (m_enable_tiling) {
-                    device.tile_backward(grid_size, tile_size, grid_tiled, grid);
-                }
+                    *grid_ptr, aterms, aterms_offsets, spheroidal);
             } // end gridding
 
 
@@ -181,30 +166,41 @@ namespace idg {
                 std::cout << "UnifiedOptimized::" << __func__ << std::endl;
                 #endif
 
-                InstanceCUDA& device = get_device(0);
-
-                // Arguments
-                auto grid_size = grid.get_x_dim();
-                auto tile_size = get_device(0).get_tile_size_grid();
-
-                // Apply tiling
-                cu::UnifiedMemory u_grid(grid.bytes());
-                Grid grid_tiled(u_grid, grid.shape());
-                if (m_enable_tiling) {
-                    device.tile_forward(grid_size, tile_size, grid, grid_tiled);
-                }
+                Grid* grid_ptr = m_enable_tiling ? m_grid_tiled.get() : m_grid.get();
 
                 // Run degridding
                 gpuProxy->degridding(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
-                    grid_tiled, aterms, aterms_offsets, spheroidal);
-
-                // Undo tiling
-                if (m_enable_tiling) {
-                    device.tile_backward(grid_size, tile_size, grid_tiled, (Grid&) grid);
-                }
+                    *grid_ptr, aterms, aterms_offsets, spheroidal);
             } // end degridding
+
+            void Unified::set_grid(Grid& grid)
+            {
+                m_grid.reset(&grid);
+
+                if (m_enable_tiling) {
+                    auto grid_size = m_grid->get_x_dim();
+                    auto tile_size = get_device(0).get_tile_size_grid();
+                    InstanceCUDA &device = get_device(0);
+                    cu::UnifiedMemory* u_grid_tiled = new cu::UnifiedMemory(grid.bytes());
+                    auto grid_tiled = new Grid(*u_grid_tiled, grid.shape());
+                    m_grid_tiled.reset(grid_tiled);
+                    device.tile_forward(grid_size, tile_size, grid, *m_grid_tiled);
+                }
+            }
+
+            Grid& Unified::get_grid()
+            {
+                if (m_enable_tiling) {
+                    auto grid_size = m_grid->get_x_dim();
+                    auto tile_size = get_device(0).get_tile_size_grid();
+                    InstanceCUDA &device = get_device(0);
+                    device.tile_backward(grid_size, tile_size, *m_grid_tiled, *m_grid);
+                }
+
+                return *m_grid;
+            }
 
         } // namespace cuda
     } // namespace proxy

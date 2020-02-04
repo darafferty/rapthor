@@ -266,6 +266,9 @@ void run()
     Queue<idg::Plan*> plans;
     omp_set_nested(true);
 
+    // Set grid
+    proxy.set_grid(grid);
+
     // Iterate all cycles
     for (unsigned i = 0; i < nr_cycles; i++) {
 
@@ -407,6 +410,9 @@ void run()
         } // end omp parallel
         #endif
     } // end for i (nr_cycles)
+
+    // Only after a call to get_grid(), the grid can be used outside of the proxy
+    proxy.get_grid();
 
     // Compute maximum runtime
     double max_runtime_gridding   = *max_element(runtimes_gridding.begin(), runtimes_gridding.end());

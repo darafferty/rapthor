@@ -8,6 +8,10 @@ namespace powersensor {
     class PowerSensor;
 }
 
+namespace cu {
+    class UnifiedMemory;
+}
+
 namespace idg {
     namespace proxy {
         namespace cuda {
@@ -57,9 +61,21 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
+                    virtual void set_grid(Grid& grid) override;
+
+                    virtual Grid& get_grid() override;
+
                 private:
                     idg::proxy::cuda::Generic* gpuProxy;
                     powersensor::PowerSensor *hostPowerSensor;
+
+                    // The m_grid member defined in Proxy
+                    // may not reside in Unified Memory.
+                    // This m_grid_tiled is initialized as a copy
+                    // of m_grid and (optionally) tiled to match the
+                    // data access pattern in the unified_adder
+                    // and unified_splitter kernels.
+                    std::unique_ptr<Grid> m_grid_tiled = nullptr;
 
             }; // class Unified
 

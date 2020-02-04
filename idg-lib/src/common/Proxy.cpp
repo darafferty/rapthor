@@ -37,6 +37,7 @@ namespace idg {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
 
+            assert(grid.data() == m_grid->data());
             do_gridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
 
@@ -211,6 +212,9 @@ namespace idg {
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
             }
+
+            assert(grid.data() == m_grid->data());
+
             do_degridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
         }
 
@@ -690,19 +694,9 @@ namespace idg {
             size_t height,
             size_t width)
         {
-            if (m_grid != NULL) {
-                m_grid.reset();
-            }
             auto* ptr = allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
-            m_grid.reset(new Grid(ptr, nr_w_layers, nr_correlations, height, width));
-            return *m_grid.get();
-        }
-
-        void Proxy::free_grid(
-            Grid& grid)
-        {
-            assert(m_grid->data() == grid.data());
-            m_grid.reset();
+            auto grid  = new Grid(ptr, nr_w_layers, nr_correlations, height, width);
+            return *grid;
         }
 
         void Proxy::set_grid(

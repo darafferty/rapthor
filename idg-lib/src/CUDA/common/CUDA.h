@@ -36,9 +36,7 @@ namespace idg {
                         const unsigned int nr_timeslots,
                         const unsigned int nr_timesteps,
                         const unsigned int nr_channels,
-                        const unsigned int subgrid_size,
-                        const unsigned int nr_streams,
-                        const unsigned int grid_size = 0);
+                        const unsigned int subgrid_size);
 
                     void initialize(
                         const Plan& plan,
@@ -53,8 +51,9 @@ namespace idg {
                         const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
-                        const Array2D<float>& spheroidal,
-                        const unsigned short max_nr_streams);
+                        const Array2D<float>& spheroidal);
+
+                    void cleanup();
 
                 protected:
                     void init_devices();
@@ -67,7 +66,6 @@ namespace idg {
                         unsigned int nr_timesteps = 0;
                         unsigned int nr_channels  = 0;
                         unsigned int subgrid_size = 0;
-                        unsigned int grid_size    = 0;
                         unsigned int nr_baselines = 0;
                         std::vector<int> jobsize;
                         std::vector<int> max_nr_subgrids;
@@ -89,6 +87,10 @@ namespace idg {
                     // to the host grid format, rather than the tiled
                     // format used in the adder and splitter kernels.
                     bool m_enable_tiling = true;
+
+                    // Maximum number of streams used to implement
+                    // multi-buffering to overlap I/O and computation
+                    unsigned int m_max_nr_streams = 2;
 
                 public:
                     void set_fraction_reserved(float f) { m_fraction_reserved = f; }

@@ -105,15 +105,15 @@ namespace idg {
                         int size,
                         DomainAtoDomainB direction);
 
-                    void plan_fft(
+                    void plan_subgrid_fft(
                         unsigned size,
                         unsigned batch);
 
-                    void launch_fft(
+                    void launch_subgrid_fft(
                         cu::DeviceMemory& d_data,
                         DomainAtoDomainB direction);
 
-                    void launch_fft_unified(
+                    void launch_grid_fft_unified(
                         unsigned long size,
                         unsigned batch,
                         Array3D<std::complex<float>>& grid,
@@ -186,7 +186,7 @@ namespace idg {
                     void register_host_memory(void* ptr, size_t bytes);
 
                     // Retrieve pre-allocated buffers (per device)
-                    cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
+                    cu::DeviceMemory& retrieve_device_grid() { return *d_grid.get(); }
                     cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
                     cu::DeviceMemory& retrieve_device_aterms_indices() { return *d_aterms_indices; }
                     cu::DeviceMemory& retrieve_device_aterms_derivatives() { return *d_aterms_derivatives; }
@@ -200,13 +200,26 @@ namespace idg {
                     cu::DeviceMemory& retrieve_device_subgrids(unsigned int id) { return *d_subgrids_[id]; }
                     cu::DeviceMemory& retrieve_device_metadata(unsigned int id) { return *d_metadata_[id]; }
 
+                    // Free buffers
+                    void free_device_wavenumbers() { d_wavenumbers.reset(); };
+                    void free_device_spheroidal() { d_spheroidal.reset(); };
+                    void free_device_aterms() { d_aterms.reset(); };
+                    void free_device_aterms_indices() {d_aterms_indices.reset(); };
+                    void free_device_avg_aterm_correction() { d_avg_aterm_correction.reset(); };
+                    void free_device_visibilities() { d_visibilities_.clear(); };
+                    void free_device_uvw() { d_uvw_.clear(); };
+                    void free_device_subgrids() { d_subgrids_.clear(); };
+                    void free_device_metadata() { d_metadata_.clear();};
+
                     // Misc
-                    void free_host_memory();
-                    void free_device_memory();
                     void free_fft_plans();
-                    void reset();
                     int get_tile_size_grid() const { return tile_size_grid; };
                     void print_device_memory_info();
+
+                private:
+                    void free_host_memory();
+                    void free_device_memory();
+                    void reset();
 
                 protected:
                     cu::Module* compile_kernel(std::string& flags, std::string& src, std::string& bin);

@@ -91,6 +91,11 @@ namespace idg {
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal);
 
+                public:
+                    virtual void set_grid(Grid& grid) override;
+
+                    virtual Grid& get_grid() override;
+
             }; // class Generic
 
         } // namespace cuda

@@ -244,13 +244,7 @@ namespace idg {
                     size_t height,
                     size_t width);
 
-                virtual void free_grid(
-                    Grid& grid);
-
-                virtual void set_grid(
-                    Grid& grid
-                );
-
+                virtual void set_grid(Grid& grid);
                 virtual Grid& get_grid();
 
                 //! Method W-tiling
@@ -402,10 +396,9 @@ namespace idg {
 
                 std::vector<std::complex<float>> m_avg_aterm_correction;
 
-            private:
-                std::unique_ptr<Grid> m_grid = nullptr;
-
             protected:
+                std::shared_ptr<Grid> m_grid = nullptr;
+
                 Report report;
 
         }; // end class Proxy
