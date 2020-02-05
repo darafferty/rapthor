@@ -20,9 +20,6 @@ namespace idg {
                     virtual bool supports_wstack_degridding() { return cpuProxy->supports_wstack_degridding(); }
                     virtual bool supports_avg_aterm_correction() {return true;}
 
-                    virtual void set_grid(Grid& grid) override;
-                    virtual Grid& get_grid() override;
-
                 private:
                     virtual void do_gridding(
                         const Plan& plan,

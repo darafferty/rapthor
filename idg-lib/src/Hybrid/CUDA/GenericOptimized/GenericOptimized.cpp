@@ -731,19 +731,6 @@ namespace idg {
                 #endif
             } // end do_degridding
 
-
-            void GenericOptimized::set_grid(
-                Grid& grid)
-            {
-                cpuProxy->set_grid(grid);
-            }
-
-            Grid& GenericOptimized::get_grid()
-            {
-                return cpuProxy->get_grid();
-            }
-
-
             void GenericOptimized::do_calibrate_init(
                 std::vector<std::unique_ptr<Plan>> &&plans,
                 float w_step,
