@@ -622,19 +622,19 @@ namespace idg {
                 #endif
             } // end degridding
 
-            void Generic::set_grid(Grid& grid)
+            void Generic::set_grid(std::shared_ptr<Grid> grid)
             {
-                m_grid.reset(&grid);
+                m_grid = grid;
                 InstanceCUDA &device = get_device(0);
                 device.set_context();
-                device.allocate_device_grid(grid.bytes());
+                device.allocate_device_grid(grid->bytes());
                 cu::DeviceMemory& d_grid = device.retrieve_device_grid();
                 cu::Stream& htodstream   = device.get_htod_stream();
-                device.copy_htod(htodstream, d_grid, grid.data(), grid.bytes());
+                device.copy_htod(htodstream, d_grid, grid->data(), grid->bytes());
                 htodstream.synchronize();
             }
 
-            Grid& Generic::get_grid()
+            std::shared_ptr<Grid> Generic::get_grid()
             {
                 InstanceCUDA &device = get_device(0);
                 device.set_context();
@@ -642,7 +642,7 @@ namespace idg {
                 cu::Stream& dtohstream   = device.get_dtoh_stream();
                 device.copy_dtoh(dtohstream, m_grid->data(), d_grid, m_grid->bytes());
                 dtohstream.synchronize();
-                return *m_grid;
+                return m_grid;
             }
 
         } // namespace cuda

@@ -92,9 +92,9 @@ namespace idg {
                         const Array2D<float>& spheroidal);
 
                 public:
-                    virtual void set_grid(Grid& grid) override;
+                    virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
-                    virtual Grid& get_grid() override;
+                    virtual std::shared_ptr<Grid> get_grid() override;
 
             }; // class Generic
 
