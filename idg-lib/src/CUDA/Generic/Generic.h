@@ -12,6 +12,8 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             class Generic : public CUDA {
+                friend class Unified;
+
                 public:
                     // Constructor
                     Generic(
