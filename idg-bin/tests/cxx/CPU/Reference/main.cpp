@@ -101,9 +101,8 @@ int test01()
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::cpu::Reference proxy;
 
-
     // Set grid
-    idg::Grid grid_(grid.data(), grid.shape());
+    idg::Grid grid_(grid.data(), 1, nr_correlations, grid_size, grid_size);
     proxy.set_grid(grid_);
 
     // Create plan
@@ -132,6 +131,10 @@ int test01()
     clog << ">>> Predict visibilities" << endl;
 
     proxy.transform(idg::ImageDomainToFourierDomain, grid_ref);
+
+    // Set reference grid
+    idg::Grid grid_ref_(grid_ref.data(), 1, nr_correlations, grid_size, grid_size);
+    proxy.set_grid(grid_ref_);
 
     proxy.degridding(
         plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
