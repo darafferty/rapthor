@@ -1,7 +1,5 @@
 #include "UnifiedOptimized.h"
 
-#include "InstanceCUDA.h"
-
 namespace idg {
     namespace proxy {
         namespace hybrid {
@@ -16,11 +14,6 @@ namespace idg {
                 #endif
 
                 cpuProxy = new idg::proxy::cpu::Optimized();
-                gpuProxy = new idg::proxy::cuda::Generic();
-                gpuProxy->enable_unified_memory();
-
-                // Increase the fraction of reserved memory
-                set_fraction_reserved(0.4);
             }
 
             // Destructor
@@ -30,9 +23,7 @@ namespace idg {
                 #endif
 
                 delete cpuProxy;
-                delete gpuProxy;
             }
-
 
             void UnifiedOptimized::do_transform(
                 DomainAtoDomainB direction,

@@ -1,8 +1,8 @@
 #ifndef IDG_HYBRID_UNIFIED_OPTIMIZED_H_
 #define IDG_HYBRID_UNIFIED_OPTIMIZED_H_
 
-#include "idg-hybrid-cuda.h"
-#include "CUDA/common/CUDA.h"
+#include "CUDA/Unified/Unified.h"
+#include "CPU/Optimized/Optimized.h"
 
 namespace idg {
     namespace proxy {
@@ -21,7 +21,6 @@ namespace idg {
 
                 private:
                     idg::proxy::cpu::CPU* cpuProxy;
-                    idg::proxy::cuda::Generic* gpuProxy;
 
             }; // class UnifiedOptimized
 
