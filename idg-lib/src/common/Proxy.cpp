@@ -24,21 +24,23 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid& grid,
+            Grid& grid_deprecated,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
+            assert(m_grid != nullptr);
+            assert(grid_deprecated.data() == m_grid->data());
+
             check_dimensions(
                 subgrid_size, frequencies, visibilities, uvw, baselines,
-                grid, aterms, aterms_offsets, spheroidal);
+                *m_grid, aterms, aterms_offsets, spheroidal);
 
             if ((w_step != 0.0) && (!supports_wstack_gridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support gridding with W-stacking.");
             }
 
-            assert(grid.data() == m_grid->data());
-            do_gridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+            do_gridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, *m_grid, aterms, aterms_offsets, spheroidal);
         }
 
         void Proxy::gridding(
@@ -51,13 +53,13 @@ namespace idg {
             const Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            Grid& grid,
+            Grid& grid_deprecated,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
-            auto grid_size        = grid.get_x_dim();
-            auto nr_w_layers      = grid.get_w_dim();
+            auto grid_size        = m_grid->get_x_dim();
+            auto nr_w_layers      = m_grid->get_w_dim();
 
             Plan::Options options;
             options.w_step = w_step;
@@ -85,7 +87,7 @@ namespace idg {
                 visibilities,
                 uvw,
                 baselines,
-                grid,
+                *m_grid,
                 aterms,
                 aterms_offsets,
                 spheroidal);
@@ -111,7 +113,7 @@ namespace idg {
             unsigned int* baselines,
             unsigned int baselines_nr_baselines,
             unsigned int baselines_two,
-            std::complex<float>* grid,
+            std::complex<float>* grid_deprecated,
             unsigned int grid_nr_correlations,
             unsigned int grid_height,
             unsigned int grid_width,
@@ -163,7 +165,7 @@ namespace idg {
             Array1D<std::pair<unsigned int,unsigned int>> baselines_(
                 (std::pair<unsigned int,unsigned int> *) baselines, baselines_nr_baselines);
             Grid grid_(
-                grid, 1, grid_nr_correlations, grid_height, grid_width);
+                m_grid->data(), 1, grid_nr_correlations, grid_height, grid_width);
             Array4D<Matrix2x2<std::complex<float>>> aterms_(
                 (Matrix2x2<std::complex<float>> *) aterms, aterms_nr_timeslots, aterms_nr_stations,
                 aterms_aterm_height, aterms_aterm_width);
@@ -200,22 +202,22 @@ namespace idg {
             Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            const Grid& grid,
+            const Grid& grid_deprecated,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
+            assert(grid_deprecated.data() == m_grid->data());
+
             check_dimensions(
                 subgrid_size, frequencies, visibilities, uvw, baselines,
-                grid, aterms, aterms_offsets, spheroidal);
+                *m_grid, aterms, aterms_offsets, spheroidal);
 
             if ((w_step != 0.0) && (!supports_wstack_degridding())) {
                 throw std::invalid_argument("w_step is not zero, but this Proxy does not support degridding with W-stacking.");
             }
 
-            assert(grid.data() == m_grid->data());
-
-            do_degridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+            do_degridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, *m_grid, aterms, aterms_offsets, spheroidal);
         }
 
         void Proxy::degridding(
@@ -228,13 +230,13 @@ namespace idg {
             Array3D<Visibility<std::complex<float>>>& visibilities,
             const Array2D<UVW<float>>& uvw,
             const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
-            const Grid& grid,
+            const Grid& grid_deprecated,
             const Array4D<Matrix2x2<std::complex<float>>>& aterms,
             const Array1D<unsigned int>& aterms_offsets,
             const Array2D<float>& spheroidal)
         {
-            auto grid_size        = grid.get_x_dim();
-            auto nr_w_layers      = grid.get_w_dim();
+            auto grid_size        = m_grid->get_x_dim();
+            auto nr_w_layers      = m_grid->get_w_dim();
 
             Plan::Options options;
             options.w_step = w_step;
@@ -261,7 +263,7 @@ namespace idg {
                 visibilities,
                 uvw,
                 baselines,
-                grid,
+                *m_grid,
                 aterms,
                 aterms_offsets,
                 spheroidal);
@@ -688,26 +690,33 @@ namespace idg {
             return wavenumbers;
         }
 
-        Grid& Proxy::allocate_grid(
+        std::shared_ptr<Grid> Proxy::allocate_grid(
             size_t nr_w_layers,
             size_t nr_correlations,
             size_t height,
             size_t width)
         {
             auto* ptr = allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
-            auto grid  = new Grid(ptr, nr_w_layers, nr_correlations, height, width);
-            return *grid;
+            std::shared_ptr<Grid> grid_ptr(new Grid(ptr, nr_w_layers, nr_correlations, height, width));
+            return grid_ptr;
         }
 
         void Proxy::set_grid(
             Grid& grid)
         {
-            m_grid.reset(&grid);
+            std::shared_ptr<Grid> grid_ptr(new Grid(grid.data(), grid.shape()));
+            m_grid = grid_ptr;
         }
 
-        Grid& Proxy::get_grid()
+        void Proxy::set_grid(
+            std::shared_ptr<Grid> grid)
         {
-            return *m_grid;
+            m_grid = grid;
+        }
+
+        std::shared_ptr<Grid> Proxy::get_grid()
+        {
+            return m_grid;
         }
 
     } // end namespace proxy

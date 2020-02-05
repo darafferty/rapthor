@@ -238,14 +238,15 @@ namespace idg {
                 void unset_avg_aterm_correction();
 
                 //! Methods for grid management
-                virtual Grid& allocate_grid(
+                virtual std::shared_ptr<Grid> allocate_grid(
                     size_t nr_w_layers,
                     size_t nr_correlations,
                     size_t height,
                     size_t width);
 
                 virtual void set_grid(Grid& grid);
-                virtual Grid& get_grid();
+                virtual void set_grid(std::shared_ptr<Grid> grid);
+                virtual std::shared_ptr<Grid> get_grid();
 
                 //! Method W-tiling
                 virtual Plan* make_plan(

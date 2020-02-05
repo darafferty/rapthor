@@ -101,6 +101,11 @@ int test01()
     clog << ">>> Initialize proxy" << endl;
     idg::proxy::cpu::Reference proxy;
 
+
+    // Set grid
+    idg::Grid grid_(grid.data(), grid.shape());
+    proxy.set_grid(grid_);
+
     // Create plan
     clog << ">>> Create plan" << endl;
     idg::Plan::Options options;
@@ -112,7 +117,6 @@ int test01()
 
     // Grid reference visibilities
     clog << ">>> Grid visibilities" << endl;
-    idg::Grid grid_(grid.data(), 1, nr_correlations, grid_size, grid_size);
     proxy.gridding(
         plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities_ref, uvw, baselines,

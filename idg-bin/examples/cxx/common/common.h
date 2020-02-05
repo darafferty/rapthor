@@ -226,7 +226,7 @@ void run()
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
-    idg::Grid& grid =
+    auto grid =
         proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();
@@ -368,7 +368,7 @@ void run()
                         proxy.gridding(
                             *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                             frequencies, visibilities, uvw, baselines,
-                            grid, aterms, aterms_offsets, spheroidal);
+                            *grid, aterms, aterms_offsets, spheroidal);
                         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
                         clog << endl;
 
@@ -379,7 +379,7 @@ void run()
                         proxy.degridding(
                             *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                             frequencies, visibilities, uvw, baselines,
-                            grid, aterms, aterms_offsets, spheroidal);
+                            *grid, aterms, aterms_offsets, spheroidal);
                         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
                         clog << endl;
 
@@ -388,7 +388,7 @@ void run()
                         double runtime_fft = -omp_get_wtime();
                         if (!disable_fft)
                         for (unsigned w = 0; w < nr_w_layers; w++) {
-                            idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
+                            idg::Array3D<std::complex<float>> grid_(grid->data(w), nr_correlations, grid_size, grid_size);
                             proxy.transform(idg::FourierDomainToImageDomain, grid_);
                             proxy.transform(idg::ImageDomainToFourierDomain, grid_);
                         }
