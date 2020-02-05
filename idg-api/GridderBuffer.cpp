@@ -309,6 +309,7 @@ namespace api {
 
         // Run gridding
         m_bufferset->m_gridding_watch->Start();
+        m_proxy->set_grid(m_grid);
         m_proxy->gridding(
             plan,
             m_wStepInLambda,
@@ -324,6 +325,7 @@ namespace api {
             m_aterms_array,
             m_aterm_offsets_array,
             m_spheroidal);
+        m_proxy->get_grid();
         m_bufferset->m_gridding_watch->Pause();
 
         // Check grid for NaN values

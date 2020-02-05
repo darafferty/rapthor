@@ -64,7 +64,7 @@ namespace api {
 
         void set_w_step(float w_step);
         float get_w_step() const;
-        
+
         void set_shift(const float* shift);
         const idg::Array1D<float>& get_shift() const;
 
@@ -178,7 +178,7 @@ namespace api {
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs;                         // BL
         Array3D<Visibility<std::complex<float>>> m_bufferVisibilities;   // BL x TI x CH
 
-        Grid* m_grid; // pointer grid
+        std::shared_ptr<Grid> m_grid; // pointer grid
 
         // references to members of parent BufferSet
         size_t &m_subgridsize;
