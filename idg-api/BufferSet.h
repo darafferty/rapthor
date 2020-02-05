@@ -40,7 +40,7 @@ namespace api {
           size_t nBaselines = ((nStations - 1) * nStations) / 2;
           return
             // Visibilities
-            uint64_t(nBaselines) * uint64_t(nChannels) * uint64_t(8) /* bytes per vis */
+            uint64_t(nBaselines) * uint64_t(nChannels) * uint64_t(8 * 4) /* bytes per vis x ncor */
             +
             // UVW values
             uint64_t(nBaselines) * uint64_t(3 * 4); // (3 values of 4 bytes)
