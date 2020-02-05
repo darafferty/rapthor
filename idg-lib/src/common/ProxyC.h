@@ -1,6 +1,10 @@
 extern "C" {
 
-    struct Proxy;
+    class Proxy
+    {
+        public:
+            virtual void set_grid(idg::Grid& grid) = 0;
+    };
 
     void Proxy_gridding(
         Proxy* p,
@@ -149,7 +153,7 @@ extern "C" {
 
     void Proxy_destroy(Proxy* p);
 
-    void* Proxy_get_grid(
+    void* Proxy_allocate_grid(
         Proxy* p,
         unsigned int nr_correlations,
         unsigned int grid_size);

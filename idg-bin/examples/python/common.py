@@ -187,7 +187,7 @@ def main(proxyname):
     data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
 
     baselines      = util.get_example_baselines(nr_baselines)
-    grid           = p.get_grid(nr_correlations, grid_size)
+    grid           = p.allocate_grid(nr_correlations, grid_size)
 
     aterms         = util.get_identity_aterms(
                         nr_timeslots, nr_stations, subgrid_size, nr_correlations)

@@ -117,9 +117,7 @@ namespace idg {
                 const unsigned int nr_timeslots,
                 const unsigned int nr_timesteps,
                 const unsigned int nr_channels,
-                const unsigned int subgrid_size,
-                const unsigned int nr_streams,
-                const unsigned int grid_size)
+                const unsigned int subgrid_size)
             {
                 #if defined(DEBUG)
                 std::cout << "CUDA::" << __func__ << std::endl;
@@ -135,7 +133,6 @@ namespace idg {
                 if (nr_timesteps != m_gridding_state.nr_timesteps) { reset = true; };
                 if (nr_channels  != m_gridding_state.nr_channels)  { reset = true; };
                 if (subgrid_size != m_gridding_state.subgrid_size) { reset = true; };
-                if (grid_size    != m_gridding_state.grid_size)    { reset = true; };
 
                 for (unsigned i = 0; i < m_gridding_state.jobsize.size(); i++) {
                     unsigned int jobsize = m_gridding_state.jobsize[i];
@@ -151,13 +148,9 @@ namespace idg {
                     #endif
                     return m_gridding_state.jobsize;
                 } else {
-                    // Reset all memory allocated by devices
-                    for (unsigned d = 0; d < get_num_devices(); d++) {
-                        InstanceCUDA& device = get_device(d);
-                        device.free_host_memory();
-                        device.free_device_memory();
-                        device.free_fft_plans();
-                    }
+                    // Free all the memory allocated by initialize
+                    // such that the new jobsize can be properly computed
+                    cleanup();
                 }
 
                 // Set parameters
@@ -166,7 +159,6 @@ namespace idg {
                 m_gridding_state.nr_timesteps = nr_timesteps;
                 m_gridding_state.nr_channels  = nr_channels;
                 m_gridding_state.subgrid_size = subgrid_size;
-                m_gridding_state.grid_size    = grid_size;
                 m_gridding_state.nr_baselines = nr_baselines;
 
                 // Print parameters
@@ -176,7 +168,6 @@ namespace idg {
                 std::cout << "nr_timesteps = " << nr_timesteps << std::endl;
                 std::cout << "nr_channels  = " << nr_channels  << std::endl;
                 std::cout << "subgrid_size = " << subgrid_size << std::endl;
-                std::cout << "grid_size    = " << grid_size    << std::endl;
                 std::cout << "nr_baselines = " << nr_baselines << std::endl;
                 #endif
 
@@ -191,16 +182,15 @@ namespace idg {
                 int max_nr_subgrids_bl = plan.get_max_nr_subgrids();
 
                 // Compute the amount of bytes needed for that job
-                size_t bytes_jobs = 0;
-                bytes_jobs += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
-                bytes_jobs += auxiliary::sizeof_uvw(1, nr_timesteps);
-                bytes_jobs += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size);
-                bytes_jobs += auxiliary::sizeof_metadata(max_nr_subgrids_bl);
-                bytes_jobs *= nr_streams;
+                size_t bytes_job = 0;
+                bytes_job += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
+                bytes_job += auxiliary::sizeof_uvw(1, nr_timesteps);
+                bytes_job += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size);
+                bytes_job += auxiliary::sizeof_metadata(max_nr_subgrids_bl);
+                bytes_job *= m_max_nr_streams;
 
                 // Compute the amount of memory needed for data that is identical for all jobs
                 size_t bytes_static = 0;
-                bytes_static += auxiliary::sizeof_grid(grid_size);
                 bytes_static += auxiliary::sizeof_aterms(nr_stations, nr_timeslots, subgrid_size);
                 bytes_static += auxiliary::sizeof_spheroidal(subgrid_size);
                 bytes_static += auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
@@ -243,7 +233,7 @@ namespace idg {
                     }
 
                     // Check whether the static data and job data fits at all
-                    if (bytes_free < (bytes_static + bytes_jobs)) {
+                    if (bytes_free < (bytes_static + bytes_job)) {
                         std::cerr << "Error! Not enough (free) memory on device to continue.";
                         std::cerr << std::endl;
                         exit(EXIT_FAILURE);
@@ -253,7 +243,7 @@ namespace idg {
                     bytes_free -= bytes_static;
 
                     // Compute jobsize
-                    jobsize[i] = (bytes_free * (1 - m_fraction_reserved)) /  bytes_jobs;
+                    jobsize[i] = (bytes_free * (1 - m_fraction_reserved)) /  bytes_job;
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     jobsize[i] = min(jobsize[i], nr_baselines);
 
@@ -285,8 +275,7 @@ namespace idg {
                 const Array1D<std::pair<unsigned int,unsigned int>>& baselines,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
-                const Array2D<float>& spheroidal,
-                const unsigned short max_nr_streams = 3)
+                const Array2D<float>& spheroidal)
             {
                 #if defined(DEBUG)
                 std::cout << "CUDA::" << __func__ << std::endl;
@@ -306,8 +295,9 @@ namespace idg {
                 Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
                 // Compute jobsize
-                compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size, max_nr_streams);
+                compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels, subgrid_size);
 
+                // Allocate and initialize device memory
                 for (unsigned d = 0; d < get_num_devices(); d++) {
                     InstanceCUDA& device = get_device(d);
                     device.set_context();
@@ -342,7 +332,7 @@ namespace idg {
                     }
 
                     // Dynamic memory (per thread)
-                    for (unsigned t = 0; t < max_nr_streams; t++) {
+                    for (unsigned t = 0; t < m_max_nr_streams; t++) {
                         // Visibilities
                         size_t sizeof_visibilities = auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
                         device.allocate_device_visibilities(t, sizeof_visibilities);
@@ -361,7 +351,7 @@ namespace idg {
                     }
 
                     // Plan subgrid fft
-                    device.plan_fft(subgrid_size, max_nr_subgrids);
+                    device.plan_subgrid_fft(subgrid_size, max_nr_subgrids);
 
                     // Wait for memory copies
                     htodstream.synchronize();
@@ -370,6 +360,32 @@ namespace idg {
                 marker.end();
             } // end initialize
 
+            void CUDA::cleanup()
+            {
+                #if defined(DEBUG)
+                std::cout << "CUDA::" << __func__ << std::endl;
+                #endif
+
+                cu::Marker marker("cleanup");
+                marker.start();
+
+                for (unsigned d = 0; d < get_num_devices(); d++) {
+                    InstanceCUDA& device = get_device(d);
+                    device.set_context();
+                    device.free_device_wavenumbers();
+                    device.free_device_spheroidal();
+                    device.free_device_aterms();
+                    device.free_device_aterms_indices();
+                    device.free_device_avg_aterm_correction();
+                    device.free_device_visibilities();
+                    device.free_device_uvw();
+                    device.free_device_subgrids();
+                    device.free_device_metadata();
+                    device.free_fft_plans();
+                }
+
+                marker.end();
+            }
         } // end namespace cuda
     } // end namespace proxy
 } // end namespace idg

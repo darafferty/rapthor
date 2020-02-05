@@ -28,9 +28,6 @@ namespace idg {
     namespace proxy {
         namespace hybrid {
 
-            // The maximum number of CUDA streams in any routine
-            const unsigned max_nr_streams = 2;
-
             // Constructor
             GenericOptimized::GenericOptimized() :
                 CUDA(default_info())
@@ -240,7 +237,7 @@ namespace idg {
 
                     #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
-                    device.launch_fft(d_subgrids, FourierDomainToImageDomain);
+                    device.launch_subgrid_fft(d_subgrids, FourierDomainToImageDomain);
 
                     // Launch scaler
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
@@ -369,8 +366,7 @@ namespace idg {
                 CUDA::initialize(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal,
-                    max_nr_streams);
+                    aterms, aterms_offsets, spheroidal);
 
                 #if defined(DEBUG)
                 std::clog << "### Run gridding" << std::endl;
@@ -584,7 +580,7 @@ namespace idg {
 
                     #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
-                    device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+                    device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
                     #endif
 
                     // Launch degridder kernel
@@ -709,8 +705,7 @@ namespace idg {
                 CUDA::initialize(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal,
-                    max_nr_streams);
+                    aterms, aterms_offsets, spheroidal);
 
                 #if defined(DEBUG)
                 std::clog << "### Run degridding" << std::endl;
@@ -778,7 +773,6 @@ namespace idg {
                 // Load device
                 InstanceCUDA& device = get_device(0);
                 device.set_context();
-                device.free_device_memory();
                 device.set_report(report);
 
                 // Load stream

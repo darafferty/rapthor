@@ -594,18 +594,18 @@ class Proxy(object):
             ctypes.c_int(height),
             ctypes.c_int(width))
 
-    def get_grid(
+    def allocate_grid(
         self,
         nr_correlations,
         grid_size):
 
         # Get pointer to grid data
-        self.lib.Proxy_get_grid.restype = ctypes.c_void_p
-        self.lib.Proxy_get_grid.argtypes = [
+        self.lib.Proxy_allocate_grid.restype = ctypes.c_void_p
+        self.lib.Proxy_allocate_grid.argtypes = [
             ctypes.c_void_p,
             ctypes.c_int,
             ctypes.c_int]
-        ptr = self.lib.Proxy_get_grid(
+        ptr = self.lib.Proxy_allocate_grid(
             self.obj,
             ctypes.c_int(nr_correlations),
             ctypes.c_int(grid_size))

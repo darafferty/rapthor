@@ -237,14 +237,16 @@ namespace idg {
                 void set_avg_aterm_correction(const Array4D<std::complex<float>>& avg_aterm_correction);
                 void unset_avg_aterm_correction();
 
-                //! Methods for memory management
-                virtual Grid get_grid(
+                //! Methods for grid management
+                virtual std::shared_ptr<Grid> allocate_grid(
                     size_t nr_w_layers,
                     size_t nr_correlations,
                     size_t height,
                     size_t width);
-                virtual void free_grid(
-                    Grid& grid);
+
+                virtual void set_grid(Grid& grid);
+                virtual void set_grid(std::shared_ptr<Grid> grid);
+                virtual std::shared_ptr<Grid> get_grid();
 
                 //! Method W-tiling
                 virtual Plan* make_plan(
@@ -395,10 +397,9 @@ namespace idg {
 
                 std::vector<std::complex<float>> m_avg_aterm_correction;
 
-            private:
-                std::complex<float>* grid_ptr = NULL;
-
             protected:
+                std::shared_ptr<Grid> m_grid = nullptr;
+
                 Report report;
 
         }; // end class Proxy

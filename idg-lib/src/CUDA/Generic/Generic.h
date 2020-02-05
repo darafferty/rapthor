@@ -12,6 +12,8 @@ namespace idg {
     namespace proxy {
         namespace cuda {
             class Generic : public CUDA {
+                friend class Unified;
+
                 public:
                     // Constructor
                     Generic(
@@ -90,6 +92,11 @@ namespace idg {
                         const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                         const Array1D<unsigned int>& aterms_offsets,
                         const Array2D<float>& spheroidal);
+
+                public:
+                    virtual void set_grid(std::shared_ptr<Grid> grid) override;
+
+                    virtual std::shared_ptr<Grid> get_grid() override;
 
             }; // class Generic
 

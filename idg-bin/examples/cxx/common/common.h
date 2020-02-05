@@ -226,8 +226,8 @@ void run()
         idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
-    idg::Grid grid =
-        proxy.get_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+    auto grid =
+        proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
@@ -265,6 +265,9 @@ void run()
     options.max_nr_channels_per_subgrid = 8;
     Queue<idg::Plan*> plans;
     omp_set_nested(true);
+
+    // Set grid
+    proxy.set_grid(grid);
 
     // Iterate all cycles
     for (unsigned i = 0; i < nr_cycles; i++) {
@@ -365,7 +368,7 @@ void run()
                         proxy.gridding(
                             *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                             frequencies, visibilities, uvw, baselines,
-                            grid, aterms, aterms_offsets, spheroidal);
+                            *grid, aterms, aterms_offsets, spheroidal);
                         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
                         clog << endl;
 
@@ -376,7 +379,7 @@ void run()
                         proxy.degridding(
                             *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                             frequencies, visibilities, uvw, baselines,
-                            grid, aterms, aterms_offsets, spheroidal);
+                            *grid, aterms, aterms_offsets, spheroidal);
                         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
                         clog << endl;
 
@@ -385,7 +388,7 @@ void run()
                         double runtime_fft = -omp_get_wtime();
                         if (!disable_fft)
                         for (unsigned w = 0; w < nr_w_layers; w++) {
-                            idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations, grid_size, grid_size);
+                            idg::Array3D<std::complex<float>> grid_(grid->data(w), nr_correlations, grid_size, grid_size);
                             proxy.transform(idg::FourierDomainToImageDomain, grid_);
                             proxy.transform(idg::ImageDomainToFourierDomain, grid_);
                         }
@@ -407,6 +410,9 @@ void run()
         } // end omp parallel
         #endif
     } // end for i (nr_cycles)
+
+    // Only after a call to get_grid(), the grid can be used outside of the proxy
+    proxy.get_grid();
 
     // Compute maximum runtime
     double max_runtime_gridding   = *max_element(runtimes_gridding.begin(), runtimes_gridding.end());

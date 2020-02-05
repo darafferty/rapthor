@@ -170,7 +170,6 @@ namespace cu {
             template <typename T> operator T *() {
                 return static_cast<T *>((void *) _ptr);
             }
-            void* ptr() { return (void *) _ptr; }
             void set_advice(CUmem_advise advise);
             void set_advice(CUmem_advise advise, Device& device);
 

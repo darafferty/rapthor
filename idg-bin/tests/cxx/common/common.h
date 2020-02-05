@@ -159,11 +159,15 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         idg::get_example_spheroidal(subgrid_size, subgrid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();
-    idg::Grid grid =
-        optimized.get_grid(1, nr_correlations, grid_size, grid_size);
-    idg::Grid grid_ref =
-        reference.get_grid(1, nr_correlations, grid_size, grid_size);
+    auto grid =
+        optimized.allocate_grid(1, nr_correlations, grid_size, grid_size);
+    auto grid_ref =
+        reference.allocate_grid(1, nr_correlations, grid_size, grid_size);
     clog << endl;
+
+    // Bind the grids to the respective proxies
+    optimized.set_grid(grid);
+    reference.set_grid(grid_ref);
 
     // Set w-terms to zero
     for (unsigned bl = 0; bl < nr_baselines; bl++) {
@@ -186,18 +190,23 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     optimized.gridding(
          plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
          frequencies, visibilities, uvw, baselines,
-         grid, aterms, aterms_offsets, spheroidal);
+         *grid, aterms, aterms_offsets, spheroidal);
+    optimized.get_grid();
 
     std::clog << ">>> Run reference gridding" << std::endl;
     reference.gridding(
          plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
          frequencies, visibilities, uvw, baselines,
-         grid_ref, aterms, aterms_offsets, spheroidal);
+         *grid_ref, aterms, aterms_offsets, spheroidal);
+    reference.get_grid();
 
     float grid_error = get_accucary(
         nr_correlations*grid_size*grid_size,
-        grid.data(),
-        grid_ref.data());
+        grid->data(),
+        grid_ref->data());
+
+    // Use the same grid for both degridding calls
+    reference.set_grid(optimized.get_grid());
 
     // Run degridder
     std::clog << ">>> Run degridding" << std::endl;
@@ -206,13 +215,13 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     optimized.degridding(
         plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
-        grid, aterms, aterms_offsets, spheroidal);
+        *grid, aterms, aterms_offsets, spheroidal);
 
     std::clog << ">>> Run reference degridding" << std::endl;
     reference.degridding(
         plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities_ref, uvw, baselines,
-        grid, aterms, aterms_offsets, spheroidal);
+        *grid, aterms, aterms_offsets, spheroidal);
 
     std::clog << std::endl;
 

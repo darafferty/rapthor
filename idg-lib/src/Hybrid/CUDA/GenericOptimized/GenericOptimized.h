@@ -57,7 +57,7 @@ namespace idg {
                         DomainAtoDomainB direction,
                         Array3D<std::complex<float>>& grid) override;
 
-                   void run_gridding(
+                    void run_gridding(
                         const Plan& plan,
                         const float w_step,
                         const Array1D<float>& shift,

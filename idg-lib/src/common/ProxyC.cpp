@@ -1,7 +1,6 @@
 #include "Proxy.h"
 #include "ProxyC.h"
 
-
 extern "C" {
 
     void Proxy_gridding(
@@ -306,13 +305,29 @@ extern "C" {
        delete reinterpret_cast<idg::proxy::Proxy*>(p);
     }
 
-    void* Proxy_get_grid(
+    void* Proxy_allocate_grid(
         Proxy* p,
         unsigned int nr_correlations,
         unsigned int grid_size)
     {
         const unsigned int nr_w_layers = 1;
-        idg::Grid grid = reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
-        return grid.data();
+        auto grid_ptr = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+        return grid_ptr->data();
+    }
+
+    void Proxy_set_grid(
+        Proxy* p,
+        idg::Grid& grid)
+    {
+        std::shared_ptr<idg::Grid> grid_ptr(&grid);
+        reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
+    }
+
+    void Proxy_get_grid(
+        Proxy* p,
+        void *ptr)
+    {
+        auto grid = reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
+        memcpy(ptr, grid->data(), grid->bytes());
     }
 }

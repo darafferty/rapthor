@@ -11,9 +11,6 @@ namespace idg {
     namespace proxy {
         namespace cuda {
 
-            // The maximum number of CUDA streams in any routine
-            const int max_nr_streams = 2;
-
             // Constructor
             Generic::Generic(
                 ProxyInfo info) :
@@ -143,13 +140,6 @@ namespace idg {
                 device.register_host_memory(uvw.data(), uvw.bytes());
                 device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
-                // Device grid
-                if (!m_use_unified_memory) {
-                    cu::DeviceMemory& d_grid = device.allocate_device_grid(grid.bytes());
-                    cu::Stream& htodstream   = device.get_htod_stream();
-                    device.copy_htod(htodstream, d_grid, grid.data(), grid.bytes());
-                }
-
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
                 device.set_report(report);
@@ -277,7 +267,7 @@ namespace idg {
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
                     // Launch FFT
-                    device.launch_fft(d_subgrids, FourierDomainToImageDomain);
+                    device.launch_subgrid_fft(d_subgrids, FourierDomainToImageDomain);
 
                     // Launch adder kernel
                     if (m_use_unified_memory) {
@@ -301,12 +291,6 @@ namespace idg {
                     // Update local id
                     local_id = local_id_next;
                 } // end for bl
-
-                // Copy grid to host
-                if (!m_use_unified_memory) {
-                    cu::DeviceMemory& d_grid = device.retrieve_device_grid();
-                    dtohstream.memcpyDtoHAsync(grid.data(), d_grid, grid.bytes());
-                }
 
                 // Wait for all reports to be printed
                 dtohstream.synchronize();
@@ -350,8 +334,7 @@ namespace idg {
                 CUDA::initialize(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal,
-                    max_nr_streams);
+                    aterms, aterms_offsets, spheroidal);
 
                 #if defined(DEBUG)
                 std::clog << "### Run gridding" << std::endl;
@@ -417,13 +400,6 @@ namespace idg {
                 device.register_host_memory(visibilities.data(), visibilities.bytes());
                 device.register_host_memory(uvw.data(), uvw.bytes());
                 device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
-
-                // Device grid
-                if (!m_use_unified_memory) {
-                    cu::DeviceMemory& d_grid = device.allocate_device_grid(grid.bytes());
-                    cu::Stream& htodstream   = device.get_htod_stream();
-                    device.copy_htod(htodstream, d_grid, grid.data(), grid.bytes());
-                }
 
                 // Performance measurements
                 report.initialize(nr_channels, subgrid_size, grid_size);
@@ -553,7 +529,7 @@ namespace idg {
                     d_visibilities.zero(executestream);
 
                     // Launch FFT
-                    device.launch_fft(d_subgrids, ImageDomainToFourierDomain);
+                    device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
 
                     // Launch degridder kernel
                     device.launch_degridder(
@@ -620,8 +596,7 @@ namespace idg {
                 CUDA::initialize(
                     plan, w_step, shift, cell_size, kernel_size, subgrid_size,
                     frequencies, visibilities, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal,
-                    max_nr_streams);
+                    aterms, aterms_offsets, spheroidal);
 
                 #if defined(DEBUG)
                 std::clog << "### Run degridding" << std::endl;
@@ -646,6 +621,29 @@ namespace idg {
                 std::clog << "### Finish degridding" << std::endl;
                 #endif
             } // end degridding
+
+            void Generic::set_grid(std::shared_ptr<Grid> grid)
+            {
+                m_grid = grid;
+                InstanceCUDA &device = get_device(0);
+                device.set_context();
+                device.allocate_device_grid(grid->bytes());
+                cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+                cu::Stream& htodstream   = device.get_htod_stream();
+                device.copy_htod(htodstream, d_grid, grid->data(), grid->bytes());
+                htodstream.synchronize();
+            }
+
+            std::shared_ptr<Grid> Generic::get_grid()
+            {
+                InstanceCUDA &device = get_device(0);
+                device.set_context();
+                cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+                cu::Stream& dtohstream   = device.get_dtoh_stream();
+                device.copy_dtoh(dtohstream, m_grid->data(), d_grid, m_grid->bytes());
+                dtohstream.synchronize();
+                return m_grid;
+            }
 
         } // namespace cuda
     } // namespace proxy

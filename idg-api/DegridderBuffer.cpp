@@ -139,6 +139,7 @@ namespace api {
 
         // Run degridding
         m_bufferset->m_degridding_watch->Start();
+        m_proxy->set_grid(m_grid);
         m_proxy->degridding(
             plan,
             m_wStepInLambda,
@@ -154,6 +155,7 @@ namespace api {
             m_aterms_array,
             m_aterm_offsets_array,
             m_spheroidal);
+        m_proxy->get_grid();
         m_bufferset->m_degridding_watch->Pause();
 
         // Check data for NaN values

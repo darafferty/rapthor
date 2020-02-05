@@ -120,14 +120,14 @@ namespace api {
     {
         return m_wStepInLambda;
     }
-    
+
     void BufferImpl::set_shift(const float* shift)
     {
         m_shift(0) = shift[0];
         m_shift(1) = shift[1];
         m_shift(2) = shift[2];
     }
-    
+
     const idg::Array1D<float>& BufferImpl::get_shift() const
     {
         return m_shift;
@@ -218,7 +218,7 @@ namespace api {
     void BufferImpl::set_grid(
         Grid* grid)
     {
-        m_grid        = grid;
+        m_grid.reset(grid);
         m_gridHeight  = grid->get_x_dim();
         m_gridWidth   = grid->get_y_dim();
         m_nr_w_layers = grid->get_w_dim();
@@ -368,7 +368,7 @@ namespace api {
 //             throw invalid_argument("Grid height does not match.");
 //         if (width != m_gridWidth)
 //             throw invalid_argument("Grid width does not match.");
-// 
+//
 //         for (auto p = 0; p < m_nrPolarizations; ++p) {
 //             for (auto y = 0; y < m_gridHeight; ++y) {
 //                 for (auto x = 0; x < m_gridWidth; ++x) {
@@ -376,7 +376,7 @@ namespace api {
 //                          y*m_gridWidth + x] =
 //                     m_grid_double[p*m_gridHeight*m_gridWidth +
 //                                   y*m_gridWidth + x];
-// 
+//
 //                 }
 //             }
 //         }
@@ -451,7 +451,7 @@ extern "C" {
 //             width,
 //             (std::complex<float>*) grid);
 //     }
-// 
+//
 
     int Buffer_get_nr_polarizations(idg::api::BufferImpl* p)
     {

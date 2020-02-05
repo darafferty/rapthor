@@ -671,7 +671,7 @@ namespace idg {
                 end_measurement(data);
             }
 
-            void InstanceCUDA::plan_fft(
+            void InstanceCUDA::plan_subgrid_fft(
                 unsigned size,
                 unsigned batch)
             {
@@ -728,7 +728,7 @@ namespace idg {
                 }
             }
 
-            void InstanceCUDA::launch_fft(
+            void InstanceCUDA::launch_subgrid_fft(
                 cu::DeviceMemory& d_data,
                 DomainAtoDomainB direction)
             {
@@ -762,7 +762,7 @@ namespace idg {
                 end_measurement(data);
             }
 
-            void InstanceCUDA::launch_fft_unified(
+            void InstanceCUDA::launch_grid_fft_unified(
                 unsigned long size,
                 unsigned int batch,
                 Array3D<std::complex<float>>& grid,
