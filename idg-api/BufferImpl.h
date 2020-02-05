@@ -81,7 +81,7 @@ namespace api {
             const float* spheroidal);
 
         void set_grid(
-            Grid* grid);
+            std::shared_ptr<Grid> grid);
 
         void set_max_baseline(float max_baseline) {m_max_baseline = max_baseline;}
 

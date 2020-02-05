@@ -62,7 +62,7 @@ namespace api {
         m_architecture(architecture),
         m_default_aterm_correction(0,0,0,0),
         m_avg_aterm_correction(0,0,0,0),
-        m_grid(0,0,0,0,0),
+        m_grid(new Grid(0, 0, 0, 0)),
         m_proxy(create_proxy()),
         m_get_image_watch(Stopwatch::create()),
         m_set_image_watch(Stopwatch::create()),
@@ -229,8 +229,8 @@ namespace api {
             }
         }
 
-        m_grid = Grid(nr_w_layers,4,m_padded_size,m_padded_size);
-        m_grid.zero();
+        m_grid.reset(new Grid(nr_w_layers,4,m_padded_size,m_padded_size));
+        m_grid->zero();
 
         m_taper_subgrid.resize(m_subgridsize);
         m_taper_grid.resize(m_padded_size);
@@ -305,7 +305,7 @@ namespace api {
             buffer->set_shift(m_shift);
             buffer->set_kernel_size(m_kernel_size);
             buffer->set_spheroidal(m_subgridsize, m_subgridsize, taper.data());
-            buffer->set_grid(&m_grid);
+            buffer->set_grid(m_grid);
             buffer->set_max_baseline(max_baseline);
             buffer->set_uv_span_frequency(m_uv_span_frequency);
             buffer->bake();
@@ -356,7 +356,7 @@ namespace api {
         std::cout << std::setprecision(3);
 #endif
 
-        const int nr_w_layers = m_grid.get_w_dim();
+        const int nr_w_layers = m_grid->get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
@@ -365,7 +365,7 @@ namespace api {
         std::cout << "set grid from image" << std::endl;
 #endif
         double runtime_copy = -omp_get_wtime();
-        m_grid.zero();
+        m_grid->zero();
         if (do_scale)
         {
 #ifndef NDEBUG
@@ -375,17 +375,17 @@ namespace api {
             for (int y = 0; y < m_size; y++) {
                 for (int x = 0; x < m_size; x++) {
                     // Stokes I
-                    m_grid(0,0,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    m_grid(0,3,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    (*m_grid)(0,0,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    (*m_grid)(0,3,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
                     // Stokes Q
-                    m_grid(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    m_grid(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    (*m_grid)(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    (*m_grid)(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
                     // Stokes U
-                    m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    (*m_grid)(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
+                    (*m_grid)(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
                     // Stokes V
-                    m_grid(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
-                    m_grid(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
+                    (*m_grid)(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
+                    (*m_grid)(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
                 } // end for x
             } // end for y
         }
@@ -395,17 +395,17 @@ namespace api {
             for (int y = 0; y < m_size; y++) {
                 for (int x = 0; x < m_size; x++) {
                     // Stokes I
-                    m_grid(0,0,y+y0,x+x0) = image[m_size*y+x];
-                    m_grid(0,3,y+y0,x+x0) = image[m_size*y+x];
+                    (*m_grid)(0,0,y+y0,x+x0) = image[m_size*y+x];
+                    (*m_grid)(0,3,y+y0,x+x0) = image[m_size*y+x];
                     // Stokes Q
-                    m_grid(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
-                    m_grid(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
+                    (*m_grid)(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
+                    (*m_grid)(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
                     // Stokes U
-                    m_grid(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                    m_grid(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
+                    (*m_grid)(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
+                    (*m_grid)(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
                     // Stokes V
-                    m_grid(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
-                    m_grid(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
+                    (*m_grid)(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
+                    (*m_grid)(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
                 } // end for x
             } // end for y
         }
@@ -444,7 +444,7 @@ namespace api {
                     // Set to current w-plane
                     #pragma unroll
                     for (int pol = 0; pol < 4; pol++) {
-                        m_grid(w, pol, y+y0, x+x0) = m_grid(0, pol, y+y0, x+x0) * inv_taper * phasor;
+                        (*m_grid)(w, pol, y+y0, x+x0) = (*m_grid)(0, pol, y+y0, x+x0) * inv_taper * phasor;
                     }
                 } // end for x
             } // end for y
@@ -460,7 +460,7 @@ namespace api {
 #endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
-        fft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
+        fft2f(batch, m_padded_size, m_padded_size, m_grid->data(0,0,0,0));
         runtime_fft += omp_get_wtime();
 #ifndef NDEBUG
         std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -518,7 +518,7 @@ namespace api {
         std::cout << std::setprecision(3);
 #endif
 
-        const int nr_w_layers = m_grid.get_w_dim();
+        const int nr_w_layers = m_grid->get_w_dim();
         const size_t y0 = (m_padded_size-m_size)/2;
         const size_t x0 = (m_padded_size-m_size)/2;
 
@@ -528,7 +528,7 @@ namespace api {
 #endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
-        ifft2f(batch, m_padded_size, m_padded_size, &m_grid(0,0,0,0));
+        ifft2f(batch, m_padded_size, m_padded_size, m_grid->data(0,0,0,0));
         runtime_fft += omp_get_wtime();
 #ifndef NDEBUG
         std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -573,16 +573,16 @@ namespace api {
                     #endif
 
                     // Apply correction
-                    m_grid(w, 0, y+y0, x+x0) = m_grid(w, 0, y+y0, x+x0) * inv_taper * phasor;
-                    m_grid(w, 1, y+y0, x+x0) = m_grid(w, 1, y+y0, x+x0) * inv_taper * phasor;
-                    m_grid(w, 2, y+y0, x+x0) = m_grid(w, 2, y+y0, x+x0) * inv_taper * phasor;
-                    m_grid(w, 3, y+y0, x+x0) = m_grid(w, 3, y+y0, x+x0) * inv_taper * phasor;
+                    (*m_grid)(w, 0, y+y0, x+x0) = (*m_grid)(w, 0, y+y0, x+x0) * inv_taper * phasor;
+                    (*m_grid)(w, 1, y+y0, x+x0) = (*m_grid)(w, 1, y+y0, x+x0) * inv_taper * phasor;
+                    (*m_grid)(w, 2, y+y0, x+x0) = (*m_grid)(w, 2, y+y0, x+x0) * inv_taper * phasor;
+                    (*m_grid)(w, 3, y+y0, x+x0) = (*m_grid)(w, 3, y+y0, x+x0) * inv_taper * phasor;
 
                     // Add to first w-plane
                     if (w > 0) {
                         #pragma unroll
                         for (int pol = 0; pol < 4; pol++) {
-                            m_grid(0, pol, y+y0, x+x0) += m_grid(w, pol, y+y0, x+x0);
+                            (*m_grid)(0, pol, y+y0, x+x0) += (*m_grid)(w, pol, y+y0, x+x0);
                         }
                     }
                 } // end for x
@@ -603,13 +603,13 @@ namespace api {
         for (int y = 0; y < m_size; y++) {
             for (int x = 0; x < m_size; x++) {
             // Stokes I
-            image[0*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,0,y+y0,x+x0).real() + m_grid(0,3,y+y0,x+x0).real());
+            image[0*m_size*m_size + m_size*y+x] = 0.5 * ((*m_grid)(0,0,y+y0,x+x0).real() + (*m_grid)(0,3,y+y0,x+x0).real());
             // Stokes Q
-            image[1*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,0,y+y0,x+x0).real() - m_grid(0,3,y+y0,x+x0).real());
+            image[1*m_size*m_size + m_size*y+x] = 0.5 * ((*m_grid)(0,0,y+y0,x+x0).real() - (*m_grid)(0,3,y+y0,x+x0).real());
             // Stokes U
-            image[2*m_size*m_size + m_size*y+x] = 0.5 * (m_grid(0,1,y+y0,x+x0).real() + m_grid(0,2,y+y0,x+x0).real());
+            image[2*m_size*m_size + m_size*y+x] = 0.5 * ((*m_grid)(0,1,y+y0,x+x0).real() + (*m_grid)(0,2,y+y0,x+x0).real());
             // Stokes V
-            image[3*m_size*m_size + m_size*y+x] = 0.5 * (-m_grid(0,1,y+y0,x+x0).imag() + m_grid(0,2,y+y0,x+x0).imag());
+            image[3*m_size*m_size + m_size*y+x] = 0.5 * (-(*m_grid)(0,1,y+y0,x+x0).imag() + (*m_grid)(0,2,y+y0,x+x0).imag());
 
             // Check for NaN
             #if DEBUG_NAN_GET_IMAGE
