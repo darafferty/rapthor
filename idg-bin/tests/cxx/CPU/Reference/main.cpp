@@ -122,7 +122,7 @@ int test01()
         grid_, aterms, aterms_offsets, spheroidal);
     proxy.transform(idg::FourierDomainToImageDomain, grid);
 
-    float grid_error = get_accucary(
+    float grid_error = get_accuracy(
         grid_size*grid_size*nr_correlations,
         (std::complex<float> *) grid.data(),
         (std::complex<float> *) grid_ref.data());
@@ -143,7 +143,7 @@ int test01()
     clog << endl;
 
     // Compute error
-    float degrid_error = get_accucary(
+    float degrid_error = get_accuracy(
         nr_baselines*nr_timesteps*nr_channels*nr_correlations,
         (std::complex<float> *) visibilities.data(),
         (std::complex<float> *) visibilities_ref.data());

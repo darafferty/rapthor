@@ -11,7 +11,7 @@ using namespace std;
 
 
 // computes sqrt(A^2-B^2) / n
-float get_accucary(
+float get_accuracy(
     const int n,
     const std::complex<float>* A,
     const std::complex<float>* B)
@@ -200,7 +200,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
          *grid_ref, aterms, aterms_offsets, spheroidal);
     reference.get_grid();
 
-    float grid_error = get_accucary(
+    float grid_error = get_accuracy(
         nr_correlations*grid_size*grid_size,
         grid->data(),
         grid_ref->data());
@@ -229,7 +229,7 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
     plan.mask_visibilities(visibilities);
     plan.mask_visibilities(visibilities_ref);
 
-    float degrid_error = get_accucary(
+    float degrid_error = get_accuracy(
         nr_baselines*nr_timesteps*nr_channels*nr_correlations,
         (std::complex<float> *) visibilities.data(),
         (std::complex<float> *) visibilities_ref.data());
