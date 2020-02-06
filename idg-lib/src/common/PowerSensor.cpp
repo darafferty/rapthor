@@ -74,7 +74,6 @@ namespace powersensor {
         #endif
 
         // Use the DummyPowerSensor as backup
-        std::cout << "creating DummyPowerSensor" << std::endl;
         return new DummyPowerSensor();
     }
 
