@@ -8,6 +8,7 @@
 #include "Types.h"
 #include "Index.h"
 #include "Math.h"
+#include "Memory.h"
 
 inline void update_subgrid(
     int nr_pixels,
@@ -104,10 +105,6 @@ void kernel_gridder(
         idg::float2 *subgrid_ptr = &subgrid[subgrid_idx];
         memset(subgrid_ptr, 0, NR_POLARIZATIONS*nr_pixels*sizeof(idg::float2));
 
-        // Initialize local subgrid
-        idg::float2 subgrid_local[NR_POLARIZATIONS][subgrid_size][subgrid_size];
-        memset(subgrid_local, 0, NR_POLARIZATIONS*nr_pixels*sizeof(idg::float2));
-
         // Load metadata
         const idg::Metadata m  = metadata[s];
         const int time_offset_global = m.time_index;
@@ -120,6 +117,28 @@ void kernel_gridder(
         const int x_coordinate  = m.coordinate.x;
         const int y_coordinate  = m.coordinate.y;
         const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
+
+        // Allocate memory
+        size_t total_nr_visibilities = nr_timesteps * nr_channels_subgrid;
+        float* vis_xx_real = allocate_memory<float>(total_nr_visibilities);
+        float* vis_xy_real = allocate_memory<float>(total_nr_visibilities);
+        float* vis_yx_real = allocate_memory<float>(total_nr_visibilities);
+        float* vis_yy_real = allocate_memory<float>(total_nr_visibilities);
+        float* vis_xx_imag = allocate_memory<float>(total_nr_visibilities);
+        float* vis_xy_imag = allocate_memory<float>(total_nr_visibilities);
+        float* vis_yx_imag = allocate_memory<float>(total_nr_visibilities);
+        float* vis_yy_imag = allocate_memory<float>(total_nr_visibilities);
+        float* phasor_real = allocate_memory<float>(total_nr_visibilities);
+        float* phasor_imag = allocate_memory<float>(total_nr_visibilities);
+        float* phase       = allocate_memory<float>(total_nr_visibilities);
+        float* phase_offset = allocate_memory<float>(nr_pixels);
+        float* uvw_u = allocate_memory<float>(nr_timesteps);
+        float* uvw_v = allocate_memory<float>(nr_timesteps);
+        float* uvw_w = allocate_memory<float>(nr_timesteps);
+        idg::float2* subgrid_local = allocate_memory<idg::float2>(NR_POLARIZATIONS * nr_pixels);
+
+        // Initialize local subgrid
+        memset(subgrid_local, 0, NR_POLARIZATIONS*nr_pixels*sizeof(idg::float2));
 
         // Initialize aterm index to first timestep
         int aterm_idx_previous = aterms_indices[time_offset_global];
@@ -155,8 +174,6 @@ void kernel_gridder(
                 }
             }
 
-            int current_nr_visibilities = current_nr_timesteps * nr_channels_subgrid;
-
             if (aterm_changed) {
                 // Update subgrid
                 update_subgrid(
@@ -173,15 +190,6 @@ void kernel_gridder(
             }
 
             // Load visibilities
-            float vis_xx_real[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_xy_real[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_yx_real[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_yy_real[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_xx_imag[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_xy_imag[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_yx_imag[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-            float vis_yy_imag[current_nr_visibilities] __attribute__((aligned((ALIGNMENT))));
-
             for (int time = 0; time < current_nr_timesteps; time++) {
                 for (int chan = channel_begin; chan < channel_end; chan++) {
                     int time_idx = time_offset_global + time_offset_local + time;
@@ -201,10 +209,6 @@ void kernel_gridder(
             }
 
             // Preload uvw
-            float uvw_u[current_nr_timesteps];
-            float uvw_v[current_nr_timesteps];
-            float uvw_w[current_nr_timesteps];
-
             for (int time = 0; time < current_nr_timesteps; time++) {
                 int time_idx = time_offset_global + time_offset_local + time;
                 uvw_u[time] = uvw[time_idx].u;
@@ -213,8 +217,6 @@ void kernel_gridder(
             }
 
             // Compute phase offset
-            float phase_offset[nr_pixels];
-
             for (unsigned i = 0; i < nr_pixels; i++) {
                 phase_offset[i] = u_offset*l_[i] + v_offset*m_[i] + w_offset*n_[i];
             }
@@ -245,9 +247,9 @@ void kernel_gridder(
                     }
                 } // end time
 
+                size_t current_nr_visibilities = current_nr_timesteps * nr_channels_subgrid;
+
                 // Compute phasor
-                float phasor_real[current_nr_visibilities] __attribute__((aligned(ALIGNMENT)));
-                float phasor_imag[current_nr_visibilities] __attribute__((aligned(ALIGNMENT)));
                 compute_sincos(current_nr_visibilities, phase, phasor_imag, phasor_real);
 
                 // Compute pixels
@@ -260,7 +262,8 @@ void kernel_gridder(
 
                 // Update local subgrid
                 for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    subgrid_local[pol][y][x] += pixels[pol];
+                    size_t idx = index_subgrid(subgrid_size, 0, pol, y, x);
+                    subgrid_local[idx] += pixels[pol];
                 }
             } // end for i (pixels)
         } // end time_offset_local
@@ -271,6 +274,23 @@ void kernel_gridder(
             spheroidal, aterms, avg_aterm_correction,
             (const idg::float2*) subgrid_local, subgrid);
 
+        // Free memory
+        free(vis_xx_real);
+        free(vis_xy_real);
+        free(vis_yx_real);
+        free(vis_yy_real);
+        free(vis_xx_imag);
+        free(vis_xy_imag);
+        free(vis_yx_imag);
+        free(vis_yy_imag);
+        free(phase);
+        free(phase_offset);
+        free(phasor_real);
+        free(phasor_imag);
+        free(uvw_u);
+        free(uvw_v);
+        free(uvw_w);
+        free(subgrid_local);
     } // end s
 } // end kernel_gridder
 
