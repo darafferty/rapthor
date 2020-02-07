@@ -317,7 +317,7 @@ namespace idg {
         {
             return 1ULL * nr_baselines * nr_timesteps * nr_channels * nr_correlations * sizeof(float);
         }
- 
+
         /*
             Misc
         */
@@ -363,6 +363,19 @@ namespace idg {
             struct rusage r_usage;
             getrusage(RUSAGE_SELF, &r_usage); // in KBytes
             return r_usage.ru_maxrss / 1024; // in MBytes
+        }
+
+        size_t get_free_memory() {
+            return get_total_memory() - get_used_memory();
+        }
+
+        size_t get_nr_threads() {
+            size_t nr_threads = 0;
+            #pragma omp parallel
+            {
+                nr_threads = omp_get_num_threads();
+            }
+            return nr_threads;
         }
 
         void print_version() {
