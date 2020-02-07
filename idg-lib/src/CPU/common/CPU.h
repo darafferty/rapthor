@@ -46,6 +46,12 @@ namespace idg {
                     virtual std::complex<float>* getWTilesBuffer() {return itsWTilesBuffer.data();}
 
                 private:
+                    unsigned int compute_jobsize(
+                        const Plan& plan,
+                        const unsigned int nr_timesteps,
+                        const unsigned int nr_channels,
+                        const unsigned int subgrid_size);
+
                     // Routines
                     virtual void do_gridding(
                         const Plan& plan,
@@ -127,6 +133,15 @@ namespace idg {
                 protected:
                     kernel::cpu::InstanceCPU kernels;
                     powersensor::PowerSensor *powerSensor;
+
+                    /*
+                    * Options used internally by the CPU proxy
+                    */
+                    // Maximum fraction of available memory used to allocate subgrids
+                    // this value impacts the jobsize that will be used and hence the
+                    // amount of memory additionaly allocated (if any) in various kernels.
+                    float m_fraction_memory_subgrids = 0.4;
+
                     WTiles itsWTiles;
                     std::vector<std::complex<float>> itsWTilesBuffer;
 

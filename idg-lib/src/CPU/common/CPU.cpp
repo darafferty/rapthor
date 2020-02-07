@@ -6,6 +6,8 @@
 
 #include "CPU.h"
 
+//#define DEBUG_COMPUTE_JOBSIZE
+
 using namespace idg::kernel;
 using namespace powersensor;
 
@@ -88,6 +90,55 @@ namespace idg {
             }
 
 
+            unsigned int CPU::compute_jobsize(
+                const Plan& plan,
+                const unsigned int nr_timesteps,
+                const unsigned int nr_channels,
+                const unsigned int subgrid_size)
+            {
+                auto nr_baselines = plan.get_nr_baselines();
+                auto jobsize = nr_baselines;
+                auto nr_threads = auxiliary::get_nr_threads();
+                auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+
+                // Make sure that every job will fit in memory
+                do {
+                    // Determine the maximum number of subgrids for this jobsize
+                    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+
+                    // Determine the size of the subgrids for this jobsize
+                    auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size, NR_CORRELATIONS);
+
+                    // Account for temporary subgrids allocated per thread
+                    sizeof_subgrids *= nr_threads;
+
+                    #if defined(DEBUG_COMPUTE_JOBSIZE)
+                    std::clog << "size of subgrids: " << sizeof_subgrids << std::endl;
+                    #endif
+
+                    // Determine how many of these baselines fit in the available memory
+                    auto free_memory = auxiliary::get_free_memory(); // Mb
+                    free_memory *= 1024 * 1e6; // Byte
+
+                    // Limit the amount of memory used for subgrids
+                    free_memory *= m_fraction_memory_subgrids;
+
+                    if (sizeof_subgrids < sizeof_visibilities &&
+                        sizeof_subgrids < free_memory) {
+                        break;
+                    }
+
+                    // Reduce jobsize
+                    jobsize *= 0.8;
+                } while (jobsize > 1);
+
+                #if defined(DEBUG_COMPUTE_JOBSIZE)
+                std::clog << "jobsize: " << jobsize << std::endl;
+                #endif
+
+                return jobsize;
+            }
+
             /*
                 High level routines
             */
@@ -120,13 +171,14 @@ namespace idg {
 
                 // Arguments
                 auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
                 auto nr_stations  = aterms.get_z_dim();
 
                 try {
-                    auto jobsize = kernel::cpu::jobsize_gridding;
+                    auto jobsize = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
 
                     // Allocate memory for subgrids
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -249,13 +301,14 @@ namespace idg {
 
                 // Arguments
                 auto nr_baselines = visibilities.get_z_dim();
+                auto nr_timesteps = visibilities.get_y_dim();
                 auto nr_channels  = visibilities.get_x_dim();
                 auto grid_size    = grid.get_x_dim();
                 auto image_size   = cell_size * grid_size;
                 auto nr_stations  = aterms.get_z_dim();
 
                 try {
-                    auto jobsize = kernel::cpu::jobsize_degridding;
+                    auto jobsize = compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
 
                     // Allocate memory for subgrids
                     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
