@@ -164,6 +164,9 @@ namespace idg {
 
         size_t get_total_memory();
         size_t get_used_memory();
+        size_t get_free_memory();
+
+        size_t get_nr_threads();
 
         void print_version();
 

@@ -8,6 +8,7 @@
 #include "Types.h"
 #include "Index.h"
 #include "Math.h"
+#include "Memory.h"
 
 extern "C" {
 
@@ -67,15 +68,19 @@ void kernel_degridder(
         // Initialize aterm index to first timestep
         size_t aterm_idx_previous = aterms_indices[time_offset];
 
-        // Storage
-        float pixels_xx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_xy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yx_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yy_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_xx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_xy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yx_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-        float pixels_yy_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
+        // Allocate memory
+        float* pixels_xx_real = allocate_memory<float>(nr_pixels);
+        float* pixels_xy_real = allocate_memory<float>(nr_pixels);
+        float* pixels_yx_real = allocate_memory<float>(nr_pixels);
+        float* pixels_yy_real = allocate_memory<float>(nr_pixels);
+        float* pixels_xx_imag = allocate_memory<float>(nr_pixels);
+        float* pixels_xy_imag = allocate_memory<float>(nr_pixels);
+        float* pixels_yx_imag = allocate_memory<float>(nr_pixels);
+        float* pixels_yy_imag = allocate_memory<float>(nr_pixels);
+        float* phasor_real    = allocate_memory<float>(nr_pixels);
+        float* phasor_imag    = allocate_memory<float>(nr_pixels);
+        float* phase          = allocate_memory<float>(nr_pixels);
+        float* phase_offset   = allocate_memory<float>(nr_pixels);
 
         // Compute u and v offset in wavelenghts
         const float u_offset = (x_coordinate + subgrid_size/2 - grid_size/2)
@@ -83,8 +88,6 @@ void kernel_degridder(
         const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2)
                                * (2*M_PI / image_size);
         const float w_offset = 2*M_PI * w_offset_in_lambda;
-
-        float phase_offset[nr_pixels];
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
@@ -161,8 +164,6 @@ void kernel_degridder(
             // Iterate all channels
             for (int chan = channel_begin; chan < channel_end; chan++) {
                 // Compute phase
-                float phase[nr_pixels] __attribute__((aligned(ALIGNMENT)));
-
                 for (unsigned i = 0; i < nr_pixels; i++) {
                     // Compute phase
                     float wavenumber = wavenumbers[chan];
@@ -170,8 +171,6 @@ void kernel_degridder(
                 }
 
                 // Compute phasor
-                float phasor_real[nr_pixels] __attribute__((aligned((ALIGNMENT))));
-                float phasor_imag[nr_pixels] __attribute__((aligned((ALIGNMENT))));
                 compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
 
                 // Compute visibilities
@@ -193,7 +192,21 @@ void kernel_degridder(
                 }
             } // end for channel
         } // end for time
-    } // end #pragma parallel
+
+        // Free memory
+        free(pixels_xx_real);
+        free(pixels_xy_real);
+        free(pixels_yx_real);
+        free(pixels_yy_real);
+        free(pixels_xx_imag);
+        free(pixels_xy_imag);
+        free(pixels_yx_imag);
+        free(pixels_yy_imag);
+        free(phase);
+        free(phase_offset);
+        free(phasor_real);
+        free(phasor_imag);
+    } // end s
 } // end kernel_degridder
 
 } // end extern "C"

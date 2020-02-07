@@ -141,7 +141,7 @@ namespace idg {
                         void *metadata,
                         void *subgrid,
                         void *grid);
-                    
+
                     void run_adder_wstack(
                         int nr_subgrids,
                         int grid_size,
@@ -244,9 +244,6 @@ namespace idg {
                     runtime::Function *function_splitter_subgrids_from_wtiles;
             };
 
-            // Jobsize
-            static const int jobsize_gridding   = 1024;
-            static const int jobsize_degridding = 1024;
 
             // Kernel names
             static const std::string name_gridder                       = "kernel_gridder";
