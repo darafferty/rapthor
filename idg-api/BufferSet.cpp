@@ -43,6 +43,15 @@ namespace api {
         return new BufferSetImpl(architecture);
     }
 
+    uint64_t BufferSet::get_memory_per_timestep(size_t nStations, size_t nChannels)
+    {
+        size_t nBaselines = ((nStations - 1) * nStations) / 2;
+        size_t sizeof_timestep = 0;
+        sizeof_timestep += auxiliary::sizeof_visibilities(nBaselines, 1, nChannels);
+        sizeof_timestep += auxiliary::sizeof_uvw(nBaselines, 1);
+        return sizeof_timestep;
+    }
+
     int nextcomposite(int n)
     {
         n += (n & 1);

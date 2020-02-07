@@ -10,8 +10,6 @@
 #include "GridderBuffer.h"
 #include "DegridderBuffer.h"
 
-#include "idg-common.h"
-
 namespace idg {
 namespace api {
 
@@ -37,14 +35,7 @@ namespace api {
 
         virtual ~BufferSet() {};
 
-        static uint64_t get_memory_per_timestep(size_t nStations, size_t nChannels)
-        {
-            size_t nBaselines = ((nStations - 1) * nStations) / 2;
-            size_t sizeof_timestep = 0;
-            sizeof_timestep += auxiliary::sizeof_visibilities(nBaselines, 1, nChannels);
-            sizeof_timestep += auxiliary::sizeof_uvw(nBaselines, 1);
-            return sizeof_timestep;
-        }
+        static uint64_t get_memory_per_timestep(size_t nStations, size_t nChannels);
 
         virtual void init(
             size_t width,
