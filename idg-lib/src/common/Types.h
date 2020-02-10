@@ -149,627 +149,334 @@ namespace idg {
 
     /* Classes */
     template<class T>
-    class Array1D {
+    class ArrayXD {
         public:
-            Array1D() : Array1D(0) {}
+            ArrayXD() :
+                m_shape(0),
+                m_buffer(nullptr)
+            {
+            }
 
-            Array1D(
-                size_t width) :
-                m_x_dim(width),
-                m_delete_buffer(true),
-                m_buffer(allocate_memory<T>(width))
-            {}
+            ArrayXD(
+                std::vector<size_t> shape) :
+                m_shape(shape),
+                m_buffer(allocate_memory<T>(size()), &free) // shared_ptr with custom deleter that deletes an array
+            {
+            }
 
-            Array1D(
-                T* data,
-                size_t width) :
-                m_x_dim(width),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {}
-
-            Array1D(
+            ArrayXD(
                 T* data,
                 std::vector<size_t> shape) :
-                m_x_dim(shape[0]),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {
-                assert(shape.size() == 1);
-            }
-
-            Array1D(const Array1D& v) = delete;
-            Array1D& operator=(const Array1D& rhs) = delete;
-
-            Array1D(Array1D&& other)
-                : m_x_dim(other.m_x_dim),
-                  m_delete_buffer(other.m_delete_buffer),
-                  m_buffer(other.m_buffer)
-            {
-                other.m_buffer = nullptr;
-            }
-
-            Array1D& operator=(Array1D&& other)
-            {
-                if (m_delete_buffer) free(m_buffer);
-                m_x_dim = other.m_x_dim;
-                m_delete_buffer = other.m_delete_buffer;
-                m_buffer = other.m_buffer;
-                other.m_buffer = nullptr;
-				return *this;
-            }
-
-            virtual ~Array1D()
-            {
-                if (m_delete_buffer) free(m_buffer);
-            }
-
-            T* data(
-                size_t index=0) const
-            {
-                return &m_buffer[index];
-            }
-
-            size_t get_x_dim() const { return m_x_dim; }
-
-            const T& operator()(
-                size_t i) const
-            {
-                return m_buffer[i];
-            }
-
-            T& operator()(
-                size_t i)
-            {
-                return m_buffer[i];
-            }
-
-            void init(const T& a) {
-                const unsigned int n = m_x_dim;
-                for (unsigned int i = 0; i < n; ++i) {
-                    m_buffer[i] = a;
-                }
-            }
-
-            size_t size() const {
-                return get_x_dim();
-            }
-
-            size_t bytes() const {
-                return get_x_dim() * sizeof(T);
-            }
-
-            std::vector<size_t> shape() const {
-                return std::vector<size_t>{get_x_dim()};
-            }
-
-            bool contains_nan() {
-                volatile bool contains_nan = false;
-                #pragma omp parallel for
-                for (size_t i = 0; i < size(); i++) {
-                    if (contains_nan) {
-                        continue;
-                    }
-                    T value = m_buffer[i];
-                    if (isnan(value)) {
-                        contains_nan = true;
-                    }
-                }
-                return contains_nan;
-            }
-
-        protected:
-            size_t m_x_dim;
-            bool   m_delete_buffer;
-            T*     m_buffer;
-    };
-
-
-    template<class T>
-    class Array2D {
-        public:
-            Array2D() : Array2D(0,0) {}
-
-            Array2D(
-                size_t height,
-                size_t width) :
-                m_x_dim(width),
-                m_y_dim(height),
-                m_delete_buffer(true),
-                m_buffer(allocate_memory<T>(height*width))
-            {}
-
-            Array2D(
-                T* data,
-                size_t height,
-                size_t width) :
-                m_x_dim(width),
-                m_y_dim(height),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {}
-
-            Array2D(
-                T* data,
-                std::vector<size_t> shape) :
-                m_x_dim(shape[0]),
-                m_y_dim(shape[1]),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {
-                assert(shape.size() == 2);
-            }
-
-            Array2D(const Array2D& v) = delete;
-            Array2D& operator=(const Array2D& rhs) = delete;
-
-            Array2D(Array2D&& other)
-                : m_x_dim(other.m_x_dim),
-                  m_y_dim(other.m_y_dim),
-                  m_delete_buffer(other.m_delete_buffer),
-                  m_buffer(other.m_buffer)
-            {
-                other.m_buffer = nullptr;
-            }
-
-            // move assignment operator
-            Array2D& operator=(Array2D&& other)
-            {
-                if (m_delete_buffer) free(m_buffer);
-                m_x_dim = other.m_x_dim;
-                m_y_dim = other.m_y_dim;
-                m_delete_buffer = other.m_delete_buffer;
-                m_buffer = other.m_buffer;
-                other.m_buffer = nullptr;
-				return *this;
-            }
-
-            virtual ~Array2D()
-            {
-                if (m_delete_buffer) free(m_buffer);
-            }
-
-            T* data(
-                size_t row=0,
-                size_t column=0) const
-            {
-                return &m_buffer[row*m_x_dim + column];
-            }
-
-            size_t get_x_dim() const { return m_x_dim; }
-            size_t get_y_dim() const { return m_y_dim; }
-
-            const T& operator()(
-                size_t y,
-                size_t x) const
-            {
-                return m_buffer[x + m_x_dim*y];
-            }
-
-            T& operator()(
-                size_t y,
-                size_t x)
-            {
-                return m_buffer[x + m_x_dim*y];
-            }
-
-            void init(const T& a) {
-                const unsigned int n = m_x_dim*m_y_dim;
-                for (unsigned int i = 0; i < n; ++i) {
-                    m_buffer[i] = a;
-                }
-            }
-
-            size_t size() const {
-                return get_y_dim() * get_x_dim();
-            }
-
-            size_t bytes() const {
-                return get_y_dim() *
-                       get_x_dim() * sizeof(T);
-            }
-
-            std::vector<size_t> shape() const {
-                return std::vector<size_t>{get_x_dim(), get_y_dim()};
-            }
-
-            bool contains_nan() {
-                volatile bool contains_nan = false;
-                #pragma omp parallel for
-                for (size_t i = 0; i < size(); i++) {
-                    if (contains_nan) {
-                        continue;
-                    }
-                    T value = m_buffer[i];
-                    if (isnan(value)) {
-                        contains_nan = true;
-                    }
-                }
-                return contains_nan;
-            }
-
-        protected:
-            size_t m_x_dim;
-            size_t m_y_dim;
-            bool   m_delete_buffer;
-            T*     m_buffer;
-    };
-
-
-    template<class T>
-    class Array3D {
-        public:
-            Array3D() : Array3D(0,0,0) {}
-
-            Array3D(
-                size_t depth,
-                size_t height,
-                size_t width) :
-                m_x_dim(width),
-                m_y_dim(height),
-                m_z_dim(depth),
-                m_delete_buffer(true),
-                m_buffer(allocate_memory<T>(height*width*depth))
-            {}
-
-            Array3D(
-                T* data,
-                size_t depth,
-                size_t height,
-                size_t width) :
-                m_x_dim(width),
-                m_y_dim(height),
-                m_z_dim(depth),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {}
-
-            Array3D(
-                T* data,
-                std::vector<size_t> shape) :
-                m_x_dim(shape[0]),
-                m_y_dim(shape[1]),
-                m_z_dim(shape[2]),
-                m_delete_buffer(false),
-                m_buffer(data)
-            {
-                assert(shape.size() == 3);
-            }
-
-            Array3D(const Array3D& other) = delete;
-            Array3D& operator=(const Array3D& rhs) = delete;
-
-            Array3D(Array3D&& other)
-                : m_x_dim(other.m_x_dim),
-                  m_y_dim(other.m_y_dim),
-                  m_z_dim(other.m_z_dim),
-                  m_delete_buffer(other.m_delete_buffer),
-                  m_buffer(other.m_buffer)
-            {
-                other.m_buffer = nullptr;
-            }
-
-            // move assignment operator
-            Array3D& operator=(Array3D&& other)
-            {
-                if (m_delete_buffer) free(m_buffer);
-                m_x_dim = other.m_x_dim;
-                m_y_dim = other.m_y_dim;
-                m_z_dim = other.m_z_dim;
-                m_delete_buffer = other.m_delete_buffer;
-                m_buffer = other.m_buffer;
-                other.m_buffer = nullptr;
-				return *this;
-            }
-
-            virtual ~Array3D() { if (m_delete_buffer) free(m_buffer); }
-
-            T* data(
-                size_t z=0,
-                size_t y=0,
-                size_t x=0) const
-            {
-                return &m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z];
-            }
-
-            size_t get_x_dim() const { return m_x_dim; }
-            size_t get_y_dim() const { return m_y_dim; }
-            size_t get_z_dim() const { return m_z_dim; }
-
-            const T& operator()(
-                size_t z,
-                size_t y,
-                size_t x) const
-            {
-                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z];
-            }
-
-            T& operator()(
-                size_t z,
-                size_t y,
-                size_t x)
-            {
-                return m_buffer[x + m_x_dim*y + m_x_dim*m_y_dim*z];
-            }
-
-            void init(const T& a) {
-                const size_t n = m_x_dim*m_y_dim*m_z_dim;
-                for (size_t i = 0; i < n; ++i) {
-                    m_buffer[i] = a;
-                }
-            }
-
-            size_t size() const {
-                return get_z_dim() * get_y_dim() *
-                       get_x_dim();
-            }
-
-            size_t bytes() const {
-                return get_z_dim() * get_y_dim() *
-                       get_x_dim() * sizeof(T);
-            }
-
-            void zero() {
-                memset((void *) m_buffer, 0, bytes());
-            }
-
-            std::vector<size_t> shape() const {
-                return std::vector<size_t>{get_x_dim(), get_y_dim(), get_z_dim()};
-            }
-
-            bool contains_nan() {
-                volatile bool contains_nan = false;
-                #pragma omp parallel for
-                for (size_t i = 0; i < size(); i++) {
-                    if (contains_nan) {
-                        continue;
-                    }
-                    T value = m_buffer[i];
-                    if (isnan(value)) {
-                        contains_nan = true;
-                    }
-                }
-                return contains_nan;
-            }
-
-        protected:
-            size_t m_x_dim;
-            size_t m_y_dim;
-            size_t m_z_dim;
-            bool   m_delete_buffer;
-            T*     m_buffer;
-    };
-
-
-    template<class T>
-    class Array4D {
-        public:
-            Array4D() : Array4D(0,0,0,0) {}
-
-            Array4D(
-                size_t w_dim,
-                size_t z_dim,
-                size_t y_dim,
-                size_t x_dim) :
-                m_x_dim(x_dim),
-                m_y_dim(y_dim),
-                m_z_dim(z_dim),
-                m_w_dim(w_dim),
-                m_buffer(allocate_memory<T>(w_dim*z_dim*y_dim*x_dim), &free)  // shared_ptr with custom deleter that deletes an array
-            {}
-
-            Array4D(
-                std::vector<size_t> shape) :
-                m_x_dim(shape[0]),
-                m_y_dim(shape[1]),
-                m_z_dim(shape[2]),
-                m_w_dim(shape[3]),
-                m_buffer(allocate_memory<T>(shape[0]*shape[1]*shape[2]*shape[3]), &free)  // shared_ptr with custom deleter that deletes an array
-            {}
-
-            Array4D(
-                std::shared_ptr<T> data,
-                size_t w_dim,
-                size_t z_dim,
-                size_t y_dim,
-                size_t x_dim) :
-                m_x_dim(x_dim),
-                m_y_dim(y_dim),
-                m_z_dim(z_dim),
-                m_w_dim(w_dim),
-                m_buffer(data)
-            {}
-
-            Array4D(
-                T* data,
-                size_t w_dim,
-                size_t z_dim,
-                size_t y_dim,
-                size_t x_dim) :
-                m_x_dim(x_dim),
-                m_y_dim(y_dim),
-                m_z_dim(z_dim),
-                m_w_dim(w_dim),
-                m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
-            {}
-
-            Array4D(
-                T* data,
-                std::vector<size_t> shape) :
-                m_x_dim(shape[0]),
-                m_y_dim(shape[1]),
-                m_z_dim(shape[2]),
-                m_w_dim(shape[3]),
+                m_shape(shape),
                 m_buffer(data, [](T*){}) // shared_ptr with custom deleter that does nothing
             {
-                assert(shape.size() == 4);
             }
 
-            Array4D(const Array4D& other) = delete;
-            Array4D& operator=(const Array4D& rhs) = delete;
+            ArrayXD(const ArrayXD& other) = delete;
+            ArrayXD& operator=(const ArrayXD& rhs) = delete;
 
-            Array4D(Array4D&& other)
-                : m_x_dim(other.m_x_dim),
-                  m_y_dim(other.m_y_dim),
-                  m_z_dim(other.m_z_dim),
-                  m_w_dim(other.m_w_dim),
-                  m_buffer(other.m_buffer)
+            ArrayXD(ArrayXD&& other) :
+                m_shape(other.m_shape),
+                m_buffer(other.m_buffer)
             {
                 other.m_buffer = nullptr;
             }
 
             // move assignment operator
-            Array4D& operator=(Array4D&& other)
+            ArrayXD& operator=(ArrayXD&& other)
             {
-                m_w_dim = other.m_w_dim;
-                m_x_dim = other.m_x_dim;
-                m_y_dim = other.m_y_dim;
-                m_z_dim = other.m_z_dim;
+                m_shape = other.m_shape;
                 m_buffer = other.m_buffer;
                 other.m_buffer = nullptr;
 				return *this;
             }
 
-            virtual ~Array4D() {}
+            ~ArrayXD() {}
+
+            std::vector<size_t> shape() const
+            {
+                return m_shape;
+            }
+
+            size_t size() const
+            {
+                size_t result = 1;
+                for (auto n : m_shape) {
+                    result *= n;
+                }
+                return result;
+            }
+
+            size_t bytes() const
+            {
+                return size() * sizeof(T);
+            }
 
             T* data(
-                size_t w=0,
-                size_t z=0,
-                size_t y=0,
-                size_t x=0) const
+                size_t index = 0) const
             {
-                return &m_buffer.get()[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
+                return &m_buffer.get()[index];
             }
 
-            size_t get_x_dim() const { return m_x_dim; }
-            size_t get_y_dim() const { return m_y_dim; }
-            size_t get_z_dim() const { return m_z_dim; }
-            size_t get_w_dim() const { return m_w_dim; }
-
-            const T& operator()(
-                size_t w,
-                size_t z,
-                size_t y,
-                size_t x) const
+            bool contains_nan() const
             {
-                return m_buffer.get()[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
-            }
-
-            T& operator()(
-                size_t w,
-                size_t z,
-                size_t y,
-                size_t x)
-            {
-                return m_buffer.get()[x + m_x_dim*y + m_x_dim*m_y_dim*z + m_x_dim*m_y_dim*m_z_dim*w];
-            }
-
-            void init(const T& a) {
-                const unsigned int n = m_x_dim*m_y_dim*m_z_dim*m_w_dim;
-                #pragma omp parallel for
-                for (size_t i = 0; i < n; ++i) {
-                    m_buffer.get()[i] = a;
-                }
-            }
-
-            size_t size() const {
-                return get_w_dim() * get_z_dim() *
-                       get_y_dim() * get_x_dim();
-            }
-
-            size_t bytes() const {
-                return get_w_dim() * get_z_dim() *
-                       get_y_dim() * get_x_dim() * sizeof(T);
-            }
-
-            std::vector<size_t> shape() const {
-                return std::vector<size_t>{get_x_dim(), get_y_dim(), get_z_dim(), get_w_dim()};
-            }
-
-            bool contains_nan() {
                 volatile bool contains_nan = false;
-                #pragma omp parallel for
                 for (size_t i = 0; i < size(); i++) {
                     if (contains_nan) {
                         continue;
                     }
-                    T value = m_buffer.get()[i];
-                    if (isnan(value)) {
+                    T* value = data(i);
+                    if (isnan(*value)) {
                         contains_nan = true;
                     }
                 }
                 return contains_nan;
-            }
+            };
 
-            bool contains_inf() {
+            bool contains_inf() const
+            {
                 volatile bool contains_inf = false;
-                #pragma omp parallel for
                 for (size_t i = 0; i < size(); i++) {
                     if (contains_inf) {
                         continue;
                     }
-                    T value = m_buffer.get()[i];
-                    if (!isfinite(value)) {
+                    T* value = data(i);
+                    if (!isfinite(*value)) {
                         contains_inf = true;
                     }
                 }
                 return contains_inf;
             }
 
+            void init(const T& a)
+            {
+                for (size_t i = 0; i < size(); ++i) {
+                    m_buffer.get()[i] = a;
+                }
+            }
+
+            void zero()
+            {
+                memset((void *) m_buffer.get(), 0, bytes());
+            }
+
+            T& operator()(
+                size_t i)
+            {
+                return m_buffer.get()[i];
+            }
+
+            const T& operator()(
+                size_t i) const
+            {
+                return m_buffer.get()[i];
+            }
+
             // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
             // Need to return a copy in that case.
-            const std::shared_ptr<const T> get() const {return m_buffer;}
+            const std::shared_ptr<const T> get() const
+            {
+                return m_buffer;
+            }
 
         protected:
-            size_t m_x_dim;
-            size_t m_y_dim;
-            size_t m_z_dim;
-            size_t m_w_dim;
-            std::shared_ptr<T> m_buffer;
-    };
+            size_t get_n_dim(
+                size_t n) const
+            {
+                assert(n < m_shape.size());
+                return m_shape[n];
+            }
 
-
-    class Grid : public Array4D<std::complex<float>> {
-        public:
-            Grid(Array3D<std::complex<float>> &array) :
-                    Array4D<std::complex<float>>(array.data(),
-                                                 1,
-                                                 array.get_z_dim(),
-                                                 array.get_y_dim(),
-                                                 array.get_x_dim())
-                {}
-
-                Grid(std::vector<size_t> shape) :
-                    Array4D<std::complex<float>>(shape)
-                {}
-
-                Grid(
-                    std::complex<float>* data,
-                    std::vector<size_t> shape) :
-                    Array4D<std::complex<float>>(data, shape)
-                {}
-
-                Grid(std::complex<float>* data,
-                    size_t w_dim,
-                    size_t z_dim,
-                    size_t y_dim,
-                    size_t x_dim) :
-                    Array4D<std::complex<float>>(data, w_dim, z_dim, y_dim, x_dim)
-                {}
-
-                Grid(
-                    size_t w_dim,
-                    size_t z_dim,
-                    size_t y_dim,
-                    size_t x_dim) :
-                    Array4D<std::complex<float>>(w_dim, z_dim, y_dim, x_dim)
-                {}
-
-                void zero() {
-                    const std::complex<float> zero(0.0f, 0.0f);
-                    init(zero);
+            size_t index(
+                std::vector<size_t> idx) const
+            {
+                assert(idx.size() == m_shape.size());
+                size_t result = 0;
+                for (unsigned i = 0; i < idx.size(); i++) {
+                    size_t temp = idx[i];
+                    for (unsigned j = i + 1; j < idx.size(); j++) {
+                        temp *= m_shape[j];
+                    }
+                    result += temp;
                 }
+                return result;
+            }
+
+        protected:
+            std::vector<size_t> m_shape;
+            std::shared_ptr<T> m_buffer;
+            bool m_delete_buffer;
     };
+
+    template<class T>
+    class Array1D : public ArrayXD<T> {
+        using ArrayXD<T>::ArrayXD;
+
+        public:
+            Array1D(
+                size_t width = 0) :
+                ArrayXD<T>({width})
+            {}
+
+            Array1D(
+                T* data,
+                size_t width) :
+                ArrayXD<T>(data, {width})
+            {}
+
+            size_t get_x_dim() const { return this->get_n_dim(0); }
+    };
+
+    template<class T>
+    class Array2D : public ArrayXD<T> {
+        using ArrayXD<T>::ArrayXD;
+
+        public:
+            Array2D(
+                size_t y_dim = 0,
+                size_t x_dim = 0) :
+                ArrayXD<T>({y_dim, x_dim})
+            {}
+
+            Array2D(
+                T* data,
+                size_t y_dim,
+                size_t x_dim) :
+                ArrayXD<T>(data, {y_dim, x_dim})
+            {}
+
+            size_t get_x_dim() const { return this->get_n_dim(1); }
+            size_t get_y_dim() const { return this->get_n_dim(0); }
+
+            T* data(
+                size_t y = 0,
+                size_t x = 0) const
+            {
+                return &this->m_buffer.get()[this->index({y, x})];
+            }
+
+            const T& operator()(
+                size_t y,
+                size_t x) const
+            {
+                return this->m_buffer.get()[this->index({y, x})];
+            }
+
+            T& operator()(
+                size_t y,
+                size_t x)
+            {
+                return this->m_buffer.get()[this->index({y, x})];
+            }
+    };
+
+
+    template<class T>
+    class Array3D : public ArrayXD<T> {
+        using ArrayXD<T>::ArrayXD;
+
+        public:
+            Array3D(
+                size_t z_dim = 0,
+                size_t y_dim = 0,
+                size_t x_dim = 0) :
+                ArrayXD<T>({z_dim, y_dim, x_dim})
+            {}
+
+            Array3D(
+                T* data,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                ArrayXD<T>(data, {z_dim, y_dim, x_dim})
+            {}
+
+            size_t get_x_dim() const { return this->get_n_dim(2); }
+            size_t get_y_dim() const { return this->get_n_dim(1); }
+            size_t get_z_dim() const { return this->get_n_dim(0); }
+
+            T* data(
+                size_t z = 0,
+                size_t y = 0,
+                size_t x = 0) const
+            {
+                return &this->m_buffer.get()[this->index({z, y, x})];
+            }
+
+            const T& operator()(
+                size_t z,
+                size_t y,
+                size_t x) const
+            {
+                return this->m_buffer.get()[this->index({z, y, x})];
+            }
+
+            T& operator()(
+                size_t z,
+                size_t y,
+                size_t x)
+            {
+                return this->m_buffer.get()[this->index({z, y, x})];
+            }
+    };
+
+
+    template<class T>
+    class Array4D : public ArrayXD<T> {
+        using ArrayXD<T>::ArrayXD;
+
+        public:
+            Array4D(
+                size_t w_dim,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                ArrayXD<T>({w_dim, z_dim, y_dim, x_dim})
+            {}
+
+            Array4D(
+                T* data,
+                size_t w_dim,
+                size_t z_dim,
+                size_t y_dim,
+                size_t x_dim) :
+                ArrayXD<T>(data, {w_dim, z_dim, y_dim, x_dim})
+            {}
+
+            size_t get_x_dim() const { return this->get_n_dim(3); }
+            size_t get_y_dim() const { return this->get_n_dim(2); }
+            size_t get_z_dim() const { return this->get_n_dim(1); }
+            size_t get_w_dim() const { return this->get_n_dim(0); }
+
+            T* data(
+                size_t w = 0,
+                size_t z = 0,
+                size_t y = 0,
+                size_t x = 0) const
+            {
+                return &this->m_buffer.get()[this->index({w, z, y, x})];
+            }
+
+            const T& operator()(
+                size_t w,
+                size_t z,
+                size_t y,
+                size_t x) const
+            {
+                return this->m_buffer.get()[this->index({w, z, y, x})];
+            }
+
+            T& operator()(
+                size_t w,
+                size_t z,
+                size_t y,
+                size_t x)
+            {
+                return this->m_buffer.get()[this->index({w, z, y, x})];
+            }
+    };
+
+    using Grid = Array4D<std::complex<float>>;
 
     /* Output */
     std::ostream& operator<<(std::ostream& os, Baseline& b);
