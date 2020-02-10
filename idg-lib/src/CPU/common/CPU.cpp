@@ -98,7 +98,6 @@ namespace idg {
             {
                 auto nr_baselines = plan.get_nr_baselines();
                 auto jobsize = nr_baselines;
-                auto nr_threads = auxiliary::get_nr_threads();
                 auto sizeof_visibilities = auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
 
                 // Make sure that every job will fit in memory
@@ -107,24 +106,23 @@ namespace idg {
                     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
                     // Determine the size of the subgrids for this jobsize
-                    auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size, NR_CORRELATIONS);
-
-                    // Account for temporary subgrids allocated per thread
-                    sizeof_subgrids *= nr_threads;
+                    auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
 
                     #if defined(DEBUG_COMPUTE_JOBSIZE)
                     std::clog << "size of subgrids: " << sizeof_subgrids << std::endl;
                     #endif
 
-                    // Determine how many of these baselines fit in the available memory
+                    // Determine the amount of free memory
                     auto free_memory = auxiliary::get_free_memory(); // Mb
-                    free_memory *= 1024 * 1e6; // Byte
+                    free_memory *= 1024 * 1024; // Byte
 
                     // Limit the amount of memory used for subgrids
                     free_memory *= m_fraction_memory_subgrids;
 
+                    // Determine whether to proceed with the current jobsize
                     if (sizeof_subgrids < sizeof_visibilities &&
-                        sizeof_subgrids < free_memory) {
+                        sizeof_subgrids < free_memory &&
+                        sizeof_subgrids < m_max_bytes_subgrids) {
                         break;
                     }
 

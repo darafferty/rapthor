@@ -140,7 +140,14 @@ namespace idg {
                     // Maximum fraction of available memory used to allocate subgrids
                     // this value impacts the jobsize that will be used and hence the
                     // amount of memory additionaly allocated (if any) in various kernels.
-                    float m_fraction_memory_subgrids = 0.4;
+                    float m_fraction_memory_subgrids = 0.10;
+
+                    // Maximum size of the subgrids buffer allocated in do_gridding
+                    // and do_degridding. A value of about 10x the size of the L3 cache
+                    // seems to provide a good balance between the number of kernel calls
+                    // and the time needed to allocate memory, while it is large enough
+                    // to provide sufficient scalability.
+                    size_t m_max_bytes_subgrids = 512 * 1024 * 1024; // 512 Mb
 
                     WTiles itsWTiles;
                     std::vector<std::complex<float>> itsWTilesBuffer;
