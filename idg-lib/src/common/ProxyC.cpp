@@ -40,6 +40,9 @@ extern "C" {
         unsigned int spheroidal_height,
         unsigned int spheroidal_width)
     {
+        std::shared_ptr<idg::Grid> grid_ptr(
+            new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
+        reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
         reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
             w_step,
             shift,
@@ -76,6 +79,7 @@ extern "C" {
             spheroidal_height,
             spheroidal_width
         );
+        reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
     }
 
      void Proxy_degridding(
@@ -115,6 +119,9 @@ extern "C" {
         unsigned int spheroidal_height,
         unsigned int spheroidal_width)
     {
+        std::shared_ptr<idg::Grid> grid_ptr(
+            new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
+        reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
         reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(
             w_step,
             shift,
@@ -285,6 +292,9 @@ extern "C" {
         unsigned int grid_height,
         unsigned int grid_width)
     {
+        std::shared_ptr<idg::Grid> grid_ptr(
+            new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
+        reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
         if (direction!=0) {
             reinterpret_cast<idg::proxy::Proxy*>(p)->transform(
                 idg::ImageDomainToFourierDomain,
@@ -299,6 +309,7 @@ extern "C" {
                  grid_height,
                  grid_width);
         }
+        reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
     }
 
     void Proxy_destroy(Proxy* p) {
