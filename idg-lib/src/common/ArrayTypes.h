@@ -279,6 +279,8 @@ class Array4D : public ArrayXD<T> {
     using ArrayXD<T>::ArrayXD;
 
     public:
+        Array4D() {};
+
         Array4D(
             size_t w_dim,
             size_t z_dim,
