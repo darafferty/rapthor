@@ -139,7 +139,7 @@ int test01()
     proxy.degridding(
         plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
-        grid_ref, aterms, aterms_offsets, spheroidal);
+        grid_ref_, aterms, aterms_offsets, spheroidal);
     clog << endl;
 
     // Compute error
