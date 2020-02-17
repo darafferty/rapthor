@@ -15,14 +15,6 @@ using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
-/*
- * Option to run the subgrid fft on the host,
- * rather than on the device. This is a workaround
- * for Tesla V100, where creating a subgrid fft
- * might hang, depending on the driver used.
- */
-#define RUN_SUBGRID_FFT_ON_HOST 0
-
 
 namespace idg {
     namespace proxy {
@@ -235,13 +227,11 @@ namespace idg {
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
-                    #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
                     device.launch_subgrid_fft(d_subgrids, FourierDomainToImageDomain);
 
                     // Launch scaler
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
-                    #endif
                     executestream.record(*gpuFinished[job_id]);
 
                     // Copy input data for next job
@@ -294,14 +284,6 @@ namespace idg {
                     {
                         // Wait for subgrid to be copied
                         event_ptr->synchronize();
-
-                        #if RUN_SUBGRID_FFT_ON_HOST
-                        // Run FFT on host
-                        cu::Marker marker_fft("run_subgrid_fft");
-                        marker_fft.start();
-                        cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_INVERSE);
-                        marker_fft.end();
-                        #endif
 
                         // Run adder on host
                         cu::Marker marker_adder("run_adder_wstack");
@@ -552,14 +534,6 @@ namespace idg {
                             current_nr_subgrids, grid_size, subgrid_size,
                             metadata_ptr, subgrids_ptr, grid.data());
                         marker_splitter.end();
-
-                        #if RUN_SUBGRID_FFT_ON_HOST
-                        // Run fft on host
-                        cu::Marker marker_fft("run_subgrid_fft");
-                        marker_fft.start();
-                        cpuKernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_FORWARD);
-                        marker_fft.end();
-                        #endif
                     }
 
                     // Copy subgrids to device
@@ -578,10 +552,8 @@ namespace idg {
                     // Wait for input to be copied
                     executestream.waitEvent(*inputCopied[job_id]);
 
-                    #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
                     device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
-                    #endif
 
                     // Launch degridder kernel
                     device.launch_degridder(
@@ -636,14 +608,6 @@ namespace idg {
                                 nr_subgrids_next, grid_size, subgrid_size,
                                 metadata_ptr_next, subgrids_ptr_next, grid_ptr);
                             marker_splitter.end();
-
-                            #if RUN_SUBGRID_FFT_ON_HOST
-                            // Run fft on host
-                            cu::Marker marker_fft("run_subgrid_fft");
-                            marker_fft.start();
-                            cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids_next, subgrids_ptr_next, CUFFT_FORWARD);
-                            marker_fft.end();
-                            #endif
                         });
                     }
 
