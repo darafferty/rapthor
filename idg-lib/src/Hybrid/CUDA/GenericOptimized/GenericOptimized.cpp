@@ -185,7 +185,7 @@ namespace idg {
                     unsigned job_id_next = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
-                    // Get parameters for current iteration
+                    // Get parameters for current job
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -208,6 +208,30 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.record(*inputCopied[job_id]);
+                    }
+
+                    // Copy input data for next job
+                    if (job_id_next < jobs.size()) {
+                        // Load memory objects
+                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
+                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
+
+                        // Get parameters for next job
+                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
+                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
+                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
+                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+
+                        // Copy input data to device
+                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
+                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
+                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
+                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
+                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
+                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
+                        htodstream.record(*inputCopied[job_id_next]);
                     }
 
                     // Wait for output buffer to be free
@@ -234,33 +258,6 @@ namespace idg {
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);
 
-                    // Copy input data for next job
-                    if (job_id_next < jobs.size()) {
-
-                        // Wait for job to finish before overwriting buffers
-                        htodstream.waitEvent(*gpuFinished[job_id]);
-
-                        // Load memory objects
-                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
-                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
-
-                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
-                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
-                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
-                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
-                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
-
-                        // Copy input data to device
-                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
-                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
-                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
-                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
-                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
-                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
-                        htodstream.record(*inputCopied[job_id_next]);
-                    }
-
                     // Copy subgrid to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
                     auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
@@ -277,10 +274,7 @@ namespace idg {
                     cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
 
                     // Start asynchronous computation on the host
-                    m_host_thread = std::thread([
-                            cpuKernels_ptr, event_ptr,
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            metadata_ptr, subgrids_ptr, grid_ptr]()
+                    m_host_thread = std::thread([&]()
                     {
                         // Wait for subgrid to be copied
                         event_ptr->synchronize();
@@ -296,6 +290,9 @@ namespace idg {
 
                     // Report performance
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
+                    // Wait for scaler to finish
+                    gpuFinished[job_id]->synchronize();
 
                     // Update local id
                     local_id = local_id_next;
