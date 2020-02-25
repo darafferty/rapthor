@@ -222,13 +222,11 @@ namespace idg {
                     }
                 });
 
-                // Id for double-buffering
-                unsigned local_id = 0;
-
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
@@ -308,9 +306,6 @@ namespace idg {
 
                     // Signal the host thread
                     locks[job_id].unlock();
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
 
                 // Wait for host thread
@@ -540,13 +535,11 @@ namespace idg {
                     }
                 }); // end host thread
 
-                // Id for double-buffering
-                unsigned local_id = 0;
-
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
@@ -626,9 +619,6 @@ namespace idg {
 
                     // Report performance
                     device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
 
                 // Wait for host thread
