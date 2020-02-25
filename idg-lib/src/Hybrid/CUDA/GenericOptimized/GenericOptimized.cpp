@@ -303,6 +303,9 @@ namespace idg {
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);
 
+                    // Wait for scalar to finish
+                    gpuFinished[job_id]->synchronize();
+
                     // Signal the host thread
                     locks[job_id].unlock();
 
@@ -611,6 +614,9 @@ namespace idg {
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_metadata, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);
+
+                    // Wait for degridder to finish
+                    gpuFinished[job_id]->synchronize();
 
                     // Copy visibilities to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
