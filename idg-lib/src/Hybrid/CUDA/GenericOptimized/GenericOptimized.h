@@ -175,10 +175,6 @@ namespace idg {
                     //     and will process larger values of nr_terms in batches
                     const unsigned int m_calibrate_max_nr_terms = 8;
 
-                    // Thread that is used for asynchronous computations on the host
-                    // (e.g. the adder and splitter kernel)
-                    std::thread m_host_thread;
-
             }; // class GenericOptimized
 
         } // namespace hybrid

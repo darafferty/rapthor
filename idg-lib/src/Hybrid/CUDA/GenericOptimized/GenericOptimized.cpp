@@ -176,6 +176,52 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
+                // Locks to signal that work on the CPU can start
+                std::vector<std::mutex> locks(jobs.size());
+                std::vector<std::mutex> locks2(jobs.size());
+                for (auto& lock : locks) {
+                    lock.lock();
+                }
+
+                // Start asynchronous computation on the host
+                std::thread host_thread = std::thread([&]()
+                {
+                    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
+                        // Get parameters for current job
+                        auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
+                        void *metadata_ptr        = jobs[job_id].metadata_ptr;
+                        void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
+                        void *grid_ptr            = grid.data();
+                        unsigned local_id         = job_id % 2;
+
+                        // Load memory objects
+                        cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
+
+                        // Wait for scaler to finish
+                        locks[job_id].lock();
+
+                        // Copy subgrid to host
+                        dtohstream.waitEvent(*gpuFinished[job_id]);
+                        auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+                        dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
+                        dtohstream.record(*outputCopied[job_id]);
+
+                        // Wait for subgrids to be copied
+                        outputCopied[job_id]->synchronize();
+
+                        // Run adder on host
+                        cu::Marker marker_adder("run_adder_wstack");
+                        marker_adder.start();
+                        cpuKernels.run_adder_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr);
+                        marker_adder.end();
+
+                        // Report performance
+                        device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    }
+                });
+
                 // Id for double-buffering
                 unsigned local_id = 0;
 
@@ -191,7 +237,6 @@ namespace idg {
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
-                    void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
@@ -258,52 +303,16 @@ namespace idg {
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);
 
-                    // Copy subgrid to host
-                    dtohstream.waitEvent(*gpuFinished[job_id]);
-                    auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                    dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
-                    dtohstream.record(*outputCopied[job_id]);
-
-                    // Wait for host thread
-                    if (m_host_thread.joinable()) {
-                        m_host_thread.join();
-                    }
-
-                    void *grid_ptr = grid.data();
-                    InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
-                    cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
-
-                    // Start asynchronous computation on the host
-                    m_host_thread = std::thread([&]()
-                    {
-                        // Wait for subgrid to be copied
-                        event_ptr->synchronize();
-
-                        // Run adder on host
-                        cu::Marker marker_adder("run_adder_wstack");
-                        marker_adder.start();
-                        cpuKernels_ptr->run_adder_wstack(
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            metadata_ptr, subgrids_ptr, grid_ptr);
-                        marker_adder.end();
-                    });
-
-                    // Report performance
-                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
-
-                    // Wait for scaler to finish
-                    gpuFinished[job_id]->synchronize();
+                    // Signal the host thread
+                    locks[job_id].unlock();
 
                     // Update local id
                     local_id = local_id_next;
                 } // end for bl
 
-                // Wait for all reports to be printed
-                dtohstream.synchronize();
-
                 // Wait for host thread
-                if (m_host_thread.joinable()) {
-                    m_host_thread.join();
+                if (host_thread.joinable()) {
+                    host_thread.join();
                 }
 
                 // End performance measurement
@@ -608,9 +617,6 @@ namespace idg {
                     auto sizeof_visibilities = auxiliary::sizeof_visibilities(current_nr_baselines, nr_timesteps, nr_channels);
                     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
                     dtohstream.record(*outputCopied[job_id]);
-
-                    // Wait for degridder to finish
-                    //gpuFinished[job_id]->synchronize();
 
                     // Report performance
                     device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
