@@ -15,14 +15,6 @@ using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
-/*
- * Option to run the subgrid fft on the host,
- * rather than on the device. This is a workaround
- * for Tesla V100, where creating a subgrid fft
- * might hang, depending on the driver used.
- */
-#define RUN_SUBGRID_FFT_ON_HOST 0
-
 
 namespace idg {
     namespace proxy {
@@ -184,22 +176,65 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Id for double-buffering
-                unsigned local_id = 0;
+                // Locks to signal that work on the CPU can start
+                std::vector<std::mutex> locks(jobs.size());
+                std::vector<std::mutex> locks2(jobs.size());
+                for (auto& lock : locks) {
+                    lock.lock();
+                }
+
+                // Start asynchronous computation on the host
+                std::thread host_thread = std::thread([&]()
+                {
+                    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
+                        // Get parameters for current job
+                        auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
+                        void *metadata_ptr        = jobs[job_id].metadata_ptr;
+                        void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
+                        void *grid_ptr            = grid.data();
+                        unsigned local_id         = job_id % 2;
+
+                        // Load memory objects
+                        cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
+
+                        // Wait for scaler to finish
+                        locks[job_id].lock();
+
+                        // Copy subgrid to host
+                        dtohstream.waitEvent(*gpuFinished[job_id]);
+                        auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+                        dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
+                        dtohstream.record(*outputCopied[job_id]);
+
+                        // Wait for subgrids to be copied
+                        outputCopied[job_id]->synchronize();
+
+                        // Run adder on host
+                        cu::Marker marker_adder("run_adder_wstack");
+                        marker_adder.start();
+                        cpuKernels.run_adder_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr);
+                        marker_adder.end();
+
+                        // Report performance
+                        device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+                    }
+                });
 
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
-                    // Get parameters for current iteration
+                    // Get parameters for current job
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
-                    void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
@@ -216,6 +251,30 @@ namespace idg {
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
                         htodstream.record(*inputCopied[job_id]);
+                    }
+
+                    // Copy input data for next job
+                    if (job_id_next < jobs.size()) {
+                        // Load memory objects
+                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
+                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
+                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
+
+                        // Get parameters for next job
+                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
+                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
+                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
+                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
+                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+
+                        // Copy input data to device
+                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
+                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
+                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
+                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
+                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
+                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
+                        htodstream.record(*inputCopied[job_id_next]);
                     }
 
                     // Wait for output buffer to be free
@@ -235,96 +294,23 @@ namespace idg {
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
-                    #if !RUN_SUBGRID_FFT_ON_HOST
                     // Launch FFT
                     device.launch_subgrid_fft(d_subgrids, FourierDomainToImageDomain);
 
                     // Launch scaler
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
-                    #endif
                     executestream.record(*gpuFinished[job_id]);
 
-                    // Copy input data for next job
-                    if (job_id_next < jobs.size()) {
+                    // Wait for scalar to finish
+                    gpuFinished[job_id]->synchronize();
 
-                        // Wait for job to finish before overwriting buffers
-                        htodstream.waitEvent(*gpuFinished[job_id]);
-
-                        // Load memory objects
-                        cu::DeviceMemory& d_visibilities_next = device.retrieve_device_visibilities(local_id_next);
-                        cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
-                        cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
-
-                        auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
-                        auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
-                        void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
-                        void *uvw_ptr_next          = jobs[job_id_next].uvw_ptr;
-                        void *visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
-
-                        // Copy input data to device
-                        auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(nr_baselines_next, nr_timesteps, nr_channels);
-                        auto sizeof_uvw_next          = auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
-                        auto sizeof_metadata_next     = auxiliary::sizeof_metadata(nr_subgrids_next);
-                        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next, sizeof_visibilities_next);
-                        htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
-                        htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
-                        htodstream.record(*inputCopied[job_id_next]);
-                    }
-
-                    // Copy subgrid to host
-                    dtohstream.waitEvent(*gpuFinished[job_id]);
-                    auto sizeof_subgrids = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                    dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
-                    dtohstream.record(*outputCopied[job_id]);
-
-                    // Wait for host thread
-                    if (m_host_thread.joinable()) {
-                        m_host_thread.join();
-                    }
-
-                    void *grid_ptr = grid.data();
-                    InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
-                    cu::Event *event_ptr = (cu::Event *) outputCopied[job_id].get();
-
-                    // Start asynchronous computation on the host
-                    m_host_thread = std::thread([
-                            cpuKernels_ptr, event_ptr,
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            metadata_ptr, subgrids_ptr, grid_ptr]()
-                    {
-                        // Wait for subgrid to be copied
-                        event_ptr->synchronize();
-
-                        #if RUN_SUBGRID_FFT_ON_HOST
-                        // Run FFT on host
-                        cu::Marker marker_fft("run_subgrid_fft");
-                        marker_fft.start();
-                        cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_INVERSE);
-                        marker_fft.end();
-                        #endif
-
-                        // Run adder on host
-                        cu::Marker marker_adder("run_adder_wstack");
-                        marker_adder.start();
-                        cpuKernels_ptr->run_adder_wstack(
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            metadata_ptr, subgrids_ptr, grid_ptr);
-                        marker_adder.end();
-                    });
-
-                    // Report performance
-                    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
-
-                    // Update local id
-                    local_id = local_id_next;
+                    // Signal the host thread
+                    locks[job_id].unlock();
                 } // end for bl
 
-                // Wait for all reports to be printed
-                dtohstream.synchronize();
-
                 // Wait for host thread
-                if (m_host_thread.joinable()) {
-                    m_host_thread.join();
+                if (host_thread.joinable()) {
+                    host_thread.join();
                 }
 
                 // End performance measurement
@@ -507,22 +493,61 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Id for double-buffering
-                unsigned local_id = 0;
+                // Locks to signal that work on the CPU is finished
+                std::vector<std::mutex> locks(jobs.size());
+                for (auto& lock : locks) {
+                    lock.lock();
+                }
+
+                // Start host thread to create subgrids
+                std::thread host_thread = std::thread([&]{
+
+                    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
+                        // Get parameters for current job
+                        auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
+                        void *metadata_ptr        = jobs[job_id].metadata_ptr;
+                        void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
+                        void *grid_ptr            = grid.data();
+                        unsigned local_id         = job_id % 2;
+
+                        // Load memory objects
+                        cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
+
+                        // Wait for input buffer to be free
+                        if (job_id > 1) {
+                            gpuFinished[job_id - 2]->synchronize();
+                        }
+
+                        // Run splitter kernel
+                        cu::Marker marker_splitter("run_splitter_wstack", cu::Marker::Color::blue);
+                        marker_splitter.start();
+                        cpuKernels.run_splitter_wstack(
+                            current_nr_subgrids, grid_size, subgrid_size,
+                            metadata_ptr, subgrids_ptr, grid_ptr);
+                        marker_splitter.end();
+
+                        // Copy subgrids to device
+                        auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+                        htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
+
+                        // Unlock this job
+                        locks[job_id].unlock();
+                    }
+                }); // end host thread
 
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
-                    // Get parameters for current iteration
+                    // Get parameters for current job
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
                     void *uvw_ptr             = jobs[job_id].uvw_ptr;
                     void *visibilities_ptr    = jobs[job_id].visibilities_ptr;
-                    void *subgrids_ptr        = jobs[job_id].subgrids_ptr;
 
                     // Load memory objects
                     cu::DeviceMemory& d_visibilities = device.retrieve_device_visibilities(local_id);
@@ -530,73 +555,25 @@ namespace idg {
                     cu::DeviceMemory& d_subgrids     = device.retrieve_device_subgrids(local_id);
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
 
+                    // Wait for subgrids to be computed
+                    locks[job_id].lock();
+
                     // Copy input data for first job to device
                     if (job_id == 0) {
                         auto sizeof_uvw         = auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
                         auto sizeof_metadata    = auxiliary::sizeof_metadata(current_nr_subgrids);
                         htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
                         htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+                        htodstream.record(*inputCopied[job_id]);
                     }
-
-                    // Wait for host thread
-                    if (job_id > 0 && m_host_thread.joinable()) {
-                        m_host_thread.join();
-                    }
-
-                    // Create subgrids for first job
-                    if (job_id == 0) {
-                        // Run splitter on host
-                        cu::Marker marker_splitter("run_splitter_wstack");
-                        marker_splitter.start();
-                        cpuKernels.run_splitter_wstack(
-                            current_nr_subgrids, grid_size, subgrid_size,
-                            metadata_ptr, subgrids_ptr, grid.data());
-                        marker_splitter.end();
-
-                        #if RUN_SUBGRID_FFT_ON_HOST
-                        // Run fft on host
-                        cu::Marker marker_fft("run_subgrid_fft");
-                        marker_fft.start();
-                        cpuKernels.run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids, subgrids_ptr, CUFFT_FORWARD);
-                        marker_fft.end();
-                        #endif
-                    }
-
-                    // Copy subgrids to device
-                    auto sizeof_subgrids    = auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-                    htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
-                    htodstream.record(*inputCopied[job_id]);
-
-                    // Wait for output buffer to be free
-                    if (job_id > 1) {
-                        executestream.waitEvent(*outputCopied[job_id - 2]);
-                    }
-
-                    // Initialize visibilities to zero
-                    d_visibilities.zero(htodstream);
-
-                    // Wait for input to be copied
-                    executestream.waitEvent(*inputCopied[job_id]);
-
-                    #if !RUN_SUBGRID_FFT_ON_HOST
-                    // Launch FFT
-                    device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
-                    #endif
-
-                    // Launch degridder kernel
-                    device.launch_degridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
-                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
-                        d_aterms, d_aterms_indices, d_metadata, d_subgrids);
-                    executestream.record(*gpuFinished[job_id]);
 
                     // Copy input data for next job
                     if (job_id_next < jobs.size()) {
-
                         // Load memory objects
                         cu::DeviceMemory& d_uvw_next      = device.retrieve_device_uvw(local_id_next);
                         cu::DeviceMemory& d_metadata_next = device.retrieve_device_metadata(local_id_next);
 
+                        // Get parameters for next job
                         auto nr_baselines_next  = jobs[job_id_next].current_nr_baselines;
                         auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
                         void *metadata_ptr_next = jobs[job_id_next].metadata_ptr;
@@ -607,45 +584,32 @@ namespace idg {
                         auto sizeof_metadata_next    = auxiliary::sizeof_metadata(nr_subgrids_next);
                         htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
                         htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next, sizeof_metadata_next);
+                        htodstream.record(*inputCopied[job_id_next]);
                     }
 
-                    // Prepare subgrids for next job
-                    if (job_id_next < jobs.size()) {
+                    // Wait for input to be copied
+                    executestream.waitEvent(*inputCopied[job_id]);
 
-                        // Wait for host thread
-                        if (m_host_thread.joinable()) {
-                            m_host_thread.join();
-                        }
-
-                        void *grid_ptr = grid.data();
-                        InstanceCPU *cpuKernels_ptr = (InstanceCPU *) &cpuKernels;
-                        auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
-                        void *metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-                        void *subgrids_ptr_next = jobs[job_id_next].subgrids_ptr;
-
-                        // Start asynchronous computation on the host
-                        m_host_thread = std::thread([
-                                cpuKernels_ptr,
-                                nr_subgrids_next, grid_size, subgrid_size,
-                                metadata_ptr_next, subgrids_ptr_next, grid_ptr]()
-                        {
-                            // Run splitter on host
-                            cu::Marker marker_splitter("run_splitter_wstack");
-                            marker_splitter.start();
-                            cpuKernels_ptr->run_splitter_wstack(
-                                nr_subgrids_next, grid_size, subgrid_size,
-                                metadata_ptr_next, subgrids_ptr_next, grid_ptr);
-                            marker_splitter.end();
-
-                            #if RUN_SUBGRID_FFT_ON_HOST
-                            // Run fft on host
-                            cu::Marker marker_fft("run_subgrid_fft");
-                            marker_fft.start();
-                            cpuKernels_ptr->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids_next, subgrids_ptr_next, CUFFT_FORWARD);
-                            marker_fft.end();
-                            #endif
-                        });
+                    // Wait for output buffer to be free
+                    if (job_id > 1) {
+                        executestream.waitEvent(*outputCopied[job_id - 2]);
                     }
+
+                    // Initialize visibilities to zero
+                    d_visibilities.zero(htodstream);
+
+                    // Launch FFT
+                    device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
+
+                    // Launch degridder kernel
+                    device.launch_degridder(
+                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+                        d_aterms, d_aterms_indices, d_metadata, d_subgrids);
+                    executestream.record(*gpuFinished[job_id]);
+
+                    // Wait for degridder to finish
+                    gpuFinished[job_id]->synchronize();
 
                     // Copy visibilities to host
                     dtohstream.waitEvent(*gpuFinished[job_id]);
@@ -653,15 +617,14 @@ namespace idg {
                     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
                     dtohstream.record(*outputCopied[job_id]);
 
-                    // Wait for degridder to finish
-                    gpuFinished[job_id]->synchronize();
-
                     // Report performance
                     device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
+
+                // Wait for host thread
+                if (host_thread.joinable()) {
+                    host_thread.join();
+                }
 
                 // Wait for all visibilities to be copied
                 dtohstream.synchronize();

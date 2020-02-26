@@ -202,7 +202,7 @@ namespace idg {
                     unsigned job_id_next = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
-                    // Get parameters for current iteration
+                    // Get parameters for current job
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -233,6 +233,7 @@ namespace idg {
                         cu::DeviceMemory& d_uvw_next          = device.retrieve_device_uvw(local_id_next);
                         cu::DeviceMemory& d_metadata_next     = device.retrieve_device_metadata(local_id_next);
 
+                        // Get parameters for next job
                         auto nr_baselines_next      = jobs[job_id_next].current_nr_baselines;
                         auto nr_subgrids_next       = jobs[job_id_next].current_nr_subgrids;
                         void *metadata_ptr_next     = jobs[job_id_next].metadata_ptr;
@@ -464,7 +465,7 @@ namespace idg {
                     unsigned job_id_next = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
-                    // Get parameters for current iteration
+                    // Get parameters for current job
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -492,6 +493,7 @@ namespace idg {
                         cu::DeviceMemory& d_uvw_next      = device.retrieve_device_uvw(local_id_next);
                         cu::DeviceMemory& d_metadata_next = device.retrieve_device_metadata(local_id_next);
 
+                        // Get parameters for next job
                         auto nr_baselines_next  = jobs[job_id_next].current_nr_baselines;
                         auto nr_subgrids_next   = jobs[job_id_next].current_nr_subgrids;
                         void *metadata_ptr_next = jobs[job_id_next].metadata_ptr;

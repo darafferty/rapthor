@@ -200,7 +200,7 @@ namespace idg {
                 // Print amount of bytes required
                 #if defined(DEBUG_COMPUTE_JOBSIZE)
                 std::clog << "Bytes required for static data: " << bytes_static << std::endl;
-                std::clog << "Bytes required for job data: "    << bytes_jobs << std::endl;
+                std::clog << "Bytes required for job data: "    << bytes_job << std::endl;
                 #endif
 
                 // Adjust jobsize to amount of available device memory

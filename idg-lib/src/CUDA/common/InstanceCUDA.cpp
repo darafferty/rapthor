@@ -919,7 +919,7 @@ namespace idg {
             {
                 char message[80];
                 snprintf(message, 80, "copy_htoh(%lu)", bytes);
-                cu::Marker marker(message, 0xffff0000);
+                cu::Marker marker(message, cu::Marker::red);
                 marker.start();
                 size_t batch = 1024 * 1024 * 1024; // 1024 Mb
                 #pragma omp parallel for
@@ -940,7 +940,7 @@ namespace idg {
             {
                 char message[80];
                 snprintf(message, 80, "copy_dtoh(%lu)", bytes);
-                cu::Marker marker(message, 0xffff0000);
+                cu::Marker marker(message, cu::Marker::red);
                 marker.start();
                 size_t batch = 1024 * 1024 * 1024; // 1024 Mb
                 cu::HostMemory tmp(batch);
@@ -963,7 +963,7 @@ namespace idg {
             {
                 char message[80];
                 snprintf(message, 80, "copy_htod(%lu)", bytes);
-                cu::Marker marker(message, 0xffff0000);
+                cu::Marker marker(message, cu::Marker::red);
                 marker.start();
                 size_t batch = 1024 * 1024 * 1024; // 1024 Mb
                 cu::HostMemory tmp(batch);
