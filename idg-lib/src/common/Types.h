@@ -9,7 +9,6 @@
 #include <memory>
 #include <vector>
 
-#define ALIGNMENT       64
 #define WTILE_SIZE      128
 
 #ifndef FUNCTION_ATTRIBUTES
@@ -90,22 +89,6 @@ namespace idg {
         return {x.real, -x.imag};
     }
 
-
-    template<class T>
-    T* allocate_memory(size_t n) {
-        void *ptr = nullptr;
-        if (n > 0) {
-            size_t bytes = n * sizeof(T);
-            bytes = (((bytes - 1) / ALIGNMENT) * ALIGNMENT) + ALIGNMENT;
-            if (posix_memalign(&ptr, ALIGNMENT, bytes) != 0) {
-                std::cerr << "Could not allocate " << bytes << " bytes" << std::endl;
-                exit(EXIT_FAILURE);
-            };
-        }
-        return (T *) ptr;
-    }
-
-
     /* Debugging */
     template<typename T>
     inline bool isnan(T& value) {
@@ -146,10 +129,6 @@ namespace idg {
     inline bool isfinite(UVW<T>& uvw) {
         return (std::isfinite(uvw.u) && std::isfinite(uvw.v) && std::isfinite(uvw.w));
     }
-
-    /* Classes */
-    #include "ArrayTypes.h"
-
 
     /* Output */
     std::ostream& operator<<(std::ostream& os, Baseline& b);

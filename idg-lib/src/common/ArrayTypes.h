@@ -1,5 +1,13 @@
+#ifndef IDG_ARRAYTYPES_H
+#define IDG_ARRAYTYPES_H
+
 #include <complex>
-#include <ostream>
+#include <cassert>
+
+#include "auxiliary.h"
+#include "Types.h"
+
+namespace idg {
 
 template<class T>
 class ArrayXD {
@@ -13,7 +21,7 @@ class ArrayXD {
         ArrayXD(
             std::vector<size_t> shape) :
             m_shape(shape),
-            m_buffer(allocate_memory<T>(size()), &free) // shared_ptr with custom deleter that deletes an array
+            m_buffer(idg::auxiliary::allocate_memory<T>(size()), &free) // shared_ptr with custom deleter that deletes an array
         {
         }
 
@@ -407,3 +415,7 @@ std::ostream& operator<<(
     }
     return os;
 }
+
+} // end namespace idg
+
+#endif

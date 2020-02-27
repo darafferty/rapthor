@@ -696,7 +696,7 @@ namespace idg {
             size_t height,
             size_t width)
         {
-            auto* ptr = allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
+            auto* ptr = idg::auxiliary::allocate_memory<std::complex<float>>(nr_w_layers * nr_correlations * height * width);
             std::shared_ptr<Grid> grid_ptr(new Grid(ptr, nr_w_layers, nr_correlations, height, width));
             return grid_ptr;
         }

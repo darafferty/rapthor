@@ -7,6 +7,7 @@
 #include "common/RuntimeWrapper.h"
 #include "common/auxiliary.h"
 #include "common/Types.h"
+#include "common/ArrayTypes.h"
 #include "common/Plan.h"
 #include "common/KernelsInstance.h"
 #include "common/PowerSensor.h"
