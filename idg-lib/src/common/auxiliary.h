@@ -162,13 +162,30 @@ namespace idg {
 
         std::string get_lib_dir();
 
+        size_t get_nr_threads();
+
+        void print_version();
+
+        /*
+            Memory
+        */
         size_t get_total_memory();
         size_t get_used_memory();
         size_t get_free_memory();
 
-        size_t get_nr_threads();
-
-        void print_version();
+        template<typename T>
+        static T* allocate_memory(size_t n, size_t alignment = 64) {
+            void *ptr = nullptr;
+            if (n > 0) {
+                size_t bytes = n * sizeof(T);
+                bytes = (((bytes - 1) / alignment) * alignment) + alignment;
+                if (posix_memalign(&ptr, alignment, bytes) != 0) {
+                    std::cerr << "Could not allocate " << bytes << " bytes" << std::endl;
+                    exit(EXIT_FAILURE);
+                };
+            }
+            return (T *) ptr;
+        }
 
     } // namespace auxiliary
 } // namespace idg

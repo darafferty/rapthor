@@ -1,5 +1,15 @@
+#ifndef IDG_ARRAYTYPES_H
+#define IDG_ARRAYTYPES_H
+
 #include <complex>
-#include <ostream>
+#include <cassert>
+
+#include <omp.h>
+
+#include "auxiliary.h"
+#include "Types.h"
+
+namespace idg {
 
 template<class T>
 class ArrayXD {
@@ -13,7 +23,7 @@ class ArrayXD {
         ArrayXD(
             std::vector<size_t> shape) :
             m_shape(shape),
-            m_buffer(allocate_memory<T>(size()), &free) // shared_ptr with custom deleter that deletes an array
+            m_buffer(idg::auxiliary::allocate_memory<T>(size()), &free) // shared_ptr with custom deleter that deletes an array
         {
         }
 
@@ -74,6 +84,7 @@ class ArrayXD {
         bool contains_nan() const
         {
             volatile bool contains_nan = false;
+            #pragma omp parallel for
             for (size_t i = 0; i < size(); i++) {
                 if (contains_nan) {
                     continue;
@@ -89,6 +100,7 @@ class ArrayXD {
         bool contains_inf() const
         {
             volatile bool contains_inf = false;
+            #pragma omp parallel for
             for (size_t i = 0; i < size(); i++) {
                 if (contains_inf) {
                     continue;
@@ -103,6 +115,7 @@ class ArrayXD {
 
         void init(const T& a)
         {
+            #pragma omp parallel for
             for (size_t i = 0; i < size(); ++i) {
                 m_buffer.get()[i] = a;
             }
@@ -110,7 +123,9 @@ class ArrayXD {
 
         void zero()
         {
-            memset((void *) m_buffer.get(), 0, bytes());
+            T zero;
+            memset((void *) &zero, 0, sizeof(T));
+            init(zero);
         }
 
         T& operator()(
@@ -407,3 +422,7 @@ std::ostream& operator<<(
     }
     return os;
 }
+
+} // end namespace idg
+
+#endif

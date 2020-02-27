@@ -10,6 +10,7 @@
 #include <omp.h>
 
 #include "Types.h"
+#include "ArrayTypes.h"
 #include "WTiles.h"
 
 
