@@ -4,6 +4,8 @@
 #include <complex>
 #include <cassert>
 
+#include <omp.h>
+
 #include "auxiliary.h"
 #include "Types.h"
 
@@ -82,6 +84,7 @@ class ArrayXD {
         bool contains_nan() const
         {
             volatile bool contains_nan = false;
+            #pragma omp parallel for
             for (size_t i = 0; i < size(); i++) {
                 if (contains_nan) {
                     continue;
@@ -97,6 +100,7 @@ class ArrayXD {
         bool contains_inf() const
         {
             volatile bool contains_inf = false;
+            #pragma omp parallel for
             for (size_t i = 0; i < size(); i++) {
                 if (contains_inf) {
                     continue;
@@ -111,6 +115,7 @@ class ArrayXD {
 
         void init(const T& a)
         {
+            #pragma omp parallel for
             for (size_t i = 0; i < size(); ++i) {
                 m_buffer.get()[i] = a;
             }
@@ -118,7 +123,9 @@ class ArrayXD {
 
         void zero()
         {
-            memset((void *) m_buffer.get(), 0, bytes());
+            T zero;
+            memset((void *) &zero, 0, sizeof(T));
+            init(zero);
         }
 
         T& operator()(
