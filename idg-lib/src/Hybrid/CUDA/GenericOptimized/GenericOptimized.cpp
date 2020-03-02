@@ -202,7 +202,7 @@ namespace idg {
                         outputCopied[job_id]->synchronize();
 
                         // Run adder on host
-                        cu::Marker marker_adder("run_adder_wstack");
+                        cu::Marker marker_adder("run_adder_wstack", cu::Marker::blue);
                         marker_adder.start();
                         cpuKernels.run_adder_wstack(
                             current_nr_subgrids, grid_size, subgrid_size,
@@ -502,7 +502,7 @@ namespace idg {
                         }
 
                         // Run splitter kernel
-                        cu::Marker marker_splitter("run_splitter_wstack", cu::Marker::Color::blue);
+                        cu::Marker marker_splitter("run_splitter_wstack", cu::Marker::blue);
                         marker_splitter.start();
                         cpuKernels.run_splitter_wstack(
                             current_nr_subgrids, grid_size, subgrid_size,
