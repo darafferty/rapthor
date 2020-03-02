@@ -589,8 +589,8 @@ namespace idg {
         return max_nr_subgrids;
     }
 
-    int Plan::get_max_nr_subgrids() const {
-        return get_max_nr_subgrids(0, get_nr_baselines(), 1);
+    int Plan::get_max_nr_subgrids(int n) const {
+        return get_max_nr_subgrids(0, get_nr_baselines(), n);
     }
 
     int Plan::get_nr_timesteps() const {
