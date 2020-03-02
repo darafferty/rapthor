@@ -181,11 +181,11 @@ namespace api {
 #ifndef NDEBUG
         std::cout << "m_padded_size: " << m_padded_size << std::endl;
 #endif
-        // 
+        //
         m_cell_size = cell_size;
         m_image_size = m_cell_size * m_padded_size;
 
-        // this cuts the w kernel approximately at the 1% level        
+        // this cuts the w kernel approximately at the 1% level
         const float max_w_size = max_w * m_image_size * m_image_size;
 
         // some heuristic to set kernel size
@@ -218,7 +218,7 @@ namespace api {
 
         m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
-        // reserved space in subgrid for time 
+        // reserved space in subgrid for time
         m_uv_span_time = 8.0;
 
         m_uv_span_frequency = 8.0;
@@ -355,7 +355,7 @@ namespace api {
         // accurately for small values of l and m
         //return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
     }
-    
+
     void BufferSetImpl::set_image(const double* image, bool do_scale)
     {
         m_set_image_watch->Start();
@@ -518,7 +518,7 @@ namespace api {
         npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
     }
 
-    void BufferSetImpl::get_image(double* image) 
+    void BufferSetImpl::get_image(double* image)
     {
         m_get_image_watch->Start();
 
