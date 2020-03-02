@@ -256,7 +256,6 @@ namespace cu {
     };
 
     class Marker {
-
         public:
             enum Color {
                 red , green, blue, yellow, black
@@ -267,7 +266,7 @@ namespace cu {
                 unsigned color = 0xff00ff00);
             Marker(
                 const char *message,
-                Color color);
+                Marker::Color color);
             void start();
             void end();
 

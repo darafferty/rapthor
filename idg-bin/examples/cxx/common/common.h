@@ -9,8 +9,6 @@
 #include <numeric> // accumulate
 #include <mutex>
 
-#include "Queue.h"
-
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
@@ -20,13 +18,6 @@
  *   1, use fixed (dummy) visibilities to speed-up initialization of the data
  */
 #define USE_DUMMY_VISIBILITIES 1
-
-/*
- * Plan creation
- *  0, create plans sequentially
- *  1, overlap plan creation and execution
- */
-#define INTERLEAVE_PLAN 0
 
 using namespace std;
 
@@ -257,158 +248,118 @@ void run()
     bool simulate_spectral_line = getenv("SPECTRAL_LINE");
 
     // Overlap Plan/Data initialization and imaging
-    Queue<idg::Array2D<idg::UVW<float>>*> uvws;
+    std::vector<std::shared_ptr<idg::Array2D<idg::UVW<float>>>> uvws;
     idg::Plan::Options options;
     options.plan_strict = true;
     options.simulate_spectral_line = simulate_spectral_line;
     options.max_nr_timesteps_per_subgrid = 128;
     options.max_nr_channels_per_subgrid = 8;
-    Queue<idg::Plan*> plans;
+    std::vector<std::shared_ptr<idg::Plan>> plans;
     omp_set_nested(true);
 
     // Set grid
     proxy.set_grid(grid);
 
+    // Create plans
+    for (unsigned time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
+        int current_nr_timesteps = total_nr_timesteps - time_offset < nr_timesteps ?
+                                   total_nr_timesteps - time_offset : nr_timesteps;
+
+        // Initialize uvw data
+        auto uvw = std::shared_ptr<idg::Array2D<idg::UVW<float>>>(
+            new idg::Array2D<idg::UVW<float>>(nr_baselines, current_nr_timesteps));
+        data.get_uvw(*uvw, 0, time_offset, integration_time);
+        uvws.push_back(uvw);
+
+        for (unsigned channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
+            // Report progress
+            clog << ">>>" << endl;
+            clog << "time: " << time_offset << "-" << time_offset + nr_timesteps << ", ";
+            clog << "channel: " << channel_offset << "-" << channel_offset + nr_channels << endl;
+            clog << ">>>" << endl;
+
+            // Initialize frequency data
+            idg::Array1D<float> frequencies(nr_channels);
+            data.get_frequencies(frequencies, image_size, channel_offset);
+
+            // Create plan
+            auto plan = std::shared_ptr<idg::Plan>(new idg::Plan(
+                kernel_size, subgrid_size, grid_size, cell_size,
+                frequencies, *uvw, baselines, aterms_offsets, options));
+
+            // Store and release plan
+            plans.push_back(plan);
+        } // end for channel_offset
+    } // end for time_offset
+
     // Iterate all cycles
-    for (unsigned i = 0; i < nr_cycles; i++) {
+    for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
 
-        #if INTERLEAVE_PLAN
-        /*
-         * Start two threads:
-         * thread 0: create plans
-         * thread 1: execute imaging cycle
-         */
-        #pragma omp parallel num_threads(2)
-        {
-        #endif
-            // create plans
-            if (omp_get_thread_num() == 0) {
+        // Initialize visibilities
+        auto nr_channels_ = simulate_spectral_line ? 1 : nr_channels;
+        idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(visibilities_.data(), nr_baselines, nr_timesteps, nr_channels_);
 
-                for (unsigned time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
-                    int current_nr_timesteps = total_nr_timesteps - time_offset < nr_timesteps ?
-                                               total_nr_timesteps - time_offset : nr_timesteps;
+        unsigned int job = 0;
 
-                    // Initialize uvw data
-                    idg::Array2D<idg::UVW<float>>* uvw_current = new idg::Array2D<idg::UVW<float>>(nr_baselines, current_nr_timesteps);
-                    data.get_uvw(*uvw_current, 0, time_offset, integration_time);
-                    uvws.push(uvw_current);
+        // Iterate all timesteps
+        for (auto uvw : uvws) {
 
-                    for (unsigned channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
-                        // Report progress
-                        clog << ">>>" << endl;
-                        clog << ">>> [PLAN] ";
-                        clog << "time: " << time_offset << "-" << time_offset + nr_timesteps << ", ";
-                        clog << "channel: " << channel_offset << "-" << channel_offset + nr_channels << endl;
-                        clog << ">>>" << endl;
+            // Iterate all channels
+            for (unsigned channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
 
-                        // Initialize frequency data
-                        idg::Array1D<float> frequencies(nr_channels);
-                        data.get_frequencies(frequencies, image_size, channel_offset);
+                // Initialize frequency data
+                idg::Array1D<float> frequencies(simulate_spectral_line ? 1 : nr_channels);
+                data.get_frequencies(frequencies, image_size, channel_offset);
 
-                        // Create plan
-                        idg::Plan* plan = new idg::Plan(
-                            kernel_size, subgrid_size, grid_size, cell_size,
-                            frequencies, *uvw_current, baselines, aterms_offsets, options);
+                // Load plan
+                auto plan = plans[job++];
 
-                        // Store and release plan
-                        plans.push(plan);
-                    } // end for channel_offset
-                } // end for time_offset
-            } // end create plans
+                // Count number of visibilities
+                if (cycle == 0) {
+                    nr_visibilities += plan->get_nr_visibilities();
+                }
 
-            // execute imaging cycle
-            #if INTERLEAVE_PLAN
-            if (omp_get_thread_num() == 1) {
-            #endif
+                // Start imaging
+                double runtime_imaging = -omp_get_wtime();
 
-                // Initialize visibilities
-                auto nr_channels_ = simulate_spectral_line ? 1 : nr_channels;
-                idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(visibilities_.data(), nr_baselines, nr_timesteps, nr_channels_);
+                // Run gridding
+                clog << ">>> Run gridding" << endl;
+                double runtime_gridding = -omp_get_wtime();
+                if (!disable_gridding)
+                proxy.gridding(
+                    *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
+                    frequencies, visibilities, *uvw, baselines,
+                    *grid, aterms, aterms_offsets, spheroidal);
+                runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
+                clog << endl;
 
-                // Iterate all timesteps
-                for (unsigned time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps) {
+                // Run degridding
+                clog << ">>> Run degridding" << endl;
+                double runtime_degridding = -omp_get_wtime();
+                if (!disable_degridding)
+                proxy.degridding(
+                    *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
+                    frequencies, visibilities, *uvw, baselines,
+                    *grid, aterms, aterms_offsets, spheroidal);
+                runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
+                clog << endl;
 
-                    // Load the UVW data for the current set of baselines and timesteps
-                    idg::Array2D<idg::UVW<float>>* uvw_current = uvws.pop();
+                // Run fft
+                clog << ">>> Run fft" << endl;
+                double runtime_fft = -omp_get_wtime();
+                if (!disable_fft)
+                for (unsigned w = 0; w < nr_w_layers; w++) {
+                    idg::Array3D<std::complex<float>> grid_(grid->data(w), nr_correlations, grid_size, grid_size);
+                    proxy.transform(idg::FourierDomainToImageDomain, grid_);
+                    proxy.transform(idg::ImageDomainToFourierDomain, grid_);
+                }
+                runtimes_fft.push_back(runtime_fft + omp_get_wtime());
+                clog << endl;
 
-                    // Create new Array object using existing pointer with current dimensions
-                    idg::Array2D<idg::UVW<float>> uvw(uvw_.data(), nr_baselines, nr_timesteps);
-
-                    // Copy the uvw data to the new Array object
-                    memcpy(uvw.data(), uvw_current->data(), uvw_current->bytes());
-
-                    // Iterate all channels
-                    for (unsigned channel_offset = 0; channel_offset < total_nr_channels; channel_offset += nr_channels) {
-                        // Report progress
-                        clog << ">>>" << endl;
-                        clog << ">>> [EXECUTE] ";
-                        clog << "time: " << time_offset << "-" << time_offset + nr_timesteps << ", ";
-                        clog << "channel: " << channel_offset << "-" << channel_offset + nr_channels << endl;
-                        clog << ">>>" << endl;
-
-                        // Initialize frequency data
-                        idg::Array1D<float> frequencies(simulate_spectral_line ? 1 : nr_channels);
-                        data.get_frequencies(frequencies, image_size, channel_offset);
-
-                        // Wait for plan to become available
-                        idg::Plan* plan = plans.pop();
-
-                        // Count number of visibilities
-                        if (i == 0) {
-                            nr_visibilities += plan->get_nr_visibilities();
-                        }
-
-                        // Start imaging
-                        double runtime_imaging = -omp_get_wtime();
-
-                        // Run gridding
-                        clog << ">>> Run gridding" << endl;
-                        double runtime_gridding = -omp_get_wtime();
-                        if (!disable_gridding)
-                        proxy.gridding(
-                            *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                            frequencies, visibilities, uvw, baselines,
-                            *grid, aterms, aterms_offsets, spheroidal);
-                        runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
-                        clog << endl;
-
-                        // Run degridding
-                        clog << ">>> Run degridding" << endl;
-                        double runtime_degridding = -omp_get_wtime();
-                        if (!disable_degridding)
-                        proxy.degridding(
-                            *plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                            frequencies, visibilities, uvw, baselines,
-                            *grid, aterms, aterms_offsets, spheroidal);
-                        runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
-                        clog << endl;
-
-                        // Run fft
-                        clog << ">>> Run fft" << endl;
-                        double runtime_fft = -omp_get_wtime();
-                        if (!disable_fft)
-                        for (unsigned w = 0; w < nr_w_layers; w++) {
-                            idg::Array3D<std::complex<float>> grid_(grid->data(w), nr_correlations, grid_size, grid_size);
-                            proxy.transform(idg::FourierDomainToImageDomain, grid_);
-                            proxy.transform(idg::ImageDomainToFourierDomain, grid_);
-                        }
-                        runtimes_fft.push_back(runtime_fft + omp_get_wtime());
-                        clog << endl;
-
-                        // End imaging
-                        runtimes_imaging.push_back(runtime_imaging + omp_get_wtime());
-
-                        // Release plan
-                        delete plan;
-
-                        // Free uvw data
-                        delete uvw_current;
-                    } // end for channel_offset
-                } // end for time_offset
-        #if INTERLEAVE_PLAN
-            } // end execute imaging cycle
-        } // end omp parallel
-        #endif
+                // End imaging
+                runtimes_imaging.push_back(runtime_imaging + omp_get_wtime());
+            } // end for channel_offset
+        } // end for time_offset
     } // end for i (nr_cycles)
 
     // Only after a call to get_grid(), the grid can be used outside of the proxy

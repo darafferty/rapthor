@@ -478,7 +478,7 @@ namespace cu {
             case green :  return 0xff00ff00;
             case blue :   return 0xff0000ff;
             case yellow : return 0xffffff00;
-            case black :  return 0xffffffff;
+            case black :  return 0xff000000;
             default:      return 0xff00ff00;
         }
     }

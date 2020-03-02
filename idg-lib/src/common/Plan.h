@@ -100,8 +100,8 @@ namespace idg {
         // max number of subgrids for n baselines between bl1 and bl2+n
         int get_max_nr_subgrids(int bl1, int bl2, int n) const;
 
-        // max number of subgrids for 1 baseline
-        int get_max_nr_subgrids() const;
+        // max number of subgrids for n baselines
+        int get_max_nr_subgrids(int n = 1) const;
 
         // total number of timesteps
         int get_nr_timesteps() const;
