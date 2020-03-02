@@ -347,7 +347,7 @@ namespace idg {
                     float w_lambda;
                 };
 
-                std::vector<DataPoint> datapoints(nr_timesteps * nr_channels_in_group);
+                idg::Array2D<DataPoint> datapoints(nr_timesteps, nr_channels_in_group);
 
                 for (unsigned t = 0; t < nr_timesteps; t++) {
                     for (unsigned c = 0; c < nr_channels_in_group; c++) {
@@ -361,7 +361,7 @@ namespace idg {
 
                         float w_lambda = meters_to_lambda(w_meters, frequencies(c + channel_begin));
 
-                        datapoints[t*nr_channels_in_group + c] = {t, c + channel_begin, u_pixels, v_pixels, w_lambda};
+                        datapoints(t, c) = {t, c + channel_begin, u_pixels, v_pixels, w_lambda};
                     } // end for channel
                 } // end for time
 
@@ -372,18 +372,18 @@ namespace idg {
                     int nr_timesteps_subgrid = 0;
 
                     // Load first visibility
-                    DataPoint first_datapoint = datapoints[time_offset*nr_channels_in_group];
+                    DataPoint first_datapoint = datapoints(time_offset, 0);
                     const int first_timestep = first_datapoint.timestep;
 
                     // Iterate all datapoints
                     for (; time_offset < nr_timesteps; time_offset++) {
                         // Visibility for first channel
-                        DataPoint visibility0 = datapoints[time_offset*nr_channels_in_group];
+                        DataPoint visibility0 = datapoints(time_offset, 0);
                         const float u_pixels0 = visibility0.u_pixels;
                         const float v_pixels0 = visibility0.v_pixels;
                         const float w_lambda0 = visibility0.w_lambda;
 
-                        DataPoint visibility1 = datapoints[(time_offset+1)*nr_channels_in_group - 1];
+                        DataPoint visibility1 = datapoints(time_offset, nr_channels_in_group - 1);
                         const float u_pixels1 = visibility1.u_pixels;
                         const float v_pixels1 = visibility1.v_pixels;
 
@@ -400,7 +400,7 @@ namespace idg {
 
                     // Handle empty subgrid
                     if (nr_timesteps_subgrid == 0) {
-                        DataPoint visibility = datapoints[time_offset*nr_channels_in_group];
+                        DataPoint visibility = datapoints(time_offset, 0);
                         const float u_pixels = visibility.u_pixels;
                         const float v_pixels = visibility.v_pixels;
 
