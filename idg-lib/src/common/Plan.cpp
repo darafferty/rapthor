@@ -335,9 +335,6 @@ namespace idg {
                 int channel_end = channel_group.second;
                 unsigned int nr_channels_in_group = channel_end - channel_begin;
 
-//                 #pragma omp critical
-//                 std::cout << channel_begin << " - " << channel_end << std::endl;
-
                 // Initialize subgrid
                 Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers);
 
