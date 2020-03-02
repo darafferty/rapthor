@@ -329,39 +329,38 @@ namespace idg {
                 baseline_length, uv_frequency_span, image_size, frequencies,
                 max_nr_channels_per_subgrid);
 
-            for(auto &channel_group: channel_groups) {
+            // Compute uv coordinates in pixels
+            struct DataPoint {
+                unsigned timestep;
+                unsigned channel;
+                float u_pixels;
+                float v_pixels;
+                float w_lambda;
+            };
 
-                int channel_begin = channel_group.first;
-                int channel_end = channel_group.second;
-                unsigned int nr_channels_in_group = channel_end - channel_begin;
+            // Allocate datapoints for first and last channel in a group
+            idg::Array2D<DataPoint> datapoints(nr_timesteps, 2);
+
+            for (auto channel_group : channel_groups) {
+                auto channel_begin = channel_group.first;
+                auto channel_end = channel_group.second;
 
                 // Initialize subgrid
                 Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers);
 
-                // Compute uv coordinates in pixels
-                struct DataPoint {
-                    unsigned timestep;
-                    unsigned channel;
-                    float u_pixels;
-                    float v_pixels;
-                    float w_lambda;
-                };
-
-                idg::Array2D<DataPoint> datapoints(nr_timesteps, nr_channels_in_group);
-
                 for (unsigned t = 0; t < nr_timesteps; t++) {
-                    for (unsigned c = 0; c < nr_channels_in_group; c++) {
                         // U,V in meters
                         float u_meters = uvw(bl, t).u;
                         float v_meters = uvw(bl, t).v;
                         float w_meters = uvw(bl, t).w;
 
-                        float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(c + channel_begin));
-                        float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(c + channel_begin));
+                    for (unsigned c = 0; c < 2; c++) {
+                        unsigned int channel = c == 0 ? channel_begin : channel_end  - 1;
+                        float u_pixels = meters_to_pixels(u_meters, image_size, frequencies(channel));
+                        float v_pixels = meters_to_pixels(v_meters, image_size, frequencies(channel));
+                        float w_lambda = meters_to_lambda(w_meters, frequencies(channel));
 
-                        float w_lambda = meters_to_lambda(w_meters, frequencies(c + channel_begin));
-
-                        datapoints(t, c) = {t, c + channel_begin, u_pixels, v_pixels, w_lambda};
+                        datapoints(t, c) = {t, c, u_pixels, v_pixels, w_lambda};
                     } // end for channel
                 } // end for time
 
@@ -383,7 +382,8 @@ namespace idg {
                         const float v_pixels0 = visibility0.v_pixels;
                         const float w_lambda0 = visibility0.w_lambda;
 
-                        DataPoint visibility1 = datapoints(time_offset, nr_channels_in_group - 1);
+                        // Visibility for last channel
+                        DataPoint visibility1 = datapoints(time_offset, 1);
                         const float u_pixels1 = visibility1.u_pixels;
                         const float v_pixels1 = visibility1.v_pixels;
 
