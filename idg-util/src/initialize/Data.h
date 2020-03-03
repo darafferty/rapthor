@@ -101,8 +101,8 @@ namespace idg {
              */
             static constexpr float start_frequency     = 150e6; // Mhz
             static constexpr float frequency_increment = 1e6; // Mhz
-            static constexpr float observation_ra      = (20.0 * (M_PI/180.));
-            static constexpr float observation_dec     = (42.0 * (M_PI/180.));
+            static constexpr float observation_ra      = (80.0 * (M_PI/180.));
+            static constexpr float observation_dec     = (60.0 * (M_PI/180.));
             static constexpr float integration_time    = 1.0;
             static const int observation_year    = 2019;
             static const int observation_month   = 11;
