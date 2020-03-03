@@ -223,7 +223,7 @@ def plot_uvw_pixels(uvw, frequencies, image_size):
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
     plt.grid(True)
-    plt.axes().set_aspect('equal')
+    fig.axes[0].set_aspect('equal')
 
 def plot_uvw_meters(uvw):
     """Plot UVW data as (u,v)-plot
@@ -239,7 +239,7 @@ def plot_uvw_meters(uvw):
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
     plt.grid(True)
-    plt.axes().set_aspect('equal')
+    fig.axes[0].set_aspect('equal')
 
 def output_uvw(uvw):
     """Plot UVW data as (u,v)-plot to high-resolution png file
