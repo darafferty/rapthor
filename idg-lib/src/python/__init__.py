@@ -2,7 +2,7 @@ import os
 import ctypes
 import numpy
 from ctypes.util import find_library
-from idgtypes import *
+from idg.idgtypes import *
 import importlib
 
 # A bit ugly, but ctypes.util's find_library does not look in
@@ -32,8 +32,8 @@ for proxy_module in ["CPU", "CUDA", "OpenCL", "HybridCUDA"]:
 
 
 try:
-    import fft
-    from Plan import *
+    import idg.fft
+    from idg.Plan import *
 except OSError as e:
     handle_error("utils", e)
 

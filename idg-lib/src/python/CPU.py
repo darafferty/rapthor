@@ -1,7 +1,7 @@
 import os
 import ctypes
 import numpy.ctypeslib
-from Proxy import *
+from .Proxy import *
 
 class CPU(Proxy):
     lib = idg.load_library('libidg-cpu.so')
@@ -21,7 +21,7 @@ class Reference(CPU):
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
-            print "The chosen proxy was not built into the library"
+            print("The chosen proxy was not built into the library")
 
 class Optimized(CPU):
 
@@ -38,5 +38,5 @@ class Optimized(CPU):
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
-            print "The chosen proxy was not built into the library"
+            print("The chosen proxy was not built into the library")
 

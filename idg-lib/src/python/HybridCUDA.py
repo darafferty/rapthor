@@ -1,7 +1,7 @@
 import os
 import ctypes
 import numpy.ctypeslib
-from Proxy import *
+from .Proxy import *
 
 
 class HybridCUDA(Proxy):
@@ -21,7 +21,7 @@ class GenericOptimized(HybridCUDA):
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
-            print "The chosen proxy was not built into the library"
+            print("The chosen proxy was not built into the library")
 
 
     def __del__(self):

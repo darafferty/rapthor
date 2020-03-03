@@ -18,11 +18,11 @@ _nr_timeslots     = 16             # A-term time slots
 _subgrid_size     = 24
 _grid_size        = 2048
 _integration_time = 0.9
-_kernel_size      = (_subgrid_size / 2) + 1
+_kernel_size      = int((_subgrid_size / 2) + 1)
 _nr_correlations  = 4
 _layout_file      = "LOFAR_lba.txt"
 _nr_stations      = 20
-_nr_baselines     = (_nr_stations * (_nr_stations - 1)) / 2
+_nr_baselines     = int((_nr_stations * (_nr_stations - 1)) / 2)
 
 def get_nr_channels():
     return _nr_channels
@@ -128,29 +128,29 @@ def main(proxyname):
 
     # Initialize full dataset
     data = Data(layout_file)
-    print ">> Dataset full: "
+    print(">> Dataset full: ")
     data.print_info()
 
     # Determine the maximum suggested grid_size using this dataset
     grid_size_max = data.compute_grid_size()
-    print "maximum grid size: %d" % (grid_size_max)
+    print("maximum grid size: %d" % (grid_size_max))
 
     # Determine the max baseline length for given grid_size
     max_uv = data.compute_max_uv(grid_size) # m
-    print "longest baseline required: %.2f km" % (max_uv * 1e-3)
+    print("longest baseline required: %.2f km" % (max_uv * 1e-3))
 
     # Select only baselines up to max_uv meters long
     data.limit_max_baseline_length(max_uv)
-    print ">> Dataset limited to baseline up to %.2f km: " % (max_uv * 1e-3)
+    print(">> Dataset limited to baseline up to %.2f km: " % (max_uv * 1e-3))
     data.print_info()
 
     # Restrict the number of baselines to nr_baselines
     data.limit_nr_baselines(nr_baselines)
-    print ">> Dataset limited to %d baselines: " % (nr_baselines)
+    print(">> Dataset limited to %d baselines: " % (nr_baselines))
     data.print_info()
 
     # Get remaining parameters
-    image_size = data.compute_image_size(grid_size)
+    image_size = round(data.compute_image_size(grid_size), 4)
     cell_size  = image_size / grid_size
 
 
@@ -162,17 +162,17 @@ def main(proxyname):
     ######################################################################
     # print parameters
     ######################################################################
-    print "nr_stations           = ", nr_stations
-    print "nr_baselines          = ", nr_baselines
-    print "nr_channels           = ", nr_channels
-    print "nr_timesteps          = ", nr_timesteps
-    print "nr_timeslots          = ", nr_timeslots
-    print "nr_correlations       = ", nr_correlations
-    print "subgrid_size          = ", subgrid_size
-    print "grid_size             = ", grid_size
-    print "image_size            = ", image_size
-    print "kernel_size           = ", kernel_size
-    print "integration_time      = ", integration_time
+    print("nr_stations           = ", nr_stations)
+    print("nr_baselines          = ", nr_baselines)
+    print("nr_channels           = ", nr_channels)
+    print("nr_timesteps          = ", nr_timesteps)
+    print("nr_timeslots          = ", nr_timeslots)
+    print("nr_correlations       = ", nr_correlations)
+    print("subgrid_size          = ", subgrid_size)
+    print("grid_size             = ", grid_size)
+    print("image_size            = ", image_size)
+    print("kernel_size           = ", kernel_size)
+    print("integration_time      = ", integration_time)
 
     ######################################################################
     # initialize data
