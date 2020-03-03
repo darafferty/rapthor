@@ -18,6 +18,10 @@ set(GIT_VERSION_HEADER "idg-version.h")
 include(cmake/version.cmake)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+# Python
+find_package(Python)
+set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/dist-packages/idg)
+
 enable_testing()
 add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
