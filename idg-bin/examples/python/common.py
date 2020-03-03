@@ -204,6 +204,7 @@ def main(proxyname):
     ######################################################################
     # util.plot_uvw_meters(uvw)
     # util.plot_uvw_pixels(uvw, frequencies, image_size)
+    # util.plot_tiles(uvw, frequencies, image_size, grid_size, 128)
     # util.plot_frequencies(frequencies)
     # util.plot_spheroidal(spheroidal)
     # util.plot_visibilities(visibilities)
