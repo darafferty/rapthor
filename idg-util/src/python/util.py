@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import random
 import scipy.constants as sc
 
-from idgtypes import *
+from idg.idgtypes import *
 
 # Load idg-util library
 lib = ctypes.cdll.LoadLibrary('libidg-util.so')
@@ -132,7 +132,7 @@ def init_example_spheroidal_subgrid(subgrid_size):
     """Construct spheroidal for subgrid"""
     # Spheroidal from Bas
     x = numpy.array(numpy.abs(numpy.linspace(-1, 1, num=subgrid_size, endpoint=False)), dtype=numpy.float32)
-    x = numpy.array(map(lambda e: func_spheroidal(e), x), dtype=numpy.float32)
+    x = numpy.array([func_spheroidal(e) for e in x], dtype=numpy.float32)
     spheroidal = x[numpy.newaxis,:] * x[:, numpy.newaxis]
     return spheroidal
     # Ones
@@ -252,7 +252,7 @@ def output_uvw(uvw):
     fig = plt.figure(figsize=(40,40), dpi=300)
     plt.plot(numpy.append(u,-u),numpy.append(v,-v),'.', color='black', alpha=0.8, markersize=1.0)
     plt.axes().set_aspect('equal')
-    plt.axis('off')
+    plt.axis(False)
     plt.savefig("uvw-coverage.png")
 
 def plot_frequencies(frequencies):
@@ -320,30 +320,30 @@ def plot_visibilities(visibilities, form='abs', maxtime=numpy.inf):
     axarr[0,0].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        labelbottom='off')
+        bottom=False,
+        top=False,
+        labelbottom=False)
 
     axarr[0,1].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        labelbottom='off')
+        bottom=False,
+        top=False,
+        labelbottom=False)
 
     axarr[1,0].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        labelbottom='off')
+        bottom=False,
+        top=False,
+        labelbottom=False)
 
     axarr[1,1].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        labelbottom='off')
+        bottom=False,
+        top=False,
+        labelbottom=False)
 
 
 def plot_aterms(aterms):
@@ -353,7 +353,7 @@ def plot_aterms(aterms):
                            subgrid_size, subgrid_size, nr_polarizations),
                            dtype = idg.atermtype)
     """
-    print "TO BE IMPLEMENTED"
+    print("TO BE IMPLEMENTED")
 
 
 def plot_spheroidal(spheroidal, interpolation_method='none'):
@@ -439,42 +439,42 @@ def plot_grid_all(grid, form='abs', scaling='none', interpolation_method='none')
     locals()['ax1'].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        right='off',
-        left='off',
-        labelbottom='off',
-        labelleft='off')
+        bottom=False,
+        top=False,
+        right=False,
+        left=False,
+        labelbottom=False,
+        labelleft=False)
 
     locals()['ax2'].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        right='off',
-        left='off',
-        labelbottom='off',
-        labelleft='off')
+        bottom=False,
+        top=False,
+        right=False,
+        left=False,
+        labelbottom=False,
+        labelleft=False)
 
     locals()['ax3'].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        right='off',
-        left='off',
-        labelbottom='off',
-        labelleft='off')
+        bottom=False,
+        top=False,
+        right=False,
+        left=False,
+        labelbottom=False,
+        labelleft=False)
 
     locals()['ax4'].tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        right='off',
-        left='off',
-        labelbottom='off',
-        labelleft='off')
+        bottom=False,
+        top=False,
+        right=False,
+        left=False,
+        labelbottom=False,
+        labelleft=False)
 
 
 def plot_grid(grid, form='abs', scaling='none', interpolation_method='none', pol='all'):
@@ -521,12 +521,12 @@ def plot_grid(grid, form='abs', scaling='none', interpolation_method='none', pol
     plt.tick_params(
         axis='both',
         which='both',
-        bottom='off',
-        top='off',
-        right='off',
-        left='off',
-        labelbottom='off',
-        labelleft='off')
+        bottom=False,
+        top=False,
+        right=False,
+        left=False,
+        labelbottom=False,
+        labelleft=False)
 
 
 def plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size, image_size):
@@ -614,9 +614,9 @@ def get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarization
         dtype = atermtype)
     init_identity_aterms(aterms)
     if info==True:
-        print "aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
+        print("aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
               "subgrid_size, subgrid_size, nr_polarizations), " + \
-              "dtype = " + str(dtype) + ")"
+              "dtype = " + str(dtype) + ")")
     return aterms.astype(dtype=dtype)
 
 
@@ -625,8 +625,8 @@ def get_zero_grid(nr_polarizations, grid_size,
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype=dtype)
     if info==True:
-        print "grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
-                                   "dtype = " + str(dtype) + ")"
+        print("grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
+                                   "dtype = " + str(dtype) + ")")
     return grid
 
 
@@ -635,8 +635,8 @@ def get_identity_spheroidal(subgrid_size, dtype=spheroidaltype, info=False):
                              dtype=spheroidaltype)
     init_identity_spheroidal(spheroidal)
     if info==True:
-        print "grid: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
-                                   "dtype = " + str(dtype) + ")"
+        print("grid: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
+                                   "dtype = " + str(dtype) + ")")
     return spheroidal.astype(dtype=dtype)
 
 
@@ -768,8 +768,8 @@ def get_example_uvw(nr_baselines, nr_time, integration_time,
                       dtype=uvwtype)
     init_example_uvw(uvw, integration_time)
     if info==True:
-        print "uvw: numpy.ndarray(shape = (nr_baselines, nr_time), " + \
-                                 "dtype = " + str(dtype) + ")"
+        print("uvw: numpy.ndarray(shape = (nr_baselines, nr_time), " + \
+                                 "dtype = " + str(dtype) + ")")
     return uvw.astype(dtype=dtype)
 
 
@@ -780,8 +780,8 @@ def get_example_frequencies(nr_channels,
                              dtype=frequenciestype)
     init_example_frequencies(frequencies)
     if info==True:
-        print "frequencies: numpy.ndarray(shape = (nr_channels), " + \
-                                          "dtype = " + str(dtype) + ")"
+        print("frequencies: numpy.ndarray(shape = (nr_channels), " + \
+                                          "dtype = " + str(dtype) + ")")
     return frequencies.astype(dtype=dtype)
 
 
@@ -792,8 +792,8 @@ def get_example_baselines(nr_baselines,
                             dtype = baselinetype)
     init_example_baselines(baselines)
     if info==True:
-        print "baselines: numpy.ndarray(shape = (nr_channels), " + \
-                                        "dtype = " + str(dtype) + ")"
+        print("baselines: numpy.ndarray(shape = (nr_channels), " + \
+                                        "dtype = " + str(dtype) + ")")
     return baselines.astype(dtype=dtype)
 
 
@@ -802,8 +802,8 @@ def get_example_grid(nr_polarizations, grid_size,
     grid = numpy.zeros((nr_polarizations, grid_size, grid_size),
                        dtype=dtype)
     if info==True:
-        print "grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
-                                   "dtype = " + str(dtype) + ")"
+        print("grid: numpy.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
+                                   "dtype = " + str(dtype) + ")")
     return grid
 
 
@@ -814,9 +814,9 @@ def get_example_aterms(nr_timeslots, nr_stations, subgrid_size, nr_polarizations
         dtype = atermtype)
     init_example_aterms(aterms, nr_timeslots, nr_stations, subgrid_size, subgrid_size)
     if info==True:
-        print "aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
+        print("aterms: numpy.ndarray(shape = (nr_timeslots, nr_stations," + \
               "subgrid_size, subgrid_size, nr_polarizations), " + \
-              "dtype = " + str(dtype) + ")"
+              "dtype = " + str(dtype) + ")")
     return aterms.astype(dtype=dtype)
 
 
@@ -827,8 +827,8 @@ def get_example_aterms_offset(nr_timeslots, nr_time,
         dtype = atermoffsettype)
     init_example_aterms_offset(aterms_offset, nr_time)
     if info==True:
-        print "aterms_offset: numpy.ndarray(shape = (nr_timeslots + 1), " + \
-              "dtype = " + str(dtype) + ")"
+        print("aterms_offset: numpy.ndarray(shape = (nr_timeslots + 1), " + \
+              "dtype = " + str(dtype) + ")")
     return aterms_offset.astype(dtype=dtype)
 
 
@@ -838,8 +838,8 @@ def get_example_spheroidal(subgrid_size,
                             dtype=spheroidaltype)
     init_example_spheroidal(spheroidal)
     if info==True:
-        print "spheroidal: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
-              "dtype = " + str(dtype) + ")"
+        print("spheroidal: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
+              "dtype = " + str(dtype) + ")")
     return spheroidal.astype(dtype=dtype)
 
 
@@ -876,9 +876,9 @@ def get_example_visibilities(nr_baselines, nr_time, nr_channels,
                    image_size, grid_size, uvw, frequencies, visibilities)
 
     if info==True:
-        print "spheroidal: numpy.ndarray(shape = (nr_baselines, nr_time, " + \
+        print("spheroidal: numpy.ndarray(shape = (nr_baselines, nr_time, " + \
               "nr_channels, nr_polarizations), " + \
-              "dtype = " + str(dtype) + ")"
+              "dtype = " + str(dtype) + ")")
 
     return visibilities.astype(dtype=dtype)
 

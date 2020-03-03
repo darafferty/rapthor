@@ -2,7 +2,7 @@ import numpy
 import ctypes
 import numpy.ctypeslib
 
-from idgtypes import *
+from idg.idgtypes import *
 
 # Load idg-util library
 lib = ctypes.cdll.LoadLibrary('libidg-util.so')
@@ -15,7 +15,7 @@ class Data():
         lib.DATA_init.argtypes = [
             ctypes.c_char_p]
         self.obj = lib.DATA_init(
-            ctypes.c_char_p(layout_file))
+            ctypes.c_char_p(layout_file.encode('utf-8')))
 
     def compute_image_size(
         self,

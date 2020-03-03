@@ -1,7 +1,7 @@
 import os
 import ctypes
 import numpy.ctypeslib
-from Proxy import *
+from .Proxy import *
 
 lib = idg.load_library('libidg-opencl.so')
 
@@ -19,7 +19,7 @@ class Generic(Proxy):
                 ctypes.c_uint(nr_correlations),
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
-            print "The chosen proxy was not built into the library"
+            print("The chosen proxy was not built into the library")
 
 
     def __del__(self):

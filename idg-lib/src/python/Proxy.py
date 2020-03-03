@@ -7,7 +7,7 @@ class Proxy(object):
 
     def __del__(self):
         """Destroy"""
-        self.lib.Proxy_destroy.argtypes = ctypes.c_void_p
+        self.lib.Proxy_destroy.argtypes = [ ctypes.c_void_p ]
         self.lib.Proxy_destroy(self.obj)
 
     def gridding(

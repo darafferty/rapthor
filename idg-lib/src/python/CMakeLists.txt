@@ -1,5 +1,3 @@
-set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python2.7/dist-packages/idg)
-
 # Install Python modules.
 install(FILES
         __init__.py

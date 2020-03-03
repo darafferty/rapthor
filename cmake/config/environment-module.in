@@ -21,7 +21,7 @@ prepend-path    PATH            $root/bin/tests/cxx
 
 # Add python to path
 if { $PYTHON_ENABLED eq "ON" } {
-    prepend-path    PYTHONPATH      $root/lib/python2.7/dist-packages/idg
+    prepend-path    PYTHONPATH      $root/lib/python@Python_VERSION_MAJOR@.@Python_VERSION_MINOR@/dist-packages
     prepend-path    PATH            $root/bin/examples/python
     prepend-path    PATH            $root/bin/demo/python
     if { $TESTS_ENABLED eq "ON" } {
