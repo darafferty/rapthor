@@ -206,18 +206,10 @@ namespace idg{
         // Sort baselines on length
         std::sort(baselines_copy.begin(), baselines_copy.end(), sort_baseline_descending);
 
-        // Select a number of long baselines
-        unsigned n_long = n * fraction_long;
-        for (unsigned i = 0; i < n_long; i++) {
-            baselines_selected.push_back(baselines_copy[0]);
-            baselines_copy.erase(baselines_copy.begin());
-        }
-
-        // Select remaining baselines (any length)
-        std::random_shuffle(baselines_copy.begin(), baselines_copy.end());
-        unsigned n_random = n - n_long;
-        for (unsigned i = 0; i < n_random; i++) {
-            baselines_selected.push_back(baselines_copy[i]);
+        // Make uniform selection of baselines
+        for (unsigned i = 0; i < n; i++) {
+            auto index = i * (m_baselines.size() / n);
+            baselines_selected.push_back(baselines_copy[index]);
         }
 
         // Update baselines

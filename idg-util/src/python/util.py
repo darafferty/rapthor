@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import random
 import scipy.constants as sc
+import numpy as np
 
 from idg.idgtypes import *
 
@@ -223,7 +224,78 @@ def plot_uvw_pixels(uvw, frequencies, image_size):
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
     plt.grid(True)
-    plt.axes().set_aspect('equal')
+    fig.axes[0].set_aspect('equal')
+
+def plot_tiles(uvw, frequencies, image_size, grid_size, tile_size=512):
+    """Plot tiles corresponding to the UVW data, scaled to pixel coordinates
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
+    """
+
+    # compute pixel coordinates
+    speed_of_light = 299792458.0
+    u_ = numpy.array([], dtype = numpy.float32)
+    v_ = numpy.array([], dtype = numpy.float32)
+    for frequency in frequencies:
+        u_ = numpy.append(u_, uvw['u'].flatten() * image_size * (frequency / speed_of_light))
+        v_ = numpy.append(v_, uvw['v'].flatten() * image_size * (frequency / speed_of_light))
+    uvlim = max(max(abs(u_)), max(abs(v_)))
+    assert(uvlim < grid_size)
+
+    # determine which tiles are accessed
+    nr_tiles_1d = int(grid_size / tile_size)
+    tiles = np.zeros((nr_tiles_1d, nr_tiles_1d))
+    for i in range(len(u_)):
+        x = u_[i] + (grid_size / 2)
+        y = v_[i] + (grid_size / 2)
+        tiles[int(y / tile_size), int(x / tile_size)] += 1
+
+    # compute percentage of tiles used
+    nnz = np.sum(tiles > 0)
+    percentage_used = np.round(nnz / (nr_tiles_1d**2) * 100, 2)
+    title = "tiles: {}% used".format(percentage_used)
+
+    # plot tiles
+    tiles = np.log(tiles + 1)
+    tiles[tiles == 0] = np.nan
+    fig = plt.figure(get_figure_name(title))
+    plt.imshow(tiles, interpolation='none')
+    plt.colorbar()
+
+    return percentage_used
+
+def plot_tiles(metadata, image_size, grid_size, tile_size=512):
+    """Plot tiles corresponding to the UVW data, scaled to pixel coordinates
+    Input:
+    uvw - numpy.ndarray(shape=(nr_subgrids, nr_timesteps, 3),
+                        dtype = idg.uvwtype)
+    """
+    # get subgrid coordinates
+    x = metadata['coordinate']['x'].flatten()
+    y = metadata['coordinate']['y'].flatten()
+
+    # determine which tiles are accessed
+    nr_tiles_1d = int(grid_size / tile_size)
+    tiles = np.zeros((nr_tiles_1d, nr_tiles_1d))
+    for coordinate in zip(x, y):
+        x = coordinate[0]
+        y = coordinate[1]
+        tiles[int(y / tile_size), int(x / tile_size)] += 1
+
+    # compute percentage of tiles used
+    nnz = np.sum(tiles > 0)
+    percentage_used = np.round(nnz / (nr_tiles_1d**2) * 100, 2)
+    title = "tiles: {}% used".format(percentage_used)
+
+    # plot tiles
+    tiles = np.log(tiles + 1)
+    tiles[tiles == 0] = np.nan
+    fig = plt.figure(get_figure_name(title))
+    plt.imshow(tiles, interpolation='none')
+    plt.colorbar()
+
+    return percentage_used
 
 def plot_uvw_meters(uvw):
     """Plot UVW data as (u,v)-plot
@@ -239,7 +311,7 @@ def plot_uvw_meters(uvw):
     plt.xlim([-uvlim, uvlim])
     plt.ylim([-uvlim, uvlim])
     plt.grid(True)
-    plt.axes().set_aspect('equal')
+    fig.axes[0].set_aspect('equal')
 
 def output_uvw(uvw):
     """Plot UVW data as (u,v)-plot to high-resolution png file
