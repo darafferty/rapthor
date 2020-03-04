@@ -117,7 +117,6 @@ namespace idg {
             static constexpr float fov_deg       = 8.0;
             static constexpr float weight        = 1.0;
             static constexpr float grid_padding  = 1.20;
-            static constexpr float fraction_long = 0.05; // fraction of long baselines to use
     };
 } // namespace idg
 
