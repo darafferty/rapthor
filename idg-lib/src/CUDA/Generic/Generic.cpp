@@ -50,7 +50,7 @@ namespace idg {
                 device.set_context();
 
                 // Device memory
-                cu::DeviceMemory& d_grid = device.allocate_device_grid(grid_size);
+                cu::DeviceMemory& d_grid = device.retrieve_device_grid();
 
                 // Performance measurements
                 report.initialize(0, 0, grid_size);
