@@ -106,9 +106,7 @@ namespace idg {
                 // Page-locked host memory
                 device.register_host_memory(visibilities.data(), visibilities.bytes());
                 device.register_host_memory(uvw.data(), uvw.bytes());
-                device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
-
-                // Page-locked host memory
+                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
                 auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
                 cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
@@ -414,9 +412,7 @@ namespace idg {
                 // Page-locked host memory
                 device.register_host_memory(visibilities.data(), visibilities.bytes());
                 device.register_host_memory(uvw.data(), uvw.bytes());
-                device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
-
-                // Page-locked host memory
+                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
                 auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
                 cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
