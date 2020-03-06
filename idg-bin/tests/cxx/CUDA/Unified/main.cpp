@@ -1,12 +1,12 @@
 #include "idg-cuda.h"
-#include "common.h"
 
 using namespace std;
 
+using ProxyType = idg::proxy::cuda::Unified;
+
+#include "../common/common.h"
+
 int main(int argc, char *argv[])
 {
-    // Compares to reference implementation
-    int info = compare_to_reference<idg::proxy::cuda::Unified>();
-
-    return info;
+    return compare_to_reference();
 }

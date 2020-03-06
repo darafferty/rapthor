@@ -1,3 +1,7 @@
+#include "idg-cpu.h" // Reference proxy
+
+using ProxyType = idg::proxy::cpu::Reference;
+
 #include "common.h"
 
 // Basic idea: write a bunch of test here on the reference code,

@@ -1,11 +1,12 @@
-#include "../common/common.h"
+#include "idg-cpu.h"
 
 using namespace std;
 
+using ProxyType = idg::proxy::cpu::Optimized;
+
+#include "../common/common.h"
+
 int main(int argc, char *argv[])
 {
-    // Compares to reference implementation
-    int info = compare_to_reference<idg::proxy::cpu::Optimized>();
-
-    return info;
+    return compare_to_reference();
 }

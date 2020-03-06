@@ -1,11 +1,12 @@
 #include "idg-cpu.h"
 
-#include "common.h"
+using ProxyType = idg::proxy::cpu::Reference;
 
+#include "common.h"
 
 int main(int argc, char *argv[])
 {
-    run<idg::proxy::cpu::Reference>();
+    run();
 
     return 0;
 }

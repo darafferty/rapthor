@@ -237,6 +237,37 @@ namespace idg {
                 void set_avg_aterm_correction(const Array4D<std::complex<float>>& avg_aterm_correction);
                 void unset_avg_aterm_correction();
 
+                //! Methods for memory management
+                virtual std::shared_ptr<auxiliary::Memory> allocate_memory(size_t bytes);
+
+                template<typename T>
+                Array1D<T> allocate_array1d(size_t a_dim)
+                {
+                    auto bytes = a_dim * sizeof(T);
+                    return Array1D<T>(allocate_memory(bytes), a_dim);
+                };
+
+                template<typename T>
+                Array2D<T> allocate_array2d(size_t b_dim, size_t a_dim)
+                {
+                    auto bytes = a_dim * b_dim * sizeof(T);
+                    return Array2D<T>(allocate_memory(bytes), b_dim, a_dim);
+                };
+
+                template<typename T>
+                Array3D<T> allocate_array3d(size_t c_dim, size_t b_dim, size_t a_dim)
+                {
+                    auto bytes = a_dim * b_dim * c_dim * sizeof(T);
+                    return Array3D<T>(allocate_memory(bytes), c_dim, b_dim, a_dim);
+                };
+
+                template<typename T>
+                Array4D<T> allocate_array4d(size_t d_dim, size_t c_dim, size_t b_dim, size_t a_dim)
+                {
+                    auto bytes = a_dim * b_dim * c_dim * d_dim * sizeof(T);
+                    return Array4D<T>(allocate_memory(bytes), d_dim, c_dim, b_dim, a_dim);
+                };
+
                 //! Methods for grid management
                 virtual std::shared_ptr<Grid> allocate_grid(
                     size_t nr_w_layers,

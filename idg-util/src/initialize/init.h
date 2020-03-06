@@ -25,6 +25,17 @@ namespace idg {
         unsigned int nr_timesteps,
         unsigned int nr_channels);
 
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        proxy::Proxy& proxy,
+        Array2D<UVW<float>> &uvw,
+        Array1D<float> &frequencies,
+        float        image_size,
+        unsigned int grid_size,
+        unsigned int nr_point_sources = 4,
+        unsigned int max_pixel_offset = -1,
+        unsigned int random_seed = 2,
+        float        amplitude = 1);
+
     Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
         proxy::Proxy& proxy,
         unsigned int nr_stations,
@@ -36,12 +47,6 @@ namespace idg {
         unsigned int nr_baselines,
         unsigned int nr_timesteps,
         float integration_time = Data::integration_time);
-
-    Array3D<std::complex<float>> get_zero_grid(
-        proxy::Proxy& proxy,
-        unsigned int nr_correlations,
-        unsigned int height,
-        unsigned int width);
 
     Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
         proxy::Proxy& proxy,

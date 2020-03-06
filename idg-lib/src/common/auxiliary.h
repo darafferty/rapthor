@@ -175,7 +175,29 @@ namespace idg {
         size_t get_used_memory();
         size_t get_free_memory();
 
-        void* allocate_memory(size_t bytes, size_t alignment = 64);
+        class Memory {
+            public:
+                void* get() { return m_ptr; };
+
+            protected:
+                size_t m_bytes = 0;
+                void* m_ptr = nullptr;
+        };
+
+        class DefaultMemory : public Memory {
+            public:
+                DefaultMemory(size_t bytes = 0);
+                ~DefaultMemory();
+        };
+
+        class AlignedMemory : public Memory {
+            public:
+                AlignedMemory(size_t bytes = 0);
+                ~AlignedMemory();
+
+            protected:
+                const size_t m_alignment = 64;
+        };
 
     } // namespace auxiliary
 } // namespace idg

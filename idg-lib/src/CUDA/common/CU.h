@@ -8,6 +8,7 @@
 #include <cuda.h>
 #include <nvToolsExt.h>
 
+#include "common/auxiliary.h"
 #include "idg-config.h"
 
 struct dim3;
@@ -77,20 +78,18 @@ namespace cu {
             CUdevice _device;
     };
 
-    class Memory {
+    class Memory : public idg::auxiliary::Memory {
         public:
-            size_t capacity() { return _capacity; }
-            void* ptr() { return _ptr; }
-            size_t size() { return _size; }
+            size_t capacity() { return m_capacity; }
+            void* ptr() { return m_ptr; }
+            size_t size() { return m_bytes; }
             virtual void resize(size_t size) = 0;
             template <typename T> operator T *() {
-                return static_cast<T *>(_ptr);
+                return static_cast<T *>(m_ptr);
             }
 
         protected:
-            void* _ptr = nullptr;
-            size_t _capacity = 0;
-            size_t _size = 0;
+            size_t m_capacity = 0;
     };
 
     class HostMemory : public virtual Memory {

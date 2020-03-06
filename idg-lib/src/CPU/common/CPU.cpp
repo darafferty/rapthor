@@ -44,6 +44,10 @@ namespace idg {
                 fftwf_cleanup();
             }
 
+            std::shared_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes)
+            {
+                return std::shared_ptr<auxiliary::Memory>(new auxiliary::AlignedMemory(bytes));
+            }
 
             Plan* CPU::make_plan(
                 const int kernel_size,

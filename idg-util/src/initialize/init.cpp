@@ -111,6 +111,232 @@ namespace idg {
         }
     }
 
+    /*
+     * Memory-allocation is handled by Proxy
+     */
+    Array1D<float> get_example_frequencies(
+        proxy::Proxy& proxy,
+        unsigned int nr_channels,
+        float start_frequency,
+        float frequency_increment)
+    {
+        using T = float;
+        Array1D<T> frequencies = proxy.allocate_array1d<T>(nr_channels);
+
+        for (unsigned chan = 0; chan < nr_channels; chan++) {
+            frequencies(chan) = start_frequency + frequency_increment * chan;
+        }
+
+        return frequencies;
+    }
+
+    Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
+        proxy::Proxy& proxy,
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        unsigned int nr_channels)
+    {
+        using T = Visibility<std::complex<float>>;
+        Array3D<T> visibilities =
+            proxy.allocate_array3d<T>(nr_baselines, nr_timesteps, nr_channels);
+
+        const Visibility<std::complex<float>> visibility = {1.0f, 0.0f, 0.0f, 1.0f};
+
+        // Set all visibilities
+        #pragma omp parallel for
+        for (unsigned bl = 0; bl < nr_baselines; bl++) {
+            for (unsigned time = 0; time < nr_timesteps; time++) {
+                for (unsigned chan = 0; chan < nr_channels; chan++) {
+                    visibilities(bl, time, chan) = visibility;
+                }
+            }
+        }
+
+        return visibilities;
+    }
+
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        proxy::Proxy& proxy,
+        Array2D<UVW<float>> &uvw,
+        Array1D<float> &frequencies,
+        float        image_size,
+        unsigned int grid_size,
+        unsigned int nr_point_sources,
+        unsigned int max_pixel_offset,
+        unsigned int random_seed,
+        float        amplitude)
+    {
+        unsigned int nr_baselines = uvw.get_y_dim();
+        unsigned int nr_timesteps = uvw.get_x_dim();
+        unsigned int nr_channels  = frequencies.get_x_dim();
+
+        using T = Visibility<std::complex<float>>;
+        Array3D<T> visibilities =
+            proxy.allocate_array3d<T>(nr_baselines, nr_timesteps, nr_channels);
+
+        srand(random_seed);
+
+        for (unsigned i = 0; i < nr_point_sources; i++) {
+            float x_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
+            float y_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
+
+            add_pt_src(visibilities, uvw, frequencies, image_size, grid_size, x_offset, y_offset, amplitude);
+        }
+
+        return visibilities;
+    }
+
+    Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_baselines)
+    {
+        using T = std::pair<unsigned int,unsigned int>;
+        Array1D<T> baselines =
+            proxy.allocate_array1d<T>(nr_baselines);
+
+        unsigned bl = 0;
+
+        for (unsigned station1 = 0 ; station1 < nr_stations; station1++) {
+            for (unsigned station2 = station1 + 1; station2 < nr_stations; station2++) {
+                if (bl >= nr_baselines) {
+                    break;
+                }
+                baselines(bl) = std::pair<unsigned int,unsigned int>(station1, station2);
+                bl++;
+            }
+        }
+
+        return baselines;
+    }
+
+    Array2D<UVW<float>> get_example_uvw(
+        proxy::Proxy& proxy,
+        unsigned int nr_stations,
+        unsigned int nr_baselines,
+        unsigned int nr_timesteps,
+        float integration_time)
+    {
+        using T = UVW<float>;
+        Array2D<T> uvw =
+            proxy.allocate_array2d<T>(nr_baselines, nr_timesteps);
+
+        Data data;
+        data.get_uvw(uvw);
+
+        return uvw;
+    }
+
+    Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_stations,
+        unsigned int height,
+        unsigned int width)
+    {
+        using T = Matrix2x2<std::complex<float>>;
+        Array4D<T> aterms =
+            proxy.allocate_array4d<T>(nr_timeslots, nr_stations, height, width);
+
+        for (unsigned t = 0; t < nr_timeslots; t++) {
+            for (unsigned ant = 0; ant < nr_stations; ant++) {
+                for (unsigned y = 0; y < height; y++) {
+                    for (unsigned x = 0; x < width; x++) {
+                        std::complex<float> valueXX = std::complex<float>(1.0, 0.0);
+                        std::complex<float> valueXY = std::complex<float>(0.0, 0.0);
+                        std::complex<float> valueYX = std::complex<float>(0.0, 0.0);
+                        std::complex<float> valueYY = std::complex<float>(1.0, 0.0);
+                        const Matrix2x2<std::complex<float>> aterm = {valueXX, valueXY, valueYX, valueYY};
+                        aterms(t, ant, y, x) = aterm;
+                    }
+                }
+            }
+        }
+
+        return aterms;
+    }
+
+    Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_stations,
+        unsigned int height,
+        unsigned int width)
+    {
+        using T = Matrix2x2<std::complex<float>>;
+        Array4D<T> aterms =
+            proxy.allocate_array4d<T>(nr_timeslots, nr_stations, height, width);
+
+        for (unsigned t = 0; t < nr_timeslots; t++) {
+            for (unsigned ant = 0; ant < nr_stations; ant++) {
+                for (unsigned y = 0; y < height; y++) {
+                    for (unsigned x = 0; x < width; x++) {
+                        float scale = ((float) (t+1) / nr_timeslots);
+                        std::complex<float> valueXX = std::complex<float>(scale * 1.0, 1.1);
+                        std::complex<float> valueXY = std::complex<float>(scale * 0.8, 0.9);
+                        std::complex<float> valueYX = std::complex<float>(scale * 0.6, 1.7);
+                        std::complex<float> valueYY = std::complex<float>(scale * 0.4, 0.5);
+                        const Matrix2x2<std::complex<float>> aterm = {valueXX, valueXY, valueYX, valueYY};
+                        aterms(t, ant, y, x) = aterm;
+                    }
+                }
+            }
+        }
+
+        return aterms;
+    }
+
+    Array1D<unsigned int> get_example_aterms_offsets(
+        proxy::Proxy& proxy,
+        unsigned int nr_timeslots,
+        unsigned int nr_timesteps)
+    {
+        using T = unsigned int;
+        Array1D<T> aterms_offsets =
+            proxy.allocate_array1d<T>(nr_timeslots + 1);
+
+        for (unsigned time = 0; time < nr_timeslots; time++) {
+             aterms_offsets(time) = time * (nr_timesteps / nr_timeslots);
+        }
+
+        aterms_offsets(nr_timeslots) = nr_timesteps;
+
+        return aterms_offsets;
+    }
+
+    Array2D<float> get_example_spheroidal(
+        proxy::Proxy& proxy,
+        unsigned int height,
+        unsigned int width)
+    {
+        using T = float;
+        Array2D<T> spheroidal =
+            proxy.allocate_array2d<T>(height, width);
+
+        // Evaluate rows
+        float y[height];
+        for (unsigned i = 0; i < height; i++) {
+            float tmp = fabs(-1 + i*2.0f/float(height));
+            y[i] = evaluate_spheroidal(tmp);
+        }
+
+        // Evaluate columns
+        float x[width];
+        for (unsigned i = 0; i < width; i++) {
+            float tmp = fabs(-1 + i*2.0f/float(width));
+            x[i] = evaluate_spheroidal(tmp);
+        }
+
+        // Set values
+        for (unsigned i = 0; i < height; i++) {
+            for (unsigned j = 0; j < width; j++) {
+                 spheroidal(i, j) = y[i]*x[j];
+            }
+        }
+
+        return spheroidal;
+    }
+
 
     /*
      * Default memory allocation

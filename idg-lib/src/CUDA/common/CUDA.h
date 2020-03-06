@@ -23,6 +23,8 @@ namespace idg {
                     ~CUDA();
 
                 public:
+                    virtual std::shared_ptr<auxiliary::Memory> allocate_memory(size_t bytes) override;
+
                     void print_compiler_flags();
 
                     void print_devices();
