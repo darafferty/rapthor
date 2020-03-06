@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <sys/mman.h>
+
 inline int min(int a, int b) {
     return a < b ? a : b;
 }
@@ -180,9 +182,11 @@ namespace idg {
                 size_t bytes = n * sizeof(T);
                 bytes = (((bytes - 1) / alignment) * alignment) + alignment;
                 if (posix_memalign(&ptr, alignment, bytes) != 0) {
-                    std::cerr << "Could not allocate " << bytes << " bytes" << std::endl;
-                    exit(EXIT_FAILURE);
+                    throw std::runtime_error("posix_memalign failed");
                 };
+                if (mlock(ptr, bytes) != 0) {
+                    throw std::runtime_error("mlock failed");
+                }
             }
             return (T *) ptr;
         }
