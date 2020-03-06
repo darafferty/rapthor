@@ -36,6 +36,8 @@ namespace idg {
 
                 omp_set_nested(true);
 
+                m_enable_host_register = false;
+
                 cuProfilerStart();
             }
 
@@ -104,11 +106,12 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                device.register_host_memory(visibilities.data(), visibilities.bytes());
-                device.register_host_memory(uvw.data(), uvw.bytes());
-                device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
-
-                // Page-locked host memory
+                if (m_enable_host_register)
+                {
+                    device.register_host_memory(visibilities.data(), visibilities.bytes());
+                    device.register_host_memory(uvw.data(), uvw.bytes());
+                }
+                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
                 auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
                 cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
@@ -171,7 +174,6 @@ namespace idg {
 
                 // Locks to signal that work on the CPU can start
                 std::vector<std::mutex> locks(jobs.size());
-                std::vector<std::mutex> locks2(jobs.size());
                 for (auto& lock : locks) {
                     lock.lock();
                 }
@@ -413,11 +415,12 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                device.register_host_memory(visibilities.data(), visibilities.bytes());
-                device.register_host_memory(uvw.data(), uvw.bytes());
-                device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
-
-                // Page-locked host memory
+                if (m_enable_host_register)
+                {
+                    device.register_host_memory(visibilities.data(), visibilities.bytes());
+                    device.register_host_memory(uvw.data(), uvw.bytes());
+                }
+                cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
                 auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
                 cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
@@ -477,9 +480,15 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Locks to signal that work on the CPU is finished
-                std::vector<std::mutex> locks(jobs.size());
-                for (auto& lock : locks) {
+                // Locks to make the GPU wait
+                std::vector<std::mutex> locks_gpu(jobs.size());
+                for (auto& lock : locks_gpu) {
+                    lock.lock();
+                }
+
+                // Locks to make the CPU wait
+                std::vector<std::mutex> locks_cpu(jobs.size());
+                for (auto& lock : locks_cpu) {
                     lock.lock();
                 }
 
@@ -497,8 +506,8 @@ namespace idg {
                         cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
 
                         // Wait for input buffer to be free
-                        if (job_id > 1) {
-                            gpuFinished[job_id - 2]->synchronize();
+                        if (job_id > 0) {
+                            locks_cpu[job_id - 1].lock();
                         }
 
                         // Run splitter kernel
@@ -517,7 +526,7 @@ namespace idg {
                         htodstream.synchronize();
 
                         // Unlock this job
-                        locks[job_id].unlock();
+                        locks_gpu[job_id].unlock();
                     }
                 }); // end host thread
 
@@ -542,7 +551,7 @@ namespace idg {
                     cu::DeviceMemory& d_metadata     = device.retrieve_device_metadata(local_id);
 
                     // Wait for subgrids to be computed
-                    locks[job_id].lock();
+                    locks_gpu[job_id].lock();
 
                     // Copy input data for first job to device
                     if (job_id == 0) {
@@ -593,6 +602,10 @@ namespace idg {
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_metadata, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);
+
+                    // Signal that the input buffer is free
+                    inputCopied[job_id]->synchronize();
+                    locks_cpu[job_id].unlock();
 
                     // Wait for degridder to finish
                     gpuFinished[job_id]->synchronize();

@@ -381,6 +381,7 @@ namespace idg {
                     device.free_device_uvw();
                     device.free_device_subgrids();
                     device.free_device_metadata();
+                    device.unmap_host_memory();
                     device.free_fft_plans();
                 }
 

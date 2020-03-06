@@ -386,5 +386,19 @@ namespace idg {
             cout << GIT_BRANCH << ":" << GIT_REV << endl;
         }
 
+        void* allocate_memory(size_t bytes, size_t alignment) {
+            void *ptr = nullptr;
+            if (bytes > 0) {
+                bytes = (((bytes - 1) / alignment) * alignment) + alignment;
+                if (posix_memalign(&ptr, alignment, bytes) != 0) {
+                    throw std::runtime_error("posix_memalign failed");
+                };
+                if (mlock(ptr, bytes) != 0) {
+                    throw std::runtime_error("mlock failed");
+                }
+            }
+            return ptr;
+        }
+
     } // namespace auxiliary
 } // namespace idg

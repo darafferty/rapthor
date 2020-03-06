@@ -194,14 +194,7 @@ namespace cu {
     }
 
     void RegisteredMemory::release() {
-        CUresult result = cuMemHostUnregister(_ptr);
-        // memory was succesfully unregistered
-        if (result != CUDA_SUCCESS ||
-        // memory might have be freed already
-            result == CUDA_ERROR_NOT_MAPPED_AS_POINTER)
-        {
-            throw cu::Error<CUresult>(result);
-        }
+        checkCudaCall(cuMemHostUnregister(_ptr));
     }
 
     void RegisteredMemory::zero() {

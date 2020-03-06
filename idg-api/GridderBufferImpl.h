@@ -107,7 +107,7 @@ namespace api {
 
     private:
 
-        //secondary buffers
+        //secondary buffers      
         Array2D<UVW<float>> m_bufferUVW2;                       // BL x TI
         Array1D<std::pair<unsigned int,unsigned int>> m_bufferStationPairs2;                         // BL
         Array3D<Visibility<std::complex<float>>> m_bufferVisibilities2;   // BL x TI x CH
@@ -127,9 +127,6 @@ namespace api {
         bool &m_do_gridding;
         bool &m_do_compute_avg_beam;
         bool &m_apply_aterm;
-
-        // debugging
-        void write_average_beam();
     };
 
 } // namespace api

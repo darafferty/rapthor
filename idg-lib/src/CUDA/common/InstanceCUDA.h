@@ -210,6 +210,7 @@ namespace idg {
                     void free_device_uvw() { d_uvw_.clear(); };
                     void free_device_subgrids() { d_subgrids_.clear(); };
                     void free_device_metadata() { d_metadata_.clear();};
+                    void unmap_host_memory() { h_registered_.clear(); };
 
                     // Misc
                     void free_fft_plans();
