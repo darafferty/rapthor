@@ -177,13 +177,21 @@ namespace idg {
 
         class Memory {
             public:
-                Memory(size_t bytes = 0, size_t alignment = 64);
+                Memory(size_t bytes = 0);
                 ~Memory();
                 void* get() { return m_ptr; };
 
-            private:
+            protected:
                 size_t m_bytes;
                 void* m_ptr;
+        };
+
+        class AlignedMemory : public Memory {
+            public:
+                AlignedMemory(size_t bytes = 0);
+
+            protected:
+                const size_t m_alignment = 64;
         };
 
     } // namespace auxiliary

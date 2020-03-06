@@ -386,15 +386,18 @@ namespace idg {
             cout << GIT_BRANCH << ":" << GIT_REV << endl;
         }
 
-        Memory::Memory(
-            size_t bytes,
-            size_t alignment) :
-            m_bytes(bytes)
+        Memory::Memory(size_t bytes)
+        {
+            m_bytes = bytes;
+            m_ptr = malloc(bytes);
+        }
+
+        AlignedMemory::AlignedMemory(size_t bytes)
         {
             void *ptr = nullptr;
             if (bytes > 0) {
-                bytes = (((bytes - 1) / alignment) * alignment) + alignment;
-                if (posix_memalign(&ptr, alignment, bytes) != 0) {
+                bytes = (((bytes - 1) / m_alignment) * m_alignment) + m_alignment;
+                if (posix_memalign(&ptr, m_alignment, bytes) != 0) {
                     throw std::runtime_error("posix_memalign failed");
                 };
                 if (mlock(ptr, bytes) != 0) {

@@ -24,7 +24,7 @@ class ArrayXD {
         ArrayXD(
             std::vector<size_t> shape) :
             m_shape(shape),
-            m_memory(std::shared_ptr<auxiliary::Memory>(new auxiliary::Memory(size() * sizeof(T)))),
+            m_memory(std::shared_ptr<auxiliary::Memory>(new auxiliary::AlignedMemory(size() * sizeof(T)))),
             m_buffer((T*) m_memory->get())
         {
         }
