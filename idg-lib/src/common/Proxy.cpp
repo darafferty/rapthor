@@ -717,6 +717,11 @@ namespace idg {
             return m_grid;
         }
 
+        std::shared_ptr<auxiliary::Memory> Proxy::allocate_memory(size_t bytes)
+        {
+            return std::shared_ptr<auxiliary::Memory>(new auxiliary::DefaultMemory(bytes));
+        };
+
     } // end namespace proxy
 } // end namespace idg
 
