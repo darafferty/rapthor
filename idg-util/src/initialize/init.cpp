@@ -155,6 +155,37 @@ namespace idg {
         return visibilities;
     }
 
+    Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+        proxy::Proxy& proxy,
+        Array2D<UVW<float>> &uvw,
+        Array1D<float> &frequencies,
+        float        image_size,
+        unsigned int grid_size,
+        unsigned int nr_point_sources,
+        unsigned int max_pixel_offset,
+        unsigned int random_seed,
+        float        amplitude)
+    {
+        unsigned int nr_baselines = uvw.get_y_dim();
+        unsigned int nr_timesteps = uvw.get_x_dim();
+        unsigned int nr_channels  = frequencies.get_x_dim();
+
+        using T = Visibility<std::complex<float>>;
+        Array3D<T> visibilities =
+            proxy.allocate_array3d<T>(nr_baselines, nr_timesteps, nr_channels);
+
+        srand(random_seed);
+
+        for (unsigned i = 0; i < nr_point_sources; i++) {
+            float x_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
+            float y_offset = (random() * (max_pixel_offset)) - (max_pixel_offset/2);
+
+            add_pt_src(visibilities, uvw, frequencies, image_size, grid_size, x_offset, y_offset, amplitude);
+        }
+
+        return visibilities;
+    }
+
     Array1D<std::pair<unsigned int,unsigned int>> get_example_baselines(
         proxy::Proxy& proxy,
         unsigned int nr_stations,
