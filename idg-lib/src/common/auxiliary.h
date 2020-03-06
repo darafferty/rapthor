@@ -175,21 +175,7 @@ namespace idg {
         size_t get_used_memory();
         size_t get_free_memory();
 
-        template<typename T>
-        static T* allocate_memory(size_t n, size_t alignment = 64) {
-            void *ptr = nullptr;
-            if (n > 0) {
-                size_t bytes = n * sizeof(T);
-                bytes = (((bytes - 1) / alignment) * alignment) + alignment;
-                if (posix_memalign(&ptr, alignment, bytes) != 0) {
-                    throw std::runtime_error("posix_memalign failed");
-                };
-                if (mlock(ptr, bytes) != 0) {
-                    throw std::runtime_error("mlock failed");
-                }
-            }
-            return (T *) ptr;
-        }
+        void* allocate_memory(size_t bytes, size_t alignment = 64);
 
     } // namespace auxiliary
 } // namespace idg

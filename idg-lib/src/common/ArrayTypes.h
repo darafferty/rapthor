@@ -23,7 +23,7 @@ class ArrayXD {
         ArrayXD(
             std::vector<size_t> shape) :
             m_shape(shape),
-            m_buffer(idg::auxiliary::allocate_memory<T>(size()), &free) // shared_ptr with custom deleter that deletes an array
+            m_buffer((T *) idg::auxiliary::allocate_memory(size() * sizeof(T)), &free) // shared_ptr with custom deleter that deletes an array
         {
         }
 
