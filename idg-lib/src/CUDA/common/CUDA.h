@@ -88,6 +88,10 @@ namespace idg {
                     // format used in the adder and splitter kernels.
                     bool m_enable_tiling = true;
 
+                    // Option to enable/disable page-locking buffers passed
+                    // onto the gridding and degridding routines
+                    bool m_enable_host_register = true;
+
                     // Maximum number of streams used to implement
                     // multi-buffering to overlap I/O and computation
                     unsigned int m_max_nr_streams = 2;
