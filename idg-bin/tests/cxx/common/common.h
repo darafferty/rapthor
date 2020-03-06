@@ -92,7 +92,6 @@ void print_parameters(
 
 // run gridding and degridding for ProxyType and reference CPU
 // proxy and compare the outcome; usage run_test<proxy::cpu::Optimized>();
-template <typename ProxyType>
 int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 {
     int info = 0;
@@ -141,22 +140,22 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
 
     // Allocate and initialize data structures
     clog << ">>> Initialize data structures" << endl;
-    idg::Array1D<float> frequencies(nr_channels);
+    idg::Array1D<float> frequencies = optimized.allocate_array1d<float>(nr_channels);
         data.get_frequencies(frequencies, image_size);
-    idg::Array2D<idg::UVW<float>> uvw =
-        data.get_uvw(nr_baselines, nr_timesteps);
+    idg::Array2D<idg::UVW<float>> uvw = optimized.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
+        data.get_uvw(uvw);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-        idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
+        idg::get_dummy_visibilities(optimized, nr_baselines, nr_timesteps, nr_channels);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
-        idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
+        idg::get_dummy_visibilities(reference, nr_baselines, nr_timesteps, nr_channels);
     idg::Array1D<std::pair<unsigned int,unsigned int>> baselines =
-        idg::get_example_baselines(nr_stations, nr_baselines);
+        idg::get_example_baselines(optimized, nr_stations, nr_baselines);
     idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-        idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size, subgrid_size);
+        idg::get_example_aterms(optimized, nr_timeslots, nr_stations, subgrid_size, subgrid_size);
     idg::Array1D<unsigned int> aterms_offsets =
-        idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+        idg::get_example_aterms_offsets(optimized, nr_timeslots, nr_timesteps);
     idg::Array2D<float> spheroidal =
-        idg::get_example_spheroidal(subgrid_size, subgrid_size);
+        idg::get_example_spheroidal(optimized, subgrid_size, subgrid_size);
     idg::Array1D<float> shift =
         idg::get_zero_shift();
     auto grid =
