@@ -25,6 +25,8 @@ namespace idg {
                     // Destructor
                     virtual ~CPU();
 
+                    virtual std::shared_ptr<auxiliary::Memory> allocate_memory(size_t bytes) override;
+
                     virtual bool supports_wstack_gridding() {return kernels.has_adder_wstack();}
                     virtual bool supports_wstack_degridding() {return kernels.has_splitter_wstack();}
                     virtual bool supports_avg_aterm_correction() {return true;}
