@@ -174,7 +174,7 @@ namespace api {
 #ifndef NDEBUG
         std::cout << height << "," << width << std::endl;
 #endif
-        m_spheroidal = Array2D<float>(height, width);
+        m_spheroidal = m_proxy->allocate_array2d<float>(height, width);
         for (auto y = 0; y < height; ++y) {
             for (auto x = 0; x < width; x++) {
                 m_spheroidal(y, x) = float(spheroidal[y*width + x]);
@@ -188,7 +188,7 @@ namespace api {
         const double* frequencyList)
     {
         m_nr_channels = nr_channels;
-        m_frequencies = Array1D<float>(m_nr_channels);
+        m_frequencies = m_proxy->allocate_array1d<float>(m_nr_channels);
         for (int i=0; i<m_nr_channels; i++) {
             m_frequencies(i) = frequencyList[i];
         }
@@ -198,7 +198,7 @@ namespace api {
         const std::vector<double> &frequency_list)
     {
         m_nr_channels = frequency_list.size();
-        m_frequencies = Array1D<float>(m_nr_channels);
+        m_frequencies = m_proxy->allocate_array1d<float>(m_nr_channels);
         for (int i=0; i<m_nr_channels; i++) {
             m_frequencies(i) = frequency_list[i];
         }
@@ -261,9 +261,9 @@ namespace api {
 
     void BufferImpl::malloc_buffers()
     {
-        m_bufferUVW = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-        m_bufferVisibilities = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
-        m_bufferStationPairs = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
+        m_bufferUVW = m_proxy->allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
+        m_bufferVisibilities = m_proxy->allocate_array3d<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+        m_bufferStationPairs = m_proxy->allocate_array1d<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_bufferStationPairs.init({m_nrStations, m_nrStations});
         // already done: m_spheroidal.reserve(m_subgridsize, m_subgridsize);
         // m_aterms = Array4D<Matrix2x2<std::complex<float>>>(1, m_nrStations, m_subgridsize, m_subgridsize);
