@@ -403,11 +403,11 @@ namespace api {
     {
         BufferImpl::malloc_buffers();
 
-        m_bufferUVW2 = Array2D<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-        m_bufferVisibilities2 = Array3D<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
-        m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
-        m_buffer_weights = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
-        m_buffer_weights2 = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
+        m_bufferUVW2 = m_proxy->allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
+        m_bufferVisibilities2 = m_proxy->allocate_array3d<Visibility<std::complex<float>>>(m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+        m_bufferStationPairs2 = m_proxy->allocate_array1d<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
+        m_buffer_weights = m_proxy->allocate_array4d<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
+        m_buffer_weights2 = m_proxy->allocate_array4d<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
     }
 
 } // namespace api
