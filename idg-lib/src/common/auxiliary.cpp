@@ -409,9 +409,6 @@ namespace idg {
                 if (posix_memalign(&ptr, m_alignment, bytes) != 0) {
                     throw std::runtime_error("posix_memalign failed");
                 };
-                if (mlock(ptr, bytes) != 0) {
-                    throw std::runtime_error("mlock failed");
-                }
             }
             m_bytes = bytes;
             m_ptr = ptr;
