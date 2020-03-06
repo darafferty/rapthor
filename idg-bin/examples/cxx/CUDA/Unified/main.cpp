@@ -1,7 +1,11 @@
 #include "idg-cuda.h"
 
+using ProxyType = idg::proxy::cuda::Unified;
+
 #include "common.h"
 
 int main(int argc, char **argv) {
-    run<idg::proxy::cuda::Unified>();
+    run();
+
+    return 0;
 }
