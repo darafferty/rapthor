@@ -386,10 +386,19 @@ namespace idg {
             cout << GIT_BRANCH << ":" << GIT_REV << endl;
         }
 
-        Memory::Memory(size_t bytes)
+        DefaultMemory::DefaultMemory(size_t bytes)
         {
-            m_bytes = bytes;
-            m_ptr = malloc(bytes);
+            if (bytes > 0) {
+                m_bytes = bytes;
+                m_ptr = malloc(bytes);
+            }
+        }
+
+        DefaultMemory::~DefaultMemory()
+        {
+            if (m_bytes > 0) {
+                free(m_ptr);
+            }
         }
 
         AlignedMemory::AlignedMemory(size_t bytes)
@@ -408,7 +417,8 @@ namespace idg {
             m_ptr = ptr;
         }
 
-        Memory::~Memory() {
+        AlignedMemory::~AlignedMemory()
+        {
             if (m_bytes > 0) {
                 free(m_ptr);
             }

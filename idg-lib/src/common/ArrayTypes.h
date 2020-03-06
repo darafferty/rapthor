@@ -38,6 +38,15 @@ class ArrayXD {
         {
         }
 
+        ArrayXD(
+            std::shared_ptr<auxiliary::Memory> memory,
+            std::vector<size_t> shape) :
+            m_shape(shape),
+            m_memory(memory),
+            m_buffer((T*) m_memory->get())
+        {
+        }
+
         ArrayXD(const ArrayXD& other) = delete;
         ArrayXD& operator=(const ArrayXD& rhs) = delete;
 
@@ -198,6 +207,12 @@ class Array1D : public ArrayXD<T> {
             ArrayXD<T>(data, {width})
         {}
 
+        Array1D(
+            std::shared_ptr<auxiliary::Memory> memory,
+            size_t width) :
+            ArrayXD<T>(memory, {width})
+        {}
+
         size_t get_x_dim() const { return this->get_n_dim(0); }
 };
 
@@ -217,6 +232,13 @@ class Array2D : public ArrayXD<T> {
             size_t y_dim,
             size_t x_dim) :
             ArrayXD<T>(data, {y_dim, x_dim})
+        {}
+
+        Array2D(
+            std::shared_ptr<auxiliary::Memory> memory,
+            size_t y_dim,
+            size_t x_dim) :
+            ArrayXD<T>(memory, {y_dim, x_dim})
         {}
 
         size_t get_x_dim() const { return this->get_n_dim(1); }
@@ -263,6 +285,14 @@ class Array3D : public ArrayXD<T> {
             size_t y_dim,
             size_t x_dim) :
             ArrayXD<T>(data, {z_dim, y_dim, x_dim})
+        {}
+
+        Array3D(
+            std::shared_ptr<auxiliary::Memory> memory,
+            size_t z_dim,
+            size_t y_dim,
+            size_t x_dim) :
+            ArrayXD<T>(memory, {z_dim, y_dim, x_dim})
         {}
 
         size_t get_x_dim() const { return this->get_n_dim(2); }
@@ -317,6 +347,15 @@ class Array4D : public ArrayXD<T> {
             size_t y_dim,
             size_t x_dim) :
             ArrayXD<T>(data, {w_dim, z_dim, y_dim, x_dim})
+        {}
+
+        Array4D(
+            std::shared_ptr<auxiliary::Memory> memory,
+            size_t w_dim,
+            size_t z_dim,
+            size_t y_dim,
+            size_t x_dim) :
+            ArrayXD<T>(memory, {w_dim, z_dim, y_dim, x_dim})
         {}
 
         size_t get_x_dim() const { return this->get_n_dim(3); }
