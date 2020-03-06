@@ -12,8 +12,6 @@
 
 #include <omp.h>
 
-#include "npy.hpp"
-
 /*
  * Enable checking for NaN values
  */
@@ -247,9 +245,6 @@ namespace api {
 
         m_bufferset->m_avg_beam_watch->Pause();
 
-        // Write average beam to file
-        write_average_beam();
-
     } // end compute_avg_beam
 
     void GridderBufferImpl::flush_thread_worker()
@@ -413,50 +408,6 @@ namespace api {
         m_bufferStationPairs2 = Array1D<std::pair<unsigned int,unsigned int>>(m_nr_baselines);
         m_buffer_weights = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
         m_buffer_weights2 = Array4D<float>(m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
-    }
-
-
-    void GridderBufferImpl::write_average_beam()
-    {
-
-        std::vector<float> abeam_real(m_subgridsize * m_subgridsize * 4 * 4 * sizeof(float));
-        std::vector<float> abeam_imag(m_subgridsize * m_subgridsize * 4 * 4 * sizeof(float));
-
-        for (unsigned int y = 0; y < m_subgridsize; y++) {
-            for (unsigned int x = 0; x < m_subgridsize; x++) {
-                for (unsigned int py = 0; py < 4; py++) {
-                    for (unsigned int px = 0; px < 4; px++) {
-                        size_t idx = y * m_subgridsize * 4 * 4 +
-                                                     x * 4 * 4 +
-                                                        py * 4 +
-                                                            px;
-                        auto& value = m_average_beam[idx];
-                        abeam_real[idx] = value.real();
-                        abeam_imag[idx] = value.imag();
-
-                        // Check for invalid value
-                        if (!std::isfinite(value.real()) || !std::isfinite(value.imag())) {
-                            std::cout << "Invalid value in average beam: "
-                                      << "y=" << y << ", "
-                                      << "x=" << x << ", "
-                                      << "py=" << py << ", "
-                                      << "px=" << px << ", "
-                                      << " -> " << value << std::endl;
-
-                            // Overwrite invalid value with zero
-                            auto zero = std::complex<float>(0, 0);
-                            m_average_beam[idx] = zero;
-                        }
-                    }
-                }
-            }
-        }
-
-        std::cout << "writing abeam_real.npy and abeam_imag.npy" << std::endl;
-        const long unsigned leshape [] = {m_subgridsize, m_subgridsize, 4, 4};
-
-        npy::SaveArrayAsNumpy("abeam_real.npy", false, 4, leshape, abeam_real);
-        npy::SaveArrayAsNumpy("abeam_imag.npy", false, 4, leshape, abeam_real);
     }
 
 } // namespace api
