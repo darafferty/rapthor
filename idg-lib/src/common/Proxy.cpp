@@ -696,11 +696,7 @@ namespace idg {
             size_t height,
             size_t width)
         {
-            auto size = nr_w_layers * nr_correlations * height * width;
-            auto bytes = size * sizeof(std::complex<float>);
-            auto* ptr = (std::complex<float> * ) idg::auxiliary::allocate_memory(bytes);
-            std::shared_ptr<Grid> grid_ptr(new Grid(ptr, nr_w_layers, nr_correlations, height, width));
-            return grid_ptr;
+            return std::shared_ptr<Grid>(new Grid(nr_w_layers, nr_correlations, height, width));
         }
 
         void Proxy::set_grid(
