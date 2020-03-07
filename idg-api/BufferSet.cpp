@@ -82,6 +82,8 @@ namespace api {
     {}
 
     BufferSetImpl::~BufferSetImpl() {
+        m_gridderbuffers.clear();
+        m_degridderbuffers.clear();
         if (m_proxy) { delete m_proxy; }
         report_runtime();
     }
