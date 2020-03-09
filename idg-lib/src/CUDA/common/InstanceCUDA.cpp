@@ -686,13 +686,11 @@ namespace idg {
                 // Force plan (re-)creation if subgrid size changed
                 if (size != m_fft_subgrid_size) {
                     m_fft_subgrid_bulk = m_fft_subgrid_bulk_default;
-                    m_fft_plan_subgrid_bulk.reset();
-                    m_fft_plans_subgrid_misc.clear();
+                    m_fft_plan_subgrid.reset();
                     m_fft_subgrid_size = size;
                 }
 
-                while (batch >= m_fft_subgrid_bulk &&
-                       m_fft_plan_subgrid_bulk == nullptr)
+                while (m_fft_plan_subgrid == nullptr)
                 {
                     try {
                         // Plan bulk fft
@@ -703,7 +701,9 @@ namespace idg {
                                 size, size, stride, dist,
                                 m_fft_subgrid_bulk * NR_CORRELATIONS);
                         fft_plan->setStream(*executestream);
-                        m_fft_plan_subgrid_bulk.reset(fft_plan);
+                        m_fft_plan_subgrid.reset(fft_plan);
+                        auto sizeof_subgrids = auxiliary::sizeof_subgrids(m_fft_subgrid_bulk, m_fft_subgrid_size);
+                        d_fft_subgrid.reset(new cu::DeviceMemory(sizeof_subgrids));
                     } catch (cufft::Error& e) {
                         // bulk might be too large, try again using half the bulk size
                         m_fft_subgrid_bulk /= 2;
@@ -742,28 +742,20 @@ namespace idg {
                 // Execute bulk subgrid fft
                 unsigned s = 0;
                 for (; (s + m_fft_subgrid_bulk) <= nr_subgrids; s += m_fft_subgrid_bulk) {
-                    m_fft_plan_subgrid_bulk->execute(data_ptr, data_ptr, sign);
+                    m_fft_plan_subgrid->execute(data_ptr, data_ptr, sign);
                     data_ptr += m_fft_subgrid_size * m_fft_subgrid_size * NR_CORRELATIONS * m_fft_subgrid_bulk;
                 }
 
                 // Check for remainder
                 unsigned int fft_subgrid_remainder = nr_subgrids % m_fft_subgrid_bulk;
                 if (fft_subgrid_remainder > 0) {
-                    // Plan remainder fft
-                    unsigned stride = 1;
-                    unsigned dist   = m_fft_subgrid_size * m_fft_subgrid_size;
-                    auto fft_plan   =
-                        new cufft::C2C_2D(
-                            m_fft_subgrid_size, m_fft_subgrid_size, stride, dist,
-                            fft_subgrid_remainder * NR_CORRELATIONS);
-                    fft_plan->setStream(*executestream);
-
-                    // Store this fft plan because the fft is executed asynchronously
-                    m_fft_plans_subgrid_misc.push_back(std::unique_ptr<cufft::C2C_2D>(fft_plan));
-
-                    // Execute remainder fft
-                    fft_plan->execute(data_ptr, data_ptr, sign);
+                    auto sizeof_subgrids = auxiliary::sizeof_subgrids(fft_subgrid_remainder, m_fft_subgrid_size);
+                    executestream->memcpyDtoDAsync(*d_fft_subgrid, (CUdeviceptr) data_ptr, sizeof_subgrids);
+                    cufftComplex *tmp_ptr = reinterpret_cast<cufftComplex *>(static_cast<CUdeviceptr>(*d_fft_subgrid));
+                    m_fft_plan_subgrid->execute(tmp_ptr, tmp_ptr, sign);
+                    executestream->memcpyDtoDAsync((CUdeviceptr) data_ptr, (CUdeviceptr) tmp_ptr, sizeof_subgrids);
                 }
+                executestream->synchronize();
 
                 // Enqueue end of measurement
                 end_measurement(data);
@@ -1170,8 +1162,8 @@ namespace idg {
                 m_fft_plan_grid.reset();
                 m_fft_subgrid_bulk  = 0;
                 m_fft_subgrid_size  = 0;
-                m_fft_plan_subgrid_bulk.reset();
-                m_fft_plans_subgrid_misc.clear();
+                m_fft_plan_subgrid.reset();
+                d_fft_subgrid.reset();
             }
 
             /*
