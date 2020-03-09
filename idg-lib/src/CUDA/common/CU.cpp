@@ -403,6 +403,10 @@ namespace cu {
         assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
     }
 
+    void Stream::memcpyDtoDAsync(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size) {
+        assertCudaCall(cuMemcpyDtoDAsync(dstPtr, srcPtr, size, _stream));
+    }
+
     void Stream::launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters) {
         assertCudaCall(cuLaunchKernel(function, gridX, gridY, gridZ, blockX, blockY, blockZ, sharedMemBytes, _stream, const_cast<void **>(parameters), 0));
     }

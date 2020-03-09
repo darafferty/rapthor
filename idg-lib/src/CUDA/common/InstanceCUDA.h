@@ -300,8 +300,8 @@ namespace idg {
                     const unsigned m_fft_subgrid_bulk_default = 1024;
                     unsigned m_fft_subgrid_bulk  = m_fft_subgrid_bulk_default;
                     unsigned m_fft_subgrid_size  = 0;
-                    std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid_bulk;
-                    std::vector<std::unique_ptr<cufft::C2C_2D>> m_fft_plans_subgrid_misc;
+                    std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid;
+                    std::unique_ptr<cu::DeviceMemory> d_fft_subgrid;
 
                 private:
                     // Memory allocation/reuse methods

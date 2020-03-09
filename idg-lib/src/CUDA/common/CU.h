@@ -240,6 +240,7 @@ namespace cu {
 
             void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
             void memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size);
+            void memcpyDtoDAsync(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size);
             void launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters);
             void launchKernel(Function &function, dim3 grid, dim3 block, unsigned sharedMemBytes, const void **parameters);
             void query();

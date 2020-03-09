@@ -136,8 +136,6 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[device_id];
 
                 // Page-locked host memory
-                device.register_host_memory(visibilities.data(), visibilities.bytes());
-                device.register_host_memory(uvw.data(), uvw.bytes());
                 device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
                 // Performance measurements
@@ -398,8 +396,6 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[device_id];
 
                 // Page-locked host memory
-                device.register_host_memory(visibilities.data(), visibilities.bytes());
-                device.register_host_memory(uvw.data(), uvw.bytes());
                 device.register_host_memory((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
                 // Performance measurements
