@@ -289,7 +289,7 @@ namespace idg {
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
                     // Launch FFT
-                    device.launch_subgrid_fft(d_subgrids, FourierDomainToImageDomain);
+                    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, FourierDomainToImageDomain);
 
                     // Launch scaler
                     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
@@ -594,7 +594,7 @@ namespace idg {
                     d_visibilities.zero(htodstream);
 
                     // Launch FFT
-                    device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
+                    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, ImageDomainToFourierDomain);
 
                     // Launch degridder kernel
                     device.launch_degridder(
