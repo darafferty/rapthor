@@ -298,15 +298,6 @@ namespace api {
         }
         #endif
 
-        // Check grid for NaN values
-        #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
-        if (m_grid->contains_nan()) {
-            std::cerr << "NaN detected in m_grid!" << std::endl;
-            BufferSetImpl::write_grid(*m_grid);
-            std::raise(SIGFPE);
-        }
-        #endif
-
         // Run gridding
         m_bufferset->m_gridding_watch->Start();
         m_proxy->set_grid(m_grid);
