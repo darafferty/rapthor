@@ -111,6 +111,7 @@ namespace idg {
 
                     void launch_subgrid_fft(
                         cu::DeviceMemory& d_data,
+                        unsigned nr_subgrids,
                         DomainAtoDomainB direction);
 
                     void launch_grid_fft_unified(
@@ -292,16 +293,15 @@ namespace idg {
                     int tile_size_grid;
 
                     // Grid FFT
-                    int fft_grid_size = 0;
-                    std::unique_ptr<cufft::C2C_2D> fft_plan_grid;
+                    int m_fft_grid_size = 0;
+                    std::unique_ptr<cufft::C2C_2D> m_fft_plan_grid;
 
                     // Subgrid FFT
-                    const unsigned fft_subgrid_bulk_default = 1024;
-                    unsigned fft_subgrid_bulk  = fft_subgrid_bulk_default;
-                    unsigned fft_subgrid_batch = 0;
-                    unsigned fft_subgrid_size  = 0;
-                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_bulk = nullptr;
-                    std::unique_ptr<cufft::C2C_2D> fft_subgrid_plan_misc = nullptr;
+                    const unsigned m_fft_subgrid_bulk_default = 1024;
+                    unsigned m_fft_subgrid_bulk  = m_fft_subgrid_bulk_default;
+                    unsigned m_fft_subgrid_size  = 0;
+                    std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid_bulk;
+                    std::vector<std::unique_ptr<cufft::C2C_2D>> m_fft_plans_subgrid_misc;
 
                 private:
                     // Memory allocation/reuse methods

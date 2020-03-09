@@ -268,7 +268,7 @@ namespace idg {
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
                     // Launch FFT
-                    device.launch_subgrid_fft(d_subgrids, FourierDomainToImageDomain);
+                    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, FourierDomainToImageDomain);
 
                     // Launch adder kernel
                     if (m_use_unified_memory) {
@@ -531,7 +531,7 @@ namespace idg {
                     d_visibilities.zero(executestream);
 
                     // Launch FFT
-                    device.launch_subgrid_fft(d_subgrids, ImageDomainToFourierDomain);
+                    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, ImageDomainToFourierDomain);
 
                     // Launch degridder kernel
                     device.launch_degridder(
