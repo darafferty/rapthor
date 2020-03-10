@@ -500,7 +500,7 @@ namespace api {
         std::vector<float> grid_real(nr_w_layers * nr_correlations * grid_size * grid_size * sizeof(float));
         std::vector<float> grid_imag(nr_w_layers * nr_correlations * grid_size * grid_size * sizeof(float));
         for (int w = 0; w < nr_w_layers; w++) {
-            //#pragma omp parallel for
+            #pragma omp parallel for
             for (int y = 0; y < grid_size; y++) {
                 for (int x = 0; x < grid_size; x++) {
                     for (int pol = 0; pol < nr_correlations; pol++) {
