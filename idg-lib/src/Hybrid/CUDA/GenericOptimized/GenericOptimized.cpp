@@ -165,9 +165,15 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Locks to signal that work on the CPU can start
-                std::vector<std::mutex> locks(jobs.size());
-                for (auto& lock : locks) {
+                // Locks to make the GPU wait
+                std::vector<std::mutex> locks_gpu(jobs.size());
+                for (auto& lock : locks_gpu) {
+                    lock.lock();
+                }
+
+                // Locks to make the CPU wait
+                std::vector<std::mutex> locks_cpu(jobs.size());
+                for (auto& lock : locks_cpu) {
                     lock.lock();
                 }
 
@@ -185,7 +191,7 @@ namespace idg {
                         cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
 
                         // Wait for scaler to finish
-                        locks[job_id].lock();
+                        locks_cpu[job_id].lock();
 
                         // Copy subgrid to host
                         dtohstream.waitEvent(*gpuFinished[job_id]);
@@ -206,6 +212,9 @@ namespace idg {
 
                         // Report performance
                         device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
+                        // Signal that the subgrids are added
+                        locks_gpu[job_id].unlock();
                     }
                 });
 
@@ -266,7 +275,7 @@ namespace idg {
 
                     // Wait for output buffer to be free
                     if (job_id > 1) {
-                        executestream.waitEvent(*outputCopied[job_id - 2]);
+                        locks_gpu[job_id - 2].lock();
                     }
 
                     // Initialize subgrids to zero
@@ -291,8 +300,8 @@ namespace idg {
                     // Wait for scalar to finish
                     gpuFinished[job_id]->synchronize();
 
-                    // Signal the host thread
-                    locks[job_id].unlock();
+                    // Signal that the subgrids are computed
+                    locks_cpu[job_id].unlock();
                 } // end for bl
 
                 // Wait for host thread
