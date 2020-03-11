@@ -457,6 +457,7 @@ namespace idg {
             }
 
             void InstanceCUDA::launch_gridder(
+                int time_offset,
                 int nr_subgrids,
                 int grid_size,
                 int subgrid_size,
@@ -475,7 +476,7 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
+                    &time_offset, &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_aterm_indices, d_avg_aterm_correction, d_metadata, d_subgrid };
 
@@ -491,6 +492,7 @@ namespace idg {
             }
 
             void InstanceCUDA::launch_degridder(
+                int time_offset,
                 int nr_subgrids,
                 int grid_size,
                 int subgrid_size,
@@ -508,7 +510,7 @@ namespace idg {
                 cu::DeviceMemory& d_subgrid)
             {
                 const void *parameters[] = {
-                    &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
+                    &time_offset, &grid_size, &subgrid_size, &image_size, &w_step, &nr_channels, &nr_stations,
                     d_uvw, d_wavenumbers, d_visibilities,
                     d_spheroidal, d_aterm, d_aterm_indices, d_metadata, d_subgrid };
 

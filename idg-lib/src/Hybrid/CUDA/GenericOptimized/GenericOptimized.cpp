@@ -36,8 +36,6 @@ namespace idg {
 
                 omp_set_nested(true);
 
-                m_enable_host_register = false;
-
                 cuProfilerStart();
             }
 
@@ -106,11 +104,6 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                if (m_enable_host_register)
-                {
-                    device.register_host_memory(visibilities.data(), visibilities.bytes());
-                    device.register_host_memory(uvw.data(), uvw.bytes());
-                }
                 cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
                 auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
@@ -130,6 +123,7 @@ namespace idg {
 
                 // Prepare job data
                 struct JobData {
+                    unsigned current_time_offset;
                     unsigned current_nr_baselines;
                     unsigned current_nr_subgrids;
                     unsigned current_nr_timesteps;
@@ -144,6 +138,7 @@ namespace idg {
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
                     JobData job;
+                    job.current_time_offset  = first_bl * nr_timesteps;
                     job.current_nr_baselines = current_nr_baselines;
                     job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
@@ -172,9 +167,15 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Locks to signal that work on the CPU can start
-                std::vector<std::mutex> locks(jobs.size());
-                for (auto& lock : locks) {
+                // Locks to make the GPU wait
+                std::vector<std::mutex> locks_gpu(jobs.size());
+                for (auto& lock : locks_gpu) {
+                    lock.lock();
+                }
+
+                // Locks to make the CPU wait
+                std::vector<std::mutex> locks_cpu(jobs.size());
+                for (auto& lock : locks_cpu) {
                     lock.lock();
                 }
 
@@ -192,7 +193,7 @@ namespace idg {
                         cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
 
                         // Wait for scaler to finish
-                        locks[job_id].lock();
+                        locks_cpu[job_id].lock();
 
                         // Copy subgrid to host
                         dtohstream.waitEvent(*gpuFinished[job_id]);
@@ -202,6 +203,21 @@ namespace idg {
 
                         // Wait for subgrids to be copied
                         outputCopied[job_id]->synchronize();
+
+                        // Check for NaN subgrids
+                        idg::Array4D<std::complex<float>> subgrids((std::complex<float> *) h_subgrids.ptr(), current_nr_subgrids, 4, subgrid_size, subgrid_size);
+                        for (unsigned int s = 0; s < current_nr_subgrids; s++) {
+                            idg::Array3D<std::complex<float>> subgrid(subgrids.data(s, 0, 0, 0), 4, subgrid_size, subgrid_size);
+                            if (subgrid.contains_nan()) {
+                                Metadata& metadata = ((Metadata *) metadata_ptr)[s];
+                                printf("job = %d, subgrid %d / %d contains nan: ", job_id, s, current_nr_subgrids);
+                                std::cout << metadata << std::endl;
+                                subgrid.zero();
+                            }
+                        }
+                        if (subgrids.contains_nan()) {
+                            throw std::runtime_error("NaN detected in subgrid!");
+                        }
 
                         // Run adder on host
                         cu::Marker marker_adder("run_adder_wstack", cu::Marker::blue);
@@ -213,6 +229,9 @@ namespace idg {
 
                         // Report performance
                         device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
+
+                        // Signal that the subgrids are added
+                        locks_gpu[job_id].unlock();
                     }
                 });
 
@@ -224,6 +243,7 @@ namespace idg {
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
+                    auto current_time_offset  = jobs[job_id].current_time_offset;
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -273,7 +293,7 @@ namespace idg {
 
                     // Wait for output buffer to be free
                     if (job_id > 1) {
-                        executestream.waitEvent(*outputCopied[job_id - 2]);
+                        locks_gpu[job_id - 2].lock();
                     }
 
                     // Initialize subgrids to zero
@@ -284,7 +304,8 @@ namespace idg {
 
                     // Launch gridder kernel
                     device.launch_gridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        current_time_offset, current_nr_subgrids,
+                        grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
@@ -298,8 +319,8 @@ namespace idg {
                     // Wait for scalar to finish
                     gpuFinished[job_id]->synchronize();
 
-                    // Signal the host thread
-                    locks[job_id].unlock();
+                    // Signal that the subgrids are computed
+                    locks_cpu[job_id].unlock();
                 } // end for bl
 
                 // Wait for host thread
@@ -415,11 +436,6 @@ namespace idg {
                 int jobsize = m_gridding_state.jobsize[0];
 
                 // Page-locked host memory
-                if (m_enable_host_register)
-                {
-                    device.register_host_memory(visibilities.data(), visibilities.bytes());
-                    device.register_host_memory(uvw.data(), uvw.bytes());
-                }
                 cu::RegisteredMemory h_metadata((void *) plan.get_metadata_ptr(), plan.get_sizeof_metadata());
                 auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
                 auto sizeof_subgrids = auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
@@ -439,6 +455,7 @@ namespace idg {
 
                 // Prepare job data
                 struct JobData {
+                    unsigned current_time_offset;
                     unsigned current_nr_baselines;
                     unsigned current_nr_subgrids;
                     unsigned current_nr_timesteps;
@@ -453,6 +470,7 @@ namespace idg {
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
                     JobData job;
+                    job.current_time_offset  = first_bl * nr_timesteps;
                     job.current_nr_baselines = current_nr_baselines;
                     job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
@@ -538,6 +556,7 @@ namespace idg {
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
+                    auto current_time_offset  = jobs[job_id].current_time_offset;
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -598,7 +617,8 @@ namespace idg {
 
                     // Launch degridder kernel
                     device.launch_degridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        current_time_offset, current_nr_subgrids,
+                        grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_metadata, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);

@@ -10,6 +10,7 @@ __shared__ float4 shared[3][BATCH_SIZE];
 */
 template<int current_nr_channels, int unroll_channels>
 __device__ void kernel_degridder_(
+    const int                        time_offset_job,
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
@@ -32,12 +33,9 @@ __device__ void kernel_degridder_(
     int tid        = tidx + tidy * blockDim.x;
     int nr_threads = blockDim.x * blockDim.y;
 
-    // Load metadata for first subgrid
-    const Metadata &m0 = metadata[0];
-
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const int time_offset_global = m.time_index - m0.time_index;
+    const int time_offset_global = m.time_index - time_offset_job;
     const int nr_timesteps = m.nr_timesteps;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
@@ -210,18 +208,19 @@ __device__ void kernel_degridder_(
     if (nr_timesteps / nr_aterms < (2*warpSize)) { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, 1>( \
-                grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+                time_offset, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     } else { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, current_nr_channels>( \
-                grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+                time_offset, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     }
 
 #define GLOBAL_ARGUMENTS \
+    const int                         time_offset,  \
     const int                         grid_size,    \
     const int                         subgrid_size, \
     const float                       image_size,   \

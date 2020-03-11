@@ -109,6 +109,7 @@ __device__ void finalize_subgrid(
 template<int current_nr_channels>
 __device__ void
     kernel_gridder_(
+    const int                           time_offset_job,
     const int                           grid_size,
     const int                           subgrid_size,
     const float                         image_size,
@@ -130,12 +131,9 @@ __device__ void
     int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
-    // Load metadata for first subgrid
-    const Metadata &m0 = metadata[0];
-
 	// Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const int time_offset_global = m.time_index - m0.time_index;
+    const int time_offset_global = m.time_index - time_offset_job;
     const int nr_timesteps = m.nr_timesteps;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
@@ -315,7 +313,7 @@ __device__ void
 #define KERNEL_GRIDDER(current_nr_channels) \
     for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
         kernel_gridder_<current_nr_channels>( \
-            grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+            time_offset, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
     }
 
@@ -325,6 +323,7 @@ __device__ void
 
 
 #define GLOBAL_ARGUMENTS \
+    const int                         time_offset,  \
     const int                         grid_size,    \
     const int                         subgrid_size, \
     const float                       image_size,   \

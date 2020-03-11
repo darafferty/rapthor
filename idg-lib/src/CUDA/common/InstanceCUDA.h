@@ -40,6 +40,7 @@ namespace idg {
                     void measure(PowerRecord &record, cu::Stream &stream);
 
                     void launch_gridder(
+                        int time_offset,
                         int nr_subgrids,
                         int grid_size,
                         int subgrid_size,
@@ -58,6 +59,7 @@ namespace idg {
                         cu::DeviceMemory& d_subgrid);
 
                     void launch_degridder(
+                        int time_offset,
                         int nr_subgrids,
                         int grid_size,
                         int subgrid_size,
