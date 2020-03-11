@@ -150,6 +150,7 @@ namespace idg {
 
                 // Prepare job data
                 struct JobData {
+                    unsigned current_time_offset;
                     unsigned current_nr_baselines;
                     unsigned current_nr_subgrids;
                     unsigned current_nr_timesteps;
@@ -164,6 +165,7 @@ namespace idg {
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
                     JobData job;
+                    job.current_time_offset  = first_bl * nr_timesteps;
                     job.current_nr_baselines = current_nr_baselines;
                     job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
@@ -201,6 +203,7 @@ namespace idg {
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
+                    auto current_time_offset  = jobs[job_id].current_time_offset;
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -261,7 +264,8 @@ namespace idg {
 
                     // Launch gridder kernel
                     device.launch_gridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        current_time_offset, current_nr_subgrids,
+                        grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_avg_aterm_correction, d_metadata, d_subgrids);
 
@@ -411,6 +415,7 @@ namespace idg {
 
                 // Prepare job data
                 struct JobData {
+                    unsigned current_time_offset;
                     unsigned current_nr_baselines;
                     unsigned current_nr_subgrids;
                     unsigned current_nr_timesteps;
@@ -425,6 +430,7 @@ namespace idg {
                     plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
                     if (current_nr_baselines == 0) continue;
                     JobData job;
+                    job.current_time_offset  = first_bl * nr_timesteps;
                     job.current_nr_baselines = current_nr_baselines;
                     job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
                     job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
@@ -462,6 +468,7 @@ namespace idg {
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
+                    auto current_time_offset  = jobs[job_id].current_time_offset;
                     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
                     auto current_nr_subgrids  = jobs[job_id].current_nr_subgrids;
                     void *metadata_ptr        = jobs[job_id].metadata_ptr;
@@ -531,7 +538,8 @@ namespace idg {
 
                     // Launch degridder kernel
                     device.launch_degridder(
-                        current_nr_subgrids, grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
+                        current_time_offset, current_nr_subgrids,
+                        grid_size, subgrid_size, image_size, w_step, nr_channels, nr_stations,
                         d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
                         d_aterms, d_aterms_indices, d_metadata, d_subgrids);
                     executestream.record(*gpuFinished[job_id]);
