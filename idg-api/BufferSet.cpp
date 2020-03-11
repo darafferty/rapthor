@@ -26,6 +26,7 @@
 #include "idg-fft.h"
 #include "npy.hpp"
 
+#define ENABLE_VERBOSE_TIMING 0
 
 extern "C" void cgetrf_( int* m, int* n, std::complex<float>* a,
                     int* lda, int* ipiv, int *info );
@@ -363,7 +364,7 @@ namespace api {
         m_set_image_watch->Start();
 
         double runtime = -omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << std::setprecision(3);
 #endif
 
@@ -372,14 +373,14 @@ namespace api {
         const size_t x0 = (m_padded_size-m_size)/2;
 
         // Convert from stokes to linear into w plane 0
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "set grid from image" << std::endl;
 #endif
         double runtime_copy = -omp_get_wtime();
         m_grid->zero();
         if (do_scale)
         {
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
             std::cout << "scale: " << (*m_scalar_beam)[0] << std::endl;
 #endif
             #pragma omp parallel for
@@ -421,14 +422,14 @@ namespace api {
             } // end for y
         }
         runtime_copy += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "runtime:" << runtime_copy << std::endl;
 #endif
 
         // Copy to other w planes and multiply by w term
         double runtime_stacking = -omp_get_wtime();
         for (int w = nr_w_layers - 1; w >= 0; w--) {
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
             std::cout << "unstacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
 #endif
 
@@ -461,25 +462,25 @@ namespace api {
             } // end for y
         } // end for w
         runtime_stacking += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
 #endif
 
         // Fourier transform w layers
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "fft w_layers";
 #endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
         fft2f(batch, m_padded_size, m_padded_size, m_grid->data(0,0,0,0));
         runtime_fft += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << ", runtime: " << runtime_fft << std::endl;
 #endif
 
         // Report overall runtime
         runtime += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
 #endif
 
@@ -525,7 +526,7 @@ namespace api {
         m_get_image_watch->Start();
 
         double runtime = -omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << std::setprecision(3);
 #endif
 
@@ -534,21 +535,21 @@ namespace api {
         const size_t x0 = (m_padded_size-m_size)/2;
 
         // Fourier transform w layers
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "ifft w_layers";
 #endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
         ifft2f(batch, m_padded_size, m_padded_size, m_grid->data(0,0,0,0));
         runtime_fft += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << ", runtime: " << runtime_fft << std::endl;
 #endif
 
         // Stack w layers
         double runtime_stacking = -omp_get_wtime();
         for (int w = 0; w < nr_w_layers; w++) {
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
             std::cout << "stacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
 #endif
             #pragma omp parallel for
@@ -600,13 +601,13 @@ namespace api {
             } // end for y
         } // end for w
         runtime_stacking += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
 #endif
 
 
         // Copy grid to image
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "set image from grid";
 #endif
         double runtime_copy = -omp_get_wtime();
@@ -637,13 +638,13 @@ namespace api {
             } // end for x
         } // end for y
         runtime_copy += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << ", runtime: " << runtime_copy << std::endl;
 #endif
 
         // Report overall runtime
         runtime += omp_get_wtime();
-#ifndef NDEBUG
+#if ENABLE_VERBOSE_TIMING
         std::cout << "runtime " << __func__ << ": " << runtime << std::endl;
 #endif
         m_get_image_watch->Pause();
