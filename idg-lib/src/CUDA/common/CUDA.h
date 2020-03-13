@@ -99,6 +99,17 @@ namespace idg {
                     void enable_unified_memory() { m_use_unified_memory = true; }
 
 
+                protected:
+                    struct JobData {
+                        unsigned current_time_offset;
+                        unsigned current_nr_baselines;
+                        unsigned current_nr_subgrids;
+                        unsigned current_nr_timesteps;
+                        void *metadata_ptr;
+                        void *uvw_ptr;
+                        void *visibilities_ptr;
+                    };
+
                 private:
                     ProxyInfo &mInfo;
                     std::vector<idg::kernel::cuda::InstanceCUDA*> devices;

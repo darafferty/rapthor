@@ -149,16 +149,6 @@ namespace idg {
                 std::vector<std::unique_ptr<cu::Event>> gpuFinished;
 
                 // Prepare job data
-                struct JobData {
-                    unsigned current_time_offset;
-                    unsigned current_nr_baselines;
-                    unsigned current_nr_subgrids;
-                    unsigned current_nr_timesteps;
-                    void *metadata_ptr;
-                    void *uvw_ptr;
-                    void *visibilities_ptr;
-                };
-
                 std::vector<JobData> jobs;
                 for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
                     unsigned int first_bl, last_bl, current_nr_baselines;
@@ -414,16 +404,6 @@ namespace idg {
                 std::vector<std::unique_ptr<cu::Event>> outputCopied;
 
                 // Prepare job data
-                struct JobData {
-                    unsigned current_time_offset;
-                    unsigned current_nr_baselines;
-                    unsigned current_nr_subgrids;
-                    unsigned current_nr_timesteps;
-                    void *metadata_ptr;
-                    void *uvw_ptr;
-                    void *visibilities_ptr;
-                };
-
                 std::vector<JobData> jobs;
                 for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
                     unsigned int first_bl, last_bl, current_nr_baselines;
