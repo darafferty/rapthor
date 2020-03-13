@@ -147,32 +147,7 @@ namespace idg {
                 // Events
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
                 std::vector<std::unique_ptr<cu::Event>> gpuFinished;
-
-                // Prepare job data
-                struct JobData {
-                    unsigned current_time_offset;
-                    unsigned current_nr_baselines;
-                    unsigned current_nr_subgrids;
-                    unsigned current_nr_timesteps;
-                    void *metadata_ptr;
-                    void *uvw_ptr;
-                    void *visibilities_ptr;
-                };
-
-                std::vector<JobData> jobs;
                 for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-                    unsigned int first_bl, last_bl, current_nr_baselines;
-                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
-                    if (current_nr_baselines == 0) continue;
-                    JobData job;
-                    job.current_time_offset  = first_bl * nr_timesteps;
-                    job.current_nr_baselines = current_nr_baselines;
-                    job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                    job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                    job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
-                    job.uvw_ptr              = uvw.data(first_bl, 0);
-                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
-                    jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
                 }
@@ -193,13 +168,11 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Id for double-buffering
-                unsigned local_id = 0;
-
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
@@ -290,9 +263,6 @@ namespace idg {
 
                     // Wait for adder to finish
                     gpuFinished[job_id]->synchronize();
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
 
                 // Wait for all reports to be printed
@@ -412,32 +382,7 @@ namespace idg {
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
                 std::vector<std::unique_ptr<cu::Event>> gpuFinished;
                 std::vector<std::unique_ptr<cu::Event>> outputCopied;
-
-                // Prepare job data
-                struct JobData {
-                    unsigned current_time_offset;
-                    unsigned current_nr_baselines;
-                    unsigned current_nr_subgrids;
-                    unsigned current_nr_timesteps;
-                    void *metadata_ptr;
-                    void *uvw_ptr;
-                    void *visibilities_ptr;
-                };
-
-                std::vector<JobData> jobs;
                 for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-                    unsigned int first_bl, last_bl, current_nr_baselines;
-                    plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
-                    if (current_nr_baselines == 0) continue;
-                    JobData job;
-                    job.current_time_offset  = first_bl * nr_timesteps;
-                    job.current_nr_baselines = current_nr_baselines;
-                    job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
-                    job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
-                    job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
-                    job.uvw_ptr              = uvw.data(first_bl, 0);
-                    job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
-                    jobs.push_back(job);
                     inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
                     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
                     outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
@@ -458,13 +403,12 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Id for double-buffering
-                unsigned local_id = 0;
 
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
@@ -555,9 +499,6 @@ namespace idg {
 
                     // Report performance
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
 
                 // Wait for all visibilities to be copied

@@ -252,6 +252,20 @@ namespace idg {
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     jobsize[i] = min(jobsize[i], nr_baselines);
 
+                    // Sanity check
+                    if (jobsize[i] == 0) {
+                        std::stringstream message;
+                        message << std::setprecision(1);
+                        message << "jobsize == 0" << std::endl;
+                        message << "GPU memory required for static data: "
+                                << bytes_static * 1e-6 << " Mb" << std::endl;
+                        message << "GPU memory required for job data: "
+                                << bytes_job * 1e-6 << " Mb" << std::endl;
+                        message << "GPU free memory: " << int(bytes_free * 1e-6) << " Mb ("
+                                << int(bytes_free * m_fraction_reserved * 1e-6) << " Mb reserved)";
+                        throw std::runtime_error(message.str());
+                    }
+
                     // Print jobsize
                     #if defined(DEBUG_COMPUTE_JOBSIZE)
                     printf("Jobsize: %d\n", jobsize[i]);
@@ -353,6 +367,23 @@ namespace idg {
                         // Metadata
                         size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
                         device.allocate_device_metadata(t, sizeof_metadata);
+                    }
+
+                    // Initialize job data
+                    jobs.clear();
+                    for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+                        unsigned int first_bl, last_bl, current_nr_baselines;
+                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                        if (current_nr_baselines == 0) continue;
+                        JobData job;
+                        job.current_time_offset  = first_bl * nr_timesteps;
+                        job.current_nr_baselines = current_nr_baselines;
+                        job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
+                        job.uvw_ptr              = uvw.data(first_bl, 0);
+                        job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
+                        jobs.push_back(job);
                     }
 
                     // Plan subgrid fft
