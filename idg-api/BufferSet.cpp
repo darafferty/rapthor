@@ -376,91 +376,98 @@ namespace api {
 #if ENABLE_VERBOSE_TIMING
         std::cout << "set grid from image" << std::endl;
 #endif
-        double runtime_copy = -omp_get_wtime();
-        m_grid->zero();
-        if (do_scale)
-        {
-#if ENABLE_VERBOSE_TIMING
-            std::cout << "scale: " << (*m_scalar_beam)[0] << std::endl;
-#endif
-            #pragma omp parallel for
-            for (int y = 0; y < m_size; y++) {
-                for (int x = 0; x < m_size; x++) {
-                    // Stokes I
-                    (*m_grid)(0,0,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    // Stokes Q
-                    (*m_grid)(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    // Stokes U
-                    (*m_grid)(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    (*m_grid)(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    // Stokes V
-                    (*m_grid)(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
-                    (*m_grid)(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
-                } // end for x
-            } // end for y
-        }
-        else
-        {
-            #pragma omp parallel for
-            for (int y = 0; y < m_size; y++) {
-                for (int x = 0; x < m_size; x++) {
-                    // Stokes I
-                    (*m_grid)(0,0,y+y0,x+x0) = image[m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) = image[m_size*y+x];
-                    // Stokes Q
-                    (*m_grid)(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
-                    // Stokes U
-                    (*m_grid)(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                    (*m_grid)(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                    // Stokes V
-                    (*m_grid)(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
-                    (*m_grid)(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
-                } // end for x
-            } // end for y
-        }
-        runtime_copy += omp_get_wtime();
-#if ENABLE_VERBOSE_TIMING
-        std::cout << "runtime:" << runtime_copy << std::endl;
-#endif
-
-        // Copy to other w planes and multiply by w term
         double runtime_stacking = -omp_get_wtime();
-        for (int w = nr_w_layers - 1; w >= 0; w--) {
-#if ENABLE_VERBOSE_TIMING
-            std::cout << "unstacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
-#endif
+        m_grid->zero();
+        #pragma omp parallel for
+        for (int y = 0; y < m_size; y++)
+        {
+            float w0_row_real[NR_CORRELATIONS][m_size];
+            float w0_row_imag[NR_CORRELATIONS][m_size];
 
-            #pragma omp parallel for
-            for(int y = 0; y < m_size; y++) {
-                for(int x = 0; x < m_size; x++) {
-                    // Compute phase
+            Array3D<double> image_array((double *) image, NR_CORRELATIONS, m_size, m_size);
+
+            // Copy row of image and convert stokes to polarizations
+            for (int x = 0; x < m_size; x++)
+            {
+                double scale = do_scale ? 1.0 / (*m_scalar_beam)[m_size * y + x] : 1.0;
+                double stokesI = image_array(0, y, x) * scale;
+                double stokesQ = image_array(1, y, x) * scale;
+                double stokesU = image_array(2, y, x) * scale;
+                double stokesV = image_array(3, y, x) * scale;
+                w0_row_real[0][x] = stokesI + stokesQ;
+                w0_row_real[1][x] = stokesI - stokesQ;
+                w0_row_real[2][x] = stokesU;
+                w0_row_real[3][x] = stokesU;
+                w0_row_imag[0][x] = 0.0f;
+                w0_row_imag[1][x] = 0.0f;
+                w0_row_imag[2][x] = -stokesV;
+                w0_row_imag[3][x] =  stokesV;
+            } // end for x
+
+            // Copy to other w planes and multiply by w term
+            for (int w = nr_w_layers - 1; w >= 0; w--)
+            {
+                // Compute phase
+                float phases[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
                     const float w_offset = (w+0.5)*m_w_step;
                     const float l = (x-((int)m_size/2)) * m_cell_size;
                     const float m = (y-((int)m_size/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float n = compute_n(l, -m, m_shift);
-                    //const float tmp = (l * l) + (m * m);
-                    //const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
-                    float phase = 2*M_PI*n*w_offset;
-
-                    // Compute phasor
-                    std::complex<float> phasor(std::cos(phase), std::sin(phase));
-
-                    // Compute inverse spheroidal
-                    float inv_taper = m_inv_taper[y] * m_inv_taper[x];
-
-                    // Set to current w-plane
-                    #pragma unroll
-                    for (int pol = 0; pol < 4; pol++) {
-                        (*m_grid)(w, pol, y+y0, x+x0) = (*m_grid)(0, pol, y+y0, x+x0) * inv_taper * phasor;
-                    }
+                    phases[x] = 2*M_PI*n*w_offset;
                 } // end for x
-            } // end for y
-        } // end for w
+
+                // Compute inverse spheroidal
+                float inv_tapers[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
+                    inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
+                } // end for x
+
+                // Compute phasor
+                float phasor_real[m_size];
+                float phasor_imag[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
+                    float phase = phases[x];
+                    phasor_real[x] = cosf(phase);
+                    phasor_imag[x] = sinf(phase);
+                } // end for x
+
+                // Compute current row of w-plane
+                float w_row_real[NR_CORRELATIONS][m_size];
+                float w_row_imag[NR_CORRELATIONS][m_size];
+
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                    for (int x = 0; x < m_size; x++)
+                    {
+                        float value_real    = w0_row_real[pol][x] * inv_tapers[x];
+                        float value_imag    = w0_row_imag[pol][x] * inv_tapers[x];
+                        float phasor_real_  = phasor_real[x];
+                        float phasor_imag_  = phasor_imag[x];
+                        w_row_real[pol][x]  = value_real * phasor_real_;
+                        w_row_imag[pol][x]  = value_real * phasor_imag_;
+                        w_row_real[pol][x] -= value_imag * phasor_imag_;
+                        w_row_imag[pol][x] += value_imag * phasor_real_;
+                    } // end for x
+                } // end for pol
+
+                // Set m_grid
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                    for (int x = 0; x < m_size; x++)
+                    {
+                        float value_real = w_row_real[pol][x];
+                        float value_imag = w_row_imag[pol][x];
+                        (*m_grid)(w, pol, y + y0, x + x0) = {value_real, value_imag};
+                    } // end for x
+                } // end for pol
+            } // end for w
+        } // end for y
         runtime_stacking += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
         std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
