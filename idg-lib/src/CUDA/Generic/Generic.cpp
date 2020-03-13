@@ -147,6 +147,10 @@ namespace idg {
                 // Events
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
                 std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+                for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+                    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+                    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+                }
 
                 // Prepare job data
                 std::vector<JobData> jobs;
@@ -163,8 +167,6 @@ namespace idg {
                     job.uvw_ptr              = uvw.data(first_bl, 0);
                     job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
                     jobs.push_back(job);
-                    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
-                    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
                 }
 
                 // Load memory objects
@@ -402,6 +404,11 @@ namespace idg {
                 std::vector<std::unique_ptr<cu::Event>> inputCopied;
                 std::vector<std::unique_ptr<cu::Event>> gpuFinished;
                 std::vector<std::unique_ptr<cu::Event>> outputCopied;
+                for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+                    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+                    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+                    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+                }
 
                 // Prepare job data
                 std::vector<JobData> jobs;
@@ -418,9 +425,6 @@ namespace idg {
                     job.uvw_ptr              = uvw.data(first_bl, 0);
                     job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
                     jobs.push_back(job);
-                    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
-                    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
-                    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
                 }
 
                 // Load memory objects
