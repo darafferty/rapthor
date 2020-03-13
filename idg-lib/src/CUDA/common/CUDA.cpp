@@ -252,6 +252,20 @@ namespace idg {
                     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
                     jobsize[i] = min(jobsize[i], nr_baselines);
 
+                    // Sanity check
+                    if (jobsize[i] == 0) {
+                        std::stringstream message;
+                        message << std::setprecision(1);
+                        message << "jobsize == 0" << std::endl;
+                        message << "GPU memory required for static data: "
+                                << bytes_static * 1e-6 << " Mb" << std::endl;
+                        message << "GPU memory required for job data: "
+                                << bytes_job * 1e-6 << " Mb" << std::endl;
+                        message << "GPU free memory: " << int(bytes_free * 1e-6) << " Mb ("
+                                << int(bytes_free * m_fraction_reserved * 1e-6) << " Mb reserved)";
+                        throw std::runtime_error(message.str());
+                    }
+
                     // Print jobsize
                     #if defined(DEBUG_COMPUTE_JOBSIZE)
                     printf("Jobsize: %d\n", jobsize[i]);
