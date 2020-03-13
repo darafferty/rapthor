@@ -378,49 +378,29 @@ namespace api {
 #endif
         double runtime_copy = -omp_get_wtime();
         m_grid->zero();
-        if (do_scale)
-        {
 #if ENABLE_VERBOSE_TIMING
-            std::cout << "scale: " << (*m_scalar_beam)[0] << std::endl;
+        std::cout << "copy: " << (*m_scalar_beam)[0] << std::endl;
 #endif
-            #pragma omp parallel for
-            for (int y = 0; y < m_size; y++) {
-                for (int x = 0; x < m_size; x++) {
-                    // Stokes I
-                    (*m_grid)(0,0,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) = image[m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    // Stokes Q
-                    (*m_grid)(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    // Stokes U
-                    (*m_grid)(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    (*m_grid)(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x];
-                    // Stokes V
-                    (*m_grid)(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
-                    (*m_grid)(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]/(*m_scalar_beam)[m_size*y+x]);
-                } // end for x
-            } // end for y
-        }
-        else
+        #pragma omp parallel for
+        for (int y = 0; y < m_size; y++)
         {
-            #pragma omp parallel for
-            for (int y = 0; y < m_size; y++) {
-                for (int x = 0; x < m_size; x++) {
-                    // Stokes I
-                    (*m_grid)(0,0,y+y0,x+x0) = image[m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) = image[m_size*y+x];
-                    // Stokes Q
-                    (*m_grid)(0,0,y+y0,x+x0) += image[m_size*m_size + m_size*y+x];
-                    (*m_grid)(0,3,y+y0,x+x0) -= image[m_size*m_size + m_size*y+x];
-                    // Stokes U
-                    (*m_grid)(0,1,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                    (*m_grid)(0,2,y+y0,x+x0) = image[2*m_size*m_size + m_size*y+x];
-                    // Stokes V
-                    (*m_grid)(0,1,y+y0,x+x0).imag(-image[3*m_size*m_size + m_size*y+x]);
-                    (*m_grid)(0,2,y+y0,x+x0).imag( image[3*m_size*m_size + m_size*y+x]);
-                } // end for x
-            } // end for y
-        }
+            for (int x = 0; x < m_size; x++)
+            {
+                double scale = do_scale ? 1.0 / (*m_scalar_beam)[m_size * y + x] : 1.0;
+                // Stokes I
+                (*m_grid)(0, 0, y + y0, x + x0) = image[m_size * y + x] * scale;
+                (*m_grid)(0, 3, y + y0, x + x0) = image[m_size * y + x] * scale;
+                // Stokes Q
+                (*m_grid)(0, 0, y + y0, x + x0) += image[m_size * m_size + m_size * y + x] * scale;
+                (*m_grid)(0, 3, y + y0, x + x0) -= image[m_size * m_size + m_size * y + x] * scale;
+                // Stokes U
+                (*m_grid)(0, 1, y + y0, x + x0) = image[2 * m_size * m_size + m_size * y + x] * scale;
+                (*m_grid)(0, 2, y + y0, x + x0) = image[2 * m_size * m_size + m_size * y + x] * scale;
+                // Stokes V
+                (*m_grid)(0, 1, y + y0, x + x0).imag(-image[3 * m_size * m_size + m_size * y + x] * scale);
+                (*m_grid)(0, 2, y + y0, x + x0).imag(image[3 * m_size * m_size + m_size * y + x] * scale);
+            } // end for x
+        }     // end for y
         runtime_copy += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
         std::cout << "runtime:" << runtime_copy << std::endl;
@@ -428,35 +408,46 @@ namespace api {
 
         // Copy to other w planes and multiply by w term
         double runtime_stacking = -omp_get_wtime();
-        for (int w = nr_w_layers - 1; w >= 0; w--) {
+        for (int w = nr_w_layers - 1; w >= 0; w--)
+        {
 #if ENABLE_VERBOSE_TIMING
             std::cout << "unstacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
 #endif
 
             #pragma omp parallel for
-            for(int y = 0; y < m_size; y++) {
-                for(int x = 0; x < m_size; x++) {
-                    // Compute phase
+            for (int y = 0; y < m_size; y++)
+            {
+                // Compute phase
+                float phases[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
                     const float w_offset = (w+0.5)*m_w_step;
                     const float l = (x-((int)m_size/2)) * m_cell_size;
                     const float m = (y-((int)m_size/2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
                     const float n = compute_n(l, -m, m_shift);
-                    //const float tmp = (l * l) + (m * m);
-                    //const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
-                    float phase = 2*M_PI*n*w_offset;
+                    phases[x] = 2*M_PI*n*w_offset;
+                }
 
+                // Compute inverse spheroidal
+                float inv_tapers[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
+                    inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
+                }
+
+                for (int x = 0; x < m_size; x++)
+                {
                     // Compute phasor
+                    float phase = phases[x];
                     std::complex<float> phasor(std::cos(phase), std::sin(phase));
-
-                    // Compute inverse spheroidal
-                    float inv_taper = m_inv_taper[y] * m_inv_taper[x];
 
                     // Set to current w-plane
                     #pragma unroll
-                    for (int pol = 0; pol < 4; pol++) {
-                        (*m_grid)(w, pol, y+y0, x+x0) = (*m_grid)(0, pol, y+y0, x+x0) * inv_taper * phasor;
+                    for (int pol = 0; pol < 4; pol++)
+                    {
+                        (*m_grid)(w, pol, y + y0, x + x0) = (*m_grid)(0, pol, y + y0, x + x0) * inv_tapers[x] * phasor;
                     }
                 } // end for x
             } // end for y
