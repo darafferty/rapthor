@@ -540,7 +540,7 @@ namespace api {
 #endif
         int batch = nr_w_layers * 4;
         double runtime_fft = -omp_get_wtime();
-        ifft2f(batch, m_padded_size, m_padded_size, m_grid->data(0,0,0,0));
+        idg::ifft2f(batch, m_padded_size, m_padded_size, m_grid->data(0, 0, 0, 0));
         runtime_fft += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
         std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -548,98 +548,111 @@ namespace api {
 
         // Stack w layers
         double runtime_stacking = -omp_get_wtime();
-        for (int w = 0; w < nr_w_layers; w++) {
-#if ENABLE_VERBOSE_TIMING
-            std::cout << "stacking w_layer: " << w+1 << "/" << nr_w_layers << std::endl;
-#endif
-            #pragma omp parallel for
-            for (int y = 0; y < m_size; y++) {
-                for (int x = 0; x < m_size; x++) {
-                    // Compute phase
-                    const float w_offset = (w+0.5)*m_w_step;
-                    const float l = (x-((int)m_size/2)) * m_cell_size;
-                    const float m = (y-((int)m_size/2)) * m_cell_size;
-                    const float n = compute_n(l, -m, m_shift);
+
+        #pragma omp parallel for
+        for (int y = 0; y < m_size; y++)
+        {
+            float w0_row_real[NR_CORRELATIONS][m_size];
+            float w0_row_imag[NR_CORRELATIONS][m_size];
+            float w_row_real[NR_CORRELATIONS][m_size];
+            float w_row_imag[NR_CORRELATIONS][m_size];
+            memset(w0_row_real, 0, NR_CORRELATIONS * m_size * sizeof(float));
+            memset(w0_row_imag, 0, NR_CORRELATIONS * m_size * sizeof(float));
+
+            Array3D<double> image_array((double *) image, NR_CORRELATIONS, m_size, m_size);
+
+            for (int w = 0; w < nr_w_layers; w++)
+            {
+                // Compute phase
+                float phases[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
+                    const float w_offset = (w + 0.5) * m_w_step;
+                    const float l = (x - ((int)m_size / 2)) * m_cell_size;
+                    const float m = (y - ((int)m_size / 2)) * m_cell_size;
                     // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
                     // accurately for small values of l and m
-                    //const float tmp = (l * l) + (m * m);
-                    //const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
-                    const float phase = -2*M_PI*n*w_offset;
+                    const float n = compute_n(l, -m, m_shift);
+                    phases[x] = -2 * M_PI * n * w_offset;
+                }
 
-                    // Compute phasor
-                    std::complex<float> phasor(std::cos(phase), std::sin(phase));
+                // Compute inverse spheroidal
+                float inv_tapers[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
+                    inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
+                }
 
-                    // Compute inverse spheroidal
-                    float inv_taper = m_inv_taper[y] * m_inv_taper[x];
-
-                    // Check for NaN
-                    #if DEBUG_NAN_GET_IMAGE
-                    if (isnan(m_grid(w, 0, y+y0, x+x0)) ||
-                        isnan(m_grid(w, 1, y+y0, x+x0)) ||
-                        isnan(m_grid(w, 2, y+y0, x+x0)) ||
-                        isnan(m_grid(w, 3, y+y0, x+x0)))
+                // Copy current row of w-plane
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                    for (int x = 0; x < m_size; x++)
                     {
-                        std::cerr << "NaN detected during w-stacking!" << std::endl;
-                        std::raise(SIGFPE);
-                    }
-                    #endif
-
-                    // Apply correction
-                    (*m_grid)(w, 0, y+y0, x+x0) = (*m_grid)(w, 0, y+y0, x+x0) * inv_taper * phasor;
-                    (*m_grid)(w, 1, y+y0, x+x0) = (*m_grid)(w, 1, y+y0, x+x0) * inv_taper * phasor;
-                    (*m_grid)(w, 2, y+y0, x+x0) = (*m_grid)(w, 2, y+y0, x+x0) * inv_taper * phasor;
-                    (*m_grid)(w, 3, y+y0, x+x0) = (*m_grid)(w, 3, y+y0, x+x0) * inv_taper * phasor;
-
-                    // Add to first w-plane
-                    if (w > 0) {
-                        #pragma unroll
-                        for (int pol = 0; pol < 4; pol++) {
-                            (*m_grid)(0, pol, y+y0, x+x0) += (*m_grid)(w, pol, y+y0, x+x0);
-                        }
-                    }
+                        auto value = (*m_grid)(w, pol, y + y0, x + x0);
+                        w_row_real[pol][x] = value.real();
+                        w_row_imag[pol][x] = value.imag();
+                    } // end for pol
                 } // end for x
-            } // end for y
-        } // end for w
+
+                // Compute phasor
+                float phasor_real[m_size];
+                float phasor_imag[m_size];
+                for (int x = 0; x < m_size; x++)
+                {
+                    float phase = phases[x];
+                    phasor_real[x] = cosf(phase);
+                    phasor_imag[x] = sinf(phase);
+                } // end for x
+
+                // Compute current row of w-plane
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                    for (int x = 0; x < m_size; x++)
+                    {
+                        float value_real    = w_row_real[pol][x] * inv_tapers[x];
+                        float value_imag    = w_row_imag[pol][x] * inv_tapers[x];
+                        float phasor_real_  = phasor_real[x];
+                        float phasor_imag_  = phasor_imag[x];
+                        w_row_real[pol][x]  = value_real * phasor_real_;
+                        w_row_imag[pol][x]  = value_real * phasor_imag_;
+                        w_row_real[pol][x] -= value_imag * phasor_imag_;
+                        w_row_imag[pol][x] += value_imag * phasor_real_;
+                    } // end for x
+                } // end for pol
+
+                // Add to first w-plane
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                    for (int x = 0; x < m_size; x++)
+                    {
+                        w0_row_real[pol][x] += w_row_real[pol][x];
+                        w0_row_imag[pol][x] += w_row_imag[pol][x];
+                    } // end for x
+                } // end for pol
+            } // end for w
+
+            // Copy grid to image
+            for (int x = 0; x < m_size; x++)
+            {
+                float polXX_real = w0_row_real[0][x];
+                float polXY_real = w0_row_real[1][x];
+                float polYX_real = w0_row_real[2][x];
+                float polYY_real = w0_row_real[3][x];
+                float polXY_imag = w0_row_imag[1][x];
+                float polYX_imag = w0_row_imag[2][x];
+                float stokesI = 0.5 * ( polXX_real + polYY_real);
+                float stokesQ = 0.5 * ( polXX_real - polYY_real);
+                float stokesU = 0.5 * ( polXY_real + polYX_real);
+                float stokesV = 0.5 * (-polXY_imag + polYX_imag);
+                image_array(0, y, x) = stokesI;
+                image_array(1, y, x) = stokesQ;
+                image_array(2, y, x) = stokesU;
+                image_array(3, y, x) = stokesV;
+            } // end for x
+        } // end for y
         runtime_stacking += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
         std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
-#endif
-
-
-        // Copy grid to image
-#if ENABLE_VERBOSE_TIMING
-        std::cout << "set image from grid";
-#endif
-        double runtime_copy = -omp_get_wtime();
-        #pragma omp parallel for
-        for (int y = 0; y < m_size; y++) {
-            for (int x = 0; x < m_size; x++) {
-            // Stokes I
-            image[0*m_size*m_size + m_size*y+x] = 0.5 * ((*m_grid)(0,0,y+y0,x+x0).real() + (*m_grid)(0,3,y+y0,x+x0).real());
-            // Stokes Q
-            image[1*m_size*m_size + m_size*y+x] = 0.5 * ((*m_grid)(0,0,y+y0,x+x0).real() - (*m_grid)(0,3,y+y0,x+x0).real());
-            // Stokes U
-            image[2*m_size*m_size + m_size*y+x] = 0.5 * ((*m_grid)(0,1,y+y0,x+x0).real() + (*m_grid)(0,2,y+y0,x+x0).real());
-            // Stokes V
-            image[3*m_size*m_size + m_size*y+x] = 0.5 * (-(*m_grid)(0,1,y+y0,x+x0).imag() + (*m_grid)(0,2,y+y0,x+x0).imag());
-
-            // Check for NaN
-            #if DEBUG_NAN_GET_IMAGE
-            if (std::isnan(image[0*m_size*m_size + m_size*y+x]) ||
-                std::isnan(image[1*m_size*m_size + m_size*y+x]) ||
-                std::isnan(image[2*m_size*m_size + m_size*y+x]) ||
-                std::isnan(image[3*m_size*m_size + m_size*y+x]))
-            {
-                std::cerr << "NaN detected during setting stokes!" << std::endl;
-                std::raise(SIGFPE);
-            }
-            #endif
-
-            } // end for x
-        } // end for y
-        runtime_copy += omp_get_wtime();
-#if ENABLE_VERBOSE_TIMING
-        std::cout << ", runtime: " << runtime_copy << std::endl;
 #endif
 
         // Report overall runtime
