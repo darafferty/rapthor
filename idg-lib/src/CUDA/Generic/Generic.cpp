@@ -168,13 +168,11 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Id for double-buffering
-                unsigned local_id = 0;
-
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
@@ -265,9 +263,6 @@ namespace idg {
 
                     // Wait for adder to finish
                     gpuFinished[job_id]->synchronize();
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
 
                 // Wait for all reports to be printed
@@ -408,13 +403,12 @@ namespace idg {
                 startStates[device_id] = device.measure();
                 startStates[nr_devices] = hostPowerSensor->read();
 
-                // Id for double-buffering
-                unsigned local_id = 0;
 
                 // Iterate all jobs
                 for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-
-                    unsigned job_id_next = job_id + 1;
+                    // Id for double-buffering
+                    unsigned local_id      = job_id % 2;
+                    unsigned job_id_next   = job_id + 1;
                     unsigned local_id_next = (local_id + 1) % 2;
 
                     // Get parameters for current job
@@ -505,9 +499,6 @@ namespace idg {
 
                     // Report performance
                     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
-
-                    // Update local id
-                    local_id = local_id_next;
                 } // end for bl
 
                 // Wait for all visibilities to be copied
