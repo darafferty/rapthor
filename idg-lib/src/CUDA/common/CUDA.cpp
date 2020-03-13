@@ -355,6 +355,23 @@ namespace idg {
                         device.allocate_device_metadata(t, sizeof_metadata);
                     }
 
+                    // Initialize job data
+                    jobs.clear();
+                    for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+                        unsigned int first_bl, last_bl, current_nr_baselines;
+                        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl, &current_nr_baselines);
+                        if (current_nr_baselines == 0) continue;
+                        JobData job;
+                        job.current_time_offset  = first_bl * nr_timesteps;
+                        job.current_nr_baselines = current_nr_baselines;
+                        job.current_nr_subgrids  = plan.get_nr_subgrids(first_bl, current_nr_baselines);
+                        job.current_nr_timesteps = plan.get_nr_timesteps(first_bl, current_nr_baselines);
+                        job.metadata_ptr         = (void *) plan.get_metadata_ptr(first_bl);
+                        job.uvw_ptr              = uvw.data(first_bl, 0);
+                        job.visibilities_ptr     = visibilities.data(first_bl, 0, 0);
+                        jobs.push_back(job);
+                    }
+
                     // Plan subgrid fft
                     device.plan_subgrid_fft(subgrid_size, max_nr_subgrids);
 

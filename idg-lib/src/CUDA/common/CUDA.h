@@ -110,6 +110,8 @@ namespace idg {
                         void *visibilities_ptr;
                     };
 
+                    std::vector<JobData> jobs;
+
                 private:
                     ProxyInfo &mInfo;
                     std::vector<idg::kernel::cuda::InstanceCUDA*> devices;
