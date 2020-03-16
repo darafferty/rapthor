@@ -311,19 +311,6 @@ namespace api {
         size_t n_old_aterms = m_aterm_offsets.size()-1;
         size_t atermBlockSize = m_nrStations*m_subgridsize*m_subgridsize;
 
-        // Check for NaN values
-        idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_((idg::Matrix2x2<std::complex<float>> *) aterms, 1, m_nrStations, m_subgridsize, m_subgridsize);
-        if (aterms_.contains_nan()) {
-            std::cerr << "NaN detected in set_aterms!" << std::endl;
-            std::raise(SIGFPE);
-        }
-
-        // Check for infinite values
-        if (aterms_.contains_inf()) {
-            std::cerr << "inf detected in set_aterms!" << std::endl;
-            std::raise(SIGFPE);
-        }
-
         // Overwrite last a-term if new timeindex same as one but last element aterm_offsets
         if (local_time != m_aterm_offsets[m_aterm_offsets.size()-2]) {
           assert(local_time > m_aterm_offsets[m_aterm_offsets.size()-2]);

@@ -10,7 +10,7 @@ __shared__ float4 shared[3][BATCH_SIZE];
 */
 template<int current_nr_channels, int unroll_channels>
 __device__ void kernel_degridder_(
-    const int                        time_offset_job,
+    const int                         time_offset_job,
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
