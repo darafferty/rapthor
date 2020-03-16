@@ -586,6 +586,19 @@ namespace idg {
                     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities, sizeof_visibilities);
                     dtohstream.record(*outputCopied[job_id]);
 
+                    // Check for NaN visibilities
+                    Array3D<Visibility<std::complex<float>>> visibilities_job((Visibility<std::complex<float>> *) visibilities_ptr, current_nr_baselines, nr_timesteps, nr_channels);
+                    for (unsigned int i = 0; i < current_nr_baselines; i++) {
+                        Array2D<Visibility<std::complex<float>>> visibilities_bl(visibilities_job.data(i, 0, 0), nr_timesteps, nr_channels);
+                        if (visibilities_bl.contains_nan()) {
+                            printf("job = %d, visibilities %d / %d contains nan\n", job_id, i, current_nr_baselines);
+                            visibilities_bl.zero();
+                        }
+                    }
+                    if (visibilities_job.contains_nan()) {
+                        throw std::runtime_error("NaN detected in visibilities!");
+                    }
+
                     // Report performance
                     device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps, jobs[job_id].current_nr_subgrids);
                 } // end for bl
