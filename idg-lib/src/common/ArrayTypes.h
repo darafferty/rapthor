@@ -169,21 +169,6 @@ class ArrayXD {
             return m_shape[n];
         }
 
-        size_t index(
-            std::vector<size_t> idx) const
-        {
-            assert(idx.size() == m_shape.size());
-            size_t result = 0;
-            for (unsigned i = 0; i < idx.size(); i++) {
-                size_t temp = idx[i];
-                for (unsigned j = i + 1; j < idx.size(); j++) {
-                    temp *= m_shape[j];
-                }
-                result += temp;
-            }
-            return result;
-        }
-
     protected:
         std::vector<size_t> m_shape;
         std::shared_ptr<auxiliary::Memory> m_memory;
@@ -244,25 +229,32 @@ class Array2D : public ArrayXD<T> {
         size_t get_x_dim() const { return this->get_n_dim(1); }
         size_t get_y_dim() const { return this->get_n_dim(0); }
 
+        inline size_t index(
+            size_t y,
+            size_t x) const
+        {
+            return y * this->m_shape[1] + x;
+        }
+
         T* data(
             size_t y = 0,
             size_t x = 0) const
         {
-            return &this->m_buffer[this->index({y, x})];
+            return &this->m_buffer[this->index(y, x)];
         }
 
         const T& operator()(
             size_t y,
             size_t x) const
         {
-            return this->m_buffer[this->index({y, x})];
+            return this->m_buffer[this->index(y, x)];
         }
 
         T& operator()(
             size_t y,
             size_t x)
         {
-            return this->m_buffer[this->index({y, x})];
+            return this->m_buffer[this->index(y, x)];
         }
 };
 
@@ -299,12 +291,22 @@ class Array3D : public ArrayXD<T> {
         size_t get_y_dim() const { return this->get_n_dim(1); }
         size_t get_z_dim() const { return this->get_n_dim(0); }
 
+        inline size_t index(
+            size_t z,
+            size_t y,
+            size_t x) const
+        {
+            return z * this->m_shape[1] * this->m_shape[2] +
+                                      y * this->m_shape[2] +
+                                                         x;
+        }
+
         T* data(
             size_t z = 0,
             size_t y = 0,
             size_t x = 0) const
         {
-            return &this->m_buffer[this->index({z, y, x})];
+            return &this->m_buffer[index(z, y, x)];
         }
 
         const T& operator()(
@@ -312,7 +314,7 @@ class Array3D : public ArrayXD<T> {
             size_t y,
             size_t x) const
         {
-            return this->m_buffer[this->index({z, y, x})];
+            return this->m_buffer[this->index(z, y, x)];
         }
 
         T& operator()(
@@ -320,7 +322,7 @@ class Array3D : public ArrayXD<T> {
             size_t y,
             size_t x)
         {
-            return this->m_buffer[this->index({z, y, x})];
+            return this->m_buffer[this->index(z, y, x)];
         }
 };
 
@@ -363,13 +365,25 @@ class Array4D : public ArrayXD<T> {
         size_t get_z_dim() const { return this->get_n_dim(1); }
         size_t get_w_dim() const { return this->get_n_dim(0); }
 
+        inline size_t index(
+            size_t w,
+            size_t z,
+            size_t y,
+            size_t x) const
+        {
+            return w * this->m_shape[1] * this->m_shape[2] * this->m_shape[3] +
+                                      z * this->m_shape[2] * this->m_shape[3] +
+                                                         y * this->m_shape[3] +
+                                                                            x;
+        }
+
         T* data(
             size_t w = 0,
             size_t z = 0,
             size_t y = 0,
             size_t x = 0) const
         {
-            return &this->m_buffer[this->index({w, z, y, x})];
+            return &this->m_buffer[index(w, z, y, x)];
         }
 
         const T& operator()(
@@ -378,7 +392,7 @@ class Array4D : public ArrayXD<T> {
             size_t y,
             size_t x) const
         {
-            return this->m_buffer[this->index({w, z, y, x})];
+            return this->m_buffer[index(w, z, y, x)];
         }
 
         T& operator()(
@@ -387,7 +401,7 @@ class Array4D : public ArrayXD<T> {
             size_t y,
             size_t x)
         {
-            return this->m_buffer[this->index({w, z, y, x})];
+            return this->m_buffer[index(w, z, y, x)];
         }
 };
 
