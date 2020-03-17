@@ -164,6 +164,14 @@ int compare_to_reference(float tol = 1000*std::numeric_limits<float>::epsilon())
         reference.allocate_grid(1, nr_correlations, grid_size, grid_size);
     clog << endl;
 
+    // Flag the first visibilities by setting UVW coordinate to infinity
+    idg::UVW<float> infinity = { std::numeric_limits<float>::infinity(), 0, 0};
+    for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+        for (unsigned int time = 0; time < nr_timesteps / 10; time++) {
+            uvw(bl, time) = infinity;
+        }
+    }
+
     // Bind the grids to the respective proxies
     optimized.set_grid(grid);
     reference.set_grid(grid_ref);
