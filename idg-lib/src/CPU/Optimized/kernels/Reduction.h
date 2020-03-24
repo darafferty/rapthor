@@ -124,7 +124,7 @@ inline void compute_reduction_scalar(
     output[3] += {output_yy_real, output_yy_imag};
 } // end compute_reduction_scalar
 
-inline void compute_reduction_avx2(
+inline void compute_reduction_avx_fma(
     int *offset,
     const int n,
     const float *input_xx_real,
@@ -139,7 +139,7 @@ inline void compute_reduction_avx2(
     const float *phasor_imag,
     idg::float2 output[NR_POLARIZATIONS])
 {
-#if defined(__AVX2__)
+#if defined(__FMA__)
     const int vector_length = 8;
 
     __m256 output_xx_r = _mm256_setzero_ps();
@@ -205,7 +205,7 @@ inline void compute_reduction_avx2(
 
     *offset += vector_length * ((n - *offset) / vector_length);
 #endif
-} // end compute_reduction_avx2
+} // end compute_reduction_avx_fma
 
 #if defined(__PPC__)
 inline float vec_sum(vector float a) {
@@ -503,8 +503,8 @@ inline void compute_reduction(
             phasor_real, phasor_imag,
             output);
 
-    // Vectorized loop, 8-elements, AVX2
-    compute_reduction_avx2(
+    // Vectorized loop, 8-elements, AVX FMA
+    compute_reduction_avx_fma(
             &offset, n,
             input_xx_real, input_xy_real, input_yx_real, input_yy_real,
             input_xx_imag, input_xy_imag, input_yx_imag, input_yy_imag,

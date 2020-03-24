@@ -97,7 +97,7 @@ inline void compute_sincos_avx(
 	    __m256  f1 = _mm256_mul_ps(f0, two_pi_inv_f);    // divide input by 2 * pi
 	    __m256i i0 = _mm256_cvtps_epi32(f1);             // get integer part
 	    __m256  f2 = _mm256_cvtepi32_ps(i0);             // convert to float
-        #if defined(__AVX2__)
+        #if defined(__FMA__)
         __m256  f4 = _mm256_fnmadd_ps(f2, two_pi_f, f0); // normalize input
         #else
 	    __m256  f3 = _mm256_mul_ps(f2, two_pi_f);        // get multiple of 2 * pi
