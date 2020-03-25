@@ -129,13 +129,6 @@ if (BUILD_LIB_CUDA)
 find_package(CUDA QUIET)
 endif()
 
-# Boost
-# used for external/Stopwatch
-find_package(Boost COMPONENTS date_time QUIET)
-if (Boost_FOUND)
-set(HAVE_BOOST TRUE)
-endif()
-
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
 
 # add main include folder
