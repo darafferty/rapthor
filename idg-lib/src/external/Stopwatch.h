@@ -19,16 +19,7 @@ class Stopwatch{
 		virtual void Reset() = 0;
 
 		virtual std::string ToString() const = 0;
-		virtual std::string ToShortString() const = 0;
 		virtual long double Seconds() const = 0;
-
-		virtual std::string ToDaysString() const = 0;
-		virtual std::string ToHoursString() const = 0;
-		virtual std::string ToMinutesString() const = 0;
-		virtual std::string ToSecondsString() const = 0;
-		virtual std::string ToMilliSecondsString() const = 0;
-		virtual std::string ToMicroSecondsString() const = 0;
-		virtual std::string ToNanoSecondsString() const = 0;
 
     protected:
         Stopwatch() {}
