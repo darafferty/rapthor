@@ -12,11 +12,6 @@
 
 #include <omp.h>
 
-/*
- * Enable checking for NaN values
- */
-#define DEBUG_NAN_FLUSH_THREAD_WORKER
-
 using namespace std;
 
 namespace idg {
@@ -289,15 +284,6 @@ namespace api {
             options);
         m_bufferset->m_plan_watch->Pause();
 
-        // Check data for NaN values
-        #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
-        if (m_grid->contains_nan()) {
-            std::cerr << "NaN detected in m_grid!" << std::endl;
-            BufferSetImpl::write_grid(*m_grid);
-            std::raise(SIGFPE);
-        }
-        #endif
-
         // Run gridding
         m_bufferset->m_gridding_watch->Start();
         m_proxy->set_grid(m_grid);
@@ -318,15 +304,6 @@ namespace api {
             m_spheroidal);
         m_proxy->get_grid();
         m_bufferset->m_gridding_watch->Pause();
-
-        // Check grid for NaN values
-        #if defined(DEBUG_NAN_FLUSH_THREAD_WORKER)
-        if (m_grid->contains_nan()) {
-            std::cerr << "NaN detected in m_grid!" << std::endl;
-            BufferSetImpl::write_grid(*m_grid);
-            std::raise(SIGFPE);
-        }
-        #endif
     }
 
     // Must be called whenever the buffer is full or no more data added
