@@ -333,19 +333,18 @@ namespace idg {
             for (unsigned int bl = 0; bl < nr_baselines; bl++) {
                 unsigned int antenna1 = baselines(bl).first;
                 unsigned int antenna2 = baselines(bl).second;
+                if (antenna1 == antenna2) continue;
                 unsigned int bl1      = antenna2 - (antenna2>antenna1);
 
                 baselines1(antenna1, bl1) = {antenna1, antenna2};
 
                 for (unsigned int time = 0; time < nr_timesteps; time++) {
                     uvw1(antenna1, bl1, time) = uvw(bl, time);
-
                     for (unsigned int channel = 0; channel < nr_channels; channel++) {
                         visibilities1(antenna1, bl1, time, channel) = visibilities(bl, time, channel);
                         weights1(antenna1, bl1, time, channel) = weights(bl, time, channel);
                     }
                 }
-
 
                 // Also add swapped baseline
                 // Need to conjugate visibilities
@@ -370,7 +369,6 @@ namespace idg {
                     } // end for channel
                 } // end for time
             } // end for baseline
-
 
             // Set Plan options
             Plan::Options options;
