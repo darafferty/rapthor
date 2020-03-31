@@ -1,8 +1,5 @@
 # Image Domain Gridding (IDG)
 
-[![pipeline status](https://gitlab.com/astron-idg/idg/badges/master/pipeline.svg)](https://gitlab.com/astron-idg/idg/commits/master)
-
-
 This repository will contain the three subprojects of Image Domain Gridding:
  * [idg-lib](https://gitlab.com/astron-idg/idg-lib): The core library
  * [idg-bin](https://gitlab.com/astron-idg/idg-bin): Examples in C++ and Python
