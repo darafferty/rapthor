@@ -700,7 +700,13 @@ namespace idg {
         void Proxy::set_grid(
             Grid& grid)
         {
-            std::shared_ptr<Grid> grid_ptr(new Grid(grid.data(), grid.shape()));
+            auto nr_w_layers     = grid.get_w_dim();
+            auto nr_correlations = grid.get_z_dim();
+            auto grid_height     = grid.get_y_dim();
+            auto grid_width      = grid.get_x_dim();
+            assert(nr_correlations == NR_CORRELATIONS);
+            assert(grid_height == grid_width);
+            std::shared_ptr<Grid> grid_ptr(new Grid(grid.data(), nr_w_layers, nr_correlations, grid_height, grid_width));
             m_grid = grid_ptr;
         }
 

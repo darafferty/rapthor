@@ -12,81 +12,74 @@
 namespace idg {
 
 template<class T>
-class ArrayXD {
+class Array1D {
     public:
-        ArrayXD() :
-            m_shape(0),
+        Array1D() :
+            m_x_dim(0),
             m_memory(0),
             m_buffer(nullptr)
         {
         }
 
-        ArrayXD(
-            std::vector<size_t> shape) :
-            m_shape(shape),
-            m_memory(std::shared_ptr<auxiliary::Memory>(new auxiliary::AlignedMemory(size() * sizeof(T)))),
+        Array1D(
+            size_t size) :
+            m_x_dim(size),
+            m_memory(std::shared_ptr<auxiliary::Memory>(new auxiliary::AlignedMemory(size * sizeof(T)))),
             m_buffer((T*) m_memory->get())
         {
         }
 
-        ArrayXD(
+        Array1D(
             T* data,
-            std::vector<size_t> shape) :
-            m_shape(shape),
+            size_t size) :
+            m_x_dim(size),
             m_memory(nullptr),
             m_buffer(data)
         {
         }
 
-        ArrayXD(
+        Array1D(
             std::shared_ptr<auxiliary::Memory> memory,
-            std::vector<size_t> shape) :
-            m_shape(shape),
+            size_t size) :
+            m_x_dim(size),
             m_memory(memory),
             m_buffer((T*) m_memory->get())
         {
         }
 
-        ArrayXD(const ArrayXD& other) = delete;
-        ArrayXD& operator=(const ArrayXD& rhs) = delete;
+        Array1D(const Array1D& other) = delete;
+        Array1D& operator=(const Array1D& rhs) = delete;
 
-        ArrayXD(ArrayXD&& other) :
-            m_shape(other.m_shape),
+        Array1D(Array1D&& other) :
+            m_x_dim(other.m_x_dim),
             m_memory(other.m_memory),
             m_buffer(other.m_buffer)
         {
             other.m_buffer = nullptr;
         }
 
-        // move assignment operator
-        ArrayXD& operator=(ArrayXD&& other)
+        Array1D& operator=(Array1D&& other)
         {
-            m_shape = other.m_shape;
+            m_x_dim = other.m_x_dim;
+            m_memory = other.m_memory;
             m_buffer = other.m_buffer;
-            m_memory =  other.m_memory;
             other.m_buffer = nullptr;
             return *this;
         }
 
-        ~ArrayXD() {}
-
-        std::vector<size_t> shape() const
+        virtual size_t size() const
         {
-            return m_shape;
+            return m_x_dim;
         }
 
-        size_t size() const
-        {
-            size_t result = 1;
-            for (auto n : m_shape) {
-                result *= n;
-            }
-            return result;
-        }
-
-        size_t bytes() const
+        virtual size_t bytes() const
         {
             return size() * sizeof(T);
+        }
+
+        size_t get_x_dim() const
+        {
+            return m_x_dim;
         }
 
         T* data(
@@ -154,121 +147,122 @@ class ArrayXD {
             return m_buffer[i];
         }
 
-        // TODO: if the buffer is not owned, there is no guarantee that it won't be destroyed.
-        // Need to return a copy in that case.
         const std::shared_ptr<const T> get() const
         {
             return m_buffer;
         }
 
     protected:
-        size_t get_n_dim(
-            size_t n) const
-        {
-            assert(n < m_shape.size());
-            return m_shape[n];
-        }
-
-    protected:
-        std::vector<size_t> m_shape;
+        size_t m_x_dim;
         std::shared_ptr<auxiliary::Memory> m_memory;
         T* m_buffer;
-        bool m_delete_buffer;
 };
 
-template<class T>
-class Array1D : public ArrayXD<T> {
-    using ArrayXD<T>::ArrayXD;
-
-    public:
-        Array1D(
-            size_t width = 0) :
-            ArrayXD<T>({width})
-        {}
-
-        Array1D(
-            T* data,
-            size_t width) :
-            ArrayXD<T>(data, {width})
-        {}
-
-        Array1D(
-            std::shared_ptr<auxiliary::Memory> memory,
-            size_t width) :
-            ArrayXD<T>(memory, {width})
-        {}
-
-        size_t get_x_dim() const { return this->get_n_dim(0); }
-};
 
 template<class T>
-class Array2D : public ArrayXD<T> {
-    using ArrayXD<T>::ArrayXD;
+class Array2D : public Array1D<T> {
 
     public:
         Array2D(
             size_t y_dim = 0,
             size_t x_dim = 0) :
-            ArrayXD<T>({y_dim, x_dim})
-        {}
+            Array1D<T>(y_dim * x_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
+        {
+        }
 
         Array2D(
             T* data,
             size_t y_dim,
             size_t x_dim) :
-            ArrayXD<T>(data, {y_dim, x_dim})
+            Array1D<T>(data, y_dim * x_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
         Array2D(
             std::shared_ptr<auxiliary::Memory> memory,
             size_t y_dim,
             size_t x_dim) :
-            ArrayXD<T>(memory, {y_dim, x_dim})
+            Array1D<T>(memory, y_dim * x_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
-        size_t get_x_dim() const { return this->get_n_dim(1); }
-        size_t get_y_dim() const { return this->get_n_dim(0); }
+        Array2D(Array2D&& other)
+        {
+            this->m_buffer = other.m_buffer;
+            this->m_memory = other.m_memory;
+            other.m_buffer = nullptr;
+            m_y_dim = other.m_y_dim;
+            m_x_dim = other.m_x_dim;
+        }
+
+        Array2D& operator=(Array2D&& other)
+        {
+            this->m_buffer = other.m_buffer;
+            this->m_memory = other.m_memory;
+            other.m_buffer = nullptr;
+            m_y_dim = other.m_y_dim;
+            m_x_dim = other.m_x_dim;
+            return *this;
+        }
+
+        size_t get_x_dim() const { return m_x_dim; }
+        size_t get_y_dim() const { return m_y_dim; }
+
+        virtual size_t size() const override
+        {
+            return m_y_dim * m_x_dim;
+        }
 
         inline size_t index(
             size_t y,
             size_t x) const
         {
-            return y * this->m_shape[1] + x;
+            return y * m_x_dim + x;
         }
 
         T* data(
             size_t y = 0,
             size_t x = 0) const
         {
-            return &this->m_buffer[this->index(y, x)];
+            return &this->m_buffer[index(y, x)];
         }
 
         const T& operator()(
             size_t y,
             size_t x) const
         {
-            return this->m_buffer[this->index(y, x)];
+            return this->m_buffer[index(y, x)];
         }
 
         T& operator()(
             size_t y,
             size_t x)
         {
-            return this->m_buffer[this->index(y, x)];
+            return this->m_buffer[index(y, x)];
         }
+
+    protected:
+        size_t m_y_dim;
+        size_t m_x_dim;
 };
 
 
 template<class T>
-class Array3D : public ArrayXD<T> {
-    using ArrayXD<T>::ArrayXD;
+class Array3D : public Array1D<T> {
 
     public:
         Array3D(
             size_t z_dim = 0,
             size_t y_dim = 0,
             size_t x_dim = 0) :
-            ArrayXD<T>({z_dim, y_dim, x_dim})
+            Array1D<T>(z_dim * y_dim * x_dim),
+            m_z_dim(z_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
         Array3D(
@@ -276,7 +270,10 @@ class Array3D : public ArrayXD<T> {
             size_t z_dim,
             size_t y_dim,
             size_t x_dim) :
-            ArrayXD<T>(data, {z_dim, y_dim, x_dim})
+            Array1D<T>(data, z_dim * y_dim * x_dim),
+            m_z_dim(z_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
         Array3D(
@@ -284,21 +281,50 @@ class Array3D : public ArrayXD<T> {
             size_t z_dim,
             size_t y_dim,
             size_t x_dim) :
-            ArrayXD<T>(memory, {z_dim, y_dim, x_dim})
+            Array1D<T>(memory, z_dim * y_dim * x_dim),
+            m_z_dim(z_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
-        size_t get_x_dim() const { return this->get_n_dim(2); }
-        size_t get_y_dim() const { return this->get_n_dim(1); }
-        size_t get_z_dim() const { return this->get_n_dim(0); }
+        Array3D(Array3D&& other)
+        {
+            this->m_memory = other.m_memory;
+            this->m_buffer = other.m_buffer;
+            other.m_buffer = nullptr;
+            m_z_dim = other.m_z_dim;
+            m_y_dim = other.m_y_dim;
+            m_x_dim = other.m_x_dim;
+        }
+
+        Array3D& operator=(Array3D&& other)
+        {
+            this->m_buffer = other.m_buffer;
+            this->m_memory = other.m_memory;
+            other.m_buffer = nullptr;
+            m_z_dim = other.m_z_dim;
+            m_y_dim = other.m_y_dim;
+            m_x_dim = other.m_x_dim;
+            return *this;
+        }
+
+        size_t get_x_dim() const { return m_x_dim; }
+        size_t get_y_dim() const { return m_y_dim; }
+        size_t get_z_dim() const { return m_z_dim; }
+
+        virtual size_t size() const override
+        {
+            return m_z_dim * m_y_dim * m_x_dim;
+        }
 
         inline size_t index(
             size_t z,
             size_t y,
             size_t x) const
         {
-            return z * this->m_shape[1] * this->m_shape[2] +
-                                      y * this->m_shape[2] +
-                                                         x;
+            return z * m_y_dim * m_x_dim +
+                             y * m_x_dim +
+                                        x;
         }
 
         T* data(
@@ -314,7 +340,7 @@ class Array3D : public ArrayXD<T> {
             size_t y,
             size_t x) const
         {
-            return this->m_buffer[this->index(z, y, x)];
+            return this->m_buffer[index(z, y, x)];
         }
 
         T& operator()(
@@ -322,24 +348,30 @@ class Array3D : public ArrayXD<T> {
             size_t y,
             size_t x)
         {
-            return this->m_buffer[this->index(z, y, x)];
+            return this->m_buffer[index(z, y, x)];
         }
+
+    protected:
+        size_t m_z_dim;
+        size_t m_y_dim;
+        size_t m_x_dim;
 };
 
 
 template<class T>
-class Array4D : public ArrayXD<T> {
-    using ArrayXD<T>::ArrayXD;
+class Array4D : public Array1D<T> {
 
     public:
-        Array4D() {};
-
         Array4D(
-            size_t w_dim,
-            size_t z_dim,
-            size_t y_dim,
-            size_t x_dim) :
-            ArrayXD<T>({w_dim, z_dim, y_dim, x_dim})
+            size_t w_dim = 0,
+            size_t z_dim = 0,
+            size_t y_dim = 0,
+            size_t x_dim = 0) :
+            Array1D<T>(w_dim * z_dim * y_dim * x_dim),
+            m_w_dim(w_dim),
+            m_z_dim(z_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
         Array4D(
@@ -348,7 +380,11 @@ class Array4D : public ArrayXD<T> {
             size_t z_dim,
             size_t y_dim,
             size_t x_dim) :
-            ArrayXD<T>(data, {w_dim, z_dim, y_dim, x_dim})
+            Array1D<T>(data, w_dim * z_dim * y_dim * x_dim),
+            m_w_dim(w_dim),
+            m_z_dim(z_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
         Array4D(
@@ -357,13 +393,45 @@ class Array4D : public ArrayXD<T> {
             size_t z_dim,
             size_t y_dim,
             size_t x_dim) :
-            ArrayXD<T>(memory, {w_dim, z_dim, y_dim, x_dim})
+            Array1D<T>(memory, w_dim * z_dim * y_dim * x_dim),
+            m_w_dim(w_dim),
+            m_z_dim(z_dim),
+            m_y_dim(y_dim),
+            m_x_dim(x_dim)
         {}
 
-        size_t get_x_dim() const { return this->get_n_dim(3); }
-        size_t get_y_dim() const { return this->get_n_dim(2); }
-        size_t get_z_dim() const { return this->get_n_dim(1); }
-        size_t get_w_dim() const { return this->get_n_dim(0); }
+        Array4D(Array4D&& other)
+        {
+            this->m_memory = other.m_memory;
+            this->m_buffer = other.m_buffer;
+            other.m_buffer = nullptr;
+            m_w_dim = other.m_w_dim;
+            m_z_dim = other.m_z_dim;
+            m_y_dim = other.m_y_dim;
+            m_x_dim = other.m_x_dim;
+        }
+
+        Array4D& operator=(Array4D&& other)
+        {
+            this->m_buffer = other.m_buffer;
+            this->m_memory = other.m_memory;
+            other.m_buffer = nullptr;
+            m_w_dim = other.m_w_dim;
+            m_z_dim = other.m_z_dim;
+            m_y_dim = other.m_y_dim;
+            m_x_dim = other.m_x_dim;
+            return *this;
+        }
+
+        size_t get_x_dim() const { return m_x_dim; }
+        size_t get_y_dim() const { return m_y_dim; }
+        size_t get_z_dim() const { return m_z_dim; }
+        size_t get_w_dim() const { return m_w_dim; }
+
+        virtual size_t size() const override
+        {
+            return m_w_dim * m_z_dim * m_y_dim * m_x_dim;
+        }
 
         inline size_t index(
             size_t w,
@@ -371,10 +439,10 @@ class Array4D : public ArrayXD<T> {
             size_t y,
             size_t x) const
         {
-            return w * this->m_shape[1] * this->m_shape[2] * this->m_shape[3] +
-                                      z * this->m_shape[2] * this->m_shape[3] +
-                                                         y * this->m_shape[3] +
-                                                                            x;
+            return w * m_z_dim * m_y_dim * m_x_dim +
+                             z * m_y_dim * m_x_dim +
+                                       y * m_x_dim +
+                                                  x;
         }
 
         T* data(
@@ -403,6 +471,12 @@ class Array4D : public ArrayXD<T> {
         {
             return this->m_buffer[index(w, z, y, x)];
         }
+
+    protected:
+        size_t m_w_dim;
+        size_t m_z_dim;
+        size_t m_y_dim;
+        size_t m_x_dim;
 };
 
 using Grid = Array4D<std::complex<float>>;

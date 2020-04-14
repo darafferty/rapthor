@@ -18,9 +18,7 @@ namespace idg {
             // Constructor
             CPU::CPU(
                 std::vector<std::string> libraries):
-                kernels(libraries),
-                itsWTiles(0),
-                itsWTilesBuffer(0)
+                kernels(libraries)
             {
                 #if defined(DEBUG)
                 std::cout << __func__ << std::endl;
