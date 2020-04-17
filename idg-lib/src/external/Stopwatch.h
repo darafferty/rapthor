@@ -20,6 +20,7 @@ class Stopwatch{
 
 		virtual std::string ToString() const = 0;
 		virtual long double Seconds() const = 0;
+		virtual unsigned int Count() const = 0;
 
     protected:
         Stopwatch() {}
