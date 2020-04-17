@@ -381,8 +381,8 @@ namespace api {
         #pragma omp parallel for
         for (int y = 0; y < m_size; y++)
         {
-            float w0_row_real[NR_CORRELATIONS][m_size];
-            float w0_row_imag[NR_CORRELATIONS][m_size];
+            float w0_row_real[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+            float w0_row_imag[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
             memset(w0_row_real, 0, NR_CORRELATIONS * m_size * sizeof(float));
             memset(w0_row_imag, 0, NR_CORRELATIONS * m_size * sizeof(float));
 
@@ -423,15 +423,15 @@ namespace api {
                 } // end for x
 
                 // Compute inverse spheroidal
-                float inv_tapers[m_size];
+                float inv_tapers[m_size] __attribute__((aligned(64)));
                 for (int x = 0; x < m_size; x++)
                 {
                     inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
                 } // end for x
 
                 // Compute phasor
-                float phasor_real[m_size];
-                float phasor_imag[m_size];
+                float phasor_real[m_size] __attribute__((aligned(64)));
+                float phasor_imag[m_size] __attribute__((aligned(64)));
                 for (int x = 0; x < m_size; x++)
                 {
                     float phase = phases[x];
@@ -440,8 +440,8 @@ namespace api {
                 } // end for x
 
                 // Compute current row of w-plane
-                float w_row_real[NR_CORRELATIONS][m_size];
-                float w_row_imag[NR_CORRELATIONS][m_size];
+                float w_row_real[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+                float w_row_imag[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
 
                 for (int pol = 0; pol < NR_CORRELATIONS; pol++)
                 {
@@ -561,10 +561,10 @@ namespace api {
         #pragma omp parallel for
         for (int y = 0; y < m_size; y++)
         {
-            float w0_row_real[NR_CORRELATIONS][m_size];
-            float w0_row_imag[NR_CORRELATIONS][m_size];
-            float w_row_real[NR_CORRELATIONS][m_size];
-            float w_row_imag[NR_CORRELATIONS][m_size];
+            float w0_row_real[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+            float w0_row_imag[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+            float  w_row_real[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+            float  w_row_imag[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
             memset(w0_row_real, 0, NR_CORRELATIONS * m_size * sizeof(float));
             memset(w0_row_imag, 0, NR_CORRELATIONS * m_size * sizeof(float));
 
@@ -573,7 +573,7 @@ namespace api {
             for (int w = 0; w < nr_w_layers; w++)
             {
                 // Compute phase
-                float phases[m_size];
+                float phases[m_size] __attribute__((aligned(64)));
                 for (int x = 0; x < m_size; x++)
                 {
                     const float w_offset = (w + 0.5) * m_w_step;
@@ -586,7 +586,7 @@ namespace api {
                 }
 
                 // Compute inverse spheroidal
-                float inv_tapers[m_size];
+                float inv_tapers[m_size] __attribute__((aligned(64)));
                 for (int x = 0; x < m_size; x++)
                 {
                     inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
@@ -604,8 +604,8 @@ namespace api {
                 } // end for x
 
                 // Compute phasor
-                float phasor_real[m_size];
-                float phasor_imag[m_size];
+                float phasor_real[m_size] __attribute__((aligned(64)));
+                float phasor_imag[m_size] __attribute__((aligned(64)));
                 for (int x = 0; x < m_size; x++)
                 {
                     float phase = phases[x];
