@@ -640,10 +640,10 @@ namespace api {
                 float polYY_real = w0_row_real[3][x];
                 float polXY_imag = w0_row_imag[1][x];
                 float polYX_imag = w0_row_imag[2][x];
-                float stokesI = 0.5 * ( polXX_real + polYY_real);
-                float stokesQ = 0.5 * ( polXX_real - polYY_real);
-                float stokesU = 0.5 * ( polXY_real + polYX_real);
-                float stokesV = 0.5 * (-polXY_imag + polYX_imag);
+                double stokesI = 0.5 * ( polXX_real + polYY_real);
+                double stokesQ = 0.5 * ( polXX_real - polYY_real);
+                double stokesU = 0.5 * ( polXY_real + polYX_real);
+                double stokesV = 0.5 * (-polXY_imag + polYX_imag);
                 image_array(0, y, x) = stokesI;
                 image_array(1, y, x) = stokesQ;
                 image_array(2, y, x) = stokesU;
