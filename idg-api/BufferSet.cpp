@@ -383,25 +383,27 @@ namespace api {
         {
             float w0_row_real[NR_CORRELATIONS][m_size];
             float w0_row_imag[NR_CORRELATIONS][m_size];
+            memset(w0_row_real, 0, NR_CORRELATIONS * m_size * sizeof(float));
+            memset(w0_row_imag, 0, NR_CORRELATIONS * m_size * sizeof(float));
 
             Array3D<double> image_array((double *) image, NR_CORRELATIONS, m_size, m_size);
 
             // Copy row of image and convert stokes to polarizations
             for (int x = 0; x < m_size; x++)
             {
-                double scale = do_scale ? 1.0 / (*m_scalar_beam)[m_size * y + x] : 1.0;
-                double stokesI = image_array(0, y, x) * scale;
-                double stokesQ = image_array(1, y, x) * scale;
-                double stokesU = image_array(2, y, x) * scale;
-                double stokesV = image_array(3, y, x) * scale;
-                w0_row_real[0][x] = stokesI + stokesQ;
-                w0_row_real[1][x] = stokesI - stokesQ;
-                w0_row_real[2][x] = stokesU;
-                w0_row_real[3][x] = stokesU;
-                w0_row_imag[0][x] = 0.0f;
-                w0_row_imag[1][x] = 0.0f;
-                w0_row_imag[2][x] = -stokesV;
-                w0_row_imag[3][x] =  stokesV;
+                float scale = do_scale ? (*m_scalar_beam)[m_size * y + x] : 1.0f;
+                // Stokes I
+                w0_row_real[0][x] = image_array(0, y, x) / scale;
+                w0_row_real[3][x] = image_array(0, y, x) / scale;
+                // Stokes Q
+                w0_row_real[0][x] += image_array(1, y, x) / scale;
+                w0_row_real[3][x] -= image_array(1, y, x) / scale;
+                // Stokes U
+                w0_row_imag[1][x] = image_array(2, y, x) / scale;
+                w0_row_imag[2][x] = image_array(2, y, x) / scale;
+                // Stokes V
+                w0_row_imag[1][x] = -image_array(3, y, x) / scale;
+                w0_row_imag[2][x] =  image_array(3, y, x) / scale;
             } // end for x
 
             // Copy to other w planes and multiply by w term
