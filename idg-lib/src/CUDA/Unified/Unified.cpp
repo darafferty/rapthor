@@ -201,10 +201,17 @@ namespace idg {
 
                 if (m_enable_tiling) {
                     InstanceCUDA &device = get_device(0);
-                    auto grid_size = m_grid->get_x_dim();
+
+                    auto nr_w_layers     = grid->get_w_dim();
+                    auto nr_correlations = grid->get_z_dim();
+                    auto grid_height     = grid->get_y_dim();
+                    auto grid_width      = grid->get_x_dim();
+                    assert(nr_correlations == NR_CORRELATIONS);
+                    assert(grid_height == grid_width);
+                    auto grid_size = grid_width;
                     auto tile_size = device.get_tile_size_grid();
                     cu::UnifiedMemory* u_grid_tiled = new cu::UnifiedMemory(m_grid->bytes());
-                    auto grid_tiled = new Grid(*u_grid_tiled, grid->shape());
+                    auto grid_tiled = new Grid(*u_grid_tiled, nr_w_layers, nr_correlations, grid_height, grid_width);
                     m_grid_tiled.reset(grid_tiled);
                     device.tile_forward(grid_size, tile_size, *grid, *m_grid_tiled);
                 }
