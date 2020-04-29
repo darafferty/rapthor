@@ -24,5 +24,5 @@ class StopwatchImpl : public virtual Stopwatch {
 		bool m_running;
 		std::chrono::system_clock::time_point m_time_start;
 		std::chrono::duration<double> m_time_sum;
-		unsigned int count = 0;
+		unsigned int m_count = 0;
 };

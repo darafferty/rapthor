@@ -13,7 +13,8 @@ Stopwatch* Stopwatch::create()
 
 StopwatchImpl::StopwatchImpl() :
     m_running(false),
-    m_time_sum(std::chrono::duration<double>::zero())
+    m_time_sum(std::chrono::duration<double>::zero()),
+    m_count(0)
 {
 }
 
@@ -37,7 +38,7 @@ void StopwatchImpl::Pause()
         auto time_now = std::chrono::high_resolution_clock::now();
         m_time_sum += time_now - m_time_start;
         m_running = false;
-        count++;
+        m_count++;
     }
 }
 
@@ -78,5 +79,5 @@ long double StopwatchImpl::Seconds() const
 
 unsigned int StopwatchImpl::Count() const
 {
-    return count;
+    return m_count;
 }
