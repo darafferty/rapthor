@@ -404,6 +404,20 @@ namespace api {
                 // Stokes V
                 w0_row_imag[1][x] = -image_array(3, y, x) / scale;
                 w0_row_imag[2][x] =  image_array(3, y, x) / scale;
+
+                // Check whether the beam response was so small (or zero) that the result was non-finite.
+                // This test is done after having divided the image by the beam, instead of testing the
+                // beam itself for zero, because the beam can be unequal to zero and still cause
+                // an overflow.
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                    if(!std::isfinite(w0_row_real[pol][x]) ||
+                       !std::isfinite(w0_row_imag[pol][x]))
+                    {
+                        w0_row_real[pol][x] = 0.0;
+                        w0_row_imag[pol][x] = 0.0;
+                    }
+                }
             } // end for x
 
             // Copy to other w planes and multiply by w term
