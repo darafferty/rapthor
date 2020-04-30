@@ -708,10 +708,12 @@ namespace api {
         m_do_compute_avg_beam = false;
         m_do_gridding = true;
 
+#ifndef NDEBUG
         {
             const long unsigned leshape [] = {m_subgridsize, m_subgridsize,4,4};
             npy::SaveArrayAsNumpy("beam.npy", false, 4, leshape, *m_matrix_inverse_beam);
         }
+#endif
 
         for (int i = 0; i < m_subgridsize * m_subgridsize; i++)
         {
@@ -828,18 +830,22 @@ namespace api {
             }
         }
 
+#ifndef NDEBUG
         {
             const long unsigned leshape [] = {m_size, m_size};
             npy::SaveArrayAsNumpy("scalar_beam.npy", false, 2, leshape, *m_scalar_beam);
         }
+#endif
 
         m_avg_aterm_correction = Array4D<std::complex<float>>( m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
         m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
 
+#ifndef NDEBUG
         {
             const long unsigned leshape [] = {m_subgridsize, m_subgridsize,4,4};
             npy::SaveArrayAsNumpy("beam_inv.npy", false, 4, leshape, *m_matrix_inverse_beam);
         }
+#endif
 
     }
 
