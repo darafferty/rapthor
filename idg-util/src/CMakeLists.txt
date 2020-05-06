@@ -27,7 +27,9 @@ target_link_libraries(
 set_target_properties(
     idg-util
     PROPERTIES
-    PUBLIC_HEADER idg-util.h)
+    PUBLIC_HEADER idg-util.h                                                 
+    SOVERSION 0                                                              
+)                                                                        
 
 install(
     TARGETS idg-util
