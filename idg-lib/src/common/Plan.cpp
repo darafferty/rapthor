@@ -544,10 +544,11 @@ namespace idg {
 
         #if defined(DEBUG)
         cout << "Plan::" << __func__ << endl;
-        std::clog << "nr_channels     : " << nr_channels_ << std::endl;
-        std::clog << "nr_timesteps    : " << get_nr_timesteps() << std::endl;
-        std::clog << "nr_visibilities : " << get_nr_visibilities() << std::endl;
-        std::clog << "nr_subgrids     : " << get_nr_subgrids() << std::endl;
+        std::clog << "nr_baselines    : " << nr_baselines << " (input)" << std::endl;
+        std::clog << "nr_timesteps    : " << nr_timesteps << " (per baseline)" << std::endl;
+        std::clog << "nr_channels     : " << nr_channels  << " (per baseline)" << std::endl;
+        std::clog << "nr_visibilities : " << get_nr_visibilities() << " (planned)" << std::endl;
+        std::clog << "nr_subgrids     : " << get_nr_subgrids()     << " (planned)" << std::endl;
         #endif
     } // end initialize
 
