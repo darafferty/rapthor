@@ -545,7 +545,7 @@ namespace idg {
                     }
 
                     // Initialize visibilities to zero
-                    d_visibilities.zero(htodstream);
+                    d_visibilities.zero(executestream);
 
                     // Launch FFT
                     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, ImageDomainToFourierDomain);
