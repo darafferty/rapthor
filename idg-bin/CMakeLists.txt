@@ -9,7 +9,7 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 # options
 option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
-option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
+#option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
 option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
 option (BUILD_WITH_TESTS "Build with tests" OFF)
 option (BUILD_WITH_DEMOS "Build with demos" OFF)
