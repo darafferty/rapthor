@@ -19,11 +19,13 @@ include(cmake/version.cmake)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 # Python
+option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
+
 if(${CMAKE_VERSION} VERSION_GREATER "3.12.4")
-find_package(Python)
+find_package(Python REQUIRED)
 set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/dist-packages/idg)
 else()
-find_package(PythonInterp)
+find_package(PythonInterp REQUIRED)
 set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages/idg)
 endif()
 
