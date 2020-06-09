@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# encoding: utf-8
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+# The code is based on an original idea of Reinout van Weeren
+from rapthor._version import __version__ as version
+from rapthor import process, modifystate
+import optparse
+import sys
+
+
+if __name__ == '__main__':
+    parser = optparse.OptionParser(usage='%prog <parset>',
+            version='%%prog v%s' % (version))
+    parser.add_option('-q', help='enable quiet mode', action='store_true', default=False)
+    parser.add_option('-v', help='enable verbose mode', action='store_true', default=False)
+    parser.add_option('-r', help='reset one or more operations', action='store_true', default=False)
+    (options, args) = parser.parse_args()
+
+    if len(args) != 1:
+        parser.print_help()
+        sys.exit()
+
+    parset_file = args[0]
+
+    # Prepare logger
+    if options.q:
+        logging_level = 'warning'
+    elif options.v:
+        logging_level = 'debug'
+    else:
+        logging_level = 'info'
+
+    if options.r:
+        # Run state modification tool
+        modifystate.run(parset_file)
+    else:
+        # Run the processing
+        process.run(parset_file, logging_level=logging_level)

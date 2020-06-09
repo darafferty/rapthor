@@ -1,0 +1,176 @@
+# This is an example parset listing all available options
+
+
+[global]
+# Full path to working dir where rapthor will run (required). All output will be
+# placed in this directory
+dir_working = /data/rapthor
+
+# Full path to input MS files (required). Wildcards can be used (e.g., /path/to/data/*.ms)
+# or a list can be given
+input_ms = /data/ms/*.ms
+
+# Full path to the input sky model file, with true-sky fluxes (required). If you also
+# have a sky model with apparent flux densities, specify it with the apparent_skymodel
+# option (note that the source names must be identical in both sky models)
+# apparent_skymodel = /data/apparent_skymodel.txt
+input_skymodel = /data/skymodel.txt
+
+# Filename of h5parm file containing solutions for the patches in the initial sky mode
+# (default = None). This parameter is required for the "image" and "export_data"
+# processing strategies. If given for the "selfcal" strategy, the first calibration step
+# is skipped and these solutions are used instead
+# input_h5parm = None
+# solset = sol000
+# tec_soltab = None
+# scalarphase_soltab = None
+# slow_phase_soltab = None
+# slow_amplitude_soltab = None
+
+# Regroup input skymodel as needed to meet target flux (default = True). If False, the exisiting
+# patches are used for the calibration
+# regroup_input_skymodel = True
+
+# Processing strategy to use (default = fieldselfcal):
+# - fieldselfcal: self calibrate on the whole field
+# - sectorselfcal: self calibrate but peel sources in regions that are not imaged. Note:
+#       the input sky model must be of sufficient quality to allow for peeling
+# - image: image using the input solutions (no calibration is done)
+# strategy = fieldselfcal
+
+# Fraction of data to use (default = 1.0). If less than one, the input data are divided
+# by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
+# fraction, spaced out evenly over the full time range
+# data_fraction = 1.0
+
+# Flagging ranges (default = no flagging). A range of times, baselines, and
+# frequencies to flag can be specified (see the DPPP documentation for details
+# of the syntax). By default, the ranges are AND-ed to produce the final flags,
+# but a set expression can be specified that controls how the selections are
+# combined
+# flag_abstime = [12-Mar-2010/11:31:00.0..12-Mar-2010/11:50:00.0]
+# flag_baseline = [CS013HBA*]
+# flag_freqrange = [125.2..126.4MHz]
+# flag_expr = flag_abstime and flag_baseline and flag_freqrange
+
+
+[calibration]
+# If one of the included sky models (see rapthor/skymodels) is within 2 * PB_FWHM of the
+# field center, include it in the calibration (default = False)
+# use_included_skymodels = False
+
+# For selfcal processing strategies, this parameter sets the maximum number of
+# cycles of selfcal to perform (default = 10). The last step is looped until the
+# total number of cycles reaches this value or until the improvement in dynamic
+# range over the previous image is less than 1.25%
+# max_selfcal_loops = 10
+
+# Target flux per patch when grouping the sky model for calibration (default = 3.0 for
+# HBA and 6.0 for LBA). Alternatively, one can specify the target number of patches
+# (default = None). If the number is specified, the target flux will be ignored
+# patch_target_flux_jy = 3.0
+# patch_target_number = None
+
+# Solve mode for the fast-phase corrections: tec or scalarphase (default = tec)
+# mode = tec
+
+# General solver parameters (defaults shown):
+# maxiter = 50
+# propagatesolutions = True
+# stepsize = 0.02
+# tolerance = 1e-3
+# solve_min_uv_lambda = 80.0
+
+# Fast solve parameters (defaults shown):
+# approximatetec = True
+# maxapproxiter = 25
+# fast_timestep_sec = 8.0
+# fast_timestep_core_sec = 32.0
+# fast_freqstep_hz = 1e6
+# fast_smoothnessconstraint = 6e6
+
+# Slow solve parameters (defaults shown):
+# slow_timestep_sec = 600.0
+# slow_freqstep_hz = 1e6
+# slow_smoothnessconstraint = 3e6
+
+# Use the IDG for predict during calibration (default = False)?
+# use_idg_predict = False
+
+# Do extra solve for debugging
+# debug = False
+
+
+[imaging]
+# Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
+# robust parameter (default = -0.5) and minimum uv distance in lambda (default = 80)
+# cellsize_arcsec = 1.25
+# robust = -0.5
+# min_uv_lambda = 80.0
+# max_uv_lambda = 0.0
+# taper_arcsec = 0.0
+# multiscale_scales_pixel = [0, 5, 10, 15]
+# do_multiscale = auto
+
+# Use screens during imaging (default = False). If False, the solutions closest to the
+# image centers will be used
+# use_screens = False
+
+# IDG (image domain gridder) mode to use in WSClean (default = hybrid). The mode can be
+# cpu or hybrid.
+# idg_mode = hybrid
+
+# Reweight the visibility data before imaging (default = True)
+# reweight = True
+
+# Size of area to image when using a grid (default = mean FWHM of the primary beam)
+# Number of sectors along RA to use in imaging grid (default = 0). The number of sectors in
+# Dec will be determined automatically to ensure the whole area specified with grid_center_ra,
+# grid_center_dec, grid_width_ra_deg, and grid_width_dec_deg is imaged. Set grid_nsectors_ra = 0 to force a
+# single sector for the full area. Multiple sectors are useful for parallelizing the imaging
+# over multiple nodes of a cluster or for computers with limited memory
+# grid_width_ra_deg = 5.0
+# grid_width_dec_deg = 7.0
+# grid_center_ra = 14h41m01.884
+# grid_center_dec = +35d30m31.52
+# grid_nsectors_ra = 3
+
+# Instead of a grid, imaging sectors can be defined individually by specifying
+# their centers and widths. Multiscale clean can also be set (with None indicating that
+# multiscale clean should be activated automatically if a large source is detected in the
+# sector). If sectors are specified in this way, they will be
+# used instead of the sector grid. Note that the sectors should not overlap
+# sector_center_ra_list = [14h41m01.884, 14h13m23.234]
+# sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
+# sector_width_ra_deg_list = [0.532, 0.127]
+# sector_width_dec_deg_list = [0.532, 0.127]
+# sector_do_multiscale_list = [None, True]
+
+# Padding rapthor for WSClean images (default = 1.2)
+# wsclean_image_padding = 1.2
+
+# Max desired peak flux density reduction at center of the image edges due to
+# bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 =
+# 15% reduction in peak flux). Higher values result in shorter run times but
+# more smearing away from the sector centers
+# max_peak_smearing = 0.15
+
+
+[cluster]
+# Cluster batch system (default = singleMachine). Use batch_system = slurm to use a SLURM-
+# based cluster. For clusters, the maximum number of nodes to use at once can be specified
+# with the max_nodes option (default = 12)
+# batch_system = singleMachine
+# max_nodes = 12
+
+# TODO: Slurm partition names?
+# cpu_partition = batch
+# gpu_partition = batch
+
+# Full path to a local, non-shared disk on the nodes for I/O-intensive processing
+# (default = not used). The path must be the same for all nodes
+# dir_local = /tmp
+
+# Maximum number of CPUs per node to use
+ncpu = 6
+

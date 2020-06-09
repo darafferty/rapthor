@@ -1,0 +1,105 @@
+#!/usr/bin/python
+"""
+Script to plot solutions
+"""
+from losoto.h5parm import h5parm
+from losoto.operations import plot
+import argparse
+from argparse import RawTextHelpFormatter
+
+
+def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
+    """
+    Plot solutions vs. time
+
+    Parameters
+    ----------
+    h5file : str
+        Name of solution h5parm file
+    soltype : str
+        Type of solution to plot: tec, tecerror, scalarphase, phase, or amplitude
+    root : str, optional
+        Root name for output plots. If None, the soltype is used
+    refstat : str, optional
+        Name of referance station. If None, the first stations is used
+    soltab : str, optional
+        Name of soltab to use. If None, the default for the given soltype is used
+    dir : str, optional
+        Name of direction to use. If None, all directions are used
+    """
+    h = h5parm(h5file)
+    ss = h.getSolset('sol000')
+
+    if soltype == 'tec':
+        if soltab is None:
+            st = ss.getSoltab('screentec000')
+        else:
+            st = ss.getSoltab(soltab)
+        ref = st.ant[0]
+        ncol = 1
+        color = ''
+        minmax = [-0.3, 0.3]
+    elif soltype == 'tecerror':
+        if soltab is None:
+            st = ss.getSoltab('error000')
+        else:
+            st = ss.getSoltab(soltab)
+        ref = ''
+        ncol = 1
+        color = ''
+        minmax = [0, 0]
+    elif soltype == 'scalarphase':
+        if soltab is None:
+            st = ss.getSoltab('screenphase000')
+        else:
+            st = ss.getSoltab(soltab)
+        ref = st.ant[0]
+        ncol = 0
+        color = ''
+        minmax = [-3.2, 3.2]
+    elif soltype == 'amplitude':
+        if soltab is None:
+            st = ss.getSoltab('screenamplitude000')
+        else:
+            st = ss.getSoltab(soltab)
+        ref = ''
+        ncol = 0
+        color = 'pol'
+        minmax = [0, 0]
+    elif soltype == 'phase':
+        if soltab is None:
+            st = ss.getSoltab('screenphase000')
+        else:
+            st = ss.getSoltab(soltab)
+        ref = st.ant[0]
+        ncol = 0
+        color = 'pol'
+        minmax = [-3.2, 3.2]
+    else:
+        print('ERROR: solution type "{}" not understood. Must be one of tec, tecerror, scalarphase, '
+              'phase, or amplitude'.format(soltype))
+
+    if root is None:
+        root = soltype + '_'
+    if refstat is not None:
+        ref = refstat
+    print('Plotting {} solutions...'.format(soltype))
+    if dir is not None:
+        st.setSelection(dir=dir)
+    plot.run(st, ['time', 'freq'], axisInTable='ant', axisInCol=color, NColFig=ncol, refAnt=ref,
+             prefix=root, minmax=minmax, plotFlag=True, markerSize=4)
+    h.close()
+
+
+if __name__ == "__main__":
+    descriptiontext = "Plot solutions.\n"
+    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser.add_argument('h5file', help="Name of solution h5parm file")
+    parser.add_argument('soltype', help="Type of solution to plot: tec, tecerror, scalarphase, phase, or amplitude")
+    parser.add_argument('--root', help="Root name for output plots (default: 'soltype_')", default=None)
+    parser.add_argument('--refstat', help="Name of referance station (default: first)", default=None)
+    parser.add_argument('--soltab', help="Name of solution table (default: default for soltype)", default=None)
+    parser.add_argument('--dir', help="Name of direction (default: all)", default=None)
+
+    args = parser.parse_args()
+    main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir)
