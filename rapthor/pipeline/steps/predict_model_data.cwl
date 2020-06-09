@@ -20,7 +20,7 @@ arguments:
   - predict.applycal.slowphase.correction=phase000
   - predict.applycal.fastphase.correction=phase001
   - predict.usebeammodel=True
-  - predict.beammode=array_rapthor
+  - predict.beammode=array_factor
   - predict.onebeamperpatch=True
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0

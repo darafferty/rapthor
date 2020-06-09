@@ -14,7 +14,7 @@ arguments:
   - solve.type=ddecal
   - solve.mode=complexgain
   - solve.usebeammodel=True
-  - solve.beammode=array_rapthor
+  - solve.beammode=array_factor
   - solve.onebeamperpatch=True
   - solve.applycal.steps=[fastphase]
   - solve.applycal.fastphase.correction=phase000

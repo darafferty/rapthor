@@ -14,7 +14,7 @@ arguments:
   - solve.type=ddecal
   - solve.mode=scalarphase
   - solve.usebeammodel=True
-  - solve.beammode=array_rapthor
+  - solve.beammode=array_factor
   - solve.onebeamperpatch=True
 
 inputs:

@@ -18,7 +18,7 @@ arguments:
   - predict.applycal.steps=[fastphase]
   - predict.applycal.fastphase.correction=phase000
   - predict.usebeammodel=True
-  - predict.beammode=array_rapthor
+  - predict.beammode=array_factor
   - predict.onebeamperpatch=True
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0
