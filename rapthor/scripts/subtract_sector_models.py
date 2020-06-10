@@ -263,26 +263,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         datamod_all = None
         datamod_list = None
 
-    # Open input and output tables
+    # Open input table and define chunks based on available memory, making sure each
+    # chunk gives a full timeslot (needed for reweighting)
     tin = pt.table(msin, readonly=True, ack=False)
-    tout_list = []
-    for i, msmod in enumerate(model_list):
-        if nr_outliers > 0 and i == len(model_list)-nr_outliers:
-            # Break so we don't open output tables for the outliers
-            break
-        msout = msmod.rstrip('_modeldata')
-        if starttime is not None:
-            # Use a model ms file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct time range)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
-        if not os.path.exists(msout):
-            shutil.copytree(mssrc, msout)
-        tout_list.append(pt.table(msout, readonly=False, ack=False))
-
-    # Define chunks based on available memory, making sure each chunk gives a full
-    # timeslot (needed for reweighting)
     fraction = float(nrows_in) / float(tin.nrows())
     nchunks = get_nchunks(msin, nsectors, fraction, reweight=reweight)
     nrows_per_chunk = int(nrows_in / nchunks)
@@ -305,6 +288,24 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
     print('subtract_sector_models: Using {} chunk(s)'.format(nchunks))
 
+    # Open output tables
+    tout_list = []
+    for i, msmod in enumerate(model_list):
+        if nr_outliers > 0 and i == len(model_list)-nr_outliers:
+            # Break so we don't open output tables for the outliers
+            break
+        msout = msmod.rstrip('_modeldata')
+        if starttime is not None:
+            # Use a model ms file as source for the copy (since otherwise we could copy the
+            # entire msin and not just the data for the correct time range)
+            mssrc = model_list[-1]
+        else:
+            mssrc = msin
+        if not os.path.exists(msout):
+            shutil.copytree(mssrc, msout)
+        tout_list.append(pt.table(msout, readonly=False, ack=False))
+
+    # Process the data chunk by chunk
     for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
         # For each chunk, load data
         datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
