@@ -18,7 +18,7 @@ arguments:
   - applycal.type=applycal
   - applycal.correction=phase000
   - applycal.steps=[fastphase]
-  - applycal.fastphase.correction=phase001
+  - applycal.fastphase.correction=phase000
   - msout.storagemanager=Dysco
 
 inputs:
