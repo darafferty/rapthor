@@ -112,9 +112,9 @@ input_skymodel = /data/skymodel.txt
 # multiscale_scales_pixel = [0, 5, 10, 15]
 # do_multiscale = auto
 
-# Use screens during imaging (default = False). If False, the solutions closest to the
+# Use screens during imaging (default = True). If False, the solutions closest to the
 # image centers will be used
-# use_screens = False
+# use_screens = True
 
 # IDG (image domain gridder) mode to use in WSClean (default = hybrid). The mode can be
 # cpu or hybrid.

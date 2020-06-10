@@ -497,11 +497,11 @@ def get_imaging_options(parset):
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'hybrid'
 
-    # Use screens during imaging (default = False).
+    # Use screens during imaging (default = True).
     if 'use_screens' in parset_dict:
         parset_dict['use_screens'] = parset.getboolean('imaging', 'use_screens')
     else:
-        parset_dict['use_screens'] = False
+        parset_dict['use_screens'] = True
 
     # Reweight the visibility data before imaging (default = True)
     if 'reweight' in parset_dict:
