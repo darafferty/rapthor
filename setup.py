@@ -1,4 +1,3 @@
-from __future__ import print_function
 from setuptools import setup, Command
 import os
 import rapthor._version
@@ -42,9 +41,8 @@ setup(
         'Topic :: Scientific/Engineering :: Astronomy',
         'Topic :: Software Development :: Libraries :: Python Modules',
         ],
-    install_requires=['numpy', 'scipy', 'astropy', 'jinja2'],
-    dependency_links=['https://github.com/darafferty/LSMTool'],
-    scripts=['bin/runrapthor', 'bin/resetrapthor', 'bin/plotrapthor'],
+    install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely', 'toil[cwl]', 'Pillow', 'reproject', 'python-dateutil', 'pytz'],
+    scripts=['bin/rapthor', 'bin/plotrapthor'],
     packages=['rapthor', 'rapthor.operations', 'rapthor.lib'],
     package_data={'rapthor': [
         'pipeline/parsets/*',

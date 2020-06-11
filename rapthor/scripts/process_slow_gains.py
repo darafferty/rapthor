@@ -8,7 +8,6 @@ from losoto.h5parm import h5parm
 import numpy as np
 import scipy.interpolate as si
 from rapthor.lib import miscellaneous as misc
-from loess import loess_2d, loess_1d
 
 
 def normalize_full(soltab):
@@ -157,6 +156,8 @@ def find_bandpass_correction(soltab, parms_normalized):
     parms, weights : arrays
         The parameters with bandpass corrections and weights
     """
+    from loess import loess_2d, loess_1d
+
     parms = soltab.val[:]  # ['time', 'freq', 'ant', 'dir', 'pol']
     parms /= parms_normalized  # divide out XX-YY offsets
     weights = soltab.weight[:]
@@ -222,6 +223,8 @@ def smooth(soltab, stddev_threshold=0.25, freq_sampling=5, time_sampling=2, ref_
     parms, weights : arrays
         The parameters with bandpass corrections and weights
     """
+    from loess import loess_2d, loess_1d
+
     parms = soltab.val[:]  # ['time', 'freq', 'ant', 'dir']
     parms_ref = parms[:, :, ref_id, :].copy()
     for i in range(len(soltab.ant)):

@@ -7,9 +7,9 @@ import logging
 import numpy as np
 import lsmtool
 import lsmtool.skymodel
+from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
-from lofarpipe.support.utilities import create_directory
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree
@@ -299,7 +299,7 @@ class Field(object):
 
             # debug
             dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-            create_directory(dst_dir)
+            msic.create_directory(dst_dir)
             skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
             source_skymodel.write(skymodel_true_sky_file, clobber=True)
             # debug
@@ -326,7 +326,7 @@ class Field(object):
 
             # debug
             dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-            create_directory(dst_dir)
+            misc.create_directory(dst_dir)
             skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
             source_skymodel.write(skymodel_true_sky_file, clobber=True)
             # debug
@@ -346,7 +346,7 @@ class Field(object):
         self.num_patches = len(calibration_skymodel.getPatchNames())
         self.log.info('Using {} calibration patches'.format(self.num_patches))
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-        create_directory(dst_dir)
+        misc.create_directory(dst_dir)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
@@ -418,7 +418,7 @@ class Field(object):
 
         # debug
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-        create_directory(dst_dir)
+        misc.create_directory(dst_dir)
         skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_true_sky_concat.txt')
         skymodel_true_sky.write(skymodel_true_sky_file, clobber=True)
         # debug

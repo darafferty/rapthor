@@ -3,7 +3,7 @@ Definition of the Sector class that holds parameters for an image sector
 """
 import logging
 import numpy as np
-from lofarpipe.support.utilities import create_directory
+from rapthor.lib import miscellaneous as misc
 from astropy.coordinates import Angle
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
@@ -236,7 +236,7 @@ class Sector(object):
 
         # Write filtered sky model to file
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(iter))
-        create_directory(dst_dir)
+        misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
         skymodel.write(self.predict_skymodel_file, clobber=True)
 

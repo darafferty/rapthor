@@ -3,18 +3,17 @@ Module that stores the version and changelog
 """
 
 # Version number
-__version__ = '3.0'
+__version__ = '1.0'
 
 # Change log
 def changelog():
     """
-    rapthor Changelog.
+    Rapthor Changelog.
     ----------------------------------------------------------------------------
 
-    Version 3.0
+    Version 1.0
 
-        Restructured to support DDECal + WSClean + IDG. This version is not
-        compatible with previous versions.
+        First release.
 
     """
     pass
