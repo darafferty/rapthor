@@ -299,7 +299,7 @@ class Field(object):
 
             # debug
             dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-            msic.create_directory(dst_dir)
+            misc.create_directory(dst_dir)
             skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
             source_skymodel.write(skymodel_true_sky_file, clobber=True)
             # debug
