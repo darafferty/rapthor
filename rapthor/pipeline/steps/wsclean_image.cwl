@@ -35,7 +35,7 @@ arguments:
     prefix: -local-rms-method
   - valueFrom: '32'
     prefix: -aterm-kernel-size
-  - valueFrom: '8'
+  - valueFrom: '12'
     prefix: -nmiter
   - valueFrom: 'briggs'
     # Note: we have to set part of the 'weight' argument here and part below, as it has

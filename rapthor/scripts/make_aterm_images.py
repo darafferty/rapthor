@@ -461,7 +461,6 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
                                     data[t, f, s, 1, :, :] += A * gimg[i]
                                     A = val_amp_yy * np.sin(val_phase_yy) - data[t, f, s, 3, int(y), int(x)]
                                     data[t, f, s, 3, :, :] += A * gimg[i]
-                                    gind = np.where(gimg[i] > 0.0)
 
             # If averaging in time, make a new template image with
             # fewer times and write to that instead
@@ -538,5 +537,5 @@ if __name__ == '__main__':
          skymodel=args.skymodel, solsetname=args.solsetname,
          ressoltabname=args.ressoltabname, padding_fraction=args.padding_fraction,
          cellsize_deg=args.cellsize_deg, smooth_deg=args.smooth_deg,
-         gsize_deg=args.gsize_deg, time_avg_rapthor=args.time_avg_rapthor,
+         gsize_deg=args.gsize_deg, time_avg_factor=args.time_avg_factor,
          fasth5parm=args.fasth5parm)

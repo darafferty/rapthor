@@ -200,8 +200,7 @@ def find_executables(cluster_parset):
     cluster_parset : dict
         Cluster-specific parset dictionary
     """
-    executables = {'genericpipeline_executable': ['genericpipeline.py'],
-                   'wsclean_executable': ['wsclean'],
+    executables = {'wsclean_executable': ['wsclean'],
                    'h5collector_executable': ['H5parm_collector.py']}
     for key, names in executables.items():
         for name in names:

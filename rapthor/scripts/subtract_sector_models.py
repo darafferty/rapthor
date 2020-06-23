@@ -356,6 +356,10 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 #             os.system('/bin/rm -rf {0}'.format(msmod))
 
 
+"""
+The following reweighting code is based on that of
+https://github.com/ebonnassieux/Scripts/blob/master/QualityWeightsLOFAR.py
+"""
 class CovWeights:
     def __init__(self, MSName, solint_sec, solint_hz, startrow, nrow, uvcut=[0, 2000],
                  gainfile=None, phaseonly=False, dirname=None, quiet=True):

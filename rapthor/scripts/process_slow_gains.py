@@ -140,6 +140,44 @@ def normalize_direction(soltab):
     return parms, weights
 
 
+def normalize_field(soltab):
+    """
+    Normalize values so that mean is equal to unity for amplitudes over entire field
+
+    Parameters
+    ----------
+    soltab : solution table
+        Input table with solutions
+
+    Returns
+    -------
+    parms, weights : arrays
+        The normalized parameters and weights
+    """
+    soltype = soltab.getType()
+    parms = soltab.val[:]  # ['time', 'freq', 'ant', 'dir', 'pol']
+    weights = soltab.weight[:]
+    initial_flagged_indx = np.logical_or(np.isnan(parms), weights == 0.0)
+    initial_unflagged_indx = np.logical_and(~np.isnan(parms), weights != 0.0)
+    parms[initial_flagged_indx] = np.nan
+
+    # Normalize everything to have a mean of unity over all
+    # times, frequencies, directions, and pols. Note that we work in log space
+    # for these operations if the solutions are amplitudes
+    if soltype == 'amplitude':
+        parms = np.log10(parms)
+        norm_rapthor = np.nanmean(parms[initial_unflagged_indx])
+        parms -= norm_rapthor
+
+    # Make sure flagged solutions are still flagged
+    if soltype == 'amplitude':
+        parms = 10**parms
+    parms[initial_flagged_indx] = np.nan
+    weights[initial_flagged_indx] = 0.0
+
+    return parms, weights
+
+
 def find_bandpass_correction(soltab, parms_normalized):
     """
     Find the correction to the bandpass for each station

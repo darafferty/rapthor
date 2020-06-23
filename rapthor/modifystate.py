@@ -5,7 +5,6 @@ from rapthor.parset import parset_read
 from rapthor.strategy import set_strategy
 from rapthor.lib.field import Field
 import logging
-import glob
 import os
 import sys
 import numpy as np
@@ -114,7 +113,7 @@ def run(parset_file):
                 pipelines.extend(check_operation(operation))
 
         # List pipelines and query user
-        print('\nCurrent stratgy: {}'.format(field.parset['strategy']))
+        print('\nCurrent strategy: {}'.format(field.parset['strategy']))
         print('\nPipelines:')
         i = 0
         if len(pipelines) == 0:
@@ -126,12 +125,15 @@ def run(parset_file):
         try:
             while(True):
                 p_number_raw = input('Enter number of pipeline to reset or press "q" to quit: ')
-                if p_number_raw.lower() == "q":
-                    sys.exit(0)
-                elif int(p_number_raw) > 0 and int(p_number_raw) <= i:
-                    break
-                else:
-                    print("Please enter a number between 1 and {}".format(i))
+                try:
+                    if p_number_raw.lower() == "q":
+                        sys.exit(0)
+                    elif int(p_number_raw) > 0 and int(p_number_raw) <= i:
+                        break
+                    else:
+                        print("Please enter a number between 1 and {}".format(i))
+                except ValueError:
+                    pass
         except KeyboardInterrupt:
             sys.exit(0)
         pipeline = pipelines[int(p_number_raw)-1]
