@@ -105,6 +105,7 @@ class Image(Operation):
                             'local_dir': local_dir,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.sectors],
+                            'deconvolution_channels': [sector.wsclean_nchannels for sector in self.field.sectors],
                             'ra': [sector.ra for sector in self.field.sectors],
                             'dec': [sector.dec for sector in self.field.sectors],
                             'wsclean_imsize': [sector.imsize for sector in self.field.sectors],

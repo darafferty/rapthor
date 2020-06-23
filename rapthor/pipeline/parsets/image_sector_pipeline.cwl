@@ -51,6 +51,8 @@ inputs:
 {% endif %}
   - id: channels_out
     type: int
+  - id: deconvolution_channels
+    type: int
   - id: wsclean_niter
     type: int
   - id: robust
@@ -198,6 +200,8 @@ steps:
         source: local_dir
       - id: channels_out
         source: channels_out
+      - id: deconvolution_channels
+        source: deconvolution_channels
       - id: taper_arcsec
         source: taper_arcsec
       - id: auto_mask

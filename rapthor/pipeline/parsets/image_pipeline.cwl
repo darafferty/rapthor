@@ -80,6 +80,8 @@ inputs:
 {% endif %}
   - id: channels_out
     type: int[]
+  - id: deconvolution_channels
+    type: int[]
   - id: wsclean_niter
     type: int[]
   - id: robust
@@ -157,6 +159,8 @@ steps:
 {% endif %}
       - id: channels_out
         source: channels_out
+      - id: deconvolution_channels
+        source: deconvolution_channels
       - id: wsclean_niter
         source: wsclean_niter
       - id: robust
@@ -186,18 +190,19 @@ steps:
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, aterms_config_file,
-              aterm_image_filenames, channels_out, wsclean_niter,
-              robust, wsclean_image_padding, min_uv_lambda, max_uv_lambda,
-              multiscale_scales_pixel, local_dir, taper_arcsec, auto_mask,
-              idg_mode, threshisl, threshpix]
+              aterm_image_filenames, channels_out, deconvolution_channels,
+              wsclean_niter, robust, wsclean_image_padding, min_uv_lambda,
+              max_uv_lambda, multiscale_scales_pixel, local_dir, taper_arcsec,
+              auto_mask, idg_mode, threshisl, threshpix]
 {% else %}
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, h5parm, central_patch_name, channels_out,
-              wsclean_niter, robust, wsclean_image_padding, min_uv_lambda,
-              max_uv_lambda, multiscale_scales_pixel, local_dir, taper_arcsec,
-              auto_mask, idg_mode, threshisl, threshpix]
+              vertices_file, region_file, h5parm, central_patch_name,
+              channels_out, deconvolution_channels, wsclean_niter, robust,
+              wsclean_image_padding, min_uv_lambda, max_uv_lambda,
+              multiscale_scales_pixel, local_dir, taper_arcsec, auto_mask,
+              idg_mode, threshisl, threshpix]
 {% endif %}
     scatterMethod: dotproduct
     out: []

@@ -19,8 +19,6 @@ arguments:
     prefix: -pol
   - valueFrom: '0.6'
     prefix: -mgain
-  - valueFrom: '4'
-    prefix: -deconvolution-channels
   - valueFrom: '3'
     prefix: -fit-spectral-pol
   - valueFrom: 'gaussian'
@@ -102,6 +100,10 @@ inputs:
     type: int
     inputBinding:
       prefix: -channels-out
+  - id: deconvolution_channels
+    type: int
+    inputBinding:
+      prefix: -deconvolution-channels
   - id: taper_arcsec
     type: float
     inputBinding:
