@@ -56,11 +56,12 @@ def guassian_image(A, x, y, xsize, ysize, gsize):
     gsize : size as FWHM in pixels
     """
     im = np.zeros((ysize, xsize))
-    g = [A, int(y), int(x), gsize, gsize, 0.0]
+    g = [A, y, x, gsize, gsize, 0.0]
     bbox = np.s_[0:ysize, 0:xsize]
     x_ax, y_ax = np.mgrid[bbox]
     gimg = gaussian_fcn(g, x_ax, y_ax)
-    ind = np.where(np.abs(gimg) > abs(A)/5.0)
+    gimg *= A / np.max(gimg)  # normalize to ensure peak value is met
+    ind = np.where(np.abs(gimg) > abs(A)/10.0)
     if len(ind[0]) > 0:
         im[ind[0], ind[1]] += gimg[ind]
 
@@ -379,7 +380,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
                             for i, (x, y) in enumerate(xy):
                                 # Only do this if patch is inside the region of interest
                                 if int(x) >= 0 and int(x) < data.shape[4] and int(y) >= 0 and int(y) < data.shape[3]:
-                                    A = vals[t+g_start, s, i, 0] - data[t, f, s, int(y), int(x)]
+                                    A = vals[t+g_start, s, i, 0] - data[t, f, s, int(round(y)), int(round(x))]
                                     data[t, f, s, :, :] += guassian_image(A, x, y, data.shape[4],
                                                                           data.shape[3], gsize_pix)
             g_start = g_stop
@@ -453,13 +454,13 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
                                         val_amp_yy = vals[t+g_start, f, s, i]
                                         val_phase_xx = vals_ph[t+g_start, f, s, i]
                                         val_phase_yy = vals_ph[t+g_start, f, s, i]
-                                    A = val_amp_xx * np.cos(val_phase_xx) - data[t, f, s, 0, int(y), int(x)]
+                                    A = val_amp_xx * np.cos(val_phase_xx) - data[t, f, s, 0, int(round(y)), int(round(x))]
                                     data[t, f, s, 0, :, :] += A * gimg[i]
-                                    A = val_amp_yy * np.cos(val_phase_yy) - data[t, f, s, 2, int(y), int(x)]
+                                    A = val_amp_yy * np.cos(val_phase_yy) - data[t, f, s, 2, int(round(y)), int(round(x))]
                                     data[t, f, s, 2, :, :] += A * gimg[i]
-                                    A = val_amp_xx * np.sin(val_phase_xx) - data[t, f, s, 1, int(y), int(x)]
+                                    A = val_amp_xx * np.sin(val_phase_xx) - data[t, f, s, 1, int(round(y)), int(round(x))]
                                     data[t, f, s, 1, :, :] += A * gimg[i]
-                                    A = val_amp_yy * np.sin(val_phase_yy) - data[t, f, s, 3, int(y), int(x)]
+                                    A = val_amp_yy * np.sin(val_phase_yy) - data[t, f, s, 3, int(round(y)), int(round(x))]
                                     data[t, f, s, 3, :, :] += A * gimg[i]
 
             # If averaging in time, make a new template image with
