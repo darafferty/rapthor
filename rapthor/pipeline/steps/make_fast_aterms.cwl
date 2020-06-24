@@ -10,7 +10,7 @@ arguments:
   - '--soltabname=phase000'
   - '--smooth_deg=0.1'
   - '--gsize_deg=0.1'
-  - '--time_avg_rapthor=1'
+  - '--time_avg_factor=1'
 
 inputs:
   - id: fasth5parm

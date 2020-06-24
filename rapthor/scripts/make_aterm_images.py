@@ -71,7 +71,7 @@ def guassian_image(A, x, y, xsize, ysize, gsize):
 def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
          bounds_mid_deg=None, skymodel=None, solsetname='sol000',
          ressoltabname='', padding_fraction=1.4, cellsize_deg=0.1, smooth_deg=0,
-         gsize_deg=0, time_avg_rapthor=1, fasth5parm=None, interp_kind='nearest'):
+         gsize_deg=0, time_avg_factor=1, fasth5parm=None, interp_kind='nearest'):
     """
     Make a-term FITS images
 
@@ -102,8 +102,8 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
     gsize_deg : float, optional
         FWHM in degrees of Gaussian to add at patch locations (to enforce that
         solutions at these locations are exactly equal to those in the h5parm)
-    time_avg_rapthor : int, optional
-        Averaging rapthor in time for fast-phase corrections
+    time_avg_factor : int, optional
+        Averaging factor in time for fast-phase corrections
     fasth5parm : str, optional
         Filename of fast-phase h5parm to be added together with input h5parm
         (interpolation of the input h5parm is done first)
@@ -142,7 +142,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
     gsize_pix = gsize_deg / cellsize_deg
     smooth_deg = float(smooth_deg)
     smooth_pix = smooth_deg / cellsize_deg
-    time_avg_rapthor = int(time_avg_rapthor)
+    time_avg_factor = int(time_avg_factor)
 
     # Do Voronoi tessellation + smoothing
     if 'amplitude' in soltab.getType():
@@ -329,7 +329,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         max_ntimes = 15 * 46 * 4
     else:
         max_ntimes = 15
-    # TODO: adjust max_ntimes depending on available memory and time_avg_rapthor
+    # TODO: adjust max_ntimes depending on available memory and time_avg_factor
     check_gaps = True
     while check_gaps:
         check_gaps = False
@@ -465,8 +465,8 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
 
             # If averaging in time, make a new template image with
             # fewer times and write to that instead
-            if time_avg_rapthor > 1:
-                times_avg = times[g_start:g_stop:time_avg_rapthor]
+            if time_avg_factor > 1:
+                times_avg = times[g_start:g_stop:time_avg_factor]
                 ntimes = len(times_avg)
                 misc.make_template_image(temp_image+'.avg', midRA, midDec, ximsize=imsize,
                                          yimsize=imsize, cellsize_deg=cellsize_deg,
@@ -478,7 +478,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
 
                 # Average
                 for t, time in enumerate(times_avg):
-                    incr = min(time_avg_rapthor, len(times[g_start:g_stop])-t*time_avg_rapthor)
+                    incr = min(time_avg_factor, len(times[g_start:g_stop])-t*time_avg_factor)
                     data_avg[t, :, :, :, :, :] = np.nanmean(data[t:t+incr, :, :, :, :, :], axis=0)
                 data = data_avg
             else:
@@ -530,7 +530,7 @@ if __name__ == '__main__':
     parser.add_argument('--cellsize_deg', help='Cell size in deg', type=float, default=0.1)
     parser.add_argument('--smooth_deg', help='Smooth scale in degree', type=float, default=0.0)
     parser.add_argument('--gsize_deg', help='Gaussian size in degree', type=float, default=0.0)
-    parser.add_argument('--time_avg_rapthor', help='Averaging rapthor', type=int, default=1)
+    parser.add_argument('--time_avg_factor', help='Averaging factor in time', type=int, default=1)
     parser.add_argument('--fasth5parm', help='Filename of input fast h5parm', type=str, default=None)
     args = parser.parse_args()
     main(args.h5parmfile, soltabname=args.soltabname, outroot=args.outroot,
