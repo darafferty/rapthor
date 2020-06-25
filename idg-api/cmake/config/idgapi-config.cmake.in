@@ -1,9 +1,7 @@
-#  Config file for the IDGAPI package
-
-
 # Compute paths
 get_filename_component(IDGAPI_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 get_filename_component(IDGAPI_CMAKE_DIR_ABS "${IDGAPI_CMAKE_DIR}" ABSOLUTE)
+
 # Strip last components to get prefix
 get_filename_component(IDGAPI_PREFIX_DIR "${IDGAPI_CMAKE_DIR_ABS}/../../.." ABSOLUTE)
 
@@ -17,14 +15,8 @@ set(IDGAPI_LIB idg-api CACHE LOCATION "IDGAPI library")
 
 find_library(IDGAPI_LIBRARY ${IDGAPI_LIB} PATH ${IDGAPI_LIB_PATH} NO_DEFAULT_PATH)
 
-
 set(IDGAPI_INCLUDE_DIRS ${IDGAPI_INCLUDE_DIR}
    CACHE PATH "IDGAPI include directories")
 
 set(IDGAPI_LIBRARIES ${IDGAPI_LIBRARY}
     CACHE PATH "IDGAPI libraries")
-
-
-
-
-
