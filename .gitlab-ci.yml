@@ -1,4 +1,4 @@
-image: ubuntu:16.04
+image: ubuntu:20.04
 
 before_script:
   - apt-get update && apt-get install -y g++ cmake libfftw3-dev liblapacke-dev
