@@ -1,7 +1,7 @@
 image: ubuntu:20.04
 
 before_script:
-  - apt-get update && apt-get install -y g++ cmake libfftw3-dev liblapacke-dev
+  - apt-get update && apt-get install -y g++ cmake libfftw3-dev liblapacke-dev python3
 
 idg-release:
   script:
@@ -12,7 +12,7 @@ idg-release:
     - make install
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
     - ctest --verbose
-    
+
 idg-debug:
   script:
     - mkdir build
