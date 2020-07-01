@@ -25,7 +25,7 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
                         ximsize=512, yimsize=512, cellsize_deg=0.000417, freqs=None, times=None,
                         antennas=None, aterm_type='tec', fill_val=0):
     """
-    Make a blank image and save it to disk
+    Make a blank FITS image and save it to disk
 
     Parameters
     ----------
