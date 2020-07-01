@@ -112,13 +112,18 @@ input_skymodel = /data/skymodel.txt
 # multiscale_scales_pixel = [0, 5, 10, 15]
 # do_multiscale = auto
 
-# Use screens during imaging (default = True). If False, the solutions closest to the
+# Use screens during imaging (default = True)? If False, the solutions closest to the
 # image centers will be used
 # use_screens = True
 
 # IDG (image domain gridder) mode to use in WSClean (default = hybrid). The mode can be
-# cpu or hybrid.
+# cpu or hybrid
 # idg_mode = hybrid
+
+# Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
+# more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images
+# >= 2), then distributed imaging will be used (only available if batch_system = slurm)
+# use_mpi = False
 
 # Reweight the visibility data before imaging (default = True)
 # reweight = True
@@ -146,7 +151,7 @@ input_skymodel = /data/skymodel.txt
 # sector_width_dec_deg_list = [0.532, 0.127]
 # sector_do_multiscale_list = [None, True]
 
-# Padding rapthor for WSClean images (default = 1.2)
+# Padding factor for WSClean images (default = 1.2)
 # wsclean_image_padding = 1.2
 
 # Max desired peak flux density reduction at center of the image edges due to

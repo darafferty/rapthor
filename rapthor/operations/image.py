@@ -26,7 +26,8 @@ class Image(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
-                             'use_screens': self.field.use_screens}
+                             'use_screens': self.field.use_screens,
+                             'use_mpi': self.field.use_mpi}
 
     def set_input_parameters(self):
         """

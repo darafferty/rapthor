@@ -165,7 +165,11 @@ steps:
   - id: image
     label: image
 {% if use_screens %}
+{% if use_mpi %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
+{% endif %}
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
 {% endif %}

@@ -503,6 +503,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['use_screens'] = True
 
+    # Use MPI during imaging (default = False).
+    if 'use_mpi' in parset_dict:
+        parset_dict['use_mpi'] = parset.getboolean('imaging', 'use_mpi')
+    else:
+        parset_dict['use_mpi'] = False
+
     # Reweight the visibility data before imaging (default = True)
     if 'reweight' in parset_dict:
         parset_dict['reweight'] = parset.getboolean('imaging', 'reweight')
@@ -574,7 +580,7 @@ def get_imaging_options(parset):
     else:
         parset_dict['target_radius_arcmin'] = None
 
-    # Padding rapthor for WSClean images (default = 1.2)
+    # Padding factor for WSClean images (default = 1.2)
     if 'wsclean_image_padding' in parset_dict:
         parset_dict['wsclean_image_padding'] = parset.getfloat('imaging', 'wsclean_image_padding')
     else:
@@ -589,7 +595,7 @@ def get_imaging_options(parset):
                        'wsclean_image_padding', 'min_uv_lambda', 'max_uv_lambda',
                        'robust', 'padding', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
-                       'idg_mode', 'sector_do_multiscale_list', 'target_ra',
+                       'idg_mode', 'sector_do_multiscale_list', 'target_ra', 'use_mpi',
                        'target_dec', 'target_radius_arcmin', 'use_screens']
     for option in given_options:
         if option not in allowed_options:

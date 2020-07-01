@@ -57,6 +57,7 @@ class Field(object):
         self.solve_core_separately = self.parset['calibration_specific']['solve_core_separately']
         self.tecscreen_max_order = self.parset['calibration_specific']['tecscreen_max_order']
         self.use_screens = self.parset['imaging_specific']['use_screens']
+        self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
