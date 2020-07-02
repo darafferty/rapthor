@@ -1,12 +1,27 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [mpirun -np $SLURM_JOB_NUM_NODES -host $SLURM_JOB_NODELIST --pernode --prefix $MPI_PREFIX -x LD_LIBRARY_PATH=$LD_LIBRARY_PATH wsclean-mp]
+baseCommand: [mpirun]
 label: "Images a dataset using WSClean+IDG, distributed over multiple nodes with MPI"
 
 requirements:
   InlineJavascriptRequirement: {}
+  ShellCommandRequirement: {}
 
-arguments:
+ arguments:
+  - valueFrom: '$SLURM_JOB_NUM_NODES'
+    prefix: -np
+    shellQuote: false
+  - valueFrom: '$SLURM_JOB_NODELIST'
+    prefix: -host
+    shellQuote: false
+  - --pernode
+  - valueFrom: '$MPI_PREFIX'
+    prefix: --prefix
+    shellQuote: false
+  - valueFrom: 'LD_LIBRARY_PATH=$LD_LIBRARY_PATH'
+    prefix: -x
+    shellQuote: false
+  - wsclean-mp
   - -no-update-model-required
   - -multiscale
   - -fit-beam
