@@ -593,7 +593,7 @@ class Field(object):
             sector.calibration_skymodel = self.calibration_skymodel.copy()
             if self.bright_source_skymodel is not None:
                 sector.bright_source_skymodel = self.bright_source_skymodel.copy()
-            else
+            else:
                 sector.bright_source_skymodel = None
             sector.make_skymodel(iter)
 
