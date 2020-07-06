@@ -299,7 +299,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             nrows.append(nrow)
             startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
             startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-        print('subtract_sector_models: Using {} chunk(s) for peeling of bright
+        print('subtract_sector_models: Using {} chunk(s) for peeling of bright '
               'sources'.format(nchunks))
 
         for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
@@ -436,6 +436,8 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 The following reweighting code is based on that of
 https://github.com/ebonnassieux/Scripts/blob/master/QualityWeightsLOFAR.py
 """
+
+
 class CovWeights:
     def __init__(self, MSName, solint_sec, solint_hz, startrow, nrow, uvcut=[0, 2000],
                  gainfile=None, phaseonly=False, dirname=None, quiet=True):
