@@ -70,8 +70,7 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
 
         # Image the sectors
         if step['do_image']:
-            imaging_sectors = [sector for sector in field.sectors if not sector.is_outlier]
-            for sector in imaging_sectors:
+            for sector in field.imaging_sectors:
                 sector.__dict__.update(step['image_parameters'])
             op = Image(field, iter+1)
             op.run()
