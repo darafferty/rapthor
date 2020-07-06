@@ -27,7 +27,7 @@ class Mosaic(Operation):
         """
         Define the pipeline inputs
         """
-        if len(self.field.sectors) > 1:
+        if len(self.field.imaging_sectors) > 1:
             skip_processing = False
         else:
             # No need to mosaic if we have just one sector
@@ -35,7 +35,7 @@ class Mosaic(Operation):
         sector_image_filename = []
         sector_vertices_filename = []
         regridded_image_filename = []
-        for sector in self.field.sectors:
+        for sector in self.field.imaging_sectors:
             sector_image_filename.append(sector.I_image_file_true_sky)
             sector_vertices_filename.append(sector.vertices_file)
             regridded_image_filename.append(sector.I_image_file_true_sky+'.regridded')
