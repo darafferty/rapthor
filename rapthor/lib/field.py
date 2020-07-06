@@ -321,7 +321,8 @@ class Field(object):
                 if target_number > len(fluxes):
                     target_number = len(fluxes)
                 target_flux = fluxes[-target_number] - 0.001
-            self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+            if regroup:
+                self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
 
             # Save the model of the bright sources only, for later subtraction before
             # imaging if needed
@@ -590,7 +591,10 @@ class Field(object):
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.bright_source_skymodel = self.bright_source_skymodel.copy()
+            if self.bright_source_skymodel is not None:
+                sector.bright_source_skymodel = self.bright_source_skymodel.copy()
+            else
+                sector.bright_source_skymodel = None
             sector.make_skymodel(iter)
 
         # Set the imaging parameters for each imaging sector
