@@ -647,7 +647,10 @@ class Field(object):
         # subtracted before imaging. These sectors, like the outlier sectors above, are not
         # imaged
         self.bright_source_sectors = []
-        nsources = len(self.bright_source_skymodel)
+        if self.bright_source_skymodel is not None:
+            nsources = len(self.bright_source_skymodel)
+        else:
+            nsources = 0
         if nsources > 0:
             nnodes = min(10, nsources, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
             for i in range(nnodes):
