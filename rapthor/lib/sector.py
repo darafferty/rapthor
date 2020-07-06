@@ -231,6 +231,8 @@ class Sector(object):
         if self.is_outlier:
             # For outlier sector, we use the sky model made earlier
             skymodel = self.predict_skymodel
+        elif self.is_bright_source:
+            skymodel = self.predict_skymodel
         else:
             skymodel = self.calibration_skymodel.copy()
             skymodel = self.filter_skymodel(skymodel)
