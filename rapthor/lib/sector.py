@@ -229,19 +229,22 @@ class Sector(object):
         """
         # Filter the predict sky model to include only those sources inside the sector
         if self.is_outlier:
-            # For outlier sector, we use the sky model made earlier
+            # For outlier sector, we use the sky model made earlier, with no filtering
             skymodel = self.predict_skymodel
         elif self.is_bright_source:
-            skymodel = self.predict_skymodel
+            # For bright-source sector, we use the bright-source sky model
+            skymodel = self.bright_source_skymodel.copy()
+            skymodel = self.filter_skymodel(skymodel)
         else:
+            # For imaging sector, we use the full calibration sky model
             skymodel = self.calibration_skymodel.copy()
             skymodel = self.filter_skymodel(skymodel)
 
         # Remove the bright sources from the sky model if they will be predicted and
         # subtracted separately (so that they aren't subtracted twice)
-        if self.field.peel_bright_sources:
+        if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
             source_names = skymodel.getColValues('Name')
-            bright_source_names = field.bright_source_skymodel.getColValues('Name')
+            bright_source_names = self.bright_source_skymodel.getColValues('Name')
             matching_ind = []
             for i, sn in enumerate(source_names):
                 if sn in bright_source_names:
@@ -249,7 +252,7 @@ class Sector(object):
             if len(matching_ind) > 0:
                 skymodel.remove(np.array(matching_ind))
 
-        # Write filtered sky model to file
+        # Write filtered sky model to file for later prediction
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))

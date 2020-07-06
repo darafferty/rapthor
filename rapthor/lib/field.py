@@ -480,6 +480,7 @@ class Field(object):
         self.adjust_sector_boundaries()
         for sector in self.sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
+            sector.bright_source_skymodel = self.bright_source_skymodel.copy()
             sector.make_skymodel(iter)
 
         # Clean up to minimize memory usage
