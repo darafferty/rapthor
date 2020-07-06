@@ -67,7 +67,6 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
                     obs.ms_filename = obs.ms_field
                 field.sectors = [sector for sector in field.sectors if not sector.is_outlier]
                 field.outlier_sectors = []
-                field.peel_outliers = False
 
         # Image the sectors
         if step['do_image']:
