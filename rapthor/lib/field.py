@@ -291,7 +291,7 @@ class Field(object):
         self.source_skymodel = source_skymodel.copy()  # save and make copy before grouping
 
         # Now regroup source sky model into calibration patches if desired
-        if regroup:
+        if regroup or self.peel_bright_sources:
             # Find groups of bright sources to use as basis for calibrator patches. The
             # patch positions are set to the flux-weighted mean position. This position
             # is then propagated and used for the calibrate and predict sky models
@@ -340,22 +340,23 @@ class Field(object):
                 if pn not in source_skymodel.getPatchNames():
                     bright_source_skymodel.remove('Patch == {}'.format(pn))
 
-            # debug
-            dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-            misc.create_directory(dst_dir)
-            skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
-            source_skymodel.write(skymodel_true_sky_file, clobber=True)
-            # debug
+            if regroup:
+                # debug
+                dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+                misc.create_directory(dst_dir)
+                skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
+                source_skymodel.write(skymodel_true_sky_file, clobber=True)
+                # debug
 
-            # Transfer patches to the true-flux sky model (component names are identical
-            # in both, but the order may be different)
-            names_source_skymodel = source_skymodel.getColValues('Name')
-            names_skymodel_true_sky = skymodel_true_sky.getColValues('Name')
-            ind_ss = np.argsort(names_source_skymodel)
-            ind_ts = np.argsort(names_skymodel_true_sky)
-            skymodel_true_sky.table['Patch'][ind_ts] = source_skymodel.table['Patch'][ind_ss]
-            skymodel_true_sky._updateGroups()
-            skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
+                # Transfer patches to the true-flux sky model (component names are identical
+                # in both, but the order may be different)
+                names_source_skymodel = source_skymodel.getColValues('Name')
+                names_skymodel_true_sky = skymodel_true_sky.getColValues('Name')
+                ind_ss = np.argsort(names_source_skymodel)
+                ind_ts = np.argsort(names_skymodel_true_sky)
+                skymodel_true_sky.table['Patch'][ind_ts] = source_skymodel.table['Patch'][ind_ss]
+                skymodel_true_sky._updateGroups()
+                skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
@@ -367,8 +368,11 @@ class Field(object):
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
-        bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
-        self.bright_source_skymodel = bright_source_skymodel
+        if self.peel_bright_sources:
+            bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
+            self.bright_source_skymodel = bright_source_skymodel
+        else:
+            self.bright_source_skymodel = None
 
         # Check that the TEC screen order is not more than num_patches - 1
         self.tecscreenorder = min(self.num_patches-1, self.tecscreen_max_order)
