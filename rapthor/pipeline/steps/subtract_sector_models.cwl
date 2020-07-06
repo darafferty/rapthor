@@ -60,6 +60,16 @@ inputs:
     inputBinding:
       prefix: --peel_outliers=
       separate: False
+  - id: nr_bright
+    type: int
+    inputBinding:
+      prefix: --nr_bright=
+      separate: False
+  - id: peel_bright
+    type: string
+    inputBinding:
+      prefix: --peel_bright=
+      separate: False
   - id: reweight
     type: string
     inputBinding:
