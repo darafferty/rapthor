@@ -49,7 +49,7 @@ class Image(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
-        for sector in self.field.sectors:
+        for sector in self.field.imaging_sectors:
             if nsectors > 1:
                 # Use the model-subtracted data
                 sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
@@ -140,7 +140,7 @@ class Image(Operation):
         # Save output FITS image and model for each sector
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
         # pols, save them all
-        for sector in self.field.sectors:
+        for sector in self.field.imaging_sectors:
             image_root = os.path.join(self.pipeline_working_dir, sector.name, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
             sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
