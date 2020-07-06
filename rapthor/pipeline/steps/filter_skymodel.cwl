@@ -11,11 +11,11 @@ inputs:
     type: string
     inputBinding:
       position: 1
-  - id: input_skymodel_nonpb
+  - id: input_skymodel_pb
     type: string
     inputBinding:
       position: 2
-  - id: input_skymodel_pb
+  - id: input_bright_skymodel_pb
     type: string
     inputBinding:
       position: 3
@@ -38,6 +38,11 @@ inputs:
     inputBinding:
       prefix: --beamMS=
       itemSeparator: ","
+      separate: false
+  - id: peel_bright
+    type: string
+    inputBinding:
+      prefix: --peel_bright=
       separate: false
 
 outputs: []

@@ -53,6 +53,7 @@ class Sector(object):
         self.image_skymodel_file_apparent_sky = None  # set by the Image operation
         self.image_skymodel_file_true_sky = None  # set by the Image operation
         self.is_outlier = False
+        self.is_bright_source = False
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings. We synchronize some of the attributes later
@@ -226,13 +227,25 @@ class Sector(object):
         iter : int
             Iteration index
         """
-        # Filter the predict sky model
+        # Filter the predict sky model to include only those sources inside the sector
         if self.is_outlier:
             # For outlier sector, we use the sky model made earlier
             skymodel = self.predict_skymodel
         else:
             skymodel = self.calibration_skymodel.copy()
             skymodel = self.filter_skymodel(skymodel)
+
+        # Remove the bright sources from the sky model if they will be predicted and
+        # subtracted separately (so that they aren't subtracted twice)
+        if self.field.peel_bright_sources:
+            source_names = skymodel.getColValues('Name')
+            bright_source_names = field.bright_source_skymodel.getColValues('Name')
+            matching_ind = []
+            for i, sn in enumerate(source_names):
+                if sn in bright_source_names:
+                    matching_ind.append(i)
+            if len(matching_ind) > 0:
+                skymodel.remove(np.array(matching_ind))
 
         # Write filtered sky model to file
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(iter))

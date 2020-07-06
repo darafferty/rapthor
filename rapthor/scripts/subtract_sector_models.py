@@ -97,10 +97,11 @@ def convert_mvt2mjd(mvt_str):
 
 
 def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
-         out_column='DATA', nr_outliers=0, use_compression=False, peel_outliers=False,
-         reweight=True, starttime=None, solint_sec=None, solint_hz=None,
-         weights_colname="CAL_WEIGHT", gainfile="", uvcut_min=80.0, uvcut_max=1e6,
-         phaseonly=True, dirname=None, quiet=True, infix=''):
+         out_column='DATA', nr_outliers=0, nr_bright=0, use_compression=False,
+         peel_outliers=False, peel_bright=False, reweight=True, starttime=None,
+         solint_sec=None, solint_hz=None, weights_colname="CAL_WEIGHT",
+         gainfile="", uvcut_min=80.0, uvcut_max=1e6, phaseonly=True,
+         dirname=None, quiet=True, infix=''):
     """
     Subtract sector model data
 
@@ -117,12 +118,17 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     out_column : str, optional
         Name of output column
     nr_outliers : int, optional
-        Number of outlier sectors. The last nr_outliers files are assumed to be the
-        outlier sectors
+        Number of outlier sectors. Outlier sectors must be given after normal sectors
+        but before bright-source sectors in msmod_list
+    nr_bright : int, optional
+        Number of bright-source sectors. Bright-source sectors must be given after normal
+        sectors and outlier sectors in msmod_list
     use_compression : bool, optional
         If True, use Dysco compression
     peel_outliers : bool, optional
         If True, outliers are peeled before sector models are subtracted
+    peel_bright : bool, optional
+        If True, bright sources are peeled before sector models are subtracted
     reweight : bool, optional
         If True, reweight using the residuals
     starttime : str, optional
@@ -132,7 +138,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     """
     use_compression = misc.string2bool(use_compression)
     peel_outliers = misc.string2bool(peel_outliers)
+    peel_bright = misc.string2bool(peel_bright)
     nr_outliers = int(nr_outliers)
+    nr_bright = int(nr_bright)
     solint_sec = float(solint_sec)
     solint_hz = float(solint_hz)
     uvcut_min = float(uvcut_min)
@@ -162,11 +170,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             sys.exit(1)
 
     nsectors = len(model_list)
-    if nsectors == 1 and nr_outliers == 1:
-        # This means we have a single imaging sector and outlier sector, so duplicate
-        # the outlier model so that it gets subtracted properly later
-        model_list *= 2
-    elif nsectors == 0:
+    if nsectors == 0:
         print('subtract_sector_models: No model data found. Exiting...')
         sys.exit(1)
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
@@ -224,7 +228,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             nrows.append(nrow)
             startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
             startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-        print('subtract_sector_models: Using {} chunk(s) for peeling'.format(nchunks))
+        print('subtract_sector_models: Using {} chunk(s) for peeling of outliers'.format(nchunks))
 
         for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
             # For each chunk, load data
@@ -235,7 +239,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                 flagged = np.where(flags)
                 datain[flagged] = np.NaN
             datamod_list = []
-            for i, msmodel in enumerate(model_list[nsectors-nr_outliers:]):
+            for i, msmodel in enumerate(model_list[nsectors-nr_outliers-nr_bright:nsectors-nr_bright]):
                 tmod = pt.table(msmodel, readonly=True, ack=False)
                 datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
                 tmod.close()
@@ -258,6 +262,78 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         model_list = model_list[:-nr_outliers]
         nsectors = len(model_list)
         nr_outliers = 0
+        startrow_in = 0
+        datain = None
+        datamod_all = None
+        datamod_list = None
+
+    # Next, peel the bright sources if desired
+    if peel_bright and nr_bright > 0:
+        # Open input and output table
+        tin = pt.table(msin, readonly=True, ack=False)
+        root_filename = os.path.join(scratch_dir, os.path.basename(msin))
+        msout = '{0}{1}_field_no_bright'.format(root_filename, infix)
+        if infix != '':
+            # This implies we have a subrange of a full dataset, so use a model ms
+            # file as source for the copy (since otherwise we could copy the
+            # entire msin and not just the data for the correct subrange)
+            mssrc = model_list[-1]
+        else:
+            mssrc = msin
+        if not os.path.exists(msout):
+            shutil.copytree(mssrc, msout)
+        tout = pt.table(msout, readonly=False, ack=False)
+
+        # Define chunks based on available memory
+        fraction = float(nrows_in) / float(tin.nrows())
+        nchunks = get_nchunks(msin, nr_bright, fraction, compressed=True)
+        nrows_per_chunk = int(nrows_in / nchunks)
+        startrows_tin = [startrow_in]
+        startrows_tmod = [0]
+        nrows = [nrows_per_chunk]
+        for i in range(1, nchunks):
+            if i == nchunks-1:
+                nrow = nrows_in - (nchunks - 1) * nrows_per_chunk
+            else:
+                nrow = nrows_per_chunk
+            nrows.append(nrow)
+            startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
+            startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
+        print('subtract_sector_models: Using {} chunk(s) for peeling of bright
+              'sources'.format(nchunks))
+
+        for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
+            # For each chunk, load data
+            datain = tin.getcol(msin_column, startrow=startrow_tin, nrow=nrow)
+            if use_compression:
+                # Replace flagged values with NaNs before compression
+                flags = tin.getcol('FLAG', startrow=startrow_tin, nrow=nrow)
+                flagged = np.where(flags)
+                datain[flagged] = np.NaN
+            datamod_list = []
+            for i, msmodel in enumerate(model_list[nsectors-nr_bright:]):
+                tmod = pt.table(msmodel, readonly=True, ack=False)
+                datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
+                tmod.close()
+
+            # For each sector, subtract sum of model data for this chunk
+            other_sectors_ind = list(range(nr_bright))
+            datamod_all = None
+            for sector_ind in other_sectors_ind:
+                if datamod_all is None:
+                    datamod_all = datamod_list[sector_ind].copy()
+                else:
+                    datamod_all += datamod_list[sector_ind]
+            tout.putcol(out_column, datain-datamod_all, startrow=startrow_tmod, nrow=nrow)
+            tout.flush()
+        tout.close()
+        tin.close()
+
+        # Now reset things for the imaging sectors
+        msin = msout
+        model_list = model_list[:-nr_bright]
+        nsectors = len(model_list)
+        nr_bright = 0
         startrow_in = 0
         datain = None
         datamod_all = None
@@ -588,7 +664,7 @@ def readGainFile(gainfile, ms, nt, nchan, nbl, tarray, nAnt, msname, phaseonly, 
 
 
 if __name__ == '__main__':
-    descriptiontext = "Make a-term images from solutions.\n"
+    descriptiontext = "Subtract sector model data.\n"
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('msin', help='Filename of input MS data file')
@@ -597,8 +673,10 @@ if __name__ == '__main__':
     parser.add_argument('--model_column', help='Name of msmod column', type=str, default='DATA')
     parser.add_argument('--out_column', help='Name of output column', type=str, default='DATA')
     parser.add_argument('--nr_outliers', help='Number of outlier sectors', type=int, default=0)
+    parser.add_argument('--nr_bright', help='Number of bright-source sectors', type=int, default=0)
     parser.add_argument('--use_compression', help='Use compression', type=str, default='False')
     parser.add_argument('--peel_outliers', help='Peel outliers', type=str, default='False')
+    parser.add_argument('--peel_bright', help='Peel bright sources', type=str, default='False')
     parser.add_argument('--reweight', help='Reweight', type=str, default='True')
     parser.add_argument('--starttime', help='Start time in MVT', type=str, default=None)
     parser.add_argument('--solint_sec', help='Solution interval in s', type=float, default=None)
@@ -614,8 +692,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(args.msin, args.msmod, msin_column=args.msin_column,
          model_column=args.model_column, out_column=args.out_column,
-         nr_outliers=args.nr_outliers, use_compression=args.use_compression,
-         peel_outliers=args.peel_outliers, reweight=args.reweight,
+         nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
+         use_compression=args.use_compression, peel_outliers=args.peel_outliers,
+         peel_bright=args.peel_bright, reweight=args.reweight,
          starttime=args.starttime, solint_sec=args.solint_sec,
          solint_hz=args.solint_hz, weights_colname=args.weights_colname,
          gainfile=args.gainfile, uvcut_min=args.uvcut_min,

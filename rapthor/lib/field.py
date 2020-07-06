@@ -61,6 +61,8 @@ class Field(object):
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
+        self.peel_outliers = False
+        self.peel_bright_sources = False
 
         if not mininmal:
             # Scan MS files to get observation info
@@ -305,12 +307,11 @@ class Field(object):
             source_skymodel.write(skymodel_true_sky_file, clobber=True)
             # debug
 
-            # Tessellate
+            # Determine the flux cut to use
             if target_flux is None:
                 target_flux = self.target_flux
             if target_number is None:
                 target_number = self.target_number
-
             if target_number is not None:
                 # Set target_flux so that the target_number-brightest calibrators are
                 # kept
@@ -321,9 +322,23 @@ class Field(object):
                     target_number = len(fluxes)
                 target_flux = fluxes[-target_number] - 0.001
             self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+
+            # Save the model of the bright sources only, for later subtraction before
+            # imaging if needed
+            bright_source_skymodel = source_skymodel.copy()
+            bright_source_skymodel.remove('I < {} Jy'.format(target_flux), aggregate='sum')
+
+            # Tessellate, using only the bright sources as tessellation centers
             source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
                                   weightBySize=True)
             source_skymodel.setPatchPositions(patchDict=patch_dict)
+
+            # Match the bright-source sky model to the tessellated one by removing
+            # patches that are not present in the tessellated one
+            bright_patch_names = bright_source_skymodel.getPatchNames()
+            for pn in bright_patch_names:
+                if pn not in source_skymodel.getPatchNames():
+                    bright_source_skymodel.remove('Patch == {}'.format(pn))
 
             # debug
             dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
@@ -342,7 +357,7 @@ class Field(object):
             skymodel_true_sky._updateGroups()
             skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
 
-        # Write sky model to disk for use in calibration, etc.
+        # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
         self.num_patches = len(calibration_skymodel.getPatchNames())
         self.log.info('Using {} calibration patches'.format(self.num_patches))
@@ -351,6 +366,9 @@ class Field(object):
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
+        self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
+        bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
+        self.bright_source_skymodel = bright_source_skymodel
 
         # Check that the TEC screen order is not more than num_patches - 1
         self.tecscreenorder = min(self.num_patches-1, self.tecscreen_max_order)
@@ -568,6 +586,7 @@ class Field(object):
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
+            sector.bright_source_skymodel = self.bright_source_skymodel.copy()
             sector.make_skymodel(iter)
 
         # Set the imaging parameters for each imaging sector
@@ -616,8 +635,28 @@ class Field(object):
                 outlier_sector.make_skymodel(iter)
                 self.outlier_sectors.append(outlier_sector)
 
-        # Finally, make a list of all sectors
-        self.sectors = self.imaging_sectors[:] + self.outlier_sectors
+        # Make bright-source sectors containing only the bright sources that may be
+        # subtracted before imaging. These sectors, like the outlier sectors above, are not
+        # imaged
+        self.bright_source_sectors = []
+        nsources = len(self.bright_source_skymodel)
+        if nsources > 0:
+            nnodes = min(10, nsources, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
+            for i in range(nnodes):
+                bright_source_sector = Sector('bright_source_{0}'.format(i), self.ra, self.dec, 1.0, 1.0, self)
+                bright_source_sector.is_bright_source = True
+                bright_source_sector.predict_skymodel = self.bright_source_skymodel.copy()
+                startind = i * int(nsources/nnodes)
+                if i == nnodes-1:
+                    endind = nsources
+                else:
+                    endind = startind + int(nsources/nnodes)
+                bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                bright_source_sector.make_skymodel(iter)
+                self.bright_source_sectors.append(bright_source_sector)
+
+        # Finally, make a list containing all sectors
+        self.sectors = self.imaging_sectors[:] + self.outlier_sectors + self.bright_source_sectors
         self.nsectors = len(self.sectors)
 
     def find_intersecting_sources(self):

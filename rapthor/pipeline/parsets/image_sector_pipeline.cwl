@@ -77,6 +77,10 @@ inputs:
     type: float
   - id: threshpix
     type: float
+  - id: bright_skymodel_pb
+    type: string
+  - id: peel_bright
+    type: string
 
 outputs: []
 
@@ -223,10 +227,10 @@ steps:
     in:
       - id: input_image
         source: image/image_nonpb_name
-      - id: input_skymodel_nonpb
-        source: image/skymodel_nonpb
       - id: input_skymodel_pb
         source: image/skymodel_pb
+      - id: input_bright_skymodel_pb
+        source: bright_skymodel_pb
       - id: output_root
         source: image_name
       - id: threshisl
@@ -235,4 +239,6 @@ steps:
         source: threshpix
       - id: beamMS
         source: prepare_imaging_data/msimg
+      - id: peel_bright
+        source: peel_bright
     out: []

@@ -1,6 +1,6 @@
 #! /usr/bin/env python3
 """
-Script to filter a sky model with an image
+Script to filter and group a sky model with an image
 """
 import argparse
 from argparse import RawTextHelpFormatter
@@ -37,10 +37,10 @@ def dec2ddmmss(deg):
     return (int(dd), int(ma), sa, sign)
 
 
-def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
+def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
          threshisl=5.0, threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7),
          adaptive_rmsbox=True, use_adaptive_threshold=False, adaptive_thresh=75.0,
-         beamMS=None):
+         beamMS=None, peel_bright=False):
     """
     Filter the input sky model so that they lie in islands in the image
 
@@ -49,10 +49,11 @@ def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
     input_image : str
         Filename of input image to use to detect sources for filtering. Ideally, this
         should be a flat-noise image (i.e., without primary-beam correction)
-    input_skymodel_nonpb : str
-        Filename of input makesourcedb sky model, without primary-beam correction
-    input_skymodel_pb : str, optional
+    input_skymodel_pb : str
         Filename of input makesourcedb sky model, with primary-beam correction
+    input_bright_skymodel_pb : str
+        Filename of input makesourcedb sky model of bright sources only, with primary-
+        beam correction
     output_root : str
         Root of filename of output makesourcedb sky models. Output filenames will be
         output_root+'.apparent_sky' and output_root+'.true_sky'
@@ -72,6 +73,8 @@ def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
     adaptive_thresh : float, optional
         If adaptive_rmsbox is True, this value sets the threshold above
         which a source will use the small rms box
+    peel_bright : bool, optional
+        If True, bright sources were peeled, so add then back before filtering
     """
     if rmsbox is not None and isinstance(rmsbox, str):
         rmsbox = eval(rmsbox)
@@ -81,9 +84,11 @@ def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
     use_adaptive_threshold = misc.string2bool(use_adaptive_threshold)
     if isinstance(beamMS, str):
         beamMS = misc.string2list(beamMS)
+    peel_bright = misc.string2bool(peel_bright)
 
+    # Run PyBDSF to make a mask for grouping
     if use_adaptive_threshold:
-        # Get an estimate of the rms
+        # Get an estimate of the rms by running PyBDSF to make an rms map
         img = bdsf.process_image(input_image, mean_map='zero', rms_box=rmsbox,
                                  thresh_pix=threshpix, thresh_isl=threshisl,
                                  thresh='hard', adaptive_rms_box=adaptive_rmsbox,
@@ -119,8 +124,6 @@ def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
         img.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
         del img
 
-        # TODO: remove the following attenuation once WSClean correctly produces
-        # non-pb-corrected sky models
         if len(beamMS) > 1:
             ms_times = []
             for ms in beamMS:
@@ -133,20 +136,18 @@ def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
         else:
             beam_ind = 0
         try:
-    #         s = lsmtool.load(input_skymodel_nonpb)  # normally, load nonpb model and don't attenuate!
             s = lsmtool.load(input_skymodel_pb, beamMS=beamMS[beam_ind])
+            if peel_bright:
+                # If bright sources were peeled before imaging, add them back
+                s_bright = lsmtool.load(input_bright_skymodel_pb)
+                s.concatenate(s_bright)
             s.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
             if len(s) == 0:
                 emptysky = True
             else:
                 s.group(maskfile)  # group the sky model by mask islands
-        #         s.write(output_root+'.apparent_sky', clobber=True)  # normally don't attenuate!
-                s.write(output_root+'.apparent_sky', clobber=True, applyBeam=True)
-
-                s = lsmtool.load(input_skymodel_pb)
-                s.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
-                s.group(maskfile)  # group the sky model by mask islands
                 s.write(output_root+'.true_sky', clobber=True)
+                s.write(output_root+'.apparent_sky', clobber=True, applyBeam=True)
         except astropy.io.ascii.InconsistentTableError:
             emptysky = True
     else:
@@ -175,24 +176,27 @@ def main(input_image, input_skymodel_nonpb, input_skymodel_pb, output_root,
 
 
 if __name__ == '__main__':
-    descriptiontext = "Filter a sky model with an image.\n"
+    descriptiontext = "Filter and group a sky model with an image.\n"
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('input_image', help='Filename of input image')
-    parser.add_argument('input_skymodel_nonpb', help='Filename of input sky model')
     parser.add_argument('input_skymodel_pb', help='Filename of input sky model')
+    parser.add_argument('input_bright_skymodel_pb', help='Filename of input bright-source sky model')
     parser.add_argument('output_skymodel', help='Filename of output sky model')
-    parser.add_argument('--threshisl', help='', type=float, default=3.0)
-    parser.add_argument('--threshpix', help='', type=float, default=5.0)
-    parser.add_argument('--rmsbox', help='rms box width and step (e.g., "(60, 20)")',
+    parser.add_argument('--threshisl', help='Island threshold', type=float, default=3.0)
+    parser.add_argument('--threshpix', help='Peak pixel threshold', type=float, default=5.0)
+    parser.add_argument('--rmsbox', help='Rms box width and step (e.g., "(60, 20)")',
                         type=str, default='(60, 20)')
-    parser.add_argument('--rmsbox_bright', help='rms box for bright sources, width and step (e.g., "(60, 20)")',
+    parser.add_argument('--rmsbox_bright', help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
                         type=str, default='(60, 20)')
-    parser.add_argument('--adaptive_rmsbox', help='use an adaptive rms box', type=str, default='False')
-    parser.add_argument('--beamMS', help='', type=str, default=None)
+    parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='False')
+    parser.add_argument('--beamMS', help='MS filename to use for beam attenuation', type=str, default=None)
+    parser.add_argument('--peel_bright', help='Bright sources were peeling before imaging',
+                        type=str, default='False')
 
     args = parser.parse_args()
-    main(args.input_image, args.input_skymodel_nonpb, args.input_skymodel_pb, args.output_skymodel,
-         threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
+    main(args.input_image, args.input_skymodel_pb, args.input_bright_skymodel_pb,
+         args.output_skymodel, threshisl=args.threshisl,
+         threshpix=args.threshpix, rmsbox=args.rmsbox,
          rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox,
-         beamMS=args.beamMS)
+         beamMS=args.beamMS, peel_bright=args.peel_bright)

@@ -122,7 +122,9 @@ class Image(Operation):
                             'auto_mask': [sector.auto_mask for sector in self.field.sectors],
                             'idg_mode': [sector.idg_mode for sector in self.field.sectors],
                             'threshisl': [sector.threshisl for sector in self.field.sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.sectors]}
+                            'threshpix': [sector.threshpix for sector in self.field.sectors],
+                            'bright_skymodel_pb': [self.field.bright_source_skymodel_file] * nsectors,
+                            'peel_bright': [self.field.peel_bright_sources] * nsectors}
         if self.field.use_screens:
             self.input_parms.update({'aterms_config_file': aterms_config_file,
                                      'aterm_image_filenames': aterm_image_filenames})

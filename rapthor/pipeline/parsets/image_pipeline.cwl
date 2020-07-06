@@ -106,6 +106,10 @@ inputs:
     type: float[]
   - id: threshpix
     type: float[]
+  - id: bright_skymodel_pb
+    type: string[]
+  - id: peel_bright
+    type: string[]
 
 outputs: []
 
@@ -185,6 +189,10 @@ steps:
         source: threshisl
       - id: threshpix
         source: threshpix
+      - id: bright_skymodel_pb
+        source: bright_skymodel_pb
+      - id: peel_bright
+        source: peel_bright
 {% if use_screens %}
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
@@ -193,7 +201,8 @@ steps:
               aterm_image_filenames, channels_out, deconvolution_channels,
               wsclean_niter, robust, wsclean_image_padding, min_uv_lambda,
               max_uv_lambda, multiscale_scales_pixel, local_dir, taper_arcsec,
-              auto_mask, idg_mode, threshisl, threshpix]
+              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
+              peel_bright]
 {% else %}
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
@@ -202,7 +211,7 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter, robust,
               wsclean_image_padding, min_uv_lambda, max_uv_lambda,
               multiscale_scales_pixel, local_dir, taper_arcsec, auto_mask,
-              idg_mode, threshisl, threshpix]
+              idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
 {% endif %}
     scatterMethod: dotproduct
     out: []

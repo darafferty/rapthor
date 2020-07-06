@@ -46,6 +46,10 @@ inputs:
     type: int
   - id: peel_outliers
     type: string
+  - id: nr_bright
+    type: int
+  - id: peel_bright
+    type: string
   - id: reweight
     type: string
 
@@ -145,6 +149,10 @@ steps:
         source: nr_outliers
       - id: peel_outliers
         source: peel_outliers
+      - id: nr_bright
+        source: nr_bright
+      - id: peel_bright
+        source: peel_bright
       - id: reweight
         source: reweight
     scatter: [msobs, obs_starttime, solint_sec, solint_hz, infix]

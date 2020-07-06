@@ -27,15 +27,17 @@ class Predict(Operation):
         Define the pipeline inputs
         """
         # Make list of sectors for which prediction needs to be done. Any imaging
-        # sectors should come first, followed by outlier sectors (as required by the
-        # rapthor/scripts/subtract_sector_models.py script)
+        # sectors should come first, followed by outlier sectors, then bright-source
+        # sectors (as required by the rapthor/scripts/subtract_sector_models.py script)
         sectors = []
         if len(self.field.imaging_sectors) > 1 or self.field.reweight:
-            # If we have more than one imaging sector or reweighting is desired,
-            # predict all sectors. (If we have a single imagine sector, we don't
-            # need to predict its model data, just that of any outlier sectors)
+            # If we have more than one imaging sector, reweighting is desired,
+            # predict the imaging sector models. (If we have a single imaging
+            # sector, we don't need to predict its model data, just that of any
+            # outlier or birght-source sectors)
             sectors.extend(self.field.imaging_sectors)
         sectors.extend(self.field.outlier_sectors)
+        sectors.extend(self.field.bright_source_sectors)
 
         # Set sector-dependent parameters
         sector_skymodel = []
@@ -73,6 +75,8 @@ class Predict(Operation):
 
         nr_outliers = len(self.field.outlier_sectors)
         peel_outliers = self.field.peel_outliers
+        nr_bright = len(self.field.bright_source_sectors)
+        peel_bright = self.field.peel_bright_sources
         reweight = self.field.reweight
         min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
         max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
@@ -95,4 +99,6 @@ class Predict(Operation):
                             'obs_infix': obs_infix,
                             'nr_outliers': nr_outliers,
                             'peel_outliers': peel_outliers,
+                            'nr_bright': nr_bright,
+                            'peel_bright': peel_bright,
                             'reweight': reweight}
