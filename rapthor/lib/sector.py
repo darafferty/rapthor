@@ -227,16 +227,13 @@ class Sector(object):
         iter : int
             Iteration index
         """
-        # Filter the predict sky model to include only those sources inside the sector
-        if self.is_outlier:
-            # For outlier sector, we use the sky model made earlier, with no filtering
+        if self.is_outlier or self.is_bright_source:
+            # For outlier and bright-source sectors, we use the sky model made earlier,
+            # with no filtering
             skymodel = self.predict_skymodel
-        elif self.is_bright_source:
-            # For bright-source sector, we use the bright-source sky model
-            skymodel = self.bright_source_skymodel.copy()
-            skymodel = self.filter_skymodel(skymodel)
         else:
-            # For imaging sector, we use the full calibration sky model
+            # For imaging sectors, we use the full calibration sky model and filter it
+            # to keep only sources inside the sector
             skymodel = self.calibration_skymodel.copy()
             skymodel = self.filter_skymodel(skymodel)
 
@@ -262,7 +259,7 @@ class Sector(object):
         self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
 
         # Find nearest patch to flux-weighted center of the sector sky model
-        if not self.is_outlier:
+        if not self.is_outlier and not self.is_bright_source:
             tmp_skymodel = skymodel.copy()
             tmp_skymodel.group('single')
             ra, dec = tmp_skymodel.getPatchPositions(method='wmean', asArray=True)

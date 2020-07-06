@@ -478,10 +478,22 @@ class Field(object):
 
         # Re-adjust sector boundaries and update their sky models
         self.adjust_sector_boundaries()
-        for sector in self.sectors:
+        for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
             sector.bright_source_skymodel = self.bright_source_skymodel.copy()
             sector.make_skymodel(iter)
+        nsources = len(self.bright_source_skymodel)
+        if nsources > 0:
+            nnodes = min(10, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
+            for sector in self.bright_source_sectors:
+                sector.predict_skymodel = self.bright_source_skymodel.copy()
+                startind = i * int(nsources/nnodes)
+                if i == nnodes-1:
+                    endind = nsources
+                else:
+                    endind = startind + int(nsources/nnodes)
+                sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                sector.make_skymodel(iter)
 
         # Clean up to minimize memory usage
         self.calibration_skymodel = None
