@@ -290,74 +290,76 @@ class Field(object):
             source_skymodel.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
         self.source_skymodel = source_skymodel.copy()  # save and make copy before grouping
 
-        # Now regroup source sky model into calibration patches if desired
-        if regroup or self.peel_bright_sources:
-            # Find groups of bright sources to use as basis for calibrator patches. The
-            # patch positions are set to the flux-weighted mean position. This position
-            # is then propagated and used for the calibrate and predict sky models
-            source_skymodel.group('meanshift', byPatch=True, applyBeam=applyBeam_group,
-                                  lookDistance=0.075, groupingDistance=0.01)
-            source_skymodel.setPatchPositions(method='wmean')
-            patch_dict = source_skymodel.getPatchPositions()
+        # Find groups of bright sources to use as basis for calibrator patches
+        # and for subtraction if desired. The patch positions are set to the
+        # flux-weighted mean position. This position is then propagated and used
+        # for the calibrate and predict sky models
+        source_skymodel.group('meanshift', byPatch=True, applyBeam=applyBeam_group,
+                              lookDistance=0.075, groupingDistance=0.01)
+        source_skymodel.setPatchPositions(method='wmean')
+        patch_dict = source_skymodel.getPatchPositions()
 
-            # debug
-            dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-            misc.create_directory(dst_dir)
-            skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
-            source_skymodel.write(skymodel_true_sky_file, clobber=True)
-            # debug
+        # debug
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+        misc.create_directory(dst_dir)
+        skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
+        source_skymodel.write(skymodel_true_sky_file, clobber=True)
+        # debug
 
-            # Determine the flux cut to use
-            if target_flux is None:
-                target_flux = self.target_flux
-            if target_number is None:
-                target_number = self.target_number
-            if target_number is not None:
-                # Set target_flux so that the target_number-brightest calibrators are
-                # kept
-                fluxes = source_skymodel.getColValues('I', aggregate='sum',
-                                                      applyBeam=applyBeam_group)
-                fluxes.sort()
-                if target_number > len(fluxes):
-                    target_number = len(fluxes)
-                target_flux = fluxes[-target_number] - 0.001
-            if regroup:
-                self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+        # Determine the flux cut to use to select the bright sources
+        if target_flux is None:
+            target_flux = self.target_flux
+        if target_number is None:
+            target_number = self.target_number
+        if target_number is not None:
+            # Set target_flux so that the target_number-brightest calibrators are
+            # kept
+            fluxes = source_skymodel.getColValues('I', aggregate='sum',
+                                                  applyBeam=applyBeam_group)
+            fluxes.sort()
+            if target_number > len(fluxes):
+                target_number = len(fluxes)
+            target_flux = fluxes[-target_number] - 0.001
 
-            # Save the model of the bright sources only, for later subtraction before
-            # imaging if needed
-            bright_source_skymodel = source_skymodel.copy()
+        # Save the model of the bright sources only, for later subtraction before
+        # imaging if needed
+        bright_source_skymodel = source_skymodel.copy()
+        if not regroup:
+            # Remove the fainter sources from the bright-source sky model. If regrouping
+            # is to be done, this step is done after tessellation to ensure the cut
+            # used there matches this one
             bright_source_skymodel.remove('I < {} Jy'.format(target_flux), aggregate='sum')
-
-            # Tessellate, using only the bright sources as tessellation centers
+        else:
+            # Regroup by tessellating with the bright sources as the tessellation
+            # centers
+            self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
             source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
                                   weightBySize=True)
             source_skymodel.setPatchPositions(patchDict=patch_dict)
 
             # Match the bright-source sky model to the tessellated one by removing
-            # patches that are not present in the tessellated one
+            # fainter patches that are not present in the tessellated model
             bright_patch_names = bright_source_skymodel.getPatchNames()
             for pn in bright_patch_names:
                 if pn not in source_skymodel.getPatchNames():
                     bright_source_skymodel.remove('Patch == {}'.format(pn))
 
-            if regroup:
-                # debug
-                dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-                misc.create_directory(dst_dir)
-                skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
-                source_skymodel.write(skymodel_true_sky_file, clobber=True)
-                # debug
+            # debug
+            dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+            misc.create_directory(dst_dir)
+            skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
+            source_skymodel.write(skymodel_true_sky_file, clobber=True)
+            # debug
 
-                # Transfer patches to the true-flux sky model (component names are identical
-                # in both, but the order may be different)
-                names_source_skymodel = source_skymodel.getColValues('Name')
-                names_skymodel_true_sky = skymodel_true_sky.getColValues('Name')
-                ind_ss = np.argsort(names_source_skymodel)
-                ind_ts = np.argsort(names_skymodel_true_sky)
-                skymodel_true_sky.table['Patch'][ind_ts] = source_skymodel.table['Patch'][ind_ss]
-                skymodel_true_sky._updateGroups()
-                skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
+            # Transfer patches to the true-flux sky model (component names are identical
+            # in both, but the order may be different)
+            names_source_skymodel = source_skymodel.getColValues('Name')
+            names_skymodel_true_sky = skymodel_true_sky.getColValues('Name')
+            ind_ss = np.argsort(names_source_skymodel)
+            ind_ts = np.argsort(names_skymodel_true_sky)
+            skymodel_true_sky.table['Patch'][ind_ts] = source_skymodel.table['Patch'][ind_ss]
+            skymodel_true_sky._updateGroups()
+            skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
@@ -369,11 +371,8 @@ class Field(object):
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
-        if self.peel_bright_sources:
-            bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
-            self.bright_source_skymodel = bright_source_skymodel
-        else:
-            self.bright_source_skymodel = None
+        bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
+        self.bright_source_skymodel = bright_source_skymodel
 
         # Check that the TEC screen order is not more than num_patches - 1
         self.tecscreenorder = min(self.num_patches-1, self.tecscreen_max_order)
@@ -591,10 +590,7 @@ class Field(object):
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
-            if self.bright_source_skymodel is not None:
-                sector.bright_source_skymodel = self.bright_source_skymodel.copy()
-            else:
-                sector.bright_source_skymodel = None
+            sector.bright_source_skymodel = self.bright_source_skymodel.copy()
             sector.make_skymodel(iter)
 
         # Set the imaging parameters for each imaging sector
@@ -647,12 +643,9 @@ class Field(object):
         # subtracted before imaging. These sectors, like the outlier sectors above, are not
         # imaged
         self.bright_source_sectors = []
-        if self.bright_source_skymodel is not None:
-            nsources = len(self.bright_source_skymodel)
-        else:
-            nsources = 0
+        nsources = len(self.bright_source_skymodel)
         if nsources > 0:
-            nnodes = min(10, nsources, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
+            nnodes = min(10, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
             for i in range(nnodes):
                 bright_source_sector = Sector('bright_source_{0}'.format(i), self.ra, self.dec, 1.0, 1.0, self)
                 bright_source_sector.is_bright_source = True
