@@ -33,7 +33,7 @@ class Image(Operation):
         """
         Define the pipeline inputs
         """
-        nsectors = len(self.field.sectors)
+        nsectors = len(self.field.imaging_sectors)
         obs_filename = []
         prepare_filename = []
         previous_mask_filename = []
@@ -105,24 +105,24 @@ class Image(Operation):
                             'multiscale_scales_pixel': multiscale_scales_pixel,
                             'local_dir': local_dir,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
-                            'channels_out': [sector.wsclean_nchannels for sector in self.field.sectors],
-                            'deconvolution_channels': [sector.wsclean_nchannels for sector in self.field.sectors],
-                            'ra': [sector.ra for sector in self.field.sectors],
-                            'dec': [sector.dec for sector in self.field.sectors],
-                            'wsclean_imsize': [sector.imsize for sector in self.field.sectors],
-                            'vertices_file': [sector.vertices_file for sector in self.field.sectors],
-                            'region_file': [sector.region_file for sector in self.field.sectors],
-                            'wsclean_niter': [sector.wsclean_niter for sector in self.field.sectors],
-                            'robust': [sector.robust for sector in self.field.sectors],
-                            'wsclean_image_padding': [sector.wsclean_image_padding for sector in self.field.sectors],
-                            'cellsize_deg': [sector.cellsize_deg for sector in self.field.sectors],
-                            'min_uv_lambda': [sector.min_uv_lambda for sector in self.field.sectors],
-                            'max_uv_lambda': [sector.max_uv_lambda for sector in self.field.sectors],
-                            'taper_arcsec': [sector.taper_arcsec for sector in self.field.sectors],
-                            'auto_mask': [sector.auto_mask for sector in self.field.sectors],
-                            'idg_mode': [sector.idg_mode for sector in self.field.sectors],
-                            'threshisl': [sector.threshisl for sector in self.field.sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.sectors],
+                            'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
+                            'deconvolution_channels': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
+                            'ra': [sector.ra for sector in self.field.imaging_sectors],
+                            'dec': [sector.dec for sector in self.field.imaging_sectors],
+                            'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
+                            'vertices_file': [sector.vertices_file for sector in self.field.imaging_sectors],
+                            'region_file': [sector.region_file for sector in self.field.imaging_sectors],
+                            'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
+                            'robust': [sector.robust for sector in self.field.imaging_sectors],
+                            'wsclean_image_padding': [sector.wsclean_image_padding for sector in self.field.imaging_sectors],
+                            'cellsize_deg': [sector.cellsize_deg for sector in self.field.imaging_sectors],
+                            'min_uv_lambda': [sector.min_uv_lambda for sector in self.field.imaging_sectors],
+                            'max_uv_lambda': [sector.max_uv_lambda for sector in self.field.imaging_sectors],
+                            'taper_arcsec': [sector.taper_arcsec for sector in self.field.imaging_sectors],
+                            'auto_mask': [sector.auto_mask for sector in self.field.imaging_sectors],
+                            'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
+                            'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
+                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
                             'bright_skymodel_pb': [self.field.bright_source_skymodel_file] * nsectors,
                             'peel_bright': [self.field.peel_bright_sources] * nsectors}
         if self.field.use_screens:
