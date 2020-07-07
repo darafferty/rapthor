@@ -38,25 +38,20 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
     # Initialize field object
     field = Field(parset)
 
-    # Get the processing strategy
+    # Set the processing strategy
     strategy_steps = set_strategy(field)
 
     # Run the strategy
     for iter, step in enumerate(strategy_steps):
-        # Update the reduction parameters. Also update the sky models using results of
-        # previous iteration
-        field.update_parameters(step)
-        if iter > 0:
-            field.update_skymodels(iter+1, step['regroup_model'],
-                                   step['imaged_sources_only'],
-                                   target_flux=step['target_flux'])
+        # Update the field object for the current step
+        field.update(step, iter+1)
 
         # Calibrate
         if step['do_calibrate']:
             op = Calibrate(field, iter+1)
             op.run()
 
-        # Predict and subtract sector models
+        # Predict and subtract the sector models
         if step['do_predict']:
             op = Predict(field, iter+1)
             op.run()
@@ -71,7 +66,7 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
             op = Mosaic(field, iter+1)
             op.run()
 
-        # Check for convergence
+        # Check for selfcal convergence
         if step['do_check']:
             has_converged = field.check_selfcal_convergence()
             if has_converged:

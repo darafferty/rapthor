@@ -49,7 +49,15 @@ class Image(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
-        for sector in self.field.imaging_sectors:
+        for i, sector in enumerate(self.field.imaging_sectors):
+            # Set the imaging parameters for each imaging sector
+            sector_do_multiscale_list = self.field.parset['imaging_specific']['sector_do_multiscale_list']
+            if len(sector_do_multiscale_list) == nsectors:
+                do_multiscale = sector_do_multiscale_list[i]
+            else:
+                do_multiscale = None
+            sector.set_imaging_parameters(do_multiscale)
+
             if nsectors > 1:
                 # Use the model-subtracted data
                 sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
