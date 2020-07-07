@@ -37,17 +37,14 @@ def set_strategy(field):
         max_selfcal_loops = field.parset['calibration_specific']['max_selfcal_loops']
         for i in range(max_selfcal_loops):
             strategy_steps.append({})
-            strategy_steps[i]['calibrate_parameters'] = {}
-            strategy_steps[i]['predict_parameters'] = {}
-            strategy_steps[i]['image_parameters'] = {}
 
             strategy_steps[i]['do_calibrate'] = True
             if field.input_h5parm is not None and i == 0:
                 strategy_steps[i]['do_calibrate'] = False
             if i < 3 and not always_do_slowgain:
-                strategy_steps[i]['calibrate_parameters']['do_slowgain_solve'] = False
+                strategy_steps[i]['do_slowgain_solve'] = False
             else:
-                strategy_steps[i]['calibrate_parameters']['do_slowgain_solve'] = True
+                strategy_steps[i]['do_slowgain_solve'] = True
 
             if (nr_imaging_sectors > 1 or
                 nr_outlier_sectors > 0 or
@@ -55,21 +52,21 @@ def set_strategy(field):
                 strategy_steps[i]['do_predict'] = True
             else:
                 strategy_steps[i]['do_predict'] = False
-            strategy_steps[i]['predict_parameters']['peel_outliers'] = False
+            strategy_steps[i]['peel_outliers'] = False
 
             strategy_steps[i]['do_image'] = True
             if i == 0:
-                strategy_steps[i]['image_parameters']['auto_mask'] = 3.6
-                strategy_steps[i]['image_parameters']['threshisl'] = 5.0
-                strategy_steps[i]['image_parameters']['threshpix'] = 7.5
+                strategy_steps[i]['auto_mask'] = 3.6
+                strategy_steps[i]['threshisl'] = 5.0
+                strategy_steps[i]['threshpix'] = 7.5
             elif i == 1:
-                strategy_steps[i]['image_parameters']['auto_mask'] = 3.3
-                strategy_steps[i]['image_parameters']['threshisl'] = 5.0
-                strategy_steps[i]['image_parameters']['threshpix'] = 6.0
+                strategy_steps[i]['auto_mask'] = 3.3
+                strategy_steps[i]['threshisl'] = 5.0
+                strategy_steps[i]['threshpix'] = 6.0
             else:
-                strategy_steps[i]['image_parameters']['auto_mask'] = 3.0
-                strategy_steps[i]['image_parameters']['threshisl'] = 4.0
-                strategy_steps[i]['image_parameters']['threshpix'] = 5.0
+                strategy_steps[i]['auto_mask'] = 3.0
+                strategy_steps[i]['threshisl'] = 4.0
+                strategy_steps[i]['threshpix'] = 5.0
 
             if i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_update'] = False
@@ -98,17 +95,14 @@ def set_strategy(field):
         max_selfcal_loops = field.parset['calibration_specific']['max_selfcal_loops']
         for i in range(max_selfcal_loops):
             strategy_steps.append({})
-            strategy_steps[i]['calibrate_parameters'] = {}
-            strategy_steps[i]['predict_parameters'] = {}
-            strategy_steps[i]['image_parameters'] = {}
 
             strategy_steps[i]['do_calibrate'] = True
             if field.input_h5parm is not None and i == 0:
                 strategy_steps[i]['do_calibrate'] = False
             if i < 3 and not always_do_slowgain:
-                strategy_steps[i]['calibrate_parameters']['do_slowgain_solve'] = False
+                strategy_steps[i]['do_slowgain_solve'] = False
             else:
-                strategy_steps[i]['calibrate_parameters']['do_slowgain_solve'] = True
+                strategy_steps[i]['do_slowgain_solve'] = True
 
             if (nr_imaging_sectors > 1 or
                 (i == 0 and nr_outlier_sectors > 0) or
@@ -117,23 +111,23 @@ def set_strategy(field):
             else:
                 strategy_steps[i]['do_predict'] = False
             if i < 1:
-                strategy_steps[i]['predict_parameters']['peel_outliers'] = True
+                strategy_steps[i]['peel_outliers'] = True
             else:
-                strategy_steps[i]['predict_parameters']['peel_outliers'] = False
+                strategy_steps[i]['peel_outliers'] = False
 
             strategy_steps[i]['do_image'] = True
             if i == 0:
-                strategy_steps[i]['image_parameters']['auto_mask'] = 3.6
-                strategy_steps[i]['image_parameters']['threshisl'] = 5.0
-                strategy_steps[i]['image_parameters']['threshpix'] = 7.5
+                strategy_steps[i]['auto_mask'] = 3.6
+                strategy_steps[i]['threshisl'] = 5.0
+                strategy_steps[i]['threshpix'] = 7.5
             elif i == 1:
-                strategy_steps[i]['image_parameters']['auto_mask'] = 3.3
-                strategy_steps[i]['image_parameters']['threshisl'] = 5.0
-                strategy_steps[i]['image_parameters']['threshpix'] = 6.0
+                strategy_steps[i]['auto_mask'] = 3.3
+                strategy_steps[i]['threshisl'] = 5.0
+                strategy_steps[i]['threshpix'] = 6.0
             else:
-                strategy_steps[i]['image_parameters']['auto_mask'] = 3.0
-                strategy_steps[i]['image_parameters']['threshisl'] = 4.0
-                strategy_steps[i]['image_parameters']['threshpix'] = 5.0
+                strategy_steps[i]['auto_mask'] = 3.0
+                strategy_steps[i]['threshisl'] = 4.0
+                strategy_steps[i]['threshpix'] = 5.0
 
             if i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_update'] = False
@@ -152,9 +146,6 @@ def set_strategy(field):
         # Image one or more sectors:
         #     - no calibration
         strategy_steps.append({})
-        strategy_steps[0]['calibrate_parameters'] = {}
-        strategy_steps[0]['predict_parameters'] = {}
-        strategy_steps[0]['image_parameters'] = {}
 
         strategy_steps[0]['do_calibrate'] = False
 
@@ -164,12 +155,12 @@ def set_strategy(field):
             strategy_steps[0]['do_predict'] = True
         else:
             strategy_steps[0]['do_predict'] = False
-        strategy_steps[0]['predict_parameters']['peel_outliers'] = False
+        strategy_steps[0]['peel_outliers'] = False
 
         strategy_steps[0]['do_image'] = True
-        strategy_steps[0]['image_parameters']['auto_mask'] = 3.0
-        strategy_steps[i]['image_parameters']['threshisl'] = 4.0
-        strategy_steps[i]['image_parameters']['threshpix'] = 5.0
+        strategy_steps[0]['auto_mask'] = 3.0
+        strategy_steps[0]['threshisl'] = 4.0
+        strategy_steps[0]['threshpix'] = 5.0
 
         strategy_steps[0]['do_update'] = False
 

@@ -220,7 +220,7 @@ class Sector(object):
 
     def make_skymodel(self, iter):
         """
-        Makes predict sky model from the field calibration sky model
+        Makes predict sky model
 
         Parameters
         ----------

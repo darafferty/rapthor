@@ -43,7 +43,9 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
 
     # Run the strategy
     for iter, step in enumerate(strategy_steps):
-        # Update the sky models using results of previous iteration
+        # Update the reduction parameters. Also update the sky models using results of
+        # previous iteration
+        field.update_parameters(step)
         if iter > 0:
             field.update_skymodels(iter+1, step['regroup_model'],
                                    step['imaged_sources_only'],
@@ -51,27 +53,16 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
 
         # Calibrate
         if step['do_calibrate']:
-            field.__dict__.update(step['calibrate_parameters'])
             op = Calibrate(field, iter+1)
             op.run()
 
         # Predict and subtract sector models
         if step['do_predict']:
-            field.__dict__.update(step['predict_parameters'])
             op = Predict(field, iter+1)
             op.run()
-            if field.peel_outliers and len(field.outlier_sectors) > 0:
-                # Update the observations to use the new peeled datasets and remove the
-                # outlier sectors (since, once peeled, they are no longer needed)
-                for obs in field.observations:
-                    obs.ms_filename = obs.ms_field
-                field.sectors = [sector for sector in field.sectors if not sector.is_outlier]
-                field.outlier_sectors = []
 
         # Image the sectors
         if step['do_image']:
-            for sector in field.imaging_sectors:
-                sector.__dict__.update(step['image_parameters'])
             op = Image(field, iter+1)
             op.run()
 

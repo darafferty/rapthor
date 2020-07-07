@@ -848,3 +848,11 @@ class Field(object):
             True if all sectors have converged, False if not
         """
         return False
+
+    def update_parameters(self, step_dict):
+        """
+        Updates parameters to those defined in the step_dict
+        """
+        self.__dict__.update(step_dict)
+        for sector in self.sectors:
+            sector.__dict__.update(step_dict)

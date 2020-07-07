@@ -102,3 +102,15 @@ class Predict(Operation):
                             'nr_bright': nr_bright,
                             'peel_bright': peel_bright,
                             'reweight': reweight}
+
+    def finalize(self):
+        """
+        Finalize this operation
+        """
+        if self.field.peel_outliers and len(self.field.outlier_sectors) > 0:
+            # Update the observations to use the new peeled datasets and remove the
+            # outlier sectors (since, once peeled, they are no longer needed)
+            for obs in self.field.observations:
+                obs.ms_filename = obs.ms_field
+            self.field.sectors = [sector for sector in self.field.sectors if not sector.is_outlier]
+            self.field.outlier_sectors = []
