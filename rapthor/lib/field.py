@@ -745,6 +745,11 @@ class Field(object):
         for sector in self.imaging_sectors:
             skymodel = lsmtool.load(str(sector.predict_skymodel_file))
             sector_source_names.extend(skymodel.getColValues('Name').tolist())
+        if self.peel_bright_sources:
+            # The bright sources were removed from the sector predict sky models, so
+            # add them to the list
+            sector_source_names.extend(self.bright_source_skymodel.getColValues('Name').tolist())
+
         outlier_ind = np.array([all_source_names.index(sn) for sn in all_source_names
                                 if sn not in sector_source_names])
         outlier_skymodel = self.calibration_skymodel.copy()
