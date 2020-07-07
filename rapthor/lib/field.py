@@ -391,12 +391,12 @@ class Field(object):
         """
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
-        if iter == 0:
+        if iter == 1:
             # Make initial calibration and source sky models
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
-                                find_sources=True, iter=1)
+                                find_sources=True, iter=iter)
         else:
             # Use the sector sky models from the previous iteration to update the master
             # sky model
@@ -497,15 +497,15 @@ class Field(object):
                                                                             minRA[0], maxDec[0])
         self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
 
-        # Make outlier sectors containing any remaining calibration sources (not
-        # included in any sector sky model). These sectors are not imaged; they are only
-        # used in prediction and subtraction
-        self.define_outlier_sectors(iter)
-
         # Make bright-source sectors containing only the bright sources that may be
         # subtracted before imaging. These sectors, like the outlier sectors above, are not
         # imaged
         self.define_bright_source_sectors(iter)
+
+        # Make outlier sectors containing any remaining calibration sources (not
+        # included in any imaging or bright-source sector sky model). These sectors are
+        # not imaged; they are only used in prediction and subtraction
+        self.define_outlier_sectors(iter)
 
         # Finally, make a list containing all sectors
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
@@ -612,22 +612,23 @@ class Field(object):
             Iteration index
         """
         self.outlier_sectors = []
-        outlier_skymodel = self.make_outlier_skymodel()
-        nsources = len(outlier_skymodel)
-        if nsources > 0:
-            nnodes = min(10, nsources)  # TODO: tune to number of available nodes and/or memory?
-            for i in range(nnodes):
-                outlier_sector = Sector('outlier_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
-                outlier_sector.is_outlier = True
-                outlier_sector.predict_skymodel = outlier_skymodel.copy()
-                startind = i * int(nsources/nnodes)
-                if i == nnodes-1:
-                    endind = nsources
-                else:
-                    endind = startind + int(nsources/nnodes)
-                outlier_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
-                outlier_sector.make_skymodel(iter)
-                self.outlier_sectors.append(outlier_sector)
+        if self.peel_outliers:
+            outlier_skymodel = self.make_outlier_skymodel()
+            nsources = len(outlier_skymodel)
+            if nsources > 0:
+                nnodes = min(10, nsources)  # TODO: tune to number of available nodes and/or memory?
+                for i in range(nnodes):
+                    outlier_sector = Sector('outlier_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    outlier_sector.is_outlier = True
+                    outlier_sector.predict_skymodel = outlier_skymodel.copy()
+                    startind = i * int(nsources/nnodes)
+                    if i == nnodes-1:
+                        endind = nsources
+                    else:
+                        endind = startind + int(nsources/nnodes)
+                    outlier_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                    outlier_sector.make_skymodel(iter)
+                    self.outlier_sectors.append(outlier_sector)
 
     def define_bright_source_sectors(self, iter):
         """
@@ -639,21 +640,22 @@ class Field(object):
             Iteration index
         """
         self.bright_source_sectors = []
-        nsources = len(self.bright_source_skymodel)
-        if nsources > 0:
-            nnodes = min(10, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
-            for i in range(nnodes):
-                bright_source_sector = Sector('bright_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
-                bright_source_sector.is_bright_source = True
-                bright_source_sector.predict_skymodel = self.bright_source_skymodel.copy()
-                startind = i * int(nsources/nnodes)
-                if i == nnodes-1:
-                    endind = nsources
-                else:
-                    endind = startind + int(nsources/nnodes)
-                bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
-                bright_source_sector.make_skymodel(iter)
-                self.bright_source_sectors.append(bright_source_sector)
+        if self.peel_bright_sources:
+            nsources = len(self.bright_source_skymodel)
+            if nsources > 0:
+                nnodes = min(10, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
+                for i in range(nnodes):
+                    bright_source_sector = Sector('bright_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    bright_source_sector.is_bright_source = True
+                    bright_source_sector.predict_skymodel = self.bright_source_skymodel.copy()
+                    startind = i * int(nsources/nnodes)
+                    if i == nnodes-1:
+                        endind = nsources
+                    else:
+                        endind = startind + int(nsources/nnodes)
+                    bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                    bright_source_sector.make_skymodel(iter)
+                    self.bright_source_sectors.append(bright_source_sector)
 
     def find_intersecting_sources(self):
         """
@@ -837,7 +839,7 @@ class Field(object):
         Updates parameters, sky models, etc. for current step
         """
         self.__dict__.update(step_dict)
-        for sector in self.sectors:
+        for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
         self.update_skymodels(iter, step_dict['regroup_model'],
                               step_dict['imaged_sources_only'],
