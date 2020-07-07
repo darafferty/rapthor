@@ -25,8 +25,6 @@ def set_strategy(field):
     """
     strategy_steps = []
     always_do_slowgain = True
-    nr_outlier_sectors = len(field.outlier_sectors)
-    nr_imaging_sectors = len(field.imaging_sectors)
 
     if field.parset['strategy'] == 'fullfieldselfcal':
         # Selfcal without peeling of non-imaged sources:
@@ -46,12 +44,6 @@ def set_strategy(field):
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
 
-            if (nr_imaging_sectors > 1 or
-                nr_outlier_sectors > 0 or
-                field.parset['imaging_specific']['reweight']):
-                strategy_steps[i]['do_predict'] = True
-            else:
-                strategy_steps[i]['do_predict'] = False
             strategy_steps[i]['peel_outliers'] = False
 
             strategy_steps[i]['do_image'] = True
@@ -104,12 +96,6 @@ def set_strategy(field):
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
 
-            if (nr_imaging_sectors > 1 or
-                (i == 0 and nr_outlier_sectors > 0) or
-                field.parset['imaging_specific']['reweight']):
-                strategy_steps[i]['do_predict'] = True
-            else:
-                strategy_steps[i]['do_predict'] = False
             if i < 1:
                 strategy_steps[i]['peel_outliers'] = True
             else:
@@ -149,12 +135,6 @@ def set_strategy(field):
 
         strategy_steps[0]['do_calibrate'] = False
 
-        if (nr_imaging_sectors > 1 or
-            nr_outlier_sectors > 0 or
-            field.parset['imaging_specific']['reweight']):
-            strategy_steps[0]['do_predict'] = True
-        else:
-            strategy_steps[0]['do_predict'] = False
         strategy_steps[0]['peel_outliers'] = False
 
         strategy_steps[0]['do_image'] = True

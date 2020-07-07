@@ -47,17 +47,17 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
         field.update(step, iter+1)
 
         # Calibrate
-        if step['do_calibrate']:
+        if field.do_calibrate:
             op = Calibrate(field, iter+1)
             op.run()
 
         # Predict and subtract the sector models
-        if step['do_predict']:
+        if field.do_predict:
             op = Predict(field, iter+1)
             op.run()
 
         # Image the sectors
-        if step['do_image']:
+        if field.do_image:
             op = Image(field, iter+1)
             op.run()
 
@@ -67,7 +67,7 @@ def run(parset_file, logging_level='info', sectors_to_export=[], export_correcte
             op.run()
 
         # Check for selfcal convergence
-        if step['do_check']:
+        if field.do_check:
             has_converged = field.check_selfcal_convergence()
             if has_converged:
                 break

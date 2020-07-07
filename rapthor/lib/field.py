@@ -70,7 +70,7 @@ class Field(object):
 
             # Set up imaging sectors
             self.makeWCS()
-            self.define_imaging_sectors(1)
+            self.define_imaging_sectors()
 
     def scan_observations(self, data_fraction=1.0):
         """
@@ -523,6 +523,7 @@ class Field(object):
         """
         Defines the imaging sectors
         """
+        self.log.debug('Difining imaging sector(s)...')
         self.imaging_sectors = []
 
         # Determine whether we use a user-supplied list of sectors or a grid
@@ -577,10 +578,6 @@ class Field(object):
                 y = np.array([center_y])
             else:
                 # Make the grid
-                self.log.info('Making grid with: center = ({0}, {1}) deg, width = ({2}, {3}) deg, '
-                              '# of sectors = ({4}, {5})'.format(image_ra, image_dec,
-                                                                 image_width_ra, image_width_dec,
-                                                                 nsectors_ra, nsectors_dec))
                 width_ra = image_width_ra / nsectors_ra
                 width_dec = image_width_dec / nsectors_dec
                 width_x = width_ra / abs(self.wcs.wcs.cdelt[0])
@@ -845,3 +842,15 @@ class Field(object):
         self.update_skymodels(iter, step_dict['regroup_model'],
                               step_dict['imaged_sources_only'],
                               target_flux=step_dict['target_flux'])
+
+        # Determine whether a predict step is needed or not
+        nr_outlier_sectors = len(self.outlier_sectors)
+        nr_imaging_sectors = len(self.imaging_sectors)
+        nr_bright_source_sectors = len(self.bright_source_sectors)
+        if (nr_imaging_sectors > 1 or
+            nr_outlier_sectors > 0 or
+            nr_bright_source_sectors > 0 or
+            self.parset['imaging_specific']['reweight']):
+            self.do_predict = True
+        else:
+            self.do_predict = False
