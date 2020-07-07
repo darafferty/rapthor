@@ -321,7 +321,7 @@ class Field(object):
                 target_number = len(fluxes)
             target_flux = fluxes[-target_number] - 0.001
 
-        # Save the model of the bright sources only, for later subtraction before
+        # Save the model of the bright sources, for later subtraction before
         # imaging if needed
         bright_source_skymodel = source_skymodel.copy()
         if not regroup:
@@ -476,24 +476,24 @@ class Field(object):
                             regroup=regroup, find_sources=False, target_flux=target_flux,
                             target_number=target_number, iter=iter)
 
-        # Re-adjust sector boundaries and update their sky models
+        # Re-adjust the imaging sector boundaries and update their sky models
         self.adjust_sector_boundaries()
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.bright_source_skymodel = self.bright_source_skymodel.copy()
             sector.make_skymodel(iter)
+
+        # Update the bright-source sectors, redistributing the model components
         nsources = len(self.bright_source_skymodel)
-        if nsources > 0:
-            nnodes = min(10, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
-            for sector in self.bright_source_sectors:
-                sector.predict_skymodel = self.bright_source_skymodel.copy()
-                startind = i * int(nsources/nnodes)
-                if i == nnodes-1:
-                    endind = nsources
-                else:
-                    endind = startind + int(nsources/nnodes)
-                sector.predict_skymodel.select(np.array(list(range(startind, endind))))
-                sector.make_skymodel(iter)
+        nsectors = len(self.bright_source_sectors)
+        for i, sector in enumerate(self.bright_source_sectors):
+            sector.predict_skymodel = self.bright_source_skymodel.copy()
+            startind = i * int(nsources/nsectors)
+            if i == nsectors-1:
+                endind = nsources
+            else:
+                endind = startind + int(nsources/nsectors)
+            sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+            sector.make_skymodel(iter)
 
         # Clean up to minimize memory usage
         self.calibration_skymodel = None
@@ -590,9 +590,6 @@ class Field(object):
             n = 1
             for i in range(nsectors_ra):
                 for j in range(nsectors_dec):
-#                     if i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1]:
-#                         # skip corners
-#                         continue
                     name = 'sector_{0}'.format(n)
                     ra, dec = self.xy2radec([x[j, i]], [y[j, i]])
                     self.imaging_sectors.append(Sector(name, ra[0], dec[0], width_ra, width_dec, self))
@@ -603,7 +600,6 @@ class Field(object):
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.bright_source_skymodel = self.bright_source_skymodel.copy()
             sector.make_skymodel(iter)
 
         # Set the imaging parameters for each imaging sector

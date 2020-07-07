@@ -241,7 +241,7 @@ class Sector(object):
         # subtracted separately (so that they aren't subtracted twice)
         if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
             source_names = skymodel.getColValues('Name')
-            bright_source_names = self.bright_source_skymodel.getColValues('Name')
+            bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
             matching_ind = []
             for i, sn in enumerate(source_names):
                 if sn in bright_source_names:
