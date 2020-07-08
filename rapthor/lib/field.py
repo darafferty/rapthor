@@ -364,6 +364,8 @@ class Field(object):
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
+        misc.create_directory(dst_dir)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
         bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
@@ -591,7 +593,10 @@ class Field(object):
         # colons as otherwise the pipeline parset parser will split the list). Also
         # store the midpoint as [midRA; midDec]. These values are needed for the aterm
         # image generation, so we use the padded polygons to ensure that the final
-        # bounding box encloses all of the images *with* padding included
+        # bounding box encloses all of the images *with* padding included.
+        # Note: this is just once, rather than each time the sector borders are
+        # adjusted, so that the image sizes do not change with iteration (so
+        # mask images from previous iterations may be used)
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
         maxRA, minDec = self.xy2radec([self.sector_bounds_xy[0]], [self.sector_bounds_xy[1]])

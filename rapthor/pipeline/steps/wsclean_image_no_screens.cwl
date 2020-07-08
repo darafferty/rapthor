@@ -116,6 +116,10 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.name)-MFS-image.fits
+  - id: image_pb_name
+    type: string
+    outputBinding:
+      outputEval: $(inputs.name)-MFS-image-pb.fits
   - id: skymodel_nonpb
     type: string
     outputBinding:

@@ -218,15 +218,48 @@ steps:
         source: idg_mode
     out:
       - id: image_nonpb_name
+      - id: image_pb_name
       - id: skymodel_nonpb
       - id: skymodel_pb
+
+{% if peel_bright_sources %}
+  - id: restore_pb
+    label: restore_pb
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
+    in:
+      - id: residual_image
+        source: image/image_pb_name
+      - id: source_list
+        source: bright_skymodel_pb
+      - id: output_image
+        source: image/image_pb_name
+    out:
+      - id: restored_image
+
+  - id: restore_nonpb
+    label: restore_nonpb
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
+    in:
+      - id: residual_image
+        source: image/image_nonpb_name
+      - id: source_list
+        source: bright_skymodel_pb
+      - id: output_image
+        source: image/image_nonpb_name
+    out:
+      - id: restored_image
+{% endif %}
 
   - id: filter
     label: filter
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
       - id: input_image
+{% if peel_bright_sources %}
+        source: restore_nonpb/restored_image
+{% else %}
         source: image/image_nonpb_name
+{% endif %}
       - id: input_skymodel_pb
         source: image/skymodel_pb
       - id: input_bright_skymodel_pb

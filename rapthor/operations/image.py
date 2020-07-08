@@ -27,6 +27,7 @@ class Image(Operation):
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
+                             'peel_bright_sources': self.field.peel_bright_sources,
                              'use_mpi': self.field.use_mpi}
 
     def set_input_parameters(self):
@@ -139,7 +140,6 @@ class Image(Operation):
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
             self.input_parms.update({'central_patch_name': central_patch_name})
-
 
     def finalize(self):
         """
