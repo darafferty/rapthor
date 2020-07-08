@@ -481,22 +481,6 @@ class Field(object):
             sector.calibration_skymodel = self.calibration_skymodel.copy()
             sector.make_skymodel(iter)
 
-        # Compute bounding box for all imaging sectors and store as a
-        # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
-        # colons as otherwise the pipeline parset parser will split the list). Also
-        # store the midpoint as [midRA; midDec]. These values are needed for the aterm
-        # image generation, so we use the padded polygons to ensure that the final
-        # bounding box encloses all of the images *with* padding included
-        all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
-        self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = self.xy2radec([self.sector_bounds_xy[0]], [self.sector_bounds_xy[1]])
-        minRA, maxDec = self.xy2radec([self.sector_bounds_xy[2]], [self.sector_bounds_xy[3]])
-        midRA, midDec = self.xy2radec([(self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0],
-                                      [(self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0])
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA[0], minDec[0],
-                                                                            minRA[0], maxDec[0])
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
-
         # Make bright-source sectors containing only the bright sources that may be
         # subtracted before imaging. These sectors, like the outlier sectors above, are not
         # imaged
@@ -601,6 +585,22 @@ class Field(object):
                     ra, dec = self.xy2radec([x[j, i]], [y[j, i]])
                     self.imaging_sectors.append(Sector(name, ra[0], dec[0], width_ra, width_dec, self))
                     n += 1
+
+        # Compute bounding box for all imaging sectors and store as a
+        # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
+        # colons as otherwise the pipeline parset parser will split the list). Also
+        # store the midpoint as [midRA; midDec]. These values are needed for the aterm
+        # image generation, so we use the padded polygons to ensure that the final
+        # bounding box encloses all of the images *with* padding included
+        all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
+        self.sector_bounds_xy = all_sectors.bounds
+        maxRA, minDec = self.xy2radec([self.sector_bounds_xy[0]], [self.sector_bounds_xy[1]])
+        minRA, maxDec = self.xy2radec([self.sector_bounds_xy[2]], [self.sector_bounds_xy[3]])
+        midRA, midDec = self.xy2radec([(self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0],
+                                      [(self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0])
+        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA[0], minDec[0],
+                                                                            minRA[0], maxDec[0])
+        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
 
     def define_outlier_sectors(self, iter):
         """
