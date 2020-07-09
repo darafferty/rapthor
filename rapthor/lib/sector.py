@@ -56,8 +56,7 @@ class Sector(object):
         self.is_bright_source = False
 
         # Make copies of the observation objects, as each sector may have its own
-        # observation-specific settings. We synchronize some of the attributes later
-        # in other methods as needed
+        # observation-specific settings
         self.observations = []
         for obs in field.observations:
             obs.log = None  # deepcopy cannot copy the log object
@@ -74,13 +73,6 @@ class Sector(object):
         Sets the predict parameters
         """
         for obs in self.observations:
-            # Update MS filename of the field's observation object to match those of
-            # the sector's observation objects. This is required because the sector's
-            # observation objects are distinct copies of the field ones (see init above)
-            for field_obs in self.field.observations:
-                if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
-                    field_obs.ms_field = obs.ms_field
-
             obs.set_prediction_parameters(self.name, self.patches,
                                           os.path.join(self.field.working_dir, 'scratch'))
 

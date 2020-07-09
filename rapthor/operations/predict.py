@@ -110,7 +110,16 @@ class Predict(Operation):
         if self.field.peel_outliers and len(self.field.outlier_sectors) > 0:
             # Update the observations to use the new peeled datasets and remove the
             # outlier sectors (since, once peeled, they are no longer needed)
-            for obs in self.field.observations:
-                obs.ms_filename = obs.ms_field
             self.field.sectors = [sector for sector in self.field.sectors if not sector.is_outlier]
             self.field.outlier_sectors = []
+
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_filename = obs.ms_field  # use new peeled datasets in future
+
+                    # Update MS filename of the field's observation object to match those of
+                    # the sector's observation objects. This is required because the sector's
+                    # observation objects are distinct copies of the field ones
+                    for field_obs in self.field.observations:
+                        if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+                            field_obs.ms_field = obs.ms_field
