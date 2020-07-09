@@ -11,7 +11,7 @@ log = logging.getLogger('rapthor:calibrate')
 
 class Calibrate(Operation):
     """
-    Operation to calibrate
+    Operation to calibrate the field
     """
     def __init__(self, field, index):
         super(Calibrate, self).__init__(field, name='calibrate', index=index)
