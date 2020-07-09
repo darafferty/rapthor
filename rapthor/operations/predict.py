@@ -5,7 +5,7 @@ import os
 import logging
 from rapthor.lib.operation import Operation
 
-log = logging.getLogger('rapthor:calibrate')
+log = logging.getLogger('rapthor:predict')
 
 
 class Predict(Operation):
@@ -27,8 +27,8 @@ class Predict(Operation):
         Define the pipeline inputs
         """
         # Make list of sectors for which prediction needs to be done. Any imaging
-        # sectors should come first, followed by outlier sectors, then bright-source
-        # sectors (as required by the rapthor/scripts/subtract_sector_models.py script)
+        # sectors should come first, followed by bright-source, then outlier sectors
+        # (as required by the rapthor/scripts/subtract_sector_models.py script)
         sectors = []
         if len(self.field.imaging_sectors) > 1 or self.field.reweight:
             # If we have more than one imaging sector, reweighting is desired,
@@ -36,8 +36,8 @@ class Predict(Operation):
             # sector, we don't need to predict its model data, just that of any
             # outlier or birght-source sectors)
             sectors.extend(self.field.imaging_sectors)
-        sectors.extend(self.field.outlier_sectors)
         sectors.extend(self.field.bright_source_sectors)
+        sectors.extend(self.field.outlier_sectors)
 
         # Set sector-dependent parameters
         sector_skymodel = []

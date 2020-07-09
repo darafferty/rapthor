@@ -119,10 +119,10 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         Name of output column
     nr_outliers : int, optional
         Number of outlier sectors. Outlier sectors must be given after normal sectors
-        but before bright-source sectors in msmod_list
+        and bright-source sectors in msmod_list
     nr_bright : int, optional
         Number of bright-source sectors. Bright-source sectors must be given after normal
-        sectors and outlier sectors in msmod_list
+        sectors but before outlier sectors in msmod_list
     use_compression : bool, optional
         If True, use Dysco compression
     peel_outliers : bool, optional
@@ -239,7 +239,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                 flagged = np.where(flags)
                 datain[flagged] = np.NaN
             datamod_list = []
-            for i, msmodel in enumerate(model_list[nsectors-nr_outliers-nr_bright:nsectors-nr_bright]):
+            for i, msmodel in enumerate(model_list[nsectors-nr_outliers:]):
                 tmod = pt.table(msmodel, readonly=True, ack=False)
                 datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
                 tmod.close()
@@ -367,8 +367,14 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     # Open output tables
     tout_list = []
     for i, msmod in enumerate(model_list):
-        if nr_outliers > 0 and i == len(model_list)-nr_outliers:
+        if nr_bright > 0 and nr_outliers > 0 and i == len(model_list)-nr_outliers-nr_bright:
+            # Break so we don't open output tables for the outliers or bright sources
+            break
+        elif nr_outliers > 0 and i == len(model_list)-nr_outliers:
             # Break so we don't open output tables for the outliers
+            break
+        elif nr_bright > 0 and i == len(model_list)-nr_bright:
+            # Break so we don't open output tables for the bright sources
             break
         msout = msmod.rstrip('_modeldata')
         if starttime is not None:

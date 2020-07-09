@@ -1,5 +1,5 @@
 """
-Definition of the Sector class that holds parameters for an image sector
+Definition of the Sector class that holds parameters for an image or predict sector
 """
 import logging
 import numpy as np
@@ -16,7 +16,7 @@ import copy
 class Sector(object):
     """
     The Sector object contains various parameters for a sector of the field. Sectors
-    are used only in imaging pipelines
+    are used only in image and predict pipelines
 
     Parameters
     ----------
@@ -74,15 +74,15 @@ class Sector(object):
         Sets the predict parameters
         """
         for obs in self.observations:
-            obs.set_prediction_parameters(self.name, self.patches,
-                                          os.path.join(self.field.working_dir, 'scratch'))
-
             # Update MS filename of the field's observation object to match those of
             # the sector's observation objects. This is required because the sector's
             # observation objects are distinct copies of the field ones (see init above)
             for field_obs in self.field.observations:
                 if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
                     field_obs.ms_field = obs.ms_field
+
+            obs.set_prediction_parameters(self.name, self.patches,
+                                          os.path.join(self.field.working_dir, 'scratch'))
 
     def set_imaging_parameters(self, do_multiscale=None):
         """
