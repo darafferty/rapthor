@@ -1,5 +1,5 @@
 """
-Definition of the Image class for handling of FITS images
+Definition of the FITSImage class for handling of FITS images
 """
 from rapthor.lib import miscellaneous as misc
 from astropy.wcs import WCS as pywcs
