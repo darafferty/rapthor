@@ -117,9 +117,9 @@ class Predict(Operation):
                 for obs in sector.observations:
                     obs.ms_filename = obs.ms_field  # use new peeled datasets in future
 
-                    # Update MS filename of the field's observation object to match those of
-                    # the sector's observation objects. This is required because the sector's
-                    # observation objects are distinct copies of the field ones
+                    # Update MS filename of the field's observations to match those of
+                    # the sector's observations. This is required because the sector's
+                    # observations are distinct copies of the field ones
                     for field_obs in self.field.observations:
                         if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
-                            field_obs.ms_field = obs.ms_field
+                            field_obs.ms_filename = obs.ms_filename
