@@ -509,7 +509,7 @@ class Field(object):
         """
         Defines the imaging sectors
         """
-        self.log.debug('Difining imaging sector(s)...')
+        self.log.debug('Defining imaging sector(s)...')
         self.imaging_sectors = []
 
         # Determine whether we use a user-supplied list of sectors or a grid
