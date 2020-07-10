@@ -286,8 +286,8 @@ class Field(object):
 
         # Find groups of bright sources to use as basis for calibrator patches
         # and for subtraction if desired. The patch positions are set to the
-        # flux-weighted mean position. This position is then propagated and used
-        # for the calibrate and predict sky models
+        # flux-weighted mean position, using the apparent sky model. This position is
+        # then propagated and used for the calibrate and predict sky models
         source_skymodel.group('meanshift', byPatch=True, applyBeam=applyBeam_group,
                               lookDistance=0.075, groupingDistance=0.01)
         source_skymodel.setPatchPositions(method='wmean')
@@ -316,13 +316,15 @@ class Field(object):
             target_flux = fluxes[-target_number] - 0.001
 
         # Save the model of the bright sources, for later subtraction before
-        # imaging if needed
-        bright_source_skymodel = source_skymodel.copy()
+        # imaging if needed. Note that the bright-source model (like the other predict
+        # models) must be a true-sky one, not an apparent one, so we have to transfer its
+        # patches to the true-sky version later
+        bright_source_skymodel_apparent_sky = source_skymodel.copy()
         if not regroup:
             # Remove the fainter sources from the bright-source sky model. If regrouping
             # is to be done, this step is done after tessellation to ensure the cut
             # used there matches this one
-            bright_source_skymodel.remove('I < {} Jy'.format(target_flux), aggregate='sum')
+            bright_source_skymodel_apparent_sky.remove('I < {} Jy'.format(target_flux), aggregate='sum')
         else:
             # Regroup by tessellating with the bright sources as the tessellation
             # centers
@@ -333,10 +335,10 @@ class Field(object):
 
             # Match the bright-source sky model to the tessellated one by removing
             # fainter patches that are not present in the tessellated model
-            bright_patch_names = bright_source_skymodel.getPatchNames()
+            bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
             for pn in bright_patch_names:
                 if pn not in source_skymodel.getPatchNames():
-                    bright_source_skymodel.remove('Patch == {}'.format(pn))
+                    bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
 
             # debug
             dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
@@ -347,13 +349,22 @@ class Field(object):
 
             # Transfer patches to the true-flux sky model (component names are identical
             # in both, but the order may be different)
-            names_source_skymodel = source_skymodel.getColValues('Name')
-            names_skymodel_true_sky = skymodel_true_sky.getColValues('Name')
-            ind_ss = np.argsort(names_source_skymodel)
-            ind_ts = np.argsort(names_skymodel_true_sky)
-            skymodel_true_sky.table['Patch'][ind_ts] = source_skymodel.table['Patch'][ind_ss]
-            skymodel_true_sky._updateGroups()
-            skymodel_true_sky.setPatchPositions(patchDict=patch_dict)
+            self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+
+        # For the bright-source sky model, duplicate the selection made above and transfer the
+        # patches from the apparent-sky model to the true-sky one
+        patch_dict_bright = bright_source_skymodel_apparent_sky.getPatchPositions()
+        bright_source_skymodel = skymodel_true_sky.copy()
+        source_names = bright_source_skymodel.getColValues('Name')
+        bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name')
+        matching_ind = []
+        for i, sn in enumerate(source_names):
+            if sn in bright_source_names:
+                matching_ind.append(i)
+        if len(matching_ind) > 0:
+            bright_source_skymodel.select(np.array(matching_ind))
+        self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel,
+                              patch_dict=patch_dict_bright)
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
@@ -381,7 +392,7 @@ class Field(object):
         Parameters
         ----------
         iter : int
-            Iteration index
+            Iteration index (counts starting from 1)
         regroup : bool
             Regroup sky model
         imaged_sources_only : bool
@@ -504,6 +515,36 @@ class Field(object):
             sector.calibration_skymodel = None
             sector.predict_skymodel = None
             sector.field.source_skymodel = None
+
+    def transfer_patches(self, from_skymodel, to_skymodel, patch_dict=None):
+        """
+        Transfers the patches defined in from_skymodel to to_skymodel.
+
+        Note: both sky models must have the same number of sources with identical names
+
+        Parameters
+        ----------
+        from_skymodel : sky model
+            Sky model from which to transfer patches
+        to_skymodel : sky model
+            Sky model to which to transfer patches
+        patch_dict : dict, optional
+            Dict of patch positions
+
+        Returns
+        -------
+        to_skymodel : sky model
+            Sky model with patches matching those of from_skymodel
+        """
+        names_from = from_skymodel.getColValues('Name')
+        names_to = to_skymodel.getColValues('Name')
+        ind_ss = np.argsort(names_from)
+        ind_ts = np.argsort(names_to)
+        to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+        to_skymodel._updateGroups()
+        if patch_dict is not None:
+            to_skymodel.setPatchPositions(patchDict=patch_dict)
+        return to_skymodel
 
     def define_imaging_sectors(self):
         """
