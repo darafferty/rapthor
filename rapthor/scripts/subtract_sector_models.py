@@ -244,7 +244,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                 datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
                 tmod.close()
 
-            # For each sector, subtract sum of model data for this chunk
+            # Subtract sum of model data for this chunk
             other_sectors_ind = list(range(nr_outliers))
             datamod_all = None
             for sector_ind in other_sectors_ind:
@@ -316,7 +316,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                 datamod_list.append(tmod.getcol(model_column, startrow=startrow_tmod, nrow=nrow))
                 tmod.close()
 
-            # For each sector, subtract sum of model data for this chunk
+            # Subtract sum of model data for this chunk
             other_sectors_ind = list(range(nr_bright))
             datamod_all = None
             for sector_ind in other_sectors_ind:
@@ -362,7 +362,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         nrows.append(nrow)
         startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
         startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
-    print('subtract_sector_models: Using {} chunk(s)'.format(nchunks))
+    print('subtract_sector_models: Using {} chunk(s) for peeling of sector sources'.format(nchunks))
 
     # Open output tables
     tout_list = []
