@@ -54,6 +54,7 @@ class Sector(object):
         self.image_skymodel_file_true_sky = None  # set by the Image operation
         self.is_outlier = False
         self.is_bright_source = False
+        self.imsize = None  # set to None to force calculation in set_imaging_parameters()
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -76,7 +77,7 @@ class Sector(object):
             obs.set_prediction_parameters(self.name, self.patches,
                                           os.path.join(self.field.working_dir, 'scratch'))
 
-    def set_imaging_parameters(self, do_multiscale=None):
+    def set_imaging_parameters(self, do_multiscale=None, recalculate_imsize=False):
         """
         Sets the parameters needed for the imaging pipeline
 
@@ -85,6 +86,8 @@ class Sector(object):
         do_multiscale : bool, optional
             If True, multiscale clean is done. If None, multiscale clean is done only
             when a large source is detected
+        recalculate_imsize : bool, optional
+            If True, the image size is recalculated based on the current sector region
         """
         self.cellsize_arcsec = self.field.parset['imaging_specific']['cellsize_arcsec']
         self.cellsize_deg = self.cellsize_arcsec / 3600.0
@@ -108,24 +111,25 @@ class Sector(object):
         self.threshpix = 5.0
 
         # Set image size based on current sector polygon
-        xmin, ymin, xmax, ymax = self.poly.bounds
-        self.width_ra = (xmax - xmin) * self.field.wcs_pixel_scale  # deg
-        self.width_dec = (ymax - ymin) * self.field.wcs_pixel_scale  # deg
-        self.imsize = [int(self.width_ra / self.cellsize_deg * 1.1),
-                       int(self.width_dec / self.cellsize_deg * 1.1)]
+        if recalculate_imsize or self.imsize is None:
+            xmin, ymin, xmax, ymax = self.poly.bounds
+            self.width_ra = (xmax - xmin) * self.field.wcs_pixel_scale  # deg
+            self.width_dec = (ymax - ymin) * self.field.wcs_pixel_scale  # deg
+            self.imsize = [int(self.width_ra / self.cellsize_deg * 1.1),
+                           int(self.width_dec / self.cellsize_deg * 1.1)]
 
-        # IDG does not yet support rectangular images, so ensure image is square
-        self.imsize = [max(self.imsize), max(self.imsize)]
+            # IDG does not yet support rectangular images, so ensure image is square
+            self.imsize = [max(self.imsize), max(self.imsize)]
 
-        # IDG has problems with small images, so set minimum size to 500 pixels and adjust
-        # padded polygon
-        minsize = 500
-        if max(self.imsize) < minsize:
-            dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
-            padding_pix = dec_width_pix * (self.wsclean_image_padding - 1.0)
-            padding_pix *= minsize / max(self.imsize)  # scale padding to new imsize
-            self.poly_padded = self.poly.buffer(padding_pix)
-            self.imsize = [minsize, minsize]
+            # IDG has problems with small images, so set minimum size to 500 pixels and adjust
+            # padded polygon
+            minsize = 500
+            if max(self.imsize) < minsize:
+                dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
+                padding_pix = dec_width_pix * (self.wsclean_image_padding - 1.0)
+                padding_pix *= minsize / max(self.imsize)  # scale padding to new imsize
+                self.poly_padded = self.poly.buffer(padding_pix)
+                self.imsize = [minsize, minsize]
         self.wsclean_imsize = "'{0} {1}'".format(self.imsize[0], self.imsize[1])
         self.log.debug('Image size is {0} x {1} pixels'.format(
                        self.imsize[0], self.imsize[1]))
