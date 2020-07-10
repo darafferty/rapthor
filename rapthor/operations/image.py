@@ -51,13 +51,18 @@ class Image(Operation):
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
-            # Set the imaging parameters for each imaging sector
+            # Set the imaging parameters for each imaging sector. Note the we do not
+            # let the imsize be recalcuated, as otherwise it may change from the previous
+            # iteration and the mask made in that iteration can not be used in this one.
+            # Generally, this should work fine, since we do not expect large changes in
+            # the size of the sector from iteration to iteration (small changes are OK,
+            # given the padding we use during imaging)
             sector_do_multiscale_list = self.field.parset['imaging_specific']['sector_do_multiscale_list']
             if len(sector_do_multiscale_list) == nsectors:
                 do_multiscale = sector_do_multiscale_list[i]
             else:
                 do_multiscale = None
-            sector.set_imaging_parameters(do_multiscale)
+            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
             if nsectors > 1:
                 # Use the model-subtracted data
