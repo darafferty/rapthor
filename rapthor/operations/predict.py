@@ -116,10 +116,15 @@ class Predict(Operation):
             for sector in self.field.sectors:
                 for obs in sector.observations:
                     obs.ms_filename = obs.ms_field  # use new peeled datasets in future
+                    # remove infix for the sector observations, otherwise future predict
+                    # operations will add it to the filenames multiple times
+                    obs.infix = ''
 
                     # Update MS filename of the field's observations to match those of
                     # the sector's observations. This is required because the sector's
-                    # observations are distinct copies of the field ones
+                    # observations are distinct copies of the field ones. Note, we do not
+                    # reset the infix for the field observations, as it is needed as
+                    # input to the pipeline
                     for field_obs in self.field.observations:
                         if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
                             field_obs.ms_filename = obs.ms_filename
