@@ -140,6 +140,12 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
             if peel_bright:
                 # If bright sources were peeled before imaging, add them back
                 s_bright = lsmtool.load(input_bright_skymodel_pb)
+
+                # Rename the bright sources, removing the '_sector_*' add previously
+                # (otherwise the '_sector_*' text will be added every iteration,
+                # eventually making for very long source names)
+                new_names = [name.split('_sector')[0] for name in s_bright.getColValues('Name')]
+                s_bright.setColValues('Name', new_names)
                 s.concatenate(s_bright)
             s.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
             if len(s) == 0:
