@@ -34,6 +34,11 @@ class Image(Operation):
         """
         Define the pipeline inputs
         """
+        if self.field.use_mpi:
+            # Set Toil env variable to ask for multiple nodes per job
+            self.toil_env_variables['TOIL_SLURM_ARGS'] = '--nodes 2'
+
+        # Set other inputs
         nsectors = len(self.field.imaging_sectors)
         obs_filename = []
         prepare_filename = []

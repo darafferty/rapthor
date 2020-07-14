@@ -48,6 +48,9 @@ class Operation(object):
         _logging.set_level(self.parset['logging_level'])
         self.log = logging.getLogger('rapthor:{0}'.format(self.name))
 
+        # Extra Toil env variables
+        self.toil_env_variables = {}
+
         # rapthor working directory
         self.rapthor_working_dir = self.parset['dir_working']
 
@@ -189,6 +192,10 @@ class Operation(object):
         args.extend(['--servicePollingInterval', '10'])
         args.append(self.pipeline_parset_file)
         args.append(self.pipeline_inputs_file)
+
+        # Set env variables, if any
+        for k, v in self.toil_env_variables.items():
+            os.environ[k] = v
 
         # Run the pipeline
         try:
