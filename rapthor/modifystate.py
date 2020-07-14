@@ -88,7 +88,7 @@ def run(parset_file):
     log.info('Reading parset and checking state...')
     parset = parset_read(parset_file, use_log_file=False, skip_cluster=True)
 
-    # Initialize field object
+    # Initialize minimal field object
     field = Field(parset, mininmal=True)
     field.outlier_sectors = [None]
     field.imaging_sectors = [None] #* get_number_of_sectors(field)
@@ -100,17 +100,14 @@ def run(parset_file):
     while True:
         pipelines = []
         for iter, step in enumerate(strategy_steps):
-            if step['do_calibrate']:
-                operation = os.path.join(parset['dir_working'], 'pipelines', 'calibrate_{}'.format(iter+1))
-                pipelines.extend(check_operation(operation))
-            if step['do_predict']:
-                operation = os.path.join(parset['dir_working'], 'pipelines', 'predict_{}'.format(iter+1))
-                pipelines.extend(check_operation(operation))
-            if step['do_image']:
-                operation = os.path.join(parset['dir_working'], 'pipelines', 'image_{}'.format(iter+1))
-                pipelines.extend(check_operation(operation))
-                operation = os.path.join(parset['dir_working'], 'pipelines', 'mosaic_{}'.format(iter+1))
-                pipelines.extend(check_operation(operation))
+            operation = os.path.join(parset['dir_working'], 'pipelines', 'calibrate_{}'.format(iter+1))
+            pipelines.extend(check_operation(operation))
+            operation = os.path.join(parset['dir_working'], 'pipelines', 'predict_{}'.format(iter+1))
+            pipelines.extend(check_operation(operation))
+            operation = os.path.join(parset['dir_working'], 'pipelines', 'image_{}'.format(iter+1))
+            pipelines.extend(check_operation(operation))
+            operation = os.path.join(parset['dir_working'], 'pipelines', 'mosaic_{}'.format(iter+1))
+            pipelines.extend(check_operation(operation))
 
         # List pipelines and query user
         print('\nCurrent strategy: {}'.format(field.parset['strategy']))
