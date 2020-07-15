@@ -460,6 +460,6 @@ class Sector(object):
         import astropy.units as u
 
         coord1 = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
-        coord2 = SkyCoord(self.obs[0].ra, self.obs[0].dec, unit=(u.degree, u.degree), frame='fk5')
+        coord2 = SkyCoord(self.observations[0].ra, self.observations[0].dec, unit=(u.degree, u.degree), frame='fk5')
 
         return coord1.separation(coord2)
