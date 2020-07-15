@@ -150,7 +150,8 @@ class Sector(object):
 
         # Set number of iterations. We scale the number of iterations depending on the
         # integration time and the distance of the sector center to the phase center, to
-        # account for the reduced sensitivity of the image, assuming a Gaussian primary beam
+        # account for the reduced sensitivity of the image, assuming a Gaussian primary
+        # beam. Lastly, we also reduce them if bright sources are peeled
         total_time_hr = 0.0
         for obs in self.observations:
             # Find total observation time in hours
@@ -158,8 +159,11 @@ class Sector(object):
         scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 8.0)
         dist_deg = self.get_distance_to_obs_center()
         sens_factor = np.e**(-4.0 * np.log(2.0) * dist_deg**2 / self.field.fwhm_deg**2)
-        self.wsclean_niter = round(12000 * scaling_factor * sens_factor)
-        self.wsclean_nmiter = round(6 * scaling_factor * sens_factor)
+        self.wsclean_niter = int(round(12000 * scaling_factor * sens_factor))
+        self.wsclean_nmiter = min(12, max(2, int(round(8 * scaling_factor * sens_factor))))
+        if self.field.peel_bright_sources:
+            self.wsclean_niter = int(round(self.wsclean_niter * 0.75))
+            self.wsclean_nmiter = min(12, max(2, int(round(self.wsclean_nmiter * 0.75))))
 
         # Set multiscale: get source sizes and check for large sources
         self.multiscale = do_multiscale
