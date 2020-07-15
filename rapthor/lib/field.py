@@ -300,7 +300,7 @@ class Field(object):
         source_skymodel.write(skymodel_true_sky_file, clobber=True)
         # debug
 
-        # Determine the flux cut to use to select the bright sources
+        # Determine the flux cut to use to select the bright sources (calibrators)
         if target_flux is None:
             target_flux = self.target_flux
         if target_number is None:
@@ -315,7 +315,7 @@ class Field(object):
                 target_number = len(fluxes)
             target_flux = fluxes[-target_number] - 0.001
 
-        # Save the model of the bright sources, for later subtraction before
+        # Save the model of the bright sources only, for later subtraction before
         # imaging if needed. Note that the bright-source model (like the other predict
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
         # patches to the true-sky version later
@@ -334,7 +334,7 @@ class Field(object):
             source_skymodel.setPatchPositions(patchDict=patch_dict)
 
             # Match the bright-source sky model to the tessellated one by removing
-            # fainter patches that are not present in the tessellated model
+            # patches that are not present in the tessellated model
             bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
             for pn in bright_patch_names:
                 if pn not in source_skymodel.getPatchNames():
@@ -347,7 +347,7 @@ class Field(object):
             source_skymodel.write(skymodel_true_sky_file, clobber=True)
             # debug
 
-            # Transfer patches to the true-flux sky model (component names are identical
+            # Transfer patches to the true-flux sky model (source names are identical
             # in both, but the order may be different)
             self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
 
@@ -521,6 +521,7 @@ class Field(object):
         Transfers the patches defined in from_skymodel to to_skymodel.
 
         Note: both sky models must have the same number of sources with identical names
+        (though not necessarily in the same order)
 
         Parameters
         ----------
@@ -543,6 +544,9 @@ class Field(object):
         to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
         to_skymodel._updateGroups()
         if patch_dict is not None:
+            for k, v in patch_dict.copy().items():
+                if k not in from_skymodel.getPatchNames():
+                    patch_dict.pop(k)
             to_skymodel.setPatchPositions(patchDict=patch_dict)
         return to_skymodel
 
