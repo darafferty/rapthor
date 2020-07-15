@@ -641,6 +641,9 @@ class Field(object):
             n = 1
             for i in range(nsectors_ra):
                 for j in range(nsectors_dec):
+                    if (self.parset['imaging_specific']['skip_corner_sectors'] and
+                        i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1]):
+                            continue
                     name = 'sector_{0}'.format(n)
                     ra, dec = self.xy2radec([x[j, i]], [y[j, i]])
                     self.imaging_sectors.append(Sector(name, ra[0], dec[0], width_ra, width_dec, self))

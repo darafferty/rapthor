@@ -418,6 +418,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['grid_center_dec'] = None
 
+    # Skip corner sectors of grid
+    if 'skip_corner_sectors' in parset_dict:
+        parset_dict['skip_corner_sectors'] = parset.getboolean('imaging', 'skip_corner_sectors')
+    else:
+        parset_dict['skip_corner_sectors'] = False
+
     # Instead of a grid, imaging sectors can be defined individually by specifying
     # their centers and widths. If sectors are specified in this way, they will be
     # used instead of the sector grid. Note that the sectors should not overlap
@@ -596,7 +602,8 @@ def get_imaging_options(parset):
                        'robust', 'padding', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'sector_do_multiscale_list', 'target_ra', 'use_mpi',
-                       'target_dec', 'target_radius_arcmin', 'use_screens']
+                       'target_dec', 'target_radius_arcmin', 'use_screens',
+                       'skip_corner_sectors']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [imaging] section of the '
