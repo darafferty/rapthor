@@ -370,6 +370,7 @@ class Field(object):
                 else:
                     filtered_skymodel.concatenate(sm)
             bright_source_skymodel = filtered_skymodel
+            bright_source_skymodel.setPatchPositions()
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
