@@ -310,6 +310,8 @@ class Sector(object):
         inside_ind = np.where((x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax))
         inside[inside_ind] = True
         skymodel.select(inside)
+        if len(skymodel) == 0:
+            return skymodel
         RA = skymodel.getColValues('Ra')
         Dec = skymodel.getColValues('Dec')
         x, y = self.field.radec2xy(RA, Dec)
