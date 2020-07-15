@@ -367,10 +367,11 @@ class Field(object):
                 sm = sector.filter_skymodel(sm)
                 if i == 0:
                     filtered_skymodel = sm
-                else:
+                if len(sm) > 0:
                     filtered_skymodel.concatenate(sm)
             bright_source_skymodel = filtered_skymodel
-            bright_source_skymodel.setPatchPositions()
+            if len(bright_source_skymodel) > 0:
+                bright_source_skymodel.setPatchPositions()
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
