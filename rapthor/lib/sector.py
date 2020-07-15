@@ -66,7 +66,7 @@ class Sector(object):
             cobs.log = logging.getLogger('rapthor:{}'.format(cobs.name))
             self.observations.append(cobs)
 
-        # Define the initial sector polygon vertices and sky model
+        # Define the initial sector polygon vertices
         self.intialize_vertices()
 
     def set_prediction_parameters(self):
@@ -106,6 +106,7 @@ class Sector(object):
         self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
+        self.nmiter = 10
         self.auto_mask = 3.0
         self.threshisl = 4.0
         self.threshpix = 5.0
@@ -147,13 +148,18 @@ class Sector(object):
                 tot_bandwidth = obs_bandwidth
         self.wsclean_nchannels = max(min_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth)))
 
-        # Set number of iterations and threshold
+        # Set number of iterations. We scale the number of iterations depending on the
+        # integration time and the distance of the sector center to the phase center, to
+        # account for the reduced sensitivity of the image, assuming a Gaussian primary beam
         total_time_hr = 0.0
         for obs in self.observations:
             # Find total observation time in hours
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
-        scaling_rapthor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 8.0)
-        self.wsclean_niter = int(12000 * scaling_rapthor)
+        scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 8.0)
+        dist_deg = self.get_distance_to_obs_center()
+        sens_factor = np.e**(-4.0 * np.log(2.0) * dist_deg**2 / self.field.fwhm_deg**2)
+        self.wsclean_niter = round(12000 * scaling_factor * sens_factor)
+        self.wsclean_nmiter = round(6 * scaling_factor * sens_factor)
 
         # Set multiscale: get source sizes and check for large sources
         self.multiscale = do_multiscale
@@ -443,3 +449,15 @@ class Sector(object):
                 f.writelines(lines)
         else:
             self.log.error('Region format not understood.')
+
+    def get_distance_to_obs_center(self):
+        """
+        Return the distance in degrees to the phase center
+        """
+        from astropy.coordinates import SkyCoord
+        import astropy.units as u
+
+        coord1 = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
+        coord2 = SkyCoord(self.obs[0].ra, self.obs[0].dec, unit=(u.degree, u.degree), frame='fk5')
+
+        return coord1.separation(coord2)

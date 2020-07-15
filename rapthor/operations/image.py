@@ -34,11 +34,6 @@ class Image(Operation):
         """
         Define the pipeline inputs
         """
-        if self.field.use_mpi:
-            # Set Toil env variable to ask for multiple nodes per job
-            self.toil_env_variables['TOIL_SLURM_ARGS'] = '--nodes 2'
-
-        # Set other inputs
         nsectors = len(self.field.imaging_sectors)
         obs_filename = []
         prepare_filename = []
@@ -132,6 +127,7 @@ class Image(Operation):
                             'vertices_file': [sector.vertices_file for sector in self.field.imaging_sectors],
                             'region_file': [sector.region_file for sector in self.field.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
+                            'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
                             'robust': [sector.robust for sector in self.field.imaging_sectors],
                             'wsclean_image_padding': [sector.wsclean_image_padding for sector in self.field.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.field.imaging_sectors],

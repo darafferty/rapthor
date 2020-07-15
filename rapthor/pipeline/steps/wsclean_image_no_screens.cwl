@@ -35,8 +35,6 @@ arguments:
     prefix: -local-rms-window
   - valueFrom: 'rms-with-min'
     prefix: -local-rms-method
-  - valueFrom: '8'
-    prefix: -nmiter
   - valueFrom: 'briggs'
     # Note: we have to set part of the 'weight' argument here and part below, as it has
     # three parts (e.g., '-weight briggs -0.5'), and WSClean will not parse the value
@@ -66,6 +64,10 @@ inputs:
     type: int
     inputBinding:
       prefix: -niter
+  - id: wsclean_nmiter
+    type: int
+    inputBinding:
+      prefix: -nmiter
   - id: robust
     type: float
     inputBinding:

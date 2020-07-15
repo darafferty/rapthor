@@ -84,6 +84,8 @@ inputs:
     type: int[]
   - id: wsclean_niter
     type: int[]
+  - id: wsclean_nmiter
+    type: int[]
   - id: robust
     type: float[]
   - id: wsclean_image_padding
@@ -167,6 +169,8 @@ steps:
         source: deconvolution_channels
       - id: wsclean_niter
         source: wsclean_niter
+      - id: wsclean_nmiter
+        source: wsclean_nmiter
       - id: robust
         source: robust
       - id: wsclean_image_padding
@@ -199,7 +203,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, aterms_config_file,
               aterm_image_filenames, channels_out, deconvolution_channels,
-              wsclean_niter, robust, wsclean_image_padding, min_uv_lambda,
+              wsclean_niter, wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
               max_uv_lambda, multiscale_scales_pixel, local_dir, taper_arcsec,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
 {% else %}
@@ -207,7 +211,7 @@ steps:
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, h5parm, central_patch_name,
-              channels_out, deconvolution_channels, wsclean_niter, robust,
+              channels_out, deconvolution_channels, wsclean_niter, wsclean_nmiter, robust,
               wsclean_image_padding, min_uv_lambda, max_uv_lambda,
               multiscale_scales_pixel, local_dir, taper_arcsec, auto_mask,
               idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]

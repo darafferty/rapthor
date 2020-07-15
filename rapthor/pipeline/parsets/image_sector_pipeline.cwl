@@ -55,6 +55,8 @@ inputs:
     type: int
   - id: wsclean_niter
     type: int
+  - id: wsclean_nmiter
+    type: int
   - id: robust
     type: float
   - id: wsclean_image_padding
@@ -192,6 +194,8 @@ steps:
         source: wsclean_imsize
       - id: wsclean_niter
         source: wsclean_niter
+      - id: wsclean_nmiter
+        source: wsclean_nmiter
       - id: robust
         source: robust
       - id: wsclean_image_padding

@@ -207,6 +207,10 @@ class Operation(object):
         except FailedJobsException:
             self.success = False
 
+        # Unset env variables, if any
+        for k, v in self.toil_env_variables.items():
+            os.environ[k] = ''
+
     def run(self):
         """
         Runs the operation

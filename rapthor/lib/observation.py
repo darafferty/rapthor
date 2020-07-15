@@ -384,9 +384,9 @@ class Observation(object):
 
         return self.freq_divisors[idx]
 
-    def get_target_timewidth(self, delta_theta, resolution, reduction_rapthor):
+    def get_target_timewidth(self, delta_theta, resolution, reduction_factor):
         """
-        Returns the time width for given peak flux density reduction rapthor
+        Returns the time width for given peak flux density reduction factor
 
         Parameters
         ----------
@@ -394,23 +394,23 @@ class Observation(object):
             Distance from phase center
         resolution : float
             Resolution of restoring beam
-        reduction_rapthor : float
+        reduction_factor : float
             Ratio of pre-to-post averaging peak flux density
 
         Returns
         -------
         delta_time : float
-            Time width in seconds for target reduction_rapthor
+            Time width in seconds for target reduction_factor
 
         """
-        delta_time = np.sqrt((1.0 - reduction_rapthor) /
+        delta_time = np.sqrt((1.0 - reduction_factor) /
                              (1.22E-9 * (delta_theta / resolution)**2.0))
 
         return delta_time
 
-    def get_bandwidth_smearing_rapthor(self, freq, delta_freq, delta_theta, resolution):
+    def get_bandwidth_smearing_factor(self, freq, delta_freq, delta_theta, resolution):
         """
-        Returns peak flux density reduction rapthor due to bandwidth smearing
+        Returns peak flux density reduction factor due to bandwidth smearing
 
         Parameters
         ----------
@@ -425,19 +425,19 @@ class Observation(object):
 
         Returns
         -------
-        reduction_rapthor : float
+        reduction_facgtor : float
             Ratio of pre-to-post averaging peak flux density
 
         """
         beta = (delta_freq/freq) * (delta_theta/resolution)
         gamma = 2*(np.log(2)**0.5)
-        reduction_rapthor = ((np.pi**0.5)/(gamma * beta)) * (erf(beta*gamma/2.0))
+        reduction_factor = ((np.pi**0.5)/(gamma * beta)) * (erf(beta*gamma/2.0))
 
-        return reduction_rapthor
+        return reduction_factor
 
-    def get_target_bandwidth(self, freq, delta_theta, resolution, reduction_rapthor):
+    def get_target_bandwidth(self, freq, delta_theta, resolution, reduction_factor):
         """
-        Returns the bandwidth for given peak flux density reduction rapthor
+        Returns the bandwidth for given peak flux density reduction factor
 
         Parameters
         ----------
@@ -447,7 +447,7 @@ class Observation(object):
             Distance from phase center
         resolution : float
             Resolution of restoring beam
-        reduction_rapthor : float
+        reduction_factor : float
             Ratio of pre-to-post averaging peak flux density
 
         Returns
@@ -455,10 +455,10 @@ class Observation(object):
         delta_freq : float
             Bandwidth over which averaging will be done
         """
-        # Increase delta_freq until we drop below target reduction_rapthor
+        # Increase delta_freq until we drop below target reduction_factor
         delta_freq = 1e-3 * freq
-        while self.get_bandwidth_smearing_rapthor(freq, delta_freq, delta_theta,
-                                                 resolution) > reduction_rapthor:
+        while self.get_bandwidth_smearing_factor(freq, delta_freq, delta_theta,
+                                                 resolution) > reduction_factor:
             delta_freq *= 1.1
 
         return delta_freq
