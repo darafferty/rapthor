@@ -635,20 +635,24 @@ class Field(object):
                 x = np.linspace(min_x, max_x, nsectors_ra)
                 y = np.linspace(min_y, max_y, nsectors_dec)
                 x, y = np.meshgrid(x, y)
-                self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
-                              nsectors_ra*nsectors_dec, nsectors_ra, nsectors_dec))
 
             # Initialize the sectors in the grid
             n = 1
             for i in range(nsectors_ra):
                 for j in range(nsectors_dec):
                     if (self.parset['imaging_specific']['skip_corner_sectors'] and
-                        i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1]):
-                            continue
+                        i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1] and
+                        nsectors_ra > 2 and nsectors_dec > 2):
+                        continue
                     name = 'sector_{0}'.format(n)
                     ra, dec = self.xy2radec([x[j, i]], [y[j, i]])
                     self.imaging_sectors.append(Sector(name, ra[0], dec[0], width_ra, width_dec, self))
                     n += 1
+            if len(self.imaging_sectors) == 1:
+                self.log.info('Using 1 imaging sector')
+            else:
+                self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
+                              nsectors_ra*nsectors_dec, nsectors_ra, nsectors_dec))
 
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
