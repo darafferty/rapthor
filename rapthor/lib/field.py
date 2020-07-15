@@ -351,8 +351,9 @@ class Field(object):
             # in both, but the order may be different)
             self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
 
-        # For the bright-source sky model, duplicate the selection made above and transfer the
-        # patches from the apparent-sky model to the true-sky one
+        # For the bright-source true-sky model, duplicate any selections made above to the
+        # apparent-sky model. Then, remove any bright sources that lie outside the
+        # imaged area, as they should not be peeled
         bright_source_skymodel = skymodel_true_sky.copy()
         source_names = bright_source_skymodel.getColValues('Name')
         bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name')
@@ -360,7 +361,15 @@ class Field(object):
         for i, sn in enumerate(bright_source_names):
             matching_ind.append(source_names.index(sn))
         bright_source_skymodel.select(np.array(matching_ind))
-        self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+        if len(self.imaging_sectors) > 0:
+            for i, sector in enumerate(self.imaging_sectors):
+                sm = bright_source_skymodel.copy()
+                sm = sector.filter_skymodel(sm)
+                if i == 0:
+                    filtered_skymodel = sm
+                else:
+                    filtered_skymodel.concatenate(sm)
+            bright_source_skymodel = filtered_skymodel
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
