@@ -355,8 +355,8 @@ class Field(object):
         # apparent-sky model. Then, remove any bright sources that lie outside the
         # imaged area, as they should not be peeled
         bright_source_skymodel = skymodel_true_sky.copy()
-        source_names = bright_source_skymodel.getColValues('Name')
-        bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name')
+        source_names = bright_source_skymodel.getColValues('Name').tolist()
+        bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name').tolist()
         matching_ind = []
         for i, sn in enumerate(bright_source_names):
             matching_ind.append(source_names.index(sn))
