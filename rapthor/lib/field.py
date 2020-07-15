@@ -679,7 +679,9 @@ class Field(object):
             outlier_skymodel = self.make_outlier_skymodel()
             nsources = len(outlier_skymodel)
             if nsources > 0:
-                nnodes = min(10, nsources)  # TODO: tune to number of available nodes and/or memory?
+                # Choose number of sectors to be the no more than ten, but don't allow
+                # fewer than 100 sources per sector if possible
+                nnodes = min(10, round(nsources/100), 1)  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
                     outlier_sector = Sector('outlier_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
                     outlier_sector.is_outlier = True
@@ -706,7 +708,9 @@ class Field(object):
         if self.peel_bright_sources:
             nsources = len(self.bright_source_skymodel)
             if nsources > 0:
-                nnodes = min(10, len(self.imaging_sectors))  # TODO: tune to number of available nodes and/or memory?
+                # Choose number of sectors to be the no more than ten, but don't allow
+                # fewer than 100 sources per sector if possible
+                nnodes = min(10, round(nsources/100), 1)  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
                     bright_source_sector = Sector('bright_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
                     bright_source_sector.is_bright_source = True
