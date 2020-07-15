@@ -653,7 +653,7 @@ class Field(object):
                 self.log.info('Using 1 imaging sector')
             else:
                 self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
-                              nsectors_ra*nsectors_dec, nsectors_ra, nsectors_dec))
+                              len(self.imaging_sectors), nsectors_ra, nsectors_dec))
 
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
