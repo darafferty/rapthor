@@ -353,18 +353,14 @@ class Field(object):
 
         # For the bright-source sky model, duplicate the selection made above and transfer the
         # patches from the apparent-sky model to the true-sky one
-        patch_dict_bright = bright_source_skymodel_apparent_sky.getPatchPositions()
         bright_source_skymodel = skymodel_true_sky.copy()
         source_names = bright_source_skymodel.getColValues('Name')
         bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name')
         matching_ind = []
-        for i, sn in enumerate(source_names):
-            if sn in bright_source_names:
-                matching_ind.append(i)
-        if len(matching_ind) > 0:
-            bright_source_skymodel.select(np.array(matching_ind))
-        self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel,
-                              patch_dict=patch_dict_bright)
+        for i, sn in enumerate(bright_source_names):
+            matching_ind.append(source_names.index(sn))
+        bright_source_skymodel.select(np.array(matching_ind))
+        self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
@@ -520,9 +516,6 @@ class Field(object):
         """
         Transfers the patches defined in from_skymodel to to_skymodel.
 
-        Note: both sky models must have the same number of sources with identical names
-        (though not necessarily in the same order)
-
         Parameters
         ----------
         from_skymodel : sky model
@@ -537,16 +530,27 @@ class Field(object):
         to_skymodel : sky model
             Sky model with patches matching those of from_skymodel
         """
-        names_from = from_skymodel.getColValues('Name')
-        names_to = to_skymodel.getColValues('Name')
-        ind_ss = np.argsort(names_from)
-        ind_ts = np.argsort(names_to)
-        to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-        to_skymodel._updateGroups()
+        names_from = from_skymodel.getColValues('Name').tolist()
+        names_to = to_skymodel.getColValues('Name').tolist()
+
+        if set(names_from) == set(names_to):
+            # Both sky models have the same sources, so use indexing
+            ind_ss = np.argsort(names_from)
+            ind_ts = np.argsort(names_to)
+            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+            to_skymodel._updateGroups()
+        elif set(names_to).issubset(set(names_from)):
+            # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
+            for ind_ts, name in enumerate(names_to):
+                ind_ss = names_from.index(name)
+                to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+        else:
+            # Skymodels don't match, raise error
+            self.log.critical('Cannot transfer patches since from_skymodel does not contain '
+                              'all the sources in to_skymodel! Exiting!')
+            sys.exit(1)
+
         if patch_dict is not None:
-            for k, v in patch_dict.copy().items():
-                if k not in from_skymodel.getPatchNames():
-                    patch_dict.pop(k)
             to_skymodel.setPatchPositions(patchDict=patch_dict)
         return to_skymodel
 
