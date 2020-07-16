@@ -366,9 +366,12 @@ class Field(object):
                 sm = bright_source_skymodel.copy()
                 sm = sector.filter_skymodel(sm)
                 if i == 0:
+                    # For first sector, set filtered sky model
                     filtered_skymodel = sm
-                if len(sm) > 0:
-                    filtered_skymodel.concatenate(sm)
+                else:
+                    # For subsequent sectors, concat
+                    if len(sm) > 0:
+                        filtered_skymodel.concatenate(sm)
             bright_source_skymodel = filtered_skymodel
             if len(bright_source_skymodel) > 0:
                 bright_source_skymodel.setPatchPositions()
@@ -690,7 +693,7 @@ class Field(object):
             if nsources > 0:
                 # Choose number of sectors to be the no more than ten, but don't allow
                 # fewer than 100 sources per sector if possible
-                nnodes = min(10, round(nsources/100), 1)  # TODO: tune to number of available nodes and/or memory?
+                nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
                     outlier_sector = Sector('outlier_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
                     outlier_sector.is_outlier = True
@@ -719,7 +722,7 @@ class Field(object):
             if nsources > 0:
                 # Choose number of sectors to be the no more than ten, but don't allow
                 # fewer than 100 sources per sector if possible
-                nnodes = min(10, round(nsources/100), 1)  # TODO: tune to number of available nodes and/or memory?
+                nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
                     bright_source_sector = Sector('bright_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
                     bright_source_sector.is_bright_source = True
