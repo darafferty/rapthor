@@ -270,6 +270,8 @@ steps:
         source: bright_skymodel_pb
       - id: output_root
         source: image_name
+      - id: vertices_file
+        source: vertices_file
       - id: threshisl
         source: threshisl
       - id: threshpix

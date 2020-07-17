@@ -23,6 +23,10 @@ inputs:
     type: string
     inputBinding:
       position: 4
+  - id: vertices_file
+    type: string
+    inputBinding:
+      position: 5
   - id: threshisl
     type: float
     inputBinding:

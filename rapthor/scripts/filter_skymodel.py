@@ -10,6 +10,8 @@ import bdsf
 from rapthor.lib import miscellaneous as misc
 import casacore.tables as pt
 import astropy.io.ascii
+from astropy.io import fits as pyfits
+from astropy import wcs
 
 
 def ra2hhmmss(deg):
@@ -38,9 +40,10 @@ def dec2ddmmss(deg):
 
 
 def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
-         threshisl=5.0, threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7),
-         adaptive_rmsbox=True, use_adaptive_threshold=False, adaptive_thresh=75.0,
-         beamMS=None, peel_bright=False):
+         vertices_file, threshisl=5.0, threshpix=7.5, rmsbox=(150, 50),
+         rmsbox_bright=(35, 7), adaptive_rmsbox=True,
+         use_adaptive_threshold=False, adaptive_thresh=75.0, beamMS=None,
+         peel_bright=False):
     """
     Filter the input sky model so that they lie in islands in the image
 
@@ -57,6 +60,8 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
     output_root : str
         Root of filename of output makesourcedb sky models. Output filenames will be
         output_root+'.apparent_sky' and output_root+'.true_sky'
+    vertices_file : str
+        Filename of file with vertices
     threshisl : float, optional
         Value of thresh_isl PyBDSF parameter
     threshpix : float, optional
@@ -124,7 +129,35 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         img.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
         del img
 
+        # Construct polygon needed to trim the mask to the sector
+        header = pyfits.getheader(maskfile, 0)
+        w = wcs.WCS(header)
+        RAind = w.axis_type_names.index('RA')
+        Decind = w.axis_type_names.index('DEC')
+        vertices = misc.read_vertices(vertices_file)
+        RAverts = vertices[0]
+        Decverts = vertices[1]
+        verts = []
+        for RAvert, Decvert in zip(RAverts, Decverts):
+            ra_dec = np.array([[0.0, 0.0, 0.0, 0.0]])
+            ra_dec[0][RAind] = RAvert
+            ra_dec[0][Decind] = Decvert
+            verts.append((w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind]))
+
+        hdu = pyfits.open(maskfile, memmap=False)
+        data = hdu[0].data
+
+        # Rasterize the poly
+        data_rasertize = data[0, 0, :, :]
+        data_rasertize = misc.rasterize(verts, data_rasertize)
+        data[0, 0, :, :] = data_rasertize
+
+        hdu[0].data = data
+        hdu.writeto(maskfile, overwrite=True)
+
+        # Now filter the sky model using the mask made above
         if len(beamMS) > 1:
+            # Select the best MS for the beam attenuation
             ms_times = []
             for ms in beamMS:
                 tab = pt.table(ms, ack=False)
@@ -151,6 +184,7 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
             if len(s) == 0:
                 emptysky = True
             else:
+                # Write out apparent and true-sky models
                 s.group(maskfile)  # group the sky model by mask islands
                 s.write(output_root+'.true_sky', clobber=True)
                 s.write(output_root+'.apparent_sky', clobber=True, applyBeam=True)
@@ -189,6 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('input_skymodel_pb', help='Filename of input sky model')
     parser.add_argument('input_bright_skymodel_pb', help='Filename of input bright-source sky model')
     parser.add_argument('output_skymodel', help='Filename of output sky model')
+    parser.add_argument('vertices_file', help='Filename of vertices file')
     parser.add_argument('--threshisl', help='Island threshold', type=float, default=3.0)
     parser.add_argument('--threshpix', help='Peak pixel threshold', type=float, default=5.0)
     parser.add_argument('--rmsbox', help='Rms box width and step (e.g., "(60, 20)")',
@@ -202,7 +237,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.input_image, args.input_skymodel_pb, args.input_bright_skymodel_pb,
-         args.output_skymodel, threshisl=args.threshisl,
+         args.output_skymodel, args.vertices_file, threshisl=args.threshisl,
          threshpix=args.threshpix, rmsbox=args.rmsbox,
          rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox,
          beamMS=args.beamMS, peel_bright=args.peel_bright)
