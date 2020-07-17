@@ -157,7 +157,7 @@ class Sector(object):
             # Find total observation time in hours
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
         scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 8.0)
-        dist_deg = self.get_distance_to_obs_center()
+        dist_deg = np.min(self.get_distance_to_obs_center())
         sens_factor = np.e**(-4.0 * np.log(2.0) * dist_deg**2 / self.field.fwhm_deg**2)
         self.wsclean_niter = int(round(12000 * scaling_factor * sens_factor))
         self.wsclean_nmiter = min(12, max(2, int(round(8 * scaling_factor * sens_factor))))
@@ -168,14 +168,31 @@ class Sector(object):
         # Set multiscale: get source sizes and check for large sources
         self.multiscale = do_multiscale
         if self.multiscale is None:
-            large_size_arcmin = 4.0  # threshold source size for multiscale to be activated
-            sizes_arcmin = self.source_sizes * 60.0
-            if sizes_arcmin is not None and any([s > large_size_arcmin for s in sizes_arcmin]):
-                self.multiscale = True
-            else:
-                self.multiscale = False
+            # TODO: figure out good way to determine whether multiscale should be used
+            # and the scales, maybe using the presence of Gaussians on larger wavelet
+            # scales? For now, force it to off, as it takes a long time and so should
+            # only be used when necessary
+            self.multiscale = False
+
+#             largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
+#             large_size_arcmin = 4.0  # threshold source size for multiscale to be activated
+#             sizes_arcmin = self.source_sizes * 60.0
+#             if sizes_arcmin is not None and any([s > large_size_arcmin for s in sizes_arcmin]):
+#                 self.multiscale = True
+#             else:
+#                 self.multiscale = False
         if self.multiscale:
             self.multiscale_scales_pixel = self.field.parset['imaging_specific']['multiscale_scales_pixel']
+#             if self.multiscale_scales_pixel is None:
+#                 largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
+#                 if largest_scale < 3:
+#                     self.multiscale_scales_pixel = [0]
+#                 elif largest_scale < 5:
+#                     self.multiscale_scales_pixel = [0, 3]
+#                 elif largest_scale < 15:
+#                     self.multiscale_scales_pixel = [0, 6, 12]
+#                 else:
+#                     self.multiscale_scales_pixel = None  # let WSClean decide
             self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
             self.log.debug("Will do multiscale cleaning.")
         else:
@@ -458,12 +475,24 @@ class Sector(object):
 
     def get_distance_to_obs_center(self):
         """
-        Return the distance in degrees to the phase center
+        Return the distance in degrees to the phase center of the observation(s)
+
+        Returns
+        -------
+        distance : list
+            List of distances: [center, lower-left corner, upper-left corner,
+                                lower-right corner, upper-right corner]
         """
         from astropy.coordinates import SkyCoord
         import astropy.units as u
 
-        coord1 = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
+        coordc = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
+        coordll = SkyCoord(self.ra+self.width_ra/2.0, self.dec-self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
+        coordul = SkyCoord(self.ra+self.width_ra/2.0, self.dec+self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
+        coordlr = SkyCoord(self.ra-self.width_ra/2.0, self.dec-self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
+        coordur = SkyCoord(self.ra-self.width_ra/2.0, self.dec+self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
         coord2 = SkyCoord(self.observations[0].ra, self.observations[0].dec, unit=(u.degree, u.degree), frame='fk5')
 
-        return coord1.separation(coord2).value
+        return [coordc.separation(coord2).value, coordll.separation(coord2).value,
+                coordul.separation(coord2).value, coordlr.separation(coord2).value,
+                coordur.separation(coord2).value]
