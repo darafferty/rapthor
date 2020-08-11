@@ -804,10 +804,13 @@ namespace api {
 
         // 4. zero pad
         {
-            size_t offset = (m_padded_size - m_subgridsize)/2;
-            for(size_t i=0; i<m_subgridsize; i++)
+            ptrdiff_t offset = (ptrdiff_t(m_padded_size) - ptrdiff_t(m_subgridsize))/2;
+            ptrdiff_t begin_idx = std::max(-offset, ptrdiff_t(0));
+            ptrdiff_t end_idx = std::min(ptrdiff_t(m_subgridsize), ptrdiff_t(m_padded_size) - offset);
+
+            for(ptrdiff_t i=begin_idx; i<end_idx; i++)
             {
-                for(size_t j=0; j<m_subgridsize; j++)
+                for(ptrdiff_t j=begin_idx; j<end_idx; j++)
                 {
                     scalar_beam_padded[(i+offset)*m_padded_size+(j+offset)] = scalar_beam_subgrid[i*m_subgridsize+j];
                 }
