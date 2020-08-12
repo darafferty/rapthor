@@ -388,7 +388,8 @@ class Field(object):
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
-        bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
+        if len(bright_source_skymodel) > 0:
+            bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
         # Check that the TEC screen order is not more than num_patches - 1
@@ -645,8 +646,8 @@ class Field(object):
             for i in range(nsectors_ra):
                 for j in range(nsectors_dec):
                     if (self.parset['imaging_specific']['skip_corner_sectors'] and
-                        i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1] and
-                        nsectors_ra > 2 and nsectors_dec > 2):
+                            i in [0, nsectors_ra-1] and j in [0, nsectors_dec-1] and
+                            nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
                     ra, dec = self.xy2radec([x[j, i]], [y[j, i]])
@@ -929,14 +930,27 @@ class Field(object):
                               step_dict['imaged_sources_only'],
                               target_flux=step_dict['target_flux'])
 
-        # Determine whether a predict step is needed or not
+        # Check whether outliers and bright sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
         nr_imaging_sectors = len(self.imaging_sectors)
         nr_bright_source_sectors = len(self.bright_source_sectors)
+        if nr_bright_source_sectors == 0 and self.peel_bright_sources:
+            self.peel_bright_sources = False
+        if nr_outlier_sectors == 0 and self.peel_outliers:
+            self.peel_outliers = False
+
+        # Determine whether a predict step is needed or not. It's needed when:
+        # - there are two or more imaging sectors
+        # - there are one or more outlier sectors (whether or not the outliers will
+        #   be peeled for calibration, which is set by self.peel_outliers, they must
+        #   still be predicted since they lie outside of the imaged areas)
+        # - bright sources will be peeled, set by self.peel_bright_sources
+        # - reweighting is to be done (since datasets with all sources subtracted are
+        #   needed for this)
         if (nr_imaging_sectors > 1 or
-            nr_outlier_sectors > 0 or
-            nr_bright_source_sectors > 0 or
-            self.parset['imaging_specific']['reweight']):
+                nr_outlier_sectors > 0 or
+                self.peel_bright_sources or
+                self.parset['imaging_specific']['reweight']):
             self.do_predict = True
         else:
             self.do_predict = False

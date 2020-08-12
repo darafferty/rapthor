@@ -107,7 +107,7 @@ class Predict(Operation):
         """
         Finalize this operation
         """
-        if self.field.peel_outliers and len(self.field.outlier_sectors) > 0:
+        if self.field.peel_outliers:
             # Update the observations to use the new peeled datasets and remove the
             # outlier sectors (since, once peeled, they are no longer needed)
             self.field.sectors = [sector for sector in self.field.sectors if not sector.is_outlier]
