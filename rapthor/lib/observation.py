@@ -171,7 +171,8 @@ class Observation(object):
         chunksize = samplesperchunk * timepersample
         mystarttime = self.starttime
         myendtime = self.endtime
-        if (myendtime - mystarttime) > (2 * chunksize):
+        if (myendtime - mystarttime) > chunksize:
+            # Divide up the bandwidth into chunks of chunksize or smaller
             nchunks = int(round(float(self.numsamples) * timepersample) / chunksize)
         else:
             nchunks = 1
@@ -220,7 +221,8 @@ class Observation(object):
         chunksize = channelsperchunk * channelwidth
         mystartfreq = self.startfreq
         myendfreq = self.endfreq
-        if (myendfreq-mystartfreq) > (2*chunksize):
+        if (myendfreq-mystartfreq) > chunksize:
+            # Divide up the bandwidth into chunks of chunksize or smaller
             nchunks = int(round(float(numchannels) * channelwidth) / chunksize)
         else:
             nchunks = 1
