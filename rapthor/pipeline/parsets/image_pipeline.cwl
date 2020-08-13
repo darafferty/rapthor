@@ -72,6 +72,12 @@ inputs:
     type: string[]
   - id: aterm_image_filenames
     type: string[]
+{% if use_mpi %}
+  - id: mpi_ntasks_per_node
+    type: int[]
+  - id: mpi_nnodes_per_node
+    type: int[]
+{% endif %}
 {% else %}
   - id: h5parm
     type: string[]
@@ -157,6 +163,12 @@ steps:
         source: aterms_config_file
       - id: aterm_image_filenames
         source: aterm_image_filenames
+{% if use_mpi %}
+      - id: mpi_ntasks_per_node
+        source: mpi_ntasks_per_node
+      - id: mpi_nnodes_per_node
+        source: mpi_nnodes_per_node
+{% endif %}
 {% else %}
       - id: h5parm
         source: h5parm
@@ -201,11 +213,15 @@ steps:
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, aterms_config_file,
-              aterm_image_filenames, channels_out, deconvolution_channels,
-              wsclean_niter, wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
+              vertices_file, region_file, aterms_config_file, aterm_image_filenames,
+{% if use_mpi %}
+              mpi_ntasks_per_node, mpi_nnodes_per_node,
+{% endif %}
+              channels_out, deconvolution_channels, wsclean_niter,
+              wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
               max_uv_lambda, multiscale_scales_pixel, local_dir, taper_arcsec,
-              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
+              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
+              peel_bright]
 {% else %}
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,

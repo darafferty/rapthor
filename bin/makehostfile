@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+"""
+Script to make a hostfile suitable for use with MPI for a SLURM reservation.
+"""
+import hostlist
+import optparse
+import sys
+import os
+
+
+if __name__ == '__main__':
+    parser = optparse.OptionParser(usage='%prog <filename>' )
+    parser.add_option('-s', help='add submit host to hostfile', action='store_true', default=True)
+    (options, args) = parser.parse_args()
+
+    if len(args) != 1:
+        parser.print_help()
+        sys.exit()
+
+    hostfile = args[0]
+
+    # Get nodes for this reservation
+    if 'SLURM_JOB_NODELIST' not in os.environ.keys():
+        print('ERROR: SLURM_JOB_NODELIST not found in current environment. Cannot make hostfile')
+        sys.exit(1)
+    hosts = hostlist.expand_hostlist(os.environ['SLURM_JOB_NODELIST'])
+
+    # Add the parent node
+    if options.s:
+        if 'SLURM_SUBMIT_HOST' not in os.environ.keys():
+            print('WARNING: SLURM_SUBMIT_HOST not found in current environment. Will not add '
+                  'submit host to hostfile')
+        else:
+            hosts.append(os.environ['SLURM_SUBMIT_HOST'])
+
+    # Write the file with comma-separated values
+    with open(hostfile, 'w') as f:
+        f.write(', '.join(hosts))
+        f.write('\n')
+
+    print("Wrote hostfile '{0}' with {1} hosts".format(hostfile, len(hosts)))

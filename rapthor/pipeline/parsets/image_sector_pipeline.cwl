@@ -43,6 +43,12 @@ inputs:
     type: string
   - id: aterm_image_filenames
     type: string
+{% if use_mpi %}
+  - id: mpi_ntasks_per_node
+    type: int
+  - id: mpi_nnodes_per_node
+    type: int
+{% endif %}
 {% else %}
   - id: h5parm
     type: string
@@ -189,6 +195,12 @@ steps:
 {% if use_screens %}
       - id: config
         source: make_aterm_config/aterms_config
+{% if use_mpi %}
+      - id: ntasks
+        source: mpi_ntasks_per_node
+      - id: nnodes
+        source: mpi_nnodes_per_node
+{% endif %}
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize

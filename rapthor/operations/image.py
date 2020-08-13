@@ -143,6 +143,15 @@ class Image(Operation):
         if self.field.use_screens:
             self.input_parms.update({'aterms_config_file': aterms_config_file,
                                      'aterm_image_filenames': aterm_image_filenames})
+
+            if self.field.use_mpi:
+                # Set number of nodes to allocate to each imaging subpipeline
+                nnodes =  self.parset['cluster_specific']['max_nodes']
+                nsubpipes = min(nsectors, nnodes)
+                nnodes_per_subpipeline = int(nnodes / nsubpipes)
+
+                self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['ncpu']] * nsectors,
+                                         'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
             self.input_parms.update({'central_patch_name': central_patch_name})
