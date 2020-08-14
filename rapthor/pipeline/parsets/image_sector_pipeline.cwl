@@ -46,7 +46,7 @@ inputs:
 {% if use_mpi %}
   - id: mpi_ntasks_per_node
     type: int
-  - id: mpi_nnodes_per_node
+  - id: mpi_nnodes
     type: int
 {% endif %}
 {% else %}
@@ -199,7 +199,7 @@ steps:
       - id: ntasks
         source: mpi_ntasks_per_node
       - id: nnodes
-        source: mpi_nnodes_per_node
+        source: mpi_nnodes
 {% endif %}
 {% endif %}
       - id: wsclean_imsize

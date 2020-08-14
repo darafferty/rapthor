@@ -75,7 +75,7 @@ inputs:
 {% if use_mpi %}
   - id: mpi_ntasks_per_node
     type: int[]
-  - id: mpi_nnodes_per_node
+  - id: mpi_nnodes
     type: int[]
 {% endif %}
 {% else %}
@@ -166,8 +166,8 @@ steps:
 {% if use_mpi %}
       - id: mpi_ntasks_per_node
         source: mpi_ntasks_per_node
-      - id: mpi_nnodes_per_node
-        source: mpi_nnodes_per_node
+      - id: mpi_nnodes
+        source: mpi_nnodes
 {% endif %}
 {% else %}
       - id: h5parm
@@ -215,7 +215,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, aterms_config_file, aterm_image_filenames,
 {% if use_mpi %}
-              mpi_ntasks_per_node, mpi_nnodes_per_node,
+              mpi_ntasks_per_node, mpi_nnodes,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
