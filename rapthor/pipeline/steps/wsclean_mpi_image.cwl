@@ -11,7 +11,8 @@ inputs:
   - id: msin
     type: string[]
     inputBinding:
-      prefix: -name
+      prefix: -m
+      itemSeparator: ","
   - id: name
     type: string
     inputBinding:
@@ -28,6 +29,7 @@ inputs:
     type: int[]
     inputBinding:
       prefix: -z
+      itemSeparator: " "
   - id: wsclean_niter
     type: int
     inputBinding:
