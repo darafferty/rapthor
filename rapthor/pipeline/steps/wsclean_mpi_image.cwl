@@ -12,7 +12,7 @@ inputs:
     type: string[]
     inputBinding:
       prefix: -m
-      itemSeparator: ","
+      itemSeparator: " "
   - id: name
     type: string
     inputBinding:
