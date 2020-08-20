@@ -7,25 +7,24 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - '--soltabname=gain000'
   - '--smooth_deg=0.1'
   - '--gsize_deg=0.15'
   - '--time_avg_factor=1'
 
 inputs:
-  - id: slowh5parm
+  - id: h5parm
     type: string
     inputBinding:
       position: 0
+  - id: soltabname
+    type: string
+    inputBinding:
+      prefix: --soltabname=
+      separate: false
   - id: outroot
     type: string
     inputBinding:
       prefix: --outroot=
-      separate: false
-  - id: fasth5parm
-    type: string
-    inputBinding:
-      prefix: --fasth5parm=
       separate: false
   - id: skymodel
     type: string

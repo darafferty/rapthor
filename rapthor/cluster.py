@@ -310,7 +310,8 @@ def get_time_chunksize(cluster_parset, timepersample, numsamples, solint_fast_ti
 def get_frequency_chunksize(cluster_parset, channelwidth, solint_slow_freqstep,
                             solint_slow_timestep, antenna, ndir):
     """
-    Returns the target chunk size in seconds for an observation
+    Returns the target chunk size in Hz for an observation (the maximum chunk size
+    that will fit in memory)
 
     Parameters
     ----------

@@ -55,15 +55,31 @@ inputs:
     type: int[]
   - id: solint_slow_timestep
     type: int[]
+  - id: solint_slow_timestep2
+    type: int[]
   - id: solint_slow_freqstep
+    type: int[]
+  - id: solint_slow_freqstep2
     type: int[]
   - id: slow_smoothnessconstraint
     type: float
+  - id: slow_smoothnessconstraint2
+    type: float
+  - id: fast_antennaconstraint
+    type: string
+  - id: slow_antennaconstraint
+    type: string
   - id: output_slow_h5parm
     type: string[]
-  - id: combined_slow_h5parm
+  - id: output_slow_h5parm2
+    type: string[]
+  - id: combined_slow_h5parm1
+    type: string
+  - id: combined_slow_h5parm2
     type: string
   - id: combined_h5parms
+    type: string
+  - id: combined_h5parms1
     type: string
 {% if debug %}
   - id: output_slow_h5parm_debug
@@ -89,7 +105,7 @@ steps:
 
   - id: solve_fast_phases
     label: solve_fast_phases
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
     in:
       - id: msin
         source: timechunk_filename
@@ -117,6 +133,8 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: fast_smoothnessconstraint
+      - id: antennaconstraint
+        source: fast_antennaconstraint
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan]
     scatterMethod: dotproduct
     out:
@@ -136,9 +154,9 @@ steps:
 {% if do_slowgain_solve %}
 # Solve for slow gains
 
-  - id: solve_slow_gains
-    label: solve_slow_gains
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain.cwl
+  - id: solve_slow_gains1
+    label: solve_slow_gains1
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
     in:
       - id: msin
         source: freqchunk_filename
@@ -172,39 +190,123 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint
+      - id: antennaconstraint
+        source: slow_antennaconstraint
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm
 
-  - id: combine_slow_gains
-    label: combine_slow_gains
+  - id: combine_slow_gains1
+    label: combine_slow_gains1
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains/slow_gains_h5parm
+        source: solve_slow_gains1/slow_gains_h5parm
       - id: outh5parm
-        source: combined_slow_h5parm
+        source: combined_slow_h5parm1
     out:
       - id: outh5parm
+
+  - id: combine_fast_and_slow_h5parms1
+    label: combine_fast_and_slow_h5parms1
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: combine_fast_phases/outh5parm
+      - id: inh5parm2
+        source: combine_slow_gains1/outh5parm
+      - id: outh5parm
+        source: combined_h5parms1
+      - id: mode
+        valueFrom: 'p1a2'
+    out:
+      - id: combinedh5parm
+
+  - id: solve_slow_gains2
+    label: solve_slow_gains2
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
+    in:
+      - id: msin
+        source: freqchunk_filename
+      - id: starttime
+        source: slow_starttime
+      - id: ntimes
+        source: slow_ntimes
+      - id: startchan
+        source: startchan
+      - id: nchan
+        source: nchan
+      - id: combined_h5parm
+        source: combine_fast_and_slow_h5parms/combinedh5parm
+      - id: h5parm
+        source: output_slow_h5parm2
+      - id: solint
+        source: solint_slow_timestep2
+      - id: solve_nchan
+        source: solint_slow_freqstep2
+      - id: sourcedb
+        source: make_sourcedb/sourcedb
+      - id: maxiter
+        source: maxiter
+      - id: propagatesolutions
+        source: propagatesolutions
+      - id: stepsize
+        source: stepsize
+      - id: tolerance
+        source: tolerance
+      - id: uvlambdamin
+        source: uvlambdamin
+      - id: smoothnessconstraint
+        source: slow_smoothnessconstraint2
+    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
+    scatterMethod: dotproduct
+    out:
+      - id: slow_gains_h5parm
+
+  - id: combine_slow_gains2
+    label: combine_slow_gains2
+    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    in:
+      - id: inh5parms
+        source: solve_slow_gains2/slow_gains_h5parm
+      - id: outh5parm
+        source: combined_slow_h5parm2
+    out:
+      - id: outh5parm
+
+  - id: combine_fast_and_slow_h5parms2
+    label: combine_fast_and_slow_h5parms2
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: combine_slow_gains1/outh5parm
+      - id: inh5parm2
+        source: combine_slow_gains2/outh5parm
+      - id: outh5parm
+        source: combined_h5parms
+      - id: mode
+        valueFrom: 'p1a1a2'
+    out:
+      - id: combinedh5parm
 
   - id: process_slow_gains
     label: process_slow_gains
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
-        source: combine_slow_gains/outh5parm
+        source: combine_fast_and_slow_h5parms2/outh5parm
     out:
       - id: outh5parm
 
-  - id: make_slow_aterms
-    label: make_slow_aterms
-    run: {{ rapthor_pipeline_dir }}/steps/make_slow_aterms.cwl
+  - id: make_aterms
+    label: make_aterms
+    run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
         source: process_slow_gains/outh5parm
-      - id: fasth5parm
-        source: combine_fast_phases/outh5parm
+      - id: soltabname
+        valueFrom: 'gain000'
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
@@ -214,19 +316,6 @@ steps:
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
     out: []
-
-  - id: combine_fast_and_slow_h5parms
-    label: combine_fast_and_slow_h5parms
-    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
-    in:
-      - id: inh5parm1
-        source: combine_fast_phases/outh5parm
-      - id: inh5parm2
-        source: process_slow_gains/outh5parm
-      - id: outh5parm
-        source: combined_h5parms
-    out:
-      - id: combinedh5parm
 
 {% if debug %}
 # Solve for slow gains again, applying the first ones
@@ -294,6 +383,8 @@ steps:
     in:
       - id: fasth5parm
         source: combine_fast_phases/outh5parm
+      - id: soltabname
+        valueFrom: 'phase000'
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot

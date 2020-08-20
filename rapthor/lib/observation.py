@@ -235,13 +235,16 @@ class Observation(object):
         self.parameters['slow_starttime'] = [self.convert_mjd(self.starttime)] * nchunks
         self.parameters['slow_ntimes'] = [self.numsamples] * nchunks
 
-        # Set solution intervals (same for every calibration chunk)
+        # Set solution intervals (same for every calibration chunk). For the second
+        # slow solve, just use the same values as the first solve for now
         self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
         self.parameters['solint_fast_timestep_core'] = [solint_fast_timestep_core] * self.ntimechunks
         self.parameters['solint_fast_timestep_remote'] = [solint_fast_timestep] * self.ntimechunks
         self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
         self.parameters['solint_slow_timestep'] = [solint_slow_timestep] * self.nfreqchunks
         self.parameters['solint_slow_freqstep'] = [solint_slow_freqstep] * self.nfreqchunks
+        self.parameters['solint_slow_timestep2'] = [solint_slow_timestep] * self.nfreqchunks
+        self.parameters['solint_slow_freqstep2'] = [solint_slow_freqstep] * self.nfreqchunks
 
     def set_prediction_parameters(self, sector_name, patch_names, scratch_dir):
         """

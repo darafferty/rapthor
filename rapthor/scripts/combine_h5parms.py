@@ -10,8 +10,7 @@ import scipy.interpolate as si
 import os
 
 
-def main(h5parm1, h5parm2, outh5parm, solset1='sol000', solset2='sol000',
-         add_values=False, add_soltab='tec000', rename_from=None, rename_to=None):
+def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
     """
     Combines two h5parms
 
@@ -23,53 +22,53 @@ def main(h5parm1, h5parm2, outh5parm, solset1='sol000', solset2='sol000',
         Filenames of h5parm 2
     outh5parm : str
         Filename of the output h5parm
+    mode : str
+        Mode to use when combining:
+        'p1a2' - phases from 1 and amplitudes from 2
+        'p1a1a2' - phases and amplitudes from 1 and amplitudes from 2 (amplitudes 1 and 2
+        are multiplied to create combined amplitudes)
     solset1 : str, optional
         Name of solset for h5parm1
     solset2 : str, optional
         Name of solset for h5parm2
-    add_values : bool, optional
-        If True, add values of the two h5parms, resampling on time if necessary (input
-        h5parms must be of the same type and have the same axes)
-    add_soltab : str, optional
-        Name of soltab values to add
     """
-    add_values = misc.string2bool(add_values)
+    # Open the input h5parms
     h1 = h5parm(h5parm1)
     h2 = h5parm(h5parm2)
     ss1 = h1.getSolset(solset=solset1)
     ss2 = h2.getSolset(solset=solset2)
+
+    # Initialize the output h5parm
     if os.path.exists(outh5parm):
         os.remove(outh5parm)
     ho = h5parm(outh5parm, readonly=False)
-
     sso = ho.makeSolset(solsetName='sol000', addTables=False)
 
-    if add_values:
-        # Figure out which one has finest time grid and interpolate other onto that grid,
-        # then add
-        st1 = ss1.getSoltab(add_soltab)
-        st2 = ss2.getSoltab(add_soltab)
-        axis_names = st1.getAxesNames()  # assume both have same axes
-        time_ind = axis_names.index('time')
-        if st1.val.shape[time_ind] > st2.val.shape[time_ind]:
-            f = si.interp1d(st2.time, st2.val, axis=time_ind, kind='linear', fill_value='extrapolate')
-            vals = f(st1.time) + st1.val
-            ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-            sto = sso.getSoltab(add_soltab)
-            sto.setValues(vals)
-        else:
-            f = si.interp1d(st1.time, st1.val, axis=time_ind, kind='linear', fill_value='extrapolate')
-            vals = f(st2.time) + st2.val
-            ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-            sto = sso.getSoltab(add_soltab)
-            sto.setValues(vals)
-    else:
-        # Just copy over both solsets
+    if mode == 'p1a2':
+        # Take phases from 1 and amplitudes from 2
+        # Remove unneeded soltabs from 1 and 2, then copy
+        st = ss1.getSoltab('amplitude000')
+        st.delete()
+        st = ss2.getSoltab('phase000')
+        st.delete()
         ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-        if rename_from is not None and rename_to is not None:
-            st = sso.getSoltab(rename_from)
-            st.rename(rename_to)
         ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    elif mode == 'p1a1a2':
+        # Take phases and amplitudes from 1 and amplitudes from 2 (amplitudes 1 and 2
+        # are multiplied to create combined values)
+        # First, copy phases and amplitudes from 1
+        ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+        # Then read amplitudes from 1 and 2, multiply them together, and store
+        st1 = ss1.getSoltab('amplitdue000')
+        st2 = ss2.getSoltab('amplitdue000')
+        sto = sso.getSoltab('amplitdue000')
+        sto.setValues(st1.val*st2.val)
+
+    else:
+        print('ERROR: mode not understood')
+        sys.exit(1)
 
     h1.close()
     h2.close()
@@ -83,9 +82,7 @@ if __name__ == '__main__':
     parser.add_argument('h51', help='name of input h5 1')
     parser.add_argument('h52', help='name of input h5 2')
     parser.add_argument('outh5', help='name of the output h5')
-    parser.add_argument('--rename_from', help='Soltab name', type=str, default=None)
-    parser.add_argument('--rename_to', help='Soltab name', type=str, default=None)
+    parser.add_argument('mode', help='mode to use')
     args = parser.parse_args()
 
-    main(args.h51, args.h52, args.outh5, rename_from=args.rename_from,
-         rename_to=args.rename_to)
+    main(args.h51, args.h52, args.outh5, args.mode)

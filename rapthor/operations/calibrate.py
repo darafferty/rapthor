@@ -39,8 +39,6 @@ class Calibrate(Operation):
         startchan = self.field.get_obs_parameters('startchan')
         nchan = self.field.get_obs_parameters('nchan')
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
-        solint_fast_timestep_core = self.field.get_obs_parameters('solint_fast_timestep_core')
-        solint_fast_timestep_remote = self.field.get_obs_parameters('solint_fast_timestep_remote')
         solint_slow_timestep = self.field.get_obs_parameters('solint_slow_timestep')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
         solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
@@ -49,25 +47,11 @@ class Calibrate(Operation):
                               for i in range(self.field.ntimechunks)]
         self.combined_fast_h5parm = os.path.join(self.pipeline_working_dir,
                                                  'fast_phases.h5parm')
-        output_fast_core_h5parm = [str(os.path.join(self.pipeline_working_dir,
-                                   'fast_phase_core_{}.h5parm'.format(i)))
-                                   for i in range(self.field.ntimechunks)]
-        output_fast_remote_h5parm = [str(os.path.join(self.pipeline_working_dir,
-                                     'fast_phase_remote_{}.h5parm'.format(i)))
-                                     for i in range(self.field.ntimechunks)]
         output_slow_h5parm = [str(os.path.join(self.pipeline_working_dir,
                               'slow_gain_{}.h5parm'.format(i)))
                               for i in range(self.field.nfreqchunks)]
         self.combined_slow_h5parm = os.path.join(self.pipeline_working_dir,
                                                  'slow_gains.h5parm')
-        output_slow_h5parm_debug = [str(os.path.join(self.pipeline_working_dir,
-                                    'slow_gain_{}_debug.h5parm'.format(i)))
-                                    for i in range(self.field.nfreqchunks)]
-        combined_slow_h5parm_debug = os.path.join(self.pipeline_working_dir,
-                                                  'slow_gains_debug.h5parm')
-        baselines_core = self.get_baselines_core()
-        antennaconstraint_core = '[[{}]]'.format(','.join(self.get_superterp_stations()))
-        antennaconstraint_remote = '[[{}]]'.format(','.join(self.get_core_stations()))
         calibration_skymodel_file = self.field.calibration_skymodel_file
         calibration_sourcedb = str(os.path.join(self.pipeline_working_dir,
                                                 'calibration_skymodel.sourcedb'))
@@ -84,6 +68,19 @@ class Calibrate(Operation):
                                                    'diagonal_aterms'))
         self.combined_h5parms = str(os.path.join(self.pipeline_working_dir,
                                                  'combined_solutions.h5'))
+        antennaconstraint_core = '[[{}]]'.format(','.join(self.get_core_stations()))
+        solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
+        solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
+        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
+        output_slow_h5parm2 = [str(os.path.join(self.pipeline_working_dir,
+                               'slow_gain2_{}.h5parm'.format(i)))
+                               for i in range(self.field.nfreqchunks)]
+        combined_slow_h5parm1 = os.path.join(self.pipeline_working_dir,
+                                             'slow_gains1.h5parm')
+        combined_slow_h5parm2 = os.path.join(self.pipeline_working_dir,
+                                             'slow_gains2.h5parm')
+        combined_h5parms1 = str(os.path.join(self.pipeline_working_dir,
+                                             'combined_solutions1.h5'))
 
         self.input_parms = {'timechunk_filename': timechunk_filename,
                             'freqchunk_filename': freqchunk_filename,
@@ -113,9 +110,23 @@ class Calibrate(Operation):
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'output_aterms_root': self.output_aterms_root,
-                            'combined_h5parms': self.combined_h5parms}
+                            'combined_h5parms': self.combined_h5parms,
+                            'fast_antennaconstraint': antennaconstraint_core,
+                            'slow_antennaconstraint': antennaconstraint_core,
+                            'solint_slow_timestep2': solint_slow_timestep2,
+                            'solint_slow_freqstep2': solint_slow_freqstep2,
+                            'slow_smoothnessconstraint2': slow_smoothnessconstraint2,
+                            'output_slow_h5parm2': output_slow_h5parm2,
+                            'combined_slow_h5parm1': combined_slow_h5parm1,
+                            'combined_slow_h5parm2': combined_slow_h5parm2,
+                            'combined_h5parms1': combined_h5parms1}
 
         if self.field.debug:
+            output_slow_h5parm_debug = [str(os.path.join(self.pipeline_working_dir,
+                                        'slow_gain_{}_debug.h5parm'.format(i)))
+                                        for i in range(self.field.nfreqchunks)]
+            combined_slow_h5parm_debug = os.path.join(self.pipeline_working_dir,
+                                                      'slow_gains_debug.h5parm')
             self.input_parms.update({'output_slow_h5parm_debug': output_slow_h5parm_debug,
                                      'combined_slow_h5parm_debug': combined_slow_h5parm_debug})
 
