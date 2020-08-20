@@ -280,7 +280,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: combine_slow_gains1/outh5parm
+        source: combine_fast_and_slow_h5parms1/combinedh5parm
       - id: inh5parm2
         source: combine_slow_gains2/outh5parm
       - id: outh5parm

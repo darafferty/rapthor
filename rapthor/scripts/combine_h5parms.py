@@ -33,8 +33,8 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
         Name of solset for h5parm2
     """
     # Open the input h5parms
-    h1 = h5parm(h5parm1)
-    h2 = h5parm(h5parm2)
+    h1 = h5parm(h5parm1, readonly=False)
+    h2 = h5parm(h5parm2, readonly=False)
     ss1 = h1.getSolset(solset=solset1)
     ss2 = h2.getSolset(solset=solset2)
 
@@ -61,9 +61,9 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
         ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
 
         # Then read amplitudes from 1 and 2, multiply them together, and store
-        st1 = ss1.getSoltab('amplitdue000')
-        st2 = ss2.getSoltab('amplitdue000')
-        sto = sso.getSoltab('amplitdue000')
+        st1 = ss1.getSoltab('amplitude000')
+        st2 = ss2.getSoltab('amplitude000')
+        sto = sso.getSoltab('amplitude000')
         sto.setValues(st1.val*st2.val)
 
     else:
