@@ -68,7 +68,7 @@ class Calibrate(Operation):
                                                    'diagonal_aterms'))
         self.combined_h5parms = str(os.path.join(self.pipeline_working_dir,
                                                  'combined_solutions.h5'))
-        antennaconstraint_core = ""'[[{}]]'"".format(','.join(self.get_core_stations()))
+        antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
         solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
         solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
         slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
