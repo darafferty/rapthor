@@ -238,7 +238,7 @@ steps:
       - id: nchan
         source: nchan
       - id: combined_h5parm
-        source: combine_fast_and_slow_h5parms/combinedh5parm
+        source: combine_fast_and_slow_h5parms1/combinedh5parm
       - id: h5parm
         source: output_slow_h5parm2
       - id: solint
@@ -295,7 +295,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
-        source: combine_fast_and_slow_h5parms2/outh5parm
+        source: combine_fast_and_slow_h5parms2/combinedh5parm
     out:
       - id: outh5parm
 
@@ -335,7 +335,7 @@ steps:
       - id: nchan
         source: nchan
       - id: combined_h5parm
-        source: combine_fast_and_slow_h5parms/combinedh5parm
+        source: combine_fast_and_slow_h5parms2/combinedh5parm
       - id: h5parm
         source: output_slow_h5parm_debug
       - id: solint
