@@ -235,10 +235,9 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
     times = times[nodupind]
     if 'pol' in axis_names:
         vals = np.squeeze(vals[nodupind, :, :, :, :], axis=0)
-        vals_ph = np.squeeze(vals_ph[nodupind, :, :, :, :], axis=0)
     else:
         vals = np.squeeze(vals[nodupind, :, :, :], axis=0)
-        vals_ph = np.squeeze(vals_ph[nodupind, :, :, :], axis=0)
+    vals_ph = np.squeeze(vals_ph[nodupind, :, :, :], axis=0)
 
     # Identify any gaps in time (frequency gaps are not allowed), as we need to
     # output a separate FITS file for each time chunk
