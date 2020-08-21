@@ -10,6 +10,7 @@
 #include "idg-common.h"
 #include "idg-version.h"
 #include "auxiliary.h"
+#include "memory.h"
 #include "PowerSensor.h"
 
 using namespace std;
@@ -405,10 +406,7 @@ namespace idg {
         {
             void *ptr = nullptr;
             if (bytes > 0) {
-                bytes = (((bytes - 1) / m_alignment) * m_alignment) + m_alignment;
-                if (posix_memalign(&ptr, m_alignment, bytes) != 0) {
-                    throw std::runtime_error("posix_memalign failed");
-                };
+                ptr = allocate_memory<char>(bytes, m_alignment);
             }
             m_bytes = bytes;
             m_ptr = ptr;
