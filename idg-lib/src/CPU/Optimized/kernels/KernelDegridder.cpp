@@ -5,10 +5,11 @@
 #include <mkl_vml.h>
 #endif
 
+#include "common/memory.h"
+
 #include "Types.h"
 #include "Index.h"
 #include "Math.h"
-#include "Memory.h"
 
 extern "C" {
 
