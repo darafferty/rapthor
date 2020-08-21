@@ -17,10 +17,9 @@ arguments:
   - avg.type=squash
   - applycal.type=applycal
   - applycal.correction=phase000
-  - applycal.steps=[slowamp,slowphase,fastphase]
+  - applycal.steps=[slowamp,fastphase]
   - applycal.slowamp.correction=amplitude000
-  - applycal.slowphase.correction=phase000
-  - applycal.fastphase.correction=phase001
+  - applycal.fastphase.correction=phase000
   - msout.storagemanager=Dysco
 
 inputs:

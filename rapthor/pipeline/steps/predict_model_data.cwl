@@ -15,10 +15,9 @@ arguments:
   - predict.type=h5parmpredict
   - predict.operation=replace
   - predict.applycal.correction=phase000
-  - predict.applycal.steps=[slowamp,slowphase,fastphase]
+  - predict.applycal.steps=[slowamp,fastphase]
   - predict.applycal.slowamp.correction=amplitude000
-  - predict.applycal.slowphase.correction=phase000
-  - predict.applycal.fastphase.correction=phase001
+  - predict.applycal.fastphase.correction=phase000
   - predict.usebeammodel=True
   - predict.beammode=array_factor
   - predict.onebeamperpatch=True
