@@ -377,11 +377,11 @@ steps:
 {% else %}
 # Don't solve for slow gains
 
-  - id: make_fast_aterms
-    label: make_fast_aterms
-    run: {{ rapthor_pipeline_dir }}/steps/make_fast_aterms.cwl
+  - id: make_aterms
+    label: make_aterms
+    run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
     in:
-      - id: fasth5parm
+      - id: h5parm
         source: combine_fast_phases/outh5parm
       - id: soltabname
         valueFrom: 'phase000'
