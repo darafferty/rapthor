@@ -26,6 +26,8 @@ inputs:
     type: string
   - id: fast_smoothnessconstraint
     type: float
+  - id: fast_antennaconstraint
+    type: string
   - id: maxiter
     type: int
   - id: propagatesolutions
@@ -65,8 +67,6 @@ inputs:
     type: float
   - id: slow_smoothnessconstraint2
     type: float
-  - id: fast_antennaconstraint
-    type: string
   - id: slow_antennaconstraint
     type: string
   - id: output_slow_h5parm
