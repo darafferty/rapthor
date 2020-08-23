@@ -51,8 +51,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
     time_avg_factor : int, optional
         Averaging factor in time for fast-phase corrections
     interp_kind : str, optional
-        Kind of interpolation to use, if fasth5parm is given. Can be any
-        supported by scipy.interpolate.interp1d
+        Kind of interpolation to use. Can be any supported by scipy.interpolate.interp1d
 
     Returns
     -------
