@@ -4,10 +4,9 @@ Script to combine two h5parms
 """
 import argparse
 from argparse import RawTextHelpFormatter
-from rapthor.lib import miscellaneous as misc
 from losoto.h5parm import h5parm
-import scipy.interpolate as si
 import os
+import sys
 
 
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
@@ -47,10 +46,12 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
     if mode == 'p1a2':
         # Take phases from 1 and amplitudes from 2
         # Remove unneeded soltabs from 1 and 2, then copy
-        st = ss1.getSoltab('amplitude000')
-        st.delete()
-        st = ss2.getSoltab('phase000')
-        st.delete()
+        if 'amplitude000' in ss1.getSoltabNames():
+            st = ss1.getSoltab('amplitude000')
+            st.delete()
+        if 'phase000' in ss2.getSoltabNames():
+            st = ss2.getSoltab('phase000')
+            st.delete()
         ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
         ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
 
