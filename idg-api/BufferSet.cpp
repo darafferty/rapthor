@@ -399,8 +399,8 @@ namespace api {
                 w0_row_real[0][x] += image_array(1, y, x) / scale;
                 w0_row_real[3][x] -= image_array(1, y, x) / scale;
                 // Stokes U
-                w0_row_imag[1][x] = image_array(2, y, x) / scale;
-                w0_row_imag[2][x] = image_array(2, y, x) / scale;
+                w0_row_real[1][x] = image_array(2, y, x) / scale;
+                w0_row_real[2][x] = image_array(2, y, x) / scale;
                 // Stokes V
                 w0_row_imag[1][x] = -image_array(3, y, x) / scale;
                 w0_row_imag[2][x] =  image_array(3, y, x) / scale;
