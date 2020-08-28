@@ -7,12 +7,8 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - '--solsetname=sol000'
-  - '--ampsoltabname=amplitude000'
-  - '--phsoltabname=phase000'
   - '--normalize=True'
-  - '--find_bandpass=False'
-  - '--smooth_phases=False'
+  - '--smooth=False'
 
 inputs:
   - id: slowh5parm
