@@ -8,7 +8,7 @@ requirements:
 
 arguments:
   - '--normalize=True'
-  - '--smooth=False'
+  - '--smooth=True'
 
 inputs:
   - id: slowh5parm
