@@ -388,9 +388,6 @@ class Field(object):
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
-        # Check that the TEC screen order is not more than num_patches - 1
-        self.tecscreenorder = min(self.num_patches-1, self.tecscreen_max_order)
-
     def update_skymodels(self, iter, regroup, imaged_sources_only, target_flux=None,
                          target_number=None):
         """
