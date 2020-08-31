@@ -71,9 +71,6 @@ input_skymodel = /data/skymodel.txt
 # patch_target_flux_jy = 3.0
 # patch_target_number = None
 
-# Solve mode for the fast-phase corrections: tec or scalarphase (default = tec)
-# mode = tec
-
 # General solver parameters (defaults shown):
 # maxiter = 50
 # propagatesolutions = True
@@ -85,7 +82,6 @@ input_skymodel = /data/skymodel.txt
 # approximatetec = True
 # maxapproxiter = 25
 # fast_timestep_sec = 8.0
-# fast_timestep_core_sec = 32.0
 # fast_freqstep_hz = 1e6
 # fast_smoothnessconstraint = 6e6
 
