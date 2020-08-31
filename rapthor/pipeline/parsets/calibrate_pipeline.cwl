@@ -105,7 +105,11 @@ steps:
 
   - id: solve_fast_phases
     label: solve_fast_phases
+{% if use_scalarphase %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename
@@ -156,11 +160,7 @@ steps:
 
   - id: solve_slow_gains1
     label: solve_slow_gains1
-{% if use_scalarphase %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
-{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
