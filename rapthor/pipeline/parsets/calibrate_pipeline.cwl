@@ -156,7 +156,11 @@ steps:
 
   - id: solve_slow_gains1
     label: solve_slow_gains1
+{% if use_scalarphase %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename

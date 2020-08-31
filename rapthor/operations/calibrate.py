@@ -21,8 +21,8 @@ class Calibrate(Operation):
         Define parameters needed for the pipeline parset template
         """
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'mode': self.field.mode,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
+                             'use_scalarphase': self.field.use_scalarphase,
                              'debug': self.field.debug}
 
     def set_input_parameters(self):

@@ -83,6 +83,11 @@ inputs:
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
+  - id: antennaconstraint
+    type: string
+    inputBinding:
+      prefix: solve.antennaconstraint=
+      separate: False
 
 outputs:
   - id: fast_phases_h5parm

@@ -53,7 +53,6 @@ class Field(object):
         self.maxiter = self.parset['calibration_specific']['maxiter']
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
-        self.mode = self.parset['calibration_specific']['mode']
         self.solve_core_separately = self.parset['calibration_specific']['solve_core_separately']
         self.tecscreen_max_order = self.parset['calibration_specific']['tecscreen_max_order']
         self.use_screens = self.parset['imaging_specific']['use_screens']
@@ -63,6 +62,7 @@ class Field(object):
         self.debug = self.parset['calibration_specific']['debug']
         self.peel_outliers = False
         self.peel_bright_sources = False
+        self.use_scalarphase = True
 
         if not mininmal:
             # Scan MS files to get observation info
