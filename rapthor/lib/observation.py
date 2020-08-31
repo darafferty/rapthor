@@ -132,7 +132,6 @@ class Observation(object):
         """
         # Get the target solution intervals
         target_fast_timestep = parset['calibration_specific']['fast_timestep_sec']
-        target_fast_timestep_core = parset['calibration_specific']['fast_timestep_core_sec']
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
         target_slow_timestep = parset['calibration_specific']['slow_timestep_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
@@ -142,7 +141,6 @@ class Observation(object):
         timepersample = self.timepersample
         channelwidth = self.channelwidth
         solint_fast_timestep = max(1, int(round(target_fast_timestep / timepersample)))
-        solint_fast_timestep_core = max(1, int(round(target_fast_timestep_core / timepersample)))
         solint_fast_freqstep = max(1, self.get_nearest_frequstep(target_fast_freqstep / channelwidth))
 
         # Calculate time ranges of calibration chunks for fast-phase solve. Try
@@ -154,19 +152,11 @@ class Observation(object):
         # available cores:
         #
         # tot_mem = size of MS / # timeslots * ?
-        if parset['calibration_specific']['solve_core_separately']:
-            # use the core timestep, as it is longer
-            target_time_chunksize, solint_fast_timestep_core = get_time_chunksize(parset['cluster_specific'],
-                                                                                  self.timepersample,
-                                                                                  self.numsamples,
-                                                                                  solint_fast_timestep_core,
-                                                                                  self.antenna, ndir)
-        else:
-            target_time_chunksize, solint_fast_timestep = get_time_chunksize(parset['cluster_specific'],
-                                                                             self.timepersample,
-                                                                             self.numsamples,
-                                                                             solint_fast_timestep,
-                                                                             self.antenna, ndir)
+        target_time_chunksize, solint_fast_timestep = get_time_chunksize(parset['cluster_specific'],
+                                                                         self.timepersample,
+                                                                         self.numsamples,
+                                                                         solint_fast_timestep,
+                                                                         self.antenna, ndir)
         samplesperchunk = int(round(target_time_chunksize / timepersample))
         chunksize = samplesperchunk * timepersample
         mystarttime = self.starttime
@@ -238,8 +228,6 @@ class Observation(object):
         # Set solution intervals (same for every calibration chunk). For the second
         # slow solve, just use the same values as the first solve for now
         self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
-        self.parameters['solint_fast_timestep_core'] = [solint_fast_timestep_core] * self.ntimechunks
-        self.parameters['solint_fast_timestep_remote'] = [solint_fast_timestep] * self.ntimechunks
         self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
         self.parameters['solint_slow_timestep'] = [solint_slow_timestep] * self.nfreqchunks
         self.parameters['solint_slow_freqstep'] = [solint_slow_freqstep] * self.nfreqchunks
