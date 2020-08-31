@@ -249,17 +249,6 @@ def get_calibration_options(parset):
     else:
         parset_dict['max_selfcal_loops'] = 10
 
-    # Solve mode: tec or tecscreen (default = tec)
-    if 'mode' not in parset_dict:
-        parset_dict['mode'] = 'tec'
-    if 'solve_core_separately' in parset_dict:
-        parset_dict['solve_core_separately'] = parset.getboolean('calibration', 'solve_core_separately')
-    else:
-        if parset_dict['mode'] == 'tec':
-            parset_dict['solve_core_separately'] = True
-        else:
-            parset_dict['solve_core_separately'] = False
-
     # Minimum uv distance in lambda for calibration (default = 80)
     if 'solve_min_uv_lambda' in parset_dict:
         parset_dict['solve_min_uv_lambda'] = parset.getfloat('calibration', 'solve_min_uv_lambda')
@@ -271,16 +260,6 @@ def get_calibration_options(parset):
         parset_dict['fast_timestep_sec'] = parset.getfloat('calibration', 'fast_timestep_sec')
     else:
         parset_dict['fast_timestep_sec'] = 8.0
-    if 'fast_timestep_core_sec' in parset_dict:
-        parset_dict['fast_timestep_core_sec'] = parset.getfloat('calibration', 'fast_timestep_core_sec')
-        if parset_dict['fast_timestep_core_sec'] < parset_dict['fast_timestep_sec']:
-            log.error('The core timestep of ({0} s) is less than that of the '
-                      'whole array ({1} s). It should be larger by a rapthor of '
-                      '3-4. Exiting...'.format(parset_dict['fast_timestep_core_sec'],
-                                               parset_dict['fast_timestep_sec']))
-            sys.exit(1)
-    else:
-        parset_dict['fast_timestep_core_sec'] = 4 * parset_dict['fast_timestep_sec']
     if 'fast_freqstep_hz' in parset_dict:
         parset_dict['fast_freqstep_hz'] = parset.getfloat('calibration', 'fast_freqstep_hz')
     else:
@@ -304,19 +283,11 @@ def get_calibration_options(parset):
     else:
         parset_dict['slow_smoothnessconstraint'] = 3e6
 
-    # dTEC solver parameters
-    if 'approximatetec' in parset_dict:
-        parset_dict['approximatetec'] = parset.getboolean('calibration', 'approximatetec')
-    else:
-        parset_dict['approximatetec'] = True
+    # Solver parameters
     if 'propagatesolutions' in parset_dict:
         parset_dict['propagatesolutions'] = parset.getboolean('calibration', 'propagatesolutions')
     else:
         parset_dict['propagatesolutions'] = True
-    if 'maxapproxiter' in parset_dict:
-        parset_dict['maxapproxiter'] = parset.getint('calibration', 'maxapproxiter')
-    else:
-        parset_dict['maxapproxiter'] = 25
     if 'maxiter' in parset_dict:
         parset_dict['maxiter'] = parset.getint('calibration', 'maxiter')
     else:
@@ -329,10 +300,6 @@ def get_calibration_options(parset):
         parset_dict['tolerance'] = parset.getfloat('calibration', 'tolerance')
     else:
         parset_dict['tolerance'] = 1e-3
-    if 'tecscreen_max_order' in parset_dict:
-        parset_dict['tecscreen_max_order'] = parset.getint('calibration', 'tecscreen_max_order')
-    else:
-        parset_dict['tecscreen_max_order'] = 20
 
     # Use the IDG for predict during calibration (default = False)?
     if 'use_idg_predict' in parset_dict:
@@ -340,22 +307,19 @@ def get_calibration_options(parset):
     else:
         parset_dict['use_idg_predict'] = False
 
-    # Use the IDG for predict during calibration (default = False)?
+    # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:
         parset_dict['debug'] = parset.getboolean('calibration', 'debug')
     else:
         parset_dict['debug'] = False
 
     # Check for invalid options
-    allowed_options = ['max_selfcal_loops', 'mode', 'solve_min_uv_lambda',
-                       'fast_timestep_sec', 'fast_timestep_core_sec',
-                       'fast_freqstep_hz', 'solve_core_separately',
-                       'slow_timestep_sec', 'slow_freqstep_hz',
-                       'approximatetec', 'propagatesolutions', 'maxapproxiter',
-                       'maxiter', 'stepsize', 'tolerance', 'patch_target_number',
+    allowed_options = ['max_selfcal_loops', 'solve_min_uv_lambda', 'fast_timestep_sec',
+                       'fast_freqstep_hz', 'slow_timestep_sec',
+                       'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
+                       'stepsize', 'tolerance', 'patch_target_number',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'slow_smoothnessconstraint', 'tecscreen_max_order',
-                       'use_idg_predict', 'debug']
+                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '
