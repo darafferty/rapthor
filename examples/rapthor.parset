@@ -16,18 +16,7 @@ input_ms = /data/ms/*.ms
 # apparent_skymodel = /data/apparent_skymodel.txt
 input_skymodel = /data/skymodel.txt
 
-# Filename of h5parm file containing solutions for the patches in the initial sky mode
-# (default = None). This parameter is required for the "image" and "export_data"
-# processing strategies. If given for the "selfcal" strategy, the first calibration step
-# is skipped and these solutions are used instead
-# input_h5parm = None
-# solset = sol000
-# tec_soltab = None
-# scalarphase_soltab = None
-# slow_phase_soltab = None
-# slow_amplitude_soltab = None
-
-# Regroup input skymodel as needed to meet target flux (default = True). If False, the exisiting
+# Regroup input skymodel as needed to meet target flux (default = True). If False, the existing
 # patches are used for the calibration
 # regroup_input_skymodel = True
 
@@ -59,18 +48,6 @@ input_skymodel = /data/skymodel.txt
 # field center, include it in the calibration (default = False)
 # use_included_skymodels = False
 
-# For selfcal processing strategies, this parameter sets the maximum number of
-# cycles of selfcal to perform (default = 10). The last step is looped until the
-# total number of cycles reaches this value or until the improvement in dynamic
-# range over the previous image is less than 1.25%
-# max_selfcal_loops = 10
-
-# Target flux per patch when grouping the sky model for calibration (default = 3.0 for
-# HBA and 6.0 for LBA). Alternatively, one can specify the target number of patches
-# (default = None). If the number is specified, the target flux will be ignored
-# patch_target_flux_jy = 3.0
-# patch_target_number = None
-
 # General solver parameters (defaults shown):
 # maxiter = 50
 # propagatesolutions = True
@@ -79,8 +56,6 @@ input_skymodel = /data/skymodel.txt
 # solve_min_uv_lambda = 80.0
 
 # Fast solve parameters (defaults shown):
-# approximatetec = True
-# maxapproxiter = 25
 # fast_timestep_sec = 8.0
 # fast_freqstep_hz = 1e6
 # fast_smoothnessconstraint = 6e6
@@ -93,7 +68,7 @@ input_skymodel = /data/skymodel.txt
 # Use the IDG for predict during calibration (default = False)?
 # use_idg_predict = False
 
-# Do extra solve for debugging
+# Do extra solve for debugging purposes
 # debug = False
 
 
