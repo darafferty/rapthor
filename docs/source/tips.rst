@@ -1,4 +1,4 @@
 .. _tips:
 
-Tips for running rapthor
+Tips for running Rapthor
 ========================

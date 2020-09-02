@@ -1,14 +1,13 @@
 .. _structure:
 
-rapthor structure
-================
+Rapthor structure
+=================
 
-rapthor effectively sets up and runs generic pipelines that perform the actual processing. The overall structure of facet calibration as done by rapthor is shown in Figure :num:`rapthor-flowchart` below. The processing is divided into a number of operations, the division of which is largely determined by whether or not multiple operations may be run in parallel. In this flowchart, each operation is outlined with a black box.
-
+Rapthor is effectively a Python wrapper around CWL generic pipelines. The wrapper sets up and executes the pipelines that then perform the actual processing. The overall structure of the processing as done by Rapthor is shown in Figure :num:`rapthor-flowchart` below. The processing is divided into a number of operations, each of which can be run (or not) as needed.
 .. _rapthor-flowchart:
 
 .. figure:: rapthor_flow.png
    :figwidth: 90 %
    :align: center
 
-   rapthor flowchart
+   Rapthor flowchart

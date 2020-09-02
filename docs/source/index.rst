@@ -1,7 +1,7 @@
-rapthor: Facet Calibration for LOFAR
-===================================
+Rapthor: LOFAR DDE Pipeline
+===========================
 
-rapthor is a tool for producing low-noise, high-resolution images from HBA LOFAR data using the facet calibration scheme described in van Weeren et al. (2016) and Williams et al. (2016).
+Rapthor is a tool for producing low-noise, high-resolution images from HBA LOFAR data.
 
 Introduction
 ------------
@@ -14,7 +14,7 @@ Introduction
    steps
 
 
-Obtaining rapthor
+Obtaining Rapthor
 -----------------
 
 .. toctree::
@@ -25,7 +25,7 @@ Obtaining rapthor
    future
 
 
-Setting Up and Running rapthor
+Setting Up and Running Rapthor
 ------------------------------
 
 .. toctree::
