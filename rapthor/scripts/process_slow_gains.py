@@ -148,7 +148,7 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
     Returns
     -------
     parms, weights : arrays
-        The parameters with bandpass corrections and weights
+        The smoothed parameters and associated weights
     """
     from loess import loess_2d
 
@@ -196,6 +196,7 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
                             z = parms[time_slice, freq_slice, s, dir, pol]
                             nanind = np.where(~np.isnan(z))
                             if len(nanind[0]) == 0:
+                                # All solutions are flagged, so skip processing
                                 g_start = g_stop
                                 continue
                             zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
@@ -233,6 +234,127 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
     return parms, weights
 
 
+def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
+                  ref_id=0, smooth_over_gaps=True, parms=None, weights=None, debug=False):
+    """
+    Smooth phases. The smoothing is done in real/imag space
+
+    Parameters
+    ----------
+    soltab : solution table
+        Input table with solutions
+    stddev_threshold : float, optional
+        The threshold stddev below which no smoothing is done
+    freq_sampling : int, optional
+        Sampling stride to use for frequency when doing LOESS smooth
+    time_sampling : int, optional
+        Sampling stride to use for time when doing LOESS smooth
+    ref_id : int, optional
+        Index of reference station
+    smooth_over_gaps : bool, optional
+        If True, ignore gaps in time when smoothing
+
+    Returns
+    -------
+    parms, weights : arrays
+        The smoothed parameters and associated weights
+    """
+    from loess import loess_2d
+
+    # Work in real/image space, as required for phases
+    if parms is None:
+        parms = soltab.val[:]  # axes are ['time', 'freq', 'ant', 'dir', 'pol']
+    parms_ref = parms[:, :, ref_id, :, :].copy()
+    for i in range(len(soltab.ant)):
+        parms[:, :, i, :, :] -= parms_ref
+    if weights is None:
+        weights = soltab.weight[:]
+    initial_flagged_indx = np.logical_or(np.isnan(parms), weights == 0.0)
+    times = soltab.time[:]
+    if smooth_over_gaps:
+        # Ignore any gaps in time
+        gaps_ind = [soltab.time.shape[0]]
+    else:
+        # Find gaps in time and treat each block separately
+        delta_times = times[1:] - times[:-1]  # time at center of solution interval
+        timewidth = np.min(delta_times)
+        gaps = np.where(delta_times > timewidth*1.2)
+        gaps_ind = gaps[0] + 1
+        gaps_ind = np.append(gaps_ind, np.array([len(times)]))
+
+    for dir in range(len(soltab.dir[:])):
+        # Find standard deviation of the real part of a a core station and determine
+        # whether we need to smooth this direction or not
+        csindx = 2  # should always be a core station
+        sdev = np.std(np.cos(parms[:, :, csindx, dir]))
+        if sdev >= stddev_threshold:
+            for s in range(len(soltab.ant[:])):
+                if s == ref_id:
+                    continue
+
+                # Set smoothing parameter (frac) depending on sdev
+                frac = min(0.5, 0.1 * sdev / stddev_threshold)
+                g_start = 0
+                for gnum, g_stop in enumerate(gaps_ind):
+                    # Define slices for frequency and time sampling
+                    freq_slice = slice(0, soltab.freq.shape[0], freq_sampling)
+                    time_slice = slice(g_start, g_stop, time_sampling)
+
+                    # Do the smoothing with LOESS
+                    for pol in [0, 1]:
+                        yv, xv = np.meshgrid(soltab.freq[freq_slice], times[time_slice])
+                        yv /= np.min(yv)
+                        xv -= np.min(xv)
+                        zreal = np.cos(parms[time_slice, freq_slice, s, dir, pol])
+                        nanind = np.where(~np.isnan(zreal))
+                        if len(nanind[0]) == 0:
+                            # All solutions are flagged, so skip processing
+                            g_start = g_stop
+                            continue
+                        zsreal, wreal = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                          yv[nanind].flatten(),
+                                                          zreal[nanind].flatten(),
+                                                          rescale=True, frac=frac, degree=1)
+                        zimag = np.sin(parms[time_slice, freq_slice, s, dir, pol])
+                        zsimag, wimag = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                          yv[nanind].flatten(),
+                                                          zimag[nanind].flatten(),
+                                                          rescale=True, frac=frac, degree=1)
+
+                        if debug:
+                            from plotbin.plot_velfield import plot_velfield
+                            import matplotlib.pyplot as plt
+                            plt.clf()
+                            plt.subplot(121)
+                            plot_velfield(xv[nanind].flatten(), yv[nanind].flatten()*1000, zreal[nanind].flatten(), vmin=-1.0, vmax=1.0)
+                            plt.title("Input Values")
+                            plt.subplot(122)
+                            plot_velfield(xv[nanind].flatten(), yv[nanind].flatten()*1000, zsreal, vmin=-1.0, vmax=1.0)
+                            plt.title("LOESS Recovery")
+                            plt.tick_params(labelleft=False)
+                            plt.show()
+
+                        # Interpolate back to original grid
+                        zr = zsreal.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
+                        f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
+                        zr1 = f(times[g_start:g_stop])
+                        f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
+                        zr = f(soltab.freq)
+                        zi = zsimag.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
+                        f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zi, axis=0, kind='linear', fill_value='extrapolate')
+                        zi1 = f(times[g_start:g_stop])
+                        f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zi1, axis=1, kind='linear', fill_value='extrapolate')
+                        zi = f(soltab.freq)
+                        parms[time_slice, freq_slice, s, dir, pol] = np.arctan2(zi, zr)
+                    g_start = g_stop
+
+    # Make sure flagged solutions are still flagged
+    parms[initial_flagged_indx] = np.nan
+    weights[initial_flagged_indx] = 0.0
+
+    return parms, weights
+
+
 def remove_soltabs(solset, soltabnames):
     """
     Remove soltab
@@ -246,7 +368,7 @@ def remove_soltabs(solset, soltabnames):
 
 
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
-         ref_id=0, smooth=False, normalize=True):
+         phasesoltabname='phase000', ref_id=0, smooth=False, normalize=True):
     """
     Fit screens to gain solutions
 
@@ -257,7 +379,9 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     solsetname : str, optional
         Name of solset
     ampsoltabname : str, optional
-        Name of TEC soltab
+        Name of amplitude soltab
+    phasesoltabname : str, optional
+        Name of phase soltab
     ref_id : int, optional
         Index of reference station
     smooth : bool, optional
@@ -275,24 +399,25 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     ampsoltab = solset.getSoltab(ampsoltabname)
     amp = np.array(ampsoltab.val)
     damp = np.ones(amp.shape)
-
-    # Make a backup of the original solutions
-    if ampsoltabname != 'origamplitude000':
-        ampsoltab.rename('origamplitude000', overwrite=True)
+    phasesoltab = solset.getSoltab(phasesoltabname)
+    phase = np.array(phasesoltab.val)
+    dphase = np.ones(phase.shape)
 
     # Smooth and normalize if desired
     if smooth:
         amp, damp = smooth_amps(ampsoltab, parms=amp, weights=damp)
+        phase, dphase = smooth_phases(phasesoltab, parms=phase, weights=dphase,
+                                      ref_id=ref_id)
     if normalize:
         amp, damp = normalize_direction(ampsoltab, remove_core_gradient=True,
                                         solset=solset, ref_id=ref_id, parms=amp,
                                         weights=damp)
 
     # Write the solutions back
-    remove_soltabs(solset, 'amplitude000')
-    solset.makeSoltab('amplitude', 'amplitude000', axesNames=['time', 'freq', 'ant', 'dir', 'pol'],
-                      axesVals=[ampsoltab.time[:], ampsoltab.freq[:], ampsoltab.ant[:],
-                      ampsoltab.dir[:], ampsoltab.pol[:]], vals=amp, weights=damp)
+    ampsoltab.setValues(amp)
+    ampsoltab.setValues(damp, weight=True)
+    phasesoltab.setValues(phase)
+    phasesoltab.setValues(dphase, weight=True)
     H.close()
 
 
@@ -303,9 +428,11 @@ if __name__ == '__main__':
     parser.add_argument('h5parmfile', help='Filename of input h5parm')
     parser.add_argument('--solsetname', help='Solset name', type=str, default='sol000')
     parser.add_argument('--ampsoltabname', help='Amplitude soltab name', type=str, default='amplitude000')
+    parser.add_argument('--phasesoltabname', help='Phase soltab name', type=str, default='phase000')
     parser.add_argument('--ref_id', help='Reference station', type=int, default=0)
     parser.add_argument('--normalize', help='Normalize amplitude solutions', type=str, default='False')
     parser.add_argument('--smooth', help='Smooth amplitude solutions', type=str, default='False')
     args = parser.parse_args()
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
-         ref_id=args.ref_id, smooth=args.smooth, normalize=args.normalize)
+         phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
+         normalize=args.normalize)
