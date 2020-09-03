@@ -285,6 +285,34 @@ steps:
     in:
       - id: slowh5parm
         source: combine_slow_gains2/outh5parm
+      - id: smooth
+        valueFrom: 'True'
+    out:
+      - id: outh5parm
+
+  - id: combine_slow1_and_slow2_h5parms
+    label: combine_slow1_and_slow2_h5parms
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: process_slow_gains/outh5parm
+      - id: inh5parm2
+        source: combine_slow_gains1/outh5parm
+      - id: outh5parm
+        source: combined_h5parms1
+      - id: mode
+        valueFrom: 'p1a1a2'
+    out:
+      - id: combinedh5parm
+
+  - id: normalize_slow_amplitudes
+    label: normalize_slow_amplitudes
+    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    in:
+      - id: slowh5parm
+        source: combine_slow1_and_slow2_h5parms/combinedh5parm
+      - id: smooth
+        valueFrom: 'False'
     out:
       - id: outh5parm
 
@@ -293,13 +321,13 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: combine_fast_and_slow_h5parms1/combinedh5parm
+        source: combine_fast_phases/outh5parm
       - id: inh5parm2
-        source: process_slow_gains/outh5parm
+        source: normalize_slow_amplitudes/outh5parm
       - id: outh5parm
         source: combined_h5parms
       - id: mode
-        valueFrom: 'p1a1p2a2'
+        valueFrom: 'p1p2a2'
     out:
       - id: combinedh5parm
 

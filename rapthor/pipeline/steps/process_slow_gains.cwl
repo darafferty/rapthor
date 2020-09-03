@@ -8,13 +8,17 @@ requirements:
 
 arguments:
   - '--normalize=True'
-  - '--smooth=True'
 
 inputs:
   - id: slowh5parm
     type: string
     inputBinding:
       position: 1
+  - id: smooth
+    type: string
+    inputBinding:
+      prefix: --smooth=
+      separate: false
 
 outputs:
   - id: outh5parm
