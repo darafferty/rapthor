@@ -138,7 +138,10 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
             # may be smaller due to the number of time slots not being a divisor of
             # the solution interval
             deltas = times[1:] - times[:-1]
-            del_time = np.min(deltas[:-1])
+            if ntimes > 2:
+                del_time = np.min(deltas[:-1])
+            else:
+                del_time = deltas[0]
         else:
             del_time = 1.0
         header['CRVAL{}'.format(i)] = ref_time
