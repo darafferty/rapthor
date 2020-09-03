@@ -1,6 +1,6 @@
 .. _rapthor:
 
-Starting a rapthor run
+Starting a Rapthor run
 ----------------------
 
 rapthor can be run with::
@@ -8,7 +8,7 @@ rapthor can be run with::
     $ rapthor rapthor.parset
 
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
-number of options are available and are described below:
+number of options are available and are described below::
 
     Usage: runrapthor parset
 
@@ -17,7 +17,8 @@ number of options are available and are described below:
       -h, --help            show this help message and exit
       -q                    enable quiet mode
       -r RESET, --reset=RESET
-                            reset one or more operations so that they will be rerun
+                            reset one or more operations so that
+                            they will be rerun
       -v                    enable verbose mode
 
 Rapthor begins a run by checking the input measurement set(s). Next, Rapthor

@@ -36,6 +36,14 @@ Setting Up and Running Rapthor
    parset
    running
    products
-   archiving
    tips
    help
+
+Rapthor Details
+---------------
+
+.. toctree::
+   :maxdepth: 2
+
+   structure
+   operations
