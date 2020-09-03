@@ -336,7 +336,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
     in:
       - id: h5parm
-        source: combine_fast_and_slow_h5parms2/outh5parm
+        source: combine_fast_and_slow_h5parms2/combinedh5parm
       - id: soltabname
         valueFrom: 'gain000'
       - id: skymodel
