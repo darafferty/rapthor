@@ -153,7 +153,7 @@ def get_global_options(parset):
 
     # Define strategy
     if 'strategy' not in parset_dict:
-        parset_dict['strategy'] = 'fullfieldselfcal'
+        parset_dict['strategy'] = 'selfcal'
 
     # Flagging ranges (default = no flagging). A range of times, baselines, and
     # frequencies to flag can be specified (see the DPPP documentation for

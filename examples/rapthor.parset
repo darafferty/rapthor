@@ -20,12 +20,11 @@ input_skymodel = /data/skymodel.txt
 # patches are used for the calibration
 # regroup_input_skymodel = True
 
-# Processing strategy to use (default = fieldselfcal):
-# - fieldselfcal: self calibrate on the whole field
-# - sectorselfcal: self calibrate but peel sources in regions that are not imaged. Note:
-#       the input sky model must be of sufficient quality to allow for peeling
-# - image: image using the input solutions (no calibration is done)
-# strategy = fieldselfcal
+# Processing strategy to use (default = selfcal):
+# - selfcal: standard self calibration
+# - image: (not yet supported) image using the input solutions (no calibration is done)
+# - user-supplied file: full path to Python file defining custom strategy
+# strategy = selfcal
 
 # Fraction of data to use (default = 1.0). If less than one, the input data are divided
 # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested

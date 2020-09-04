@@ -24,74 +24,23 @@ def set_strategy(field):
         List of strategy parameter dicts (one per step)
     """
     strategy_steps = []
-    always_do_slowgain = True
 
-    if field.parset['strategy'] == 'fullfieldselfcal':
-        # Selfcal without peeling of non-imaged sources:
+    if field.parset['strategy'] == 'selfcal':
+        # Standard selfcal:
         #     - calibration on all sources
+        #     - peeling of non-sector sources
+        #     - peeling of bright sources (after 2 cycles)
         #     - imaging of sectors
         #     - regrouping of resulting sky model to meet flux criteria
         #     - calibration on regrouped sources (calibration groups may differ from sectors)
-        max_selfcal_loops = field.parset['calibration_specific']['max_selfcal_loops']
+        max_selfcal_loops = 10
         for i in range(max_selfcal_loops):
             strategy_steps.append({})
 
             strategy_steps[i]['do_calibrate'] = True
             if field.input_h5parm is not None and i == 0:
                 strategy_steps[i]['do_calibrate'] = False
-            if i < 3 and not always_do_slowgain:
-                strategy_steps[i]['do_slowgain_solve'] = False
-            else:
-                strategy_steps[i]['do_slowgain_solve'] = True
-
-            strategy_steps[i]['peel_outliers'] = False
-
-            strategy_steps[i]['do_image'] = True
-            if i == 0:
-                strategy_steps[i]['auto_mask'] = 3.6
-                strategy_steps[i]['threshisl'] = 5.0
-                strategy_steps[i]['threshpix'] = 7.5
-            elif i == 1:
-                strategy_steps[i]['auto_mask'] = 3.3
-                strategy_steps[i]['threshisl'] = 5.0
-                strategy_steps[i]['threshpix'] = 6.0
-            else:
-                strategy_steps[i]['auto_mask'] = 3.0
-                strategy_steps[i]['threshisl'] = 4.0
-                strategy_steps[i]['threshpix'] = 5.0
-
-            if i == max_selfcal_loops - 1:
-                strategy_steps[i]['do_update'] = False
-            else:
-                strategy_steps[i]['do_update'] = True
-            strategy_steps[i]['regroup_model'] = True
-            strategy_steps[i]['imaged_sources_only'] = False
-            strategy_steps[i]['target_flux'] = None
-
-            if i < 1 or i == max_selfcal_loops - 1:
-                strategy_steps[i]['do_check'] = False
-            else:
-                strategy_steps[i]['do_check'] = True
-
-    elif field.parset['strategy'] == 'sectorselfcal':
-        # Selfcal with peeling of non-imaged sources (intended to be run on separated
-        # sectors):
-        #     - calibration on all sources
-        #     - peeling of non-sector sources
-        #     - imaging of sectors
-        #     - no regrouping of resulting sky models
-        #     - calibration on sector sources only (calibration groups are defined by
-        #       sectors, one per sector)
-        # TODO: allow regrouping on sector-by-sector
-        #       basis so that large sectors can have multiple groups
-        max_selfcal_loops = field.parset['calibration_specific']['max_selfcal_loops']
-        for i in range(max_selfcal_loops):
-            strategy_steps.append({})
-
-            strategy_steps[i]['do_calibrate'] = True
-            if field.input_h5parm is not None and i == 0:
-                strategy_steps[i]['do_calibrate'] = False
-            if i < 3 and not always_do_slowgain:
+            if i < 2:
                 strategy_steps[i]['do_slowgain_solve'] = False
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
@@ -100,6 +49,10 @@ def set_strategy(field):
                 strategy_steps[i]['peel_outliers'] = True
             else:
                 strategy_steps[i]['peel_outliers'] = False
+            if i < 2:
+                strategy_steps[i]['peel_bright_sources'] = False
+            else:
+                strategy_steps[i]['peel_bright_sources'] = True
 
             strategy_steps[i]['do_image'] = True
             if i == 0:
@@ -115,13 +68,16 @@ def set_strategy(field):
                 strategy_steps[i]['threshisl'] = 4.0
                 strategy_steps[i]['threshpix'] = 5.0
 
-            if i == max_selfcal_loops - 1:
-                strategy_steps[i]['do_update'] = False
+            if i < 2:
+                strategy_steps[i]['target_flux'] = 1.5
+            elif i < 4:
+                strategy_steps[i]['target_flux'] = 1.0
+            elif i < 6:
+                strategy_steps[i]['target_flux'] = 0.75
             else:
-                strategy_steps[i]['do_update'] = True
+                strategy_steps[i]['target_flux'] = 0.5
             strategy_steps[i]['regroup_model'] = True
-            strategy_steps[i]['imaged_sources_only'] = True
-            strategy_steps[i]['target_flux'] = None
+            strategy_steps[i]['imaged_sources_only'] = False
 
             if i < 1 or i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_check'] = False
