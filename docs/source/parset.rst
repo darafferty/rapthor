@@ -40,19 +40,22 @@ All the available options are described below under their respective sections.
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required).
         If you also have a sky model with apparent flux densities, specify it
-        with the ``apparent_skymodel`` option.
+        with the :term:`apparent_skymodel` option.
 
     apparent_skymodel
         Full path to the input sky model file, with apparent-sky fluxes
         (optional). Note that the source names must be identical to those in
-        ``input_skymodel``.
+        :term:`input_skymodel`.
 
     regroup_input_skymodel
         Regroup input skymodel as needed to meet target flux (default =
         ``True``). If False, the existing patches are used for the calibration.
 
     strategy
-        Full path to the Processing strategy to use (default = standard selfcal):
+        Name of processing strategy to use (default = ``selfcal``). A custom
+        strategy can be used by giving instead the full path to the strategy
+        file. See :ref:`rapthor_strategy` for details on making a custom
+        strategy file.
 
     data_fraction
         Fraction of data to use (default = 1.0). If less than one, the input
@@ -126,7 +129,7 @@ All the available options are described below under their respective sections.
         in MHz (default = 3e6).
 
     use_idg_predict
-       Use the IDG for predict during calibration (default = ``False``)?
+       Use IDG for predict during calibration (default = ``False``)?
 
 
 .. _parset_imaging_options:
@@ -152,7 +155,7 @@ All the available options are described below under their respective sections.
         Taper to apply when imaging, in arcsec (default = 0)
 
     multiscale_scales_pixel
-        Scale sizes in pixels to use during multiscale clean (default = [0, 5, 10, 15])
+        Scale sizes in pixels to use during multiscale clean (default = ``[0, 5, 10, 15]``)
 
     do_multiscale
         Use multiscale cleaning (default = auto)?
@@ -162,7 +165,7 @@ All the available options are described below under their respective sections.
         solutions closest to the image centers will be used
 
     idg_mode
-        IDG (image domain gridder) mode to use in WSClean (default = hybrid).
+        IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``).
         The mode can be cpu or hybrid
 
     use_mpi
@@ -191,27 +194,27 @@ All the available options are described below under their respective sections.
     grid_nsectors_ra
         Number of sectors along the RA axis (default = 0). The number of sectors
         in Dec will be determined automatically to ensure the whole area
-        specified with ``grid_center_ra``, ``grid_center_dec``,
-        ``grid_width_ra_deg,`` and ``grid_width_dec_deg`` is imaged. Set
+        specified with :term:`grid_center_ra`, :term:`grid_center_dec`,
+        :term:`grid_width_ra_deg`, and :term:`grid_width_dec_deg` is imaged. Set
         ``grid_nsectors_ra = 0`` to force a single sector for the full area.
         Multiple sectors are useful for parallelizing the imaging over multiple
         nodes of a cluster or for computers with limited memory
 
     sector_center_ra_list
-        List of image centers (default = []). Instead of a grid, imaging sectors
+        List of image centers (default = ``[]``). Instead of a grid, imaging sectors
         can be defined individually by specifying their centers and widths.
 
     sector_center_dec_list
-        List of image centers (default = []).
+        List of image centers (default = ``[]``).
 
     sector_width_ra_deg_list
-        List of image widths, in degrees (default = []).
+        List of image widths, in degrees (default = ``[]``).
 
     sector_width_dec_deg_list
-        List of image  widths, in degrees (default = []).
+        List of image  widths, in degrees (default = ``[]``).
 
     sector_do_multiscale_list
-        List of multiscale flags, one per sector (default = []). ``None``
+        List of multiscale flags, one per sector (default = ``[]``). ``None``
         indicates that multiscale clean should be activated automatically if a
         large source is detected in the sector
 
@@ -233,7 +236,7 @@ All the available options are described below under their respective sections.
 .. glossary::
 
     batch_system
-        Cluster batch system (default = singleMachine). Use ``batch_system =
+        Cluster batch system (default = ``singleMachine``). Use ``batch_system =
         slurm`` to use a SLURM-based cluster.
 
     max_nodes

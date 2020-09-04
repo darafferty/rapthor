@@ -34,6 +34,7 @@ Setting Up and Running Rapthor
    tutorials
    preparation
    parset
+   strategy
    running
    products
    tips
