@@ -41,7 +41,7 @@ setup(
         'Topic :: Scientific/Engineering :: Astronomy',
         'Topic :: Software Development :: Libraries :: Python Modules',
         ],
-    install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely', 'toil[cwl]', 'Pillow', 'reproject', 'python-dateutil', 'pytz'],
+    install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely', 'toil[cwl]', 'Pillow', 'reproject', 'python-dateutil', 'pytz', 'Rtree-linux'],
     scripts=['bin/rapthor', 'bin/plotrapthor'],
     packages=['rapthor', 'rapthor.operations', 'rapthor.lib'],
     package_data={'rapthor': [
