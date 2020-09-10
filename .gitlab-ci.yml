@@ -18,18 +18,29 @@ idg-release:
   script:
     - mkdir build
     - cd build
-    - cmake .. -DBUILD_WITH_TESTS=On
-    - make
-    - make install
-    - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest --verbose
+    - cmake ..
+    - make install -j4
 
 idg-debug:
   script:
     - mkdir build
     - cd build
-    - cmake .. -DBUILD_WITH_TESTS=On -DCMAKE_BUILD_TYPE=Debug
-    - make
-    - make install
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug
+    - make install -j4
+
+idg-test:
+  script:
+    - export PATH="${PATH}:/home/gitlab-runner/.local/bin"
+    - pip3 install gcovr
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_WITH_TESTS=On
+    - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest --verbose
+    - ctest -j8 --verbose
+    # Capture coverage
+    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*'
+    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --xml > coverage.xml
+  artifacts:
+    reports:
+      cobertura: build/coverage.xml
