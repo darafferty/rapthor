@@ -13,15 +13,11 @@
 #include <condition_variable>
 
 template <typename T>
-class Queue
-{
+class Queue {
  public:
-
-  T pop()
-  {
+  T pop() {
     std::unique_lock<std::mutex> mlock(mutex_);
-    while (queue_.empty())
-    {
+    while (queue_.empty()) {
       cond_.wait(mlock);
     }
     auto val = queue_.front();
@@ -29,27 +25,24 @@ class Queue
     return val;
   }
 
-  void pop(T& item)
-  {
+  void pop(T& item) {
     std::unique_lock<std::mutex> mlock(mutex_);
-    while (queue_.empty())
-    {
+    while (queue_.empty()) {
       cond_.wait(mlock);
     }
     item = queue_.front();
     queue_.pop();
   }
 
-  void push(const T& item)
-  {
+  void push(const T& item) {
     std::unique_lock<std::mutex> mlock(mutex_);
     queue_.push(item);
     mlock.unlock();
     cond_.notify_one();
   }
-  Queue()=default;
-  Queue(const Queue&) = delete;            // disable copying
-  Queue& operator=(const Queue&) = delete; // disable assignment
+  Queue() = default;
+  Queue(const Queue&) = delete;             // disable copying
+  Queue& operator=(const Queue&) = delete;  // disable assignment
 
  private:
   std::queue<T> queue_;

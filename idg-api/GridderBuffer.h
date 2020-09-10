@@ -38,34 +38,30 @@
 namespace idg {
 namespace api {
 
-    class GridderBuffer : public virtual Buffer
-    {
-    public:
-        // Constructors and destructor
-        virtual ~GridderBuffer() {};
+class GridderBuffer : public virtual Buffer {
+ public:
+  // Constructors and destructor
+  virtual ~GridderBuffer(){};
 
-        /** \brief Adds the visibilities to the buffer
-         *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
-         *                        or 0 <= timeIndex < bufferTimesteps
-         *  \param antenna1 [in]  0 <= antenna1 < nrStations
-         *  \param antenna2 [in]  antenna1 < antenna2 < nrStations
-         *  \param uvwInMeters [in] double[3]: (u, v, w)
-         *  \param visibilities [in] std::complex<float>[NR_CHANNELS][NR_POLARIZATIONS]
-         */
-        virtual void grid_visibilities(
-            size_t timeIndex,
-            size_t antenna1,
-            size_t antenna2,
-            const double* uvwInMeters,
-            std::complex<float>* visibilities,
-            const float* weights) = 0;
+  /** \brief Adds the visibilities to the buffer
+   *  \param timeIndex [in] 0 <= timeIndex < NR_TIMESTEPS
+   *                        or 0 <= timeIndex < bufferTimesteps
+   *  \param antenna1 [in]  0 <= antenna1 < nrStations
+   *  \param antenna2 [in]  antenna1 < antenna2 < nrStations
+   *  \param uvwInMeters [in] double[3]: (u, v, w)
+   *  \param visibilities [in]
+   * std::complex<float>[NR_CHANNELS][NR_POLARIZATIONS]
+   */
+  virtual void grid_visibilities(size_t timeIndex, size_t antenna1,
+                                 size_t antenna2, const double* uvwInMeters,
+                                 std::complex<float>* visibilities,
+                                 const float* weights) = 0;
 
+ protected:
+  GridderBuffer() {}
+};
 
-    protected:
-        GridderBuffer() {}
-    };
-
-} // namespace api
-} // namespace idg
+}  // namespace api
+}  // namespace idg
 
 #endif

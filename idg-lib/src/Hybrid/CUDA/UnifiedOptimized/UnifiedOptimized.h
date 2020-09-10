@@ -5,27 +5,25 @@
 #include "CPU/Optimized/Optimized.h"
 
 namespace idg {
-    namespace proxy {
-        namespace hybrid {
+namespace proxy {
+namespace hybrid {
 
-            class UnifiedOptimized : public cuda::Unified {
-                public:
-                    UnifiedOptimized(
-                        ProxyInfo info = default_info());
+class UnifiedOptimized : public cuda::Unified {
+ public:
+  UnifiedOptimized(ProxyInfo info = default_info());
 
-                    ~UnifiedOptimized();
+  ~UnifiedOptimized();
 
-                    virtual void do_transform(
-                        DomainAtoDomainB direction,
-                        Array3D<std::complex<float>>& grid) override;
+  virtual void do_transform(DomainAtoDomainB direction,
+                            Array3D<std::complex<float>>& grid) override;
 
-                private:
-                    idg::proxy::cpu::CPU* cpuProxy;
+ private:
+  idg::proxy::cpu::CPU* cpuProxy;
 
-            }; // class UnifiedOptimized
+};  // class UnifiedOptimized
 
-        } // namespace hybrid
-    } // namespace proxy
-} // namespace idg
+}  // namespace hybrid
+}  // namespace proxy
+}  // namespace idg
 
 #endif

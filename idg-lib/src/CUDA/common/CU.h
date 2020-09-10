@@ -15,267 +15,252 @@ struct dim3;
 
 namespace cu {
 
-    void init(unsigned flags = 0);
+void init(unsigned flags = 0);
 
-    template<typename T>
-    class Error : public std::exception {
-        public:
-            Error(T result):
-            _result(result) {}
+template <typename T>
+class Error : public std::exception {
+ public:
+  Error(T result) : _result(result) {}
 
-            operator T() const {
-                return _result;
-            }
+  operator T() const { return _result; }
 
-        private:
-            T _result;
-    };
+ private:
+  T _result;
+};
 
+class Device {
+ public:
+  Device();
+  Device(int ordinal);
 
-    class Device {
-        public:
-            Device();
-            Device(int ordinal);
+  static int getCount();
+  std::string get_name() const;
+  int get_capability() const;
+  size_t get_free_memory() const;
+  size_t get_total_memory() const;
 
-            static int getCount();
-            std::string get_name() const;
-            int get_capability() const;
-            size_t get_free_memory() const;
-            size_t get_total_memory() const;
+  template <CUdevice_attribute attribute>
+  int get_attribute() const {
+    int value;
+    if (cuDeviceGetAttribute(&value, attribute, _device) != CUDA_SUCCESS) {
+      std::cerr << "CUDA Error: could not get attribute: " << attribute
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
+    return value;
+  }
 
-            template <CUdevice_attribute attribute>
-            int get_attribute() const {
-                int value;
-                if (cuDeviceGetAttribute(&value, attribute, _device) != CUDA_SUCCESS) {
-                    std::cerr << "CUDA Error: could not get attribute: " << attribute << std::endl;
-                    exit(EXIT_FAILURE);
-                }
-                return value;
-            }
+  operator CUdevice();
 
-            operator CUdevice();
+ private:
+  CUdevice _device;
+};
 
-        private:
-            CUdevice _device;
-    };
+class Context {
+ public:
+  Context();
+  Context(Device &device, int flags = 0);
+  ~Context();
+  void setCurrent() const;
+  void setCacheConfig(CUfunc_cache config);
+  void setSharedMemConfig(CUsharedconfig config);
+  void synchronize();
+  void reset();
 
+  operator CUcontext();
 
-    class Context {
-        public:
-            Context();
-            Context(Device& device, int flags = 0);
-            ~Context();
-            void setCurrent() const;
-            void setCacheConfig(CUfunc_cache config);
-            void setSharedMemConfig(CUsharedconfig config);
-            void synchronize();
-            void reset();
+ private:
+  CUcontext _context;
+  CUdevice _device;
+};
 
-            operator CUcontext();
+class Memory : public idg::auxiliary::Memory {
+ public:
+  size_t capacity() { return m_capacity; }
+  void *ptr() { return m_ptr; }
+  size_t size() { return m_bytes; }
+  virtual void resize(size_t size) = 0;
+  template <typename T>
+  operator T *() {
+    return static_cast<T *>(m_ptr);
+  }
 
-        private:
-            CUcontext _context;
-            CUdevice _device;
-    };
+ protected:
+  size_t m_capacity = 0;
+};
 
-    class Memory : public idg::auxiliary::Memory {
-        public:
-            size_t capacity() { return m_capacity; }
-            void* ptr() { return m_ptr; }
-            size_t size() { return m_bytes; }
-            virtual void resize(size_t size) = 0;
-            template <typename T> operator T *() {
-                return static_cast<T *>(m_ptr);
-            }
+class HostMemory : public virtual Memory {
+ public:
+  HostMemory(size_t size = 0, int flags = CU_MEMHOSTALLOC_PORTABLE);
+  virtual ~HostMemory();
 
-        protected:
-            size_t m_capacity = 0;
-    };
+  void resize(size_t size) override;
+  void zero();
 
-    class HostMemory : public virtual Memory {
-        public:
-            HostMemory(size_t size = 0, int flags = CU_MEMHOSTALLOC_PORTABLE);
-            virtual ~HostMemory();
+ private:
+  void release();
+  int _flags;
+};
 
-            void resize(size_t size) override;
-            void zero();
+class RegisteredMemory : public virtual Memory {
+ public:
+  RegisteredMemory(void *ptr, size_t size,
+                   int flags = CU_MEMHOSTREGISTER_PORTABLE);
+  virtual ~RegisteredMemory();
 
-        private:
-            void release();
-            int _flags;
-    };
+  void resize(size_t size) override;
+  void zero();
 
-    class RegisteredMemory : public virtual Memory {
-        public:
-            RegisteredMemory(void *ptr, size_t size, int flags = CU_MEMHOSTREGISTER_PORTABLE);
-            virtual ~RegisteredMemory();
+ private:
+  void release();
+  int _flags;
+};
 
-            void resize(size_t size) override;
-            void zero();
+class DeviceMemory {
+ public:
+  DeviceMemory(size_t size);
+  ~DeviceMemory();
 
-        private:
-            void release();
-            int _flags;
-    };
+  size_t capacity();
+  size_t size();
+  void resize(size_t size);
+  void zero(CUstream stream = NULL);
 
+  template <typename T>
+  operator T *() {
+    if (_size) {
+      return static_cast<T *>(&_ptr);
+    } else {
+      return static_cast<T *>(&_nullptr);
+    }
+  }
 
-    class DeviceMemory  {
+  template <typename T>
+  operator T() {
+    if (_size) {
+      return static_cast<T>(_ptr);
+    } else {
+      return static_cast<T>(_nullptr);
+    }
+  }
 
-        public:
-            DeviceMemory(size_t size);
-            ~DeviceMemory();
+ private:
+  CUdeviceptr _ptr;
+  size_t _capacity;
+  size_t _size;
+  static const CUdeviceptr _nullptr = 0;
+};
 
-            size_t capacity();
-            size_t size();
-            void resize(size_t size);
-            void zero(CUstream stream = NULL);
+class UnifiedMemory {
+ public:
+  UnifiedMemory(void *ptr, size_t size);
+  UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
+  ~UnifiedMemory();
 
-            template <typename T> operator T *() {
-                if (_size)
-                {
-                    return static_cast<T *>(&_ptr);
-                }
-                else
-                {
-                    return static_cast<T *>(&_nullptr);
-                }
-            }
+  template <typename T>
+  operator T *() {
+    return static_cast<T *>((void *)_ptr);
+  }
+  void set_advice(CUmem_advise advise);
+  void set_advice(CUmem_advise advise, Device &device);
 
-            template <typename T> operator T () {
-                if (_size)
-                {
-                    return static_cast<T>(_ptr);
-                }
-                else
-                {
-                    return static_cast<T>(_nullptr);
-                }
-            }
+ private:
+  CUdeviceptr _ptr;
+  size_t _size;
+  bool free = false;
+};
 
-        private:
-            CUdeviceptr _ptr;
-            size_t _capacity;
-            size_t _size;
-            static const CUdeviceptr _nullptr = 0;
-    };
+class Source {
+ public:
+  Source(const char *input_file_name);
 
+  void compile(const char *ptx_name, const char *compile_options = 0);
 
-    class UnifiedMemory {
-        public:
-            UnifiedMemory(void* ptr, size_t size);
-            UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
-            ~UnifiedMemory();
+ private:
+  const char *input_file_name;
+};
 
-            template <typename T> operator T *() {
-                return static_cast<T *>((void *) _ptr);
-            }
-            void set_advice(CUmem_advise advise);
-            void set_advice(CUmem_advise advise, Device& device);
+class Module {
+ public:
+  Module(const char *file_name);
+  Module(const void *data);
+  ~Module();
 
-        private:
-            CUdeviceptr _ptr;
-            size_t _size;
-            bool free = false;
-    };
+  operator CUmodule();
 
+ private:
+  CUmodule _module;
+};
 
-    class Source {
-        public:
-            Source(const char *input_file_name);
+class Function {
+ public:
+  Function(Module &module, const char *name);
+  Function(CUfunction function);
 
-            void compile(const char *ptx_name, const char *compile_options = 0);
+  int get_attribute(CUfunction_attribute attribute);
+  void setCacheConfig(CUfunc_cache config);
 
-        private:
-            const char *input_file_name;
-    };
+  operator CUfunction();
 
+ private:
+  CUfunction _function;
+};
 
-    class Module {
-        public:
-            Module(const char *file_name);
-            Module(const void *data);
-            ~Module();
+class Event {
+ public:
+  Event(int flags = CU_EVENT_DEFAULT);
+  ~Event();
 
-            operator CUmodule();
+  void synchronize();
+  float elapsedTime(Event &second);
 
-        private:
-            CUmodule _module;
-    };
+  operator CUevent();
 
+ private:
+  CUevent _event;
+};
 
-    class Function {
-        public:
-            Function(Module &module, const char *name);
-            Function(CUfunction function);
+class Stream {
+ public:
+  Stream(int flags = CU_STREAM_DEFAULT);
+  ~Stream();
 
-            int get_attribute(CUfunction_attribute attribute);
-            void setCacheConfig(CUfunc_cache config);
+  void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
+  void memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size);
+  void memcpyDtoDAsync(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size);
+  void launchKernel(Function &function, unsigned gridX, unsigned gridY,
+                    unsigned gridZ, unsigned blockX, unsigned blockY,
+                    unsigned blockZ, unsigned sharedMemBytes,
+                    const void **parameters);
+  void launchKernel(Function &function, dim3 grid, dim3 block,
+                    unsigned sharedMemBytes, const void **parameters);
+  void query();
+  void synchronize();
+  void waitEvent(Event &event);
+  void addCallback(CUstreamCallback callback, void *userData, int flags = 0);
+  void record(Event &event);
 
-            operator CUfunction();
+  operator CUstream();
 
-        private:
-            CUfunction _function;
-    };
+ private:
+  CUstream _stream;
+};
 
+class Marker {
+ public:
+  enum Color { red, green, blue, yellow, black };
 
-    class Event {
-        public:
-            Event(int flags = CU_EVENT_DEFAULT);
-            ~Event();
+  Marker(const char *message, unsigned color = 0xff00ff00);
+  Marker(const char *message, Marker::Color color);
+  void start();
+  void end();
 
-            void synchronize();
-            float elapsedTime(Event &second);
+ private:
+  unsigned int convert(Color color);
+  nvtxEventAttributes_t _attributes;
+  nvtxRangeId_t _id;
+};
 
-            operator CUevent();
-
-        private:
-            CUevent _event;
-    };
-
-
-    class Stream {
-        public:
-            Stream(int flags = CU_STREAM_DEFAULT);
-            ~Stream();
-
-            void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
-            void memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size);
-            void memcpyDtoDAsync(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size);
-            void launchKernel(Function &function, unsigned gridX, unsigned gridY, unsigned gridZ, unsigned blockX, unsigned blockY, unsigned blockZ, unsigned sharedMemBytes, const void **parameters);
-            void launchKernel(Function &function, dim3 grid, dim3 block, unsigned sharedMemBytes, const void **parameters);
-            void query();
-            void synchronize();
-            void waitEvent(Event &event);
-            void addCallback(CUstreamCallback callback, void *userData, int flags = 0);
-            void record(Event &event);
-
-            operator CUstream();
-
-        private:
-            CUstream _stream;
-    };
-
-    class Marker {
-        public:
-            enum Color {
-                red , green, blue, yellow, black
-            };
-
-            Marker(
-                const char *message,
-                unsigned color = 0xff00ff00);
-            Marker(
-                const char *message,
-                Marker::Color color);
-            void start();
-            void end();
-
-        private:
-            unsigned int convert(Color color);
-            nvtxEventAttributes_t _attributes;
-            nvtxRangeId_t _id;
-    };
-
-} // end namespace cu
+}  // end namespace cu
 
 #endif

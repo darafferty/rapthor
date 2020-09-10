@@ -8,6 +8,12 @@ default:
 variables:
   DEBIAN_FRONTEND: "noninteractive"
 
+clang-format:
+  script: 
+    - pip3 install clang-format==9.0.0
+    - export PATH=/home/gitlab-runner/.local/bin:$PATH
+    - ./scripts/run-clang-format.sh
+
 idg-release:
   script:
     - mkdir build
