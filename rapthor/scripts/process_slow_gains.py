@@ -171,60 +171,70 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
         gaps_ind = gaps[0] + 1
         gaps_ind = np.append(gaps_ind, np.array([len(times)]))
 
+    # Find a core station that is not completely flagged
+    for s in range(len(soltab.ant[:])):
+        if 'CS' in soltab.ant[s]:
+            if not np.all(initial_flagged_indx[:, :, s, :, :]):
+                csindx = s
+                break
+
     for dir in range(len(soltab.dir[:])):
         # Find standard deviation of a core station and determine
         # whether we need to smooth this direction or not
-        csindx = 2  # should always be a core station
         sdev = np.std(parms[:, :, csindx, dir])
         if sdev >= stddev_threshold:
             for s in range(len(soltab.ant[:])):
-                # Only smooth core stations
+                # Set smoothing parameter (frac) depending on sdev, smoothing more
+                # when the sdev is higher. Allow more smoothing on the core
+                # stations than the remote ones (which tend to be less noisy and
+                # show more structure)
                 if 'CS' in soltab.ant[s]:
-                    # Set smoothing parameter (frac) depending on sdev
-                    frac = min(0.3, 0.1 * sdev / stddev_threshold)
-                    g_start = 0
-                    for gnum, g_stop in enumerate(gaps_ind):
-                        # Define slices for frequency and time sampling
-                        freq_slice = slice(0, soltab.freq.shape[0], freq_sampling)
-                        time_slice = slice(g_start, g_stop, time_sampling)
+                    frac = min(0.5, 0.2 * sdev / stddev_threshold)
+                else:
+                    frac = min(0.4, 0.1 * sdev / stddev_threshold)
+                g_start = 0
+                for gnum, g_stop in enumerate(gaps_ind):
+                    # Define slices for frequency and time sampling
+                    freq_slice = slice(0, soltab.freq.shape[0], freq_sampling)
+                    time_slice = slice(g_start, g_stop, time_sampling)
 
-                        # Do the smoothing with LOESS
-                        for pol in [0, 1]:
-                            yv, xv = np.meshgrid(soltab.freq[freq_slice], times[time_slice])
-                            yv /= np.min(yv)
-                            xv -= np.min(xv)
-                            z = parms[time_slice, freq_slice, s, dir, pol]
-                            nanind = np.where(~np.isnan(z))
-                            if len(nanind[0]) == 0:
-                                # All solutions are flagged, so skip processing
-                                g_start = g_stop
-                                continue
-                            zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
-                                                      yv[nanind].flatten(),
-                                                      z[nanind].flatten(),
-                                                      rescale=True, frac=frac, degree=1)
+                    # Do the smoothing with LOESS
+                    for pol in [0, 1]:
+                        yv, xv = np.meshgrid(soltab.freq[freq_slice], times[time_slice])
+                        yv /= np.min(yv)
+                        xv -= np.min(xv)
+                        z = parms[time_slice, freq_slice, s, dir, pol]
+                        nanind = np.where(~np.isnan(z))
+                        if len(nanind[0]) == 0:
+                            # All solutions are flagged, so skip processing
+                            g_start = g_stop
+                            continue
+                        zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                  yv[nanind].flatten(),
+                                                  z[nanind].flatten(),
+                                                  rescale=True, frac=frac, degree=1)
 
-                            if debug:
-                                from plotbin.plot_velfield import plot_velfield
-                                import matplotlib.pyplot as plt
-                                plt.clf()
-                                plt.subplot(121)
-                                plot_velfield(xv[nanind].flatten(), yv[nanind].flatten()*1000, z[nanind].flatten(), vmin=-1.0, vmax=1.0)
-                                plt.title("Input Values")
-                                plt.subplot(122)
-                                plot_velfield(xv[nanind].flatten(), yv[nanind].flatten()*1000, zs, vmin=-1.0, vmax=1.0)
-                                plt.title("LOESS Recovery")
-                                plt.tick_params(labelleft=False)
-                                plt.show()
+                        if debug:
+                            from plotbin.plot_velfield import plot_velfield
+                            import matplotlib.pyplot as plt
+                            plt.clf()
+                            plt.subplot(121)
+                            plot_velfield(xv[nanind].flatten(), yv[nanind].flatten()*1000, z[nanind].flatten(), vmin=-1.0, vmax=1.0)
+                            plt.title("Input Values")
+                            plt.subplot(122)
+                            plot_velfield(xv[nanind].flatten(), yv[nanind].flatten()*1000, zs, vmin=-1.0, vmax=1.0)
+                            plt.title("LOESS Recovery")
+                            plt.tick_params(labelleft=False)
+                            plt.show()
 
-                            # Interpolate back to original grid
-                            zr = zs.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
-                            f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
-                            zr1 = f(times[g_start:g_stop])
-                            f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
-                            zr = f(soltab.freq)
-                            parms[time_slice, freq_slice, s, dir, pol] = zr
-                        g_start = g_stop
+                        # Interpolate back to original grid
+                        zr = zs.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
+                        f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
+                        zr1 = f(times[g_start:g_stop])
+                        f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
+                        zr = f(soltab.freq)
+                        parms[time_slice, freq_slice, s, dir, pol] = zr
+                    g_start = g_stop
 
     # Convert back to non-log values and make sure flagged solutions are still flagged
     parms = 10**parms
@@ -282,17 +292,26 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
         gaps_ind = gaps[0] + 1
         gaps_ind = np.append(gaps_ind, np.array([len(times)]))
 
+    # Find a core station that is not completely flagged
+    for s in range(len(soltab.ant[:])):
+        if s == ref_id:
+            continue
+        if 'CS' in soltab.ant[s]:
+            if not np.all(initial_flagged_indx[:, :, s, :, :]):
+                csindx = s
+                break
+
     for dir in range(len(soltab.dir[:])):
         # Find standard deviation of the real part of a a core station and determine
         # whether we need to smooth this direction or not
-        csindx = 2  # should always be a core station
         sdev = np.std(np.cos(parms[:, :, csindx, dir]))
         if sdev >= stddev_threshold:
             for s in range(len(soltab.ant[:])):
                 if s == ref_id:
                     continue
 
-                # Set smoothing parameter (frac) depending on sdev
+                # Set smoothing parameter (frac) depending on sdev, smoothing more
+                # when the sdev is higher
                 frac = min(0.5, 0.1 * sdev / stddev_threshold)
                 g_start = 0
                 for gnum, g_stop in enumerate(gaps_ind):
