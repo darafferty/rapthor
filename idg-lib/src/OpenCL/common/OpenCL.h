@@ -7,50 +7,49 @@
 #include "idg-common.h"
 
 namespace cl {
-    class Context;
+class Context;
 }
 
 namespace idg {
-    namespace kernel {
-        namespace opencl {
-            class InstanceOpenCL;
-        }
-    }
+namespace kernel {
+namespace opencl {
+class InstanceOpenCL;
+}
+}  // namespace kernel
 
-    namespace proxy {
-        namespace opencl {
-            class OpenCL : public Proxy {
-                public:
-                    OpenCL();
+namespace proxy {
+namespace opencl {
+class OpenCL : public Proxy {
+ public:
+  OpenCL();
 
-                    ~OpenCL();
+  ~OpenCL();
 
-                public:
-                    void print_compiler_flags();
+ public:
+  void print_compiler_flags();
 
-                    void print_devices();
+  void print_devices();
 
-                    cl::Context& get_context() { return *context; }
+  cl::Context& get_context() { return *context; }
 
-                    unsigned int get_num_devices() const;
-                    idg::kernel::opencl::InstanceOpenCL& get_device(unsigned int i) const;
+  unsigned int get_num_devices() const;
+  idg::kernel::opencl::InstanceOpenCL& get_device(unsigned int i) const;
 
-                    std::vector<int> compute_jobsize(
-                        const Plan &plan,
-                        const unsigned int nr_timesteps,
-                        const unsigned int nr_channels,
-                        const unsigned int subgrid_size,
-                        const unsigned int nr_streams);
+  std::vector<int> compute_jobsize(const Plan& plan,
+                                   const unsigned int nr_timesteps,
+                                   const unsigned int nr_channels,
+                                   const unsigned int subgrid_size,
+                                   const unsigned int nr_streams);
 
-                protected:
-                    void init_devices();
-                    void free_devices();
+ protected:
+  void init_devices();
+  void free_devices();
 
-                private:
-                    cl::Context *context;
-                    std::vector<idg::kernel::opencl::InstanceOpenCL*> devices;
-            };
-        } // end namespace idg
-    } // end namespace proxy
-} // end namespace idg
+ private:
+  cl::Context* context;
+  std::vector<idg::kernel::opencl::InstanceOpenCL*> devices;
+};
+}  // namespace opencl
+}  // end namespace proxy
+}  // end namespace idg
 #endif

@@ -13,8 +13,6 @@
 #include "idg-hybrid-cuda.h"
 #endif
 
-
-
 #if defined(BUILD_LIB_OPENCL)
 #include "idg-opencl.h"
 #endif
