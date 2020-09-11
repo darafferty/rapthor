@@ -7,7 +7,7 @@ import glob
 import logging
 import configparser
 from rapthor._logging import set_log_file
-from rapthor.cluster import find_executables
+from rapthor.lib.cluster import find_executables
 from astropy.coordinates import Angle
 
 log = logging.getLogger('rapthor:parset')
