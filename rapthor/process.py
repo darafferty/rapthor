@@ -3,8 +3,8 @@ Module that preforms the processing
 """
 import logging
 from rapthor import _logging
-from rapthor.parset import parset_read
-from rapthor.strategy import set_strategy
+from rapthor.lib.parset import parset_read
+from rapthor.lib.strategy import set_strategy
 from rapthor.operations.calibrate import Calibrate
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
@@ -14,9 +14,9 @@ from rapthor.lib.field import Field
 log = logging.getLogger('rapthor')
 
 
-def run(parset_file, logging_level='info', sectors_to_export=[], export_corrected_data=False):
+def run(parset_file, logging_level='info'):
     """
-    Processes a dataset using facet calibration
+    Processes a dataset using DDE calibration and screens
 
     This function runs the operations in the correct order and handles all the
     bookkeeping for the processing

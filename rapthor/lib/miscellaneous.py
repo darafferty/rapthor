@@ -1,5 +1,5 @@
 """
-Miscellaneous functions
+Module that holds miscellaneous functions
 """
 import os
 import shutil

@@ -7,7 +7,7 @@ import logging
 import casacore.tables as pt
 import numpy as np
 from astropy.time import Time
-from rapthor.cluster import get_time_chunksize, get_frequency_chunksize
+from rapthor.lib.cluster import get_time_chunksize, get_frequency_chunksize
 from scipy.special import erf
 
 
