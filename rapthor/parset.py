@@ -7,9 +7,8 @@ import glob
 import logging
 import configparser
 from rapthor._logging import set_log_file
-from rapthor.cluster import find_executables, get_compute_nodes
+from rapthor.cluster import find_executables
 from astropy.coordinates import Angle
-import platform
 
 log = logging.getLogger('rapthor:parset')
 
@@ -534,22 +533,6 @@ def get_imaging_options(parset):
     else:
         parset_dict['taper_arcsec'] = 0.0
 
-    # A target can be specified to ensure that it falls entirely within a single
-    # facet. The values should be those of a circular region that encloses the
-    # source and not those of the target itself. Lastly, the target can be placed in
-    # a facet of its own. In this case, it will not go through selfcal but will
-    # instead use the selfcal solutions of the nearest facet for which selfcal was
-    # done
-    if 'target_ra' not in parset_dict:
-        parset_dict['target_ra'] = None
-    if 'target_dec' not in parset_dict:
-        parset_dict['target_dec'] = None
-    if 'target_radius_arcmin' in parset_dict:
-        parset_dict['target_radius_arcmin'] = parset.getfloat('directions',
-            'target_radius_arcmin')
-    else:
-        parset_dict['target_radius_arcmin'] = None
-
     # Padding factor for WSClean images (default = 1.2)
     if 'wsclean_image_padding' in parset_dict:
         parset_dict['wsclean_image_padding'] = parset.getfloat('imaging', 'wsclean_image_padding')
@@ -565,9 +548,8 @@ def get_imaging_options(parset):
                        'wsclean_image_padding', 'min_uv_lambda', 'max_uv_lambda',
                        'robust', 'padding', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
-                       'idg_mode', 'sector_do_multiscale_list', 'target_ra', 'use_mpi',
-                       'target_dec', 'target_radius_arcmin', 'use_screens',
-                       'skip_corner_sectors']
+                       'idg_mode', 'sector_do_multiscale_list', 'use_mpi',
+                       'use_screens', 'skip_corner_sectors']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [imaging] section of the '
@@ -598,27 +580,6 @@ def get_cluster_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Paths to the LOFAR software
-    if 'lofarroot' not in parset_dict:
-        if 'LOFARROOT' in os.environ:
-            parset_dict['lofarroot'] = os.environ['LOFARROOT']
-        else:
-            log.critical("The LOFAR root directory cannot be determined. Please "
-                         "specify it in the [cluster] section of the parset as lofarroot")
-            sys.exit(1)
-    if 'lofarpythonpath' not in parset_dict:
-        if parset_dict['lofarroot'] in os.environ['PYTHONPATH']:
-            pypaths = os.environ['PYTHONPATH'].split(':')
-            for pypath in pypaths:
-                if parset_dict['lofarroot'] in pypath:
-                    parset_dict['lofarpythonpath'] = pypath
-                    break
-        else:
-            log.critical("The LOFAR Python root directory cannot be determined. "
-                         "Please specify it in the [cluster] section of the parset as "
-                         "lofarpythonpath")
-            sys.exit(1)
-
     # Paths to required executables
     parset_dict = find_executables(parset_dict)
 
@@ -629,8 +590,7 @@ def get_cluster_options(parset):
         import multiprocessing
         parset_dict['ncpu'] = multiprocessing.cpu_count()
 
-    # Cluster type (default = singleMachine). Use cluster_type = pbs to use PBS / torque
-    # reserved nodes and cluster_type = slurm to use SLURM reserved ones
+    # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
         parset_dict['batch_system'] = 'singleMachine'
     if 'max_nodes' in parset_dict:
@@ -646,8 +606,7 @@ def get_cluster_options(parset):
         parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
 
     # Check for invalid options
-    allowed_options = ['ncpu', 'fmem', 'cluster_type', 'dir_local', 'lofarroot',
-                       'lofarpythonpath', 'batch_system', 'max_nodes']
+    allowed_options = ['ncpu', 'batch_system', 'max_nodes', 'dir_local']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '
