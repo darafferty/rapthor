@@ -166,9 +166,6 @@ class Observation(object):
             nchunks = int(np.ceil(float(self.numsamples) * timepersample / chunksize))
         else:
             nchunks = 1
-        # Adjust samplesperchunk -- not needed?
-#         time_chunksize = (myendtime - mystarttime) / nchunks
-#         samplesperchunk = int(time_chunksize / timepersample)
         starttimes = [mystarttime+(chunksize * i) for i in range(nchunks)]
         if starttimes[-1] >= myendtime:
             # Make sure the last start time does not equal or exceed the end time

@@ -7,7 +7,6 @@ import glob
 import logging
 import configparser
 from rapthor._logging import set_log_file
-from rapthor.lib.cluster import find_executables
 from astropy.coordinates import Angle
 
 log = logging.getLogger('rapthor:parset')
@@ -579,9 +578,6 @@ def get_cluster_options(parset):
     else:
         parset_dict = {}
         given_options = []
-
-    # Paths to required executables
-    parset_dict = find_executables(parset_dict)
 
     # Number of CPUs per node to be used.
     if 'ncpu' in parset_dict:
