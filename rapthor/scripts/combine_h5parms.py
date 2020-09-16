@@ -19,9 +19,9 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
     Parameters
     ----------
     h5parm1 : str
-        Filenames of h5parm 1
+        Filename of h5parm 1
     h5parm2 : str
-        Filenames of h5parm 2
+        Filename of h5parm 2
     outh5parm : str
         Filename of the output h5parm
     mode : str

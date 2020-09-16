@@ -42,7 +42,7 @@ inputs:
     type: string
   - id: sector_bounds_mid_deg
     type: string
-  - id: output_aterms_root
+  - id: output_aterms_roots
     type: string
 {% if do_slowgain_solve %}
   - id: freqchunk_filename
@@ -331,22 +331,37 @@ steps:
     out:
       - id: combinedh5parm
 
+  - id: split_h5parms
+    label: split_h5parms
+    run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
+    in:
+      - id: inh5parm
+        source: combine_fast_and_slow_h5parms2/combinedh5parm
+      - id: outh5parms
+        source: split_outh5parms
+      - id: soltabname
+        valueFrom: 'gain000'
+    out:
+      - id: splith5parms
+
   - id: make_aterms
     label: make_aterms
     run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
     in:
       - id: h5parm
-        source: combine_fast_and_slow_h5parms2/combinedh5parm
+        source: split_h5parms/splith5parms
       - id: soltabname
         valueFrom: 'gain000'
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
-        source: output_aterms_root
+        source: output_aterms_roots
       - id: sector_bounds_deg
         source: sector_bounds_deg
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
+    scatter: [h5parm, outroot]
+    scatterMethod: dotproduct
     out: []
 
 {% if debug %}
@@ -409,22 +424,37 @@ steps:
 {% else %}
 # Don't solve for slow gains
 
+  - id: split_h5parms
+    label: split_h5parms
+    run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
+    in:
+      - id: inh5parm
+        source: combine_fast_phases/outh5parm
+      - id: outh5parms
+        source: split_outh5parms
+      - id: soltabname
+        valueFrom: 'phase000'
+    out:
+      - id: splith5parms
+
   - id: make_aterms
     label: make_aterms
     run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
     in:
       - id: h5parm
-        source: combine_fast_phases/outh5parm
+        source: split_h5parms/splith5parms
       - id: soltabname
         valueFrom: 'phase000'
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
-        source: output_aterms_root
+        source: output_aterms_roots
       - id: sector_bounds_deg
         source: sector_bounds_deg
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
+    scatter: [h5parm, outroot]
+    scatterMethod: dotproduct
     out: []
 
 {% endif %}
