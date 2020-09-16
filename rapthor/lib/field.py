@@ -12,7 +12,7 @@ from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
-import rtree
+import rtree.index
 import glob
 
 

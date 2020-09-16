@@ -7,7 +7,7 @@ import logging
 import casacore.tables as pt
 import numpy as np
 from astropy.time import Time
-from rapthor.cluster import get_time_chunksize, get_frequency_chunksize
+from rapthor.lib.cluster import get_time_chunksize, get_frequency_chunksize
 from scipy.special import erf
 
 
@@ -166,9 +166,6 @@ class Observation(object):
             nchunks = int(np.ceil(float(self.numsamples) * timepersample / chunksize))
         else:
             nchunks = 1
-        # Adjust samplesperchunk -- not needed?
-#         time_chunksize = (myendtime - mystarttime) / nchunks
-#         samplesperchunk = int(time_chunksize / timepersample)
         starttimes = [mystarttime+(chunksize * i) for i in range(nchunks)]
         if starttimes[-1] >= myendtime:
             # Make sure the last start time does not equal or exceed the end time

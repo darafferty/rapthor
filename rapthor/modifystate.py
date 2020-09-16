@@ -1,8 +1,8 @@
 """
 Module that modifies the state of the pipelines
 """
-from rapthor.parset import parset_read
-from rapthor.strategy import set_strategy
+from rapthor.lib.parset import parset_read
+from rapthor.lib.strategy import set_strategy
 from rapthor.lib.field import Field
 import logging
 import os
