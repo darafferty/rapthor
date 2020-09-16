@@ -333,7 +333,7 @@ steps:
 
   - id: make_aterms
     label: make_aterms
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
     in:
       - id: h5parm
         source: combine_fast_and_slow_h5parms2/combinedh5parm
@@ -411,7 +411,7 @@ steps:
 
   - id: make_aterms
     label: make_aterms
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterms.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
     in:
       - id: h5parm
         source: combine_fast_phases/outh5parm
