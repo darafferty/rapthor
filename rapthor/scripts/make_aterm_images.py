@@ -20,10 +20,10 @@ import scipy.interpolate as si
 from losoto.operations import reweight, stationscreen
 
 
-def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
-         bounds_mid_deg=None, skymodel=None, solsetname='sol000',
-         padding_fraction=1.4, cellsize_deg=0.1, smooth_deg=0,
-         time_avg_factor=1, interp_kind='nearest', screen_type='voronoi')):
+def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
+         bounds_deg=None, bounds_mid_deg=None, skymodel=None,
+         solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.1,
+         smooth_deg=0, time_avg_factor=1, interp_kind='nearest'):
     """
     Make a-term FITS images
 
@@ -33,6 +33,9 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         Filename of h5parm
     soltabname : str, optional
         Name of soltab to use. If "gain" is in the name, phase and amplitudes are used
+    screen_type : str, optional
+        Kind of screen to use: 'voronoi' (simple Voronoi tessellation) or 'kl' (Karhunen-
+        Lo`eve transform)
     outroot : str, optional
         Root of filename of output FITS file (root+'_0.fits')
     bounds_deg : list, optional
@@ -53,9 +56,6 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         Averaging factor in time for fast-phase corrections
     interp_kind : str, optional
         Kind of interpolation to use. Can be any supported by scipy.interpolate.interp1d
-    screen_type : str, optional
-        Kind of screen to use: 'voronoi' (simple Voronoi tessellation) or 'kl' (Karhunen-
-        Lo`eve transform)
 
     Returns
     -------
@@ -66,10 +66,13 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
     H = h5parm(h5parmfile)
     solset = H.getSolset(solsetname)
     if 'gain' in soltabname:
-        soltab = solset.getSoltab(soltabname.replace('gain', 'amplitude'))
+        # We have scalarphase and XX+YY amplitudes
+        soltab_amp = solset.getSoltab(soltabname.replace('gain', 'amplitude'))
         soltab_ph = solset.getSoltab(soltabname.replace('gain', 'phase'))
     else:
-        soltab = solset.getSoltab(soltabname)
+        # We have scalarphase only
+        soltab_amp = None
+        soltab_ph = solset.getSoltab(soltabname)
 
     if type(bounds_deg) is str:
         bounds_deg = [float(f.strip()) for f in bounds_deg.strip('[]').split(';')]
@@ -88,102 +91,75 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
     smooth_pix = smooth_deg / cellsize_deg
     time_avg_factor = int(time_avg_factor)
 
-    # Read in solutions
-    if 'amplitude' in soltab.getType():
-        # scalarphases and XX+YY amplitudes
-        vals_ph = soltab_ph.val
-        vals = soltab.val
-    else:
-        # scalarphase -> set amplitudes to unity
-        vals_ph = soltab.val
-        vals = np.ones_like(vals_ph)
-    times = soltab.time
-    freqs = soltab.freq
-    ants = soltab.ant
-    axis_names = soltab.getAxesNames()
-    source_names = soltab.dir[:]
-
-    # If needed, combine fast-scalarphase solutions with slow amps by interpolating
-    # the slow amps to the fast time and frequency grid
-    if 'amplitude' in soltab.getType():
-        soltab_fast = soltab_ph
-        times_fast = soltab_fast.time
-        freqs_fast = soltab_fast.freq
-
-        # Interpolate the slow gains to the fast times and frequencies
-        axis_names = soltab.getAxesNames()
-        time_ind = axis_names.index('time')
-        freq_ind = axis_names.index('freq')
-        fast_axis_names = soltab_fast.getAxesNames()
-        fast_time_ind = fast_axis_names.index('time')
-        fast_freq_ind = fast_axis_names.index('freq')
-        if len(times) == 1:
-            # If just a single time, we just repeat the values as needed
-            new_shape = list(vals.shape)
-            new_shape[time_ind] = val_ph.shape[fast_time_ind]
-            new_shape[freq_ind] = val_ph.shape[fast_freq_ind]
-            vals = np.resize(vals, new_shape)
-        else:
-            # Interpolate (in log space)
-            logvals = np.log10(vals)
-            if vals.shape[time_ind] != vals_ph.shape[fast_time_ind]:
-                f = si.interp1d(times, logvals, axis=time_ind, kind=interp_kind, fill_value='extrapolate')
-                logvals = f(times_fast)
-            if vals.shape[freq_ind] != vals_ph.shape[fast_freq_ind]:
-                f = si.interp1d(freqs, logvals, axis=freq_ind, kind=interp_kind, fill_value='extrapolate')
-                logvals = f(freqs_fast)
-            vals = 10**(logvals)
-        freqs = freqs_fast
-        times = times_fast
+    # Check whether we just have one direction. If so, force screen_type to 'voronoi'
+    source_names = soltab_ph.dir[:]
+    if len(source_names) == 1:
+        screen_type = 'voronoi'
 
     if screen_type == 'kl':
         # Do Karhunen-Lo`eve transform
 
-        # First, make a new h5parm file with the solutions we want to fit (for now, fit
-        # phases and amp_XX and amp_YY; later, we can look into more optimal ways to
-        # fit the amplitudes)
-        if os.path.exists(outh5parm):
-            os.remove(outh5parm)
-        ho = h5parm(outh5parm, readonly=False)
-        sso = ho.makeSolset(solsetName='sol000', addTables=False)
-        if 'amplitude' in soltab.getType():
-            # Scalarphases and XX+YY amplitudes
-
-            # Copy phase soltab as is
-            soltab_ph.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-            # Make soltab for amplitudes (axes are ['time', 'freq', 'ant', 'dir', 'pol'])
-            ants = soltab_ph.ant[:]
-            dirs = soltab_ph.dir[:]
-            pols = soltab_ph.pol[:]
-            soltab_amp = sso.makeSoltab('amplitude', 'amplitude000',
-                                        axesNames=['time', 'freq', 'ant', 'dir', 'pol'],
-                                        axesVals=[times, freqs, ants, dirs, pols],
-                                        vals=vals, weights=np.ones_like(vals))
-        else:
-            # Phase only, so just copy input soltab to new solset
-            soltab.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-        ho.close()
-
         # Reweight the solutions by the scatter after detrending
-        H_screen = h5parm(outh5parm)
-        solset_screen = H.getSolset('sol000')
-        soltab_phase = H.getSoltab('phase000')
-        reweight.run(soltab_phase, mode='window', nmedian=3, nstddev=251)
-        if 'amplitude' in soltab.getType():
-            soltab_amp = H.getSoltab('amplitude000')
+        reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
+        if soltab_amp is not None:
             reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
 
         # Now call LoSoTo's stationscreen operation to do the fitting
-        stationscreen.run(soltab_phase, 'phase_screen000')
-        if 'amplitude' in soltab.getType():
+        stationscreen.run(soltab_ph, 'phase_screen000')
+        if soltab_amp is not None:
             stationscreen.run(soltab_amp, 'amplitude_screen000')
 
         # Transform the screens into FITS images
 
-
     elif screen_type == 'voronoi':
         # Do Voronoi tessellation + smoothing
+
+        # Read in solutions
+        vals_ph = soltab_ph.val
+        if soltab_amp is not None:
+            # Also read XX+YY amplitudes
+            vals = soltab_amp.val
+            times = soltab_amp.time
+            freqs = soltab_amp.freq
+        else:
+            # Set amplitudes to unity
+            vals = np.ones_like(vals_ph)
+            times = soltab_ph.time
+            freqs = soltab_ph.freq
+        ants = soltab_ph.ant
+        axis_names = soltab_ph.getAxesNames()
+
+        # If needed, combine fast-scalarphase solutions with slow amps by interpolating
+        # the slow amps to the fast time and frequency grid
+        if soltab_amp is not None:
+            times_fast = soltab_ph.time
+            freqs_fast = soltab_ph.freq
+
+            # Interpolate the slow gains to the fast times and frequencies
+            axis_names = soltab_amp.getAxesNames()
+            time_ind = axis_names.index('time')
+            freq_ind = axis_names.index('freq')
+            fast_axis_names = soltab_ph.getAxesNames()
+            fast_time_ind = fast_axis_names.index('time')
+            fast_freq_ind = fast_axis_names.index('freq')
+            if len(times) == 1:
+                # If just a single time, we just repeat the values as needed
+                new_shape = list(vals.shape)
+                new_shape[time_ind] = vals_ph.shape[fast_time_ind]
+                new_shape[freq_ind] = vals_ph.shape[fast_freq_ind]
+                vals = np.resize(vals, new_shape)
+            else:
+                # Interpolate (in log space)
+                logvals = np.log10(vals)
+                if vals.shape[time_ind] != vals_ph.shape[fast_time_ind]:
+                    f = si.interp1d(times, logvals, axis=time_ind, kind=interp_kind, fill_value='extrapolate')
+                    logvals = f(times_fast)
+                if vals.shape[freq_ind] != vals_ph.shape[fast_freq_ind]:
+                    f = si.interp1d(freqs, logvals, axis=freq_ind, kind=interp_kind, fill_value='extrapolate')
+                    logvals = f(freqs_fast)
+                vals = 10**(logvals)
+            freqs = freqs_fast
+            times = times_fast
 
         # Make blank output FITS file (type does not matter at this point)
         midRA = bounds_mid_deg[0]
@@ -193,7 +169,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         imsize = int(imsize / cellsize_deg)  # pix
         misc.make_template_image(temp_image, midRA, midDec, ximsize=imsize,
                                  yimsize=imsize, cellsize_deg=cellsize_deg, freqs=freqs,
-                                 times=[0.0], antennas=soltab.ant, aterm_type='tec')
+                                 times=[0.0], antennas=soltab_ph.ant, aterm_type='tec')
         hdu = pyfits.open(temp_image, memmap=False)
         data = hdu[0].data
         w = wcs.WCS(hdu[0].header)
@@ -302,10 +278,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         # Add additional breaks to gaps_ind to keep memory use within that available
         # From experience, making a (30, 46, 62, 4, 146, 146) aterm image needs around
         # 30 GB of memory
-        if soltab.getType() == 'tec':
-            max_ntimes = 15 * 46 * 4
-        else:
-            max_ntimes = 15
+        max_ntimes = 15
         # TODO: adjust max_ntimes depending on available memory and time_avg_factor
         check_gaps = True
         while check_gaps:
@@ -333,7 +306,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
             misc.make_template_image(temp_image, midRA, midDec, ximsize=imsize,
                                      yimsize=imsize, cellsize_deg=cellsize_deg,
                                      times=times[g_start:g_stop],
-                                     freqs=freqs, antennas=soltab.ant,
+                                     freqs=freqs, antennas=soltab_ph.ant,
                                      aterm_type='gain')
             hdu = pyfits.open(temp_image, memmap=False)
             data = hdu[0].data
@@ -370,7 +343,7 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
                 misc.make_template_image(temp_image+'.avg', midRA, midDec, ximsize=imsize,
                                          yimsize=imsize, cellsize_deg=cellsize_deg,
                                          times=times_avg,
-                                         freqs=freqs, antennas=soltab.ant,
+                                         freqs=freqs, antennas=soltab_ph.ant,
                                          aterm_type='gain')
                 hdu = pyfits.open(temp_image+'.avg', memmap=False)
                 data_avg = hdu[0].data
@@ -419,6 +392,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('h5parmfile', help='Filename of input h5parm')
     parser.add_argument('--soltabname', help='Name of soltab', type=str, default='phase000')
+    parser.add_argument('--screen_type', help='Type of screen', type=str, default='voronoi')
     parser.add_argument('--outroot', help='Root of output images', type=str, default='')
     parser.add_argument('--bounds_deg', help='Bounds list in deg', type=str, default=None)
     parser.add_argument('--bounds_mid_deg', help='Bounds mid list in deg', type=str, default=None)
@@ -429,9 +403,9 @@ if __name__ == '__main__':
     parser.add_argument('--smooth_deg', help='Smooth scale in degree', type=float, default=0.0)
     parser.add_argument('--time_avg_factor', help='Averaging factor in time', type=int, default=1)
     args = parser.parse_args()
-    main(args.h5parmfile, soltabname=args.soltabname, outroot=args.outroot,
-         bounds_deg=args.bounds_deg, bounds_mid_deg=args.bounds_mid_deg,
-         skymodel=args.skymodel, solsetname=args.solsetname,
-         padding_fraction=args.padding_fraction,
+    main(args.h5parmfile, soltabname=args.soltabname, screen_type=args.screen_type,
+         outroot=args.outroot, bounds_deg=args.bounds_deg,
+         bounds_mid_deg=args.bounds_mid_deg, skymodel=args.skymodel,
+         solsetname=args.solsetname, padding_fraction=args.padding_fraction,
          cellsize_deg=args.cellsize_deg, smooth_deg=args.smooth_deg,
          time_avg_factor=args.time_avg_factor)

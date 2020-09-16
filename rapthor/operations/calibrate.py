@@ -64,8 +64,12 @@ class Calibrate(Operation):
         uvlambdamin = self.field.solve_min_uv_lambda
         sector_bounds_deg = "'{}'".format(self.field.sector_bounds_deg)
         sector_bounds_mid_deg = "'{}'".format(self.field.sector_bounds_mid_deg)
-        self.output_aterms_root = str(os.path.join(self.pipeline_working_dir,
-                                                   'diagonal_aterms'))
+        split_outh5parm = ['split_solutions_{}.h5'.format(i) for i in
+                           range(max(len(self.field.observations), self.max_nodes))]
+        aterms_root = str(os.path.join(self.pipeline_working_dir,
+                                       'diagonal_aterms'))
+        self.output_aterms_root = [aterms_root+'_{}'.format(i) for i in
+                                   range(len(split_outh5parm))]
         self.combined_h5parms = str(os.path.join(self.pipeline_working_dir,
                                                  'combined_solutions.h5'))
         antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
@@ -110,6 +114,7 @@ class Calibrate(Operation):
                             'uvlambdamin': uvlambdamin,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
+                            'split_outh5parm': split_outh5parm,
                             'output_aterms_root': self.output_aterms_root,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': antennaconstraint_core,

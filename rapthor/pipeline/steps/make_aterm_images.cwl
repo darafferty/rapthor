@@ -20,6 +20,11 @@ inputs:
     inputBinding:
       prefix: --soltabname=
       separate: false
+  - id: screen_type
+    type: string
+    inputBinding:
+      prefix: --screen_type=
+      separate: false
   - id: outroot
     type: string
     inputBinding:

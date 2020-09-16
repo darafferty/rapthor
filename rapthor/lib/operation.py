@@ -47,7 +47,6 @@ class Operation(object):
         self.parset['op_name'] = name
         _logging.set_level(self.parset['logging_level'])
         self.log = logging.getLogger('rapthor:{0}'.format(self.name))
-        self.force_serial_jobs = False  # force jobs to run serially
 
         # Extra Toil env variables
         self.toil_env_variables = {}
@@ -62,6 +61,12 @@ class Operation(object):
 
         # Temp directory (local to the nodes)
         self.temp_dir = self.parset['cluster_specific']['dir_local']
+
+        # Maximum number of nodes to use
+        if batch_system == 'singleMachine':
+            self.max_nodes = 1
+        else:
+            self.max_nodes = self.parset['cluster_specific']['max_nodes']
 
         # Directory that holds the pipeline logs in a convenient place
         self.log_dir = os.path.join(self.rapthor_working_dir, 'logs')
@@ -157,10 +162,6 @@ class Operation(object):
         Calls Toil to run the operation's pipeline
         """
         batch_system = self.parset['cluster_specific']['batch_system']
-        if self.force_serial_jobs or batch_system == 'singleMachine':
-            max_nodes = 1
-        else:
-            max_nodes = self.parset['cluster_specific']['max_nodes']
         ntasks_per_node = self.parset['cluster_specific']['ncpu']
         scratch_dir = self.parset['cluster_specific']['dir_local']
         jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
@@ -172,7 +173,7 @@ class Operation(object):
             args.extend(['--disableCaching'])
             args.extend(['--defaultCores', str(ntasks_per_node)])
             args.extend(['--defaultMemory', '1M'])
-        args.extend(['--maxLocalJobs', str(max_nodes)])
+        args.extend(['--maxLocalJobs', str(self.max_nodes)])
         args.extend(['--jobStore', jobstore])
         if os.path.exists(jobstore):
             args.extend(['--restart'])

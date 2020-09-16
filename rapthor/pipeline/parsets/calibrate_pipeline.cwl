@@ -42,8 +42,10 @@ inputs:
     type: string
   - id: sector_bounds_mid_deg
     type: string
-  - id: output_aterms_roots
-    type: string
+  - id: split_outh5parm
+    type: string[]
+  - id: output_aterms_root
+    type: string[]
 {% if do_slowgain_solve %}
   - id: freqchunk_filename
     type: string[]
@@ -338,7 +340,7 @@ steps:
       - id: inh5parm
         source: combine_fast_and_slow_h5parms2/combinedh5parm
       - id: outh5parms
-        source: split_outh5parms
+        source: split_outh5parm
       - id: soltabname
         valueFrom: 'gain000'
     out:
@@ -352,10 +354,12 @@ steps:
         source: split_h5parms/splith5parms
       - id: soltabname
         valueFrom: 'gain000'
+      - id: screen_type
+        valueFrom: 'kl'
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
-        source: output_aterms_roots
+        source: output_aterms_root
       - id: sector_bounds_deg
         source: sector_bounds_deg
       - id: sector_bounds_mid_deg
@@ -431,7 +435,7 @@ steps:
       - id: inh5parm
         source: combine_fast_phases/outh5parm
       - id: outh5parms
-        source: split_outh5parms
+        source: split_outh5parm
       - id: soltabname
         valueFrom: 'phase000'
     out:
@@ -445,10 +449,12 @@ steps:
         source: split_h5parms/splith5parms
       - id: soltabname
         valueFrom: 'phase000'
+      - id: screen_type
+        valueFrom: 'kl'
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
-        source: output_aterms_roots
+        source: output_aterms_root
       - id: sector_bounds_deg
         source: sector_bounds_deg
       - id: sector_bounds_mid_deg
