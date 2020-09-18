@@ -86,9 +86,9 @@ input_skymodel = /data/skymodel.txt
 # image centers will be used
 # use_screens = True
 
-# IDG (image domain gridder) mode to use in WSClean (default = hybrid). The mode can be
+# IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can be
 # cpu or hybrid
-# idg_mode = hybrid
+# idg_mode = cpu
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
 # more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images
