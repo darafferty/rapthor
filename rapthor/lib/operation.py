@@ -64,11 +64,8 @@ class Operation(object):
         self.temp_dir = self.parset['cluster_specific']['dir_local']
 
         # Directory that holds the pipeline logs in a convenient place
-        self.log_dir = os.path.join(self.rapthor_working_dir, 'logs')
+        self.log_dir = os.path.join(self.rapthor_working_dir, 'logs', self.name)
         misc.create_directory(self.log_dir)
-
-        # Log name used for logs in log_dir
-        self.logbasename = os.path.join(self.log_dir, self.name)
 
         # Paths for scripts, etc. in the rapthor install directory
         self.rapthor_root_dir = os.path.split(DIR)[0]
@@ -179,7 +176,8 @@ class Operation(object):
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--workDir', self.pipeline_working_dir])
         args.extend(['--outdir', scratch_dir])
-        args.extend(['--logFile', self.logbasename+'.log'])
+        args.extend(['--writeLogs', self.log_dir])
+        args.extend(['--logLevel', 'DEBUG'])
         args.extend(['--preserve-entire-environment'])
         # Note: instead of using '--preserve-entire-environment', we can pass a limited
         # number of env variables with something like:
@@ -190,7 +188,6 @@ class Operation(object):
         if scratch_dir is not None:
             args.extend(['--tmpdir-prefix', scratch_dir])
             args.extend(['--tmp-outdir-prefix', scratch_dir])
-        args.extend(['--logLevel', 'DEBUG'])
         args.extend(['--clean', 'never'])
         args.extend(['--servicePollingInterval', '10'])
         args.append(self.pipeline_parset_file)
