@@ -20,6 +20,60 @@ import scipy.interpolate as si
 from losoto.operations import reweight, stationscreen
 
 
+def interpolate_amps(soltab_amp, soltab_ph, interp_kind='nearest'):
+    """
+    Interpolate slow amplitudes to time and frequency grid of fast phases
+
+    Note: interpolation is done in log space.
+
+    Parameters
+    ----------
+    soltab_amp : soltab
+        Soltab with slow amplitudes
+    soltab_ph : soltab
+        Soltab with fast phases
+    interp_kind : str, optional
+        Kind of interpolation to use. Can be any supported by scipy.interpolate.interp1d
+
+    Returns
+    -------
+    vals : array
+        Array of interpolated amplitudes
+
+    """
+    vals = soltab_amp.val
+    times_slow = soltab_amp.time
+    freqs_slow = soltab_amp.freq
+    times_fast = soltab_ph.time
+    freqs_fast = soltab_ph.freq
+
+    # Interpolate the slow amps to the fast times and frequencies
+    axis_names = soltab_amp.getAxesNames()
+    time_ind = axis_names.index('time')
+    freq_ind = axis_names.index('freq')
+    fast_axis_names = soltab_ph.getAxesNames()
+    fast_time_ind = fast_axis_names.index('time')
+    fast_freq_ind = fast_axis_names.index('freq')
+    if len(times_slow) == 1:
+        # If just a single time, we just repeat the values as needed
+        new_shape = list(vals.shape)
+        new_shape[time_ind] = vals_ph.shape[fast_time_ind]
+        new_shape[freq_ind] = vals_ph.shape[fast_freq_ind]
+        vals = np.resize(vals, new_shape)
+    else:
+        # Interpolate (in log space)
+        logvals = np.log10(vals)
+        if vals.shape[time_ind] != vals_ph.shape[fast_time_ind]:
+            f = si.interp1d(times_slow, logvals, axis=time_ind, kind=interp_kind, fill_value='extrapolate')
+            logvals = f(times_fast)
+        if vals.shape[freq_ind] != vals_ph.shape[fast_freq_ind]:
+            f = si.interp1d(freqs_slow, logvals, axis=freq_ind, kind=interp_kind, fill_value='extrapolate')
+            logvals = f(freqs_fast)
+        vals = 10**(logvals)
+
+    return vals
+
+
 def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
          bounds_deg=None, bounds_mid_deg=None, skymodel=None,
          solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.1,
@@ -98,7 +152,6 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
 
     if screen_type == 'kl':
         # Do Karhunen-Lo`eve transform
-
         # Reweight the solutions by the scatter after detrending
         reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
         if soltab_amp is not None:
@@ -106,13 +159,25 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
 
         # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000')
+        soltab_ph_screen = solset.getSoltab('phase_screen000')
+        soltab_ph_screen_resid = solset.getSoltab('phase_screen000resid')
         if soltab_amp is not None:
             stationscreen.run(soltab_amp, 'amplitude_screen000')
+            soltab_amp_screen = solset.getSoltab('amplitude_screen000')
+            soltab_amp_screen_resid = solset.getSoltab('amplitude_screen000resid')
+        else:
+            soltab_amp_screen = None
+            soltab_amp_screen_resid = None
 
         # Transform the screens into FITS images
+        make_kl_screen_images(soltab_ph_screen, soltab_ph_screen_resid,
+                              soltab_amp=soltab_amp_screen,
+                              resSoltab_amp=soltab_amp_screen_resid,
+                              prefix='', ncpu=0)
 
     elif screen_type == 'voronoi':
         # Do Voronoi tessellation + smoothing
+        make_voronoi_screen_images(soltab_ph, soltab_amp)
 
         # Read in solutions
         vals_ph = soltab_ph.val
@@ -129,8 +194,7 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
         ants = soltab_ph.ant
         axis_names = soltab_ph.getAxesNames()
 
-        # If needed, combine fast-scalarphase solutions with slow amps by interpolating
-        # the slow amps to the fast time and frequency grid
+        # If needed, interpolate the slow amps to the fast time and frequency grid
         if soltab_amp is not None:
             times_fast = soltab_ph.time
             freqs_fast = soltab_ph.freq
