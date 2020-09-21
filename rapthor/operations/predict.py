@@ -113,6 +113,10 @@ class Predict(Operation):
             self.field.sectors = [sector for sector in self.field.sectors if not sector.is_outlier]
             self.field.outlier_sectors = []
 
+            # From now on, use imaged sources only in the sky models for selfcal, since
+            # sources outside of imaged areas have been peeled
+            self.field.imaged_sources_only = True
+
             for sector in self.field.sectors:
                 for obs in sector.observations:
                     obs.ms_filename = obs.ms_field  # use new peeled datasets in future

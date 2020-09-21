@@ -57,6 +57,7 @@ class Field(object):
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
         self.peel_outliers = False
+        self.imaged_sources_only = False
         self.peel_bright_sources = False
         self.use_scalarphase = True
 
@@ -388,7 +389,7 @@ class Field(object):
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
-    def update_skymodels(self, iter, regroup, imaged_sources_only, target_flux=None,
+    def update_skymodels(self, iter, regroup, target_flux=None,
                          target_number=None):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
@@ -399,8 +400,6 @@ class Field(object):
             Iteration index (counts starting from 1)
         regroup : bool
             Regroup sky model
-        imaged_sources_only : bool
-            Only use imaged sources
         target_flux : float, optional
             Target flux in Jy for grouping
         target_number : int, optional
@@ -418,7 +417,7 @@ class Field(object):
             # Use the sector sky models from the previous iteration to update the master
             # sky model
             self.log.info('Updating sky model...')
-            if imaged_sources_only:
+            if self.imaged_sources_only:
                 # Use new models from the imaged sectors only
                 sector_skymodels_apparent_sky = [sector.image_skymodel_file_apparent_sky for
                                                  sector in self.imaging_sectors]
@@ -922,7 +921,6 @@ class Field(object):
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
         self.update_skymodels(iter, step_dict['regroup_model'],
-                              step_dict['imaged_sources_only'],
                               target_flux=step_dict['target_flux'])
 
         # Check whether outliers and bright sources need to be peeled
