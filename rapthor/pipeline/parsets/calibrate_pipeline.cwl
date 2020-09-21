@@ -145,7 +145,7 @@ steps:
       - id: antennaconstraint
         source: fast_antennaconstraint
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan]
     scatterMethod: dotproduct
     out:
@@ -204,7 +204,7 @@ steps:
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -273,7 +273,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint2
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -400,7 +400,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
