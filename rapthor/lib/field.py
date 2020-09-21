@@ -433,7 +433,7 @@ class Field(object):
                     if sector.is_outlier:
                         sector_skymodels_true_sky.append(sector.predict_skymodel_file)
                     else:
-                        sector_skymodels_true_sky.append(sector.sector_skymodels_true_sky)
+                        sector_skymodels_true_sky.append(sector.image_skymodel_file_true_sky)
                 sector_names = [sector.name for sector in self.sectors]
 
             # Concatenate the sky models from all sectors, being careful not to duplicate
