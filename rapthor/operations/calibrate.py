@@ -20,10 +20,16 @@ class Calibrate(Operation):
         """
         Define parameters needed for the pipeline parset template
         """
+        if self.batch_system == 'slurm':
+            # For some reason, setting maxCores in the ResourceRequirement hints does
+            # not work with SLURM
+            max_cores = None
+        else:
+            max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_scalarphase': self.field.use_scalarphase,
-                             'max_cores': self.field.parset['cluster_specific']['max_cores'],
+                             'max_cores': max_cores,
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'debug': self.field.debug}
 

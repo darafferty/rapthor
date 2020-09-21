@@ -8,7 +8,9 @@ requirements:
 hints:
   ResourceRequirement:
     coresMin: 1
+{% if max_cores is not none %}
     coresMax: {{ max_cores }}
+{% endif %}
 
 inputs:
   - id: timechunk_filename
