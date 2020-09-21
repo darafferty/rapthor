@@ -85,6 +85,27 @@ class Operation(object):
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
                                                  'pipeline_inputs.yml')
 
+        # Toil's jobstore path
+        self.jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
+
+        # Get the batch system to use
+        self.batch_system = self.parset['cluster_specific']['batch_system']
+
+        # Get the maximum number of nodes to use
+        if self.force_serial_jobs or self.batch_system == 'singleMachine':
+            self.max_nodes = 1
+        else:
+            self.max_nodes = self.parset['cluster_specific']['max_nodes']
+
+        # Get the number of processors per task (SLRUM only). This is passed to sbatch's
+        # --cpus-per-task option (see https://slurm.schedmd.com/sbatch.html). By setting
+        # this value to the number of processors per node, one can ensure that each
+        # task gets the entire node to itself
+        self.cpus_per_task = self.parset['cluster_specific']['cpus_per_task']
+
+        # Set the temp directory local to each node
+        self.scratch_dir = self.parset['cluster_specific']['dir_local']
+
     def set_parset_parameters(self):
         """
         Define parameters needed for the pipeline parset template
@@ -153,41 +174,20 @@ class Operation(object):
         """
         Calls Toil to run the operation's pipeline
         """
-        # Get the batch system to use
-        batch_system = self.parset['cluster_specific']['batch_system']
-
-        # Get the maximum number of nodes to use
-        if self.force_serial_jobs or batch_system == 'singleMachine':
-            max_nodes = 1
-        else:
-            max_nodes = self.parset['cluster_specific']['max_nodes']
-
-        # Get the number of processors per task (SLRUM only). This is passed to sbatch's
-        # --cpus-per-task option (see https://slurm.schedmd.com/sbatch.html). By setting
-        # this value to the number of processors per node, one can ensure that each
-        # task gets the entire node to itself
-        cpus_per_task = self.parset['cluster_specific']['cpus_per_task']
-
-        # Set the temp directory local to each node
-        scratch_dir = self.parset['cluster_specific']['dir_local']
-
-        # Set Toil's jobstore path
-        jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
-
         # Build the args list
         args = []
-        args.extend(['--batchSystem', batch_system])
-        if batch_system == 'slurm':
+        args.extend(['--batchSystem', self.batch_system])
+        if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
-            args.extend(['--defaultCores', str(cpus_per_task)])
+            args.extend(['--defaultCores', str(self.cpus_per_task)])
             args.extend(['--defaultMemory', '1M'])
-        args.extend(['--maxLocalJobs', str(max_nodes)])
-        args.extend(['--jobStore', jobstore])
-        if os.path.exists(jobstore):
+        args.extend(['--maxLocalJobs', str(self.max_nodes)])
+        args.extend(['--jobStore', self.jobstore])
+        if os.path.exists(self.jobstore):
             args.extend(['--restart'])
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--workDir', self.pipeline_working_dir])
-        args.extend(['--outdir', scratch_dir])
+        args.extend(['--outdir', self.scratch_dir])
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--logLevel', 'DEBUG'])
         args.extend(['--preserve-entire-environment'])
@@ -197,9 +197,9 @@ class Operation(object):
         #              'MPI_PREFIX', 'LOFARROOT'])
         # This would avoid passing unwanted variables (e.g., SLURM ones), but we have to
         # be sure we get all the ones we need, of course
-        if scratch_dir is not None:
-            args.extend(['--tmpdir-prefix', scratch_dir])
-            args.extend(['--tmp-outdir-prefix', scratch_dir])
+        if self.scratch_dir is not None:
+            args.extend(['--tmpdir-prefix', self.scratch_dir])
+            args.extend(['--tmp-outdir-prefix', self.scratch_dir])
         args.extend(['--clean', 'never'])
         args.extend(['--servicePollingInterval', '10'])
         args.append(self.pipeline_parset_file)
