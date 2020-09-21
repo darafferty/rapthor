@@ -139,7 +139,7 @@ steps:
       - id: beamdir
         source: phasecenter
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
 {% if use_screens %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
@@ -254,7 +254,7 @@ steps:
       - id: idg_mode
         source: idg_mode
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     out:
       - id: image_nonpb_name
       - id: image_pb_name
@@ -279,7 +279,7 @@ steps:
       - id: output_image
         source: image/image_pb_name
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     out:
       - id: restored_image
 
@@ -300,7 +300,7 @@ steps:
       - id: output_image
         source: image/image_nonpb_name
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     out:
       - id: restored_image
 {% endif %}

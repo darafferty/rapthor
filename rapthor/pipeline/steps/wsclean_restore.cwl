@@ -23,7 +23,7 @@ inputs:
     inputBinding:
       position: 3
   - id: numthreads
-    type: int
+    type: string
     inputBinding:
       prefix: -j
 

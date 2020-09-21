@@ -105,7 +105,7 @@ steps:
       - id: directions
         source: sector_patches
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
     scatterMethod: dotproduct
     out:
@@ -140,7 +140,7 @@ steps:
       - id: directions
         source: sector_patches
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
     scatterMethod: dotproduct
     out:

@@ -76,7 +76,7 @@ inputs:
       prefix: applycal.direction=
       separate: False
   - id: numthreads
-    type: int
+    type: string
     inputBinding:
       prefix: numthreads=
       separate: False

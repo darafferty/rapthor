@@ -119,7 +119,7 @@ inputs:
     inputBinding:
       prefix: -idg-mode
   - id: numthreads
-    type: int
+    type: string
     inputBinding:
       prefix: -j
 

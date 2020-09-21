@@ -95,7 +95,7 @@ inputs:
     inputBinding:
       prefix: -q
   - id: numthreads
-    type: int
+    type: string
     inputBinding:
       prefix: -j
 
