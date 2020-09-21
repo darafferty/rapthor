@@ -484,6 +484,8 @@ class Field(object):
                         skymodel_apparent_sky.table = vstack([table1, table2], metadata_conflicts='silent')
                 skymodel_apparent_sky._updateGroups()
                 skymodel_apparent_sky.setPatchPositions(method='wmean')
+            else:
+                skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image pipeline by PyBDSF)
