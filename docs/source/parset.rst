@@ -240,10 +240,25 @@ All the available options are described below under their respective sections.
         slurm`` to use a SLURM-based cluster.
 
     max_nodes
-        For clusters, the maximum number of nodes to use at once (default = 12).
+        For ``batch_system = slurm``, the maximum number of nodes of the cluster to
+        use at once (via the ``--nodes`` option in ``sbatch``; default = 12).
 
-    ncpu
-        Maximum number of CPUs per node to use (default = all)
+    cpus_per_task
+        For ``batch_system = slurm``, the number of processors per task to request
+        (via the ``--ntasks-per-node`` option in ``sbatch``; default = 6). By
+        setting this value to the number of processors per node, one can ensure
+        that each task gets the entire node to itself, which is the recommended
+        way of running Rapthor.
+
+    max_cores
+        Maximum number of cores per task to use on each node (default = 0 =
+        all). If :term:`max_threads` is set and :term:`max_cores` is not,
+        :term:`max_cores` is set to :term:`max_threads`.
+
+    max_threads
+        Maximum number of threads per task to use on each node (default = 0 =
+        all). If :term:`max_cores` is set and :term:`max_threads` is not,
+        :term:`max_threads` is set to :term:`max_cores`.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (no

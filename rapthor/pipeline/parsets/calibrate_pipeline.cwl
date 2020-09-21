@@ -5,6 +5,11 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+hints:
+  ResourceRequirement:
+    coresMin: 1
+    coresMax: {{ max_cores }}
+
 inputs:
   - id: timechunk_filename
     type: string[]
@@ -139,6 +144,8 @@ steps:
         source: fast_smoothnessconstraint
       - id: antennaconstraint
         source: fast_antennaconstraint
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan]
     scatterMethod: dotproduct
     out:
@@ -196,6 +203,8 @@ steps:
         source: slow_smoothnessconstraint
       - id: antennaconstraint
         source: slow_antennaconstraint
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -263,6 +272,8 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint2
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -388,6 +399,8 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:

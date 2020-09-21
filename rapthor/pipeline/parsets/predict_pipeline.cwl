@@ -5,6 +5,11 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+hints:
+  ResourceRequirement:
+    coresMin: 1
+    coresMax: {{ max_cores }}
+
 inputs:
   - id: sector_filename
     type: string[]
@@ -91,6 +96,8 @@ steps:
         source: make_sourcedb/sourcedb
       - id: directions
         source: sector_patches
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
     scatterMethod: dotproduct
     out:
@@ -118,6 +125,8 @@ steps:
         source: make_sourcedb/sourcedb
       - id: directions
         source: sector_patches
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
     scatterMethod: dotproduct
     out:

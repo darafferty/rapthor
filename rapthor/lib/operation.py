@@ -153,13 +153,25 @@ class Operation(object):
         """
         Calls Toil to run the operation's pipeline
         """
+        # Get the batch system to use
         batch_system = self.parset['cluster_specific']['batch_system']
+
+        # Get the maximum number of nodes to use
         if self.force_serial_jobs or batch_system == 'singleMachine':
             max_nodes = 1
         else:
             max_nodes = self.parset['cluster_specific']['max_nodes']
-        ntasks_per_node = self.parset['cluster_specific']['ncpu']
+
+        # Get the number of processors per task (SLRUM only). This is passed to sbatch's
+        # --cpus-per-task option (see https://slurm.schedmd.com/sbatch.html). By setting
+        # this value to the number of processors per node, one can ensure that each
+        # task gets the entire node to itself
+        cpus_per_task = self.parset['cluster_specific']['cpus_per_task']
+
+        # Set the temp directory local to each node
         scratch_dir = self.parset['cluster_specific']['dir_local']
+
+        # Set Toil's jobstore path
         jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
 
         # Build the args list
@@ -167,7 +179,7 @@ class Operation(object):
         args.extend(['--batchSystem', batch_system])
         if batch_system == 'slurm':
             args.extend(['--disableCaching'])
-            args.extend(['--defaultCores', str(ntasks_per_node)])
+            args.extend(['--defaultCores', str(cpus_per_task)])
             args.extend(['--defaultMemory', '1M'])
         args.extend(['--maxLocalJobs', str(max_nodes)])
         args.extend(['--jobStore', jobstore])

@@ -23,6 +23,8 @@ class Calibrate(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_scalarphase': self.field.use_scalarphase,
+                             'max_cores': self.field.parset['cluster_specific']['max_cores'],
+                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'debug': self.field.debug}
 
     def set_input_parameters(self):

@@ -22,6 +22,10 @@ inputs:
     type: string
     inputBinding:
       position: 3
+  - id: numthreads
+    type: int
+    inputBinding:
+      prefix: -j
 
 outputs:
   - id: restored_image

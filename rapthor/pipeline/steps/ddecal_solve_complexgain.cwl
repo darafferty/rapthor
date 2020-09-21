@@ -7,7 +7,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - numthreads=0
   - msin.datacolumn=DATA
   - msout=.
   - steps=[solve]
@@ -99,6 +98,11 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.smoothnessconstraint=
+      separate: False
+  - id: numthreads
+    type: int
+    inputBinding:
+      prefix: numthreads=
       separate: False
 
 outputs:

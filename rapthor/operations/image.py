@@ -28,6 +28,8 @@ class Image(Operation):
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
                              'peel_bright_sources': self.field.peel_bright_sources,
+                             'max_cores': self.field.parset['cluster_specific']['max_cores'],
+                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'use_mpi': self.field.use_mpi}
 
     def set_input_parameters(self):
@@ -150,7 +152,7 @@ class Image(Operation):
                 nsubpipes = min(nsectors, nnodes)
                 nnodes_per_subpipeline = int(nnodes / nsubpipes)
 
-                self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['ncpu']] * nsectors,
+                self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['cpus_per_task']] * nsectors,
                                          'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})

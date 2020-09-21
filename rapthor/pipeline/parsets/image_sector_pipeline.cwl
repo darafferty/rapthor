@@ -5,6 +5,11 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+hints:
+  ResourceRequirement:
+    coresMin: 1
+    coresMax: {{ max_cores }}
+
 inputs:
   - id: obs_filename
     type: string[]
@@ -125,6 +130,8 @@ steps:
         source: image_timestep
       - id: beamdir
         source: phasecenter
+      - id: numthreads
+        valueFrom: {{ max_threads }}
 {% if use_screens %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
@@ -232,6 +239,8 @@ steps:
         source: auto_mask
       - id: idg_mode
         source: idg_mode
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     out:
       - id: image_nonpb_name
       - id: image_pb_name
@@ -249,6 +258,8 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_pb_name
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     out:
       - id: restored_image
 
@@ -262,6 +273,8 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_nonpb_name
+      - id: numthreads
+        valueFrom: {{ max_threads }}
     out:
       - id: restored_image
 {% endif %}

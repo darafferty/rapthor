@@ -5,6 +5,11 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+hints:
+  ResourceRequirement:
+    coresMin: 1
+    coresMax: {{ max_cores }}
+
 inputs:
   - id: sector_image_filename
     type: string[]

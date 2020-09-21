@@ -8,7 +8,6 @@ requirements:
   ShellCommandRequirement: {}
 
 arguments:
-  - numthreads=0
   - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
@@ -74,6 +73,11 @@ inputs:
     inputBinding:
       valueFrom: $('['+self+']')
       prefix: applycal.direction=
+      separate: False
+  - id: numthreads
+    type: int
+    inputBinding:
+      prefix: numthreads=
       separate: False
 
 outputs:
