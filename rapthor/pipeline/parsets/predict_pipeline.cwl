@@ -81,6 +81,12 @@ steps:
   - id: predict_model_data
     label: predict_model_data
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: sector_filename
@@ -110,6 +116,12 @@ steps:
   - id: predict_model_data
     label: predict_model_data
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data_phase_only.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: sector_filename
@@ -139,6 +151,12 @@ steps:
   - id: subtract_models
     label: subtract_models
     run: {{ rapthor_pipeline_dir }}/steps/subtract_sector_models.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msobs
         source: obs_filename

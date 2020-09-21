@@ -115,6 +115,12 @@ steps:
 {% endif %}
 
 {% endif %}
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: obs_filename
@@ -194,6 +200,12 @@ steps:
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
 {% endif %}
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: prepare_imaging_data/msimg
@@ -253,6 +265,12 @@ steps:
   - id: restore_pb
     label: restore_pb
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: residual_image
         source: image/image_pb_name
@@ -268,6 +286,12 @@ steps:
   - id: restore_nonpb
     label: restore_nonpb
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: residual_image
         source: image/image_nonpb_name

@@ -117,6 +117,12 @@ steps:
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
 {% endif %}
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename
@@ -170,6 +176,12 @@ steps:
   - id: solve_slow_gains1
     label: solve_slow_gains1
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
@@ -241,6 +253,12 @@ steps:
   - id: solve_slow_gains2
     label: solve_slow_gains2
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
@@ -368,6 +386,12 @@ steps:
   - id: solve_slow_gains_debug
     label: solve_slow_gains_debug
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_debug.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
