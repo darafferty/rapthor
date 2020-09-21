@@ -116,8 +116,8 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         if len(times) == 1:
             # If just a single time, we just repeat the values as needed
             new_shape = list(vals.shape)
-            new_shape[time_ind] = val_ph.shape[fast_time_ind]
-            new_shape[freq_ind] = val_ph.shape[fast_freq_ind]
+            new_shape[time_ind] = vals_ph.shape[fast_time_ind]
+            new_shape[freq_ind] = vals_ph.shape[fast_freq_ind]
             vals = np.resize(vals, new_shape)
         else:
             # Interpolate (in log space)
@@ -168,11 +168,11 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
 
     # Get boundary of tessellation region in pixels
     ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
-    ra_dec[0][RAind] = max(bounds_deg[0], np.max(ra_deg))
-    ra_dec[0][Decind] = min(bounds_deg[1], np.min(dec_deg))
+    ra_dec[0][RAind] = max(bounds_deg[0], np.max(ra_deg)+0.1)
+    ra_dec[0][Decind] = min(bounds_deg[1], np.min(dec_deg)-0.1)
     field_minxy = (w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind])
-    ra_dec[0][RAind] = min(bounds_deg[2], np.min(ra_deg))
-    ra_dec[0][Decind] = max(bounds_deg[3], np.max(dec_deg))
+    ra_dec[0][RAind] = min(bounds_deg[2], np.min(ra_deg)-0.1)
+    ra_dec[0][Decind] = max(bounds_deg[3], np.max(dec_deg)+0.1)
     field_maxxy = (w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind])
 
     if len(xy) == 1:
@@ -203,12 +203,10 @@ def main(h5parmfile, soltabname='phase000', outroot='', bounds_deg=None,
         polygons = [poly for poly in shapely.ops.polygonize(lines)]
 
     # Index polygons to directions
-    ind = []
     for i, xypos in enumerate(xy):
         for poly in polygons:
             if poly.contains(Point(xypos)):
                 poly.index = i
-#     polygons = [poly for poly in polygons if hasattr(poly, 'index')]
 
     # Rasterize the polygons to an array, with the value being equal to the
     # polygon's index+1
