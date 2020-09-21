@@ -583,12 +583,7 @@ def get_cluster_options(parset):
     if 'cpus_per_task' in parset_dict:
         parset_dict['cpus_per_task'] = parset.getint('cluster', 'cpus_per_task')
     else:
-        # Try to guess the value from the machine Rapthor's running on. Note that
-        # this may not be the same for the nodes where processing is done, but
-        # ideally we want to set cpus_per_task so that each task gets the entire
-        # node to itself
-        import multiprocessing
-        parset_dict['cpus_per_task'] = multiprocessing.cpu_count()
+        parset_dict['cpus_per_task'] = 6
 
     # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
@@ -603,14 +598,17 @@ def get_cluster_options(parset):
     # versa)
     if 'max_cores' in parset_dict:
         parset_dict['max_cores'] = parset.getint('cluster', 'max_cores')
+    else:
+        if parset_dict['batch_system'] == 'slurm':
+            # If SLURM is used, force max_cores to be cpus_per_task
+            parset_dict['max_cores'] = parset_dict['cpus_per_task']
+        else:
+            # Otherwise, get the cpu count of the current machine
+            import multiprocessing
+            parset_dict['max_cores'] = multiprocessing.cpu_count()
     if 'max_threads' in parset_dict:
         parset_dict['max_threads'] = parset.getint('cluster', 'max_threads')
-    if 'max_cores' in parset_dict and 'max_threads' not in parset_dict:
-        parset_dict['max_threads'] = parset_dict['max_cores']
-    if 'max_threads' in parset_dict and 'max_cores' not in parset_dict:
-        parset_dict['max_cores'] = parset_dict['max_threads']
-    if 'max_cores' not in parset_dict and 'max_threads' not in parset_dict:
-        parset_dict['max_cores'] = 0
+    else:
         parset_dict['max_threads'] = 0
 
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
