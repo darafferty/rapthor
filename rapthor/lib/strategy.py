@@ -77,7 +77,6 @@ def set_strategy(field):
             else:
                 strategy_steps[i]['target_flux'] = 0.5
             strategy_steps[i]['regroup_model'] = True
-            strategy_steps[i]['imaged_sources_only'] = False
 
             if i < 1 or i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_check'] = False
