@@ -252,13 +252,11 @@ All the available options are described below under their respective sections.
 
     max_cores
         Maximum number of cores per task to use on each node (default = 0 =
-        all). If :term:`max_threads` is set and :term:`max_cores` is not,
-        :term:`max_cores` is set to :term:`max_threads`.
+        all).
 
     max_threads
         Maximum number of threads per task to use on each node (default = 0 =
-        all). If :term:`max_cores` is set and :term:`max_threads` is not,
-        :term:`max_threads` is set to :term:`max_cores`.
+        all).
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (no

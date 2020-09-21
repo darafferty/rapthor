@@ -579,7 +579,11 @@ def get_cluster_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Number of CPUs per node to be used.
+    # Number of processors per task to request from SLURM
+    # (the --ntasks-per-node option in sbatch) can be specified with the
+    # cpus_per_task option (default = 6). By setting the cpus_per_task value to the
+    # number of processors per node, one can ensure that each task gets the entire
+    # node to itself, which is the recommended way of running Rapthor
     if 'cpus_per_task' in parset_dict:
         parset_dict['cpus_per_task'] = parset.getint('cluster', 'cpus_per_task')
     else:
@@ -594,8 +598,6 @@ def get_cluster_options(parset):
         parset_dict['max_nodes'] = 12
 
     # Maximum number of cores and threads per task to use on each node (default = 0 = all).
-    # If max_cores is set and max_threads is not, max_threads is set to max_cores (and vice
-    # versa)
     if 'max_cores' in parset_dict:
         parset_dict['max_cores'] = parset.getint('cluster', 'max_cores')
     else:

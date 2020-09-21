@@ -151,8 +151,6 @@ input_skymodel = /data/skymodel.txt
 # gpu_partition = batch
 
 # Maximum number of cores and threads per task to use on each node (default = 0 = all).
-# If max_cores is set and max_threads is not, max_threads is set to max_cores (and vice
-# versa)
 # max_cores = 0
 # max_threads = 0
 
