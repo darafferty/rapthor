@@ -21,7 +21,7 @@ class Calibrate(Operation):
         Define parameters needed for the pipeline parset template
         """
         if self.batch_system == 'slurm':
-            # For some reason, setting maxCores in the ResourceRequirement hints does
+            # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
         else:

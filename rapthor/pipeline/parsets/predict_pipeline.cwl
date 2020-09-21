@@ -5,10 +5,12 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+{% if max_cores is not none %}
 hints:
   ResourceRequirement:
     coresMin: 1
     coresMax: {{ max_cores }}
+{% endif %}
 
 inputs:
   - id: sector_filename

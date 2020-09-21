@@ -5,10 +5,10 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+{% if max_cores is not none %}
 hints:
   ResourceRequirement:
     coresMin: 1
-{% if max_cores is not none %}
     coresMax: {{ max_cores }}
 {% endif %}
 
