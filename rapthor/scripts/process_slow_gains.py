@@ -78,7 +78,7 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
         station_dict = solset.getAnt()
         station_positions = []
         for station in station_names:
-            station_positions.append(station_dict[station.encode()])
+            station_positions.append(station_dict[station])
         for s in range(len(station_names)):
             if s == ref_id:
                 dist.append(1.0)
