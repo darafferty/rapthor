@@ -847,7 +847,7 @@ namespace api {
             }
         }
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || defined(WRITE_OUT_SCALAR_BEAM)
         {
             const long unsigned leshape [] = {m_size, m_size};
             npy::SaveArrayAsNumpy("scalar_beam.npy", false, 2, leshape, *m_scalar_beam);
