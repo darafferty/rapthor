@@ -202,6 +202,7 @@ class Operation(object):
             args.extend(['--tmp-outdir-prefix', self.scratch_dir])
         args.extend(['--clean', 'never'])
         args.extend(['--servicePollingInterval', '10'])
+        args.extend(['--stats'])
         args.append(self.pipeline_parset_file)
         args.append(self.pipeline_inputs_file)
 
