@@ -1,20 +1,44 @@
-default:
-  image: ubuntu:20.04
-  before_script:
-    - apt-get update && apt-get install -y g++ cmake libfftw3-dev liblapacke-dev python3 python3-pip
+stages:
+ - prepare
+ - build
+ - integration_and_deploy
 
-# Avoid getting stuck on requested user input, i.e. avoid 
-# https://git.astron.nl/RD/idg/-/jobs/37678#L767
-variables:
-  DEBIAN_FRONTEND: "noninteractive"
+build-base:
+  stage: prepare
+  script:
+    - docker build --tag idg_base:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_base .
+
+build-integration:
+  stage: prepare
+  script:
+    - docker build --tag idg_integration:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_integration .
 
 clang-format:
-  script: 
+  stage: build
+  dependencies:
+    - build-base
+  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  before_script:
     - pip3 install clang-format==9.0.0
-    - export PATH=/home/gitlab-runner/.local/bin:$PATH
+  script: 
     - ./scripts/run-clang-format.sh
 
+idg-python:
+  stage: build
+  dependencies:
+    - build-base
+  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  script:
+    - mkdir build
+    - cd build
+    - cmake -DBUILD_WITH_PYTHON=ON ..
+    - make install -j4
+
 idg-release:
+  stage: build
+  dependencies:
+    - build-base
+  image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
     - mkdir build
     - cd build
@@ -22,6 +46,10 @@ idg-release:
     - make install -j4
 
 idg-debug:
+  stage: build
+  dependencies:
+    - build-base
+  image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
     - mkdir build
     - cd build
@@ -29,7 +57,12 @@ idg-debug:
     - make install -j4
 
 idg-test:
+  stage: build
+  dependencies:
+    - build-base
+  image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
+    # TODO: export probably not needed
     - export PATH="${PATH}:/home/gitlab-runner/.local/bin"
     - pip3 install gcovr
     - mkdir build
@@ -37,10 +70,46 @@ idg-test:
     - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_WITH_TESTS=On
     - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest -j8 --verbose
+    - ctest -j8 --verbose -LE integration
     # Capture coverage
     - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*'
     - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --xml > coverage.xml
   artifacts:
     reports:
       cobertura: build/coverage.xml
+
+
+idg-integration:
+  stage: integration_and_deploy
+  image: idg_integration:${CI_COMMIT_SHORT_SHA}
+  dependencies:
+    - build-integration
+  before_script: 
+    - export HOME_DIR=$PWD
+    # Install IDG
+    - mkdir /opt/idg && mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
+    # - cmake -DCMAKE_INSTALL_PREFIX=/opt/idg ..
+    - make install -j4 
+    - export LD_LIBRARY_PATH="/opt/idg/lib:$LD_LIBRARY_PATH"
+    # Compile against development branch of wsclean
+    - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
+    - cd src/ && git checkout development && cd ..
+    - mkdir build && cd build 
+    - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src 
+    - make install -j4
+    - cd $HOME_DIR && rm -rf /wsclean
+    # Install dp3
+    - mkdir /dp3 && cd /dp3 && git clone https://github.com/lofar-astron/DP3.git src
+    - cd src/ && git checkout development && cd ..
+    - mkdir build && cd build 
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src 
+    - make install -j4
+    - cd $HOME_DIR && rm -rf /dp3
+  script:
+    # Return to idg build directory to run tests
+    - cd build
+    # Run in verbose mode -VV as long as it's not properly working
+    - ctest -VV -L integration
+

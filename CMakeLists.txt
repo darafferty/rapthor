@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 project(idg)
 
+option (WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
+
 # Set rpath to install directory
 SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 
@@ -48,3 +50,6 @@ install(
     DESTINATION
     ${CMAKE_INSTALL_PREFIX}/share/
 )
+
+# Add integration tests
+add_subdirectory(test/integration)

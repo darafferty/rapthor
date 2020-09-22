@@ -1,0 +1,14 @@
+msin =
+msout=
+msout.datacolumn = DATA
+
+steps = [predict, applybeam]
+
+predict.type=predict
+predict.sourcedb=model.sourcedb
+
+applybeam.type=applybeam
+applybeam.invert=true
+
+
+

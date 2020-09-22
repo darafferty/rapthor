@@ -1,0 +1,9 @@
+msin =
+msout=
+msout.datacolumn = DATA
+
+steps = [predict]
+predict.type=predict
+predict.sourcedb=model.sourcedb
+
+
