@@ -172,7 +172,12 @@ class Observation(object):
             starttimes.pop(-1)
             nchunks -= 1
         self.ntimechunks = nchunks
-        self.log.debug('Using {} time chunk(s) for fast-phase calibration'.format(self.ntimechunks))
+        if self.ntimechunks > 1:
+            infix = 's'
+        else:
+            infix = ''
+        self.log.debug('Using {0} time chunk{1} for fast-phase '
+                       'calibration'.format(self.ntimechunks, infix))
         self.parameters['timechunk_filename'] = [self.ms_filename] * self.ntimechunks
         self.parameters['starttime'] = [self.convert_mjd(t) for t in starttimes]
         self.parameters['ntimes'] = [samplesperchunk] * self.ntimechunks
@@ -214,7 +219,12 @@ class Observation(object):
         else:
             nchunks = 1
         self.nfreqchunks = nchunks
-        self.log.debug('Using {} frequency chunk(s) for slow-gain calibration'.format(self.nfreqchunks))
+        if self.nfreqchunks > 1:
+            infix = 's'
+        else:
+            infix = ''
+        self.log.debug('Using {0} frequency chunk{1} for slow-gain '
+                       'calibration'.format(self.nfreqchunks, infix))
         self.parameters['freqchunk_filename'] = [self.ms_filename] * self.nfreqchunks
         self.parameters['startchan'] = [channelsperchunk * i for i in range(nchunks)]
         self.parameters['nchan'] = [channelsperchunk] * nchunks

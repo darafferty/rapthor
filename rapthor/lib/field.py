@@ -77,7 +77,11 @@ class Field(object):
         data_fraction : float, optional
             Fraction of data to use during processing
         """
-        self.log.debug('Scanning observation(s)...')
+        if len(self.ms_filenames) > 1:
+            infix = 's'
+        else:
+            infix = ''
+        self.log.debug('Scanning input MS file{}...'.format(infix))
         self.observations = []
         for ms_filename in self.ms_filenames:
             self.observations.append(Observation(ms_filename))
@@ -375,7 +379,11 @@ class Field(object):
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
         self.num_patches = len(calibration_skymodel.getPatchNames())
-        self.log.info('Using {} calibration patches'.format(self.num_patches))
+        if self.num_patches > 1:
+            infix = 'es'
+        else:
+            infix = ''
+        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, infix))
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
@@ -566,7 +574,6 @@ class Field(object):
         """
         Defines the imaging sectors
         """
-        self.log.debug('Defining imaging sector(s)...')
         self.imaging_sectors = []
 
         # Determine whether we use a user-supplied list of sectors or a grid
@@ -582,7 +589,11 @@ class Field(object):
                 name = 'sector_{0}'.format(n)
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
-            self.log.info('Using {0} user-defined imaging sector(s)'.format(len(self.imaging_sectors)))
+            if len(self.imaging_sectors) > 1:
+                infix = 's'
+            else:
+                infix = ''
+            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), infix))
             # TODO: check whether flux density in each sector meets minimum and warn if not?
         else:
             # Make a regular grid of sectors
