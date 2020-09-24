@@ -9,6 +9,420 @@ from rapthor.lib import miscellaneous as misc
 from losoto.operations.stationscreen import _makeWCS, _circ_chi2
 
 
+class Screen(object):
+    """
+    Master Screen class for processing a-term screens
+
+    Parameters
+    ----------
+    phase_soltab : soltab
+        Solution table of phases
+    amplitude_soltab : soltab
+        Solution table of amplitudes
+    ra : float
+        RA in degrees of screen center
+    dec : float
+        Dec in degrees of screen center
+    width_ra : float
+        Width of screen in RA degrees
+    width_dec : float
+        Width of screen in Dec in degrees
+    """
+    def __init__(self, name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
+                 solset_name='sol000', phase_soltab_name='phase000', amplitude_soltab_name=None):
+        self.name = name
+        self.input_h5parm_filename = h5parm_filename
+        self.input_skymodel_filename = skymodel_filename
+        self.input_solset_name = solset_name
+        self.input_phase_soltab_name = phase_soltab_name
+        self.input_amplitude_soltab_name = amplitude_soltab_name
+        if type(ra) is str:
+            ra = Angle(ra).to('deg').value
+        if type(dec) is str:
+            dec = Angle(dec).to('deg').value
+        self.ra = ra
+        self.dec = dec
+        self.width_ra = width_ra
+        self.width_dec = width_dec
+
+        # Do some checking
+        H = h5parm(self.input_h5parm_filename)
+        if self.input_solset_name not in H.getSolsetNames():
+            self.log.critical('Solset {} not found in input h5parm! '
+                              'Exiting!'.format(self.input_solset_name))
+            sys.exit(1)
+        solset = H.getSolset(self.input_solset_name)
+        if self.input_phase_soltab_name not in solset.getSoltabNames():
+            self.log.critical('Soltab {} not found in input solset! '
+                              'Exiting!'.format(self.input_phase_soltab_name))
+            sys.exit(1)
+        if self.input_amplitude_soltab_name is not None:
+            if self.input_amplitude_soltab_name not in solset.getSoltabNames():
+                self.log.critical('Soltab {} not found in input solset! '
+                                  'Exiting!'.format(self.input_amplitude_soltab_name))
+                sys.exit(1)
+
+    def fit(self):
+        """
+        Fits screens to the input solutions
+
+        This should be defined in the subclasses
+        """
+        pass
+
+    def interpolate(self):
+        """
+        Interpolate the slow amplitude values to the fast-phase time and frequency grid
+        """
+        if self.input_amplitude_soltab_name is None:
+            return
+
+        if len(self.times_amp) == 1:
+            # If only a single time, we just repeat the values as needed
+            new_shape = list(self.vals_amp.shape)
+            new_shape[0] = self.vals_ph.shape[0]
+            new_shape[1] = self.vals_ph.shape[1]
+            self.vals_amp = np.resize(self.vals_amp, new_shape)
+        else:
+            # Interpolate amplitudes (in log space)
+            logvals = np.log10(self.vals_amp)
+            if self.vals_amp.shape[0] != self.vals_ph.shape[0]:
+                f = si.interp1d(self.times_amp, logvals, axis=0, kind=interp_kind, fill_value='extrapolate')
+                logvals = f(self.times_ph)
+            if self.vals_amp.shape[1] != self.vals_ph.shape[1]:
+                f = si.interp1d(self.freqs_amp, logvals, axis=1, kind=interp_kind, fill_value='extrapolate')
+                logvals = f(self.freqs_ph)
+            self.vals_amp = 10**(logvals)
+
+    def make_fits_file(self, outfile, cellsize_deg, t_start_index,
+                            t_stop_index, aterm_type='gain'):
+        """
+        Makes a FITS data cube and returns the Header Data Unit
+
+        Parameters
+        ----------
+        cellsize_deg : float
+            Pixel size of image in degrees
+        timestep_sec : float
+            Length of one timestep in seconds
+        """
+        ximsize = int(self.width_ra / cellsize_deg)  # pix
+        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        ximsize = yimsize  # force square image until rectangular ones are supported by IDG
+        misc.make_template_image(outfile, self.ra, self.dec, ximsize=ximsize,
+                                 yimsize=yimsize, cellsize_deg=cellsize_deg, freqs=self.freqs_ph,
+                                 times=self.times_ph[t_start_index:t_stop_index],
+                                 antennas=self.station_names, aterm_type=aterm_type)
+        hdu = pyfits.open(outfile, memmap=False)
+        return hdu
+
+    def make_matrix(self):
+        """
+        Makes the matrix of values for the a-term screens
+
+        This should be defined in the subclasses
+        """
+        pass
+
+    def write(self, outroot):
+        """
+        Write the a-term screens to a FITS data cube
+
+        Parameters
+        ----------
+        cellsize_deg : float
+            Pixel size of image in degrees
+        timestep_sec : float
+            Length of one timestep in seconds
+        """
+        # Identify any gaps in time (frequency gaps are not allowed), as we need to
+        # output a separate FITS file for each time chunk
+        delta_times = times[1:] - times[:-1]  # time at center of solution interval
+        timewidth = np.min(delta_times)
+        gaps = np.where(delta_times > timewidth*1.2)
+        gaps_ind = gaps[0] + 1
+        gaps_ind = np.append(gaps_ind, np.array([len(times)]))
+
+        # Add additional breaks to gaps_ind to keep memory use within that available
+        # From experience, making a (30, 46, 62, 4, 146, 146) aterm image needs around
+        # 30 GB of memory
+        max_ntimes = 15
+        check_gaps = True
+        while check_gaps:
+            check_gaps = False
+            g_start = 0
+            gaps_ind_copy = gaps_ind.copy()
+            for gnum, g_stop in enumerate(gaps_ind_copy):
+                if g_stop - g_start > max_ntimes:
+                    new_gap = g_start + int((g_stop - g_start) / 2)
+                    gaps_ind = np.insert(gaps_ind, gnum, np.array([new_gap]))
+                    check_gaps = True
+                    break
+                g_start = g_stop
+
+        # Input data are [time, freq, ant, dir, pol] for slow amplitudes
+        # and [time, freq, ant, dir] for fast phases (scalarphase).
+        # Output data are [RA, DEC, MATRIX, ANTENNA, FREQ, TIME].T
+        # Loop over stations, frequencies, and times and fill in the correct
+        # matrix values (matrix dimension has 4 elements: real XX, imaginary XX,
+        # real YY and imaginary YY)
+        outfiles = []
+        g_start = 0
+        for gnum, g_stop in enumerate(gaps_ind):
+            outfile = '{0}_{1}.fits'.format(outroot, gnum)
+            hdu = self.make_fits_file(outfile, cellsize_deg=cellsize_deg,
+                                      g_start, g_stop, aterm_type='gain')
+            data = hdu[0].data
+            for t, time in enumerate(times[g_start:g_stop]):
+                for f, freq in enumerate(freqs):
+                    for s, stat in enumerate(ants):
+                        data[t, f, s, :, :, :] = self.make_matrix(t+g_start, f, s)
+
+                        # Smooth if desired
+                        if smooth_pix > 0:
+                            data[t, f, s, :, :, :] = ndimage.gaussian_filter(data[t, f, s, :, :, :],
+                                                                             sigma=(0, smooth_pix,
+                                                                                    smooth_pix),
+                                                                             order=0)
+
+            # Ensure there are no NaNs in the images, as WSClean will produced uncorrected,
+            # uncleaned images if so. We replace NaNs with 1.0 and 0.0 for real and
+            # imaginary parts, respectively
+            # Note: we iterate over time to reduce memory usage
+            for t in range(ntimes):
+                for p in range(4):
+                    if p % 2:
+                        # Imaginary elements
+                        nanval = 0.0
+                    else:
+                        # Real elements
+                        nanval = 1.0
+                    data[t, :, :, p, :, :][np.isnan(data[t, :, :, p, :, :])] = nanval
+
+            # Write FITS file
+            hdu[0].data = data
+            hdu.writeto(outfile, overwrite=True)
+            outfiles.append(outfile)
+            os.remove(temp_image)
+            hdu = None
+            data = None
+
+            # Update start time index before starting next loop
+            g_start = g_stop
+
+    def make_aterm_images(self, out_dir):
+        """
+        Makes a-term images
+        """
+        # Fit screens to input solutions
+        self.fit()
+
+        # Interpolate best-fit parameters to common time and frequency grid
+        self.interpolate()
+
+        # Make images and write them out to FITS files
+        self.write(out_dir)
+
+
+class KLScreen(Screen):
+    """
+    Screen class for KL (Karhunen-Lo`eve) screens
+
+    Parameters
+    ----------
+    phase_soltab : soltab
+        Solution table of phases
+    amplitude_soltab : soltab
+        Solution table of amplitudes
+    ra : float
+        RA in degrees of screen center
+    dec : float
+        Dec in degrees of screen center
+    width_ra : float
+        Width of screen in RA degrees
+    width_dec : float
+        Width of screen in Dec in degrees
+    """
+    def __init__(self, phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec):
+        super(KLScreen, self).__init__(phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec)
+
+        # Get residual soltab assuming standard naming conventions
+        phase_ressoltab = self.solset.getSoltab(phase_soltab.name+'resid')
+        self.input_phase_ressoltab = phase_ressoltab
+        if amplitude_soltab is not None:
+            amplitude_ressoltab = self.solset.getSoltab(amplitude_soltab.name+'resid')
+            self.input_amplitude_ressoltab = amplitude_ressoltab
+        else:
+            self.input_amplitude_ressoltab = None
+
+    def get_screen_parameters(self):
+        self.height = self.input_phase_soltab.obj._v_attrs['height']
+        self.beta_val = self.input_phase_soltab.obj._v_attrs['beta']
+        self.r_0 = self.input_phase_soltab.obj._v_attrs['r_0']
+        self.pp = self.input_phase_soltab.obj.piercepoint[:]
+        self.midRA = self.input_phase_soltab.obj._v_attrs['midra']
+        self.midDec = self.input_phase_soltab.obj._v_attrs['middec']
+
+
+
+class VoronoiScreen(Screen):
+    """
+    Screen class for Voronoi screens
+
+    Parameters
+    ----------
+    phase_soltab : soltab
+        Solution table of phases
+    amplitude_soltab : soltab
+        Solution table of amplitudes
+    ra : float
+        RA in degrees of screen center
+    dec : float
+        Dec in degrees of screen center
+    width_ra : float
+        Width of screen in RA degrees
+    width_dec : float
+        Width of screen in Dec in degrees
+    """
+    def __init__(self, phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec):
+        super(VoronoiScreen, self).__init__(phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec)
+
+    def fit(self):
+        # No fitting needed, just use input data
+        # Input data are [time, freq, ant, dir, pol] for slow amplitudes
+        # and [time, freq, ant, dir] for fast phases (scalarphase).
+        self.vals_ph = self.input_phase_soltab.val[:]
+        self.times_ph = self.input_phase_soltab.time[:]
+        self.freqs_ph = self.input_phase_soltab.freq[:]
+        if self.input_amplitude_soltab is not None:
+            self.vals_amp = self.input_amplitude_soltab.val[:]
+            self.times_amp = self.input_amplitude_soltab.time[:]
+            self.freqs_amp = self.input_amplitude_soltab.freq[:]
+        else:
+            self.vals_amp = np.ones_like(self.vals_ph)
+            self.times_amp = self.input_phase_soltab.time[:]
+            self.freqs_amp = self.input_phase_soltab.freq[:]
+
+        self.source_names = self.input_phase_soltab.dir[:]
+        self.source_dict = self.input_solset.getSou()
+        self.source_positions = []
+        for source in self.source_names:
+            self.source_positions.append(self.source_dict[source])
+        self.station_names = self.input_phase_soltab.ant[:]
+        self.station_dict = self.input_solset.getAnt()
+        self.station_positions = []
+        for station in self.station_names:
+            self.station_positions.append(self.station_dict[station])
+
+    def make_matrix(self, time_ind, freq_ind, stat_ind):
+
+        if self.data_rasertize_template is None:
+            hdu = self.make_fits_file(self, temp_image, cellsize_deg, time_ind,
+                                       time_ind+1, aterm_type='gain')
+            data = hdu[0].data
+            w = wcs.WCS(hdu[0].header)
+            RAind = w.axis_type_names.index('RA')
+            Decind = w.axis_type_names.index('DEC')
+
+            # Get x, y coords for directions in pixels. We use the input calibration sky
+            # model for this, as the patch positions written to the h5parm file by DPPP may
+            # be different
+            skymod = lsmtool.load(skymodel)
+            source_dict = skymod.getPatchPositions()
+            source_positions = []
+            for source in source_names:
+                radecpos = source_dict[source.strip('[]')]
+                source_positions.append([radecpos[0].value, radecpos[1].value])
+            source_positions = np.array(source_positions)
+            ra_deg = source_positions.T[0]
+            dec_deg = source_positions.T[1]
+            xy = []
+            for RAvert, Decvert in zip(ra_deg, dec_deg):
+                ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+                ra_dec[0][RAind] = RAvert
+                ra_dec[0][Decind] = Decvert
+                xy.append((w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind]))
+
+            # Get boundary of tessellation region in pixels
+            ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+            ra_dec[0][RAind] = max(bounds_deg[0], np.max(ra_deg)+0.1)
+            ra_dec[0][Decind] = min(bounds_deg[1], np.min(dec_deg)-0.1)
+            field_minxy = (w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind])
+            ra_dec[0][RAind] = min(bounds_deg[2], np.min(ra_deg)-0.1)
+            ra_dec[0][Decind] = max(bounds_deg[3], np.max(dec_deg)+0.1)
+            field_maxxy = (w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind])
+
+            if len(xy) == 1:
+                # If there is only a single direction, just make a single rectangular polygon
+                box = [field_minxy, (field_minxy[0], field_maxxy[1]), field_maxxy, (field_maxxy[0], field_minxy[1]), field_minxy]
+                polygons = [shapely.geometry.Polygon(box)]
+            else:
+                # For more than one direction, tessellate
+                # Generate array of outer points used to constrain the facets
+                nouter = 64
+                means = np.ones((nouter, 2)) * np.array(xy).mean(axis=0)
+                offsets = []
+                angles = [np.pi/(nouter/2.0)*i for i in range(0, nouter)]
+                for ang in angles:
+                    offsets.append([np.cos(ang), np.sin(ang)])
+                radius = 2.0*np.sqrt( (field_maxxy[0]-field_minxy[0])**2 + (field_maxxy[1]-field_minxy[1])**2 )
+                scale_offsets = radius * np.array(offsets)
+                outer_box = means + scale_offsets
+
+                # Tessellate and clip
+                points_all = np.vstack([xy, outer_box])
+                vor = Voronoi(points_all)
+                lines = [
+                    shapely.geometry.LineString(vor.vertices[line])
+                    for line in vor.ridge_vertices
+                    if -1 not in line
+                ]
+                polygons = [poly for poly in shapely.ops.polygonize(lines)]
+
+            # Index polygons to directions
+            for i, xypos in enumerate(xy):
+                for poly in polygons:
+                    if poly.contains(Point(xypos)):
+                        poly.index = i
+
+            # Rasterize the polygons to an array, with the value being equal to the
+            # polygon's index+1
+            data_template = np.ones(data[0, 0, 0, :, :].shape)
+            data_rasertize_template = np.zeros(data[0, 0, 0, :, :].shape)
+            for poly in polygons:
+                verts_xy = poly.exterior.xy
+                verts = []
+                for x, y in zip(verts_xy[0], verts_xy[1]):
+                    verts.append((x, y))
+                poly_raster = misc.rasterize(verts, data_template.copy()) * (poly.index+1)
+                filled = np.where(poly_raster > 0)
+                data_rasertize_template[filled] = poly_raster[filled]
+            zeroind = np.where(data_rasertize_template == 0)
+            if len(zeroind[0]) > 0:
+                nonzeroind = np.where(data_rasertize_template != 0)
+                data_rasertize_template[zeroind] = si.griddata((nonzeroind[0], nonzeroind[1]), data_rasertize_template[nonzeroind],
+                                                               (zeroind[0], zeroind[1]), method='nearest')
+            self.data_rasertize_template = data_rasertize_template
+            self.polygons = polygons
+
+        data = np.zeros((4, self.data_rasertize_template.shape[0], self.data_rasertize_template.shape[1]))
+        for p, poly in enumerate(self.polygons):
+            ind = np.where(self.data_rasertize_template == poly.index+1)
+            if 'pol' in axis_names:
+                val_amp_xx = self.vals_amp[t+g_start, f, s, poly.index, 0]
+                val_amp_yy = self.vals_amp[t+g_start, f, s, poly.index, 1]
+            else:
+                val_amp_xx = self.vals_amp[t+g_start, f, s, poly.index]
+                val_amp_yy = val_amp_xx
+            val_phase = self.vals_ph[t+g_start, f, s, poly.index]
+            data[0, ind[0], ind[1]] = val_amp_xx * np.cos(val_phase)
+            data[2, ind[0], ind[1]] = val_amp_yy * np.cos(val_phase)
+            data[1, ind[0], ind[1]] = val_amp_xx * np.sin(val_phase)
+            data[3, ind[0], ind[1]] = val_amp_yy * np.sin(val_phase)
+
+        return data
+
+
 def calculate_kl_screen(inscreen, residuals, pp, N_piercepoints, k, east, north, up,
     T, Nx, Ny, sindx, height, beta_val, r_0, is_phase, outQueue):
     """
