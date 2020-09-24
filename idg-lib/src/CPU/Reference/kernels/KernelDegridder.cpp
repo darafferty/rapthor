@@ -115,7 +115,7 @@ extern "C" {
                             // Compute l,m,n
                             const float l = compute_l(x, subgridsize, imagesize);
                             const float m = compute_m(y, subgridsize, imagesize);
-                            const float n = compute_n(l, m, shift);
+                            const float n = compute_n(-l, m, shift);
 
                             // Compute phase index
                             float phase_index = u*l + v*m + w*n;
