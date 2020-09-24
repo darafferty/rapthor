@@ -102,7 +102,7 @@ inputs:
     type: float[]
   - id: multiscale_scales_pixel
     type: string[]
-  - id: local_dir
+  - id: dir_local
     type: string[]
   - id: taper_arcsec
     type: float[]
@@ -193,8 +193,8 @@ steps:
         source: max_uv_lambda
       - id: multiscale_scales_pixel
         source: multiscale_scales_pixel
-      - id: local_dir
-        source: local_dir
+      - id: dir_local
+        source: dir_local
       - id: taper_arcsec
         source: taper_arcsec
       - id: auto_mask
@@ -219,7 +219,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
-              max_uv_lambda, multiscale_scales_pixel, local_dir, taper_arcsec,
+              max_uv_lambda, multiscale_scales_pixel, dir_local, taper_arcsec,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% else %}
@@ -229,7 +229,7 @@ steps:
               vertices_file, region_file, h5parm, central_patch_name,
               channels_out, deconvolution_channels, wsclean_niter, wsclean_nmiter, robust,
               wsclean_image_padding, min_uv_lambda, max_uv_lambda,
-              multiscale_scales_pixel, local_dir, taper_arcsec, auto_mask,
+              multiscale_scales_pixel, dir_local, taper_arcsec, auto_mask,
               idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
 {% endif %}
     scatterMethod: dotproduct

@@ -77,12 +77,14 @@ class Sector(object):
             obs.set_prediction_parameters(self.name, self.patches,
                                           os.path.join(self.field.working_dir, 'scratch'))
 
-    def set_imaging_parameters(self, do_multiscale=None, recalculate_imsize=False):
+    def set_imaging_parameters(self, imaging_dir, do_multiscale=None, recalculate_imsize=False):
         """
         Sets the parameters needed for the imaging pipeline
 
         Parameters
         ----------
+        imaging_dir : str
+            Imaging directory path
         do_multiscale : bool, optional
             If True, multiscale clean is done. If None, multiscale clean is done only
             when a large source is detected
@@ -109,6 +111,7 @@ class Sector(object):
         self.auto_mask = 3.0
         self.threshisl = 4.0
         self.threshpix = 5.0
+        self.imaging_dir = imaging_dir
 
         # Set image size based on current sector polygon
         if recalculate_imsize or self.imsize is None:
@@ -201,10 +204,10 @@ class Sector(object):
         max_peak_smearing = self.field.parset['imaging_specific']['max_peak_smearing']
         for obs in self.observations:
             # Set imaging parameters
-            obs.set_imaging_parameters(self.cellsize_arcsec, max_peak_smearing,
+            obs.set_imaging_parameters(self.name, self.cellsize_arcsec, max_peak_smearing,
                                        self.width_ra, self.width_dec,
                                        self.target_fast_timestep, self.target_slow_freqstep,
-                                       self.use_screens)
+                                       self.use_screens, self.imaging_dir)
 
         # Set BL-dependent averaging parameters
         do_bl_averaging = False  # does not yet work with IDG
