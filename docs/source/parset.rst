@@ -247,4 +247,14 @@ All the available options are described below under their respective sections.
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (no
-        default). The path must be the same for all nodes.
+        default). The path must exist on all nodes. This parameter is useful if
+        you have a fast local disk (e.g., an SSD) that is not the one used for
+        :term:`dir_working`. If this parameter is not set, IO-intensive
+        processing (e.g., WSClean) will use a default path in :term:`dir_working`
+        instead.
+
+        .. note::
+
+            This parameter should not be set when :term:`batch_system` = ``singleMachine``
+            and multiple imaging sectors are used, as each sector will overwrite files
+            from the other sectors. In this case, it is best to leave ``dir_local`` unset.

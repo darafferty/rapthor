@@ -142,8 +142,14 @@ input_skymodel = /data/skymodel.txt
 # cpu_partition = batch
 # gpu_partition = batch
 
-# Full path to a local, non-shared disk on the nodes for I/O-intensive processing
-# (default = not used). The path must be the same for all nodes
+# Full path to a local disk on the nodes for IO-intensive processing (default =
+# not used). The path must exist on all nodes. This parameter is useful if you
+# have a fast local disk (e.g., an SSD) that is not the one used for
+# dir_working. If this parameter is not set, IO-intensive processing (e.g.,
+# WSClean) will use a default path in dir_working instead. This parameter should
+# not be set when batch_system = singleMachine and multiple imaging sectors are
+# used, as each sector will overwrite files from the other sectors. In this
+# case, it is best to leave dir_local unset
 # dir_local = /tmp
 
 # Maximum number of CPUs per node to use
