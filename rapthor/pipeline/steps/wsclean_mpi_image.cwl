@@ -62,7 +62,7 @@ inputs:
     type: string
     inputBinding:
       prefix: -s
-  - id: local_dir
+  - id: dir_local
     type: string
     inputBinding:
       prefix: -l

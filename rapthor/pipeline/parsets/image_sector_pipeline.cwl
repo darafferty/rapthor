@@ -80,7 +80,7 @@ inputs:
     type: float
   - id: multiscale_scales_pixel
     type: string
-  - id: local_dir
+  - id: dir_local
     type: string
   - id: taper_arcsec
     type: float
@@ -241,8 +241,8 @@ steps:
         source: cellsize_deg
       - id: multiscale_scales_pixel
         source: multiscale_scales_pixel
-      - id: local_dir
-        source: local_dir
+      - id: dir_local
+        source: dir_local
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels

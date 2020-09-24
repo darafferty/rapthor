@@ -39,7 +39,7 @@ class Predict(Operation):
         # (as required by the rapthor/scripts/subtract_sector_models.py script)
         sectors = []
         if len(self.field.imaging_sectors) > 1 or self.field.reweight:
-            # If we have more than one imaging sector, reweighting is desired,
+            # If we have more than one imaging sector or reweighting is desired,
             # predict the imaging sector models. (If we have a single imaging
             # sector, we don't need to predict its model data, just that of any
             # outlier or birght-source sectors)
