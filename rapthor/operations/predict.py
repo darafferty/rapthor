@@ -31,7 +31,7 @@ class Predict(Operation):
         # (as required by the rapthor/scripts/subtract_sector_models.py script)
         sectors = []
         if len(self.field.imaging_sectors) > 1 or self.field.reweight:
-            # If we have more than one imaging sector, reweighting is desired,
+            # If we have more than one imaging sector or reweighting is desired,
             # predict the imaging sector models. (If we have a single imaging
             # sector, we don't need to predict its model data, just that of any
             # outlier or birght-source sectors)
@@ -112,6 +112,10 @@ class Predict(Operation):
             # outlier sectors (since, once peeled, they are no longer needed)
             self.field.sectors = [sector for sector in self.field.sectors if not sector.is_outlier]
             self.field.outlier_sectors = []
+
+            # From now on, use imaged sources only in the sky models for selfcal, since
+            # sources outside of imaged areas have been peeled
+            self.field.imaged_sources_only = True
 
             for sector in self.field.sectors:
                 for obs in sector.observations:

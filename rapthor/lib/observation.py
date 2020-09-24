@@ -262,8 +262,9 @@ class Observation(object):
                                                           sector_name)
         self.parameters['ms_model_filename'] = ms_model_filename
 
-        # The filename of the sector's data with all non-sector sources peeled off (i.e.,
-        # the data used for imaging)
+        # The filename of the sector's data with all non-sector sources peeled off
+        # and/or with the weights adjusted (i.e., the data used as input for the
+        # imaging pipeline)
         ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
                                                      sector_name)
         self.parameters['ms_subtracted_filename'] = ms_subtracted_filename
@@ -282,16 +283,16 @@ class Observation(object):
         else:
             self.parameters['predict_ntimes'] = self.numsamples
 
-    def set_imaging_parameters(self, cellsize_arcsec, max_peak_smearing, width_ra,
+    def set_imaging_parameters(self, sector_name, cellsize_arcsec, max_peak_smearing, width_ra,
                                width_dec, solve_fast_timestep, solve_slow_freqstep,
-                               use_screens):
+                               use_screens, imaging_dir):
         """
         Sets the imaging parameters
 
         Parameters
         ----------
-        field : Field object
-            Field object
+        sector_name : str
+            Name of sector for which predict is to be done
         cellsize_arcsec : float
             Pixel size in arcsec for imaging
         width_ra : float
@@ -304,12 +305,20 @@ class Observation(object):
             Solution interval in Hz for slow solve
         use_screens : bool
             If True, use setup appropriate for screens
+        imaging_dir : str
+            Imaging directory path
         """
         mean_freq_mhz = self.referencefreq / 1e6
         peak_smearing_rapthor = np.sqrt(1.0 - max_peak_smearing)
         chan_width_hz = self.channelwidth
         nchan = self.numchannels
         timestep_sec = self.timepersample
+
+        # Set MS filenames for step that prepares the data for imaging
+        root_filename = os.path.join(imaging_dir, os.path.basename(self.ms_filename))
+        ms_prep_filename = '{0}{1}.{2}.prep'.format(root_filename, self.infix,
+                                                    sector_name)
+        self.parameters['ms_prep_filename'] = ms_prep_filename
 
         # Get target time and frequency averaging steps
         delta_theta_deg = max(width_ra, width_dec) / 2.0

@@ -58,9 +58,6 @@ The following processing parameters my be set:
     regroup_model
         Boolean flag that determines whether the sky model should be regrouped for this cycle.
 
-    imaged_sources_only
-        Boolean flag that determines whether to use new models from the imaged sectors only or to use models from all sectors, whether imaged or not.
-
     do_check
         Boolean flag that determines whether the check for self-calibration convergence should be done for this cycle.
 

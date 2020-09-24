@@ -92,7 +92,7 @@ inputs:
     type: string
     inputBinding:
       prefix: -multiscale-scales
-  - id: local_dir
+  - id: dir_local
     type: string
     inputBinding:
       prefix: -temp-dir

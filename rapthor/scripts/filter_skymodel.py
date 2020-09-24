@@ -127,7 +127,6 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
     if img.nisl > 0:
         maskfile = input_image + '.mask'
         img.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
-        del img
 
         # Construct polygon needed to trim the mask to the sector
         header = pyfits.getheader(maskfile, 0)

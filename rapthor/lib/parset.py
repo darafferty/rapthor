@@ -460,10 +460,10 @@ def get_imaging_options(parset):
                   'entires')
         sys.exit(1)
 
-    # IDG (image domain gridder) mode to use in WSClean (default = hybrid). The mode can
+    # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can
     # be cpu, gpu, or hybrid.
     if 'idg_mode' not in parset_dict:
-        parset_dict['idg_mode'] = 'hybrid'
+        parset_dict['idg_mode'] = 'cpu'
 
     # Use screens during imaging (default = True).
     if 'use_screens' in parset_dict:

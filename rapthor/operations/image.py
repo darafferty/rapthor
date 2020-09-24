@@ -46,11 +46,16 @@ class Image(Operation):
         image_freqstep = []
         image_timestep = []
         multiscale_scales_pixel = []
-        local_dir = []
+        dir_local = []
         phasecenter = []
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
+            # Each image job must have its own directory, so we create it here
+            image_dir = os.path.join(self.pipeline_working_dir, sector.name)
+            misc.create_directory(image_dir)
+            image_root.append(os.path.join(image_dir, sector.name))
+
             # Set the imaging parameters for each imaging sector. Note the we do not
             # let the imsize be recalcuated, as otherwise it may change from the previous
             # iteration and the mask made in that iteration can not be used in this one.
@@ -62,22 +67,21 @@ class Image(Operation):
                 do_multiscale = sector_do_multiscale_list[i]
             else:
                 do_multiscale = None
-            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
+            sector.set_imaging_parameters(image_dir, do_multiscale=do_multiscale,
+                                          recalculate_imsize=False)
 
-            if nsectors > 1:
-                # Use the model-subtracted data
+            # Set input MS filenames
+            if self.field.do_predict:
+                # If predict was done, use the model-subtracted/reweighted data
                 sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
             else:
                 sector_obs_filename = sector.get_obs_parameters('ms_filename')
             obs_filename.append(sector_obs_filename)
 
-            # Each image job must have its own directory, so we create it here
-            image_dir = os.path.join(self.pipeline_working_dir, sector.name)
-            misc.create_directory(image_dir)
-            image_root.append(os.path.join(image_dir, sector.name))
+            # Set output MS filenames for step that prepares the data for WSClean
+            prepare_filename.append(sector.get_obs_parameters('ms_prep_filename'))
 
-            prepare_filename.append([os.path.join(image_dir, os.path.basename(of)+'.prep')
-                                     for of in sector_obs_filename])
+            # Set other parameters
             if sector.I_mask_file is not None:
                 # Use the existing mask
                 previous_mask_filename.append(sector.I_mask_file)
@@ -97,9 +101,9 @@ class Image(Operation):
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
             if self.temp_dir is None:
-                local_dir.append(image_dir)
+                dir_local.append(image_dir)
             else:
-                local_dir.append(self.temp_dir)
+                dir_local.append(self.temp_dir)
             multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
 
@@ -117,7 +121,7 @@ class Image(Operation):
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'multiscale_scales_pixel': multiscale_scales_pixel,
-                            'local_dir': local_dir,
+                            'dir_local': dir_local,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
@@ -146,7 +150,7 @@ class Image(Operation):
 
             if self.field.use_mpi:
                 # Set number of nodes to allocate to each imaging subpipeline
-                nnodes =  self.parset['cluster_specific']['max_nodes']
+                nnodes = self.parset['cluster_specific']['max_nodes']
                 nsubpipes = min(nsectors, nnodes)
                 nnodes_per_subpipeline = int(nnodes / nsubpipes)
 
