@@ -62,8 +62,6 @@ idg-test:
     - build-base
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
-    # TODO: export probably not needed
-    - export PATH="${PATH}:/home/gitlab-runner/.local/bin"
     - pip3 install gcovr
     - mkdir build
     - cd build
@@ -78,8 +76,7 @@ idg-test:
     reports:
       cobertura: build/coverage.xml
 
-
-idg-integration:
+idg-integration-docker:
   stage: integration_and_deploy
   image: idg_integration:${CI_COMMIT_SHORT_SHA}
   dependencies:
@@ -90,7 +87,6 @@ idg-integration:
     - mkdir /opt/idg && mkdir build
     - cd build
     - cmake -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
-    # - cmake -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4 
     - export LD_LIBRARY_PATH="/opt/idg/lib:$LD_LIBRARY_PATH"
     # Compile against development branch of wsclean
@@ -113,3 +109,75 @@ idg-integration:
     # Run in verbose mode -VV as long as it's not properly working
     - ctest -VV -L integration
 
+idg-integration-das:
+  stage: integration_and_deploy
+  tags:
+    - ci_gpu
+  before_script: 
+    # Makes it easy to find the idg source location later on
+    - export CURRENT_SOURCE=$PWD
+    - source scripts/load_modules.sh
+    - module list
+    - pip3 install --user --upgrade pip
+    - pip3 install --user astropy scipy
+    # Install casacore --> replace with module load casacore/3.[something]
+    - mkdir -p ~/opt/casacore && cd ~/opt/casacore && rm -rf *
+    - git clone --branch v3.3.0 https://github.com/casacore/casacore src
+    - mkdir build && cd build 
+    - cmake -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_PREFIX_PATH='/cm/shared/package/cfitsio/3430-gcc-6.3.0/;/cm/shared/package/wcslib/5.18-gcc-6.3.0/;/cm/shared/package/fftw/3.3.8-gcc-8.3.0/' -DBUILD_PYTHON=Off -DBUILD_PYTHON3=On -DUSE_FFTW3=On -DDATA_DIR=/cm/shared/package/casacore/v2.4.1-gcc-6.3.0/data/ ../src
+    - make install -j20
+    # Install everybeam --> replace with module load everybeam/[stable/latest]
+    - mkdir -p ~/opt/everybeam && cd ~/opt/everybeam && rm -rf *
+    - git clone https://git.astron.nl/RD/EveryBeam.git src
+    - cd src/ && git checkout a097e23f962174074e76c98d22743fc18378e93c && cd ..
+    - mkdir build && cd build
+    - cmake -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH=/cm/shared/package/fftw -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
+    # Install aoflagger3 --> replace with module load aoflagger3/[something]
+    - mkdir -p ~/opt/aoflagger && cd ~/opt/aoflagger  && rm -rf *
+    - git clone https://gitlab.com/aroffringa/aoflagger.git src
+    # Remove line from CMakeLists.txt
+    - cd src
+    - grep -v "pkg_check_modules(GTKMM gtkmm-3.0>=3.0.0)" CMakeLists.txt > temp && mv temp CMakeLists.txt
+    - cd ..
+    - mkdir build && cd build
+    - cmake -DCMAKE_LIBRARY_PATH=/usr/lib64:$CMAKE_LIBRARY_PATH -DFFTW3_LIB=/cm/shared/package/fftw/3.3.8-gcc-8.3.0/lib/libfftw3.so -DCFITSIO_ROOT_DIR=/cm/shared/package/cfitsio/3430-gcc-6.3.0 -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
+    # Install idg
+    - mkdir -p ~/opt/idg && cd ~/opt/idg  && rm -rf *
+    # Copy source code to src
+    - mkdir src && cp -r $CURRENT_SOURCE/. src/.
+    - mkdir build && cd build
+    # Build with GPU libs
+    - cmake -DBUILD_LIB_CUDA=On -DBUILD_WITH_TESTS=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4 
+    - export LD_LIBRARY_PATH="~/opt/idg/lib:$LD_LIBRARY_PATH"
+    # Install wsclean (dev branch, needs libgsl)
+    - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
+    - git clone https://gitlab.com/aroffringa/wsclean.git src
+    - cd src/ && git checkout development && cd ..
+    - mkdir build && cd build 
+    - cmake -DCFITSIO_ROOT_DIR=/cm/shared/package/cfitsio/3430-gcc-6.3.0 -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH='~/opt/idg;~/opt/everybeam;/cm/shared/package/fftw/3.3.8-gcc-8.3.0/' -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
+    - export PATH=$PATH:~/opt/wsclean/bin
+    # Install dp3
+    - mkdir ~/opt/dp3 && cd ~/opt/dp3 && rm -rf * 
+    - git clone https://github.com/lofar-astron/DP3.git src
+    - cd src/ && git checkout development && cd ..
+    - mkdir build && cd build 
+    - cmake -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH='~/opt/aoflagger;~/opt/everybeam;~/opt/idg' -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
+    - export PATH=$PATH:~/opt/dp3/bin
+    # Extend the LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=~/opt/everybeam/lib/:~/opt/casacore/lib:~/opt/aoflagger/lib:~/opt/idg/lib:$LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=/cm/shared/package/openblas/0.3.6-gcc-8.3.0/lib64:$LD_LIBRARY_PATH
+  script:
+    - cd ~/opt/idg/build
+    # Run unit tests (more precisely: the non-integration tests)
+    - ctest -j8 --verbose -LE integration
+    - echo "Finished unit tests"
+    # Capture coverage!?
+    #
+    # Run integration tests
+    - "python3 -m pip install --user --only-binary=:all: python-casacore"
+    - ctest --verbose -L integration
