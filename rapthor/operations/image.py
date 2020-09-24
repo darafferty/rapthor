@@ -64,8 +64,8 @@ class Image(Operation):
                 do_multiscale = None
             sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
-            if nsectors > 1:
-                # Use the model-subtracted data
+            if self.field.do_predict:
+                # If predict was done, use the model-subtracted/reweighted data
                 sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
             else:
                 sector_obs_filename = sector.get_obs_parameters('ms_filename')

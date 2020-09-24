@@ -101,7 +101,6 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
-#                     self.log.info('Spitting observation(s)')
                 else:
                     self.observations.append(obs)
         obs0 = self.observations[0]
@@ -955,7 +954,7 @@ class Field(object):
         if (nr_imaging_sectors > 1 or
                 nr_outlier_sectors > 0 or
                 self.peel_bright_sources or
-                self.parset['imaging_specific']['reweight']):
+                self.reweight):
             self.do_predict = True
         else:
             self.do_predict = False
