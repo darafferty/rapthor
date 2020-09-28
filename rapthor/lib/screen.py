@@ -81,6 +81,7 @@ class Screen(object):
                 self.log.critical('Soltab {} not found in input solset! '
                                   'Exiting!'.format(self.input_amplitude_soltab_name))
                 sys.exit(1)
+        H.close()
 
     def fit(self):
         """
@@ -134,7 +135,7 @@ class Screen(object):
         hdu = pyfits.open(outfile, memmap=False)
         return hdu
 
-    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind):
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg, out_dir):
         """
         Makes the matrix of values for the given time, frequency, and station indices
 
@@ -194,7 +195,7 @@ class Screen(object):
             data = hdu[0].data
             for f, freq in enumerate(self.freqs_ph):
                 for s, stat in enumerate(self.station_names):
-                    data[:, f, s, :, :, :] = self.make_matrix(g_start, g_stop, f, s)
+                    data[:, f, s, :, :, :] = self.make_matrix(g_start, g_stop, f, s, cellsize_deg, out_dir)
 
                     # Smooth if desired
                     if smooth_pix > 0:
@@ -263,33 +264,26 @@ class KLScreen(Screen):
     width_dec : float
         Width of screen in Dec in degrees
     """
-    def __init__(self, phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec):
-        super(KLScreen, self).__init__(phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec)
-
-        # Get residual soltab assuming standard naming conventions
-        phase_ressoltab = self.solset.getSoltab(phase_soltab.name+'resid')
-        self.input_phase_ressoltab = phase_ressoltab
-        if not self.phase_only:
-            amplitude_ressoltab = self.solset.getSoltab(amplitude_soltab.name+'resid')
-            self.input_amplitude_ressoltab = amplitude_ressoltab
-        else:
-            self.input_amplitude_ressoltab = None
+    def __init__(self, name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
+                 solset_name='sol000', phase_soltab_name='phase000', amplitude_soltab_name=None):
+        super(KLScreen, self).__init__(name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
+                                       solset_name=solset_name, phase_soltab_name=phase_soltab_name, amplitude_soltab_name=amplitude_soltab_name)
 
     def fit(self):
         """
         Fits screens to the input solutions
         """
         # Open solution tables
-        H = h5parm(self.input_h5parm_filename)
+        H = h5parm(self.input_h5parm_filename, readonly=False)
         solset = H.getSolset(self.input_solset_name)
         soltab_ph = solset.getSoltab(self.input_phase_soltab_name)
         if not self.phase_only:
             soltab_amp = solset.getSoltab(self.input_amplitude_soltab_name)
 
         # Reweight the input solutions by the scatter after detrending
-        reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
-        if self.input_amplitude_soltab_name is not None:
-            reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
+#        reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
+#        if self.input_amplitude_soltab_name is not None:
+#            reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
 
         # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000')
@@ -321,11 +315,11 @@ class KLScreen(Screen):
         self.height = soltab_ph_screen.obj._v_attrs['height']
         self.beta_val = soltab_ph_screen.obj._v_attrs['beta']
         self.r_0 = soltab_ph_screen.obj._v_attrs['r_0']
-        self.pp = soltab_ph_screen.obj.piercepoint
+        self.pp = np.array(soltab_ph_screen.obj.piercepoint)
         self.midRA = soltab_ph_screen.obj._v_attrs['midra']
         self.midDec = soltab_ph_screen.obj._v_attrs['middec']
 
-    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, ncpu=0):
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg, out_dir, ncpu=0):
         """
         Makes the matrix of values for the given time, frequency, and station indices
         """
@@ -333,7 +327,7 @@ class KLScreen(Screen):
         N_sources = len(self.source_names)
         N_times = t_stop_index - t_start_index
         N_piercepoints = N_sources
-        xp, yp, zp = self.station_positions[0, :]
+        xp, yp, zp = self.station_positions[0]
         east = np.array([-yp, xp, 0])
         east = east / norm(east)
         north = np.array([-xp, -yp, (xp*xp + yp*yp)/zp])
@@ -370,26 +364,25 @@ class KLScreen(Screen):
         lower = np.array([xr[0], yr[0]])
         upper = np.array([xr[-1], yr[-1]])
 
-        # Select input data and reorder the axes to get axis order of [dir, time, ant]
+        # Select input data and reorder the axes to get axis order of [dir, time]
         # Input data are [time, freq, ant, dir, pol] for slow amplitudes
         # and [time, freq, ant, dir] for fast phases (scalarphase).
         time_axis = 0
-        ant_axis = 1
-        dir_axis = 2
-        screen_ph = np.array(self.vals_ph[:, freq_ind, stat_ind, :])
-        screen_ph = screen_ph.transpose([dir_axis, time_axis, ant_axis])
-        if not self.phase_pnly:
-            screen_amp_xx = np.array(self.vals_amp[:, freq_ind, stat_ind, :, 0])
-            screen_amp_xx = screen_amp_xx.transpose([dir_axis, time_axis, ant_axis])
-            screen_amp_yy = np.array(self.vals_amp[:, freq_ind, stat_ind, :, 1])
-            screen_amp_yy = screen_amp_yy.transpose([dir_axis, time_axis, ant_axis])
+        dir_axis = 1
+        screen_ph = np.array(self.vals_ph[t_start_index:t_stop_index, freq_ind, stat_ind, :])
+        screen_ph = screen_ph.transpose([dir_axis, time_axis])
+        if not self.phase_only:
+            screen_amp_xx = np.array(self.vals_amp[t_start_index:t_stop_index, freq_ind, stat_ind, :, 0])
+            screen_amp_xx = screen_amp_xx.transpose([dir_axis, time_axis])
+            screen_amp_yy = np.array(self.vals_amp[t_start_index:t_stop_index, freq_ind, stat_ind, :, 1])
+            screen_amp_yy = screen_amp_yy.transpose([dir_axis, time_axis])
 
         # Process phase screens
         val_phase = np.zeros((Nx, Ny, N_times))
         mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
         for k in range(N_times):
-            mpm.put([screen_ph[:, k, stat_ind], self.pp, N_piercepoints, k,
-                     east, north, up, T, Nx, Ny, stat_ind, self.beta_val, self.r_0])
+            mpm.put([screen_ph[:, k], self.pp, N_piercepoints, k,
+                     east, north, up, T, Nx, Ny, self.beta_val, self.r_0])
         mpm.wait()
         for (k, scr) in mpm.get():
             val_phase[:, :, k] = scr
@@ -400,8 +393,8 @@ class KLScreen(Screen):
             val_amp_xx = np.zeros((Nx, Ny, N_times))
             mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
             for k in range(N_times):
-                mpm.put([screen_amp_xx[:, k, stat_ind], self.pp, N_piercepoints, k,
-                         east, north, up, T, Nx, Ny, stat_ind, self.beta_val, self.r_0])
+                mpm.put([screen_amp_xx[:, k], self.pp, N_piercepoints, k,
+                         east, north, up, T, Nx, Ny, self.beta_val, self.r_0])
             mpm.wait()
             for (k, scr) in mpm.get():
                 val_amp_xx[:, :, k] = scr
@@ -410,14 +403,14 @@ class KLScreen(Screen):
             val_amp_yy = np.zeros((Nx, Ny, N_times))
             mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
             for k in range(N_times):
-                mpm.put([screen_amp_yy[:, k, stat_ind], self.pp, N_piercepoints, k,
-                         east, north, up, T, Nx, Ny, stat_ind, self.beta_val, self.r_0])
+                mpm.put([screen_amp_yy[:, k], self.pp, N_piercepoints, k,
+                         east, north, up, T, Nx, Ny, self.beta_val, self.r_0])
             mpm.wait()
             for (k, scr) in mpm.get():
                 val_amp_yy[:, :, k] = scr
 
         # Output data are [RA, DEC, MATRIX, ANTENNA, FREQ, TIME].T
-        data = np.zeros(N_times, 4, Ny, Nx)
+        data = np.zeros((N_times, 4, Ny, Nx))
         if self.phase_only:
             data[:, 0, :, :] = np.cos(val_phase.T)
             data[:, 2, :, :] = np.cos(val_phase.T)
@@ -451,47 +444,56 @@ class VoronoiScreen(Screen):
     width_dec : float
         Width of screen in Dec in degrees
     """
-    def __init__(self, phase_soltab, amplitude_soltab, ra, dec, width_ra, width_dec):
-        super(VoronoiScreen, self).__init__(phase_soltab, amplitude_soltab, ra, dec,
-                                            width_ra, width_dec)
+    def __init__(self, name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
+                                  solset_name='sol000', phase_soltab_name='phase000', amplitude_soltab_name=None):
+        super(VoronoiScreen, self).__init__(name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
+                                            solset_name=solset_name, phase_soltab_name=phase_soltab_name, amplitude_soltab_name=amplitude_soltab_name)
+        self.data_rasertize_template = None
 
     def fit(self):
         """
         Fitting is not needed: the input solutions are used directly
         """
+        # Open solution tables
+        H = h5parm(self.input_h5parm_filename)
+        solset = H.getSolset(self.input_solset_name)
+        soltab_ph = solset.getSoltab(self.input_phase_soltab_name)
+        if not self.phase_only:
+            soltab_amp = solset.getSoltab(self.input_amplitude_soltab_name)
+
         # Input data are [time, freq, ant, dir, pol] for slow amplitudes
         # and [time, freq, ant, dir] for fast phases (scalarphase).
-        self.vals_ph = self.input_phase_soltab.val[:]
-        self.times_ph = self.input_phase_soltab.time[:]
-        self.freqs_ph = self.input_phase_soltab.freq[:]
-        if self.input_amplitude_soltab is not None:
-            self.vals_amp = self.input_amplitude_soltab.val[:]
-            self.times_amp = self.input_amplitude_soltab.time[:]
-            self.freqs_amp = self.input_amplitude_soltab.freq[:]
+        self.vals_ph = soltab_ph.val
+        self.times_ph = soltab_ph.time
+        self.freqs_ph = soltab_ph.freq
+        if not self.phase_only:
+            self.vals_amp = soltab_amp.val
+            self.times_amp = soltab_amp.time
+            self.freqs_amp = soltab_amp.freq
         else:
             self.vals_amp = np.ones_like(self.vals_ph)
-            self.times_amp = self.input_phase_soltab.time[:]
-            self.freqs_amp = self.input_phase_soltab.freq[:]
+            self.times_amp = self.times_ph
+            self.freqs_amp = self.freqs_ph
 
-        self.source_names = self.input_phase_soltab.dir[:]
-        self.source_dict = self.input_solset.getSou()
+        self.source_names = soltab_ph.dir
+        self.source_dict = solset.getSou()
         self.source_positions = []
         for source in self.source_names:
             self.source_positions.append(self.source_dict[source])
-        self.station_names = self.input_phase_soltab.ant[:]
-        self.station_dict = self.input_solset.getAnt()
+        self.station_names = soltab_ph.ant
+        self.station_dict = solset.getAnt()
         self.station_positions = []
         for station in self.station_names:
             self.station_positions.append(self.station_dict[station])
 
-    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind):
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg, out_dir):
         """
         Makes the matrix of values for the given time, frequency, and station indices
         """
         # Make the template that converts polynomials to a rasterized 2-D image.
         # This only needs to be done once
         if self.data_rasertize_template is None:
-            self.make_rasertize_template()
+            self.make_rasertize_template(cellsize_deg, out_dir)
 
         # Fill the output data array
         data = np.zeros((t_stop_index-t_start_index, 4, self.data_rasertize_template.shape[0],
@@ -505,16 +507,17 @@ class VoronoiScreen(Screen):
                 val_amp_xx = self.vals_amp[t_start_index:t_stop_index, freq_ind, stat_ind, poly.index]
                 val_amp_yy = val_amp_xx
             val_phase = self.vals_ph[t_start_index:t_stop_index, freq_ind, stat_ind, poly.index]
-            data[:, 0, ind[0], ind[1]] = val_amp_xx * np.cos(val_phase)
-            data[:, 2, ind[0], ind[1]] = val_amp_yy * np.cos(val_phase)
-            data[:, 1, ind[0], ind[1]] = val_amp_xx * np.sin(val_phase)
-            data[:, 3, ind[0], ind[1]] = val_amp_yy * np.sin(val_phase)
+            for t in range(t_stop_index-t_start_index):
+                data[t, 0, ind[0], ind[1]] = val_amp_xx[t] * np.cos(val_phase[t])
+                data[t, 2, ind[0], ind[1]] = val_amp_yy[t] * np.cos(val_phase[t])
+                data[t, 1, ind[0], ind[1]] = val_amp_xx[t] * np.sin(val_phase[t])
+                data[t, 3, ind[0], ind[1]] = val_amp_yy[t] * np.sin(val_phase[t])
 
         return data
 
-    def make_rasertize_template(self):
-        temp_image = ''
-        hdu = self.make_fits_file(self, temp_image, self.cellsize_deg, 0, 1, aterm_type='gain')
+    def make_rasertize_template(self, cellsize_deg, out_dir):
+        temp_image = os.path.join(out_dir, '{}_template.fits'.format(self.name))
+        hdu = self.make_fits_file(temp_image, cellsize_deg, 0, 1, aterm_type='gain')
         data = hdu[0].data
         w = wcs.WCS(hdu[0].header)
         RAind = w.axis_type_names.index('RA')
@@ -535,7 +538,7 @@ class VoronoiScreen(Screen):
 
         xy = []
         for RAvert, Decvert in zip(ra_deg, dec_deg):
-            ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+            ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
             ra_dec[0][RAind] = RAvert
             ra_dec[0][Decind] = Decvert
             xy.append((w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind]))
@@ -543,7 +546,7 @@ class VoronoiScreen(Screen):
         # Get boundary of tessellation region in pixels
         bounds_deg = [self.ra+self.width_ra/2.0, self.dec-self.width_dec/2.0,
                       self.ra-self.width_ra/2.0, self.dec+self.width_dec/2.0]
-        ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
+        ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]])
         ra_dec[0][RAind] = max(bounds_deg[0], np.max(ra_deg)+0.1)
         ra_dec[0][Decind] = min(bounds_deg[1], np.min(dec_deg)-0.1)
         field_minxy = (w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind])
@@ -586,8 +589,8 @@ class VoronoiScreen(Screen):
 
         # Rasterize the polygons to an array, with the value being equal to the
         # polygon's index+1
-        data_template = np.ones(data[0, 0, 0, :, :].shape)
-        data_rasertize_template = np.zeros(data[0, 0, 0, :, :].shape)
+        data_template = np.ones(data[0, 0, 0, 0, :, :].shape)
+        data_rasertize_template = np.zeros(data[0, 0, 0, 0, :, :].shape)
         for poly in polygons:
             verts_xy = poly.exterior.xy
             verts = []
@@ -606,7 +609,7 @@ class VoronoiScreen(Screen):
 
 
 def calculate_kl_screen(inscreen, pp, N_piercepoints, k, east, north, up,
-                        T, Nx, Ny, sindx, beta_val, r_0, outQueue):
+                        T, Nx, Ny, beta_val, r_0, outQueue):
     """
     Calculates screen images
 
@@ -632,8 +635,6 @@ def calculate_kl_screen(inscreen, pp, N_piercepoints, k, east, north, up,
         Number of pixels in x for screen
     Ny : int
         Number of pixels in y for screen
-    sindx : int
-        Station index
     beta_val : float
         power-law index for phase structure function (5/3 =>
         pure Kolmogorov turbulence)

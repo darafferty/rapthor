@@ -5,7 +5,8 @@ Script to make a-term images from solutions
 import argparse
 from argparse import RawTextHelpFormatter
 import os
-from rapthor.lib import KLScreen, VoronoiScreen
+from rapthor.lib.screen import KLScreen, VoronoiScreen
+from losoto.h5parm import h5parm
 
 
 def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
@@ -74,9 +75,13 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
     smooth_pix = smooth_deg / cellsize_deg
 
     # Check whether we just have one direction. If so, force screen_type to 'voronoi'
-    source_names = soltab_ph.dir[:]
+    H = h5parm(h5parmfile)
+    solset = H.getSolset(solsetname)
+    soltab = solset.getSoltab(soltab_ph)
+    source_names = soltab.dir[:]
     if len(source_names) == 1:
         screen_type = 'voronoi'
+    H.close()
 
     # Fit screens and make a-term images
     width_ra_deg = bounds_deg[0] - bounds_deg[2]
