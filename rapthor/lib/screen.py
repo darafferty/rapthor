@@ -1,12 +1,25 @@
 """
 Module that holds screen-related classes and functions
 """
-from numpy import kron, concatenate, newaxis
-from numpy.linalg import pinv, norm
+import logging
+from numpy import concatenate, newaxis
+from numpy.linalg import norm
 import numpy as np
 import os
 from rapthor.lib import miscellaneous as misc
-from losoto.operations.stationscreen import _makeWCS, _circ_chi2
+import sys
+from astropy.coordinates import Angle
+from losoto.h5parm import h5parm
+import scipy.interpolate as si
+from astropy.io import fits as pyfits
+import scipy.ndimage as ndimage
+from losoto.operations import reweight, stationscreen
+from astropy import wcs
+import lsmtool
+from shapely.geometry import Point
+from scipy.spatial import Voronoi
+import shapely.geometry
+import shapely.ops
 
 
 class Screen(object):
@@ -27,10 +40,13 @@ class Screen(object):
         Width of screen in RA degrees
     width_dec : float
         Width of screen in Dec in degrees
+    skymodel: str
+        Filename of sky model from which screen solutions were generated
     """
     def __init__(self, name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
                  solset_name='sol000', phase_soltab_name='phase000', amplitude_soltab_name=None):
         self.name = name
+        self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.input_h5parm_filename = h5parm_filename
         self.input_skymodel_filename = skymodel_filename
         self.input_solset_name = solset_name
@@ -74,7 +90,7 @@ class Screen(object):
         """
         pass
 
-    def interpolate(self):
+    def interpolate(self, interp_kind='nearest'):
         """
         Interpolate the slow amplitude values to the fast-phase time and frequency grid
         """
@@ -99,7 +115,7 @@ class Screen(object):
             self.vals_amp = 10**(logvals)
 
     def make_fits_file(self, outfile, cellsize_deg, t_start_index,
-                            t_stop_index, aterm_type='gain'):
+                       t_stop_index, aterm_type='gain'):
         """
         Makes a FITS data cube and returns the Header Data Unit
 
@@ -107,8 +123,6 @@ class Screen(object):
         ----------
         cellsize_deg : float
             Pixel size of image in degrees
-        timestep_sec : float
-            Length of one timestep in seconds
         """
         ximsize = int(self.width_ra / cellsize_deg)  # pix
         yimsize = int(self.width_dec / cellsize_deg)  # pix
@@ -128,16 +142,16 @@ class Screen(object):
         """
         pass
 
-    def write(self, out_dir):
+    def write(self, out_dir, cellsize_deg, smooth_pix=0, interp_kind='nearest'):
         """
         Write the a-term screens to a FITS data cube
 
         Parameters
         ----------
+        out_dir : str
+            Output directory
         cellsize_deg : float
             Pixel size of image in degrees
-        timestep_sec : float
-            Length of one timestep in seconds
         """
         # Identify any gaps in time (frequency gaps are not allowed), as we need to
         # output a separate FITS file for each time chunk
@@ -170,16 +184,16 @@ class Screen(object):
         # Loop over stations, frequencies, and times and fill in the correct
         # matrix values (matrix dimension has 4 elements: real XX, imaginary XX,
         # real YY and imaginary YY)
+        outroot = self.name
         outfiles = []
         g_start = 0
         for gnum, g_stop in enumerate(gaps_ind):
             ntimes = g_stop - g_start
-            outfile = '{0}_{1}.fits'.format(outroot, gnum)
-            hdu = self.make_fits_file(outfile, cellsize_deg=cellsize_deg,
-                                      g_start, g_stop, aterm_type='gain')
+            outfile = os.path.join(out_dir, '{0}_{1}.fits'.format(outroot, gnum))
+            hdu = self.make_fits_file(outfile, cellsize_deg, g_start, g_stop, aterm_type='gain')
             data = hdu[0].data
-            for f, freq in enumerate(freqs):
-                for s, stat in enumerate(ants):
+            for f, freq in enumerate(self.freqs_ph):
+                for s, stat in enumerate(self.station_names):
                     data[:, f, s, :, :, :] = self.make_matrix(g_start, g_stop, f, s)
 
                     # Smooth if desired
@@ -208,7 +222,6 @@ class Screen(object):
             hdu[0].data = data
             hdu.writeto(outfile, overwrite=True)
             outfiles.append(outfile)
-            os.remove(temp_image)
             hdu = None
             data = None
 
@@ -220,7 +233,7 @@ class Screen(object):
         outfile.writelines([o+'\n' for o in outfiles])
         outfile.close()
 
-    def make_aterm_images(self, out_dir):
+    def process(self):
         """
         Makes a-term images
         """
@@ -229,9 +242,6 @@ class Screen(object):
 
         # Interpolate best-fit parameters to common time and frequency grid
         self.interpolate()
-
-        # Make images and write them out to FITS files
-        self.write(out_dir)
 
 
 class KLScreen(Screen):
@@ -315,16 +325,15 @@ class KLScreen(Screen):
         self.midRA = soltab_ph_screen.obj._v_attrs['midra']
         self.midDec = soltab_ph_screen.obj._v_attrs['middec']
 
-    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind):
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, ncpu=0):
         """
         Makes the matrix of values for the given time, frequency, and station indices
         """
         # Define various parameters
-        prestr = os.path.basename(prefix) + 'screen'
         N_sources = len(self.source_names)
         N_times = t_stop_index - t_start_index
         N_piercepoints = N_sources
-        xp, yp, zp = self.station_positions[0, :] # use first station
+        xp, yp, zp = self.station_positions[0, :]
         east = np.array([-yp, xp, 0])
         east = east / norm(east)
         north = np.array([-xp, -yp, (xp*xp + yp*yp)/zp])
@@ -335,8 +344,8 @@ class KLScreen(Screen):
 
         # Use pierce point locations of first and last time slots to estimate
         # required size of plot in meters
-        pp1_0 = pp[:, 0:2]
-        pp1_1 = pp[:, 0:2]
+        pp1_0 = self.pp[:, 0:2]
+        pp1_1 = self.pp[:, 0:2]
 
         max_xy = np.amax(pp1_0, axis=0) - np.amin(pp1_0, axis=0)
         max_xy_1 = np.amax(pp1_1, axis=0) - np.amin(pp1_1, axis=0)
@@ -351,7 +360,7 @@ class KLScreen(Screen):
         upper = max_xy + 0.1 * extent
         im_extent_m = upper - lower
 
-        Nx = 40 # set approximate number of pixels in screen
+        Nx = 40  # set approximate number of pixels in screen
         pix_per_m = Nx / im_extent_m[0]
         m_per_pix = 1.0 / pix_per_m
         xr = np.arange(lower[0], upper[0], m_per_pix)
@@ -373,14 +382,14 @@ class KLScreen(Screen):
             screen_amp_xx = np.array(self.vals_amp[:, freq_ind, stat_ind, :, 0])
             screen_amp_xx = screen_amp_xx.transpose([dir_axis, time_axis, ant_axis])
             screen_amp_yy = np.array(self.vals_amp[:, freq_ind, stat_ind, :, 1])
-            screen_amp_yy = screen_amp_y.transpose([dir_axis, time_axis, ant_axis])
+            screen_amp_yy = screen_amp_yy.transpose([dir_axis, time_axis, ant_axis])
 
         # Process phase screens
         val_phase = np.zeros((Nx, Ny, N_times))
         mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
         for k in range(N_times):
-            mpm.put([screen_ph[:, k, sindx], pp, N_piercepoints, k,
-                     east, north, up, T, Nx, Ny, sindx, beta_val, r_0])
+            mpm.put([screen_ph[:, k, stat_ind], self.pp, N_piercepoints, k,
+                     east, north, up, T, Nx, Ny, stat_ind, self.beta_val, self.r_0])
         mpm.wait()
         for (k, scr) in mpm.get():
             val_phase[:, :, k] = scr
@@ -391,8 +400,8 @@ class KLScreen(Screen):
             val_amp_xx = np.zeros((Nx, Ny, N_times))
             mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
             for k in range(N_times):
-                mpm.put([screen_amp_xx[:, k, sindx], pp, N_piercepoints, k,
-                         east, north, up, T, Nx, Ny, sindx, beta_val, r_0])
+                mpm.put([screen_amp_xx[:, k, stat_ind], self.pp, N_piercepoints, k,
+                         east, north, up, T, Nx, Ny, stat_ind, self.beta_val, self.r_0])
             mpm.wait()
             for (k, scr) in mpm.get():
                 val_amp_xx[:, :, k] = scr
@@ -401,13 +410,14 @@ class KLScreen(Screen):
             val_amp_yy = np.zeros((Nx, Ny, N_times))
             mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
             for k in range(N_times):
-                mpm.put([screen_amp_yy[:, k, sindx], pp, N_piercepoints, k,
-                         east, north, up, T, Nx, Ny, sindx, beta_val, r_0])
+                mpm.put([screen_amp_yy[:, k, stat_ind], self.pp, N_piercepoints, k,
+                         east, north, up, T, Nx, Ny, stat_ind, self.beta_val, self.r_0])
             mpm.wait()
             for (k, scr) in mpm.get():
                 val_amp_yy[:, :, k] = scr
 
         # Output data are [RA, DEC, MATRIX, ANTENNA, FREQ, TIME].T
+        data = np.zeros(N_times, 4, Ny, Nx)
         if self.phase_only:
             data[:, 0, :, :] = np.cos(val_phase.T)
             data[:, 2, :, :] = np.cos(val_phase.T)
@@ -488,13 +498,13 @@ class VoronoiScreen(Screen):
                          self.data_rasertize_template.shape[1]))
         for p, poly in enumerate(self.polygons):
             ind = np.where(self.data_rasertize_template == poly.index+1)
-            if 'pol' in axis_names:
-                val_amp_xx = self.vals_amp[t_start_index:t_stop_index, f, s, poly.index, 0]
-                val_amp_yy = self.vals_amp[t_start_index:t_stop_index, f, s, poly.index, 1]
+            if not self.phase_only:
+                val_amp_xx = self.vals_amp[t_start_index:t_stop_index, freq_ind, stat_ind, poly.index, 0]
+                val_amp_yy = self.vals_amp[t_start_index:t_stop_index, freq_ind, stat_ind, poly.index, 1]
             else:
-                val_amp_xx = self.vals_amp[t_start_index:t_stop_index, f, s, poly.index]
+                val_amp_xx = self.vals_amp[t_start_index:t_stop_index, freq_ind, stat_ind, poly.index]
                 val_amp_yy = val_amp_xx
-            val_phase = self.vals_ph[t_start_index:t_stop_index, f, s, poly.index]
+            val_phase = self.vals_ph[t_start_index:t_stop_index, freq_ind, stat_ind, poly.index]
             data[:, 0, ind[0], ind[1]] = val_amp_xx * np.cos(val_phase)
             data[:, 2, ind[0], ind[1]] = val_amp_yy * np.cos(val_phase)
             data[:, 1, ind[0], ind[1]] = val_amp_xx * np.sin(val_phase)
@@ -513,15 +523,16 @@ class VoronoiScreen(Screen):
         # Get x, y coords for directions in pixels. We use the input calibration sky
         # model for this, as the patch positions written to the h5parm file by DPPP may
         # be different
-        skymod = lsmtool.load(skymodel)
+        skymod = lsmtool.load(self.input_skymodel_filename)
         source_dict = skymod.getPatchPositions()
         source_positions = []
-        for source in source_names:
+        for source in self.source_names:
             radecpos = source_dict[source.strip('[]')]
             source_positions.append([radecpos[0].value, radecpos[1].value])
         source_positions = np.array(source_positions)
         ra_deg = source_positions.T[0]
         dec_deg = source_positions.T[1]
+
         xy = []
         for RAvert, Decvert in zip(ra_deg, dec_deg):
             ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
@@ -530,6 +541,8 @@ class VoronoiScreen(Screen):
             xy.append((w.wcs_world2pix(ra_dec, 0)[0][RAind], w.wcs_world2pix(ra_dec, 0)[0][Decind]))
 
         # Get boundary of tessellation region in pixels
+        bounds_deg = [self.ra+self.width_ra/2.0, self.dec-self.width_dec/2.0,
+                      self.ra-self.width_ra/2.0, self.dec+self.width_dec/2.0]
         ra_dec = np.array([[0.0, 0.0, 0.0, 0.0, 0.0]])
         ra_dec[0][RAind] = max(bounds_deg[0], np.max(ra_deg)+0.1)
         ra_dec[0][Decind] = min(bounds_deg[1], np.min(dec_deg)-0.1)
@@ -627,10 +640,6 @@ def calculate_kl_screen(inscreen, pp, N_piercepoints, k, east, north, up,
     r_0 : float
         scale size of phase fluctuations
     """
-    from numpy import kron, concatenate, newaxis
-    from numpy.linalg import pinv, norm
-    import numpy as np
-
     screen = np.zeros((Nx, Ny))
     pp1 = pp[:, :]
 
@@ -647,8 +656,6 @@ def calculate_kl_screen(inscreen, pp, N_piercepoints, k, east, north, up,
     yr = np.arange(lowerk[1], upperk[1], m_per_pixk)
     D = np.resize(pp, (N_piercepoints, N_piercepoints, 3))
     D = np.transpose(D, (1, 0, 2)) - D
-    D2 = np.sum(D**2, axis=2)
-    C = -(D2 / r_0**2)**(beta_val / 2.0) / 2.0
     f = inscreen.reshape(N_piercepoints)
     for i, xi in enumerate(xr[0: Nx]):
         for j, yi in enumerate(yr[0: Ny]):

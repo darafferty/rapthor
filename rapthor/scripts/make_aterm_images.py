@@ -4,80 +4,14 @@ Script to make a-term images from solutions
 """
 import argparse
 from argparse import RawTextHelpFormatter
-from losoto.h5parm import h5parm
-import lsmtool
 import os
-import numpy as np
-from rapthor.lib import miscellaneous as misc
-from astropy.io import fits as pyfits
-from astropy import wcs
-from shapely.geometry import Point
-from scipy.spatial import Voronoi
-import shapely.geometry
-import shapely.ops
-import scipy.ndimage as ndimage
-import scipy.interpolate as si
-from losoto.operations import reweight, stationscreen
-
-
-def interpolate_amps(soltab_amp, soltab_ph, interp_kind='nearest'):
-    """
-    Interpolate slow amplitudes to time and frequency grid of fast phases
-
-    Note: interpolation is done in log space.
-
-    Parameters
-    ----------
-    soltab_amp : soltab
-        Soltab with slow amplitudes
-    soltab_ph : soltab
-        Soltab with fast phases
-    interp_kind : str, optional
-        Kind of interpolation to use. Can be any supported by scipy.interpolate.interp1d
-
-    Returns
-    -------
-    vals : array
-        Array of interpolated amplitudes
-
-    """
-    vals = soltab_amp.val
-    times_slow = soltab_amp.time
-    freqs_slow = soltab_amp.freq
-    times_fast = soltab_ph.time
-    freqs_fast = soltab_ph.freq
-
-    # Interpolate the slow amps to the fast times and frequencies
-    axis_names = soltab_amp.getAxesNames()
-    time_ind = axis_names.index('time')
-    freq_ind = axis_names.index('freq')
-    fast_axis_names = soltab_ph.getAxesNames()
-    fast_time_ind = fast_axis_names.index('time')
-    fast_freq_ind = fast_axis_names.index('freq')
-    if len(times_slow) == 1:
-        # If just a single time, we just repeat the values as needed
-        new_shape = list(vals.shape)
-        new_shape[time_ind] = vals_ph.shape[fast_time_ind]
-        new_shape[freq_ind] = vals_ph.shape[fast_freq_ind]
-        vals = np.resize(vals, new_shape)
-    else:
-        # Interpolate (in log space)
-        logvals = np.log10(vals)
-        if vals.shape[time_ind] != vals_ph.shape[fast_time_ind]:
-            f = si.interp1d(times_slow, logvals, axis=time_ind, kind=interp_kind, fill_value='extrapolate')
-            logvals = f(times_fast)
-        if vals.shape[freq_ind] != vals_ph.shape[fast_freq_ind]:
-            f = si.interp1d(freqs_slow, logvals, axis=freq_ind, kind=interp_kind, fill_value='extrapolate')
-            logvals = f(freqs_fast)
-        vals = 10**(logvals)
-
-    return vals
+from rapthor.lib import KLScreen, VoronoiScreen
 
 
 def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
          bounds_deg=None, bounds_mid_deg=None, skymodel=None,
          solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.1,
-         smooth_deg=0, time_avg_factor=1, interp_kind='nearest'):
+         smooth_deg=0, interp_kind='nearest'):
     """
     Make a-term FITS images
 
@@ -106,8 +40,6 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
         Cellsize of output image
     smooth_deg : float, optional
         Size of smoothing kernel in degrees to apply
-    time_avg_factor : int, optional
-        Averaging factor in time for fast-phase corrections
     interp_kind : str, optional
         Kind of interpolation to use. Can be any supported by scipy.interpolate.interp1d
 
@@ -116,17 +48,14 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
     result : dict
         Dict with list of FITS files
     """
-    # Read in solutions
-    H = h5parm(h5parmfile)
-    solset = H.getSolset(solsetname)
     if 'gain' in soltabname:
         # We have scalarphase and XX+YY amplitudes
-        soltab_amp = solset.getSoltab(soltabname.replace('gain', 'amplitude'))
-        soltab_ph = solset.getSoltab(soltabname.replace('gain', 'phase'))
+        soltab_amp = soltabname.replace('gain', 'amplitude')
+        soltab_ph = soltabname.replace('gain', 'phase')
     else:
         # We have scalarphase only
         soltab_amp = None
-        soltab_ph = solset.getSoltab(soltabname)
+        soltab_ph = soltabname
 
     if type(bounds_deg) is str:
         bounds_deg = [float(f.strip()) for f in bounds_deg.strip('[]').split(';')]
@@ -143,42 +72,27 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
     cellsize_deg = float(cellsize_deg)
     smooth_deg = float(smooth_deg)
     smooth_pix = smooth_deg / cellsize_deg
-    time_avg_factor = int(time_avg_factor)
 
     # Check whether we just have one direction. If so, force screen_type to 'voronoi'
     source_names = soltab_ph.dir[:]
     if len(source_names) == 1:
         screen_type = 'voronoi'
 
+    # Fit screens and make a-term images
+    width_ra_deg = bounds_deg[0] - bounds_deg[2]
+    width_dec_deg = bounds_deg[3] - bounds_deg[1]
+    rootname = os.path.basename(outroot)
     if screen_type == 'kl':
-        # Do Karhunen-Lo`eve transform
-        # Reweight the solutions by the scatter after detrending
-        reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
-        if soltab_amp is not None:
-            reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
-
-        # Now call LoSoTo's stationscreen operation to do the fitting
-        stationscreen.run(soltab_ph, 'phase_screen000')
-        soltab_ph_screen = solset.getSoltab('phase_screen000')
-        soltab_ph_screen_resid = solset.getSoltab('phase_screen000resid')
-        if soltab_amp is not None:
-            stationscreen.run(soltab_amp, 'amplitude_screen000')
-            soltab_amp_screen = solset.getSoltab('amplitude_screen000')
-            soltab_amp_screen_resid = solset.getSoltab('amplitude_screen000resid')
-        else:
-            soltab_amp_screen = None
-            soltab_amp_screen_resid = None
-
-        # Transform the screens into FITS images
-        make_kl_screen_images(soltab_ph_screen, soltab_ph_screen_resid,
-                              soltab_amp=soltab_amp_screen,
-                              resSoltab_amp=soltab_amp_screen_resid,
-                              prefix='', ncpu=0)
-
+        screen = KLScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
+                          width_ra_deg, width_dec_deg, solset_name=solsetname,
+                          phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
     elif screen_type == 'voronoi':
-        # Do Voronoi tessellation + smoothing
-        make_voronoi_screen_images(soltab_ph, soltab_amp, bounds_mid_deg)
-
+        screen = VoronoiScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
+                               width_ra_deg, width_dec_deg, solset_name=solsetname,
+                               phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
+    screen.process()
+    outdir = os.path.dirname(outroot)
+    screen.write(outdir, cellsize_deg, smooth_pix=smooth_pix, interp_kind=interp_kind)
 
 
 if __name__ == '__main__':
@@ -196,11 +110,9 @@ if __name__ == '__main__':
     parser.add_argument('--padding_fraction', help='Padding fraction', type=float, default=1.4)
     parser.add_argument('--cellsize_deg', help='Cell size in deg', type=float, default=0.1)
     parser.add_argument('--smooth_deg', help='Smooth scale in degree', type=float, default=0.0)
-    parser.add_argument('--time_avg_factor', help='Averaging factor in time', type=int, default=1)
     args = parser.parse_args()
     main(args.h5parmfile, soltabname=args.soltabname, screen_type=args.screen_type,
          outroot=args.outroot, bounds_deg=args.bounds_deg,
          bounds_mid_deg=args.bounds_mid_deg, skymodel=args.skymodel,
          solsetname=args.solsetname, padding_fraction=args.padding_fraction,
-         cellsize_deg=args.cellsize_deg, smooth_deg=args.smooth_deg,
-         time_avg_factor=args.time_avg_factor)
+         cellsize_deg=args.cellsize_deg, smooth_deg=args.smooth_deg)
