@@ -56,6 +56,7 @@ class Field(object):
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
+        self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False

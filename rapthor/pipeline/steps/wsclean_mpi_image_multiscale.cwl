@@ -1,118 +1,99 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [wsclean]
-label: "Images a dataset using WSClean+IDG"
+baseCommand: [run_wsclean_multiscale_mpi.sh]
+label: "Images a dataset using WSClean+IDG, distributed over multiple nodes with MPI"
 
 requirements:
   InlineJavascriptRequirement: {}
-
-arguments:
-  - -no-update-model-required
-  - -fit-beam
-  - -reorder
-  - -save-source-list
-  - -local-rms
-  - -join-channels
-  - -use-idg
-  - valueFrom: 'I'
-    prefix: -pol
-  - valueFrom: '0.6'
-    prefix: -mgain
-  - valueFrom: '3'
-    prefix: -fit-spectral-pol
-  - valueFrom: '2048'
-    prefix: -parallel-deconvolution
-  - valueFrom: '3'
-    prefix: -weighting-rank-filter
-  - valueFrom: '1.0'
-    prefix: -auto-threshold
-  - valueFrom: '50'
-    prefix: -local-rms-window
-  - valueFrom: 'rms-with-min'
-    prefix: -local-rms-method
-  - valueFrom: '32'
-    prefix: -aterm-kernel-size
-  - valueFrom: 'briggs'
-    # Note: we have to set part of the 'weight' argument here and part below, as it has
-    # three parts (e.g., '-weight briggs -0.5'), and WSClean will not parse the value
-    # correctly if it's given together with 'briggs'. We force the parts to be adjacent
-    # using the position arg here and below
-    prefix: -weight
-    position: 1
+  ShellCommandRequirement: {}
 
 inputs:
   - id: msin
     type: string[]
     inputBinding:
-      position: 3
+      prefix: -m
+      itemSeparator: " "
   - id: name
     type: string
     inputBinding:
-      prefix: -name
+      prefix: -n
   - id: mask
     type: string
     inputBinding:
-      prefix: -fits-mask
+      prefix: -k
   - id: config
     type: string
     inputBinding:
-      prefix: -aterm-config
+      prefix: -c
   - id: wsclean_imsize
     type: int[]
     inputBinding:
-      prefix: -size
+      prefix: -z
+      itemSeparator: " "
   - id: wsclean_niter
     type: int
     inputBinding:
-      prefix: -niter
+      prefix: -i
   - id: wsclean_nmiter
     type: int
     inputBinding:
-      prefix: -nmiter
+      prefix: -j
   - id: robust
     type: float
     inputBinding:
-      position: 2
+      prefix: -r
   - id: wsclean_image_padding
     type: float
     inputBinding:
-      prefix: -padding
+      prefix: -p
   - id: min_uv_lambda
     type: float
     inputBinding:
-      prefix: -minuv-l
+      prefix: -u
   - id: max_uv_lambda
     type: float
     inputBinding:
-      prefix: -maxuv-l
+      prefix: -v
   - id: cellsize_deg
     type: float
     inputBinding:
-      prefix: -scale
+      prefix: -x
+  - id: multiscale_scales_pixel
+    type: string
+    inputBinding:
+      prefix: -s
   - id: dir_local
     type: string
     inputBinding:
-      prefix: -temp-dir
+      prefix: -l
   - id: channels_out
     type: int
     inputBinding:
-      prefix: -channels-out
+      prefix: -o
   - id: deconvolution_channels
     type: int
     inputBinding:
-      prefix: -deconvolution-channels
+      prefix: -d
   - id: taper_arcsec
     type: float
     inputBinding:
-      prefix: -taper-gaussian
+      prefix: -t
   - id: auto_mask
     type: float
     inputBinding:
-      prefix: -auto-mask
+      prefix: -a
   - id: idg_mode
     type: string
     inputBinding:
-      prefix: -idg-mode
+      prefix: -g
+  - id: ntasks
+    type: int
+    inputBinding:
+      prefix: -y
+  - id: nnodes
+    type: int
+    inputBinding:
+      prefix: -q
 
 outputs:
   - id: image_nonpb_name

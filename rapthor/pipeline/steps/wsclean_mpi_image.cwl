@@ -58,10 +58,6 @@ inputs:
     type: float
     inputBinding:
       prefix: -x
-  - id: multiscale_scales_pixel
-    type: string
-    inputBinding:
-      prefix: -s
   - id: dir_local
     type: string
     inputBinding:

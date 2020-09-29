@@ -8,6 +8,7 @@ requirements:
 
 arguments:
   - -no-update-model-required
+  - -multiscale
   - -fit-beam
   - -reorder
   - -save-source-list
@@ -22,6 +23,8 @@ arguments:
     prefix: -fit-spectral-pol
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
+  - valueFrom: 'gaussian'
+    prefix: -multiscale-shape
   - valueFrom: '3'
     prefix: -weighting-rank-filter
   - valueFrom: '1.0'
@@ -89,6 +92,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
+  - id: multiscale_scales_pixel
+    type: string
+    inputBinding:
+      prefix: -multiscale-scales
   - id: dir_local
     type: string
     inputBinding:
