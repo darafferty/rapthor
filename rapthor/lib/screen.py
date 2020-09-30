@@ -280,6 +280,22 @@ class KLScreen(Screen):
         if not self.phase_only:
             soltab_amp = solset.getSoltab(self.input_amplitude_soltab_name)
 
+        # Set the position of the calibration patches to those of
+        # the input sky model, as the patch positions written to the h5parm
+        # file by DPPP may be different
+        skymod = lsmtool.load(self.input_skymodel_filename)
+        source_dict = skymod.getPatchPositions()
+        source_positions = []
+        for source in self.source_names:
+            radecpos = source_dict[source.strip('[]')]
+            source_positions.append([radecpos[0].value, radecpos[1].value])
+        source_positions = np.array(source_positions)
+        ra_deg = source_positions.T[0]
+        dec_deg = source_positions.T[1]
+        sourceTable = solset.obj._f_get_child('source')
+        vals = [[ra, dec] for ra, dec in zip(ra_deg, dec_deg)]
+        sourceTable.append(list(zip(*(self.source_names, vals))))
+
         # Reweight the input solutions by the scatter after detrending
 #        reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
 #        if self.input_amplitude_soltab_name is not None:
@@ -336,33 +352,28 @@ class KLScreen(Screen):
         up = up / norm(up)
         T = concatenate([east[:, newaxis], north[:, newaxis]], axis=1)
 
-        # Use pierce point locations of first and last time slots to estimate
-        # required size of plot in meters
-        pp1_0 = self.pp[:, 0:2]
-        pp1_1 = self.pp[:, 0:2]
+        ra_deg = self.source_positions.T[0]
+        dec_deg = self.source_positions.T[1]
+        xy, _, _ = stationscreen._getxy(ra_deg, dec_deg, midRA=self.midRA, midDec=self.midDec)
 
-        max_xy = np.amax(pp1_0, axis=0) - np.amin(pp1_0, axis=0)
-        max_xy_1 = np.amax(pp1_1, axis=0) - np.amin(pp1_1, axis=0)
-        if max_xy_1[0] > max_xy[0]:
-            max_xy[0] = max_xy_1[0]
-        if max_xy_1[1] > max_xy[1]:
-            max_xy[1] = max_xy_1[1]
+        # Get boundary of screen region in pixels
+        bounds_deg = [self.ra+self.width_ra/2.0, self.dec-self.width_dec/2.0,
+                      self.ra-self.width_ra/2.0, self.dec+self.width_dec/2.0]
+        ra_max = [max(bounds_deg[0], np.max(ra_deg)+0.1)]
+        dec_min = [min(bounds_deg[1], np.min(dec_deg)-0.1)]
+        field_minxy = stationscreen._getxy(ra_max, dec_min, midRA=self.midRA, midDec=self.midDec)[0]
+        ra_min = [min(bounds_deg[2], np.min(ra_deg)-0.1)]
+        dec_max = [max(bounds_deg[3], np.max(dec_deg)+0.1)]
+        field_maxxy = stationscreen._getxy(ra_min, dec_max, midRA=self.midRA, midDec=self.midDec)[0]
 
-        min_xy = np.array([0.0, 0.0])
-        extent = max_xy - min_xy
-        lower = min_xy - 0.1 * extent
-        upper = max_xy + 0.1 * extent
-        im_extent_m = upper - lower
-
-        Nx = 40  # set approximate number of pixels in screen
-        pix_per_m = Nx / im_extent_m[0]
-        m_per_pix = 1.0 / pix_per_m
-        xr = np.arange(lower[0], upper[0], m_per_pix)
-        yr = np.arange(lower[1], upper[1], m_per_pix)
-        Nx = len(xr)
-        Ny = len(yr)
-        lower = np.array([xr[0], yr[0]])
-        upper = np.array([xr[-1], yr[-1]])
+        # Make arrays of pixel coordinates for screen
+        pix1 = stationscreen._getxy(self.midRA, self.midDec, midRA=self.midRA, midDec=self.midDec)[0]
+        pix2 = stationscreen._getxy(self.midRA, self.midDec+cellsize_deg, midRA=self.midRA, midDec=self.midDec)[0]
+        cellsize_pix = pix2[1] - pix1[1]
+        x = np.arange(field_minxy[0], field_maxxy[0], cellsize_pix)
+        y = np.arange(field_minxy[1], field_maxxy[1], cellsize_pix)
+        Nx = len(x)
+        Ny = len(y)
 
         # Select input data and reorder the axes to get axis order of [dir, time]
         # Input data are [time, freq, ant, dir, pol] for slow amplitudes
@@ -382,7 +393,7 @@ class KLScreen(Screen):
         mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
         for k in range(N_times):
             mpm.put([screen_ph[:, k], self.pp, N_piercepoints, k,
-                     east, north, up, T, Nx, Ny, self.beta_val, self.r_0])
+                     east, north, up, T, x, y, self.beta_val, self.r_0])
         mpm.wait()
         for (k, scr) in mpm.get():
             val_phase[:, :, k] = scr
@@ -394,7 +405,7 @@ class KLScreen(Screen):
             mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
             for k in range(N_times):
                 mpm.put([screen_amp_xx[:, k], self.pp, N_piercepoints, k,
-                         east, north, up, T, Nx, Ny, self.beta_val, self.r_0])
+                         east, north, up, T, x, y, self.beta_val, self.r_0])
             mpm.wait()
             for (k, scr) in mpm.get():
                 val_amp_xx[:, :, k] = scr
@@ -404,7 +415,7 @@ class KLScreen(Screen):
             mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
             for k in range(N_times):
                 mpm.put([screen_amp_yy[:, k], self.pp, N_piercepoints, k,
-                         east, north, up, T, Nx, Ny, self.beta_val, self.r_0])
+                         east, north, up, T, x, y, self.beta_val, self.r_0])
             mpm.wait()
             for (k, scr) in mpm.get():
                 val_amp_yy[:, :, k] = scr
@@ -445,7 +456,7 @@ class VoronoiScreen(Screen):
         Width of screen in Dec in degrees
     """
     def __init__(self, name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
-                                  solset_name='sol000', phase_soltab_name='phase000', amplitude_soltab_name=None):
+                 solset_name='sol000', phase_soltab_name='phase000', amplitude_soltab_name=None):
         super(VoronoiScreen, self).__init__(name, h5parm_filename, skymodel_filename, ra, dec, width_ra, width_dec,
                                             solset_name=solset_name, phase_soltab_name=phase_soltab_name, amplitude_soltab_name=amplitude_soltab_name)
         self.data_rasertize_template = None
@@ -609,7 +620,7 @@ class VoronoiScreen(Screen):
 
 
 def calculate_kl_screen(inscreen, pp, N_piercepoints, k, east, north, up,
-                        T, Nx, Ny, beta_val, r_0, outQueue):
+                        T, x, y, beta_val, r_0, outQueue):
     """
     Calculates screen images
 
@@ -631,35 +642,25 @@ def calculate_kl_screen(inscreen, pp, N_piercepoints, k, east, north, up,
         Up array
     T : array
         T array
-    Nx : int
-        Number of pixels in x for screen
-    Ny : int
-        Number of pixels in y for screen
+    x : int
+        X coordinate for pixels in screen
+    y : int
+        Y coordinate for pixels in screen
     beta_val : float
         power-law index for phase structure function (5/3 =>
         pure Kolmogorov turbulence)
     r_0 : float
         scale size of phase fluctuations
     """
+    Nx = len(x)
+    Ny = len(y)
     screen = np.zeros((Nx, Ny))
-    pp1 = pp[:, :]
 
-    min_xy = np.amin(pp1, axis=0)
-    max_xy = np.amax(pp1, axis=0)
-    extent = max_xy - min_xy
-    lowerk = min_xy - 0.1 * extent
-    upperk = max_xy + 0.1 * extent
-    im_extent_mk = upperk - lowerk
-    pix_per_mk = Nx / im_extent_mk[0]
-    m_per_pixk = 1.0 / pix_per_mk
-
-    xr = np.arange(lowerk[0], upperk[0], m_per_pixk)
-    yr = np.arange(lowerk[1], upperk[1], m_per_pixk)
     D = np.resize(pp, (N_piercepoints, N_piercepoints, 3))
     D = np.transpose(D, (1, 0, 2)) - D
     f = inscreen.reshape(N_piercepoints)
-    for i, xi in enumerate(xr[0: Nx]):
-        for j, yi in enumerate(yr[0: Ny]):
+    for i, xi in enumerate(x):
+        for j, yi in enumerate(y):
             p = np.array([xi, yi, 0.0])
             d2 = np.sum(np.square(pp - p), axis=1)
             c = -(d2 / ( r_0**2 ))**(beta_val / 2.0) / 2.0
