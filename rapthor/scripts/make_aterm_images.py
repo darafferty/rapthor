@@ -11,7 +11,7 @@ from losoto.h5parm import h5parm
 
 def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
          bounds_deg=None, bounds_mid_deg=None, skymodel=None,
-         solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.1,
+         solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.2,
          smooth_deg=0, interp_kind='nearest'):
     """
     Make a-term FITS images
@@ -84,16 +84,15 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
     H.close()
 
     # Fit screens and make a-term images
-    width_ra_deg = bounds_deg[0] - bounds_deg[2]
-    width_dec_deg = bounds_deg[3] - bounds_deg[1]
+    width_deg = bounds_deg[3] - bounds_deg[1]  # Use Dec difference and force square images
     rootname = os.path.basename(outroot)
     if screen_type == 'kl':
         screen = KLScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
-                          width_ra_deg, width_dec_deg, solset_name=solsetname,
+                          width_deg, width_deg, solset_name=solsetname,
                           phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
     elif screen_type == 'voronoi':
         screen = VoronoiScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
-                               width_ra_deg, width_dec_deg, solset_name=solsetname,
+                               width_deg, width_deg, solset_name=solsetname,
                                phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
     screen.process()
     outdir = os.path.dirname(outroot)
@@ -113,7 +112,7 @@ if __name__ == '__main__':
     parser.add_argument('--skymodel', help='Filename of sky model', type=str, default=None)
     parser.add_argument('--solsetname', help='Solset name', type=str, default='sol000')
     parser.add_argument('--padding_fraction', help='Padding fraction', type=float, default=1.4)
-    parser.add_argument('--cellsize_deg', help='Cell size in deg', type=float, default=0.1)
+    parser.add_argument('--cellsize_deg', help='Cell size in deg', type=float, default=0.2)
     parser.add_argument('--smooth_deg', help='Smooth scale in degree', type=float, default=0.0)
     args = parser.parse_args()
     main(args.h5parmfile, soltabname=args.soltabname, screen_type=args.screen_type,
