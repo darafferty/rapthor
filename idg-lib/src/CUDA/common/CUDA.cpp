@@ -101,8 +101,8 @@ ProxyInfo CUDA::default_info() {
   return p;
 }  // end default_info
 
-std::shared_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
-  return std::shared_ptr<auxiliary::Memory>(new cu::HostMemory(bytes));
+std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
+  return std::unique_ptr<auxiliary::Memory>(new cu::HostMemory(bytes));
 }
 
 std::vector<int> CUDA::compute_jobsize(const Plan& plan,

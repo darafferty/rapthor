@@ -323,33 +323,14 @@ void print_version() {
   cout << GIT_BRANCH << ":" << GIT_REV << endl;
 }
 
-DefaultMemory::DefaultMemory(size_t bytes) {
-  if (bytes > 0) {
-    m_bytes = bytes;
-    m_ptr = malloc(bytes);
-  }
-}
+DefaultMemory::DefaultMemory(size_t bytes) : Memory(malloc(bytes)) {}
 
-DefaultMemory::~DefaultMemory() {
-  if (m_bytes > 0) {
-    free(m_ptr);
-  }
-}
+DefaultMemory::~DefaultMemory() { free(get()); };
 
-AlignedMemory::AlignedMemory(size_t bytes) {
-  void *ptr = nullptr;
-  if (bytes > 0) {
-    ptr = allocate_memory<char>(bytes, m_alignment);
-  }
-  m_bytes = bytes;
-  m_ptr = ptr;
-}
+AlignedMemory::AlignedMemory(size_t bytes)
+    : Memory(allocate_memory<char>(bytes, m_alignment)) {}
 
-AlignedMemory::~AlignedMemory() {
-  if (m_bytes > 0) {
-    free(m_ptr);
-  }
-}
+AlignedMemory::~AlignedMemory() { free(get()); };
 
 }  // namespace auxiliary
 }  // namespace idg

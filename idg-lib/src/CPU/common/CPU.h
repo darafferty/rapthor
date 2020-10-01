@@ -21,8 +21,7 @@ class CPU : public Proxy {
   // Destructor
   virtual ~CPU();
 
-  virtual std::shared_ptr<auxiliary::Memory> allocate_memory(
-      size_t bytes) override;
+  std::unique_ptr<auxiliary::Memory> allocate_memory(size_t bytes) override;
 
   virtual bool supports_wstack_gridding() override {
     return kernels.has_adder_wstack();

@@ -121,7 +121,9 @@ HostMemory::HostMemory(size_t size, int flags) {
   m_capacity = size;
   m_bytes = size;
   _flags = flags;
-  assertCudaCall(cuMemHostAlloc(&m_ptr, size, _flags));
+  void *ptr;
+  assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
+  set(ptr);
 }
 
 HostMemory::~HostMemory() { release(); }
@@ -132,15 +134,17 @@ void HostMemory::resize(size_t size) {
     m_bytes = size;
   } else if (size > m_capacity) {
     release();
-    assertCudaCall(cuMemHostAlloc(&m_ptr, size, _flags));
+    void *ptr;
+    assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
     m_bytes = size;
     m_capacity = size;
+    set(ptr);
   }
 }
 
-void HostMemory::release() { assertCudaCall(cuMemFreeHost(m_ptr)); }
+void HostMemory::release() { assertCudaCall(cuMemFreeHost(get())); }
 
-void HostMemory::zero() { memset(m_ptr, 0, m_bytes); }
+void HostMemory::zero() { memset(get(), 0, m_bytes); }
 
 /*
     RegisteredMemory
@@ -149,7 +153,7 @@ RegisteredMemory::RegisteredMemory(void *ptr, size_t size, int flags) {
   m_bytes = size;
   _flags = flags;
   assert(ptr != NULL);
-  m_ptr = ptr;
+  set(ptr);
   checkCudaCall(cuMemHostRegister(ptr, size, _flags));
 }
 
@@ -159,9 +163,9 @@ void RegisteredMemory::resize(size_t size) {
   throw std::runtime_error("RegisteredMemory can not be resized!");
 }
 
-void RegisteredMemory::release() { checkCudaCall(cuMemHostUnregister(m_ptr)); }
+void RegisteredMemory::release() { checkCudaCall(cuMemHostUnregister(get())); }
 
-void RegisteredMemory::zero() { memset(m_ptr, 0, m_bytes); }
+void RegisteredMemory::zero() { memset(get(), 0, m_bytes); }
 
 /*
     DeviceMemory

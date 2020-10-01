@@ -75,24 +75,28 @@ class Context {
 };
 
 class Memory : public idg::auxiliary::Memory {
+ protected:
+  Memory() : idg::auxiliary::Memory(nullptr) {}
+
  public:
   size_t capacity() { return m_capacity; }
-  void *ptr() { return m_ptr; }
+  void *ptr() { return get(); }
   size_t size() { return m_bytes; }
   virtual void resize(size_t size) = 0;
   template <typename T>
   operator T *() {
-    return static_cast<T *>(m_ptr);
+    return static_cast<T *>(get());
   }
 
  protected:
+  size_t m_bytes;
   size_t m_capacity = 0;
 };
 
-class HostMemory : public virtual Memory {
+class HostMemory : public Memory {
  public:
   HostMemory(size_t size = 0, int flags = CU_MEMHOSTALLOC_PORTABLE);
-  virtual ~HostMemory();
+  ~HostMemory();
 
   void resize(size_t size) override;
   void zero();
@@ -102,11 +106,11 @@ class HostMemory : public virtual Memory {
   int _flags;
 };
 
-class RegisteredMemory : public virtual Memory {
+class RegisteredMemory : public Memory {
  public:
   RegisteredMemory(void *ptr, size_t size,
                    int flags = CU_MEMHOSTREGISTER_PORTABLE);
-  virtual ~RegisteredMemory();
+  ~RegisteredMemory();
 
   void resize(size_t size) override;
   void zero();

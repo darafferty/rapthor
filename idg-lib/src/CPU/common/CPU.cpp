@@ -38,8 +38,8 @@ CPU::~CPU() {
   fftwf_cleanup();
 }
 
-std::shared_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes) {
-  return std::shared_ptr<auxiliary::Memory>(
+std::unique_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes) {
+  return std::unique_ptr<auxiliary::Memory>(
       new auxiliary::AlignedMemory(bytes));
 }
 
