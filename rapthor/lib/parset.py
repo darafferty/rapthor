@@ -598,7 +598,10 @@ def get_cluster_options(parset):
     if 'max_nodes' in parset_dict:
         parset_dict['max_nodes'] = parset.getint('cluster', 'max_nodes')
     else:
-        parset_dict['max_nodes'] = 12
+        if parset_dict['batch_system'] == 'singleMachine':
+            parset_dict['max_nodes'] = 1
+        else:
+            parset_dict['max_nodes'] = 12
 
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes

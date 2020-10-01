@@ -63,10 +63,7 @@ class Operation(object):
         self.temp_dir = self.parset['cluster_specific']['dir_local']
 
         # Maximum number of nodes to use
-        if batch_system == 'singleMachine':
-            self.max_nodes = 1
-        else:
-            self.max_nodes = self.parset['cluster_specific']['max_nodes']
+        self.max_nodes = self.parset['cluster_specific']['max_nodes']
 
         # Directory that holds the pipeline logs in a convenient place
         self.log_dir = os.path.join(self.rapthor_working_dir, 'logs', self.name)
