@@ -100,8 +100,10 @@ inputs:
     type: float[]
   - id: max_uv_lambda
     type: float[]
+{% if do_multiscale_clean %}
   - id: multiscale_scales_pixel
     type: string[]
+{% endif %}
   - id: dir_local
     type: string[]
   - id: taper_arcsec
@@ -191,8 +193,10 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
+{% if do_multiscale_clean %}
       - id: multiscale_scales_pixel
         source: multiscale_scales_pixel
+{% endif %}
       - id: dir_local
         source: dir_local
       - id: taper_arcsec
@@ -217,9 +221,12 @@ steps:
 {% if use_mpi %}
               mpi_ntasks_per_node, mpi_nnodes,
 {% endif %}
+{% if do_multiscale_clean %}
+              multiscale_scales_pixel,
+{% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
-              max_uv_lambda, multiscale_scales_pixel, dir_local, taper_arcsec,
+              max_uv_lambda, dir_local, taper_arcsec,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% else %}
