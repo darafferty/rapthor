@@ -1,4 +1,5 @@
 #include "BufferSetImpl.h"
+#include "BulkDegridderImpl.h"
 #include "GridderBufferImpl.h"
 #include "DegridderBufferImpl.h"
 #include "common/Math.h"
@@ -65,11 +66,10 @@ int nextcomposite(int n) {
 }
 
 BufferSetImpl::BufferSetImpl(Type architecture)
-    : m_architecture(architecture),
-      m_default_aterm_correction(0, 0, 0, 0),
+    : m_default_aterm_correction(0, 0, 0, 0),
       m_avg_aterm_correction(0, 0, 0, 0),
       m_grid(new Grid(0, 0, 0, 0)),
-      m_proxy(create_proxy()),
+      m_proxy(create_proxy(architecture)),
       m_get_image_watch(Stopwatch::create()),
       m_set_image_watch(Stopwatch::create()),
       m_avg_beam_watch(Stopwatch::create()),
@@ -80,45 +80,43 @@ BufferSetImpl::BufferSetImpl(Type architecture)
 BufferSetImpl::~BufferSetImpl() {
   m_gridderbuffers.clear();
   m_degridderbuffers.clear();
-  if (m_proxy) {
-    delete m_proxy;
-  }
+  m_proxy.reset();
   report_runtime();
 }
 
-proxy::Proxy* BufferSetImpl::create_proxy() {
-  proxy::Proxy* proxy;
+std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
+  std::unique_ptr<proxy::Proxy> proxy;
   int nr_correlations = 4;
 
-  if (m_architecture == Type::CPU_REFERENCE) {
+  if (architecture == Type::CPU_REFERENCE) {
 #if defined(BUILD_LIB_CPU)
-    proxy = new proxy::cpu::Reference();
+    proxy.reset(new proxy::cpu::Reference());
 #else
     throw std::runtime_error(
         "Can not create CPU_REFERENCE proxy. idg-lib was built with "
         "BUILD_LIB_CPU=OFF");
 #endif
-  } else if (m_architecture == Type::CPU_OPTIMIZED) {
+  } else if (architecture == Type::CPU_OPTIMIZED) {
 #if defined(BUILD_LIB_CPU)
-    proxy = new proxy::cpu::Optimized();
+    proxy.reset(new proxy::cpu::Optimized());
 #else
     throw std::runtime_error(
         "Can not create CPU_OPTIMIZED proxy. idg-lib was built with "
         "BUILD_LIB_CPU=OFF");
 #endif
   }
-  if (m_architecture == Type::CUDA_GENERIC) {
+  if (architecture == Type::CUDA_GENERIC) {
 #if defined(BUILD_LIB_CUDA)
-    proxy = new proxy::cuda::Generic();
+    proxy.reset(new proxy::cuda::Generic());
 #else
     throw std::runtime_error(
         "Can not create CUDA_GENERIC proxy. idg-lib was built with "
         "BUILD_LIB_CUDA=OFF");
 #endif
   }
-  if (m_architecture == Type::HYBRID_CUDA_CPU_OPTIMIZED) {
+  if (architecture == Type::HYBRID_CUDA_CPU_OPTIMIZED) {
 #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
-    proxy = new proxy::hybrid::GenericOptimized();
+    proxy.reset(new proxy::hybrid::GenericOptimized());
 #else
     throw std::runtime_error(
         std::string("Can not create HYBRID_CUDA_CPU_OPTIMIZED proxy.\n") +
@@ -139,9 +137,9 @@ proxy::Proxy* BufferSetImpl::create_proxy() {
     );
 #endif
   }
-  if (m_architecture == Type::OPENCL_GENERIC) {
+  if (architecture == Type::OPENCL_GENERIC) {
 #if defined(BUILD_LIB_OPENCL)
-    proxy = new proxy::opencl::Generic();
+    proxy.reset(new proxy::opencl::Generic());
 #else
     throw std::runtime_error(
         "Can not create OPENCL_GENERIC proxy. idg-lib was built with "
@@ -149,8 +147,7 @@ proxy::Proxy* BufferSetImpl::create_proxy() {
 #endif
   }
 
-  if (proxy == nullptr)
-    throw std::invalid_argument("Unknown architecture type.");
+  if (!proxy) throw std::invalid_argument("Unknown architecture type.");
 
   return proxy;
 }
@@ -231,13 +228,11 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
   // reserved space in subgrid for time
-  m_uv_span_time = 8.0;
-
-  m_uv_span_frequency = 8.0;
+  const float uv_span_time = 8.0;
+  const float uv_span_frequency = 8.0;
 
   m_subgridsize =
-      int(std::ceil((m_kernel_size + m_uv_span_time + m_uv_span_frequency) /
-                    8.0)) *
+      int(std::ceil((m_kernel_size + uv_span_time + uv_span_frequency) / 8.0)) *
       8;
 
   m_default_aterm_correction =
@@ -276,6 +271,14 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     float y = m_taper_grid[i + offset];
     m_inv_taper[i] = 1.0 / y;
   }
+
+  // Generate spheroidal using m_taper_subgrid.
+  m_spheroidal = m_proxy->allocate_array2d<float>(m_subgridsize, m_subgridsize);
+  for (size_t y = 0; y < m_subgridsize; y++) {
+    for (size_t x = 0; x < m_subgridsize; x++) {
+      m_spheroidal(y, x) = m_taper_subgrid[y] * m_taper_subgrid[x];
+    }
+  }
 }
 
 void BufferSetImpl::init_buffers(size_t bufferTimesteps,
@@ -283,60 +286,60 @@ void BufferSetImpl::init_buffers(size_t bufferTimesteps,
                                  int nr_stations, float max_baseline,
                                  options_type& options,
                                  BufferSetType buffer_set_type) {
-  m_gridderbuffers.resize(0);
-  m_degridderbuffers.resize(0);
+  m_gridderbuffers.clear();
+  m_degridderbuffers.clear();
 
   m_buffer_set_type = buffer_set_type;
-  std::vector<float> taper;
-  taper.resize(m_subgridsize * m_subgridsize);
-  for (int i = 0; i < int(m_subgridsize); i++)
-    for (int j = 0; j < int(m_subgridsize); j++)
-      taper[i * m_subgridsize + j] = m_taper_subgrid[i] * m_taper_subgrid[j];
 
   for (auto band : bands) {
-    BufferImpl* buffer;
-    if (m_buffer_set_type == BufferSetType::gridding) {
-      GridderBufferImpl* gridderbuffer =
-          new GridderBufferImpl(this, m_proxy, bufferTimesteps);
-      m_gridderbuffers.push_back(std::unique_ptr<GridderBuffer>(gridderbuffer));
-      buffer = gridderbuffer;
-    } else {
-      DegridderBufferImpl* degridderbuffer =
-          new DegridderBufferImpl(this, m_proxy, bufferTimesteps);
-      m_degridderbuffers.push_back(
-          std::unique_ptr<DegridderBuffer>(degridderbuffer));
-      buffer = degridderbuffer;
+    BufferImpl* buffer = nullptr;
+    switch (m_buffer_set_type) {
+      case BufferSetType::kGridding: {
+        std::unique_ptr<GridderBufferImpl> gridderbuffer(
+            new GridderBufferImpl(*this, bufferTimesteps));
+        gridderbuffer->set_avg_beam(m_average_beam.data());
+        buffer = gridderbuffer.get();
+        m_gridderbuffers.push_back(std::move(gridderbuffer));
+        break;
+      }
+      case BufferSetType::kDegridding: {
+        std::unique_ptr<DegridderBufferImpl> degridderbuffer(
+            new DegridderBufferImpl(*this, bufferTimesteps));
+        buffer = degridderbuffer.get();
+        m_degridderbuffers.push_back(std::move(degridderbuffer));
+        break;
+      }
+      case BufferSetType::kBulkDegridding:
+        m_bulkdegridders.emplace_back(
+            new BulkDegridderImpl(*this, band, nr_stations));
+        break;
     }
 
-    // TODO: maybe just give the Buffers a pointer to their parent BufferSet and
-    // make them friends of BufferSet so this list of parameters does not need
-    // to passed along to the Buffers
-
-    buffer->set_subgrid_size(m_subgridsize);
-
-    buffer->set_frequencies(band);
-    buffer->set_stations(nr_stations);
-    buffer->set_cell_size(m_cell_size, m_cell_size);
-    buffer->set_w_step(m_w_step);
-    buffer->set_shift(m_shift);
-    buffer->set_kernel_size(m_kernel_size);
-    buffer->set_spheroidal(m_subgridsize, m_subgridsize, taper.data());
-    buffer->set_grid(m_grid);
-    buffer->set_max_baseline(max_baseline);
-    buffer->set_uv_span_frequency(m_uv_span_frequency);
-    buffer->bake();
+    if (buffer) {  // Perform common steps for Buffer classes.
+      buffer->set_frequencies(band);
+      buffer->set_stations(nr_stations);
+      buffer->bake();
+    }
   }
 }
 
+const BulkDegridder* BufferSetImpl::get_bulk_degridder(int i) {
+  if (m_buffer_set_type != BufferSetType::kBulkDegridding) {
+    throw(std::logic_error("BufferSet is not of bulk degridding type"));
+  }
+  return (i >= 0 && i < m_bulkdegridders.size()) ? m_bulkdegridders[i].get()
+                                                 : nullptr;
+}
+
 GridderBuffer* BufferSetImpl::get_gridder(int i) {
-  if (m_buffer_set_type != BufferSetType::gridding) {
+  if (m_buffer_set_type != BufferSetType::kGridding) {
     throw(std::logic_error("BufferSet is not of gridding type"));
   }
   return m_gridderbuffers[i].get();
 }
 
 DegridderBuffer* BufferSetImpl::get_degridder(int i) {
-  if (m_buffer_set_type != BufferSetType::degridding) {
+  if (m_buffer_set_type != BufferSetType::kDegridding) {
     throw(std::logic_error("BufferSet is not of degridding type"));
   }
   return m_degridderbuffers[i].get();
@@ -367,8 +370,8 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
     memset(w0_row_real, 0, NR_CORRELATIONS * m_size * sizeof(float));
     memset(w0_row_imag, 0, NR_CORRELATIONS * m_size * sizeof(float));
 
-    Array3D<double> image_array((double*)image, NR_CORRELATIONS, m_size,
-                                m_size);
+    const Array3D<double> image_array(const_cast<double*>(image),
+                                      NR_CORRELATIONS, m_size, m_size);
 
     // Copy row of image and convert stokes to polarizations
     for (int x = 0; x < m_size; x++) {
@@ -427,7 +430,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
           const float m = (y - ((int)m_size / 2)) * m_cell_size;
           // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
           // accurately for small values of l and m
-          const float n = compute_n(l, -m, m_shift);
+          const float n = compute_n(l, -m, m_shift.data());
           phases[x] = 2 * M_PI * n * w_offset;
         }  // end for x
 
@@ -604,7 +607,7 @@ void BufferSetImpl::get_image(double* image) {
           const float m = (y - ((int)m_size / 2)) * m_cell_size;
           // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
           // accurately for small values of l and m
-          const float n = compute_n(l, -m, m_shift);
+          const float n = compute_n(l, -m, m_shift.data());
           phases[x] = -2 * M_PI * n * w_offset;
         }
 
@@ -685,10 +688,12 @@ void BufferSetImpl::finished() {
 }
 
 void BufferSetImpl::init_compute_avg_beam(compute_flags flag) {
-  m_do_compute_avg_beam = true;
   m_do_gridding = (flag != compute_flags::compute_only);
   m_average_beam =
       std::vector<std::complex<float>>(m_subgridsize * m_subgridsize * 16, 0.0);
+  for (auto& buffer : m_gridderbuffers) {
+    buffer->set_avg_beam(m_average_beam.data());
+  }
 }
 
 void BufferSetImpl::finalize_compute_avg_beam() {
@@ -700,7 +705,6 @@ void BufferSetImpl::finalize_compute_avg_beam() {
   std::vector<std::complex<float>> scalar_beam_padded(
       m_padded_size * m_padded_size, 0.0);
 
-  m_do_compute_avg_beam = false;
   m_do_gridding = true;
 
 #ifndef NDEBUG
@@ -869,6 +873,21 @@ void BufferSetImpl::report_runtime() {
   std::clog << "degridding: " << m_degridding_watch->ToString() << std::endl;
   std::clog << "set image:  " << m_set_image_watch->ToString() << std::endl;
   std::clog << "get image:  " << m_get_image_watch->ToString() << std::endl;
+}
+
+Stopwatch& BufferSetImpl::get_watch(Watch watch) const {
+  switch (watch) {
+    case Watch::kAvgBeam:
+      return *m_avg_beam_watch;
+    case Watch::kPlan:
+      return *m_plan_watch;
+    case Watch::kGridding:
+      return *m_gridding_watch;
+    case Watch::kDegridding:
+      return *m_degridding_watch;
+    default:
+      throw std::invalid_argument("Invalid watch request");
+  }
 }
 
 }  // namespace api

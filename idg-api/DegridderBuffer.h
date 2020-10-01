@@ -52,9 +52,10 @@
 #ifndef IDG_DEGRIDDERBUFFER_H_
 #define IDG_DEGRIDDERBUFFER_H_
 
-#include <cstddef>
-#include <vector>
 #include <complex>
+#include <cstddef>
+#include <memory>
+#include <vector>
 
 #include "Buffer.h"
 

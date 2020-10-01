@@ -5,18 +5,15 @@
 #include "DegridderBufferImpl.h"
 #include "BufferSetImpl.h"
 
-#include <mutex>
+#include <algorithm>
 #include <csignal>
-
-using namespace std;
 
 namespace idg {
 namespace api {
 
-DegridderBufferImpl::DegridderBufferImpl(BufferSetImpl* bufferset,
-                                         proxy::Proxy* proxy,
+DegridderBufferImpl::DegridderBufferImpl(const BufferSetImpl& bufferset,
                                          size_t bufferTimesteps)
-    : BufferImpl(bufferset, proxy, bufferTimesteps),
+    : BufferImpl(bufferset, bufferTimesteps),
       m_buffer_full(false),
       m_data_read(true) {
 #if defined(DEBUG)
@@ -40,7 +37,7 @@ bool DegridderBufferImpl::request_visibilities(size_t rowId, size_t timeIndex,
   if (antenna1 == antenna2) return m_buffer_full;
 
   int local_time = timeIndex - m_timeStartThisBatch;
-  size_t local_bl = baseline_index(antenna1, antenna2);
+  size_t local_bl = Plan::baseline_index(antenna1, antenna2, m_nrStations);
 
   // #if defined(DEBUG)
   // cout << "REQUEST: row " << rowId << ", local time " << local_time << endl;
@@ -74,8 +71,9 @@ bool DegridderBufferImpl::request_visibilities(size_t rowId, size_t timeIndex,
   // #endif
 
   // Keep mapping rowId -> (local_bl, local_time) for reading
-  m_row_ids_to_data.push_back(make_pair(
-      rowId, (complex<float>*)&m_bufferVisibilities(local_bl, local_time, 0)));
+  m_row_ids_to_data.emplace_back(
+      rowId, reinterpret_cast<std::complex<float>*>(
+                 m_bufferVisibilities.data(local_bl, local_time)));
 
   // Copy data into buffers
   m_bufferUVW(local_bl, local_time) = {static_cast<float>(uvwInMeters[0]),
@@ -94,33 +92,40 @@ void DegridderBufferImpl::flush() {
   // Return if no input in buffer
   if (m_timeindices.size() == 0) return;
 
+  const size_t subgridsize = m_bufferset.get_subgridsize();
+
   m_aterm_offsets_array =
       Array1D<unsigned int>(m_aterm_offsets.data(), m_aterm_offsets.size());
-  m_aterms_array = Array4D<Matrix2x2<complex<float>>>(
+  m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
       m_aterms.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
-      m_subgridsize, m_subgridsize);
+      subgridsize, subgridsize);
 
   // Set Plan options
   Plan::Options options;
-  options.w_step = m_wStepInLambda;
-  options.nr_w_layers = m_nr_w_layers;
+  options.w_step = m_bufferset.get_w_step();
+  options.nr_w_layers = m_bufferset.get_grid()->get_w_dim();
   options.plan_strict = false;
 
+  proxy::Proxy& proxy = m_bufferset.get_proxy();
+
   // Create plan
-  m_bufferset->m_plan_watch->Start();
-  std::unique_ptr<Plan> plan = m_proxy->make_plan(
-      m_kernel_size, m_subgridsize, m_gridHeight, m_cellHeight, m_frequencies,
-      m_bufferUVW, m_bufferStationPairs, m_aterm_offsets_array, options);
-  m_bufferset->m_plan_watch->Pause();
+  m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
+  std::unique_ptr<Plan> plan =
+      proxy.make_plan(m_bufferset.get_kernel_size(), subgridsize,
+                      m_bufferset.get_grid()->get_x_dim(),
+                      m_bufferset.get_cell_size(), m_frequencies, m_bufferUVW,
+                      m_bufferStationPairs, m_aterm_offsets_array, options);
+  m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run degridding
-  m_bufferset->m_degridding_watch->Start();
-  m_proxy->degridding(*plan, m_wStepInLambda, m_shift, m_cellHeight,
-                      m_kernel_size, m_subgridsize, m_frequencies,
-                      m_bufferVisibilities, m_bufferUVW, m_bufferStationPairs,
-                      *m_grid, m_aterms_array, m_aterm_offsets_array,
-                      m_spheroidal);
-  m_bufferset->m_degridding_watch->Pause();
+  m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Start();
+  proxy.degridding(*plan, m_bufferset.get_w_step(), m_shift,
+                   m_bufferset.get_cell_size(), m_bufferset.get_kernel_size(),
+                   subgridsize, m_frequencies, m_bufferVisibilities,
+                   m_bufferUVW, m_bufferStationPairs, *m_bufferset.get_grid(),
+                   m_aterms_array, m_aterm_offsets_array,
+                   m_bufferset.get_spheroidal());
+  m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 
   // Prepare next batch
   m_timeStartThisBatch += m_bufferTimesteps;
@@ -145,10 +150,10 @@ void DegridderBufferImpl::reset_aterm() {
   m_aterm_offsets[0] = 0;
   m_aterm_offsets[1] = m_bufferTimesteps;
 
-  size_t atermBlockSize = m_nrStations * m_subgridsize * m_subgridsize;
+  const size_t subgridsize = m_bufferset.get_subgridsize();
+  size_t atermBlockSize = m_nrStations * subgridsize * subgridsize;
   std::copy(m_aterms.data() + (n_old_aterms - 1) * atermBlockSize,
-            m_aterms.data() + (n_old_aterms)*atermBlockSize,
-            (Matrix2x2<complex<float>>*)m_aterms.data());
+            m_aterms.data() + (n_old_aterms)*atermBlockSize, m_aterms.data());
   m_aterms.resize(atermBlockSize);
 }
 

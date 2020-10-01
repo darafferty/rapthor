@@ -6,14 +6,23 @@
 #include <map>
 #include <memory>
 
+#include "Buffer.h"
 #include "Value.h"
-#include "GridderBuffer.h"
-#include "DegridderBuffer.h"
 
 namespace idg {
 namespace api {
 
-enum class BufferSetType { gridding, degridding };
+class BulkDegridder;
+class DegridderBuffer;
+class GridderBuffer;
+
+enum class BufferSetType {
+  kGridding,
+  kDegridding,
+  kBulkDegridding,
+  gridding = kGridding,  // Keep legacy names for backward compatibility.
+  degridding = kDegridding
+};
 
 enum compute_flags { compute_only = 1, compute_and_grid = 2 };
 
@@ -36,6 +45,7 @@ class BufferSet {
                             options_type& options,
                             BufferSetType buffer_set_type) = 0;
 
+  virtual const BulkDegridder* get_bulk_degridder(int i) = 0;
   virtual DegridderBuffer* get_degridder(int i) = 0;
   virtual GridderBuffer* get_gridder(int i) = 0;
 
@@ -43,8 +53,8 @@ class BufferSet {
   virtual void get_image(double* image) = 0;
   virtual void finished() = 0;
 
-  virtual size_t get_subgridsize() = 0;
-  virtual float get_subgrid_pixelsize() = 0;
+  virtual size_t get_subgridsize() const = 0;
+  virtual float get_subgrid_pixelsize() const = 0;
 
   virtual void set_apply_aterm(bool do_apply) = 0;
 

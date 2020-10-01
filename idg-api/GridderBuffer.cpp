@@ -11,25 +11,17 @@
 
 #include <omp.h>
 
-using namespace std;
-
 namespace idg {
 namespace api {
 
-GridderBufferImpl::GridderBufferImpl(BufferSetImpl *bufferset,
-                                     proxy::Proxy *proxy,
+GridderBufferImpl::GridderBufferImpl(const BufferSetImpl &bufferset,
                                      size_t bufferTimesteps)
-    : BufferImpl(bufferset, proxy, bufferTimesteps),
+    : BufferImpl(bufferset, bufferTimesteps),
       m_bufferUVW2(0, 0),
       m_bufferStationPairs2(0),
       m_buffer_weights(0, 0, 0, 0),
       m_buffer_weights2(0, 0, 0, 0),
-      m_default_aterm_correction(bufferset->m_default_aterm_correction),
-      m_avg_aterm_correction(bufferset->m_avg_aterm_correction),
-      m_average_beam(bufferset->m_average_beam),
-      m_do_gridding(bufferset->m_do_gridding),
-      m_do_compute_avg_beam(bufferset->m_do_compute_avg_beam),
-      m_apply_aterm(bufferset->m_apply_aterm) {
+      m_average_beam(nullptr) {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
@@ -46,13 +38,13 @@ GridderBufferImpl::~GridderBufferImpl() {
 void GridderBufferImpl::grid_visibilities(size_t timeIndex, size_t antenna1,
                                           size_t antenna2,
                                           const double *uvwInMeters,
-                                          complex<float> *visibilities,
+                                          std::complex<float> *visibilities,
                                           const float *weights) {
   // exclude auto-correlations
   if (antenna1 == antenna2) return;
 
   int local_time = timeIndex - m_timeStartThisBatch;
-  size_t local_bl = baseline_index(antenna1, antenna2);
+  size_t local_bl = Plan::baseline_index(antenna1, antenna2, m_nrStations);
 
   if (local_time < 0) {
     m_timeStartThisBatch = 0;
@@ -82,16 +74,17 @@ void GridderBufferImpl::grid_visibilities(size_t timeIndex, size_t antenna1,
   m_bufferStationPairs(local_bl) = {static_cast<int>(antenna1),
                                     static_cast<int>(antenna2)};
 
-  std::copy(visibilities, visibilities + m_nr_channels * m_nrPolarizations,
-            (complex<float> *)&m_bufferVisibilities(local_bl, local_time, 0));
-  std::copy(weights, weights + m_nr_channels * 4,
-            &m_buffer_weights(local_bl, local_time, 0, 0));
+  std::copy_n(visibilities, m_nr_channels * m_nrPolarizations,
+              reinterpret_cast<std::complex<float> *>(
+                  &m_bufferVisibilities(local_bl, local_time, 0)));
+  std::copy_n(weights, m_nr_channels * 4,
+              &m_buffer_weights(local_bl, local_time, 0, 0));
 }
 
 void GridderBufferImpl::compute_avg_beam() {
-  m_bufferset->m_avg_beam_watch->Start();
+  m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Start();
 
-  const unsigned int subgrid_size = m_subgridsize;
+  const unsigned int subgrid_size = m_bufferset.get_subgridsize();
   const unsigned int nr_correlations = 4;
   const unsigned int nr_aterms = m_aterm_offsets2.size() - 1;
   const unsigned int nr_antennas = m_nrStations;
@@ -113,7 +106,7 @@ void GridderBufferImpl::compute_avg_beam() {
 
   // Cast class members to multidimensional types used in this method
   ATerms *aterms = (ATerms *)m_aterms2.data();
-  AverageBeam *average_beam = (AverageBeam *)m_average_beam.data();
+  AverageBeam *average_beam = reinterpret_cast<AverageBeam *>(m_average_beam);
   ATermOffsets *aterm_offsets = (ATermOffsets *)m_aterm_offsets2.data();
   StationPairs *station_pairs = (StationPairs *)m_bufferStationPairs2.data();
   UVW *uvw = (UVW *)m_bufferUVW2.data();
@@ -227,50 +220,57 @@ void GridderBufferImpl::compute_avg_beam() {
     }
   }  // end for pixels
 
-  m_bufferset->m_avg_beam_watch->Pause();
+  m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Pause();
 
 }  // end compute_avg_beam
 
 void GridderBufferImpl::flush_thread_worker() {
-  if (m_do_compute_avg_beam) {
+  if (m_average_beam) {
     compute_avg_beam();
   }
 
-  if (!m_do_gridding) return;
+  if (!m_bufferset.get_do_gridding()) return;
 
-  Array4D<std::complex<float>> *aterm_correction;
-  if (m_apply_aterm) {
-    aterm_correction = &m_avg_aterm_correction;
+  const size_t subgridsize = m_bufferset.get_subgridsize();
+
+  const Array4D<std::complex<float>> *aterm_correction;
+  if (m_bufferset.get_apply_aterm()) {
+    aterm_correction = &m_bufferset.get_avg_aterm_correction();
   } else {
     m_aterm_offsets_array = Array1D<unsigned int>(
         m_default_aterm_offsets.data(), m_default_aterm_offsets.size());
-    m_aterms_array = Array4D<Matrix2x2<complex<float>>>(
+    m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
         m_default_aterms.data(), m_default_aterm_offsets.size() - 1,
-        m_nrStations, m_subgridsize, m_subgridsize);
-    aterm_correction = &m_default_aterm_correction;
+        m_nrStations, subgridsize, subgridsize);
+    aterm_correction = &m_bufferset.get_default_aterm_correction();
   }
 
   // Set Plan options
   Plan::Options options;
-  options.w_step = m_wStepInLambda;
-  options.nr_w_layers = m_nr_w_layers;
+  options.w_step = m_bufferset.get_w_step();
+  options.nr_w_layers = m_bufferset.get_grid()->get_w_dim();
   options.plan_strict = false;
 
+  proxy::Proxy &proxy = m_bufferset.get_proxy();
+
   // Create plan
-  m_bufferset->m_plan_watch->Start();
-  std::unique_ptr<Plan> plan = m_proxy->make_plan(
-      m_kernel_size, m_subgridsize, m_gridHeight, m_cellHeight, m_frequencies,
-      m_bufferUVW2, m_bufferStationPairs2, m_aterm_offsets_array, options);
-  m_bufferset->m_plan_watch->Pause();
+  m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
+  std::unique_ptr<Plan> plan =
+      proxy.make_plan(m_bufferset.get_kernel_size(), subgridsize,
+                      m_bufferset.get_grid()->get_x_dim(),
+                      m_bufferset.get_cell_size(), m_frequencies, m_bufferUVW2,
+                      m_bufferStationPairs2, m_aterm_offsets_array, options);
+  m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run gridding
-  m_bufferset->m_gridding_watch->Start();
-  m_proxy->gridding(*plan, m_wStepInLambda, m_shift, m_cellHeight,
-                    m_kernel_size, m_subgridsize, m_frequencies,
-                    m_bufferVisibilities2, m_bufferUVW2, m_bufferStationPairs2,
-                    *m_grid, m_aterms_array, m_aterm_offsets_array,
-                    m_spheroidal);
-  m_bufferset->m_gridding_watch->Pause();
+  m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Start();
+  proxy.gridding(*plan, m_bufferset.get_w_step(), m_shift,
+                 m_bufferset.get_cell_size(), m_bufferset.get_kernel_size(),
+                 subgridsize, m_frequencies, m_bufferVisibilities2,
+                 m_bufferUVW2, m_bufferStationPairs2, *m_bufferset.get_grid(),
+                 m_aterms_array, m_aterm_offsets_array,
+                 m_bufferset.get_spheroidal());
+  m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Pause();
 }
 
 // Must be called whenever the buffer is full or no more data added
@@ -280,6 +280,8 @@ void GridderBufferImpl::flush() {
 
   // if there is still a flushthread running, wait for it to finish
   if (m_flush_thread.joinable()) m_flush_thread.join();
+
+  const size_t subgridsize = m_bufferset.get_subgridsize();
 
   std::swap(m_bufferUVW, m_bufferUVW2);
   std::swap(m_bufferStationPairs, m_bufferStationPairs2);
@@ -291,10 +293,10 @@ void GridderBufferImpl::flush() {
 
   std::swap(m_aterms, m_aterms2);
   assert(m_aterms2.size() == (m_aterm_offsets_array.get_x_dim() - 1) *
-                                 m_nrStations * m_subgridsize * m_subgridsize);
-  m_aterms_array = Array4D<Matrix2x2<complex<float>>>(
+                                 m_nrStations * subgridsize * subgridsize);
+  m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
       m_aterms2.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
-      m_subgridsize, m_subgridsize);
+      subgridsize, subgridsize);
 
   m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 
@@ -318,11 +320,12 @@ void GridderBufferImpl::reset_aterm() {
   size_t n_old_aterms =
       m_aterm_offsets2.size() - 1;  // Nr aterms in previous chunk
 
-  size_t atermBlockSize = m_nrStations * m_subgridsize * m_subgridsize;
+  const size_t subgridsize = m_bufferset.get_subgridsize();
+  size_t atermBlockSize = m_nrStations * subgridsize * subgridsize;
   m_aterms.resize(atermBlockSize);
   std::copy(m_aterms2.data() + (n_old_aterms - 1) * atermBlockSize,
             m_aterms2.data() + (n_old_aterms)*atermBlockSize,
-            (Matrix2x2<complex<float>> *)m_aterms.data());
+            (Matrix2x2<std::complex<float>> *)m_aterms.data());
 }
 
 void GridderBufferImpl::finished() {
@@ -336,17 +339,18 @@ void GridderBufferImpl::finished() {
 void GridderBufferImpl::malloc_buffers() {
   BufferImpl::malloc_buffers();
 
+  proxy::Proxy &proxy = m_bufferset.get_proxy();
   m_bufferUVW2 =
-      m_proxy->allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
+      proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
   m_bufferVisibilities2 =
-      m_proxy->allocate_array3d<Visibility<std::complex<float>>>(
+      proxy.allocate_array3d<Visibility<std::complex<float>>>(
           m_nr_baselines, m_bufferTimesteps, m_nr_channels);
   m_bufferStationPairs2 =
-      m_proxy->allocate_array1d<std::pair<unsigned int, unsigned int>>(
+      proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
           m_nr_baselines);
-  m_buffer_weights = m_proxy->allocate_array4d<float>(
+  m_buffer_weights = proxy.allocate_array4d<float>(
       m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
-  m_buffer_weights2 = m_proxy->allocate_array4d<float>(
+  m_buffer_weights2 = proxy.allocate_array4d<float>(
       m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
 }
 

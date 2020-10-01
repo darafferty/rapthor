@@ -77,8 +77,9 @@ endif()
 set (${PROJECT_NAME}_headers
     Buffer.h
     BufferSet.h
-    GridderBuffer.h
+    BulkDegridder.h
     DegridderBuffer.h
+    GridderBuffer.h
     taper.h
     Value.h
 )
@@ -86,8 +87,9 @@ set (${PROJECT_NAME}_headers
 set (${PROJECT_NAME}_sources
     Buffer.cpp
     BufferSet.cpp
-    GridderBuffer.cpp
+    BulkDegridder.cpp
     DegridderBuffer.cpp
+    GridderBuffer.cpp
     taper.cpp
 )
 
