@@ -210,8 +210,10 @@ class Calibrate(Operation):
         # Get the filenames of the aterm images (for use in the image operation). The files
         # were written by the 'make_aterms' step and the number of them can vary, depending
         # on the node memory, etc.
-        with open(self.output_aterms_root+'.txt', 'r') as f:
-            self.field.aterm_image_filenames = f.readlines()
+        self.field.aterm_image_filenames = []
+        for aterms_root in self.output_aterms_root:
+            with open(aterms_root+'.txt', 'r') as f:
+                self.field.aterm_image_filenames.extend(f.readlines())
         self.field.aterm_image_filenames = [af.strip() for af in self.field.aterm_image_filenames]
 
         # Save the solutions
