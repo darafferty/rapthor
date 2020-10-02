@@ -80,7 +80,7 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
                 check_gaps = True
                 break
             g_start = g_stop
-    gaps_sec = times_fast[gaps_ind]
+    gaps_sec = times_fast[gaps_ind-1]
 
     # Fill the output files
     for i, outh5file in enumerate(output_h5parm_list):

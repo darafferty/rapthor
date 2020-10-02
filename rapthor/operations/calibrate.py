@@ -64,7 +64,8 @@ class Calibrate(Operation):
         uvlambdamin = self.field.solve_min_uv_lambda
         sector_bounds_deg = "'{}'".format(self.field.sector_bounds_deg)
         sector_bounds_mid_deg = "'{}'".format(self.field.sector_bounds_mid_deg)
-        split_outh5parm = ['split_solutions_{}.h5'.format(i) for i in
+        split_outh5parm = [str(os.path.join(self.pipeline_working_dir,
+                           'split_solutions_{}.h5'.format(i))) for i in
                            range(max(len(self.field.observations), self.max_nodes))]
         aterms_root = str(os.path.join(self.pipeline_working_dir,
                                        'diagonal_aterms'))
