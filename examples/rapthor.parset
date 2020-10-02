@@ -80,7 +80,6 @@ input_skymodel = /data/skymodel.txt
 # max_uv_lambda = 0.0
 # taper_arcsec = 0.0
 # multiscale_scales_pixel = [0, 5, 10, 15]
-# do_multiscale = auto
 
 # Use screens during imaging (default = True)? If False, the solutions closest to the
 # image centers will be used

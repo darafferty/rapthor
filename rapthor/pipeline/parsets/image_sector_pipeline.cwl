@@ -78,8 +78,10 @@ inputs:
     type: float
   - id: max_uv_lambda
     type: float
+{% if do_multiscale_clean %}
   - id: multiscale_scales_pixel
     type: string
+{% endif %}
   - id: dir_local
     type: string
   - id: taper_arcsec
@@ -193,9 +195,17 @@ steps:
     label: image
 {% if use_screens %}
 {% if use_mpi %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
+{% if do_multiscale_clean %}
+   run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
+{% else %}
+   run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
+{% endif %}
+{% else %}
+{% if do_multiscale_clean %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_multiscale.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
+{% endif %}
 {% endif %}
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
@@ -239,8 +249,10 @@ steps:
         source: max_uv_lambda
       - id: cellsize_deg
         source: cellsize_deg
+{% if do_multiscale_clean %}
       - id: multiscale_scales_pixel
         source: multiscale_scales_pixel
+{% endif %}
       - id: dir_local
         source: dir_local
       - id: channels_out

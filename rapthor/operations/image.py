@@ -36,6 +36,7 @@ class Image(Operation):
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
+                             'do_multiscale_clean': self.field.do_multiscale_clean,
                              'use_mpi': self.field.use_mpi}
 
     def set_input_parameters(self):
@@ -70,11 +71,14 @@ class Image(Operation):
             # Generally, this should work fine, since we do not expect large changes in
             # the size of the sector from iteration to iteration (small changes are OK,
             # given the padding we use during imaging)
-            sector_do_multiscale_list = self.field.parset['imaging_specific']['sector_do_multiscale_list']
-            if len(sector_do_multiscale_list) == nsectors:
-                do_multiscale = sector_do_multiscale_list[i]
+            if self.field.do_multiscale_clean:
+                sector_do_multiscale_list = self.field.parset['imaging_specific']['sector_do_multiscale_list']
+                if len(sector_do_multiscale_list) == nsectors:
+                    do_multiscale = sector_do_multiscale_list[i]
+                else:
+                    do_multiscale = None
             else:
-                do_multiscale = None
+                do_multiscale = False
             sector.set_imaging_parameters(image_dir, do_multiscale=do_multiscale,
                                           recalculate_imsize=False)
 
@@ -128,11 +132,10 @@ class Image(Operation):
                             'image_timestep': image_timestep,
                             'phasecenter': phasecenter,
                             'image_name': image_root,
-                            'multiscale_scales_pixel': multiscale_scales_pixel,
                             'dir_local': dir_local,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
-                            'deconvolution_channels': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
+                            'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
                             'ra': [sector.ra for sector in self.field.imaging_sectors],
                             'dec': [sector.dec for sector in self.field.imaging_sectors],
                             'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
@@ -156,6 +159,9 @@ class Image(Operation):
             self.input_parms.update({'aterms_config_file': aterms_config_file,
                                      'aterm_image_filenames': aterm_image_filenames})
 
+            if self.field.do_multiscale_clean:
+                self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
+
             if self.field.use_mpi:
                 # Set number of nodes to allocate to each imaging subpipeline
                 nnodes = self.parset['cluster_specific']['max_nodes']
@@ -167,6 +173,7 @@ class Image(Operation):
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
             self.input_parms.update({'central_patch_name': central_patch_name})
+            self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
 
     def finalize(self):
         """

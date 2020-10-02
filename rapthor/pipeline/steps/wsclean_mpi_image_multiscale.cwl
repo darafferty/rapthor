@@ -1,6 +1,6 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [run_wsclean_mpi.sh]
+baseCommand: [run_wsclean_multiscale_mpi.sh]
 label: "Images a dataset using WSClean+IDG, distributed over multiple nodes with MPI"
 
 requirements:
@@ -58,6 +58,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -x
+  - id: multiscale_scales_pixel
+    type: string
+    inputBinding:
+      prefix: -s
   - id: dir_local
     type: string
     inputBinding:
@@ -90,10 +94,6 @@ inputs:
     type: int
     inputBinding:
       prefix: -q
-  - id: numthreads
-    type: string
-    inputBinding:
-      prefix: -j
 
 outputs:
   - id: image_nonpb_name
