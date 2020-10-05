@@ -22,7 +22,7 @@ SOURCE_DIR=$(dirname "$0")/..
 EXCLUDE_DIRS=(external */external/*)
 
 #The extensions of the source files, which clang-format should format.
-SOURCE_EXT=(*.cc *.h)
+SOURCE_EXT=(*.cpp *.h)
 
 #End script configuration.
 

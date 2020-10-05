@@ -1,44 +1,39 @@
 #include "UnifiedOptimized.h"
 
 namespace idg {
-    namespace proxy {
-        namespace hybrid {
+namespace proxy {
+namespace hybrid {
 
-            // Constructor
-            UnifiedOptimized::UnifiedOptimized(
-                ProxyInfo info) :
-                Unified(info)
-            {
-                #if defined(DEBUG)
-                std::cout << "UnifiedOptimized::" << __func__ << std::endl;
-                #endif
+// Constructor
+UnifiedOptimized::UnifiedOptimized(ProxyInfo info) : Unified(info) {
+#if defined(DEBUG)
+  std::cout << "UnifiedOptimized::" << __func__ << std::endl;
+#endif
 
-                cpuProxy = new idg::proxy::cpu::Optimized();
-            }
+  cpuProxy = new idg::proxy::cpu::Optimized();
+}
 
-            // Destructor
-            UnifiedOptimized::~UnifiedOptimized() {
-                #if defined(DEBUG)
-                std::cout << "UnifiedOptimized::" << __func__ << std::endl;
-                #endif
+// Destructor
+UnifiedOptimized::~UnifiedOptimized() {
+#if defined(DEBUG)
+  std::cout << "UnifiedOptimized::" << __func__ << std::endl;
+#endif
 
-                delete cpuProxy;
-            }
+  delete cpuProxy;
+}
 
-            void UnifiedOptimized::do_transform(
-                DomainAtoDomainB direction,
-                Array3D<std::complex<float>>& grid)
-            {
-                #if defined(DEBUG)
-                std::cout << "UnifiedOptimized::" << __func__ << std::endl;
-                std::cout << "Transform direction: " << direction << std::endl;
-                #endif
+void UnifiedOptimized::do_transform(DomainAtoDomainB direction,
+                                    Array3D<std::complex<float>>& grid) {
+#if defined(DEBUG)
+  std::cout << "UnifiedOptimized::" << __func__ << std::endl;
+  std::cout << "Transform direction: " << direction << std::endl;
+#endif
 
-                cpuProxy->transform(direction, grid);
-            } // end transform
+  cpuProxy->transform(direction, grid);
+}  // end transform
 
-        } // namespace hybrid
-    } // namespace proxy
-} // namespace idg
+}  // namespace hybrid
+}  // namespace proxy
+}  // namespace idg
 
 #include "UnifiedOptimizedC.h"

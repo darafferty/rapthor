@@ -4,10 +4,8 @@ using ProxyType = idg::proxy::cpu::Optimized;
 
 #include "common.h"
 
+int main(int argc, char *argv[]) {
+  run();
 
-int main(int argc, char *argv[])
-{
-    run();
-
-    return 0;
+  return 0;
 }

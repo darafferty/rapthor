@@ -5,7 +5,7 @@ using ProxyType = idg::proxy::cuda::Unified;
 #include "common.h"
 
 int main(int argc, char **argv) {
-    run();
+  run();
 
-    return 0;
+  return 0;
 }
