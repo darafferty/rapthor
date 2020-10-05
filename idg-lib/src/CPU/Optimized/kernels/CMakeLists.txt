@@ -38,9 +38,6 @@ else()
     endif()
 endif()
 
-# Miscellaneous options
-add_compile_options("-DNR_POLARIZATIONS=4")
-
 # Add libraries
 add_library(${PROJECT_NAME}-gridder   KernelGridder.cpp)
 add_library(${PROJECT_NAME}-degridder KernelDegridder.cpp)

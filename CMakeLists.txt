@@ -2,6 +2,21 @@ cmake_minimum_required(VERSION 2.8)
 project(idg)
 
 option (WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
+option (BUILD_STATIC_LIBS "Build static libraries" OFF)
+option (BUILD_WITH_TESTS "Build with tests" OFF)
+option (BUILD_WITH_DEMOS "Build with demos" OFF)
+
+# TODO: integer valued compile variables should be handled more elegantly
+# if there is a use case for them. Otherwise, they can be hard-coded.
+# This includes NR_POLARIZATIONS and NR_CORRELATIONS, see AST-230
+add_compile_options("-DNR_POLARIZATIONS=4")
+
+# build shared or static libraries (default: shared)
+if (BUILD_STATIC_LIBS)
+set (BUILD_SHARED_LIBS FALSE)
+else()
+set (BUILD_SHARED_LIBS TRUE)
+endif()
 
 # Set rpath to install directory
 SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
@@ -31,7 +46,11 @@ find_package(PythonInterp REQUIRED)
 set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages/idg)
 endif()
 
-enable_testing()
+if (BUILD_WITH_TESTS)
+  enable_testing()
+  find_package(Boost COMPONENTS unit_test_framework REQUIRED)
+endif()
+
 add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
 add_subdirectory("idg-bin")

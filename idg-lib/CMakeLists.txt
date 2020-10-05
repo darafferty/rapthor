@@ -12,7 +12,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 
 
 # options
-option (BUILD_STATIC_LIBS "Build static libraries" OFF)
 option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
 #option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
@@ -23,13 +22,6 @@ option (COMPILE_VERBOSE "Report compiler flags used during runtime compilation" 
 option (STRICT_WARNINGS "Turn compiliation warnings into errors" ON)
 option (USE_LOOKUP_TABLE "Use sine/cosine lookup table" OFF)
 option (CUDA_KERNEL_DEBUG "Enable debug mode for CUDA kernels" OFF)
-
-# build shared or static libraries (default: shared)
-if (BUILD_STATIC_LIBS)
-set (BUILD_SHARED_LIBS FALSE)
-else()
-set (BUILD_SHARED_LIBS TRUE)
-endif()
 
 # Installation
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -186,3 +178,7 @@ install(
     FILES ${PROJECT_BINARY_DIR}/CMakeFiles/idg-config.cmake
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share
 )
+
+if (BUILD_WITH_TESTS)
+  add_subdirectory(tests)
+endif()

@@ -2,19 +2,6 @@ cmake_minimum_required(VERSION 2.8.0)
 
 project(idg-api)
 
-
-# options
-option (BUILD_STATIC_LIBS "Build static libraries" OFF)
-option (BUILD_WITH_TESTS "Build with tests" OFF)
-
-# build shared or static libraries (default: shared)
-if (BUILD_STATIC_LIBS)
-set (BUILD_SHARED_LIBS FALSE)
-else()
-set (BUILD_SHARED_LIBS TRUE)
-endif()
-
-
 # make sure C++11 is used (in newer CMake use CXX_STANDARD)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
@@ -82,7 +69,6 @@ endif()
 
 # build all tests
 if (BUILD_WITH_TESTS)
-    enable_testing()
     add_subdirectory(tests)
 endif()
 
@@ -115,7 +101,7 @@ add_library(
 )
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION 0)
 target_link_libraries (
-    ${PROJECT_NAME} 
+    ${PROJECT_NAME}
     ${${PROJECT_NAME}_link_libraries}
 )
 
