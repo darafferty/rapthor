@@ -70,16 +70,21 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
     else:
         check_gaps = True
     while check_gaps:
+        chunk_size = int(len(times_fast) / nchunks)
+
         check_gaps = False
         g_start = 0
         gaps_ind_copy = gaps_ind.copy()
         for gnum, g_stop in enumerate(gaps_ind_copy):
-            if g_stop - g_start > nchunks:
+            if g_stop - g_start > chunk_size:
                 new_gap = g_start + int((g_stop - g_start) / 2)
                 gaps_ind = np.insert(gaps_ind, gnum, np.array([new_gap]))
                 check_gaps = True
                 break
             g_start = g_stop
+    if len(gaps_ind) >= nchunks:
+        gaps_ind = gaps_ind[:nchunks]
+        check_gaps = False
     gaps_sec = times_fast[gaps_ind-1]
 
     # Fill the output files
@@ -87,7 +92,7 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
         if os.path.exists(outh5file):
             os.remove(outh5file)
         outh5 = h5parm(outh5file, readonly=False)
-        solsetOut = outh5.makeSolset('solset000')
+        solsetOut = outh5.makeSolset('sol000')
 
         # Store phases
         if i == 0:

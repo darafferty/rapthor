@@ -158,28 +158,32 @@ class Screen(object):
         """
         # Identify any gaps in time (frequency gaps are not allowed), as we need to
         # output a separate FITS file for each time chunk
-        delta_times = self.times_ph[1:] - self.times_ph[:-1]  # time at center of solution interval
-        timewidth = np.min(delta_times)
-        gaps = np.where(delta_times > timewidth*1.2)
-        gaps_ind = gaps[0] + 1
-        gaps_ind = np.append(gaps_ind, np.array([len(self.times_ph)]))
+        if len(self.times_ph) > 2:
+            delta_times = self.times_ph[1:] - self.times_ph[:-1]  # time at center of solution interval
+            timewidth = np.min(delta_times)
+            gaps = np.where(delta_times > timewidth*1.2)
+            gaps_ind = gaps[0] + 1
+            gaps_ind = np.append(gaps_ind, np.array([len(self.times_ph)]))
+        else:
+            gaps_ind = np.array([len(self.times_ph)])
 
         # Add additional breaks to gaps_ind to keep memory use within that available
         # From experience, making a (30, 46, 62, 4, 146, 146) aterm image needs around
         # 30 GB of memory
-        max_ntimes = 15
-        check_gaps = True
-        while check_gaps:
-            check_gaps = False
-            g_start = 0
-            gaps_ind_copy = gaps_ind.copy()
-            for gnum, g_stop in enumerate(gaps_ind_copy):
-                if g_stop - g_start > max_ntimes:
-                    new_gap = g_start + int((g_stop - g_start) / 2)
-                    gaps_ind = np.insert(gaps_ind, gnum, np.array([new_gap]))
-                    check_gaps = True
-                    break
-                g_start = g_stop
+        if len(self.times_ph) > 2:
+            max_ntimes = 15
+            check_gaps = True
+            while check_gaps:
+                check_gaps = False
+                g_start = 0
+                gaps_ind_copy = gaps_ind.copy()
+                for gnum, g_stop in enumerate(gaps_ind_copy):
+                    if g_stop - g_start > max_ntimes:
+                        new_gap = g_start + int((g_stop - g_start) / 2)
+                        gaps_ind = np.insert(gaps_ind, gnum, np.array([new_gap]))
+                        check_gaps = True
+                        break
+                    g_start = g_stop
 
         # Input data are [time, freq, ant, dir, pol] for slow amplitudes
         # and [time, freq, ant, dir] for fast phases (scalarphase).
@@ -231,10 +235,10 @@ class Screen(object):
             # Update start time index before starting next loop
             g_start = g_stop
 
-        # Write filenames to a text file for later use
-        outfile = open(outroot+'.txt', 'w')
-        outfile.writelines([o+'\n' for o in outfiles])
-        outfile.close()
+        # Write list of filenames to a text file for later use
+        list_file = open(os.path.join(out_dir, '{0}.txt'.format(outroot)), 'w')
+        list_file.writelines([o+'\n' for o in outfiles])
+        list_file.close()
 
     def process(self):
         """

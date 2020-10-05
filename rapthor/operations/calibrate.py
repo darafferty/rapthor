@@ -64,9 +64,13 @@ class Calibrate(Operation):
         uvlambdamin = self.field.solve_min_uv_lambda
         sector_bounds_deg = "'{}'".format(self.field.sector_bounds_deg)
         sector_bounds_mid_deg = "'{}'".format(self.field.sector_bounds_mid_deg)
+        if self.field.do_slowgain_solve:
+            nsplit = sum(self.field.get_obs_parameters('nsplit_slow'))
+        else:
+            nsplit = sum(self.field.get_obs_parameters('nsplit_fast'))
         split_outh5parm = [str(os.path.join(self.pipeline_working_dir,
                            'split_solutions_{}.h5'.format(i))) for i in
-                           range(max(len(self.field.observations), self.max_nodes))]
+                           range(nsplit)]
         aterms_root = str(os.path.join(self.pipeline_working_dir,
                                        'diagonal_aterms'))
         self.output_aterms_root = [aterms_root+'_{}'.format(i) for i in

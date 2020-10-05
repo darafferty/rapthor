@@ -8,7 +8,6 @@ requirements:
 
 arguments:
   - '--smooth_deg=0.1'
-  - '--time_avg_factor=1'
 
 inputs:
   - id: h5parm
