@@ -10,8 +10,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
 #option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
-option (BUILD_WITH_TESTS "Build with tests" OFF)
-option (BUILD_WITH_DEMOS "Build with demos" OFF)
 option (USE_DUMMY_VISIBILITIES "Run C++ examples using dummy visibilities" ON)
 
 # Installation
@@ -100,11 +98,10 @@ add_subdirectory(examples)
 
 # build all tests
 if (BUILD_WITH_TESTS)
-    enable_testing()
-    add_subdirectory(tests)
+  add_subdirectory(tests)
 endif()
 
 # build all demos
 if (BUILD_WITH_DEMOS)
-    add_subdirectory(demo)
+  add_subdirectory(demo)
 endif()
