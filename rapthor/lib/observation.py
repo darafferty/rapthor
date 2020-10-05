@@ -243,8 +243,8 @@ class Observation(object):
 
         # Set the number of segments to split the h5parm files into for screen fitting.
         # Try to split so that each file gets at least two solutions
-        self.parameters['nsplit_fast'] = min(1, int(self.numsamples / solint_fast_timestep / 2))
-        self.parameters['nsplit_slow'] = min(1, int(self.numsamples / solint_slow_timestep / 2))
+        self.parameters['nsplit_fast'] = [min(1, int(self.numsamples / solint_fast_timestep / 2))]
+        self.parameters['nsplit_slow'] = [min(1, int(self.numsamples / solint_slow_timestep / 2))]
 
     def set_prediction_parameters(self, sector_name, patch_names, scratch_dir):
         """
