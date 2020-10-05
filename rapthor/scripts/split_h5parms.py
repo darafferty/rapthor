@@ -27,6 +27,10 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
     """
     output_h5parm_list = misc.string2list(outh5parms)
     nchunks = len(output_h5parm_list)
+    if nchunks == 1:
+        # If there is only one output file, just copy the input
+        os.system('cp {0} {1}'.format(inh5parm, output_h5parm_list[0]))
+        return
 
     # Read input table
     h5 = h5parm(inh5parm, readonly=True)
