@@ -20,4 +20,6 @@ fi
 mkdir -p $WORKDIR
 cd $WORKDIR
 
-${DIR}/gridding/test_gridding.py -v
+# pytest -s captures the print() statments
+# TODO: check/add more fine grained log levels
+pytest --exitfirst ${DIR}/gridding/test_gridding.py 
