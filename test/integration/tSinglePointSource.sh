@@ -57,23 +57,6 @@ cd $WORKDIR
 
 # Prepare the testset
 printpreparetestname prepare-testset-1
-${DIR}/singlepointsource/preparetestset.py
-
-printtestname "test degridding pointsource in center, stokes I"
-${DIR}/singlepointsource/test_pointsource.py I
-testrc $?
-
-printtestname "test degridding pointsource in center, stokes Q"
-${DIR}/singlepointsource/test_pointsource.py Q
-testrc $?
-
-printtestname "test degridding pointsource in center, stokes U"
-${DIR}/singlepointsource/test_pointsource.py U
-testrc $?
-
-printtestname "test degridding pointsource in center, stokes V"
-${DIR}/singlepointsource/test_pointsource.py V
-testrc $?
-
-# Remove tmp directory
-# rm -rf ${DIR}/tmp
+# pytest -s captures the print() statments
+# TODO: check/add more fine grained log levels
+pytest --exitfirst ${DIR}/singlepointsource/test_pointsource.py

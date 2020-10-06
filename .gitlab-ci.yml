@@ -82,6 +82,7 @@ idg-integration-docker:
   dependencies:
     - build-integration
   before_script: 
+    - pip3 install pytest pytest-lazy-fixture
     - export HOME_DIR=$PWD
     # Install IDG
     - mkdir /opt/idg && mkdir build
@@ -119,7 +120,9 @@ idg-integration-das:
     - source scripts/load_modules.sh
     - module list
     - pip3 install --user --upgrade pip
-    - pip3 install --user astropy scipy
+    - pip3 install --user astropy scipy pytest pytest-lazy-fixture 
+    # pytest executable is installed in local/bin. Add to PATH
+    - export PATH=$PATH:/home/gitlab-runner/.local/bin
     # Install casacore --> replace with module load casacore/3.[something]
     - mkdir -p ~/opt/casacore && cd ~/opt/casacore && rm -rf *
     - git clone --branch v3.3.0 https://github.com/casacore/casacore src
