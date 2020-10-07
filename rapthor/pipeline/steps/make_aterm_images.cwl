@@ -44,5 +44,10 @@ inputs:
     inputBinding:
       prefix: --bounds_mid_deg=
       separate: false
+  - id: ncpu
+    type: string
+    inputBinding:
+      prefix: --ncpu=
+      separate: false
 
 outputs: []
