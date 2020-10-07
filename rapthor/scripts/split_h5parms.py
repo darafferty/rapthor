@@ -89,7 +89,12 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
     if len(gaps_ind) >= nchunks:
         gaps_ind = gaps_ind[:nchunks]
         check_gaps = False
-    gaps_sec = times_fast[gaps_ind-1]
+    gaps_sec = []
+    for i, gind in enumerate(gaps_ind):
+        if i == nchunks-1:
+            gaps_sec.append(times_fast[-1])
+        else:
+            gaps_sec.append(times_fast[gind])
 
     # Fill the output files
     for i, outh5file in enumerate(output_h5parm_list):
