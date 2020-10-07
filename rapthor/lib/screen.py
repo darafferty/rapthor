@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import os
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib import cluster
 from astropy.coordinates import Angle
 from losoto.h5parm import h5parm
 import scipy.interpolate as si
@@ -17,6 +18,7 @@ from shapely.geometry import Point
 from scipy.spatial import Voronoi
 import shapely.geometry
 import shapely.ops
+import multiprocessing
 
 
 class Screen(object):
@@ -133,15 +135,50 @@ class Screen(object):
         hdu = pyfits.open(outfile, memmap=False)
         return hdu
 
-    def make_matrix(self):
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg,
+                    out_dir, ncpu):
         """
         Makes the matrix of values for the given time, frequency, and station indices
 
-        This should be defined in the subclasses
+        This should be defined in the subclasses, but should conform to the inputs
+        below.
+
+        Parameters
+        ----------
+        t_start_index : int
+            Index of first time
+        t_stop_index : int
+            Index of last time
+        t_start_index : int
+            Index of frequency
+        t_stop_index : int
+            Index of station
+        cellsize_deg : float
+            Size of one pixel in degrees
+        out_dir : str
+            Full path to the output directory (needed for template file generation)
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
         pass
 
-    def write(self, out_dir, cellsize_deg, smooth_pix=0, interp_kind='nearest'):
+    def get_memory_usage(self, ncpu, cellsize_deg):
+        """
+        Returns memory usage per time slot in GB
+
+        This should be defined in the subclasses, but should conform to the inputs
+        below.
+
+        Parameters
+        ----------
+        ncpu : int
+            Number of CPUs to use
+        cellsize_deg : float
+            Size of one pixel in degrees
+        """
+        pass
+
+    def write(self, out_dir, cellsize_deg, smooth_pix=0, interp_kind='nearest', ncpu=0):
         """
         Write the a-term screens to a FITS data cube
 
@@ -155,6 +192,8 @@ class Screen(object):
             Size of Gaussian in pixels to smooth with
         interp_kind : str, optional
             Kind of interpolation to use
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
         # Identify any gaps in time (frequency gaps are not allowed), as we need to
         # output a separate FITS file for each time chunk
@@ -167,11 +206,10 @@ class Screen(object):
         else:
             gaps_ind = np.array([len(self.times_ph)])
 
-        # Add additional breaks to gaps_ind to keep memory use within that available
-        # From experience, making a (30, 46, 62, 4, 146, 146) aterm image needs around
-        # 30 GB of memory
+        # Add additional breaks to gaps_ind to keep memory usage within that available
         if len(self.times_ph) > 2:
-            max_ntimes = 15
+            tot_mem_gb = cluster.get_total_memory()
+            max_ntimes = max(1, int(tot_mem_gb / (self.get_memory_usage(ncpu, cellsize_deg))))
             check_gaps = True
             while check_gaps:
                 check_gaps = False
@@ -201,7 +239,8 @@ class Screen(object):
             data = hdu[0].data
             for f, freq in enumerate(self.freqs_ph):
                 for s, stat in enumerate(self.station_names):
-                    data[:, f, s, :, :, :] = self.make_matrix(g_start, g_stop, f, s, cellsize_deg, out_dir)
+                    data[:, f, s, :, :, :] = self.make_matrix(g_start, g_stop, f, s,
+                                                              cellsize_deg, out_dir, ncpu)
 
                     # Smooth if desired
                     if smooth_pix > 0:
@@ -261,7 +300,7 @@ class KLScreen(Screen):
                                        solset_name=solset_name, phase_soltab_name=phase_soltab_name,
                                        amplitude_soltab_name=amplitude_soltab_name)
 
-    def fit(self, reweight_solutions=False):
+    def fit(self, reweight_solutions=False, ncpu=0):
         """
         Fits screens to the input solutions
 
@@ -269,6 +308,8 @@ class KLScreen(Screen):
         ----------
         reweight_solutions : bool
             If True, adjust solution weights before fitting screens
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
         # Open solution tables
         H = h5parm(self.input_h5parm_filename, readonly=False)
@@ -301,11 +342,11 @@ class KLScreen(Screen):
 
         # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000', order=len(source_positions)-1,
-                          scale_order=False, adjust_order=False, ncpu=0)
+                          scale_order=False, adjust_order=False, ncpu=ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=len(source_positions)-1,
-                              scale_order=False, adjust_order=False, ncpu=0)
+                              scale_order=False, adjust_order=False, ncpu=ncpu)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
@@ -335,7 +376,35 @@ class KLScreen(Screen):
         self.midRA = soltab_ph_screen.obj._v_attrs['midra']
         self.midDec = soltab_ph_screen.obj._v_attrs['middec']
 
-    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg, out_dir):
+    def get_memory_usage(self, ncpu, cellsize_deg):
+        """
+        Returns memory usage per time slot in GB
+
+        Parameters
+        ----------
+        ncpu : int
+            Number of CPUs to use
+        cellsize_deg : float
+            Size of one pixel in degrees
+        """
+        if ncpu == 0:
+            ncpu = multiprocessing.cpu_count()
+
+        # Make a test array and find its memory usage
+        ximsize = int(self.width_ra / cellsize_deg)  # pix
+        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        test_array = np.array([1, len(self.freqs_ph), len(self.station_names), 4,
+                               yimsize, ximsize])
+        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 1.2  # include 20% fudge factor
+        test_array = None
+
+        # Multiply by the number of CPUs, since each gets a copy
+        mem_per_timeslot_gb *= ncpu
+
+        return mem_per_timeslot_gb
+
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg,
+                    out_dir, ncpu):
         """
         Makes the matrix of values for the given time, frequency, and station indices
 
@@ -353,6 +422,8 @@ class KLScreen(Screen):
             Size of one pixel in degrees
         out_dir : str
             Full path to the output directory
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
         # Define various parameters
         N_sources = len(self.source_names)
@@ -493,7 +564,28 @@ class VoronoiScreen(Screen):
         for station in self.station_names:
             self.station_positions.append(self.station_dict[station])
 
-    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg, out_dir):
+    def get_memory_usage(self, ncpu, cellsize_deg):
+        """
+        Returns memory usage per time slot in GB
+
+        Parameters
+        ----------
+        ncpu : int
+            Number of CPUs to use
+        cellsize_deg : float
+            Size of one pixel in degrees
+        """
+        # Make a test array and find its memory usage
+        ximsize = int(self.width_ra / cellsize_deg)  # pix
+        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        test_array = np.array([1, len(self.freqs_ph), len(self.station_names), 4,
+                               yimsize, ximsize])
+        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 1.2  # include 20% fudge factor
+
+        return mem_per_timeslot_gb
+
+    def make_matrix(self, t_start_index, t_stop_index, freq_ind, stat_ind, cellsize_deg,
+                    out_dir, ncpu):
         """
         Makes the matrix of values for the given time, frequency, and station indices
 
@@ -511,6 +603,8 @@ class VoronoiScreen(Screen):
             Size of one pixel in degrees
         out_dir : str
             Full path to the output directory
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
         # Make the template that converts polynomials to a rasterized 2-D image.
         # This only needs to be done once

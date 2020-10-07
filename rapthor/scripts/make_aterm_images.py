@@ -12,7 +12,7 @@ from losoto.h5parm import h5parm
 def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
          bounds_deg=None, bounds_mid_deg=None, skymodel=None,
          solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.2,
-         smooth_deg=0, interp_kind='nearest'):
+         smooth_deg=0, interp_kind='nearest', ncpu=0):
     """
     Make a-term FITS images
 
@@ -43,6 +43,8 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
         Size of smoothing kernel in degrees to apply
     interp_kind : str, optional
         Kind of interpolation to use. Can be any supported by scipy.interpolate.interp1d
+    ncpu : int, optional
+        Number of CPUs to use (0 means all)
 
     Returns
     -------
@@ -94,9 +96,9 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
         screen = VoronoiScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
                                width_deg, width_deg, solset_name=solsetname,
                                phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
-    screen.process()
+    screen.process(ncpu=ncpu)
     outdir = os.path.dirname(outroot)
-    screen.write(outdir, cellsize_deg, smooth_pix=smooth_pix, interp_kind=interp_kind)
+    screen.write(outdir, cellsize_deg, smooth_pix=smooth_pix, interp_kind=interp_kind, ncpu=ncpu)
 
 
 if __name__ == '__main__':
@@ -114,9 +116,10 @@ if __name__ == '__main__':
     parser.add_argument('--padding_fraction', help='Padding fraction', type=float, default=1.4)
     parser.add_argument('--cellsize_deg', help='Cell size in deg', type=float, default=0.2)
     parser.add_argument('--smooth_deg', help='Smooth scale in degree', type=float, default=0.0)
+    parser.add_argument('--ncpu', help='Number of CPUs to use', type=int, default=0)
     args = parser.parse_args()
     main(args.h5parmfile, soltabname=args.soltabname, screen_type=args.screen_type,
          outroot=args.outroot, bounds_deg=args.bounds_deg,
          bounds_mid_deg=args.bounds_mid_deg, skymodel=args.skymodel,
          solsetname=args.solsetname, padding_fraction=args.padding_fraction,
-         cellsize_deg=args.cellsize_deg, smooth_deg=args.smooth_deg)
+         cellsize_deg=args.cellsize_deg, smooth_deg=args.smooth_deg, ncpu=args.ncpu)
