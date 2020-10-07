@@ -393,10 +393,9 @@ class KLScreen(Screen):
         # Make a test array and find its memory usage
         ximsize = int(self.width_ra / cellsize_deg)  # pix
         yimsize = int(self.width_dec / cellsize_deg)  # pix
-        test_array = np.array([1, len(self.freqs_ph), len(self.station_names), 4,
+        test_array = np.zeros([1, len(self.freqs_ph), len(self.station_names), 4,
                                yimsize, ximsize])
-        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 1.2  # include 20% fudge factor
-        test_array = None
+        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 10  # include factor of 10 overhead
 
         # Multiply by the number of CPUs, since each gets a copy
         mem_per_timeslot_gb *= ncpu
@@ -578,9 +577,9 @@ class VoronoiScreen(Screen):
         # Make a test array and find its memory usage
         ximsize = int(self.width_ra / cellsize_deg)  # pix
         yimsize = int(self.width_dec / cellsize_deg)  # pix
-        test_array = np.array([1, len(self.freqs_ph), len(self.station_names), 4,
+        test_array = np.zeros([1, len(self.freqs_ph), len(self.station_names), 4,
                                yimsize, ximsize])
-        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 1.2  # include 20% fudge factor
+        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 10  # include factor of 10 overhead
 
         return mem_per_timeslot_gb
 
