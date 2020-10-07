@@ -71,7 +71,7 @@ class Screen(object):
         self.width_ra = width
         self.width_dec = width
 
-    def fit(self):
+    def fit(self, ncpu=0):
         """
         Fits screens to the input solutions
 
@@ -279,12 +279,12 @@ class Screen(object):
         list_file.writelines([o+'\n' for o in outfiles])
         list_file.close()
 
-    def process(self):
+    def process(self, ncpu=0):
         """
         Makes a-term images
         """
         # Fit screens to input solutions
-        self.fit()
+        self.fit(ncpu=ncpu)
 
         # Interpolate best-fit parameters to common time and frequency grid
         self.interpolate()
@@ -300,14 +300,12 @@ class KLScreen(Screen):
                                        solset_name=solset_name, phase_soltab_name=phase_soltab_name,
                                        amplitude_soltab_name=amplitude_soltab_name)
 
-    def fit(self, reweight_solutions=False, ncpu=0):
+    def fit(self, ncpu=0):
         """
         Fits screens to the input solutions
 
         Parameters
         ----------
-        reweight_solutions : bool
-            If True, adjust solution weights before fitting screens
         ncpu : int, optional
             Number of CPUs to use (0 means all)
         """
@@ -335,6 +333,8 @@ class KLScreen(Screen):
         sourceTable = list(zip(*(soltab_ph.dir, vals)))
 
         # Reweight the input solutions by the scatter after detrending
+        # Note: disable for now until further testing can be done
+        reweight_solutions = False
         if reweight_solutions:
             reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
             if self.input_amplitude_soltab_name is not None:
