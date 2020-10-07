@@ -7,7 +7,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - numthreads=0
   - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
@@ -65,6 +64,11 @@ inputs:
       valueFrom: $('['+self+']')
       prefix: predict.directions=
       itemSeparator: ','
+      separate: False
+  - id: numthreads
+    type: string
+    inputBinding:
+      prefix: numthreads=
       separate: False
 
 outputs:

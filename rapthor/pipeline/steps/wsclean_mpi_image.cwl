@@ -90,6 +90,10 @@ inputs:
     type: int
     inputBinding:
       prefix: -q
+  - id: numthreads
+    type: string
+    inputBinding:
+      prefix: -j
 
 outputs:
   - id: image_nonpb_name

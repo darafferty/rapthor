@@ -585,12 +585,15 @@ def get_cluster_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Number of CPUs per node to be used.
-    if 'ncpu' in parset_dict:
-        parset_dict['ncpu'] = parset.getint('cluster', 'ncpu')
+    # Number of processors per task to request from SLURM
+    # (the --ntasks-per-node option in sbatch) can be specified with the
+    # cpus_per_task option (default = 6). By setting the cpus_per_task value to the
+    # number of processors per node, one can ensure that each task gets the entire
+    # node to itself, which is the recommended way of running Rapthor
+    if 'cpus_per_task' in parset_dict:
+        parset_dict['cpus_per_task'] = parset.getint('cluster', 'cpus_per_task')
     else:
-        import multiprocessing
-        parset_dict['ncpu'] = multiprocessing.cpu_count()
+        parset_dict['cpus_per_task'] = 6
 
     # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
@@ -603,6 +606,22 @@ def get_cluster_options(parset):
         else:
             parset_dict['max_nodes'] = 12
 
+    # Maximum number of cores and threads per task to use on each node (default = 0 = all).
+    if 'max_cores' in parset_dict:
+        parset_dict['max_cores'] = parset.getint('cluster', 'max_cores')
+    else:
+        if parset_dict['batch_system'] == 'slurm':
+            # If SLURM is used, force max_cores to be cpus_per_task
+            parset_dict['max_cores'] = parset_dict['cpus_per_task']
+        else:
+            # Otherwise, get the cpu count of the current machine
+            import multiprocessing
+            parset_dict['max_cores'] = multiprocessing.cpu_count()
+    if 'max_threads' in parset_dict:
+        parset_dict['max_threads'] = parset.getint('cluster', 'max_threads')
+    else:
+        parset_dict['max_threads'] = 0
+
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes
     if 'dir_local' not in parset_dict:
@@ -611,7 +630,7 @@ def get_cluster_options(parset):
         parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
 
     # Check for invalid options
-    allowed_options = ['ncpu', 'batch_system', 'max_nodes', 'dir_local']
+    allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores', 'max_threads', 'dir_local']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '

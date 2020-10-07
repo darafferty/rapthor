@@ -113,6 +113,10 @@ inputs:
     type: string
     inputBinding:
       prefix: -idg-mode
+  - id: numthreads
+    type: string
+    inputBinding:
+      prefix: -j
 
 outputs:
   - id: image_nonpb_name

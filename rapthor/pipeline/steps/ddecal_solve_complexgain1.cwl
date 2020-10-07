@@ -7,7 +7,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
-  - numthreads=0
   - msin.datacolumn=DATA
   - msout=.
   - steps=[solve]
@@ -104,6 +103,11 @@ inputs:
     type: string
     inputBinding:
       prefix: solve.antennaconstraint=
+      separate: False
+  - id: numthreads
+    type: string
+    inputBinding:
+      prefix: numthreads=
       separate: False
 
 outputs:

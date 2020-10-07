@@ -131,15 +131,27 @@ input_skymodel = /data/skymodel.txt
 
 
 [cluster]
-# Cluster batch system (default = singleMachine). Use batch_system = slurm to use a SLURM-
-# based cluster. For clusters, the maximum number of nodes to use at once can be specified
-# with the max_nodes option (default = 12)
+# Cluster batch system (default = singleMachine). Use batch_system = slurm to
+# use a SLURM- based cluster
 # batch_system = singleMachine
+
+# For batch_system = slurm, the maximum number of nodes of the cluster to use
+# at once can be specified with the max_nodes option (SLURM's --nodes option;
+# default = 12), and the number of processors per task to request from SLURM
+# (the --ntasks-per-node option in sbatch) can be specified with the
+# cpus_per_task option (default = 6). By setting the cpus_per_task value to the
+# number of processors per node, one can ensure that each task gets the entire
+# node to itself, which is the recommended way of running Rapthor
 # max_nodes = 12
+# cpus_per_task = 6
 
 # TODO: Slurm partition names?
 # cpu_partition = batch
 # gpu_partition = batch
+
+# Maximum number of cores and threads per task to use on each node (default = 0 = all).
+# max_cores = 0
+# max_threads = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes. This parameter is useful if you
@@ -150,7 +162,3 @@ input_skymodel = /data/skymodel.txt
 # used, as each sector will overwrite files from the other sectors. In this
 # case, it is best to leave dir_local unset
 # dir_local = /tmp
-
-# Maximum number of CPUs per node to use
-ncpu = 6
-

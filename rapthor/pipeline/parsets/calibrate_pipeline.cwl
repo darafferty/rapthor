@@ -5,6 +5,13 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+{% if max_cores is not none %}
+hints:
+  ResourceRequirement:
+    coresMin: 1
+    coresMax: {{ max_cores }}
+{% endif %}
+
 inputs:
   - id: timechunk_filename
     type: string[]
@@ -112,6 +119,12 @@ steps:
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
 {% endif %}
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: timechunk_filename
@@ -141,6 +154,8 @@ steps:
         source: fast_smoothnessconstraint
       - id: antennaconstraint
         source: fast_antennaconstraint
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan]
     scatterMethod: dotproduct
     out:
@@ -163,6 +178,12 @@ steps:
   - id: solve_slow_gains1
     label: solve_slow_gains1
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
@@ -198,6 +219,8 @@ steps:
         source: slow_smoothnessconstraint
       - id: antennaconstraint
         source: slow_antennaconstraint
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -232,6 +255,12 @@ steps:
   - id: solve_slow_gains2
     label: solve_slow_gains2
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
@@ -265,6 +294,8 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint2
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -374,6 +405,12 @@ steps:
   - id: solve_slow_gains_debug
     label: solve_slow_gains_debug
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_debug.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
@@ -407,6 +444,8 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:

@@ -5,6 +5,13 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
+{% if max_cores is not none %}
+hints:
+  ResourceRequirement:
+    coresMin: 1
+    coresMax: {{ max_cores }}
+{% endif %}
+
 inputs:
   - id: obs_filename
     type: string[]
@@ -110,6 +117,12 @@ steps:
 {% endif %}
 
 {% endif %}
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: obs_filename
@@ -127,6 +140,8 @@ steps:
         source: image_timestep
       - id: beamdir
         source: phasecenter
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
 {% if use_screens %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
@@ -195,6 +210,12 @@ steps:
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
 {% endif %}
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: msin
         source: prepare_imaging_data/msimg
@@ -244,6 +265,8 @@ steps:
         source: auto_mask
       - id: idg_mode
         source: idg_mode
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     out:
       - id: image_nonpb_name
       - id: image_pb_name
@@ -254,6 +277,12 @@ steps:
   - id: restore_pb
     label: restore_pb
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: residual_image
         source: image/image_pb_name
@@ -261,12 +290,20 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_pb_name
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     out:
       - id: restored_image
 
   - id: restore_nonpb
     label: restore_nonpb
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
     in:
       - id: residual_image
         source: image/image_nonpb_name
@@ -274,6 +311,8 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_nonpb_name
+      - id: numthreads
+        valueFrom: '{{ max_threads }}'
     out:
       - id: restored_image
 {% endif %}

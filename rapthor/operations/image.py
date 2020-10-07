@@ -23,11 +23,19 @@ class Image(Operation):
         """
         Define parameters needed for the pipeline parset template
         """
+        if self.batch_system == 'slurm':
+            # For some reason, setting coresMax ResourceRequirement hints does
+            # not work with SLURM
+            max_cores = None
+        else:
+            max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
                              'peel_bright_sources': self.field.peel_bright_sources,
+                             'max_cores': max_cores,
+                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'do_multiscale_clean': self.field.do_multiscale_clean,
                              'use_mpi': self.field.use_mpi}
 
@@ -160,7 +168,7 @@ class Image(Operation):
                 nsubpipes = min(nsectors, nnodes)
                 nnodes_per_subpipeline = int(nnodes / nsubpipes)
 
-                self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['ncpu']] * nsectors,
+                self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['cpus_per_task']] * nsectors,
                                          'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
