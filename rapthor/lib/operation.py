@@ -47,6 +47,7 @@ class Operation(object):
         self.parset['op_name'] = name
         _logging.set_level(self.parset['logging_level'])
         self.log = logging.getLogger('rapthor:{0}'.format(self.name))
+        self.force_serial_jobs = False  # force jobs to run serially
 
         # Extra Toil env variables
         self.toil_env_variables = {}
