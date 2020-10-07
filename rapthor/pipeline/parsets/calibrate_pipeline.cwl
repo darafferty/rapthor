@@ -395,6 +395,8 @@ steps:
         source: sector_bounds_deg
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
+      - id: ncpu
+        valueFrom: '{{ max_threads }}'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
     out: []
