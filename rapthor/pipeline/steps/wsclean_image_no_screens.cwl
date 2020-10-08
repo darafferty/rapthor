@@ -17,6 +17,7 @@ arguments:
   - -use-idg
   - -grid-with-beam
   - -use-differential-lofar-beam
+  - -log-time
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.6'

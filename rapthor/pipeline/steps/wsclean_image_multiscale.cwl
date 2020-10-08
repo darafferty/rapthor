@@ -15,6 +15,7 @@ arguments:
   - -local-rms
   - -join-channels
   - -use-idg
+  - -log-time
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.6'
