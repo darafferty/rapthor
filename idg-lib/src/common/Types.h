@@ -9,8 +9,6 @@
 #include <memory>
 #include <vector>
 
-#define WTILE_SIZE 128
-
 #ifndef FUNCTION_ATTRIBUTES
 #define FUNCTION_ATTRIBUTES
 #endif

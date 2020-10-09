@@ -19,7 +19,7 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
   cout << "Plan::" << __func__ << endl;
 #endif
 
-  WTiles dummy_wtiles(0);
+  WTiles dummy_wtiles;
 
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterms_offsets, dummy_wtiles, options);
@@ -43,12 +43,13 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
 class Subgrid {
  public:
   Subgrid(const int kernel_size, const int subgrid_size, const int grid_size,
-          const float w_step, const unsigned nr_w_layers)
+          const float w_step, const unsigned nr_w_layers, const int wtile_size)
       : kernel_size(kernel_size),
         subgrid_size(subgrid_size),
         grid_size(grid_size),
         w_step(w_step),
-        nr_w_layers(nr_w_layers) {
+        nr_w_layers(nr_w_layers),
+        wtile_size(wtile_size) {
     reset();
   }
 
@@ -127,8 +128,8 @@ class Subgrid {
     int u_pixels = roundf((u_max + u_min) / 2);
     int v_pixels = roundf((v_max + v_min) / 2);
 
-    int wtile_x = floor(double(u_pixels) / WTILE_SIZE);
-    int wtile_y = floor(double(v_pixels) / WTILE_SIZE);
+    int wtile_x = floor(double(u_pixels) / wtile_size);
+    int wtile_y = floor(double(v_pixels) / wtile_size);
 
     // Shift center from middle of grid to top left
     u_pixels += (grid_size / 2);
@@ -174,6 +175,7 @@ class Subgrid {
   int w_index;
   float w_step;
   int nr_w_layers;
+  int wtile_size;
   bool finished;
   Coordinate coordinate;
   Coordinate wtile_coordinate;
@@ -251,6 +253,7 @@ void Plan::initialize(
   auto nr_timeslots = aterms_offsets.get_x_dim() - 1;
   auto nr_channels = frequencies.get_x_dim();
   auto image_size = cell_size * grid_size;  // TODO: remove
+  auto wtile_size = wtiles.get_wtile_size();
 
   // Spectral-line imaging
   bool simulate_spectral_line = options.simulate_spectral_line;
@@ -318,8 +321,8 @@ void Plan::initialize(
       auto channel_end = channel_group.second;
 
       // Initialize subgrid
-      Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step,
-                      nr_w_layers);
+      Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers,
+                      wtile_size);
 
       for (unsigned t = 0; t < nr_timesteps; t++) {
         // U,V in meters

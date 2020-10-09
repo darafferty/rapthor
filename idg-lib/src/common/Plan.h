@@ -133,6 +133,8 @@ class Plan {
     return m_wtile_initialize_set;
   }
 
+  WTileUpdateSet get_wtile_flush_set() const { return m_wtile_flush_set; }
+
   bool get_use_wtiles() const { return use_wtiles; }
 
  private:

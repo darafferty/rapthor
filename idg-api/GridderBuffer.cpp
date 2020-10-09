@@ -258,19 +258,18 @@ void GridderBufferImpl::flush_thread_worker() {
 
   // Create plan
   m_bufferset->m_plan_watch->Start();
-  Plan plan(m_kernel_size, m_subgridsize, m_gridHeight, m_cellHeight,
-            m_frequencies, m_bufferUVW2, m_bufferStationPairs2,
-            m_aterm_offsets_array, options);
+  std::unique_ptr<Plan> plan = m_proxy->make_plan(
+      m_kernel_size, m_subgridsize, m_gridHeight, m_cellHeight, m_frequencies,
+      m_bufferUVW2, m_bufferStationPairs2, m_aterm_offsets_array, options);
   m_bufferset->m_plan_watch->Pause();
 
   // Run gridding
   m_bufferset->m_gridding_watch->Start();
-  m_proxy->set_grid(m_grid);
-  m_proxy->gridding(plan, m_wStepInLambda, m_shift, m_cellHeight, m_kernel_size,
-                    m_subgridsize, m_frequencies, m_bufferVisibilities2,
-                    m_bufferUVW2, m_bufferStationPairs2, *m_grid,
-                    m_aterms_array, m_aterm_offsets_array, m_spheroidal);
-  m_proxy->get_grid();
+  m_proxy->gridding(*plan, m_wStepInLambda, m_shift, m_cellHeight,
+                    m_kernel_size, m_subgridsize, m_frequencies,
+                    m_bufferVisibilities2, m_bufferUVW2, m_bufferStationPairs2,
+                    *m_grid, m_aterms_array, m_aterm_offsets_array,
+                    m_spheroidal);
   m_bufferset->m_gridding_watch->Pause();
 }
 

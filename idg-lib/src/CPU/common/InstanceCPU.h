@@ -15,6 +15,9 @@ namespace cpu {
 
 class InstanceCPU : public KernelsInstance {
  public:
+  static constexpr int kNrWTiles = 4000;
+  static constexpr int kWTileSize = 128;
+
   // Constructor
   InstanceCPU(std::vector<std::string> libraries);
 
@@ -83,28 +86,32 @@ class InstanceCPU : public KernelsInstance {
 
   void run_adder_subgrids_to_wtiles(int nr_subgrids, int grid_size,
                                     int subgrid_size, void *metadata,
-                                    void *subgrid, void *tiles);
+                                    void *subgrid);
 
   void run_splitter_subgrids_from_wtiles(int nr_subgrids, int grid_size,
                                          int subgrid_size, void *metadata,
-                                         void *subgrid, void *tiles);
+                                         void *subgrid);
 
   void run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
                                 float image_size, float w_step, int nr_wtiles,
                                 void *tile_ids, void *tile_coordinates,
-                                void *tiles, void *grid);
+                                void *grid);
 
   void run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                      float image_size, float w_step,
                                      int nr_tiles, void *tile_ids,
-                                     void *tile_coordinates, void *tiles,
-                                     void *grid);
+                                     void *tile_coordinates, void *grid);
 
-  void run_splitter_wtiles(unsigned int nr_subgrids, unsigned int grid_size,
-                           unsigned int subgrid_size, float image_size,
-                           float w_step, int subgrid_offset,
-                           WTileUpdateSet &wtile_initialize_set, void *wtiles,
-                           void *metadata, void *subgrid, void *grid);
+  void run_adder_wtiles(unsigned int nr_subgrids, unsigned int grid_size,
+                        unsigned int subgrid_size, float image_size,
+                        float w_step, int subgrid_offset,
+                        WTileUpdateSet &wtile_flush_set, void *metadata,
+                        void *subgrid, void *grid);
+
+  void run_splitter_wtiles(int nr_subgrids, int grid_size, int subgrid_size,
+                           float image_size, float w_step, int subgrid_offset,
+                           WTileUpdateSet &wtile_initialize_set, void *metadata,
+                           void *subgrid, void *grid);
 
   bool has_adder_wstack() { return (function_adder_wstack != nullptr); }
 
@@ -120,12 +127,17 @@ class InstanceCPU : public KernelsInstance {
            (function_splitter_subgrids_from_wtiles != nullptr);
   }
 
+  virtual void init_wtiles(int subgrid_size);
+  virtual void reset_wtiles() { m_wtiles_buffer.resize(0); }
+
  protected:
   void compile(Compiler compiler, Compilerflags flags);
   void load_shared_objects(std::vector<std::string> libraries);
   void load_kernel_funcions();
 
   std::vector<runtime::Module *> modules;
+
+  std::vector<std::complex<float>> m_wtiles_buffer;
 
   runtime::Function *function_gridder;
   runtime::Function *function_degridder;

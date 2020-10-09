@@ -93,7 +93,10 @@ Context::Context(Device &device, int flags) {
   assertCudaCall(cuCtxCreate(&_context, flags, device));
 }
 
-Context::~Context() { assertCudaCall(cuCtxDestroy(_context)); }
+Context::~Context() {
+  std::cout << "Destroying context" << std::endl;
+  assertCudaCall(cuCtxDestroy(_context));
+}
 
 void Context::setCurrent() const { assertCudaCall(cuCtxSetCurrent(_context)); }
 

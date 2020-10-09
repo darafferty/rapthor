@@ -31,6 +31,7 @@ set (${PROJECT_NAME}_sources
 	Plan.cpp
     PowerSensor.cpp
     Report.cpp
+    WTiles.cpp
 )
 
 add_library(

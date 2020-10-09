@@ -158,4 +158,4 @@ def test_singlepointsource(stokes):
     print(f"Norm of MODEL_DATA column: {np.linalg.norm(model_data)}")
 
     err = np.amax(abs(model_data - data))
-    assert err < 1e-4, f"max error {err} (inf norm) exceeds specified threshold of 1e-4"
+    assert err < 1.5e-4, f"max error {err} (inf norm) exceeds specified threshold of 1e-4"
