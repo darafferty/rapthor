@@ -76,6 +76,11 @@ class Screen(object):
         Fits screens to the input solutions
 
         This should be defined in the subclasses
+
+        Parameters
+        ----------
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
         pass
 
@@ -527,7 +532,7 @@ class VoronoiScreen(Screen):
                                             solset_name=solset_name, phase_soltab_name=phase_soltab_name, amplitude_soltab_name=amplitude_soltab_name)
         self.data_rasertize_template = None
 
-    def fit(self):
+    def fit(self, ncpu=0):
         """
         Fitting is not needed: the input solutions are used directly
         """
