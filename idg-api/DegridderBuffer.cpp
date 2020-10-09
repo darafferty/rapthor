@@ -108,20 +108,18 @@ void DegridderBufferImpl::flush() {
 
   // Create plan
   m_bufferset->m_plan_watch->Start();
-  Plan plan(m_kernel_size, m_subgridsize, m_gridHeight, m_cellHeight,
-            m_frequencies, m_bufferUVW, m_bufferStationPairs,
-            m_aterm_offsets_array, options);
+  std::unique_ptr<Plan> plan = m_proxy->make_plan(
+      m_kernel_size, m_subgridsize, m_gridHeight, m_cellHeight, m_frequencies,
+      m_bufferUVW, m_bufferStationPairs, m_aterm_offsets_array, options);
   m_bufferset->m_plan_watch->Pause();
 
   // Run degridding
   m_bufferset->m_degridding_watch->Start();
-  m_proxy->set_grid(m_grid);
-  m_proxy->degridding(plan, m_wStepInLambda, m_shift, m_cellHeight,
+  m_proxy->degridding(*plan, m_wStepInLambda, m_shift, m_cellHeight,
                       m_kernel_size, m_subgridsize, m_frequencies,
                       m_bufferVisibilities, m_bufferUVW, m_bufferStationPairs,
                       *m_grid, m_aterms_array, m_aterm_offsets_array,
                       m_spheroidal);
-  m_proxy->get_grid();
   m_bufferset->m_degridding_watch->Pause();
 
   // Prepare next batch

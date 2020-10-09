@@ -192,24 +192,32 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   // this cuts the w kernel approximately at the 1% level
   const float max_w_size = max_w * m_image_size * m_image_size;
 
-  // some heuristic to set kernel size
-  // square root splits the w_kernel evenly over wstack and wprojection
-  // still needs a bit more thinking, and better motivation.
-  // but for now does something reasonable
-  float w_kernel_size = std::max(8, int(std::round(2 * std::sqrt(max_w_size))));
+  int nr_w_layers;
+  float w_kernel_size;
 
-  m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
+  if (m_proxy->supports_wtiles()) {
+    w_kernel_size = 8;
+    m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
+    nr_w_layers = 1;
+  } else {
+    // some heuristic to set kernel size
+    // square root splits the w_kernel evenly over wstack and wprojection
+    // still needs a bit more thinking, and better motivation.
+    // but for now does something reasonable
+    w_kernel_size = std::max(8, int(std::round(2 * std::sqrt(max_w_size))));
+    m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
+    nr_w_layers = std::ceil(max_w / m_w_step);
 
-  int nr_w_layers = std::ceil(max_w / m_w_step);
-
-  // restrict nr w layers
-  if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
+    // restrict nr w layers
+    if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
 #ifndef NDEBUG
-  std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+    std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
 #endif
 
-  m_w_step = max_w / nr_w_layers;
+    m_w_step = max_w / nr_w_layers;
+  }
+
   m_shift[0] = shiftl;
   m_shift[1] = shiftm;
   m_shift[2] = shiftp;
@@ -245,6 +253,7 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 
   m_grid.reset(new Grid(nr_w_layers, 4, m_padded_size, m_padded_size));
   m_grid->zero();
+  m_proxy->set_grid(m_grid);
 
   m_taper_subgrid.resize(m_subgridsize);
   m_taper_grid.resize(m_padded_size);
@@ -390,51 +399,64 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
       }
     }  // end for x
 
+    // Compute inverse spheroidal
+    float inv_tapers[m_size] __attribute__((aligned(64)));
+    for (int x = 0; x < m_size; x++) {
+      inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
+    }  // end for x
+
     // Copy to other w planes and multiply by w term
     for (int w = nr_w_layers - 1; w >= 0; w--) {
-      // Compute phase
-      float phases[m_size];
-      for (int x = 0; x < m_size; x++) {
-        const float w_offset = (w + 0.5) * m_w_step;
-        const float l = (x - ((int)m_size / 2)) * m_cell_size;
-        const float m = (y - ((int)m_size / 2)) * m_cell_size;
-        // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-        // accurately for small values of l and m
-        const float n = compute_n(l, -m, m_shift);
-        phases[x] = 2 * M_PI * n * w_offset;
-      }  // end for x
-
-      // Compute inverse spheroidal
-      float inv_tapers[m_size] __attribute__((aligned(64)));
-      for (int x = 0; x < m_size; x++) {
-        inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
-      }  // end for x
-
-      // Compute phasor
-      float phasor_real[m_size] __attribute__((aligned(64)));
-      float phasor_imag[m_size] __attribute__((aligned(64)));
-      for (int x = 0; x < m_size; x++) {
-        float phase = phases[x];
-        phasor_real[x] = cosf(phase);
-        phasor_imag[x] = sinf(phase);
-      }  // end for x
-
       // Compute current row of w-plane
       float w_row_real[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
       float w_row_imag[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
 
-      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+      if (m_proxy->supports_wtiles()) {
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int x = 0; x < m_size; x++) {
+            w_row_real[pol][x] = w0_row_real[pol][x] * inv_tapers[x];
+            w_row_imag[pol][x] = w0_row_imag[pol][x] * inv_tapers[x];
+          }  // end for x
+        }    // end for pol
+      } else {
+        // Compute phase
+        float phases[m_size] = {0};
         for (int x = 0; x < m_size; x++) {
-          float value_real = w0_row_real[pol][x] * inv_tapers[x];
-          float value_imag = w0_row_imag[pol][x] * inv_tapers[x];
-          float phasor_real_ = phasor_real[x];
-          float phasor_imag_ = phasor_imag[x];
-          w_row_real[pol][x] = value_real * phasor_real_;
-          w_row_imag[pol][x] = value_real * phasor_imag_;
-          w_row_real[pol][x] -= value_imag * phasor_imag_;
-          w_row_imag[pol][x] += value_imag * phasor_real_;
+          const float w_offset = (w + 0.5) * m_w_step;
+          const float l = (x - ((int)m_size / 2)) * m_cell_size;
+          const float m = (y - ((int)m_size / 2)) * m_cell_size;
+          // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
+          // accurately for small values of l and m
+          const float n = compute_n(l, -m, m_shift);
+          phases[x] = 2 * M_PI * n * w_offset;
         }  // end for x
-      }    // end for pol
+
+        // Compute phasor
+        float phasor_real[m_size] __attribute__((aligned(64)));
+        float phasor_imag[m_size] __attribute__((aligned(64)));
+        for (int x = 0; x < m_size; x++) {
+          float phase = phases[x];
+          phasor_real[x] = cosf(phase);
+          phasor_imag[x] = sinf(phase);
+        }  // end for x
+
+        // Compute current row of w-plane
+        float w_row_real[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+        float w_row_imag[NR_CORRELATIONS][m_size] __attribute__((aligned(64)));
+
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int x = 0; x < m_size; x++) {
+            float value_real = w0_row_real[pol][x] * inv_tapers[x];
+            float value_imag = w0_row_imag[pol][x] * inv_tapers[x];
+            float phasor_real_ = phasor_real[x];
+            float phasor_imag_ = phasor_imag[x];
+            w_row_real[pol][x] = value_real * phasor_real_;
+            w_row_imag[pol][x] = value_real * phasor_imag_;
+            w_row_real[pol][x] -= value_imag * phasor_imag_;
+            w_row_imag[pol][x] += value_imag * phasor_real_;
+          }  // end for x
+        }    // end for pol
+      }
 
       // Set m_grid
       for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
@@ -446,12 +468,13 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
       }    // end for pol
     }      // end for w
   }        // end for y
+
   runtime_stacking += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
 #endif
 
-  // Fourier transform w layers
+// Fourier transform w layers
 #if ENABLE_VERBOSE_TIMING
   std::cout << "fft w_layers";
 #endif
@@ -470,7 +493,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 #endif
 
   m_set_image_watch->Pause();
-};
+}
 
 void BufferSetImpl::write_grid(idg::Grid& grid) {
   auto nr_w_layers = grid.get_w_dim();
@@ -507,6 +530,9 @@ void BufferSetImpl::write_grid(idg::Grid& grid) {
 
 void BufferSetImpl::get_image(double* image) {
   m_get_image_watch->Start();
+
+  // Flush all pending operations on the grid
+  m_proxy->get_grid();
 
   double runtime = -omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
@@ -545,18 +571,6 @@ void BufferSetImpl::get_image(double* image) {
                                 m_size);
 
     for (int w = 0; w < nr_w_layers; w++) {
-      // Compute phase
-      float phases[m_size] __attribute__((aligned(64)));
-      for (int x = 0; x < m_size; x++) {
-        const float w_offset = (w + 0.5) * m_w_step;
-        const float l = (x - ((int)m_size / 2)) * m_cell_size;
-        const float m = (y - ((int)m_size / 2)) * m_cell_size;
-        // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-        // accurately for small values of l and m
-        const float n = compute_n(l, -m, m_shift);
-        phases[x] = -2 * M_PI * n * w_offset;
-      }
-
       // Compute inverse spheroidal
       float inv_tapers[m_size] __attribute__((aligned(64)));
       for (int x = 0; x < m_size; x++) {
@@ -572,28 +586,51 @@ void BufferSetImpl::get_image(double* image) {
         }  // end for pol
       }    // end for x
 
-      // Compute phasor
-      float phasor_real[m_size] __attribute__((aligned(64)));
-      float phasor_imag[m_size] __attribute__((aligned(64)));
-      for (int x = 0; x < m_size; x++) {
-        float phase = phases[x];
-        phasor_real[x] = cosf(phase);
-        phasor_imag[x] = sinf(phase);
-      }  // end for x
+      if (m_proxy->supports_wtiles()) {
+        // Compute current row of w-plane
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int x = 0; x < m_size; x++) {
+            w_row_real[pol][x] = w_row_real[pol][x] * inv_tapers[x];
+            w_row_imag[pol][x] = w_row_imag[pol][x] * inv_tapers[x];
+          }  // end for x
+        }    // end for pol
+      } else {
+        // Compute phase
+        float phases[m_size] __attribute__((aligned(64))) = {};
 
-      // Compute current row of w-plane
-      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
         for (int x = 0; x < m_size; x++) {
-          float value_real = w_row_real[pol][x] * inv_tapers[x];
-          float value_imag = w_row_imag[pol][x] * inv_tapers[x];
-          float phasor_real_ = phasor_real[x];
-          float phasor_imag_ = phasor_imag[x];
-          w_row_real[pol][x] = value_real * phasor_real_;
-          w_row_imag[pol][x] = value_real * phasor_imag_;
-          w_row_real[pol][x] -= value_imag * phasor_imag_;
-          w_row_imag[pol][x] += value_imag * phasor_real_;
+          const float w_offset = (w + 0.5) * m_w_step;
+          const float l = (x - ((int)m_size / 2)) * m_cell_size;
+          const float m = (y - ((int)m_size / 2)) * m_cell_size;
+          // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
+          // accurately for small values of l and m
+          const float n = compute_n(l, -m, m_shift);
+          phases[x] = -2 * M_PI * n * w_offset;
+        }
+
+        // Compute phasor
+        float phasor_real[m_size] __attribute__((aligned(64)));
+        float phasor_imag[m_size] __attribute__((aligned(64)));
+        for (int x = 0; x < m_size; x++) {
+          float phase = phases[x];
+          phasor_real[x] = cosf(phase);
+          phasor_imag[x] = sinf(phase);
         }  // end for x
-      }    // end for pol
+
+        // Compute current row of w-plane
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int x = 0; x < m_size; x++) {
+            float value_real = w_row_real[pol][x] * inv_tapers[x];
+            float value_imag = w_row_imag[pol][x] * inv_tapers[x];
+            float phasor_real_ = phasor_real[x];
+            float phasor_imag_ = phasor_imag[x];
+            w_row_real[pol][x] = value_real * phasor_real_;
+            w_row_imag[pol][x] = value_real * phasor_imag_;
+            w_row_real[pol][x] -= value_imag * phasor_imag_;
+            w_row_imag[pol][x] += value_imag * phasor_real_;
+          }  // end for x
+        }    // end for pol
+      }
 
       // Add to first w-plane
       for (int pol = 0; pol < NR_CORRELATIONS; pol++) {

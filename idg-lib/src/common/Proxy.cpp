@@ -59,9 +59,9 @@ void Proxy::gridding(
   options.w_step = w_step;
   options.nr_w_layers = nr_w_layers;
 
-  std::unique_ptr<Plan> plan(make_plan(kernel_size, subgrid_size, grid_size,
-                                       cell_size, frequencies, uvw, baselines,
-                                       aterms_offsets, options));
+  std::unique_ptr<Plan> plan =
+      make_plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+                uvw, baselines, aterms_offsets, options);
 
   gridding(*plan, w_step, shift, cell_size, kernel_size, subgrid_size,
            frequencies, visibilities, uvw, baselines, *m_grid, aterms,
@@ -168,9 +168,9 @@ void Proxy::degridding(
   options.w_step = w_step;
   options.nr_w_layers = nr_w_layers;
 
-  std::unique_ptr<Plan> plan(make_plan(kernel_size, subgrid_size, grid_size,
-                                       cell_size, frequencies, uvw, baselines,
-                                       aterms_offsets, options));
+  std::unique_ptr<Plan> plan =
+      make_plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+                uvw, baselines, aterms_offsets, options);
 
   degridding(*plan, w_step, shift, cell_size, kernel_size, subgrid_size,
              frequencies, visibilities, uvw, baselines, *m_grid, aterms,
@@ -289,12 +289,12 @@ void Proxy::calibrate_init(
   plans.reserve(nr_antennas);
 
   for (unsigned int i = 0; i < nr_antennas; i++) {
-    plans.push_back(std::unique_ptr<Plan>(make_plan(
+    plans.push_back(make_plan(
         kernel_size, subgrid_size, grid_size, cell_size, frequencies,
         Array2D<UVW<float>>(uvw1.data(i), nr_antennas - 1, nr_timesteps),
         Array1D<std::pair<unsigned int, unsigned int>>(baselines1.data(i),
                                                        nr_antennas - 1),
-        aterms_offsets, options)));
+        aterms_offsets, options));
   }
 
   // Initialize calibration

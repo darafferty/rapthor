@@ -86,6 +86,8 @@ void GenericOptimized::run_gridding(
   auto grid_size = grid.get_x_dim();
   auto image_size = cell_size * grid_size;
 
+  WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
+
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
@@ -147,6 +149,7 @@ void GenericOptimized::run_gridding(
 
   // Start asynchronous computation on the host
   std::thread host_thread = std::thread([&]() {
+    int subgrid_offset = 0;
     for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
       // Get parameters for current job
       auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
@@ -171,10 +174,22 @@ void GenericOptimized::run_gridding(
       outputCopied[job_id]->synchronize();
 
       // Run adder on host
-      cu::Marker marker_adder("run_adder_wstack", cu::Marker::blue);
+      cu::Marker marker_adder("run_adder", cu::Marker::blue);
       marker_adder.start();
-      cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size,
-                                  metadata_ptr, h_subgrids, grid_ptr);
+      if (w_step == 0.0) {
+        cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
+                             metadata_ptr, h_subgrids, grid_ptr);
+      } else if (plan.get_use_wtiles()) {
+        cpuKernels.run_adder_wtiles(current_nr_subgrids, grid_size,
+                                    subgrid_size, image_size, w_step,
+                                    subgrid_offset, wtile_flush_set,
+                                    metadata_ptr, h_subgrids, grid_ptr);
+        subgrid_offset += current_nr_subgrids;
+      } else {
+        cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size,
+                                    subgrid_size, metadata_ptr, h_subgrids,
+                                    grid_ptr);
+      }
       marker_adder.end();
 
       // Report performance
@@ -368,6 +383,8 @@ void GenericOptimized::run_degridding(
   auto grid_size = grid.get_x_dim();
   auto image_size = cell_size * grid_size;
 
+  WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
+
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
@@ -427,6 +444,7 @@ void GenericOptimized::run_degridding(
 
   // Start host thread to create subgrids
   std::thread host_thread = std::thread([&] {
+    int subgrid_offset = 0;
     for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
       // Get parameters for current job
       auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
@@ -443,11 +461,24 @@ void GenericOptimized::run_degridding(
       }
 
       // Run splitter kernel
-      cu::Marker marker_splitter("run_splitter_wstack", cu::Marker::blue);
+      cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
       marker_splitter.start();
-      cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
-                                     subgrid_size, metadata_ptr, h_subgrids,
-                                     grid_ptr);
+
+      if (w_step == 0.0) {
+        cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
+                                metadata_ptr, h_subgrids, grid_ptr);
+      } else if (plan.get_use_wtiles()) {
+        cpuKernels.run_splitter_wtiles(current_nr_subgrids, grid_size,
+                                       subgrid_size, image_size, w_step,
+                                       subgrid_offset, wtile_initialize_set,
+                                       metadata_ptr, h_subgrids, grid_ptr);
+        subgrid_offset += current_nr_subgrids;
+      } else {
+        cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
+                                       subgrid_size, metadata_ptr, h_subgrids,
+                                       grid_ptr);
+      }
+
       marker_splitter.end();
 
       // Copy subgrids to device
@@ -692,19 +723,10 @@ void GenericOptimized::do_calibrate_init(
     } else if (plans[antenna_nr]->get_use_wtiles()) {
       WTileUpdateSet wtile_initialize_set =
           plans[antenna_nr]->get_wtile_initialize_set();
-      WTileUpdateInfo& wtile_initialize_info = wtile_initialize_set.front();
-      std::complex<float>* wtiles_buffer = cpuProxy->getWTilesBuffer();
-      auto subgrid_offset = 0;
-      cpuKernels.run_splitter_wtiles_from_grid(
-          grid_size, subgrid_size, image_size, w_step,
-          wtile_initialize_info.wtile_ids.size(),
-          wtile_initialize_info.wtile_ids.data(),
-          wtile_initialize_info.wtile_coordinates.data(), wtiles_buffer,
-          grid.data());
       cpuKernels.run_splitter_wtiles(nr_subgrids, grid_size, subgrid_size,
-                                     image_size, w_step, subgrid_offset,
-                                     wtile_initialize_set, wtiles_buffer,
-                                     metadata_ptr, subgrids_ptr, grid_ptr);
+                                     image_size, w_step, 0 /* subgrid_offset */,
+                                     wtile_initialize_set, metadata_ptr,
+                                     subgrids_ptr, grid_ptr);
     } else {
       cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
                                      metadata_ptr, subgrids_ptr, grid_ptr);
@@ -1025,7 +1047,7 @@ void GenericOptimized::do_calibrate_update_hessian_vector_product2(
       station_nr, aterms, derivative_aterms, parameter_vector);
 }
 
-Plan* GenericOptimized::make_plan(
+std::unique_ptr<Plan> GenericOptimized::make_plan(
     const int kernel_size, const int subgrid_size, const int grid_size,
     const float cell_size, const Array1D<float>& frequencies,
     const Array2D<UVW<float>>& uvw,
@@ -1037,6 +1059,26 @@ Plan* GenericOptimized::make_plan(
   return cpuProxy->make_plan(kernel_size, subgrid_size, grid_size, cell_size,
                              frequencies, uvw, baselines, aterms_offsets,
                              options);
+}
+
+void GenericOptimized::set_grid(Grid& grid) {
+  // Set grid both for CUDA proxy and CPU Proxy
+  // cpuProxy manages the wtiles state
+  cpuProxy->set_grid(grid);
+  CUDA::set_grid(grid);
+}
+
+void GenericOptimized::set_grid(std::shared_ptr<Grid> grid) {
+  // Set grid both for CUDA proxy and CPU Proxy
+  // cpuProxy manages the wtiles state
+  cpuProxy->set_grid(grid);
+  CUDA::set_grid(grid);
+}
+
+std::shared_ptr<Grid> GenericOptimized::get_grid() {
+  // Defer call to cpuProxy
+  // cpuProxy manages the wtiles state
+  return cpuProxy->get_grid();
 }
 
 }  // namespace hybrid

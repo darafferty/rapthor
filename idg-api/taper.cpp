@@ -156,6 +156,7 @@ void init_optimal_taper_1D(int subgridsize, int padded_size, int size,
     taper_subgrid[N - 1 - i] = U1[N / 2 - 1][i] / U1[N / 2 - 1][N / 2 - 1];
   }
 
+#pragma omp parallel for
   for (int i = 0; i < padded_size; i++) {
     taper_grid[i] = 0.0;
     float l = (float(i) / padded_size - 0.5);

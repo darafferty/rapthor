@@ -43,25 +43,52 @@ std::shared_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes) {
       new auxiliary::AlignedMemory(bytes));
 }
 
-Plan *CPU::make_plan(
+std::unique_ptr<Plan> CPU::make_plan(
     const int kernel_size, const int subgrid_size, const int grid_size,
     const float cell_size, const Array1D<float> &frequencies,
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
   if (supports_wtiles() && options.w_step != 0.0) {
-    // TODO call somewhere else
-    init_wtiles(subgrid_size);
+    float image_size = grid_size * cell_size;
+    init_wtiles(grid_size, subgrid_size, image_size, options.w_step);
     options.nr_w_layers = INT_MAX;
 
-    return new Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                    frequencies, uvw, baselines, aterms_offsets, itsWTiles,
-                    options);
+    return std::unique_ptr<Plan>(
+        new Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+                 uvw, baselines, aterms_offsets, m_wtiles, options));
   } else {
     return Proxy::make_plan(kernel_size, subgrid_size, grid_size, cell_size,
                             frequencies, uvw, baselines, aterms_offsets,
                             options);
   }
+}
+
+void CPU::set_grid(Grid &grid) {
+  Proxy::set_grid(grid);
+  m_wtiles = WTiles();
+  kernels.reset_wtiles();
+}
+
+void CPU::set_grid(std::shared_ptr<Grid> grid) {
+  Proxy::set_grid(grid);
+  m_wtiles = WTiles();
+  kernels.reset_wtiles();
+}
+
+std::shared_ptr<Grid> CPU::get_grid() {
+  std::shared_ptr<Grid> grid_ptr = Proxy::get_grid();
+  Grid &grid = *grid_ptr;
+  // flush all pending Wtiles
+  WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
+  if (wtile_flush_info.wtile_ids.size()) {
+    kernels.run_adder_wtiles_to_grid(
+        m_wtiles.get_grid_size(), m_wtiles.get_subgrid_size(),
+        m_wtiles.get_image_size(), m_wtiles.get_w_step(),
+        wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
+        wtile_flush_info.wtile_coordinates.data(), grid.data());
+  }
+  return grid_ptr;
 }
 
 unsigned int CPU::compute_jobsize(const Plan &plan,
@@ -143,6 +170,8 @@ void CPU::do_gridding(
   auto image_size = cell_size * grid_size;
   auto nr_stations = aterms.get_z_dim();
 
+  WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
+
   try {
     auto jobsize =
         compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
@@ -196,6 +225,12 @@ void CPU::do_gridding(
       if (w_step == 0.0) {
         kernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
                           metadata_ptr, subgrids_ptr, grid_ptr);
+      } else if (plan.get_use_wtiles()) {
+        auto subgrid_offset = plan.get_subgrid_offset(bl);
+        kernels.run_adder_wtiles(current_nr_subgrids, grid_size, subgrid_size,
+                                 image_size, w_step, subgrid_offset,
+                                 wtile_flush_set, metadata_ptr, subgrids_ptr,
+                                 grid_ptr);
       } else {
         kernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size,
                                  metadata_ptr, subgrids_ptr, grid_ptr);
@@ -258,6 +293,8 @@ void CPU::do_degridding(
   auto image_size = cell_size * grid_size;
   auto nr_stations = aterms.get_z_dim();
 
+  WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
+
   try {
     auto jobsize =
         compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
@@ -266,22 +303,6 @@ void CPU::do_degridding(
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
     Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_polarizations,
                                           subgrid_size, subgrid_size);
-
-    WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
-
-    // initialize wtiles
-    // the front entry of the wtile_initialize_set will be initialized, but it
-    // will remain in the queue
-    //
-    if (plan.get_use_wtiles()) {
-      WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
-      kernels.run_splitter_wtiles_from_grid(
-          grid_size, subgrid_size, image_size, w_step,
-          wtile_initialize_info.wtile_ids.size(),
-          wtile_initialize_info.wtile_ids.data(),
-          wtile_initialize_info.wtile_coordinates.data(),
-          itsWTilesBuffer.data(), grid.data());
-    }
 
     // Performance measurement
     report.initialize(nr_channels, subgrid_size, grid_size);
@@ -308,7 +329,6 @@ void CPU::do_degridding(
       void *visibilities_ptr = visibilities.data(0, 0, 0);
       void *subgrids_ptr = subgrids.data(0, 0, 0, 0);
       void *grid_ptr = grid.data();
-      void *wtiles_ptr = itsWTilesBuffer.data();
 
       // Splitter kernel
       if (w_step == 0.0) {
@@ -316,10 +336,10 @@ void CPU::do_degridding(
                              metadata_ptr, subgrids_ptr, grid_ptr);
       } else if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
-        kernels.run_splitter_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            subgrid_offset, wtile_initialize_set, wtiles_ptr, metadata_ptr,
-            subgrids_ptr, grid_ptr);
+        kernels.run_splitter_wtiles(current_nr_subgrids, grid_size,
+                                    subgrid_size, image_size, w_step,
+                                    subgrid_offset, wtile_initialize_set,
+                                    metadata_ptr, subgrids_ptr, grid_ptr);
       } else {
         kernels.run_splitter_wstack(current_nr_subgrids, grid_size,
                                     subgrid_size, metadata_ptr, subgrids_ptr,
@@ -420,8 +440,7 @@ void CPU::do_calibrate_init(
           grid_size, subgrid_size, image_size, w_step,
           wtile_initialize_info.wtile_ids.size(),
           wtile_initialize_info.wtile_ids.data(),
-          wtile_initialize_info.wtile_coordinates.data(),
-          itsWTilesBuffer.data(), grid.data());
+          wtile_initialize_info.wtile_coordinates.data(), grid.data());
     }
 
     // Get data pointers
@@ -443,8 +462,7 @@ void CPU::do_calibrate_init(
               grid_size, subgrid_size, image_size, w_step,
               wtile_initialize_info.wtile_ids.size(),
               wtile_initialize_info.wtile_ids.data(),
-              wtile_initialize_info.wtile_coordinates.data(),
-              itsWTilesBuffer.data(), grid_ptr);
+              wtile_initialize_info.wtile_coordinates.data(), grid_ptr);
         }
 
         int nr_subgrids_ = nr_subgrids - subgrid_index;
@@ -459,8 +477,7 @@ void CPU::do_calibrate_init(
             &static_cast<Metadata *>(metadata_ptr)[subgrid_index],
             &static_cast<std::complex<float> *>(
                 subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size *
-                              NR_CORRELATIONS],
-            itsWTilesBuffer.data());
+                              NR_CORRELATIONS]);
 
         subgrid_index += nr_subgrids_;
       }
@@ -716,12 +733,13 @@ void CPU::do_transform(DomainAtoDomainB direction,
   }
 }  // end transform
 
-void CPU::init_wtiles(int subgrid_size) {
-  if (itsWTilesBuffer.size() == 0) {
-    itsWTiles = WTiles(NR_WTILES);
-    itsWTilesBuffer = std::vector<std::complex<float>>(
-        NR_WTILES * (WTILE_SIZE + subgrid_size) * (WTILE_SIZE + subgrid_size) *
-        NR_CORRELATIONS);
+void CPU::init_wtiles(int grid_size, int subgrid_size, float image_size,
+                      float w_step) {
+  if (!m_wtiles.get_wtile_buffer_size()) {
+    m_wtiles =
+        WTiles(kernel::cpu::InstanceCPU::kNrWTiles, grid_size, subgrid_size,
+               kernel::cpu::InstanceCPU::kWTileSize, image_size, w_step);
+    kernels.init_wtiles(subgrid_size);
   }
 }
 

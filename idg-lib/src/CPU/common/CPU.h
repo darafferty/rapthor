@@ -5,8 +5,6 @@
 
 #include "InstanceCPU.h"
 
-#define NR_WTILES 4000
-
 namespace idg {
 namespace proxy {
 namespace cpu {
@@ -26,27 +24,30 @@ class CPU : public Proxy {
   virtual std::shared_ptr<auxiliary::Memory> allocate_memory(
       size_t bytes) override;
 
-  virtual bool supports_wstack_gridding() { return kernels.has_adder_wstack(); }
-  virtual bool supports_wstack_degridding() {
+  virtual bool supports_wstack_gridding() override {
+    return kernels.has_adder_wstack();
+  }
+  virtual bool supports_wstack_degridding() override {
     return kernels.has_splitter_wstack();
   }
-  virtual bool supports_avg_aterm_correction() { return true; }
-  virtual bool supports_wtiles() {
-    return kernels.has_adder_wtiles() && kernels.has_adder_wtiles();
+  virtual bool supports_avg_aterm_correction() override { return true; }
+  virtual bool supports_wtiles() override {
+    return kernels.has_adder_wtiles() && kernels.has_splitter_wtiles();
   }
 
   kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
 
-  virtual Plan* make_plan(
+  virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const int subgrid_size, const int grid_size,
       const float cell_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets, Plan::Options options);
+      const Array1D<unsigned int>& aterms_offsets,
+      Plan::Options options) override;
 
-  virtual std::complex<float>* getWTilesBuffer() {
-    return itsWTilesBuffer.data();
-  }
+  virtual void set_grid(Grid& grid) override;
+  virtual void set_grid(std::shared_ptr<Grid> grid) override;
+  virtual std::shared_ptr<Grid> get_grid() override;
 
  private:
   unsigned int compute_jobsize(const Plan& plan,
@@ -118,9 +119,10 @@ class CPU : public Proxy {
   virtual void do_transform(DomainAtoDomainB direction,
                             Array3D<std::complex<float>>& grid) override;
 
-  virtual void init_wtiles(int subgrid_size);
-
  protected:
+  void init_wtiles(int grid_size, int subgrid_size, float image_size,
+                   float w_step);
+
   kernel::cpu::InstanceCPU kernels;
   powersensor::PowerSensor* powerSensor;
 
@@ -139,8 +141,7 @@ class CPU : public Proxy {
   // to provide sufficient scalability.
   size_t m_max_bytes_subgrids = 512 * 1024 * 1024;  // 512 Mb
 
-  WTiles itsWTiles;
-  std::vector<std::complex<float>> itsWTilesBuffer;
+  WTiles m_wtiles;
 
   struct {
     std::vector<std::unique_ptr<Plan>> plans;

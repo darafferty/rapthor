@@ -160,9 +160,7 @@ class Proxy {
 
   void calibrate_finish();
 
-  virtual void init_wtiles(int subgrid_size) {}
-
-  //! Applyies (inverse) Fourier transform to grid
+  //! Applies (inverse) Fourier transform to grid
   void transform(DomainAtoDomainB direction,
                  Array3D<std::complex<float>>& grid);
 
@@ -221,15 +219,16 @@ class Proxy {
   virtual std::shared_ptr<Grid> get_grid();
 
   //! Method W-tiling
-  virtual Plan* make_plan(
+  virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const int subgrid_size, const int grid_size,
       const float cell_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
       Plan::Options options = Plan::Options()) {
-    return new Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                    frequencies, uvw, baselines, aterms_offsets, options);
+    return std::unique_ptr<Plan>(new Plan(kernel_size, subgrid_size, grid_size,
+                                          cell_size, frequencies, uvw,
+                                          baselines, aterms_offsets, options));
   }
 
  private:

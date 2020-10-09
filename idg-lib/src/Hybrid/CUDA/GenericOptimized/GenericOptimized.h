@@ -21,7 +21,16 @@ class GenericOptimized : public cuda::CUDA {
   virtual bool supports_wstack_degridding() {
     return cpuProxy->supports_wstack_degridding();
   }
+
+  virtual bool supports_wtiles() override {
+    return cpuProxy->supports_wtiles();
+  }
+
   virtual bool supports_avg_aterm_correction() { return true; }
+
+  virtual void set_grid(Grid& grid) override;
+  virtual void set_grid(std::shared_ptr<Grid> grid) override;
+  virtual std::shared_ptr<Grid> get_grid() override;
 
  private:
   virtual void do_gridding(
@@ -109,12 +118,13 @@ class GenericOptimized : public cuda::CUDA {
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array2D<float>& parameter_vector) override;
 
-  virtual Plan* make_plan(
+  virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const int subgrid_size, const int grid_size,
       const float cell_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets, Plan::Options options);
+      const Array1D<unsigned int>& aterms_offsets,
+      Plan::Options options) override;
 
  protected:
   powersensor::PowerSensor* hostPowerSensor;

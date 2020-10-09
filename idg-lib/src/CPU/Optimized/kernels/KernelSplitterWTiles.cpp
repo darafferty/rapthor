@@ -12,12 +12,10 @@
 #include "idg-fft.h"
 
 extern "C" {
-void kernel_splitter_subgrids_from_wtiles(const long nr_subgrids,
-                                          const int grid_size,
-                                          const int subgrid_size,
-                                          const idg::Metadata *metadata,
-                                          idg::float2 *subgrid,
-                                          const idg::float2 *tiles) {
+void kernel_splitter_subgrids_from_wtiles(
+    const long nr_subgrids, const int grid_size, const int subgrid_size,
+    const int wtile_size, const idg::Metadata *metadata, idg::float2 *subgrid,
+    const idg::float2 *tiles) {
   // Precompute phasor
   float phasor_real[subgrid_size][subgrid_size];
   float phasor_imag[subgrid_size][subgrid_size];
@@ -39,9 +37,9 @@ void kernel_splitter_subgrids_from_wtiles(const long nr_subgrids,
       // Load subgrid coordinates
 
       int tile_index = metadata[s].wtile_index;
-      int tile_top = metadata[s].wtile_coordinate.x * WTILE_SIZE -
+      int tile_top = metadata[s].wtile_coordinate.x * wtile_size -
                      subgrid_size / 2 + grid_size / 2;
-      int tile_left = metadata[s].wtile_coordinate.y * WTILE_SIZE -
+      int tile_left = metadata[s].wtile_coordinate.y * wtile_size -
                       subgrid_size / 2 + grid_size / 2;
 
       // position in tile
@@ -70,7 +68,7 @@ void kernel_splitter_subgrids_from_wtiles(const long nr_subgrids,
 
           // Add subgrid value to tiles
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            long src_idx = index_grid(WTILE_SIZE + subgrid_size, tile_index,
+            long src_idx = index_grid(wtile_size + subgrid_size, tile_index,
                                       pol, y_dst, x_dst);
             long dst_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
 
@@ -96,8 +94,8 @@ int next_composite(int n) {
 }
 
 void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
-                                      float image_size, float w_step,
-                                      int nr_tiles, int *tile_ids,
+                                      int wtile_size, float image_size,
+                                      float w_step, int nr_tiles, int *tile_ids,
                                       idg::Coordinate *tile_coordinates,
                                       idg::float2 *tiles, idg::float2 *grid) {
   float max_abs_w = 0.0;
@@ -107,7 +105,7 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
     max_abs_w = std::max(max_abs_w, std::abs(w));
   }
 
-  int padded_tile_size = WTILE_SIZE + subgrid_size;
+  int padded_tile_size = wtile_size + subgrid_size;
 
   int max_tile_size = next_composite(
       padded_tile_size + int(ceil(max_abs_w * image_size * image_size)));
@@ -127,9 +125,9 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 
     tile_buffer.assign(current_buffer_size, {0.0, 0.0});
 
-    int x0 = coordinate.x * WTILE_SIZE - (w_padded_tile_size - WTILE_SIZE) / 2 +
+    int x0 = coordinate.x * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
              grid_size / 2;
-    int y0 = coordinate.y * WTILE_SIZE - (w_padded_tile_size - WTILE_SIZE) / 2 +
+    int y0 = coordinate.y * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
              grid_size / 2;
     int x_start = std::max(0, x0);
     int y_start = std::max(0, y0);
@@ -144,10 +142,10 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
             grid[index_grid(grid_size, 0, y, x)];
         tile_buffer[w_padded_tile_size * w_padded_tile_size +
                     (y - y0) * w_padded_tile_size + x - x0] =
-            grid[index_grid(grid_size, 1, y, x)];
+            grid[index_grid(grid_size, 2, y, x)];
         tile_buffer[2 * w_padded_tile_size * w_padded_tile_size +
                     (y - y0) * w_padded_tile_size + x - x0] =
-            grid[index_grid(grid_size, 2, y, x)];
+            grid[index_grid(grid_size, 1, y, x)];
         tile_buffer[3 * w_padded_tile_size * w_padded_tile_size +
                     (y - y0) * w_padded_tile_size + x - x0] =
             grid[index_grid(grid_size, 3, y, x)];
@@ -214,6 +212,6 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
       }
     }
   }
-}  // end kernel_adder_wtiles_to_grid
+}  // end kernel_splitter_wtiles_from_grid
 
 }  // end extern "C"
