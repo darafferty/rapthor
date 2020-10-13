@@ -233,6 +233,30 @@ class Field(object):
         iter : int
             Iteration index
         """
+        # Make output directories for sky models and define filenames
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+        misc.create_directory(dst_dir)
+        self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
+        misc.create_directory(dst_dir)
+        self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
+
+        # First check whether sky models already exist due to a previous run and attempt
+        # to load them if so
+        if os.path.exists(self.calibration_skymodel_file):
+            self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
+            self.num_patches = len(self.calibration_skymodel.getPatchNames())
+            self.log.info('Using {} calibration patches'.format(self.num_patches))
+
+            # The bright-source model file may not exist if there are not bright sources;
+            # set it to an empty list if not
+            if os.path.exists(self.bright_source_skymodel_file):
+                self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
+            else:
+                self.bright_source_skymodel = []
+            return
+
+        # If sky models do not already exist, make them
         self.log.info('Analyzing sky model...')
         if type(skymodel_true_sky) is not lsmtool.skymodel.SkyModel:
             skymodel_true_sky = lsmtool.load(str(skymodel_true_sky),
@@ -389,14 +413,8 @@ class Field(object):
         calibration_skymodel = skymodel_true_sky
         self.num_patches = len(calibration_skymodel.getPatchNames())
         self.log.info('Using {} calibration patches'.format(self.num_patches))
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
-        misc.create_directory(dst_dir)
-        self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
-        misc.create_directory(dst_dir)
-        self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
         if len(bright_source_skymodel) > 0:
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel

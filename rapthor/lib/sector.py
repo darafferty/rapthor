@@ -4,6 +4,7 @@ Definition of the Sector class that holds parameters for an image or predict sec
 import logging
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+import lsmtool
 from astropy.coordinates import Angle
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
@@ -262,33 +263,39 @@ class Sector(object):
         iter : int
             Iteration index
         """
-        if self.is_outlier or self.is_bright_source:
-            # For outlier and bright-source sectors, we use the sky model made earlier,
-            # with no filtering
-            skymodel = self.predict_skymodel
-        else:
-            # For imaging sectors, we use the full calibration sky model and filter it
-            # to keep only sources inside the sector
-            skymodel = self.calibration_skymodel.copy()
-            skymodel = self.filter_skymodel(skymodel)
-
-        # Remove the bright sources from the sky model if they will be predicted and
-        # subtracted separately (so that they aren't subtracted twice)
-        if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
-            source_names = skymodel.getColValues('Name')
-            bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
-            matching_ind = []
-            for i, sn in enumerate(source_names):
-                if sn in bright_source_names:
-                    matching_ind.append(i)
-            if len(matching_ind) > 0:
-                skymodel.remove(np.array(matching_ind))
-
-        # Write filtered sky model to file for later prediction
+        # First check whether sky model already exists due to a previous run and attempt
+        # to load it if so
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
-        skymodel.write(self.predict_skymodel_file, clobber=True)
+        if os.path.exists(self.predict_skymodel_file):
+            skymodel = lsmtool.load(str(self.predict_skymodel_file))
+        else:
+            # If sky model does not already exist, make it
+            if self.is_outlier or self.is_bright_source:
+                # For outlier and bright-source sectors, we use the sky model made earlier,
+                # with no filtering
+                skymodel = self.predict_skymodel
+            else:
+                # For imaging sectors, we use the full calibration sky model and filter it
+                # to keep only sources inside the sector
+                skymodel = self.calibration_skymodel.copy()
+                skymodel = self.filter_skymodel(skymodel)
+
+            # Remove the bright sources from the sky model if they will be predicted and
+            # subtracted separately (so that they aren't subtracted twice)
+            if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
+                source_names = skymodel.getColValues('Name')
+                bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
+                matching_ind = []
+                for i, sn in enumerate(source_names):
+                    if sn in bright_source_names:
+                        matching_ind.append(i)
+                if len(matching_ind) > 0:
+                    skymodel.remove(np.array(matching_ind))
+
+            # Write filtered sky model to file for later prediction
+            skymodel.write(self.predict_skymodel_file, clobber=True)
 
         # Save list of patches (directions) in the format written by DDECal in the h5parm
         self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
