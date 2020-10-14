@@ -335,20 +335,28 @@ class KLScreen(Screen):
         sourceTable = list(zip(*(soltab_ph.dir, vals)))
 
         # Reweight the input solutions by the scatter after detrending
-        # Note: disable for now until further testing can be done
-        reweight_solutions = True
-        if reweight_solutions:
+        if len(soltab_ph.time) > 10:
             reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
-            if self.input_amplitude_soltab_name is not None:
-                reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
+            adjust_order_ph = True
+        else:
+            adjust_order_ph = False
 
+        if not self.phase_only:
+            if len(soltab_amp.time) > 10:
+                reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
+                adjust_order_amp = True
+            else:
+                adjust_order_amp = False
+
+        adjust_order_amp = False
+        adjust_order_ph = False
         # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000', order=len(source_positions)-1,
-                          scale_order=True, adjust_order=True, ncpu=self.ncpu)
+                          scale_order=True, adjust_order=adjust_order_ph, ncpu=self.ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=len(source_positions)-1,
-                              scale_order=False, adjust_order=True, ncpu=self.ncpu)
+                              scale_order=False, adjust_order=adjust_order_amp, ncpu=self.ncpu)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
