@@ -66,6 +66,8 @@ def run(parset_file):
         i = 0
         if len(pipelines) == 0:
             print('    None')
+            print('No reset can be done.')
+            sys.exit(0)
         else:
             for p in pipelines:
                 i += 1
