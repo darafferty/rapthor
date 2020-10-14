@@ -237,6 +237,7 @@ class Field(object):
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
+        self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
@@ -248,12 +249,24 @@ class Field(object):
             self.num_patches = len(self.calibration_skymodel.getPatchNames())
             self.log.info('Using {} calibration patches'.format(self.num_patches))
 
-            # The bright-source model file may not exist if there are not bright sources;
+            # The bright-source model file may not exist if there are no bright sources;
             # set it to an empty list if not
             if os.path.exists(self.bright_source_skymodel_file):
                 self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
             else:
                 self.bright_source_skymodel = []
+
+            # The source sky model file may not exist if an older version was run
+            # previously, so generate it if needed
+            if os.path.exists(self.source_skymodel_file):
+                self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
+            else:
+                self.log.info('Identifying sources...')
+                source_skymodel = self.calibration_skymodel.copy()
+                source_skymodel.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
+                source_skymodel.write(self.source_skymodel_file, clobber=True)
+                self.source_skymodel = source_skymodel
+
             return
 
         # If sky models do not already exist, make them
@@ -303,6 +316,7 @@ class Field(object):
         if find_sources:
             self.log.info('Identifying sources...')
             source_skymodel.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
+        source_skymodel.write(self.source_skymodel_file, clobber=True)
         self.source_skymodel = source_skymodel.copy()  # save and make copy before grouping
 
         # Find groups of bright sources to use as basis for calibrator patches
