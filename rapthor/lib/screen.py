@@ -344,11 +344,11 @@ class KLScreen(Screen):
 
         # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000', order=len(source_positions)-1,
-                          order=12, scale_order=True, adjust_order=True, ncpu=self.ncpu)
+                          scale_order=True, adjust_order=True, ncpu=self.ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=len(source_positions)-1,
-                              order=12, scale_order=False, adjust_order=True, ncpu=self.ncpu)
+                              scale_order=False, adjust_order=True, ncpu=self.ncpu)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
