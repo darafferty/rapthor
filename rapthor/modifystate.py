@@ -101,7 +101,7 @@ def run(parset_file):
         # Reset pipeline states as requested
         if answer.lower() == "y" or answer.lower() == "yes":
             print('Reseting state...')
-            for pipeline in zip(pipelines[int(p_number_raw)-1:]):
+            for pipeline in pipelines[int(p_number_raw)-1:]:
                 jobstore = os.path.join(parset['dir_working'], 'pipelines', pipeline, 'jobstore')
                 os.system('rm -rf {}'.format(jobstore))
 
