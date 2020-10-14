@@ -56,6 +56,7 @@ class Sector(object):
         self.is_outlier = False
         self.is_bright_source = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
+        self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -100,7 +101,6 @@ class Sector(object):
         self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
         self.reweight = self.field.parset['imaging_specific']['reweight']
-        self.wsclean_image_padding = self.field.parset['imaging_specific']['wsclean_image_padding']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']
         self.flag_freqrange = self.field.parset['flag_freqrange']
@@ -108,7 +108,6 @@ class Sector(object):
         self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
-        self.nmiter = 10
         self.auto_mask = 3.0
         self.threshisl = 4.0
         self.threshpix = 5.0
@@ -427,7 +426,7 @@ class Sector(object):
         # (which includes the padding done by WSClean, needed for aterm generation)
         self.initial_poly = poly
         self.poly = Polygon(poly)
-        padding_pix = dec_width_pix*(self.field.parset['imaging_specific']['wsclean_image_padding'] - 1.0)
+        padding_pix = dec_width_pix*(self.wsclean_image_padding - 1.0)
         self.poly_padded = self.poly.buffer(padding_pix)
 
     def get_vertices_radec(self):

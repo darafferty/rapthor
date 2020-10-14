@@ -94,8 +94,6 @@ inputs:
     type: int[]
   - id: robust
     type: float[]
-  - id: wsclean_image_padding
-    type: float[]
   - id: min_uv_lambda
     type: float[]
   - id: max_uv_lambda
@@ -187,8 +185,6 @@ steps:
         source: wsclean_nmiter
       - id: robust
         source: robust
-      - id: wsclean_image_padding
-        source: wsclean_image_padding
       - id: min_uv_lambda
         source: min_uv_lambda
       - id: max_uv_lambda
@@ -225,7 +221,7 @@ steps:
               multiscale_scales_pixel,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
-              wsclean_nmiter, robust, wsclean_image_padding, min_uv_lambda,
+              wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, dir_local, taper_arcsec,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
@@ -235,7 +231,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, h5parm, central_patch_name,
               channels_out, deconvolution_channels, wsclean_niter, wsclean_nmiter, robust,
-              wsclean_image_padding, min_uv_lambda, max_uv_lambda,
+              min_uv_lambda, max_uv_lambda,
               multiscale_scales_pixel, dir_local, taper_arcsec, auto_mask,
               idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
 {% endif %}

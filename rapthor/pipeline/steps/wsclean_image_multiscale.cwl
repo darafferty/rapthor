@@ -9,8 +9,6 @@ requirements:
 arguments:
   - -no-update-model-required
   - -multiscale
-  - -fit-beam
-  - -reorder
   - -save-source-list
   - -local-rms
   - -join-channels
@@ -26,8 +24,6 @@ arguments:
     prefix: -parallel-deconvolution
   - valueFrom: 'gaussian'
     prefix: -multiscale-shape
-  - valueFrom: '3'
-    prefix: -weighting-rank-filter
   - valueFrom: '1.0'
     prefix: -auto-threshold
   - valueFrom: '50'
@@ -77,10 +73,6 @@ inputs:
     type: float
     inputBinding:
       position: 2
-  - id: wsclean_image_padding
-    type: float
-    inputBinding:
-      prefix: -padding
   - id: min_uv_lambda
     type: float
     inputBinding:

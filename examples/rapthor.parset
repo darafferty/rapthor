@@ -120,9 +120,6 @@ input_skymodel = /data/skymodel.txt
 # sector_width_dec_deg_list = [0.532, 0.127]
 # sector_do_multiscale_list = [None, True]
 
-# Padding factor for WSClean images (default = 1.2)
-# wsclean_image_padding = 1.2
-
 # Max desired peak flux density reduction at center of the image edges due to
 # bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 =
 # 15% reduction in peak flux). Higher values result in shorter run times but

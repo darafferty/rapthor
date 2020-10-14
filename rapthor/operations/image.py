@@ -144,7 +144,6 @@ class Image(Operation):
                             'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
                             'robust': [sector.robust for sector in self.field.imaging_sectors],
-                            'wsclean_image_padding': [sector.wsclean_image_padding for sector in self.field.imaging_sectors],
                             'cellsize_deg': [sector.cellsize_deg for sector in self.field.imaging_sectors],
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.field.imaging_sectors],
                             'max_uv_lambda': [sector.max_uv_lambda for sector in self.field.imaging_sectors],

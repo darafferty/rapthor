@@ -538,20 +538,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['taper_arcsec'] = 0.0
 
-    # Padding factor for WSClean images (default = 1.2)
-    if 'wsclean_image_padding' in parset_dict:
-        parset_dict['wsclean_image_padding'] = parset.getfloat('imaging', 'wsclean_image_padding')
-    else:
-        parset_dict['wsclean_image_padding'] = 1.2
-    if parset_dict['wsclean_image_padding'] < 1.0:
-        parset_dict['wsclean_image_padding'] = 1.0
-
     # Check for invalid options
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
                        'multiscale_scales_pixel', 'grid_center_ra', 'grid_center_dec',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
-                       'wsclean_image_padding', 'min_uv_lambda', 'max_uv_lambda',
-                       'robust', 'padding', 'sector_center_ra_list', 'sector_center_dec_list',
+                       'min_uv_lambda', 'max_uv_lambda',
+                       'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'sector_do_multiscale_list', 'use_mpi',
                        'use_screens', 'skip_corner_sectors']

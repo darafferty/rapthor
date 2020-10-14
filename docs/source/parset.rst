@@ -218,9 +218,6 @@ All the available options are described below under their respective sections.
         indicates that multiscale clean should be activated automatically if a
         large source is detected in the sector
 
-    wsclean_image_padding
-        Padding factor for WSClean images (default = 1.2)
-
     max_peak_smearing
         Max desired peak flux density reduction at center of the image edges due
         to bandwidth smearing (at the mean frequency) and time smearing (default

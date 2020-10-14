@@ -72,8 +72,6 @@ inputs:
     type: int
   - id: robust
     type: float
-  - id: wsclean_image_padding
-    type: float
   - id: min_uv_lambda
     type: float
   - id: max_uv_lambda
@@ -241,8 +239,6 @@ steps:
         source: wsclean_nmiter
       - id: robust
         source: robust
-      - id: wsclean_image_padding
-        source: wsclean_image_padding
       - id: min_uv_lambda
         source: min_uv_lambda
       - id: max_uv_lambda
