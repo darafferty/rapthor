@@ -71,16 +71,11 @@ class Screen(object):
         self.width_ra = width
         self.width_dec = width
 
-    def fit(self, ncpu=0):
+    def fit(self):
         """
         Fits screens to the input solutions
 
-        This should be defined in the subclasses
-
-        Parameters
-        ----------
-        ncpu : int, optional
-            Number of CPUs to use (0 means all)
+        This method should be defined in the subclasses
         """
         pass
 
@@ -145,7 +140,7 @@ class Screen(object):
         """
         Makes the matrix of values for the given time, frequency, and station indices
 
-        This should be defined in the subclasses, but should conform to the inputs
+        This method should be defined in the subclasses, but should conform to the inputs
         below.
 
         Parameters
@@ -167,17 +162,15 @@ class Screen(object):
         """
         pass
 
-    def get_memory_usage(self, ncpu, cellsize_deg):
+    def get_memory_usage(self, cellsize_deg):
         """
         Returns memory usage per time slot in GB
 
-        This should be defined in the subclasses, but should conform to the inputs
+        This method should be defined in the subclasses, but should conform to the inputs
         below.
 
         Parameters
         ----------
-        ncpu : int
-            Number of CPUs to use
         cellsize_deg : float
             Size of one pixel in degrees
         """
@@ -200,6 +193,8 @@ class Screen(object):
         ncpu : int, optional
             Number of CPUs to use (0 means all)
         """
+        self.ncpu = ncpu
+
         # Identify any gaps in time (frequency gaps are not allowed), as we need to
         # output a separate FITS file for each time chunk
         if len(self.times_ph) > 2:
@@ -214,7 +209,7 @@ class Screen(object):
         # Add additional breaks to gaps_ind to keep memory usage within that available
         if len(self.times_ph) > 2:
             tot_mem_gb = cluster.get_total_memory()
-            max_ntimes = max(1, int(tot_mem_gb / (self.get_memory_usage(ncpu, cellsize_deg))))
+            max_ntimes = max(1, int(tot_mem_gb / (self.get_memory_usage(cellsize_deg))))
             check_gaps = True
             while check_gaps:
                 check_gaps = False
@@ -245,7 +240,7 @@ class Screen(object):
             for f, freq in enumerate(self.freqs_ph):
                 for s, stat in enumerate(self.station_names):
                     data[:, f, s, :, :, :] = self.make_matrix(g_start, g_stop, f, s,
-                                                              cellsize_deg, out_dir, ncpu)
+                                                              cellsize_deg, out_dir, self.ncpu)
 
                     # Smooth if desired
                     if smooth_pix > 0:
@@ -287,9 +282,16 @@ class Screen(object):
     def process(self, ncpu=0):
         """
         Makes a-term images
+
+        Parameters
+        ----------
+        ncpu : int, optional
+            Number of CPUs to use (0 means all)
         """
+        self.ncpu = ncpu
+
         # Fit screens to input solutions
-        self.fit(ncpu=ncpu)
+        self.fit()
 
         # Interpolate best-fit parameters to common time and frequency grid
         self.interpolate()
@@ -305,14 +307,9 @@ class KLScreen(Screen):
                                        solset_name=solset_name, phase_soltab_name=phase_soltab_name,
                                        amplitude_soltab_name=amplitude_soltab_name)
 
-    def fit(self, ncpu=0):
+    def fit(self):
         """
         Fits screens to the input solutions
-
-        Parameters
-        ----------
-        ncpu : int, optional
-            Number of CPUs to use (0 means all)
         """
         # Open solution tables
         H = h5parm(self.input_h5parm_filename, readonly=False)
@@ -339,7 +336,7 @@ class KLScreen(Screen):
 
         # Reweight the input solutions by the scatter after detrending
         # Note: disable for now until further testing can be done
-        reweight_solutions = False
+        reweight_solutions = True
         if reweight_solutions:
             reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
             if self.input_amplitude_soltab_name is not None:
@@ -347,11 +344,11 @@ class KLScreen(Screen):
 
         # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000', order=len(source_positions)-1,
-                          scale_order=False, adjust_order=False, ncpu=ncpu)
+                          order=12, scale_order=True, adjust_order=True, ncpu=self.ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=len(source_positions)-1,
-                              scale_order=False, adjust_order=False, ncpu=ncpu)
+                              order=12, scale_order=False, adjust_order=True, ncpu=self.ncpu)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
@@ -381,17 +378,16 @@ class KLScreen(Screen):
         self.midRA = soltab_ph_screen.obj._v_attrs['midra']
         self.midDec = soltab_ph_screen.obj._v_attrs['middec']
 
-    def get_memory_usage(self, ncpu, cellsize_deg):
+    def get_memory_usage(self, cellsize_deg):
         """
         Returns memory usage per time slot in GB
 
         Parameters
         ----------
-        ncpu : int
-            Number of CPUs to use
         cellsize_deg : float
             Size of one pixel in degrees
         """
+        ncpu = self.ncpu
         if ncpu == 0:
             ncpu = multiprocessing.cpu_count()
 
@@ -474,7 +470,6 @@ class KLScreen(Screen):
             screen_amp_yy = screen_amp_yy.transpose([dir_axis, time_axis])
 
         # Process phase screens
-        ncpu = 0
         val_phase = np.zeros((Nx, Ny, N_times))
         mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
         for k in range(N_times):
@@ -532,7 +527,7 @@ class VoronoiScreen(Screen):
                                             solset_name=solset_name, phase_soltab_name=phase_soltab_name, amplitude_soltab_name=amplitude_soltab_name)
         self.data_rasertize_template = None
 
-    def fit(self, ncpu=0):
+    def fit(self):
         """
         Fitting is not needed: the input solutions are used directly
         """
@@ -568,14 +563,12 @@ class VoronoiScreen(Screen):
         for station in self.station_names:
             self.station_positions.append(self.station_dict[station])
 
-    def get_memory_usage(self, ncpu, cellsize_deg):
+    def get_memory_usage(self, cellsize_deg):
         """
         Returns memory usage per time slot in GB
 
         Parameters
         ----------
-        ncpu : int
-            Number of CPUs to use
         cellsize_deg : float
             Size of one pixel in degrees
         """
