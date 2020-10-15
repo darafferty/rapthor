@@ -22,12 +22,16 @@ for i in range(max_selfcal_loops):
 
     if i < 1:
         strategy_steps[i]['target_flux'] = 1.5
+        strategy_steps[i]['max_nmiter'] = 6
     elif i < 5:
         strategy_steps[i]['target_flux'] = 1.0
+        strategy_steps[i]['max_nmiter'] = 8
     elif i < 7:
         strategy_steps[i]['target_flux'] = 0.75
+        strategy_steps[i]['max_nmiter'] = 10
     else:
         strategy_steps[i]['target_flux'] = 0.5
+        strategy_steps[i]['max_nmiter'] = 12
     strategy_steps[i]['regroup_model'] = True
 
     if i < 1 or i == max_selfcal_loops - 1:
