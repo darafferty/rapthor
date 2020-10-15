@@ -108,9 +108,6 @@ class Sector(object):
         self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
-        self.auto_mask = 3.0
-        self.threshisl = 4.0
-        self.threshpix = 5.0
         self.imaging_dir = imaging_dir
 
         # Set image size based on current sector polygon
@@ -158,24 +155,20 @@ class Sector(object):
         # integration time and the distance of the sector center to the phase center, to
         # account for the reduced sensitivity of the image, assuming a Gaussian primary
         # beam. Lastly, we also reduce them if bright sources are peeled
-        #
-        # TODO: scale the number of iterations depending on the selfcal cycle? Early
-        # cycles probably do not need to be cleaned as deeply as later ones, particularly
-        # if the calibration is phase-only
         total_time_hr = 0.0
         for obs in self.observations:
             # Find total observation time in hours
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
-        scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 8.0)
+        scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
         dist_deg = np.min(self.get_distance_to_obs_center())
         sens_factor = np.e**(-4.0 * np.log(2.0) * dist_deg**2 / self.field.fwhm_deg**2)
-        # self.wsclean_niter = int(round(12000 * scaling_factor * sens_factor))
         self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
-        self.wsclean_nmiter = min(12, max(2, int(round(8 * scaling_factor * sens_factor))))
+        self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
         if self.field.peel_bright_sources:
-            # self.wsclean_niter = int(round(self.wsclean_niter * 0.75))
+            # If bright sources are peeled, reduce nmiter by 75% (since they no longer
+            # need to be cleaned)
             self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
-            self.wsclean_nmiter = min(12, max(2, int(round(self.wsclean_nmiter * 0.75))))
+            self.wsclean_nmiter = max(2, int(round(self.wsclean_nmiter * 0.75)))
 
         # Set multiscale: get source sizes and check for large sources
         self.multiscale = do_multiscale

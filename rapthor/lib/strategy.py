@@ -70,12 +70,16 @@ def set_strategy(field):
 
             if i < 2:
                 strategy_steps[i]['target_flux'] = 1.5
+                strategy_steps[i]['max_nmiter'] = 6
             elif i < 4:
                 strategy_steps[i]['target_flux'] = 1.0
+                strategy_steps[i]['max_nmiter'] = 8
             elif i < 6:
                 strategy_steps[i]['target_flux'] = 0.75
+                strategy_steps[i]['max_nmiter'] = 10
             else:
                 strategy_steps[i]['target_flux'] = 0.5
+                strategy_steps[i]['max_nmiter'] = 12
             strategy_steps[i]['regroup_model'] = True
 
             if i < 1 or i == max_selfcal_loops - 1:
@@ -96,6 +100,7 @@ def set_strategy(field):
         strategy_steps[0]['auto_mask'] = 3.0
         strategy_steps[0]['threshisl'] = 4.0
         strategy_steps[0]['threshpix'] = 5.0
+        strategy_steps[0]['max_nmiter'] = 12
 
         strategy_steps[0]['do_update'] = False
 

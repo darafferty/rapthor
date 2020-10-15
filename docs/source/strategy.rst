@@ -52,6 +52,9 @@ The following processing parameters my be set:
     threshpix
         Float that sets PyBDFS's threshpix value for this cycle.
 
+    max_nmiter
+        Integer that sets the maximum number of major iterations done during imaging for this cycle
+
     target_flux
         Float that sets the target flux density for DDE calibrators for this cycle.
 
