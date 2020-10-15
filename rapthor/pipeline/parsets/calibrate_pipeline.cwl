@@ -249,6 +249,8 @@ steps:
         source: combined_h5parms1
       - id: mode
         valueFrom: 'p1a2'
+      - id: reweight
+        valueFrom: 'False'
     out:
       - id: combinedh5parm
 
@@ -335,6 +337,8 @@ steps:
         source: combined_h5parms1
       - id: mode
         valueFrom: 'p1a1a2'
+      - id: reweight
+        valueFrom: 'False'
     out:
       - id: combinedh5parm
 
@@ -361,6 +365,8 @@ steps:
         source: combined_h5parms
       - id: mode
         valueFrom: 'p1p2a2'
+      - id: reweight
+        valueFrom: 'True'
     out:
       - id: combinedh5parm
 

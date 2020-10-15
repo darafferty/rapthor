@@ -23,6 +23,11 @@ inputs:
     type: string
     inputBinding:
       position: 3
+  - id: reweight
+    type: string
+    inputBinding:
+      prefix: --reweight=
+      separate: false
 
 outputs:
   - id: combinedh5parm

@@ -334,23 +334,9 @@ class KLScreen(Screen):
         vals = [[ra*np.pi/180.0, dec*np.pi/180.0] for ra, dec in zip(ra_deg, dec_deg)]
         sourceTable = list(zip(*(soltab_ph.dir, vals)))
 
-        # Reweight the input solutions by the scatter after detrending
-        if len(soltab_ph.time) > 10:
-            reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=251)
-            adjust_order_ph = True
-        else:
-            adjust_order_ph = False
-
-        if not self.phase_only:
-            if len(soltab_amp.time) > 10:
-                reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=21)
-                adjust_order_amp = True
-            else:
-                adjust_order_amp = False
-
+        # Now call LoSoTo's stationscreen operation to do the fitting
         adjust_order_amp = False
         adjust_order_ph = False
-        # Now call LoSoTo's stationscreen operation to do the fitting
         stationscreen.run(soltab_ph, 'phase_screen000', order=len(source_positions)-1,
                           scale_order=True, adjust_order=adjust_order_ph, ncpu=self.ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')

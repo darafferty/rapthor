@@ -10,9 +10,11 @@ import sys
 import numpy as np
 import scipy.interpolate as si
 from astropy.stats import circmean
+from rapthor.lib import miscellaneous as misc
 
 
-def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
+def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
+         reweight=False):
     """
     Combines two h5parms
 
@@ -35,7 +37,11 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
         Name of solset for h5parm1
     solset2 : str, optional
         Name of solset for h5parm2
+    reweight : bool, optional
+        If True, reweight the solutions by their detrended noise
     """
+    reweight = misc.string2bool(reweight)
+
     # Open the input h5parms
     h1 = h5parm(h5parm1, readonly=False)
     h2 = h5parm(h5parm2, readonly=False)
@@ -107,20 +113,56 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000'):
     else:
         print('ERROR: mode not understood')
         sys.exit(1)
-
     h1.close()
     h2.close()
     ho.close()
+
+    # Reweight
+    if reweight:
+        ho = h5parm(outh5parm, readonly=False)
+        sso = ho.makeSolset(solsetName='sol000', addTables=False)
+
+        # Reweight the phases. Reweighting doesn't work when there are too few samples,
+        # so check there are at least 10
+        soltab_ph = sso.getSoltab('phase000')
+        if len(soltab_ph.time) > 10:
+            # Set window size for std. dev. calculation. We try to get one of around
+            # 30 minutes, as that is roughly the timescale on which the global properties
+            # of the ionosphere are expected to change
+            delta_times = soltab_ph.time[1:] - soltab_ph.time[:-1]
+            timewidth = np.min(delta_times)
+            nstddev = min(251, max(11, int(1800/timewidth)))
+            if nstddev % 2 == 0:
+                # Ensure window is odd
+                nstddev += 1
+            reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=nstddev)
+
+        # Reweight the amplitudes
+        soltab_amp = sso.getSoltab('amplitude000')
+        if len(soltab_amp.time) > 10:
+            # Set window size for std. dev. calculation. We try to get one of around
+            # 60 minutes, as that is roughly the timescale on which the global properties
+            # of the beam errors are expected to change
+            delta_times = soltab_amp.time[1:] - soltab_amp.time[:-1]
+            timewidth = np.min(delta_times)
+            nstddev = min(251, max(11, int(3600/timewidth)))
+            if nstddev % 2 == 0:
+                # Ensure window is odd
+                nstddev += 1
+            reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=nstddev)
+
+        ho.close()
 
 
 if __name__ == '__main__':
     descriptiontext = "Combine two h5parms.\n"
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('h51', help='name of input h5 1')
-    parser.add_argument('h52', help='name of input h5 2')
-    parser.add_argument('outh5', help='name of the output h5')
-    parser.add_argument('mode', help='mode to use')
+    parser.add_argument('h51', help='Filename of input h5 1')
+    parser.add_argument('h52', help='Filename of input h5 2')
+    parser.add_argument('outh5', help='Filename of the output h5')
+    parser.add_argument('mode', help='Mode to use')
+    parser.add_argument('--reweight', help='Reweight solutions', type=str, default='False')
     args = parser.parse_args()
 
-    main(args.h51, args.h52, args.outh5, args.mode)
+    main(args.h51, args.h52, args.outh5, args.mode, reweight=args.reweight)
