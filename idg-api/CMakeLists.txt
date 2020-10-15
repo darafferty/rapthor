@@ -101,7 +101,7 @@ add_library(
   ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                   ${${PROJECT_NAME}_sources}
 )
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION 0)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC"  SOVERSION 1)
 target_link_libraries (
     ${PROJECT_NAME}
     ${${PROJECT_NAME}_link_libraries}
