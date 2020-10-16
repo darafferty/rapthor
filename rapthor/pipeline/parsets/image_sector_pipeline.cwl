@@ -194,9 +194,9 @@ steps:
 {% if use_screens %}
 {% if use_mpi %}
 {% if do_multiscale_clean %}
-   run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
 {% else %}
-   run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
 {% endif %}
 {% else %}
 {% if do_multiscale_clean %}
