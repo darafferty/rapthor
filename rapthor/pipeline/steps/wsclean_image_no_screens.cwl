@@ -18,7 +18,7 @@ arguments:
   - -log-time
   - valueFrom: 'I'
     prefix: -pol
-  - valueFrom: '0.6'
+  - valueFrom: '0.85'
     prefix: -mgain
   - valueFrom: '4'
     prefix: -deconvolution-channels
