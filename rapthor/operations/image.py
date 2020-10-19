@@ -165,7 +165,7 @@ class Image(Operation):
                 # Set number of nodes to allocate to each imaging subpipeline
                 nnodes = self.parset['cluster_specific']['max_nodes']
                 nsubpipes = min(nsectors, nnodes)
-                nnodes_per_subpipeline = int(nnodes / nsubpipes)
+                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)  # subtract 1, since 1 node is required for MPI script
 
                 self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['cpus_per_task']] * nsectors,
                                          'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
