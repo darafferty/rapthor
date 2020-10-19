@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 while getopts ":m:n:k:c:z:i:j:r:u:v:x:s:l:o:d:t:a:g:y:q:" arg; do
   case $arg in
@@ -31,7 +31,7 @@ mpi_command="mpirun -np \$SLURM_JOB_NUM_NODES --pernode --prefix \$MPI_PREFIX -x
 
 # make sbatch file
 exec 3<> wsclean_mpi_$infix.slurm
-    echo "#!/bin/bash" >&3
+    echo "#!/bin/bash -e" >&3
     echo "#SBATCH --job-name=mpijob" >&3
     echo "#SBATCH --time=1-00:00:00" >&3
     echo "#SBATCH --nodes=${nnodes}" >&3
