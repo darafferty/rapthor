@@ -43,7 +43,6 @@ setup(
                       'loess'],
     scripts=['bin/rapthor',
              'bin/plotrapthor',
-             'bin/makehostfile',
              'rapthor/scripts/blank_image.py',
              'rapthor/scripts/combine_h5parms.py',
              'rapthor/scripts/filter_skymodel.py',
