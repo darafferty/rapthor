@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 project(idg)
 
-option (WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
-option (BUILD_STATIC_LIBS "Build static libraries" OFF)
-option (BUILD_WITH_TESTS "Build with tests" OFF)
-option (BUILD_WITH_DEMOS "Build with demos" OFF)
+option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
+option(BUILD_STATIC_LIBS "Build static libraries" OFF)
+option(BUILD_WITH_DEMOS "Build with demos" OFF)
+option(BUILD_TESTING "" OFF)
+include(CTest)
 
 # TODO: integer valued compile variables should be handled more elegantly
 # if there is a use case for them. Otherwise, they can be hard-coded.
@@ -46,8 +47,7 @@ find_package(PythonInterp REQUIRED)
 set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages/idg)
 endif()
 
-if (BUILD_WITH_TESTS)
-  enable_testing()
+if (BUILD_TESTING)
   find_package(Boost COMPONENTS unit_test_framework REQUIRED)
 endif()
 

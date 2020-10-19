@@ -2,7 +2,7 @@
 
 # Set variables from CMake
 set root            @CMAKE_INSTALL_PREFIX@
-set TESTS_ENABLED  [ string toupper "@BUILD_WITH_TESTS@" ]
+set TESTS_ENABLED  [ string toupper "@BUILD_TESTING@" ]
 set PYTHON_ENABLED [ string toupper "@BUILD_WITH_PYTHON@" ]
 
 # Set environment variables

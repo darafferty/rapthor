@@ -179,6 +179,6 @@ install(
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share
 )
 
-if (BUILD_WITH_TESTS)
+if (BUILD_TESTING)
   add_subdirectory(tests)
 endif()
