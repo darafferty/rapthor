@@ -97,7 +97,7 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 add_subdirectory(examples)
 
 # build all tests
-if (BUILD_WITH_TESTS)
+if (BUILD_TESTING)
   add_subdirectory(tests)
 endif()
 

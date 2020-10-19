@@ -20,7 +20,7 @@ clang-format:
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   before_script:
     - pip3 install clang-format==9.0.0
-  script: 
+  script:
     - ./scripts/run-clang-format.sh
 
 idg-python:
@@ -65,7 +65,7 @@ idg-test:
     - pip3 install gcovr
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_WITH_TESTS=On
+    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
     - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
     - ctest -j8 --verbose -LE integration
@@ -81,27 +81,27 @@ idg-integration-docker:
   image: idg_integration:${CI_COMMIT_SHORT_SHA}
   dependencies:
     - build-integration
-  before_script: 
+  before_script:
     - pip3 install pytest pytest-lazy-fixture
     - export HOME_DIR=$PWD
     # Install IDG
     - mkdir /opt/idg && mkdir build
     - cd build
-    - cmake -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
-    - make install -j4 
+    - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
+    - make install -j4
     - export LD_LIBRARY_PATH="/opt/idg/lib:$LD_LIBRARY_PATH"
     # Compile against development branch of wsclean
     - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
     - cd src/ && git checkout development && cd ..
-    - mkdir build && cd build 
-    - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src 
+    - mkdir build && cd build
+    - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
     - cd $HOME_DIR && rm -rf /wsclean
     # Install dp3
     - mkdir /dp3 && cd /dp3 && git clone https://github.com/lofar-astron/DP3.git src
     - cd src/ && git checkout development && cd ..
-    - mkdir build && cd build 
-    - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src 
+    - mkdir build && cd build
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
     - cd $HOME_DIR && rm -rf /dp3
   script:
@@ -114,19 +114,19 @@ idg-integration-das:
   stage: integration_and_deploy
   tags:
     - ci_gpu
-  before_script: 
+  before_script:
     # Makes it easy to find the idg source location later on
     - export CURRENT_SOURCE=$PWD
     - source scripts/load_modules.sh
     - module list
     - pip3 install --user --upgrade pip
-    - pip3 install --user astropy scipy pytest pytest-lazy-fixture 
+    - pip3 install --user astropy scipy pytest pytest-lazy-fixture
     # pytest executable is installed in local/bin. Add to PATH
     - export PATH=$PATH:/home/gitlab-runner/.local/bin
     # Install casacore --> replace with module load casacore/3.[something]
     - mkdir -p ~/opt/casacore && cd ~/opt/casacore && rm -rf *
     - git clone --branch v3.3.0 https://github.com/casacore/casacore src
-    - mkdir build && cd build 
+    - mkdir build && cd build
     - cmake -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_PREFIX_PATH='/cm/shared/package/cfitsio/3430-gcc-6.3.0/;/cm/shared/package/wcslib/5.18-gcc-6.3.0/;/cm/shared/package/fftw/3.3.8-gcc-8.3.0/' -DBUILD_PYTHON=Off -DBUILD_PYTHON3=On -DUSE_FFTW3=On -DDATA_DIR=/cm/shared/package/casacore/v2.4.1-gcc-6.3.0/data/ ../src
     - make install -j20
     # Install everybeam --> replace with module load everybeam/[stable/latest]
@@ -152,22 +152,22 @@ idg-integration-das:
     - mkdir src && cp -r $CURRENT_SOURCE/. src/.
     - mkdir build && cd build
     # Build with GPU libs
-    - cmake -DBUILD_LIB_CUDA=On -DBUILD_WITH_TESTS=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j4 
+    - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
     - export LD_LIBRARY_PATH="~/opt/idg/lib:$LD_LIBRARY_PATH"
     # Install wsclean (dev branch, needs libgsl)
     - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
     - git clone https://gitlab.com/aroffringa/wsclean.git src
     - cd src/ && git checkout development && cd ..
-    - mkdir build && cd build 
+    - mkdir build && cd build
     - cmake -DCFITSIO_ROOT_DIR=/cm/shared/package/cfitsio/3430-gcc-6.3.0 -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH='~/opt/idg;~/opt/everybeam;/cm/shared/package/fftw/3.3.8-gcc-8.3.0/' -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/wsclean/bin
     # Install dp3
-    - mkdir ~/opt/dp3 && cd ~/opt/dp3 && rm -rf * 
+    - mkdir -p ~/opt/dp3 && cd ~/opt/dp3 && rm -rf *
     - git clone https://github.com/lofar-astron/DP3.git src
     - cd src/ && git checkout development && cd ..
-    - mkdir build && cd build 
+    - mkdir build && cd build
     - cmake -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH='~/opt/aoflagger;~/opt/everybeam;~/opt/idg' -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/dp3/bin

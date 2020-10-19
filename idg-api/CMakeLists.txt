@@ -68,7 +68,7 @@ else()
 endif()
 
 # build all tests
-if (BUILD_WITH_TESTS)
+if (BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
