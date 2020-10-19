@@ -39,7 +39,6 @@ exec 3<> wsclean_mpi_$infix.slurm
     echo "#SBATCH --ntasks-per-node=${ntasks}" >&3
     echo "#SBATCH --output output_${infix}.log" >&3
     echo "cd \$SLURM_SUBMIT_DIR" >&3
-    echo "makehostfile hostfile_${infix}.txt" >&3
     echo $mpi_command >&3
 exec 3>&-
 
