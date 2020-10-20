@@ -141,15 +141,15 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         soltab_amp = sso.getSoltab('amplitude000')
         if len(soltab_amp.time) > 10:
             # Set window size for std. dev. calculation. We try to get one of around
-            # 60 minutes, as that is roughly the timescale on which the global properties
+            # 90 minutes, as that is roughly the timescale on which the global properties
             # of the beam errors are expected to change
             delta_times = soltab_amp.time[1:] - soltab_amp.time[:-1]
             timewidth = np.min(delta_times)
-            nstddev = min(251, max(11, int(3600/timewidth)))
+            nstddev = min(251, max(11, int(5400/timewidth)))
             if nstddev % 2 == 0:
                 # Ensure window is odd
                 nstddev += 1
-            reweight.run(soltab_amp, mode='window', nmedian=3, nstddev=nstddev)
+            reweight.run(soltab_amp, mode='window', nmedian=5, nstddev=nstddev)
 
         ho.close()
 
