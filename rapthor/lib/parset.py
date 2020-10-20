@@ -600,7 +600,7 @@ def get_cluster_options(parset):
         parset_dict['max_cores'] = parset.getint('cluster', 'max_cores')
     else:
         if parset_dict['batch_system'] == 'slurm':
-            # If SLURM is used, force max_cores to be cpus_per_task
+            # If SLURM is used, set max_cores to be cpus_per_task
             parset_dict['max_cores'] = parset_dict['cpus_per_task']
         else:
             # Otherwise, get the cpu count of the current machine

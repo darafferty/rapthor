@@ -20,7 +20,7 @@ while getopts ":m:n:k:c:z:i:j:r:u:v:x:s:l:o:d:t:a:g:y:q:" arg; do
     t) taper_arcsec=$OPTARG;;
     a) auto_mask=$OPTARG;;
     g) idg_mode=$OPTARG;;
-    y) ntasks=$OPTARG;;
+    y) ncpus_per_task=$OPTARG;;
     q) nnodes=$OPTARG;;
   esac
 done
@@ -35,7 +35,8 @@ exec 3<> wsclean_mpi_$infix.slurm
     echo "#SBATCH --job-name=mpijob" >&3
     echo "#SBATCH --time=1-00:00:00" >&3
     echo "#SBATCH --nodes=${nnodes}" >&3
-    echo "#SBATCH --ntasks-per-node=${ntasks}" >&3
+    echo "#SBATCH --ntasks-per-node=1" >&3
+    echo "#SBATCH --cpus-per-task=${ncpus_per_task}" >&3
     echo "#SBATCH --output output_${infix}.log" >&3
     echo "cd \$SLURM_SUBMIT_DIR" >&3
     echo $mpi_command >&3
