@@ -90,6 +90,8 @@ inputs:
     type: string
   - id: combined_h5parms1
     type: string
+  - id: combined_h5parms2
+    type: string
 {% if debug %}
   - id: output_slow_h5parm_debug
     type: string[]
@@ -334,7 +336,7 @@ steps:
       - id: inh5parm2
         source: combine_slow_gains1/outh5parm
       - id: outh5parm
-        source: combined_h5parms1
+        source: combined_h5parms2
       - id: mode
         valueFrom: 'p1a1a2'
       - id: reweight

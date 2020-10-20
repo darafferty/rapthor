@@ -99,6 +99,8 @@ class Calibrate(Operation):
                                              'slow_gains2.h5parm')
         combined_h5parms1 = str(os.path.join(self.pipeline_working_dir,
                                              'combined_solutions1.h5'))
+        combined_h5parms2 = str(os.path.join(self.pipeline_working_dir,
+                                             'combined_solutions2.h5'))
 
         self.input_parms = {'timechunk_filename': timechunk_filename,
                             'freqchunk_filename': freqchunk_filename,
@@ -138,7 +140,8 @@ class Calibrate(Operation):
                             'output_slow_h5parm2': output_slow_h5parm2,
                             'combined_slow_h5parm1': combined_slow_h5parm1,
                             'combined_slow_h5parm2': combined_slow_h5parm2,
-                            'combined_h5parms1': combined_h5parms1}
+                            'combined_h5parms1': combined_h5parms1,
+                            'combined_h5parms2': combined_h5parms2}
 
         if self.field.debug:
             output_slow_h5parm_debug = [str(os.path.join(self.pipeline_working_dir,
