@@ -512,8 +512,9 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
                                       void *grid) {
   for (int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Check whether initialize is needed right now
-    if (wtile_initialize_set.front().subgrid_index ==
-        (int)(subgrid_index + subgrid_offset)) {
+    if (!wtile_initialize_set.empty() &&
+        wtile_initialize_set.front().subgrid_index ==
+            (int)(subgrid_index + subgrid_offset)) {
       // Get the information on what wtiles to initialize
       WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
       // Initialize the wtiles from the grid
