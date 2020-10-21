@@ -54,8 +54,7 @@ class BufferSetImpl;
 class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
  public:
   // Constructors and destructor
-  GridderBufferImpl(BufferSetImpl *bufferset, proxy::Proxy *proxy,
-                    size_t bufferTimesteps);
+  GridderBufferImpl(const BufferSetImpl &bufferset, size_t bufferTimesteps);
 
   virtual ~GridderBufferImpl();
 
@@ -72,6 +71,14 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
                          const double *uvwInMeters,
                          std::complex<float> *visibilities,
                          const float *weights);
+
+  /** \brief Configure computing average beams.
+   *  \param beam Pointer to average beam data. If the pointer is null,
+   *         average beam computations are disabled.
+   */
+  void set_avg_beam(std::complex<float> *average_beam) {
+    m_average_beam = average_beam;
+  }
 
   /** \brief Computes average beam
    */
@@ -114,13 +121,9 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
   std::thread m_flush_thread;
   void flush_thread_worker();
 
-  // references to members of parent BufferSet
-  std::vector<std::complex<float>> &m_average_beam;
-  Array4D<std::complex<float>> &m_default_aterm_correction;
-  Array4D<std::complex<float>> &m_avg_aterm_correction;
-  bool &m_do_gridding;
-  bool &m_do_compute_avg_beam;
-  bool &m_apply_aterm;
+  // Pointer to average beam data in the parent BufferSet.
+  // If it is null, compute_avg_beam() will not run.
+  std::complex<float> *m_average_beam;
 };
 
 }  // namespace api

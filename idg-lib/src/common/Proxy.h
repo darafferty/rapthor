@@ -182,7 +182,7 @@ class Proxy {
   void unset_avg_aterm_correction();
 
   //! Methods for memory management
-  virtual std::shared_ptr<auxiliary::Memory> allocate_memory(size_t bytes);
+  virtual std::unique_ptr<auxiliary::Memory> allocate_memory(size_t bytes);
 
   template <typename T>
   Array1D<T> allocate_array1d(size_t a_dim) {

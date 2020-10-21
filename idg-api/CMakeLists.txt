@@ -77,8 +77,9 @@ endif()
 set (${PROJECT_NAME}_headers
     Buffer.h
     BufferSet.h
-    GridderBuffer.h
+    BulkDegridder.h
     DegridderBuffer.h
+    GridderBuffer.h
     taper.h
     Value.h
 )
@@ -86,8 +87,9 @@ set (${PROJECT_NAME}_headers
 set (${PROJECT_NAME}_sources
     Buffer.cpp
     BufferSet.cpp
-    GridderBuffer.cpp
+    BulkDegridder.cpp
     DegridderBuffer.cpp
+    GridderBuffer.cpp
     taper.cpp
 )
 
@@ -99,7 +101,7 @@ add_library(
   ${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                   ${${PROJECT_NAME}_sources}
 )
-set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION 0)
+set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC"  SOVERSION 1)
 target_link_libraries (
     ${PROJECT_NAME}
     ${${PROJECT_NAME}_link_libraries}

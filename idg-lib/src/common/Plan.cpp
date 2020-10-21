@@ -694,6 +694,13 @@ void Plan::mask_visibilities(
   }
 }
 
+size_t Plan::baseline_index(size_t antenna1, size_t antenna2,
+                            size_t nr_stations) {
+  assert(antenna1 < antenna2);
+  size_t offset = antenna1 * nr_stations - ((antenna1 + 1) * antenna1) / 2 - 1;
+  return antenna2 - antenna1 + offset;
+}
+
 }  // namespace idg
 
 #include "PlanC.h"

@@ -515,8 +515,8 @@ void Proxy::set_grid(std::shared_ptr<Grid> grid) { m_grid = grid; }
 
 std::shared_ptr<Grid> Proxy::get_grid() { return m_grid; }
 
-std::shared_ptr<auxiliary::Memory> Proxy::allocate_memory(size_t bytes) {
-  return std::shared_ptr<auxiliary::Memory>(
+std::unique_ptr<auxiliary::Memory> Proxy::allocate_memory(size_t bytes) {
+  return std::unique_ptr<auxiliary::Memory>(
       new auxiliary::DefaultMemory(bytes));
 };
 

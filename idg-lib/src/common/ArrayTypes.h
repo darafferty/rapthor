@@ -14,33 +14,34 @@ namespace idg {
 template <class T>
 class Array1D {
  public:
-  Array1D() : m_x_dim(0), m_memory(0), m_buffer(nullptr) {}
+  Array1D() : m_x_dim(0), m_memory(), m_buffer(nullptr) {}
 
   Array1D(size_t size)
       : m_x_dim(size),
-        m_memory(std::shared_ptr<auxiliary::Memory>(
-            new auxiliary::AlignedMemory(size * sizeof(T)))),
+        m_memory(new auxiliary::AlignedMemory(size * sizeof(T))),
         m_buffer((T*)m_memory->get()) {}
 
   Array1D(T* data, size_t size)
       : m_x_dim(size), m_memory(nullptr), m_buffer(data) {}
 
-  Array1D(std::shared_ptr<auxiliary::Memory> memory, size_t size)
-      : m_x_dim(size), m_memory(memory), m_buffer((T*)m_memory->get()) {}
+  Array1D(std::unique_ptr<auxiliary::Memory> memory, size_t size)
+      : m_x_dim(size),
+        m_memory(std::move(memory)),
+        m_buffer((T*)m_memory->get()) {}
 
   Array1D(const Array1D& other) = delete;
   Array1D& operator=(const Array1D& rhs) = delete;
 
   Array1D(Array1D&& other)
       : m_x_dim(other.m_x_dim),
-        m_memory(other.m_memory),
+        m_memory(std::move(other.m_memory)),
         m_buffer(other.m_buffer) {
     other.m_buffer = nullptr;
   }
 
   Array1D& operator=(Array1D&& other) {
     m_x_dim = other.m_x_dim;
-    m_memory = other.m_memory;
+    m_memory = std::move(other.m_memory);
     m_buffer = other.m_buffer;
     other.m_buffer = nullptr;
     return *this;
@@ -101,11 +102,9 @@ class Array1D {
 
   const T& operator()(size_t i) const { return m_buffer[i]; }
 
-  const std::shared_ptr<const T> get() const { return m_buffer; }
-
  protected:
   size_t m_x_dim;
-  std::shared_ptr<auxiliary::Memory> m_memory;
+  std::unique_ptr<auxiliary::Memory> m_memory;
   T* m_buffer;
 };
 
@@ -118,20 +117,22 @@ class Array2D : public Array1D<T> {
   Array2D(T* data, size_t y_dim, size_t x_dim)
       : Array1D<T>(data, y_dim * x_dim), m_y_dim(y_dim), m_x_dim(x_dim) {}
 
-  Array2D(std::shared_ptr<auxiliary::Memory> memory, size_t y_dim, size_t x_dim)
-      : Array1D<T>(memory, y_dim * x_dim), m_y_dim(y_dim), m_x_dim(x_dim) {}
+  Array2D(std::unique_ptr<auxiliary::Memory> memory, size_t y_dim, size_t x_dim)
+      : Array1D<T>(std::move(memory), y_dim * x_dim),
+        m_y_dim(y_dim),
+        m_x_dim(x_dim) {}
 
   Array2D(Array2D&& other) {
+    this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
-    this->m_memory = other.m_memory;
     other.m_buffer = nullptr;
     m_y_dim = other.m_y_dim;
     m_x_dim = other.m_x_dim;
   }
 
   Array2D& operator=(Array2D&& other) {
+    this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
-    this->m_memory = other.m_memory;
     other.m_buffer = nullptr;
     m_y_dim = other.m_y_dim;
     m_x_dim = other.m_x_dim;
@@ -175,15 +176,15 @@ class Array3D : public Array1D<T> {
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
-  Array3D(std::shared_ptr<auxiliary::Memory> memory, size_t z_dim, size_t y_dim,
+  Array3D(std::unique_ptr<auxiliary::Memory> memory, size_t z_dim, size_t y_dim,
           size_t x_dim)
-      : Array1D<T>(memory, z_dim * y_dim * x_dim),
+      : Array1D<T>(std::move(memory), z_dim * y_dim * x_dim),
         m_z_dim(z_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
   Array3D(Array3D&& other) {
-    this->m_memory = other.m_memory;
+    this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
     other.m_buffer = nullptr;
     m_z_dim = other.m_z_dim;
@@ -192,8 +193,8 @@ class Array3D : public Array1D<T> {
   }
 
   Array3D& operator=(Array3D&& other) {
+    this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
-    this->m_memory = other.m_memory;
     other.m_buffer = nullptr;
     m_z_dim = other.m_z_dim;
     m_y_dim = other.m_y_dim;
@@ -247,16 +248,16 @@ class Array4D : public Array1D<T> {
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
-  Array4D(std::shared_ptr<auxiliary::Memory> memory, size_t w_dim, size_t z_dim,
+  Array4D(std::unique_ptr<auxiliary::Memory> memory, size_t w_dim, size_t z_dim,
           size_t y_dim, size_t x_dim)
-      : Array1D<T>(memory, w_dim * z_dim * y_dim * x_dim),
+      : Array1D<T>(std::move(memory), w_dim * z_dim * y_dim * x_dim),
         m_w_dim(w_dim),
         m_z_dim(z_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
   Array4D(Array4D&& other) {
-    this->m_memory = other.m_memory;
+    this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
     other.m_buffer = nullptr;
     m_w_dim = other.m_w_dim;
@@ -266,8 +267,8 @@ class Array4D : public Array1D<T> {
   }
 
   Array4D& operator=(Array4D&& other) {
+    this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
-    this->m_memory = other.m_memory;
     other.m_buffer = nullptr;
     m_w_dim = other.m_w_dim;
     m_z_dim = other.m_z_dim;

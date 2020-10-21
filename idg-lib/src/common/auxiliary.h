@@ -120,10 +120,19 @@ size_t get_free_memory();
 
 class Memory {
  public:
+  virtual ~Memory() {}
+  Memory(const Memory &) = delete;
+  Memory(Memory &&) = delete;
+  Memory &operator=(const Memory &) = delete;
+  Memory &operator=(Memory &&) = delete;
+
   void *get() { return m_ptr; };
 
  protected:
-  size_t m_bytes = 0;
+  Memory(void *ptr) : m_ptr(ptr) {}
+  void set(void *ptr) { m_ptr = ptr; }
+
+ private:
   void *m_ptr = nullptr;
 };
 
@@ -138,8 +147,8 @@ class AlignedMemory : public Memory {
   AlignedMemory(size_t bytes = 0);
   ~AlignedMemory();
 
- protected:
-  const size_t m_alignment = 64;
+ private:
+  static const size_t m_alignment = 64;
 };
 
 }  // namespace auxiliary

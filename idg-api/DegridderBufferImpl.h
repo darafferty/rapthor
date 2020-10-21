@@ -74,7 +74,7 @@ namespace api {
 class DegridderBufferImpl : public virtual DegridderBuffer, public BufferImpl {
  public:
   // Constructors and destructor
-  DegridderBufferImpl(BufferSetImpl* bufferset, proxy::Proxy* proxy,
+  DegridderBufferImpl(const BufferSetImpl& bufferset,
                       size_t bufferTimesteps = 4096);
 
   virtual ~DegridderBufferImpl();
@@ -88,9 +88,9 @@ class DegridderBufferImpl : public virtual DegridderBuffer, public BufferImpl {
    *  \param uvwInMeters [in] (u, v, w)
    *  \return buffer_full [out] true, if request buffer is already full
    */
-  virtual bool request_visibilities(size_t rowId, size_t timeIndex,
-                                    size_t antenna1, size_t antenna2,
-                                    const double* uvwInMeters);
+  bool request_visibilities(size_t rowId, size_t timeIndex, size_t antenna1,
+                            size_t antenna2,
+                            const double* uvwInMeters) override;
 
   /** \brief Request a visibility without using the rowId identifier
    *  Note: if this method is used for requesting, reading must be done
@@ -105,16 +105,13 @@ class DegridderBufferImpl : public virtual DegridderBuffer, public BufferImpl {
   /** \brief Compute visibility of the requested visibilities
    *  \return list_of_rowIds [out] a list of all computed rowIds
    */
-  virtual std::vector<std::pair<size_t, std::complex<float>*>> compute();
+  std::vector<std::pair<size_t, std::complex<float>*>> compute() override;
 
   /** \brief Signal that the visibilities can be overwritten */
   virtual void finished_reading();
 
   /** \brief Explicitly flush the buffer */
   virtual void flush() override;
-
-  size_t get_image_height() const { return get_grid_height(); };
-  size_t get_image_width() const { return get_grid_width(); };
 
   bool is_request_buffer_full() const { return m_buffer_full; }
   bool is_data_marked_as_read() const { return m_data_read; }

@@ -137,6 +137,15 @@ class Plan {
 
   bool get_use_wtiles() const { return use_wtiles; }
 
+  /* Creates a baseline index for use in a baselines array.
+   *   0 implies antenna1=0, antenna2=1 ;
+   *   1 implies antenna1=0, antenna2=2 ;
+   * n-1 implies antenna1=0, antenna2=n ;
+   *   n implies antenna1=1, antenna2=0 ; etc.
+   */
+  static size_t baseline_index(size_t antenna1, size_t antenna2,
+                               size_t nr_stations);
+
  private:
   std::vector<Metadata> metadata;
   std::vector<int> subgrid_offset;
