@@ -11,7 +11,7 @@ from losoto.h5parm import h5parm
 import scipy.interpolate as si
 from astropy.io import fits as pyfits
 import scipy.ndimage as ndimage
-from losoto.operations import reweight, stationscreen
+from losoto.operations import stationscreen
 from astropy import wcs
 import lsmtool
 from shapely.geometry import Point
