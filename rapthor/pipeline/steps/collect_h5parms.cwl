@@ -12,7 +12,7 @@ inputs:
     inputBinding:
       position: 0
       itemSeparator: ","
-  - id: outh5parm
+  - id: outputh5parm
     type: string
     inputBinding:
       prefix: --outh5parm=
@@ -22,4 +22,4 @@ outputs:
   - id: outh5parm
     type: string
     outputBinding:
-      outputEval: $(inputs.outh5parm)
+      outputEval: $(inputs.outputh5parm)

@@ -169,7 +169,7 @@ steps:
     in:
       - id: inh5parms
         source: solve_fast_phases/fast_phases_h5parm
-      - id: outh5parm
+      - id: outputh5parm
         source: combined_fast_h5parm
     out:
       - id: outh5parm
@@ -234,7 +234,7 @@ steps:
     in:
       - id: inh5parms
         source: solve_slow_gains1/slow_gains_h5parm
-      - id: outh5parm
+      - id: outputh5parm
         source: combined_slow_h5parm1
     out:
       - id: outh5parm
@@ -311,7 +311,7 @@ steps:
     in:
       - id: inh5parms
         source: solve_slow_gains2/slow_gains_h5parm
-      - id: outh5parm
+      - id: outputh5parm
         source: combined_slow_h5parm2
     out:
       - id: outh5parm
@@ -467,7 +467,7 @@ steps:
     in:
       - id: inh5parms
         source: solve_slow_gains_debug/slow_gains_h5parm
-      - id: outh5parm
+      - id: outputh5parm
         source: combined_slow_h5parm_debug
     out:
       - id: outh5parm
