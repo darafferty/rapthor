@@ -12,6 +12,7 @@ import scipy.interpolate as si
 from astropy.stats import circmean
 from rapthor.lib import miscellaneous as misc
 import shutil
+import losoto.operations
 
 
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
@@ -136,7 +137,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
     # Reweight
     if reweight:
         ho = h5parm(outh5parm, readonly=False)
-        sso = ho.makeSolset(solsetName='sol000', addTables=False)
+        sso = ho.getSolset(solset='sol000')
 
         # Reweight the phases. Reweighting doesn't work when there are too few samples,
         # so check there are at least 10
@@ -151,7 +152,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
             if nstddev % 2 == 0:
                 # Ensure window is odd
                 nstddev += 1
-            reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=nstddev)
+            losoto.operations.reweight.run(soltab_ph, mode='window', nmedian=3, nstddev=nstddev)
 
         # Reweight the amplitudes
         soltab_amp = sso.getSoltab('amplitude000')
@@ -165,7 +166,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
             if nstddev % 2 == 0:
                 # Ensure window is odd
                 nstddev += 1
-            reweight.run(soltab_amp, mode='window', nmedian=5, nstddev=nstddev)
+            losoto.operations.reweight.run(soltab_amp, mode='window', nmedian=5, nstddev=nstddev)
 
         ho.close()
 
