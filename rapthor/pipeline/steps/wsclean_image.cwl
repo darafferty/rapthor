@@ -8,22 +8,19 @@ requirements:
 
 arguments:
   - -no-update-model-required
-  - -fit-beam
-  - -reorder
   - -save-source-list
   - -local-rms
   - -join-channels
   - -use-idg
+  - -log-time
   - valueFrom: 'I'
     prefix: -pol
-  - valueFrom: '0.6'
+  - valueFrom: '0.85'
     prefix: -mgain
   - valueFrom: '3'
     prefix: -fit-spectral-pol
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
-  - valueFrom: '3'
-    prefix: -weighting-rank-filter
   - valueFrom: '1.0'
     prefix: -auto-threshold
   - valueFrom: '50'
@@ -73,10 +70,6 @@ inputs:
     type: float
     inputBinding:
       position: 2
-  - id: wsclean_image_padding
-    type: float
-    inputBinding:
-      prefix: -padding
   - id: min_uv_lambda
     type: float
     inputBinding:

@@ -42,10 +42,6 @@ inputs:
     type: float
     inputBinding:
       prefix: -r
-  - id: wsclean_image_padding
-    type: float
-    inputBinding:
-      prefix: -p
   - id: min_uv_lambda
     type: float
     inputBinding:

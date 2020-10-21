@@ -4,6 +4,7 @@ Definition of the Sector class that holds parameters for an image or predict sec
 import logging
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+import lsmtool
 from astropy.coordinates import Angle
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
@@ -56,6 +57,7 @@ class Sector(object):
         self.is_outlier = False
         self.is_bright_source = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
+        self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -100,7 +102,6 @@ class Sector(object):
         self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
         self.reweight = self.field.parset['imaging_specific']['reweight']
-        self.wsclean_image_padding = self.field.parset['imaging_specific']['wsclean_image_padding']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']
         self.flag_freqrange = self.field.parset['flag_freqrange']
@@ -108,10 +109,6 @@ class Sector(object):
         self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
-        self.nmiter = 10
-        self.auto_mask = 3.0
-        self.threshisl = 4.0
-        self.threshpix = 5.0
         self.imaging_dir = imaging_dir
 
         # Set image size based on current sector polygon
@@ -163,14 +160,16 @@ class Sector(object):
         for obs in self.observations:
             # Find total observation time in hours
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
-        scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 8.0)
+        scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
         dist_deg = np.min(self.get_distance_to_obs_center())
         sens_factor = np.e**(-4.0 * np.log(2.0) * dist_deg**2 / self.field.fwhm_deg**2)
-        self.wsclean_niter = int(round(12000 * scaling_factor * sens_factor))
-        self.wsclean_nmiter = min(12, max(2, int(round(8 * scaling_factor * sens_factor))))
+        self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
+        self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
         if self.field.peel_bright_sources:
-            self.wsclean_niter = int(round(self.wsclean_niter * 0.75))
-            self.wsclean_nmiter = min(12, max(2, int(round(self.wsclean_nmiter * 0.75))))
+            # If bright sources are peeled, reduce nmiter by 75% (since they no longer
+            # need to be cleaned)
+            self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
+            self.wsclean_nmiter = max(2, int(round(self.wsclean_nmiter * 0.75)))
 
         # Set multiscale: get source sizes and check for large sources
         self.multiscale = do_multiscale
@@ -257,33 +256,39 @@ class Sector(object):
         iter : int
             Iteration index
         """
-        if self.is_outlier or self.is_bright_source:
-            # For outlier and bright-source sectors, we use the sky model made earlier,
-            # with no filtering
-            skymodel = self.predict_skymodel
-        else:
-            # For imaging sectors, we use the full calibration sky model and filter it
-            # to keep only sources inside the sector
-            skymodel = self.calibration_skymodel.copy()
-            skymodel = self.filter_skymodel(skymodel)
-
-        # Remove the bright sources from the sky model if they will be predicted and
-        # subtracted separately (so that they aren't subtracted twice)
-        if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
-            source_names = skymodel.getColValues('Name')
-            bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
-            matching_ind = []
-            for i, sn in enumerate(source_names):
-                if sn in bright_source_names:
-                    matching_ind.append(i)
-            if len(matching_ind) > 0:
-                skymodel.remove(np.array(matching_ind))
-
-        # Write filtered sky model to file for later prediction
+        # First check whether sky model already exists due to a previous run and attempt
+        # to load it if so
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
-        skymodel.write(self.predict_skymodel_file, clobber=True)
+        if os.path.exists(self.predict_skymodel_file):
+            skymodel = lsmtool.load(str(self.predict_skymodel_file))
+        else:
+            # If sky model does not already exist, make it
+            if self.is_outlier or self.is_bright_source:
+                # For outlier and bright-source sectors, we use the sky model made earlier,
+                # with no filtering
+                skymodel = self.predict_skymodel
+            else:
+                # For imaging sectors, we use the full calibration sky model and filter it
+                # to keep only sources inside the sector
+                skymodel = self.calibration_skymodel.copy()
+                skymodel = self.filter_skymodel(skymodel)
+
+            # Remove the bright sources from the sky model if they will be predicted and
+            # subtracted separately (so that they aren't subtracted twice)
+            if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
+                source_names = skymodel.getColValues('Name')
+                bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
+                matching_ind = []
+                for i, sn in enumerate(source_names):
+                    if sn in bright_source_names:
+                        matching_ind.append(i)
+                if len(matching_ind) > 0:
+                    skymodel.remove(np.array(matching_ind))
+
+            # Write filtered sky model to file for later prediction
+            skymodel.write(self.predict_skymodel_file, clobber=True)
 
         # Save list of patches (directions) in the format written by DDECal in the h5parm
         self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
@@ -415,7 +420,7 @@ class Sector(object):
         # (which includes the padding done by WSClean, needed for aterm generation)
         self.initial_poly = poly
         self.poly = Polygon(poly)
-        padding_pix = dec_width_pix*(self.field.parset['imaging_specific']['wsclean_image_padding'] - 1.0)
+        padding_pix = dec_width_pix*(self.wsclean_image_padding - 1.0)
         self.poly_padded = self.poly.buffer(padding_pix)
 
     def get_vertices_radec(self):

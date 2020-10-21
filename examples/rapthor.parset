@@ -91,7 +91,9 @@ input_skymodel = /data/skymodel.txt
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
 # more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images
-# >= 2), then distributed imaging will be used (only available if batch_system = slurm)
+# >= 2), then distributed imaging will be used (only available if batch_system = slurm).
+# Note that if MPI is activated, dir_local (under the [cluster] section below) must
+# not be set unless it is on a shared filesystem
 # use_mpi = False
 
 # Reweight the visibility data before imaging (default = True)
@@ -120,9 +122,6 @@ input_skymodel = /data/skymodel.txt
 # sector_width_dec_deg_list = [0.532, 0.127]
 # sector_do_multiscale_list = [None, True]
 
-# Padding factor for WSClean images (default = 1.2)
-# wsclean_image_padding = 1.2
-
 # Max desired peak flux density reduction at center of the image edges due to
 # bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 =
 # 15% reduction in peak flux). Higher values result in shorter run times but
@@ -132,13 +131,12 @@ input_skymodel = /data/skymodel.txt
 
 [cluster]
 # Cluster batch system (default = singleMachine). Use batch_system = slurm to
-# use a SLURM- based cluster
+# use a SLURM-based cluster
 # batch_system = singleMachine
 
-# For batch_system = slurm, the maximum number of nodes of the cluster to use
-# at once can be specified with the max_nodes option (SLURM's --nodes option;
-# default = 12), and the number of processors per task to request from SLURM
-# (the --ntasks-per-node option in sbatch) can be specified with the
+# For batch_system = slurm, the maximum number of nodes of the cluster to use at
+# once can be specified with the max_nodes option (default = 12), and the number
+# of processors per task to request from SLURM can be specified with the
 # cpus_per_task option (default = 6). By setting the cpus_per_task value to the
 # number of processors per node, one can ensure that each task gets the entire
 # node to itself, which is the recommended way of running Rapthor
@@ -154,11 +152,14 @@ input_skymodel = /data/skymodel.txt
 # max_threads = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
-# not used). The path must exist on all nodes. This parameter is useful if you
-# have a fast local disk (e.g., an SSD) that is not the one used for
-# dir_working. If this parameter is not set, IO-intensive processing (e.g.,
-# WSClean) will use a default path in dir_working instead. This parameter should
-# not be set when batch_system = singleMachine and multiple imaging sectors are
-# used, as each sector will overwrite files from the other sectors. In this
-# case, it is best to leave dir_local unset
+# not used). The path must exist on all nodes (but does not have to be on a
+# shared filesystem). This parameter is useful if you have a fast local disk
+# (e.g., an SSD) that is not the one used for dir_working. If this parameter is
+# not set, IO-intensive processing (e.g., WSClean) will use a default path in
+# dir_working instead. This parameter should not be set in the following
+# situations:
+#   - when batch_system = singleMachine and multiple imaging sectors are
+#     used (as each sector will overwrite files from the other sectors)
+#   - when use_mpi = True under the [imaging] section above and dir_local is
+#     not on a shared filesystem
 # dir_local = /tmp

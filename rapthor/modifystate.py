@@ -7,7 +7,6 @@ from rapthor.lib.field import Field
 import logging
 import os
 import sys
-import numpy as np
 
 log = logging.getLogger('rapthor:state')
 logging.getLogger('rapthor:parset').setLevel(logging.CRITICAL)
@@ -53,17 +52,13 @@ def run(parset_file):
     strategy_steps = set_strategy(field)
 
     # Check each operation for started pipelines
+    operation_list = ['calibrate', 'predict', 'image', 'mosaic']  # in order of execution
     while True:
         pipelines = []
         for iter, step in enumerate(strategy_steps):
-            operation = os.path.join(parset['dir_working'], 'pipelines', 'calibrate_{}'.format(iter+1))
-            pipelines.extend(check_operation(operation))
-            operation = os.path.join(parset['dir_working'], 'pipelines', 'predict_{}'.format(iter+1))
-            pipelines.extend(check_operation(operation))
-            operation = os.path.join(parset['dir_working'], 'pipelines', 'image_{}'.format(iter+1))
-            pipelines.extend(check_operation(operation))
-            operation = os.path.join(parset['dir_working'], 'pipelines', 'mosaic_{}'.format(iter+1))
-            pipelines.extend(check_operation(operation))
+            for opname in operation_list:
+                operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, iter+1))
+                pipelines.extend(check_operation(operation))
 
         # List pipelines and query user
         print('\nCurrent strategy: {}'.format(field.parset['strategy']))
@@ -71,6 +66,8 @@ def run(parset_file):
         i = 0
         if len(pipelines) == 0:
             print('    None')
+            print('No reset can be done.')
+            sys.exit(0)
         else:
             for p in pipelines:
                 i += 1
@@ -109,4 +106,9 @@ def run(parset_file):
             for pipeline in pipelines[int(p_number_raw)-1:]:
                 jobstore = os.path.join(parset['dir_working'], 'pipelines', pipeline, 'jobstore')
                 os.system('rm -rf {}'.format(jobstore))
+
+                # Remove associated sky models as well
+                skymodel = os.path.join(parset['dir_working'], 'skymodels', pipeline)
+                os.system('rm -rf {}'.format(skymodel))
+
             print('Reset complete.')

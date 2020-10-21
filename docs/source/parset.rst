@@ -174,6 +174,12 @@ All the available options are described below under their respective sections.
         WSClean job (i.e., max_nodes / num_images >= 2), then distributed
         imaging will be used (only available if batch_system = slurm)
 
+        .. note::
+
+            If MPI is activated, :term:`dir_local` (under the
+            :ref:`parset_cluster_options` section below) must not be set unless
+            it is on a shared filesystem
+
     reweight
         Reweight the visibility data before imaging (default = ``True``)
 
@@ -218,9 +224,6 @@ All the available options are described below under their respective sections.
         indicates that multiscale clean should be activated automatically if a
         large source is detected in the sector
 
-    wsclean_image_padding
-        Padding factor for WSClean images (default = 1.2)
-
     max_peak_smearing
         Max desired peak flux density reduction at center of the image edges due
         to bandwidth smearing (at the mean frequency) and time smearing (default
@@ -241,14 +244,13 @@ All the available options are described below under their respective sections.
 
     max_nodes
         For ``batch_system = slurm``, the maximum number of nodes of the cluster to
-        use at once (via the ``--nodes`` option in ``sbatch``; default = 12).
+        use at once (default = 12).
 
     cpus_per_task
-        For ``batch_system = slurm``, the number of processors per task to request
-        (via the ``--ntasks-per-node`` option in ``sbatch``; default = 6). By
-        setting this value to the number of processors per node, one can ensure
-        that each task gets the entire node to itself, which is the recommended
-        way of running Rapthor.
+        For ``batch_system = slurm``, the number of processors per task to
+        request (default = 6). By setting this value to the number of processors
+        per node, one can ensure that each task gets the entire node to itself,
+        which is the recommended way of running Rapthor.
 
     max_cores
         Maximum number of cores per task to use on each node (default = 0 =
@@ -259,15 +261,17 @@ All the available options are described below under their respective sections.
         all).
 
     dir_local
-        Full path to a local disk on the nodes for IO-intensive processing (no
-        default). The path must exist on all nodes. This parameter is useful if
-        you have a fast local disk (e.g., an SSD) that is not the one used for
-        :term:`dir_working`. If this parameter is not set, IO-intensive
-        processing (e.g., WSClean) will use a default path in :term:`dir_working`
-        instead.
+        Full path to a local disk on the nodes for IO-intensive processing (default =
+        not used). The path must exist on all nodes (but does not have to be on a
+        shared filesystem). This parameter is useful if you have a fast local disk
+        (e.g., an SSD) that is not the one used for :term:`dir_working`. If this parameter is
+        not set, IO-intensive processing (e.g., WSClean) will use a default path in
+        :term:`dir_working` instead.
 
         .. note::
 
-            This parameter should not be set when :term:`batch_system` = ``singleMachine``
-            and multiple imaging sectors are used, as each sector will overwrite files
-            from the other sectors. In this case, it is best to leave ``dir_local`` unset.
+            This parameter should not be set in the following situations:
+            - when :term:`batch_system` = ``singleMachine`` and multiple imaging sectors are
+              used (as each sector will overwrite files from the other sectors)
+            - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
+              section and ```dir_local``` is not on a shared filesystem
