@@ -95,34 +95,18 @@ class WTiles {
    *
    * @param wtile_buffer_size number of w-tiles to keep in the buffer
    *
-   * The parameters below are not used by the WTile object
-   * They are stored and can be queried users of the WTile object
-   * @param grid_size - size of the grid
-   * @param subgrid_size - size of the subgrid
-   * @param image_size - size of the image (radians)
-   * @param w_step - w step size
-   *
    * @param update_fraction
    */
-  WTiles(int wtile_buffer_size, int grid_size, int subgrid_size, int wtile_size,
-         float image_size, float w_step,
+  WTiles(int wtile_buffer_size, int wtile_size,
          float update_fraction = kUpdateFraction)
       : m_subgrid_count(0),
-        m_grid_size(grid_size),
-        m_subgrid_size(subgrid_size),
         m_wtile_size(wtile_size),
-        m_image_size(image_size),
-        m_w_step(w_step),
         m_update_fraction(update_fraction),
         m_wtile_buffer_size(wtile_buffer_size),
         m_free_wtiles(wtile_buffer_size) {
     std::iota(m_free_wtiles.begin(), m_free_wtiles.end(), 0);
   }
 
-  int get_grid_size() { return m_grid_size; }
-  int get_subgrid_size() { return m_subgrid_size; }
-  float get_image_size() { return m_image_size; }
-  float get_w_step() { return m_w_step; }
   int get_wtile_buffer_size() { return m_wtile_buffer_size; }
   int get_wtile_size() { return m_wtile_size; }
 
@@ -177,12 +161,8 @@ class WTiles {
    */
   int get_new_wtile(int subgrid_index);
 
-  int m_subgrid_count;
-  int m_grid_size;
-  int m_subgrid_size;
-  int m_wtile_size = 1;
-  float m_image_size;
-  float m_w_step;
+  size_t m_subgrid_count;
+  int m_wtile_size;
   float m_update_fraction;
   WTileMap m_wtile_map;
   int m_wtile_buffer_size;

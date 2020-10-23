@@ -249,7 +249,8 @@ void run() {
   // Iterate all cycles
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
     // Set grid
-    proxy.set_grid(grid);
+    float w_step = 0.0;
+    proxy.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
 
     // Iterate all time blocks
     for (unsigned time_offset = 0; time_offset < total_nr_timesteps;

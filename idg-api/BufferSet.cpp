@@ -224,7 +224,6 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 
     // restrict nr w layers
     if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
-
     m_w_step = max_w / nr_w_layers;
     w_kernel_size = 0.5 * m_w_step * m_image_size * m_image_size;
     m_apply_wstack_correction = true;
@@ -266,7 +265,8 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 
   m_grid.reset(new Grid(nr_w_layers, 4, m_padded_size, m_padded_size));
   m_grid->zero();
-  m_proxy->set_grid(m_grid);
+  m_proxy->set_grid(*m_grid, m_subgridsize, m_image_size, m_w_step,
+                    m_shift.data());
 
   m_taper_subgrid.resize(m_subgridsize);
   m_taper_grid.resize(m_padded_size);

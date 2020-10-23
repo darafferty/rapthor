@@ -33,7 +33,6 @@ class CPU : public Proxy {
     return kernels.has_splitter_wstack();
   }
   virtual bool supports_avg_aterm_correction() override { return true; }
-
   virtual bool do_supports_wtiles() override {
     return kernels.has_adder_wtiles() && kernels.has_splitter_wtiles();
   }
@@ -48,8 +47,10 @@ class CPU : public Proxy {
       const Array1D<unsigned int>& aterms_offsets,
       Plan::Options options) override;
 
-  virtual void set_grid(Grid& grid) override;
-  virtual void set_grid(std::shared_ptr<Grid> grid) override;
+  using Proxy::set_grid;  // prevents hiding set_grid overloads in Proxy
+  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
+                        float image_size, float w_step,
+                        const float* shift) override;
   virtual std::shared_ptr<Grid> get_grid() override;
 
  private:

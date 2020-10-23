@@ -100,6 +100,10 @@ int test01() {
   clog << ">>> Initialize proxy" << endl;
   idg::proxy::cpu::Reference proxy;
 
+  // Set grid
+  float w_step = 0.0;
+  proxy.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
+
   // Create plan
   clog << ">>> Create plan" << endl;
   idg::Plan::Options options;
@@ -126,7 +130,8 @@ int test01() {
   proxy.transform(idg::ImageDomainToFourierDomain, grid_ref);
 
   // Set reference grid
-  proxy.set_grid(grid_ref);
+  proxy.set_grid(grid_ref, subgrid_size, image_size, w_step, shift.data());
+
   proxy.degridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                    frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);

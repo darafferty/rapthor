@@ -12,7 +12,7 @@
 
 #include "common/Types.h"
 #include "common/Index.h"
-
+#include "Math.h"
 #include "idg-fft.h"
 
 extern "C" {
@@ -99,9 +99,20 @@ int next_composite(int n) {
 
 void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                       int wtile_size, float image_size,
-                                      float w_step, int nr_tiles, int *tile_ids,
+                                      float w_step, const float *shift,
+                                      int nr_tiles, int *tile_ids,
                                       idg::Coordinate *tile_coordinates,
                                       idg::float2 *tiles, idg::float2 *grid) {
+
+
+  std::cout << "grid_size: " << grid_size << std::endl;
+  std::cout << "subgrid_size: " << subgrid_size << std::endl;
+  std::cout << "wtile_size: " << wtile_size << std::endl;
+  std::cout << "image_size: " << image_size << std::endl;
+  std::cout << "w_step: " << w_step << std::endl;
+  std::cout << "nr_tiles: " << nr_tiles << std::endl;
+  std::cout << "shift: " << shift[0] << ", " << shift[1] << ", " << shift[2] << std::endl;
+
   float max_abs_w = 0.0;
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate &coordinate = tile_coordinates[i];
@@ -166,12 +177,15 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
     for (int y = 0; y < w_padded_tile_size; y++) {
       for (int x = 0; x < w_padded_tile_size; x++) {
         // Compute phase
-        const float l = (y - (w_padded_tile_size / 2)) * cell_size;
-        const float m = (x - (w_padded_tile_size / 2)) * cell_size;
+        const float l = (x - (w_padded_tile_size / 2)) * cell_size;
+        const float m = (y - (w_padded_tile_size / 2)) * cell_size;
         // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
         // accurately for small values of l and m
-        const float tmp = (l * l) + (m * m);
-        const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
+        // const float tmp = (l * l) + (m * m);
+        // const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
+
+        const float n = compute_n(l, -m, shift);
+
         const float phase = 2 * M_PI * n * w;
 
         // Compute phasor

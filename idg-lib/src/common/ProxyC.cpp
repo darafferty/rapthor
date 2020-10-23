@@ -183,7 +183,20 @@ void* Proxy_allocate_grid(Proxy* p, unsigned int nr_correlations,
   const unsigned int nr_w_layers = 1;
   auto grid_ptr = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(
       nr_w_layers, nr_correlations, grid_size, grid_size);
-  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
   return grid_ptr->data();
 }
+
+// TODO expose in header file, change arguments to ctypes only
+
+// void Proxy_set_grid(Proxy* p, idg::Grid& grid, subgrid_size, image_size,
+// w_step, shift) {
+//   std::shared_ptr<idg::Grid> grid_ptr(&grid);
+//   reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr, subgrid_size,
+//   image_size, w_step, shift);
+// }
+
+// void Proxy_get_grid(Proxy* p, void* ptr) {
+//   auto grid = reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
+//   memcpy(ptr, grid->data(), grid->bytes());
+// }
 }

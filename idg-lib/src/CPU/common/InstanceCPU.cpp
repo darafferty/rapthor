@@ -202,12 +202,18 @@ void InstanceCPU::load_kernel_funcions() {
 #define sig_splitter_wstack (void (*)(long, long, int, void *, void *, void *))
 #define sig_adder_subgrids_to_wtiles \
   (void (*)(long, int, int, int, void *, void *, void *))
-#define sig_adder_wtiles_to_grid \
-  (void (*)(int, int, int, float, float, int, void *, void *, void *, void *))
+#define sig_adder_wtiles_to_grid                                               \
+  (void (*)(int grid_size, int subgrid_size, int wtile_size, float image_size, \
+            float w_step, const float *shift, int nr_tiles, int *tile_ids,     \
+            idg::Coordinate *tile_coordinates, idg::float2 *tiles,             \
+            idg::float2 *grid))
 #define sig_splitter_subgrids_from_wtiles \
   (void (*)(long, int, int, int, void *, void *, void *))
-#define sig_splitter_wtiles_from_grid \
-  (void (*)(int, int, int, float, float, int, void *, void *, void *, void *))
+#define sig_splitter_wtiles_from_grid                                          \
+  (void (*)(int grid_size, int subgrid_size, int wtile_size, float image_size, \
+            float w_step, const float *shift, int nr_tiles, int *tile_ids,     \
+            idg::Coordinate *tile_coordinates, idg::float2 *tiles,             \
+            idg::float2 *grid))
 
 #define sig_average_beam                                                  \
   (void (*)(int, int, int, int, int, int, void *, void *, void *, void *, \
@@ -443,13 +449,17 @@ void InstanceCPU::run_splitter_subgrids_from_wtiles(int nr_subgrids,
 
 void InstanceCPU::run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
                                            float image_size, float w_step,
-                                           int nr_tiles, void *tile_ids,
-                                           void *tile_coordinates, void *grid) {
+                                           const float *shift, int nr_tiles,
+                                           int *tile_ids,
+                                           idg::Coordinate *tile_coordinates,
+                                           std::complex<float> *grid) {
   powersensor::State states[2];
   states[0] = powerSensor->read();
   (sig_adder_wtiles_to_grid(void *) * function_adder_wtiles_to_grid)(
-      grid_size, subgrid_size, kWTileSize, image_size, w_step, nr_tiles,
-      tile_ids, tile_coordinates, m_wtiles_buffer.data(), grid);
+      grid_size, subgrid_size, kWTileSize, image_size, w_step, shift, nr_tiles,
+      tile_ids, tile_coordinates,
+      reinterpret_cast<idg::float2 *>(m_wtiles_buffer.data()),
+      reinterpret_cast<idg::float2 *>(grid));
   states[1] = powerSensor->read();
   if (report) {
     report->update_adder(states[0], states[1]);
@@ -458,26 +468,28 @@ void InstanceCPU::run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
 
 void InstanceCPU::run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                                 float image_size, float w_step,
-                                                int nr_tiles, void *tile_ids,
-                                                void *tile_coordinates,
-                                                void *grid) {
+                                                const float *shift,
+                                                int nr_tiles, int *tile_ids,
+                                                Coordinate *tile_coordinates,
+                                                std::complex<float> *grid) {
   powersensor::State states[2];
   states[0] = powerSensor->read();
   (sig_splitter_wtiles_from_grid(void *) * function_splitter_wtiles_from_grid)(
-      grid_size, subgrid_size, kWTileSize, image_size, w_step, nr_tiles,
-      tile_ids, tile_coordinates, m_wtiles_buffer.data(), grid);
+      grid_size, subgrid_size, kWTileSize, image_size, w_step, shift, nr_tiles,
+      tile_ids, tile_coordinates,
+      reinterpret_cast<float2 *>(m_wtiles_buffer.data()),
+      reinterpret_cast<float2 *>(grid));
   states[1] = powerSensor->read();
   if (report) {
     report->update_adder(states[0], states[1]);
   }
 }
 
-void InstanceCPU::run_adder_wtiles(unsigned int nr_subgrids,
-                                   unsigned int grid_size,
-                                   unsigned int subgrid_size, float image_size,
-                                   float w_step, int subgrid_offset,
-                                   WTileUpdateSet &wtile_flush_set,
-                                   void *metadata, void *subgrid, void *grid) {
+void InstanceCPU::run_adder_wtiles(
+    unsigned int nr_subgrids, unsigned int grid_size, unsigned int subgrid_size,
+    float image_size, float w_step, const float *shift, int subgrid_offset,
+    WTileUpdateSet &wtile_flush_set, void *metadata, void *subgrid,
+    std::complex<float> *grid) {
   for (int subgrid_index = 0; subgrid_index < (int)nr_subgrids;) {
     // Is a flush needed right now?
     if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index ==
@@ -486,7 +498,7 @@ void InstanceCPU::run_adder_wtiles(unsigned int nr_subgrids,
       WTileUpdateInfo &wtile_flush_info = wtile_flush_set.front();
       // Project wtiles to master grid
       run_adder_wtiles_to_grid(grid_size, subgrid_size, image_size, w_step,
-                               wtile_flush_info.wtile_ids.size(),
+                               shift, wtile_flush_info.wtile_ids.size(),
                                wtile_flush_info.wtile_ids.data(),
                                wtile_flush_info.wtile_coordinates.data(), grid);
       // Remove the flush event from the queue
@@ -521,10 +533,11 @@ void InstanceCPU::run_adder_wtiles(unsigned int nr_subgrids,
 
 void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
                                       int subgrid_size, float image_size,
-                                      float w_step, int subgrid_offset,
+                                      float w_step, const float *shift,
+                                      int subgrid_offset,
                                       WTileUpdateSet &wtile_initialize_set,
                                       void *metadata, void *subgrid,
-                                      void *grid) {
+                                      std::complex<float> *grid) {
   for (int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Check whether initialize is needed right now
     if (!wtile_initialize_set.empty() &&
@@ -534,7 +547,7 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
       WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
       // Initialize the wtiles from the grid
       run_splitter_wtiles_from_grid(
-          grid_size, subgrid_size, image_size, w_step,
+          grid_size, subgrid_size, image_size, w_step, shift,
           wtile_initialize_info.wtile_ids.size(),
           wtile_initialize_info.wtile_ids.data(),
           wtile_initialize_info.wtile_coordinates.data(), grid);
@@ -571,9 +584,9 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
 }  // end run_splitter_wtiles
 
 void InstanceCPU::init_wtiles(int subgrid_size) {
-  m_wtiles_buffer = idg::Array1D<std::complex<float>>(
-      kNrWTiles * (kWTileSize + subgrid_size) * (kWTileSize + subgrid_size) *
-      NR_CORRELATIONS);
+  m_wtiles_buffer.resize(kNrWTiles * (kWTileSize + subgrid_size) *
+                         (kWTileSize + subgrid_size) * NR_CORRELATIONS);
+  std::fill(m_wtiles_buffer.begin(), m_wtiles_buffer.end() + 4, 0.0);
 }
 
 }  // namespace cpu
