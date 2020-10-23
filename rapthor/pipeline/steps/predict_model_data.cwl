@@ -32,7 +32,7 @@ inputs:
   - id: msin
     label: Input MS filename
     doc: |
-       The filename of the input MS file.
+      The filename of the input MS file.
     type: string
     inputBinding:
       prefix: msin=
@@ -41,7 +41,7 @@ inputs:
   - id: msout
     label: Output MS filename
     doc: |
-       The filename of the output MS file.
+      The filename of the output MS file.
     type: string
     inputBinding:
       prefix: msout=
@@ -50,7 +50,7 @@ inputs:
   - id: starttime
     label: Start time
     doc: |
-       The start time (in casacore MVTime) for the time chunk to be predicted.
+      The start time (in casacore MVTime) for the time chunk to be predicted.
     type: string
     inputBinding:
       prefix: msin.starttime=
@@ -59,7 +59,7 @@ inputs:
   - id: ntimes
     label: Number of times
     doc: |
-       The number of time slots for the time chunk to be predicted.
+      The number of time slots for the time chunk to be predicted.
     type: int
     inputBinding:
       prefix: msin.ntimes=
@@ -68,7 +68,7 @@ inputs:
   - id: h5parm
     label: Solution table
     doc: |
-       The solution table to use to corrupt the model visibilities.
+      The solution table to use to corrupt the model visibilities.
     type: string
     inputBinding:
       prefix: predict.applycal.parmdb=
@@ -77,7 +77,7 @@ inputs:
   - id: sourcedb
     label: Sky model
     doc: |
-       The sourcedb sky model to use to predict the model visibilities.
+      The sourcedb sky model to use to predict the model visibilities.
     type: string
     inputBinding:
       prefix: predict.sourcedb=
@@ -86,7 +86,7 @@ inputs:
   - id: sourcedb2
     label: Dummy parameter
     doc: |
-       A dummy parameter used to enforce step order.
+      A dummy parameter used to enforce step order.
     type: string[]
     inputBinding:
       valueFrom: ''
@@ -94,8 +94,8 @@ inputs:
   - id: directions
     label: Direction names
     doc: |
-       The list of direction names (matching those in the h5parm and sourcedb)
-       used in the calibration.
+      The list of direction names (matching those in the h5parm and sourcedb)
+      used in the calibration.
     type: string[]
     inputBinding:
       valueFrom: $('['+self+']')
@@ -106,7 +106,7 @@ inputs:
   - id: numthreads
     label: Number of threads
     doc: |
-       The number of threads for DPPP.
+      The number of threads for DPPP.
     type: string
     inputBinding:
       prefix: numthreads=
@@ -116,7 +116,7 @@ outputs:
   - id: msmod
     label: Output MS filename
     doc: |
-       The filename of the output MS file.
+      The filename of the output MS file.
     type: string
     outputBinding:
       outputEval: $(inputs.msout)

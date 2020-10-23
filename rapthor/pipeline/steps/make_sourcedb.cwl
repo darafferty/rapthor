@@ -17,7 +17,7 @@ inputs:
   - id: in
     label: Input sky model
     doc: |
-       The filename of the input sky model.
+      The filename of the input sky model.
     type: string
     inputBinding:
       prefix: in=
@@ -26,7 +26,7 @@ inputs:
   - id: out
     label: Output sourcedb
     doc: |
-       The filename of the output sourcedb model.
+      The filename of the output sourcedb model.
     type: string
     inputBinding:
       prefix: out=
@@ -36,7 +36,7 @@ outputs:
   - id: sourcedb
     label: Output sourcedb
     doc: |
-       The filename of the output sourcedb model.
+      The filename of the output sourcedb model.
     type: string
     outputBinding:
       outputEval: $(inputs.out)
