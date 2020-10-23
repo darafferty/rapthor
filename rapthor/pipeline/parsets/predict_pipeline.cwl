@@ -18,79 +18,146 @@ hints:
 {% endif %}
 
 inputs:
+
   - id: sector_filename
-    type: string[]
     label: Filename of input MS
     doc: |
-       The filenames of input MS files for which predition will be done. There should
-       be n_obs * n_sector filenames.
-  - id: sector_model_filename
+       The filenames of input MS files for which prediction will be done (length =
+       n_obs * n_sectors).
     type: string[]
+
+  - id: sector_model_filename
     label: Filename of output MS
     doc: |
-       The filenames of output MS files from prediction. There should be n_obs *
-       n_sector filenames.
-  - id: sector_starttime
+       The filenames of output MS files from prediction (length = n_obs * n_sectors).
     type: string[]
+
+  - id: sector_starttime
     label: Start time of each chunk
     doc: |
-       The start time (in casacore MVTime) for each time chunk used in processing. There should be n_obs *
-       n_sector times.
+       The start time (in casacore MVTime) for each time chunk used in prediction
+       (length = n_obs * n_sectors).
+    type: string[]
+
   - id: sector_ntimes
-    type: int[]
     label: Number of times of each chunk
     doc: |
-       The number of timeslots for each time chunk used in processing. There should be n_obs *
-       n_sector entries.
+       The number of timeslots for each time chunk used in prediction (length =
+       n_obs * n_sectors).
+    type: int[]
+
   - id: sector_patches
+    label: Names of sector calibration patches
+    doc: |
+       A list of lists giving the names of the calibration patches for each sector
+       (length = n_obs * n_sectors).
     type:
       type: array
       items:
         type: array
         items: string
-    label: Names of sector calibration patches
-    doc: |
-       A list of lists giving the names of the calibration patches for each sector.
+
   - id: h5parm
-    type: string
     label: Filename of solution table
     doc: |
-       The filename of the h5parm solution table from the calibration pipeline.
+       The filename of the h5parm solution table from the calibration pipeline (length
+       = 1).
+    type: string
+
   - id: sector_skymodel
     label: Filename of sky model
     doc: |
-       The filename of the input sky model text file of each sector.
+       The filename of the input sky model text file of each sector (length = n_sectors).
     type: string[]
+
   - id: sector_sourcedb
-    type: string[]
     label: Filename of sourcedb
     doc: |
-       The filename of the output sourcedb sky model file of each sector.
+       The filename of the output sourcedb sky model file of each sector (length =
+       n_sectors).
+    type: string[]
+
   - id: sector_obs_sourcedb
+    label: Filename of sourcedb
+    doc: |
+       The filename of the output sourcedb sky model file of each sector, repeated for
+       each observation  (length = n_obs * n_sectors).
     type: string[]
+
   - id: obs_filename
+    label: Filename of input MS
+    doc: |
+       The filenames of input MS files for which subtraction will be done (length =
+       n_obs).
     type: string[]
+
   - id: obs_starttime
+    label: Start time of each chunk
+    doc: |
+       The start time (in casacore MVTime) for each time chunk used in subtraction
+       (length = n_obs).
     type: string[]
+
   - id: obs_solint_sec
+    label: Solution interval in sec
+    doc: |
+       The solution interval in sec used during the fast-phase calibration (length =
+       n_obs).
     type: float[]
+
   - id: obs_solint_hz
+    label: Solution interval in Hz
+    doc: |
+       The solution interval in Hz used during the slow-gain calibration (length =
+       n_obs).
     type: float[]
+
   - id: obs_infix
+    label: Output infix string
+    doc: |
+       The infix string to use when building the output MS filenames (length = n_obs).
     type: string[]
+
   - id: min_uv_lambda
+    label: Minimum uv distance in lambda
+    doc: |
+       The minimum uv distance used during the calibration (length = 1).
     type: float
+
   - id: max_uv_lambda
+    label: Maximum uv distance in lambda
+    doc: |
+       The maximum uv distance used during the calibration (length = 1).
     type: float
+
   - id: nr_outliers
+    label: Number outlier sectors
+    doc: |
+       The number of outlier sectors to process (length = 1).
     type: int
+
   - id: peel_outliers
+    label: Outlier flag
+    doc: |
+       The flag that sets peeling of outlier sources (length = 1).
     type: string
+
   - id: nr_bright
+    label: Number bright-source sectors
+    doc: |
+       The number of bright-source sectors to process (length = 1).
     type: int
+
   - id: peel_bright
+    label: Bright-source flag
+    doc: |
+       The flag that sets peeling of bright-source sources (length = 1).
     type: string
+
   - id: reweight
+    label: Reweight flag
+    doc: |
+       The flag that sets reweighting of uv data (length = 1).
     type: string
 
 outputs: []
