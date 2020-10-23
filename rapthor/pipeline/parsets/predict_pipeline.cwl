@@ -1,5 +1,10 @@
 cwlVersion: v1.0
 class: Workflow
+label: Rapthor prediction pipeline
+doc: |
+  This workflow performs direction-dependent prediction of sector sky models and
+  subracts the resulting model data from the input data, reweighting if desired.
+  The resulting data are suitable for imaging.
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -15,24 +20,52 @@ hints:
 inputs:
   - id: sector_filename
     type: string[]
+    label: Filename of input MS
+    doc: |
+       The filenames of input MS files for which predition will be done. There should
+       be n_obs * n_sector filenames.
   - id: sector_model_filename
     type: string[]
+    label: Filename of output MS
+    doc: |
+       The filenames of output MS files from prediction. There should be n_obs *
+       n_sector filenames.
   - id: sector_starttime
     type: string[]
+    label: Start time of each chunk
+    doc: |
+       The start time (in casacore MVTime) for each time chunk used in processing. There should be n_obs *
+       n_sector times.
   - id: sector_ntimes
     type: int[]
+    label: Number of times of each chunk
+    doc: |
+       The number of timeslots for each time chunk used in processing. There should be n_obs *
+       n_sector entries.
   - id: sector_patches
     type:
       type: array
       items:
         type: array
         items: string
+    label: Names of sector calibration patches
+    doc: |
+       A list of lists giving the names of the calibration patches for each sector.
   - id: h5parm
     type: string
+    label: Filename of solution table
+    doc: |
+       The filename of the h5parm solution table from the calibration pipeline.
   - id: sector_skymodel
+    label: Filename of sky model
+    doc: |
+       The filename of the input sky model text file of each sector.
     type: string[]
   - id: sector_sourcedb
     type: string[]
+    label: Filename of sourcedb
+    doc: |
+       The filename of the output sourcedb sky model file of each sector.
   - id: sector_obs_sourcedb
     type: string[]
   - id: obs_filename
@@ -64,7 +97,10 @@ outputs: []
 
 steps:
   - id: make_sourcedb
-    label: make_sourcedb
+    label: Make a sourcedb
+    doc: |
+      A sourcedb (defining the model) is required by DPPP for prediction. This
+      step converts the input sky model into a sourcedb (one per sector).
     run: {{ rapthor_pipeline_dir }}/steps/make_sourcedb.cwl
     in:
       - id: in
@@ -76,46 +112,19 @@ steps:
     out:
       - id: sourcedb
 
+  - id: predict_model_data
+    label: Predict the model uv data
+    doc: |
+      This step uses DPPP to predict uv data (using the input sourcedb) from the
+      input MS files. It also corrupts the model data with the calibration
+      solutions. For each sector, prediction is done for all observations.
 {% if do_slowgain_solve %}
-
-  - id: predict_model_data
-    label: predict_model_data
+    # Corrupt with both fast phases and slow gains
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
-    in:
-      - id: msin
-        source: sector_filename
-      - id: msout
-        source: sector_model_filename
-      - id: starttime
-        source: sector_starttime
-      - id: ntimes
-        source: sector_ntimes
-      - id: h5parm
-        source: h5parm
-      - id: sourcedb
-        source: sector_obs_sourcedb
-      - id: sourcedb2
-        source: make_sourcedb/sourcedb
-      - id: directions
-        source: sector_patches
-      - id: numthreads
-        valueFrom: '{{ max_threads }}'
-    scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
-    scatterMethod: dotproduct
-    out:
-      - id: msmod
-
 {% else %}
-
-  - id: predict_model_data
-    label: predict_model_data
+    # Corrupt with fast phases only
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data_phase_only.cwl
+{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -145,11 +154,15 @@ steps:
     scatterMethod: dotproduct
     out:
       - id: msmod
-
-{% endif %}
 
   - id: subtract_models
-    label: subtract_models
+    label: Subtract the model uv data
+    doc: |
+      This step subtracts the model uv data generated in the previous step from the
+      input MS files. For each sector, all sources that lie outside of the sector are
+      subtracted (or peeled), generating data suitable for use as input to the imaging
+      pipeline. Reweighting by the residuals can also be done, by generating data in
+      which all sources have been subtracted.
     run: {{ rapthor_pipeline_dir }}/steps/subtract_sector_models.cwl
 {% if max_cores is not none %}
     hints:

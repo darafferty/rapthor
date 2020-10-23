@@ -37,19 +37,37 @@ class Calibrate(Operation):
         """
         Define the pipeline inputs
         """
+        # First set the calibration parameters for each observation
         self.field.set_obs_parameters()
+
+        # Next, get the various parameters needed by the pipeline
+        #
+        # Get the filenames of the input files for each time chunk
         timechunk_filename = self.field.get_obs_parameters('timechunk_filename')
+
+        # Get the start times and number of times for the time chunks (fast and slow
+        # calibration)
         starttime = self.field.get_obs_parameters('starttime')
         ntimes = self.field.get_obs_parameters('ntimes')
         slow_starttime = self.field.get_obs_parameters('slow_starttime')
         slow_ntimes = self.field.get_obs_parameters('slow_ntimes')
+
+        # Get the filenames of the input files for each frequency chunk
         freqchunk_filename = self.field.get_obs_parameters('freqchunk_filename')
+
+        # Get the start channel and number of channels for the frequency chunks
         startchan = self.field.get_obs_parameters('startchan')
         nchan = self.field.get_obs_parameters('nchan')
+
+        # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
         solint_slow_timestep = self.field.get_obs_parameters('solint_slow_timestep')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
         solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
+        solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
+        solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
+
+        # Define various output filenames for the solution tables
         output_fast_h5parm = [str(os.path.join(self.pipeline_working_dir,
                               'fast_phase_{}.h5parm'.format(i)))
                               for i in range(self.field.ntimechunks)]
@@ -60,36 +78,8 @@ class Calibrate(Operation):
                               for i in range(self.field.nfreqchunks)]
         self.combined_slow_h5parm = os.path.join(self.pipeline_working_dir,
                                                  'slow_gains.h5parm')
-        calibration_skymodel_file = self.field.calibration_skymodel_file
-        calibration_sourcedb = str(os.path.join(self.pipeline_working_dir,
-                                                'calibration_skymodel.sourcedb'))
-        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
-        slow_smoothnessconstraint = self.field.slow_smoothnessconstraint
-        maxiter = self.field.maxiter
-        propagatesolutions = self.field.propagatesolutions
-        stepsize = self.field.stepsize
-        tolerance = self.field.tolerance
-        uvlambdamin = self.field.solve_min_uv_lambda
-        sector_bounds_deg = "'{}'".format(self.field.sector_bounds_deg)
-        sector_bounds_mid_deg = "'{}'".format(self.field.sector_bounds_mid_deg)
-        if self.field.do_slowgain_solve:
-            nsplit = sum(self.field.get_obs_parameters('nsplit_slow'))
-        else:
-            nsplit = sum(self.field.get_obs_parameters('nsplit_fast'))
-        split_outh5parm = [str(os.path.join(self.pipeline_working_dir,
-                           'split_solutions_{}.h5'.format(i))) for i in
-                           range(nsplit)]
-        aterms_root = str(os.path.join(self.pipeline_working_dir,
-                                       'diagonal_aterms'))
-        self.output_aterms_root = [aterms_root+'_{}'.format(i) for i in
-                                   range(len(split_outh5parm))]
         self.combined_h5parms = str(os.path.join(self.pipeline_working_dir,
                                                  'combined_solutions.h5'))
-        antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
-        antennaconstraint_all = "'[[{}]]'".format(','.join(self.field.stations))
-        solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
-        solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
-        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
         output_slow_h5parm2 = [str(os.path.join(self.pipeline_working_dir,
                                'slow_gain2_{}.h5parm'.format(i)))
                                for i in range(self.field.nfreqchunks)]
@@ -101,6 +91,45 @@ class Calibrate(Operation):
                                              'combined_solutions1.h5'))
         combined_h5parms2 = str(os.path.join(self.pipeline_working_dir,
                                              'combined_solutions2.h5'))
+
+        # Define the input sky model and its associated sourcedb
+        calibration_skymodel_file = self.field.calibration_skymodel_file
+        calibration_sourcedb = str(os.path.join(self.pipeline_working_dir,
+                                                'calibration_skymodel.sourcedb'))
+
+        # Set the constraints used in the calibrations
+        fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
+        slow_smoothnessconstraint = self.field.slow_smoothnessconstraint
+        antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
+        antennaconstraint_all = "'[[{}]]'".format(','.join(self.field.stations))
+        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
+
+        # Get various DDECal solver paramters
+        maxiter = self.field.maxiter
+        propagatesolutions = self.field.propagatesolutions
+        stepsize = self.field.stepsize
+        tolerance = self.field.tolerance
+        uvlambdamin = self.field.solve_min_uv_lambda
+
+        # Get the size of the imaging area (for use in making the a-term images)
+        sector_bounds_deg = "'{}'".format(self.field.sector_bounds_deg)
+        sector_bounds_mid_deg = "'{}'".format(self.field.sector_bounds_mid_deg)
+
+        # Set the number of chunks to split the solution tables into and define
+        # the associated filenames
+        if self.field.do_slowgain_solve:
+            nsplit = sum(self.field.get_obs_parameters('nsplit_slow'))
+        else:
+            nsplit = sum(self.field.get_obs_parameters('nsplit_fast'))
+        split_outh5parm = [str(os.path.join(self.pipeline_working_dir,
+                           'split_solutions_{}.h5'.format(i))) for i in
+                           range(nsplit)]
+
+        # Set the root filenames for the a-term images
+        aterms_root = str(os.path.join(self.pipeline_working_dir,
+                                       'diagonal_aterms'))
+        self.output_aterms_root = [aterms_root+'_{}'.format(i) for i in
+                                   range(len(split_outh5parm))]
 
         self.input_parms = {'timechunk_filename': timechunk_filename,
                             'freqchunk_filename': freqchunk_filename,

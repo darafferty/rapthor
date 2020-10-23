@@ -35,11 +35,14 @@ class Mosaic(Operation):
         """
         Define the pipeline inputs
         """
+        # First, determine whether processing is needed
         if len(self.field.imaging_sectors) > 1:
             skip_processing = False
         else:
             # No need to mosaic if we have just one sector
             skip_processing = True
+
+        # Define various input and output filenames
         sector_image_filename = []
         sector_vertices_filename = []
         regridded_image_filename = []
