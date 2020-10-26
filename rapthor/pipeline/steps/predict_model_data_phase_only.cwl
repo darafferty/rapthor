@@ -1,7 +1,12 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [DPPP]
-label: "Predicts and corrupts model visibilities with DPPP"
+label: Predicts model visibilities (phase only)
+doc: |
+  This tool predicts and corrupts model visibilities for the given MS file,
+  using the input sourcedb and h5parm. Phase solutions must be present in the
+  input h5parm. See predict_model_data.cwl for a detailed description of the
+  inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}

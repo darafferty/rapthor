@@ -1,5 +1,14 @@
 cwlVersion: v1.0
 class: Workflow
+label: Rapthor calibration pipeline
+doc: |
+  This workflow performs direction-dependent calibration. Calibration is done in
+  three steps: (1) a fast phase-only calibration to correct for ionospheric
+  effects, (2) a slow amplitude calibration with station constraints to correct
+  for beam errors, and (3) a further slow gain calibration to correct for
+  station-to-station differences. This calibration scheme works for both HBA and
+  LBA data. The final products of this pipeline are solution tables (h5parm
+  files) and a-term screens (FITS files).
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -14,87 +23,268 @@ hints:
 
 inputs:
   - id: timechunk_filename
+    label: Filename of input MS (time)
+    doc: |
+      The filenames of input MS files for which calibration will be done (length =
+      n_obs * n_time_chunks).
     type: string[]
+
   - id: starttime
+    label: Start time of each chunk
+    doc: |
+      The start time (in casacore MVTime) for each time chunk used in the fast-phase
+      calibration (length = n_obs * n_time_chunks).
     type: string[]
+
   - id: ntimes
+    label: Number of times of each chunk
+    doc: |
+      The number of timeslots for each time chunk used in the fast-phase calibration
+      (length = n_obs * n_time_chunks).
     type: int[]
+
   - id: solint_fast_timestep
+    label: Fast solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the fast phase solve (length =
+      n_obs * n_time_chunks).
     type: int[]
+
   - id: solint_fast_freqstep
+    label: Fast solution interval in frequency
+    doc: |
+      The solution interval in number of frequency channels for the fast phase solve
+      (length = n_obs * n_time_chunks).
     type: int[]
+
   - id: output_fast_h5parm
+    label: Fast output solution table
+    doc: |
+      The filename of the output h5parm solution table for the fast phase solve (length
+      = n_obs * n_time_chunks).
     type: string[]
+
   - id: combined_fast_h5parm
+    label: Combined fast output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the fast phase solve
+      (length = 1).
     type: string
+
   - id: calibration_skymodel_file
+    label: Filename of sky model
+    doc: |
+      The filename of the input sky model text file (length = 1).
     type: string
+
   - id: calibration_sourcedb
+    label: Filename of sourcedb
+    doc: |
+      The filename of the output sourcedb sky model file (length = 1).
     type: string
+
   - id: fast_smoothnessconstraint
+    label: Fast smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the fast phase solve (length = 1).
     type: float
+
   - id: fast_antennaconstraint
+    label: Fast antenna constraint
+    doc: |
+      The antenna constraint for the fast phase solve (length = 1).
     type: string
+
   - id: maxiter
+    label: Maximum iterations
+    doc: |
+      The maximum number of iterations in the solves (length = 1).
     type: int
+
   - id: propagatesolutions
+    label: Propagate solutions
+    doc: |
+      Flag that determines whether solutions are propagated as initial start values
+      for the next solution interval (length = 1).
     type: string
+
   - id: stepsize
+    label: Solver stepsize
+    doc: |
+      The solver stepsize used between iterations (length = 1).
     type: float
+
   - id: tolerance
+    label: Solver tolerance
+    doc: |
+      The solver tolerance used to define convergance (length = 1).
     type: float
+
   - id: uvlambdamin
+    label: Minimum uv distance
+    doc: |
+      The minimum uv distance in lambda used during the solve (length = 1).
     type: float
+
   - id: sector_bounds_deg
+    label: Sector boundary
+    doc: |
+      The boundary of all imaging sectors in degrees (length = 1).
     type: string
+
   - id: sector_bounds_mid_deg
+    label: Sector boundary
+    doc: |
+      The mid point of the boundary of all imaging sectors in degrees (length = 1).
     type: string
+
   - id: split_outh5parm
+    label: Output split solution tables
+    doc: |
+      The filenames of the output split h5parm solution tables (length = n_obs * n_split).
     type: string[]
+
   - id: output_aterms_root
+    label: Output root for a-terms
+    doc: |
+      The root names of the output a-term images (length = n_obs * n_split).
     type: string[]
+
 {% if do_slowgain_solve %}
   - id: freqchunk_filename
+    label: Filename of input MS (frequency)
+    doc: |
+      The filenames of input MS files for which calibration will be done (length =
+      n_obs * n_freq_chunks).
     type: string[]
+
   - id: slow_starttime
+    label: Start time of each chunk
+    doc: |
+      The start time (in casacore MVTime) for each time chunk used in the slow-gain
+      calibration (length = n_obs * n_freq_chunks).
     type: string[]
-  - id: startchan
-    type: int[]
-  - id: nchan
-    type: int[]
+
   - id: slow_ntimes
+    label: Number of times of each chunk
+    doc: |
+      The number of timeslots for each time chunk used in the slow-gain calibration
+      (length = n_obs * n_freq_chunks).
     type: int[]
+
+  - id: startchan
+    label: Start channel of each chunk
+    doc: |
+      The start channel for each frequency chunk used in the slow-gain
+      calibration (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: nchan
+    label: Number of channels of each chunk
+    doc: |
+      The number of channels for each frequency chunk used in the slow-gain calibration
+      (length = n_obs * n_freq_chunks).
+    type: int[]
+
   - id: solint_slow_timestep
+    label: Slow 1 solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the first slow-gain solve (length =
+      n_obs * n_freq_chunks).
     type: int[]
+
   - id: solint_slow_timestep2
+    label: Slow 2 solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the second slow-gain solve (length =
+      n_obs * n_freq_chunks).
     type: int[]
+
   - id: solint_slow_freqstep
+    label: Slow 1 solution interval in frequency
+    doc: |
+      The solution interval in number of frequency channels for the first slow-gain solve
+      (length = n_obs * n_freq_chunks).
     type: int[]
+
   - id: solint_slow_freqstep2
+    label: Slow 2 solution interval in frequency
+    doc: |
+      The solution interval in number of frequency channels for the second slow-gain solve
+      (length = n_obs * n_freq_chunks).
     type: int[]
+
   - id: slow_smoothnessconstraint
+    label: Slow 1 smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the first slow-gain solve (length = 1).
     type: float
+
   - id: slow_smoothnessconstraint2
+    label: Slow 2 smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the second slow-gain solve (length = 1).
     type: float
+
   - id: slow_antennaconstraint
+    label: Slow antenna constraint
+    doc: |
+      The antenna constraint for the slow-gain solve (length = 1).
     type: string
+
   - id: output_slow_h5parm
+    label: Slow 1 output solution table
+    doc: |
+      The filename of the output h5parm solution table for the first slow-gain solve (length
+      = n_obs * n_freq_chunks).
     type: string[]
+
   - id: output_slow_h5parm2
+    label: Slow 2 output solution table
+    doc: |
+      The filename of the output h5parm solution table for the second slow-gain solve (length
+      = n_obs * n_freq_chunks).
     type: string[]
+
   - id: combined_slow_h5parm1
+    label: Combined slow 1 output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the first slow-gain solve
+      (length = 1).
     type: string
+
   - id: combined_slow_h5parm2
+    label: Combined slow 2 output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the second slow-gain solve
+      (length = 1).
     type: string
+
   - id: combined_h5parms
+    label: Combined output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the full solve
+      (length = 1).
     type: string
+
   - id: combined_h5parms1
+    label: Combined output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the fast-phase +
+      first slow-gain solve (length = 1).
     type: string
+
   - id: combined_h5parms2
+    label: Combined output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the first and
+      second slow-gain solves (length = 1).
     type: string
+
 {% if debug %}
   - id: output_slow_h5parm_debug
     type: string[]
+
   - id: combined_slow_h5parm_debug
     type: string
 {% endif %}
@@ -104,7 +294,10 @@ outputs: []
 
 steps:
   - id: make_sourcedb
-    label: make_sourcedb
+    label: Make a sourcedb
+    doc: |
+      A sourcedb (defining the model) is required by DPPP for calibration. This
+      step converts the input sky model into a sourcedb.
     run: {{ rapthor_pipeline_dir }}/steps/make_sourcedb.cwl
     in:
       - id: in

@@ -18,7 +18,6 @@ hints:
 {% endif %}
 
 inputs:
-
   - id: sector_filename
     label: Filename of input MS
     doc: |
