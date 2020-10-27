@@ -168,6 +168,9 @@ All the available options are described below under their respective sections.
         IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``).
         The mode can be cpu or hybrid
 
+    mem_fraction
+        Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
+
     use_mpi
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each

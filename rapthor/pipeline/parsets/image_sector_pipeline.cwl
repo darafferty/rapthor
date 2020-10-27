@@ -84,6 +84,8 @@ inputs:
     type: string
   - id: taper_arcsec
     type: float
+  - id: wsclean_mem
+    type: float
   - id: auto_mask
     type: float
   - id: idg_mode
@@ -257,6 +259,8 @@ steps:
         source: deconvolution_channels
       - id: taper_arcsec
         source: taper_arcsec
+      - id: wsclean_mem
+        source: wsclean_mem
       - id: auto_mask
         source: auto_mask
       - id: idg_mode

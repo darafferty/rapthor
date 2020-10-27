@@ -105,6 +105,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
+  - id: wsclean_mem
+    type: float
+    inputBinding:
+      prefix: -mem
   - id: auto_mask
     type: float
     inputBinding:

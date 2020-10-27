@@ -100,6 +100,7 @@ class Sector(object):
         self.min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
         self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
+        self.mem_fraction = self.field.parset['imaging_specific']['mem_fraction']
         self.reweight = self.field.parset['imaging_specific']['reweight']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']

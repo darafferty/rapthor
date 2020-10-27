@@ -89,6 +89,9 @@ input_skymodel = /data/skymodel.txt
 # cpu or hybrid
 # idg_mode = cpu
 
+# Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
+# mem_fraction = 0.9
+
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
 # more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images
 # >= 2), then distributed imaging will be used (only available if batch_system = slurm).

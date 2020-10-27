@@ -70,6 +70,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -t
+  - id: wsclean_mem
+    type: float
+    inputBinding:
+      prefix: -p
   - id: auto_mask
     type: float
     inputBinding:
