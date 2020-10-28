@@ -15,15 +15,15 @@ class GenericOptimized : public cuda::CUDA {
   GenericOptimized();
   ~GenericOptimized();
 
-  virtual bool supports_wstack_gridding() {
-    return cpuProxy->supports_wstack_gridding();
+  virtual bool do_supports_wstack_gridding() {
+    return cpuProxy->do_supports_wstack_gridding();
   }
-  virtual bool supports_wstack_degridding() {
-    return cpuProxy->supports_wstack_degridding();
+  virtual bool do_supports_wstack_degridding() {
+    return cpuProxy->do_supports_wstack_degridding();
   }
 
-  virtual bool supports_wtiles() override {
-    return cpuProxy->supports_wtiles();
+  virtual bool do_supports_wtiles() override {
+    return cpuProxy->do_supports_wtiles();
   }
 
   virtual bool supports_avg_aterm_correction() { return true; }

@@ -182,6 +182,12 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 #ifndef NDEBUG
   std::cout << "m_padded_size: " << m_padded_size << std::endl;
 #endif
+
+  m_proxy->set_disable_wstacking(options.count("disable_wstacking") &&
+                                 options["disable_wstacking"]);
+  m_proxy->set_disable_wtiling(options.count("disable_wtiling") &&
+                               options["disable_wtiling"]);
+
   //
   m_cell_size = cell_size;
   m_image_size = m_cell_size * m_padded_size;
@@ -192,12 +198,12 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   int nr_w_layers;
   float w_kernel_size;
 
-  if (m_proxy->supports_wtiles()) {
+  if (m_proxy->supports_wtiling()) {
     w_kernel_size = 8;
     m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
     nr_w_layers = 1;
     m_apply_wstack_correction = false;
-  } else {
+  } else if (m_proxy->supports_wstacking()) {
     // some heuristic to set kernel size
     // square root splits the w_kernel evenly over wstack and wprojection
     // still needs a bit more thinking, and better motivation.
@@ -209,24 +215,23 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     // restrict nr w layers
     if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
 
-#ifndef NDEBUG
-    std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
-#endif
-
     m_w_step = max_w / nr_w_layers;
+    w_kernel_size = 0.5 * m_w_step * m_image_size * m_image_size;
     m_apply_wstack_correction = true;
+  } else {
+    w_kernel_size = max_w_size;
+    nr_w_layers = 1;
+    m_w_step = 0.0;
+    m_apply_wstack_correction = false;
   }
+
+#ifndef NDEBUG
+  std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+#endif
 
   m_shift[0] = shiftl;
   m_shift[1] = shiftm;
   m_shift[2] = shiftp;
-  w_kernel_size = 0.5 * m_w_step * m_image_size * m_image_size;
-
-  // DEBUG no w-stacking
-  //         w_kernel_size = max_w_size;
-  //         nr_w_layers = 1;
-  //         m_w_step = 0.0;
-  //         m_apply_wstack_correction = false;
 
   m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 

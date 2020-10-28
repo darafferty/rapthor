@@ -30,7 +30,7 @@ void Proxy::gridding(
   check_dimensions(subgrid_size, frequencies, visibilities, uvw, baselines,
                    *m_grid, aterms, aterms_offsets, spheroidal);
 
-  if ((w_step != 0.0) && (!supports_wstack_gridding())) {
+  if ((w_step != 0.0) && (!do_supports_wstack_gridding())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support gridding with "
         "W-stacking.");
@@ -139,7 +139,7 @@ void Proxy::degridding(
   check_dimensions(subgrid_size, frequencies, visibilities, uvw, baselines,
                    *m_grid, aterms, aterms_offsets, spheroidal);
 
-  if ((w_step != 0.0) && (!supports_wstack_degridding())) {
+  if ((w_step != 0.0) && (!do_supports_wstack_degridding())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support degridding with "
         "W-stacking.");
@@ -200,9 +200,9 @@ void Proxy::calibrate_init(
   int nr_w_layers;
 
   if (w_step != 0.0) {
-    if (supports_wtiles()) {
+    if (supports_wtiling()) {
       nr_w_layers = INT_MAX;
-    } else if (supports_wstack()) {
+    } else if (supports_wstacking()) {
       nr_w_layers = grid.get_w_dim();
     } else {
       throw std::invalid_argument(

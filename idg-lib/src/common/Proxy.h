@@ -169,13 +169,20 @@ class Proxy {
                  unsigned int grid_width);
 
   //! Methods for W-stacking
-  bool supports_wstack() {
-    return (supports_wstack_gridding() && supports_wstack_degridding());
+  bool supports_wstacking() {
+    return (!m_disable_wstacking && do_supports_wstack_gridding() &&
+            do_supports_wstack_degridding());
   }
-  virtual bool supports_wstack_gridding() { return false; }
-  virtual bool supports_wstack_degridding() { return false; }
+
+  void set_disable_wstacking(bool v) { m_disable_wstacking = v; }
+
+  void set_disable_wtiling(bool v) { m_disable_wtiling = v; }
+
+  bool supports_wtiling() {
+    return (!m_disable_wtiling && do_supports_wtiles());
+  }
+
   virtual bool supports_avg_aterm_correction() { return false; }
-  virtual bool supports_wtiles() { return false; }
 
   void set_avg_aterm_correction(
       const Array4D<std::complex<float>>& avg_aterm_correction);
@@ -333,9 +340,16 @@ class Proxy {
   std::vector<std::complex<float>> m_avg_aterm_correction;
 
  protected:
+  virtual bool do_supports_wstack_gridding() { return false; }
+  virtual bool do_supports_wstack_degridding() { return false; }
+  virtual bool do_supports_wtiles() { return false; }
+
   std::shared_ptr<Grid> m_grid = nullptr;
 
   Report report;
+
+  bool m_disable_wstacking = false;
+  bool m_disable_wtiling = false;
 
 };  // end class Proxy
 

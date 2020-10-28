@@ -49,7 +49,7 @@ std::unique_ptr<Plan> CPU::make_plan(
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
-  if (supports_wtiles() && options.w_step != 0.0) {
+  if (supports_wtiling() && options.w_step != 0.0) {
     float image_size = grid_size * cell_size;
     init_wtiles(grid_size, subgrid_size, image_size, options.w_step);
     options.nr_w_layers = INT_MAX;
