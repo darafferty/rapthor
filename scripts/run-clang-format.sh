@@ -21,6 +21,11 @@ SOURCE_DIR=$(dirname "$0")/..
 #relative to SOURCE_DIR.
 EXCLUDE_DIRS=(external */external/*)
 
+#Also exclude from formatting the files/directories in .gitignore
+if test -f "$SOURCE_DIR/.gitignore"; then
+  EXCLUDE_DIRS+=( $( cat $SOURCE_DIR/.gitignore ) )
+fi
+
 #The extensions of the source files, which clang-format should format.
 SOURCE_EXT=(*.cpp *.h)
 
