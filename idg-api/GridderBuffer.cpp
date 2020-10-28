@@ -105,12 +105,14 @@ void GridderBufferImpl::compute_avg_beam() {
   typedef float SumOfWeights[nr_baselines][nr_aterms][nr_correlations];
 
   // Cast class members to multidimensional types used in this method
-  ATerms *aterms = (ATerms *)m_aterms2.data();
-  AverageBeam *average_beam = reinterpret_cast<AverageBeam *>(m_average_beam);
-  ATermOffsets *aterm_offsets = (ATermOffsets *)m_aterm_offsets2.data();
-  StationPairs *station_pairs = (StationPairs *)m_bufferStationPairs2.data();
-  UVW *uvw = (UVW *)m_bufferUVW2.data();
-  Weights *weights = (Weights *)m_buffer_weights2.data();
+  ATerms &aterms = *reinterpret_cast<ATerms *>(m_aterms2.data());
+  AverageBeam &average_beam = *reinterpret_cast<AverageBeam *>(m_average_beam);
+  ATermOffsets &aterm_offsets =
+      *reinterpret_cast<ATermOffsets *>(m_aterm_offsets2.data());
+  StationPairs &station_pairs =
+      *reinterpret_cast<StationPairs *>(m_bufferStationPairs2.data());
+  UVW &uvw = *reinterpret_cast<UVW *>(m_bufferUVW2.data());
+  Weights &weights = *reinterpret_cast<Weights *>(m_buffer_weights2.data());
 
   // Initialize sum of weights
   std::vector<float> sum_of_weights_buffer(
@@ -121,17 +123,17 @@ void GridderBufferImpl::compute_avg_beam() {
 // Compute sum of weights
 #pragma omp parallel for
   for (int n = 0; n < nr_aterms; n++) {
-    int time_start = (*aterm_offsets)[n];
-    int time_end = (*aterm_offsets)[n + 1];
+    int time_start = aterm_offsets[n];
+    int time_end = aterm_offsets[n + 1];
 
     // loop over baselines
     for (int bl = 0; bl < nr_baselines; bl++) {
       for (int t = time_start; t < time_end; t++) {
-        if (std::isinf((*uvw)[bl][t][0])) continue;
+        if (std::isinf(uvw[bl][t][0])) continue;
 
         for (int ch = 0; ch < nr_channels; ch++) {
           for (int pol = 0; pol < nr_correlations; pol++) {
-            sum_of_weights[bl][n][pol] += (*weights)[bl][t][ch][pol];
+            sum_of_weights[bl][n][pol] += weights[bl][t][ch][pol];
           }
         }
       }
@@ -147,23 +149,23 @@ void GridderBufferImpl::compute_avg_beam() {
     for (int n = 0; n < nr_aterms; n++) {
       // Loop over baselines
       for (int bl = 0; bl < nr_baselines; bl++) {
-        unsigned int antenna1 = (*station_pairs)[bl][0];
-        unsigned int antenna2 = (*station_pairs)[bl][1];
+        unsigned int antenna1 = station_pairs[bl][0];
+        unsigned int antenna2 = station_pairs[bl][1];
 
         // Check whether stationPair is initialized
         if (antenna1 >= nr_antennas || antenna2 >= nr_antennas) {
           continue;
         }
 
-        std::complex<float> aXX1 = (*aterms)[n][antenna1][0][i][0];
-        std::complex<float> aXY1 = (*aterms)[n][antenna1][0][i][1];
-        std::complex<float> aYX1 = (*aterms)[n][antenna1][0][i][2];
-        std::complex<float> aYY1 = (*aterms)[n][antenna1][0][i][3];
+        std::complex<float> aXX1 = aterms[n][antenna1][0][i][0];
+        std::complex<float> aXY1 = aterms[n][antenna1][0][i][1];
+        std::complex<float> aYX1 = aterms[n][antenna1][0][i][2];
+        std::complex<float> aYY1 = aterms[n][antenna1][0][i][3];
 
-        std::complex<float> aXX2 = std::conj((*aterms)[n][antenna2][0][i][0]);
-        std::complex<float> aXY2 = std::conj((*aterms)[n][antenna2][0][i][1]);
-        std::complex<float> aYX2 = std::conj((*aterms)[n][antenna2][0][i][2]);
-        std::complex<float> aYY2 = std::conj((*aterms)[n][antenna2][0][i][3]);
+        std::complex<float> aXX2 = std::conj(aterms[n][antenna2][0][i][0]);
+        std::complex<float> aXY2 = std::conj(aterms[n][antenna2][0][i][1]);
+        std::complex<float> aYX2 = std::conj(aterms[n][antenna2][0][i][2]);
+        std::complex<float> aYY2 = std::conj(aterms[n][antenna2][0][i][3]);
 
         std::complex<float> kp[16] = {};
         kp[0 + 0] = aXX2 * aXX1;
@@ -215,7 +217,7 @@ void GridderBufferImpl::compute_avg_beam() {
     // Set average beam from sum of kronecker products
     for (size_t ii = 0; ii < 4; ii++) {
       for (size_t jj = 0; jj < 4; jj++) {
-        (*average_beam)[i][ii][jj] += sum[ii][jj];
+        average_beam[i][ii][jj] += sum[ii][jj];
       }
     }
   }  // end for pixels

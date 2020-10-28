@@ -119,6 +119,7 @@ class BufferSetImpl : public virtual BufferSet {
   float m_kernel_size;
   bool m_apply_aterm = false;
   bool m_do_gridding = true;
+  bool m_apply_wstack_correction = false;
 
   // timing
   std::unique_ptr<Stopwatch> m_get_image_watch;
