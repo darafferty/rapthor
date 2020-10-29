@@ -6,7 +6,8 @@ doc: |
   This tool predicts and corrupts model visibilities for the given MS file,
   using the input sourcedb and h5parm. Both phase and amplitude solutions must
   be present in the input h5parm, with the phases being the sum of the fast
-  and slow phase solutions.
+  and slow phase solutions. Output is an MS file containing the predicted
+  visibilities in the DATA column.
 
 requirements:
   InlineJavascriptRequirement: {}

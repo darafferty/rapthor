@@ -2,13 +2,16 @@ cwlVersion: v1.0
 class: Workflow
 label: Rapthor calibration pipeline
 doc: |
-  This workflow performs direction-dependent calibration. Calibration is done in
-  three steps: (1) a fast phase-only calibration to correct for ionospheric
-  effects, (2) a slow amplitude calibration with station constraints to correct
-  for beam errors, and (3) a further slow gain calibration to correct for
-  station-to-station differences. This calibration scheme works for both HBA and
-  LBA data. The final products of this pipeline are solution tables (h5parm
-  files) and a-term screens (FITS files).
+  This workflow performs direction-dependent calibration. In general,
+  calibration is done in three steps: (1) a fast phase-only calibration (with
+  core stations constrianed to have the same solutions) to correct for
+  ionospheric effects, (2) a slow amplitude calibration (with all stations
+  constrianed to have the same solutions) to correct for beam errors, and (3) a
+  further unconstrained slow gain calibration to correct for station-to-station
+  differences. Steps (2) and (3) are skipped if the calibration is phase-only.
+  This calibration scheme works for both HBA and LBA data. The final products of
+  this pipeline are solution tables (h5parm files) and a-term screens (FITS
+  files).
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -308,7 +311,11 @@ steps:
       - id: sourcedb
 
   - id: solve_fast_phases
-    label: solve_fast_phases
+    label: Solve for fast phases
+    doc: |
+      This step uses DDECal (in DPPP) to solve for phase corrections on short
+      timescales (< 1 minute), using the input MS files and sourcedb. These
+      corrections are used to correct primarily for ionospheric effects.
 {% if use_scalarphase %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
 {% else %}
@@ -357,7 +364,12 @@ steps:
       - id: fast_phases_h5parm
 
   - id: combine_fast_phases
-    label: combine_fast_phases
+    label: Combine fast-phase solutions
+    doc: |
+      This step combines all the phase solutions from the solve_fast_phases step
+      into a single solution table (h5parm file). If the slow gain solves are
+      not done (i.e., the calibration is phase-only), the result is the final
+      solution table, used to make a-term images.
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
@@ -371,7 +383,13 @@ steps:
 # Solve for slow gains
 
   - id: solve_slow_gains1
-    label: solve_slow_gains1
+    label: Solve for slow gains 1
+    doc: |
+      This step uses DDECal (in DPPP) to solve for gain corrections on long
+      timescales (> 10 minute), using the input MS files and sourcedb. These
+      corrections are used to correct primarily for beam errors. The fast-
+      phase solutions are preapplied and all stations are constrained to
+      have the same solutions.
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
 {% if max_cores is not none %}
     hints:
@@ -422,7 +440,10 @@ steps:
       - id: slow_gains_h5parm
 
   - id: combine_slow_gains1
-    label: combine_slow_gains1
+    label: Combine slow-gain solutions 1
+    doc: |
+      This step combines all the gain solutions from the solve_slow_gains1 step
+      into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
@@ -433,7 +454,11 @@ steps:
       - id: outh5parm
 
   - id: combine_fast_and_slow_h5parms1
-    label: combine_fast_and_slow_h5parms1
+    label: Combine fast-phase and slow-gain solutions 1
+    doc: |
+      This step combines the fast-phase solutions from the solve_fast_phases step
+      and the slow-gain solutions from the solve_slow_gains1 into a single solution
+      table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
@@ -450,7 +475,14 @@ steps:
       - id: combinedh5parm
 
   - id: solve_slow_gains2
-    label: solve_slow_gains2
+    label: Solve for slow gains 2
+    doc: |
+      This step uses DDECal (in DPPP) to solve for gain corrections on long
+      timescales (> 10 minute), using the input MS files and sourcedb. These
+      corrections are used to correct primarily for beam errors. The fast-
+      phase solutions and first slow-gain solutions are preapplied and stations
+      are unconstrainted (so different stations are free to have different
+      solutions).
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
 {% if max_cores is not none %}
     hints:
@@ -499,7 +531,10 @@ steps:
       - id: slow_gains_h5parm
 
   - id: combine_slow_gains2
-    label: combine_slow_gains2
+    label: Combine slow-gain solutions 2
+    doc: |
+      This step combines all the gain solutions from the solve_slow_gains2 step
+      into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
@@ -510,7 +545,9 @@ steps:
       - id: outh5parm
 
   - id: process_slow_gains
-    label: process_slow_gains
+    label: Process slow-gain solutions
+    doc: |
+      This step processes the gain solutions, smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
@@ -521,7 +558,12 @@ steps:
       - id: outh5parm
 
   - id: combine_slow1_and_slow2_h5parms
-    label: combine_slow1_and_slow2_h5parms
+    label: Combine slow-gain solutions
+    doc: |
+      This step combines the gain solutions from the solve_slow_gains1 and
+      solve_slow_gains2 steps into a single solution table (h5parm file).
+      The phases and amplitudes from solve_slow_gains1 and the amplitudes from
+      solve_slow_gains2 are used.
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
@@ -538,7 +580,10 @@ steps:
       - id: combinedh5parm
 
   - id: normalize_slow_amplitudes
-    label: normalize_slow_amplitudes
+    label: Normalize slow-gain amplitudes
+    doc: |
+      This step processes the combined amplitude solutions from
+      combine_slow1_and_slow2_h5parms, renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
@@ -549,6 +594,13 @@ steps:
       - id: outh5parm
 
   - id: combine_fast_and_slow_h5parms2
+    label: Combine fast-phase and slow-gain solutions
+    doc: |
+      This step combines the phase solutions from the solve_fast_phases and
+      the combined (and renormalized) slow gains into a single solution table
+      (h5parm file). The phases from combine_fast_phases and the phases and
+      amplitudes from normalize_slow_amplitudes are used. The result is the
+      final solution table, used to make a-term images.
     label: combine_fast_and_slow_h5parms2
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
@@ -566,7 +618,10 @@ steps:
       - id: combinedh5parm
 
   - id: split_h5parms
-    label: split_h5parms
+    label: Split solution table
+    doc: |
+      This step splits the final solution table in time, to enable multi-node
+      parallel processing of the a-term images.
     run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
     in:
       - id: inh5parm
@@ -579,7 +634,9 @@ steps:
       - id: splith5parms
 
   - id: make_aterms
-    label: make_aterms
+    label: Make a-term images
+    doc: |
+      This step makes a-term images from the split final solution tables.
     run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
     in:
       - id: h5parm
@@ -671,7 +728,10 @@ steps:
 # Don't solve for slow gains
 
   - id: split_h5parms
-    label: split_h5parms
+    label: Split solution table
+    doc: |
+      This step splits the final solution table in time, to enable multi-node
+      parallel processing of the a-term images.
     run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
     in:
       - id: inh5parm
@@ -684,7 +744,9 @@ steps:
       - id: splith5parms
 
   - id: make_aterms
-    label: make_aterms
+    label: Make a-term images
+    doc: |
+      This step makes a-term images from the split final solution tables.
     run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
     in:
       - id: h5parm
