@@ -94,6 +94,14 @@ inputs:
     type: int
     inputBinding:
       prefix: -q
+  - id: num_threads
+    type: string
+    inputBinding:
+      prefix: -b
+  - id: num_deconvolution_threads
+    type: string
+    inputBinding:
+      prefix: -h
 
 outputs:
   - id: image_nonpb_name

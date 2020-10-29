@@ -110,10 +110,14 @@ inputs:
     type: string
     inputBinding:
       prefix: -idg-mode
-  - id: numthreads
+  - id: num_threads
     type: string
     inputBinding:
       prefix: -j
+  - id: num_deconvolution_threads
+    type: string
+    inputBinding:
+      prefix: -deconvolution-threads
 
 outputs:
   - id: image_nonpb_name

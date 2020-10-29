@@ -617,6 +617,12 @@ def get_cluster_options(parset):
     else:
         parset_dict['max_threads'] = 0
 
+    # Number of threads to use by WSClean during deconvolution (default = 0 = all)
+    if 'deconvolution_threads' in parset_dict:
+        parset_dict['deconvolution_threads'] = parset.getint('cluster', 'deconvolution_threads')
+    else:
+        parset_dict['deconvolution_threads'] = 0
+
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes
     if 'dir_local' not in parset_dict:
@@ -625,7 +631,8 @@ def get_cluster_options(parset):
         parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
 
     # Check for invalid options
-    allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores', 'max_threads', 'dir_local']
+    allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
+                       'max_threads', 'deconvolution_threads,' 'dir_local']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '

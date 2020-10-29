@@ -150,9 +150,12 @@ input_skymodel = /data/skymodel.txt
 # cpu_partition = batch
 # gpu_partition = batch
 
-# Maximum number of cores and threads per task to use on each node (default = 0 = all).
+# Maximum number of cores and threads per task to use on each node (default = 0 = all)
 # max_cores = 0
 # max_threads = 0
+
+# Number of threads to use by WSClean during deconvolution (default = 0 = all)
+# deconvolution_threads = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a

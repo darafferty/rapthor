@@ -36,6 +36,7 @@ class Image(Operation):
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
+                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
                              'do_multiscale_clean': self.field.do_multiscale_clean,
                              'use_mpi': self.field.use_mpi}
 

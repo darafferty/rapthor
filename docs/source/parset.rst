@@ -263,6 +263,9 @@ All the available options are described below under their respective sections.
         Maximum number of threads per task to use on each node (default = 0 =
         all).
 
+    deconvolution_threads
+        Number of threads to use by WSClean during deconvolution (default = 0 = all)
+
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default =
         not used). The path must exist on all nodes (but does not have to be on a
