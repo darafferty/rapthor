@@ -104,12 +104,18 @@ inputs:
       separate: False
 
   - id: stepsize
+    label: Solver step size
+    doc: |
+      The solver step size used between iterations.
     type: float
     inputBinding:
       prefix: solve.stepsize=
       separate: False
 
   - id: tolerance
+    label: Solver tolerance
+    doc: |
+      The solver tolerance used to define convergance.
     type: float
     inputBinding:
       prefix: solve.tolerance=
@@ -125,18 +131,28 @@ inputs:
       separate: False
 
   - id: smoothnessconstraint
+    label: Smoothness constraint kernel size
+    doc: |
+      The smoothness constraint kernel size in Hz, used to enforce a smooth frequency
+      dependence of the phase solutions.
     type: float
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
 
   - id: antennaconstraint
+    label: Antenna constraint
+    doc: |
+      A list of antennas that will be constrained to have the same solutions.
     type: string
     inputBinding:
       prefix: solve.antennaconstraint=
       separate: False
 
   - id: numthreads
+    label: Number of threads
+    doc: |
+      The number of threads to use during solve (0 = all).
     type: string
     inputBinding:
       prefix: numthreads=
@@ -144,6 +160,10 @@ inputs:
 
 outputs:
   - id: fast_phases_h5parm
+    label: Solution table
+    doc: |
+      The filename of the output solution table. The value is taken from the input
+      parameter "h5parm"
     type: string
     outputBinding:
       outputEval: $(inputs.h5parm)

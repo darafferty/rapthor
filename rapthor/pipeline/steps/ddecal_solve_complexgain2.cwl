@@ -1,7 +1,13 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [DPPP]
-label: "Calibrates a dataset using DDECal"
+label: Calibrates a dataset using DDECal
+doc: |
+  This tool solves for complex gains in multiple directions simultaneously for
+  the given MS file with fast-phase and slow-gain corrections preapplied, using
+  the input sourcedb and h5parm. Output is the solution table in h5parm format.
+  See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
+  outputs not documented below.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -46,6 +52,10 @@ inputs:
       prefix: msin.nchan=
       separate: False
   - id: combined_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the combined fast-phase
+      and slow-gain1 solutions. These solutions are preapplied before the solve is done.
     type: string
     inputBinding:
       prefix: solve.applycal.parmdb=
