@@ -254,8 +254,8 @@ class Field(object):
             self.num_patches = len(self.calibration_skymodel.getPatchNames())
             self.log.info('Using {} calibration patches'.format(self.num_patches))
             calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
-            self.calibrator_patch_names = calibrators_skymodel.getPatchNames()
-            self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum')
+            self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
+            self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
 
             # The bright-source model file may not exist if there are no bright sources;
             # set it to an empty list if not
@@ -420,8 +420,8 @@ class Field(object):
         # in the calibration pipeline for weighting of the directions during screen
         # fitting
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
-        self.calibrator_patch_names = bright_source_skymodel.getPatchNames()
-        self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum')
+        self.calibrator_patch_names = bright_source_skymodel.getPatchNames().tolist()
+        self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum').tolist()
 
         # Now remove any bright sources that lie outside the imaged area, as they
         # should not be peeled

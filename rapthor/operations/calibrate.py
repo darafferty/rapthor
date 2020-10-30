@@ -67,10 +67,6 @@ class Calibrate(Operation):
         solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
         solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
 
-        # Get the calibrator names and fluxes (used in screen fitting)
-        calibrator_patch_names = self.field.calibrator_patch_names
-        calibrator_fluxes = self.field.calibrator_fluxes
-
         # Define various output filenames for the solution tables
         output_fast_h5parm = [str(os.path.join(self.pipeline_working_dir,
                               'fast_phase_{}.h5parm'.format(i)))
@@ -100,6 +96,10 @@ class Calibrate(Operation):
         calibration_skymodel_file = self.field.calibration_skymodel_file
         calibration_sourcedb = str(os.path.join(self.pipeline_working_dir,
                                                 'calibration_skymodel.sourcedb'))
+
+        # Get the calibrator names and fluxes (used in screen fitting)
+        calibrator_patch_names = "'[{}]'".format(','.join(self.field.calibrator_patch_names))
+        calibrator_fluxes = "'[{}]'".format(','.join(self.field.calibrator_fluxes))
 
         # Set the constraints used in the calibrations
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
