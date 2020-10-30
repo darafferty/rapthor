@@ -29,13 +29,13 @@ inputs:
       prefix: --reweight=
       separate: false
   - id: calibrator_names
-    type: string
+    type: string[]
     inputBinding:
       prefix: --cal_names=
       itemSeparator: ','
       separate: false
   - id: calibrator_fluxes
-    type: string
+    type: float[]
     inputBinding:
       prefix: --cal_fluxes=
       itemSeparator: ','
