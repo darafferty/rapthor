@@ -41,8 +41,14 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         Name of solset for h5parm2
     reweight : bool, optional
         If True, reweight the solutions by their detrended noise
+    cal_names : str or list, optional
+        List of calibrator names (for use in reweighting)
+    cal_fluxes : str or list, optional
+        List of calibrator flux densities (for use in reweighting)
     """
     reweight = misc.string2bool(reweight)
+    cal_names = misc.string2list(cal_names)
+    cal_fluxes = misc.string2list(cal_fluxes)
 
     # Make copies of the input h5parms (since they may be altered by steps below) and
     # open them
