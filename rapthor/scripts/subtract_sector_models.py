@@ -548,7 +548,7 @@ class CovWeights:
             CoeffArray[:, :, i][tempars < thres] = thres
         return CoeffArray
 
-    def calcWeights(self, CoeffArray, max_radius = 20e3):
+    def calcWeights(self, CoeffArray, max_radius = 5e3):
         ms = pt.table(self.MSName, readonly=False, ack=False)
         ants = pt.table(ms.getkeyword("ANTENNA"), ack=False)
         antnames = ants.getcol("NAME")
