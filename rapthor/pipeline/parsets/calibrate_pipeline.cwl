@@ -60,6 +60,19 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
+  - id: calibrator_patch_names
+    label: Names of calibrator patches
+    doc: |
+      The names of the patches used in calibration (length = n_calibrators).
+    type: string[]
+
+  - id: calibrator_fluxes
+    label: Values of calibrator flux densities
+    doc: |
+      The total flux densities in Jy of the patches used in calibration (length =
+      n_calibrators).
+    type: float[]
+
   - id: output_fast_h5parm
     label: Fast output solution table
     doc: |
@@ -112,9 +125,9 @@ inputs:
     type: string
 
   - id: stepsize
-    label: Solver stepsize
+    label: Solver step size
     doc: |
-      The solver stepsize used between iterations (length = 1).
+      The solver step size used between iterations (length = 1).
     type: float
 
   - id: tolerance
@@ -471,6 +484,10 @@ steps:
         valueFrom: 'p1a2'
       - id: reweight
         valueFrom: 'False'
+      - id: calibrator_names
+        source: calibrator_patch_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
     out:
       - id: combinedh5parm
 
@@ -576,6 +593,10 @@ steps:
         valueFrom: 'p1a1a2'
       - id: reweight
         valueFrom: 'False'
+      - id: calibrator_names
+        source: calibrator_patch_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
     out:
       - id: combinedh5parm
 
@@ -614,6 +635,10 @@ steps:
         valueFrom: 'p1p2a2'
       - id: reweight
         valueFrom: 'True'
+      - id: calibrator_names
+        source: calibrator_patch_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
     out:
       - id: combinedh5parm
 

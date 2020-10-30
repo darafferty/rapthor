@@ -16,7 +16,7 @@ import losoto.operations
 
 
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
-         reweight=False):
+         reweight=False, cal_names=None, cal_fluxes=None):
     """
     Combines two h5parms
 
@@ -136,6 +136,8 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
 
     # Reweight
     if reweight:
+        # Use the scatter on the solutions for weighting, with an additional scaling
+        # by the calibrator flux densities in each direction
         ho = h5parm(outh5parm, readonly=False)
         sso = ho.getSolset(solset='sol000')
 
@@ -168,6 +170,35 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
                 nstddev += 1
             losoto.operations.reweight.run(soltab_amp, mode='window', nmedian=5, nstddev=nstddev)
 
+        # Use the input calibrator flux densities to adjust the weighting done above
+        # to ensure that the average weights are proportional to the square of the
+        # calibrator flux densities
+        dir_names = soltab_ph.dir[:]
+        cal_weights = []
+        for dir_name in dir_names:
+            cal_weights.append(cal_fluxes[cal_names.index(dir_name)])
+
+        # Assume that the uncertainty in the solutions scales inversely with the
+        # flux density, so the weights scale with the square of the flux densities
+        cal_weights = np.array(cal_weights)**2
+        weights_ph = soltab_ph.weight[:]
+        weights_amp = soltab_amp.weight[:]
+
+        # Reweight, keeping the median value of the weights the same (to avoid
+        # changing the overall normalization, which should be the inverse square of the
+        # uncertainty (scatter) in the solutions).
+        global_median_ph = np.nanmedian(weights_ph)
+        global_median_amp = np.nanmedian(weights_amp)
+        for d in range(len(dir_names)):
+            # Input data are [time, freq, ant, dir, pol] for slow amplitudes
+            # and [time, freq, ant, dir] for fast phases (scalarphase)
+            norm_factor = np.nanmean(weights_ph[:, :, :, d]) * cal_weights[d]
+            weights_ph[:, :, :, d] *= norm_factor
+            norm_factor = np.nanmean(weights_amp[:, :, :, d, :]) * cal_weights[d]
+            weights_amp[:, :, :, d, :] *= norm_factor
+        weights_ph *= global_median_ph / np.nanmedian(weights_ph)
+        weights_amp *= global_median_amp / np.nanmedian(weights_amp)
+
         ho.close()
 
 
@@ -180,6 +211,9 @@ if __name__ == '__main__':
     parser.add_argument('outh5', help='Filename of the output h5')
     parser.add_argument('mode', help='Mode to use')
     parser.add_argument('--reweight', help='Reweight solutions', type=str, default='False')
+    parser.add_argument('--cal_names', help='Names of calibrators', type=str, default='')
+    parser.add_argument('--cal_fluxes', help='Flux densities of calibrators', type=str, default='')
     args = parser.parse_args()
 
-    main(args.h51, args.h52, args.outh5, args.mode, reweight=args.reweight)
+    main(args.h51, args.h52, args.outh5, args.mode, reweight=args.reweight,
+         cal_names=args.cal_names, cal_fluxes=args.cal_fluxes)

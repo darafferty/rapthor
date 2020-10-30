@@ -403,8 +403,7 @@ class Field(object):
             self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
 
         # For the bright-source true-sky model, duplicate any selections made above to the
-        # apparent-sky model. Then, remove any bright sources that lie outside the
-        # imaged area, as they should not be peeled
+        # apparent-sky model
         bright_source_skymodel = skymodel_true_sky.copy()
         source_names = bright_source_skymodel.getColValues('Name').tolist()
         bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name').tolist()
@@ -412,6 +411,15 @@ class Field(object):
         for i, sn in enumerate(bright_source_names):
             matching_ind.append(source_names.index(sn))
         bright_source_skymodel.select(np.array(matching_ind))
+
+        # Save the bright-source (i.e., calibrator) flux densities (in Jy) for use
+        # in the calibration pipeline for weighting of the directions during screen
+        # fitting
+        self.calibrator_patch_names = bright_source_skymodel.getPatchNames()
+        self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum')
+
+        # Now remove any bright sources that lie outside the imaged area, as they
+        # should not be peeled
         if len(self.imaging_sectors) > 0:
             for i, sector in enumerate(self.imaging_sectors):
                 sm = bright_source_skymodel.copy()

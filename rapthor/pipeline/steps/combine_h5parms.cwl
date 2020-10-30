@@ -28,6 +28,18 @@ inputs:
     inputBinding:
       prefix: --reweight=
       separate: false
+  - id: calibrator_names
+    type: string
+    inputBinding:
+      prefix: --cal_names=
+      itemSeparator: ','
+      separate: false
+  - id: calibrator_fluxes
+    type: string
+    inputBinding:
+      prefix: --cal_fluxes=
+      itemSeparator: ','
+      separate: false
 
 outputs:
   - id: combinedh5parm
