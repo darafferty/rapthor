@@ -245,6 +245,7 @@ class Field(object):
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
+        self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
         # to load them if so
@@ -252,6 +253,9 @@ class Field(object):
             self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
             self.num_patches = len(self.calibration_skymodel.getPatchNames())
             self.log.info('Using {} calibration patches'.format(self.num_patches))
+            calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
+            self.calibrator_patch_names = calibrators_skymodel.getPatchNames()
+            self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum')
 
             # The bright-source model file may not exist if there are no bright sources;
             # set it to an empty list if not
@@ -415,6 +419,7 @@ class Field(object):
         # Save the bright-source (i.e., calibrator) flux densities (in Jy) for use
         # in the calibration pipeline for weighting of the directions during screen
         # fitting
+        bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrator_patch_names = bright_source_skymodel.getPatchNames()
         self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum')
 
