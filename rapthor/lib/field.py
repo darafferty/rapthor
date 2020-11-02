@@ -241,11 +241,11 @@ class Field(object):
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
+        self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
         self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
         misc.create_directory(dst_dir)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
-        self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
         # to load them if so
@@ -256,6 +256,7 @@ class Field(object):
             calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
             self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
             self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
+            self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
             # The bright-source model file may not exist if there are no bright sources;
             # set it to an empty list if not
@@ -263,18 +264,6 @@ class Field(object):
                 self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
             else:
                 self.bright_source_skymodel = []
-
-            # The source sky model file may not exist if an older version was run
-            # previously, so generate it if needed
-            if os.path.exists(self.source_skymodel_file):
-                self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
-            else:
-                self.log.info('Identifying sources...')
-                source_skymodel = self.calibration_skymodel.copy()
-                source_skymodel.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
-                source_skymodel.write(self.source_skymodel_file, clobber=True)
-                self.source_skymodel = source_skymodel
-
             return
 
         # If sky models do not already exist, make them
