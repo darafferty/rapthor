@@ -19,7 +19,7 @@ inputs:
       position: 0
       itemSeparator: ","
   - id: outputh5parm
-    label: Output solution tables
+    label: Output solution table
     doc: |
       The filename of the output h5parm file.
     type: string
@@ -29,10 +29,10 @@ inputs:
 
 outputs:
   - id: outh5parm
-    label: Output solution tables
+    label: Output solution table
     doc: |
       The filename of the output h5parm file. The value is taken from the input
-      parameter "outputh5parm"
+      parameter "outputh5parm".
     type: string
     outputBinding:
       outputEval: $(inputs.outputh5parm)

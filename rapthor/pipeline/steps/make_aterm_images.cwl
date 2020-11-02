@@ -1,7 +1,9 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [make_aterm_images.py]
-label: "Make FITS images of the aterms"
+label: Make a-term images
+doc: |
+  This tool makes FITS a-term images from the input solution table.
 
 requirements:
   InlineJavascriptRequirement: {}
