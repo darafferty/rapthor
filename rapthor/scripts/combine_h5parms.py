@@ -189,14 +189,15 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         for dir_name in dir_names:
             cal_weights.append(cal_fluxes[cal_names.index(dir_name)])
         cal_weights = [float(c) for c in cal_weights]
-
-        # Assume that the uncertainty in the solutions scales inversely with the
-        # flux density, so the weights scale with the square of the flux densities
         cal_weights = np.array(cal_weights)**2
+
+        # Convert weights to float64 from float16 to avoid clipping in the
+        # intermediate steps, and set flagged (weight = 0) solutions to NaN
+        # so they are not included in the calculations
         weights_ph = np.array(soltab_ph.weight, dtype=np.float)
         weights_amp = np.array(soltab_amp.weight, dtype=np.float)
-        weights_ph[weights_ph==0.0] = np.nan
-        weights_amp[weights_amp==0.0] = np.nan
+        weights_ph[weights_ph == 0.0] = np.nan
+        weights_amp[weights_amp == 0.0] = np.nan
 
         # Reweight, keeping the median value of the weights the same (to avoid
         # changing the overall normalization, which should be the inverse square of the
@@ -215,10 +216,10 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         weights_ph[np.isnan(weights_ph)] = 0.0
         weights_amp[np.isnan(weights_amp)] = 0.0
 
-        # Rescale to fit in float16
+        # Clip to fit in float16 (required by LoSoTo)
         float16max = 65504.0
-        weights_ph[weights_ph>float16max] = float16max
-        weights_amp[weights_amp>float16max] = float16max
+        weights_ph[weights_ph > float16max] = float16max
+        weights_amp[weights_amp > float16max] = float16max
 
         # Write new weights
         soltab_ph.setValues(weights_ph, weight=True)
