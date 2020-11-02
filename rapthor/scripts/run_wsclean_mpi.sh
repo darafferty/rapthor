@@ -54,7 +54,7 @@ fi
 
 # check for final image until found
 image_exists=0
-FILE="${name}-MFS-image.fits"
+FILE="${name}-MFS-image-pb.fits"
 while [ $image_exists -lt 1 ]
 do
 if test -f "$FILE"; then
