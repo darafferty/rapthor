@@ -174,7 +174,8 @@ void Unified::do_degridding(
 }  // end degridding
 
 void Unified::set_grid(std::shared_ptr<Grid> grid, int /* subgrid_size */,
-                        float /* image_size */, float /* w_step */ , const float* /* shift */) {
+                       float /* image_size */, float /* w_step */,
+                       const float* /* shift */) {
   m_grid = grid;
 
   if (m_enable_tiling) {

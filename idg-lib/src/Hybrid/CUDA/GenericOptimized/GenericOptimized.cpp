@@ -470,10 +470,10 @@ void GenericOptimized::run_degridding(
         cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
                                 metadata_ptr, h_subgrids, grid_ptr);
       } else if (plan.get_use_wtiles()) {
-        cpuKernels.run_splitter_wtiles(current_nr_subgrids, grid_size,
-                                       subgrid_size, image_size, w_step, m_shift,
-                                       subgrid_offset, wtile_initialize_set,
-                                       metadata_ptr, h_subgrids, grid_ptr);
+        cpuKernels.run_splitter_wtiles(
+            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+            m_shift, subgrid_offset, wtile_initialize_set, metadata_ptr,
+            h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
       } else {
         cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
@@ -724,10 +724,10 @@ void GenericOptimized::do_calibrate_init(
     } else if (plans[antenna_nr]->get_use_wtiles()) {
       WTileUpdateSet wtile_initialize_set =
           plans[antenna_nr]->get_wtile_initialize_set();
-      cpuKernels.run_splitter_wtiles(nr_subgrids, grid_size, subgrid_size,
-                                     image_size, w_step, m_shift, 0 /* subgrid_offset */,
-                                     wtile_initialize_set, metadata_ptr,
-                                     subgrids_ptr, grid_ptr);
+      cpuKernels.run_splitter_wtiles(
+          nr_subgrids, grid_size, subgrid_size, image_size, w_step, m_shift,
+          0 /* subgrid_offset */, wtile_initialize_set, metadata_ptr,
+          subgrids_ptr, grid_ptr);
     } else {
       cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
                                      metadata_ptr, subgrids_ptr, grid_ptr);
@@ -1064,7 +1064,8 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
 }
 
 void GenericOptimized::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step, const float* shift) {
+                                float image_size, float w_step,
+                                const float* shift) {
   // Set grid both for CUDA proxy and CPU Proxy
   // cpuProxy manages the wtiles state
   cpuProxy->set_grid(grid, subgrid_size, image_size, w_step, shift);

@@ -202,7 +202,8 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   m_cell_size = cell_size;
   m_image_size = m_cell_size * m_padded_size;
 
-  const float image_size_shift = m_image_size + 2*std::max(std::abs(shiftl), std::abs(shiftm));
+  const float image_size_shift =
+      m_image_size + 2 * std::max(std::abs(shiftl), std::abs(shiftm));
 
   // this cuts the w kernel approximately at the 1% level
   const float max_w_size = max_w * image_size_shift * m_image_size;

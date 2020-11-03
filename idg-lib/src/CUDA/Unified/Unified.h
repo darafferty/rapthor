@@ -56,7 +56,8 @@ class Unified : public Generic {
                             Array3D<std::complex<float>>& grid) override;
 
   virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step, const float* shift) override;
+                        float image_size, float w_step,
+                        const float* shift) override;
 
   virtual std::shared_ptr<Grid> get_grid() override;
 

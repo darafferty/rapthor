@@ -537,7 +537,8 @@ void Generic::do_degridding(
 }  // end degridding
 
 void Generic::set_grid(std::shared_ptr<Grid> grid, int /* subgrid_size */,
-                        float /* image_size */, float /* w_step */ , const float* /* shift */) {
+                       float /* image_size */, float /* w_step */,
+                       const float* /* shift */) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
   device.allocate_device_grid(grid->bytes());
