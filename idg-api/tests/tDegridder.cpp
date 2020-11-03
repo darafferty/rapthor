@@ -403,9 +403,8 @@ BOOST_AUTO_TEST_CASE(custom_factors) {
 }
 
 BOOST_DATA_TEST_CASE(shift,
-                     boost::unit_test::data::make({WMode::kNeither,
-                                                   WMode::kWStacking,
-                                                   WMode::kWTiling}),
+                     boost::unit_test::data::make(
+                         {WMode::kNeither, WMode::kWStacking, WMode::kWTiling}),
                      wmode) {
   const std::array<int, 2> kShift{10, 20};
 
