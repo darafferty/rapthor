@@ -70,6 +70,7 @@ BufferSetImpl::BufferSetImpl(Type architecture)
       m_avg_aterm_correction(0, 0, 0, 0),
       m_grid(new Grid(0, 0, 0, 0)),
       m_proxy(create_proxy(architecture)),
+      m_shift{0.0},
       m_get_image_watch(Stopwatch::create()),
       m_set_image_watch(Stopwatch::create()),
       m_avg_beam_watch(Stopwatch::create()),
@@ -455,7 +456,8 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
             }  // end for x
           }    // end for pol
         } else {
-          // Compute phase
+          // Compute phase. Note that this code has no test coverage.
+          // TODO: Test if the sign for compute_n is correct.
           for (int x = 0; x < m_size; x++) {
             const float w_offset = (w + 0.5) * m_w_step;
             const float l = (x - ((int)m_size / 2)) * m_cell_size;
@@ -647,6 +649,8 @@ void BufferSetImpl::get_image(double* image) {
           }  // end for x
         }    // end for pol
       } else {
+        // Compute phase. Note that this code has no test coverage.
+        // TODO: Test if the sign for compute_n is correct.
         memset(w0_row_real, 0, sizeof(w0_row_real));
         memset(w0_row_imag, 0, sizeof(w0_row_imag));
 
