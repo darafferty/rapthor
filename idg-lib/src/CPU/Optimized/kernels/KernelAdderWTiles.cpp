@@ -105,6 +105,9 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
                                  int *tile_ids,
                                  idg::Coordinate *tile_coordinates,
                                  idg::float2 *tiles, idg::float2 *grid) {
+
+  const float image_size_shift = image_size + 2*std::max(std::abs(shift[0]), std::abs(shift[1]));
+
   float max_abs_w = 0.0;
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate &coordinate = tile_coordinates[i];
@@ -115,7 +118,7 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
   int padded_tile_size = wtile_size + subgrid_size;
 
   int max_tile_size = next_composite(
-      padded_tile_size + int(ceil(max_abs_w * image_size * image_size)));
+      padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
 
   std::vector<idg::float2> tile_buffer(max_tile_size * max_tile_size *
                                        NR_POLARIZATIONS);
@@ -124,7 +127,7 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
     idg::Coordinate &coordinate = tile_coordinates[i];
     float w = (coordinate.z + 0.5f) * w_step;
     int w_padded_tile_size = next_composite(
-        padded_tile_size + int(ceil(std::abs(w) * image_size * image_size)));
+        padded_tile_size + int(ceil(std::abs(w) * image_size_shift * image_size)));
     int w_padding = w_padded_tile_size - padded_tile_size;
     int w_padding2 = w_padding / 2;
     size_t current_buffer_size =
