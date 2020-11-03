@@ -472,7 +472,7 @@ class Field(object):
                 # Use models from all sectors, whether imaged or not
                 sector_skymodels_true_sky = []
                 sector_skymodels_apparent_sky = None
-                for sector in self.sectors:
+                for sector in self.imaging_sectors + self.outlier_sectors:
                     if sector.is_outlier:
                         sector_skymodels_true_sky.append(sector.predict_skymodel_file)
                     else:
@@ -971,10 +971,11 @@ class Field(object):
         nr_outlier_sectors = len(self.outlier_sectors)
         nr_imaging_sectors = len(self.imaging_sectors)
         nr_bright_source_sectors = len(self.bright_source_sectors)
-        if nr_bright_source_sectors == 0 and self.peel_bright_sources:
+        if nr_bright_source_sectors == 0:
             self.peel_bright_sources = False
-        if nr_outlier_sectors == 0 and self.peel_outliers:
+        if nr_outlier_sectors == 0:
             self.peel_outliers = False
+            self.imaged_sources_only = True  # No outliers means all sources are imaged
 
         # Determine whether a predict step is needed or not. It's needed when:
         # - there are two or more imaging sectors
