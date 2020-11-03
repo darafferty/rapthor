@@ -4,7 +4,6 @@
 #include <complex>
 #include <algorithm>
 #include <vector>
-#include <iostream>
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -103,15 +102,6 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                       int nr_tiles, int *tile_ids,
                                       idg::Coordinate *tile_coordinates,
                                       idg::float2 *tiles, idg::float2 *grid) {
-  std::cout << "grid_size: " << grid_size << std::endl;
-  std::cout << "subgrid_size: " << subgrid_size << std::endl;
-  std::cout << "wtile_size: " << wtile_size << std::endl;
-  std::cout << "image_size: " << image_size << std::endl;
-  std::cout << "w_step: " << w_step << std::endl;
-  std::cout << "nr_tiles: " << nr_tiles << std::endl;
-  std::cout << "shift: " << shift[0] << ", " << shift[1] << ", " << shift[2]
-            << std::endl;
-
   const float image_size_shift =
       image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
 
