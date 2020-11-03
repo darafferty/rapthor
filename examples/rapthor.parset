@@ -89,6 +89,9 @@ input_skymodel = /data/skymodel.txt
 # cpu or hybrid
 # idg_mode = cpu
 
+# Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
+# mem_fraction = 0.9
+
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
 # more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images
 # >= 2), then distributed imaging will be used (only available if batch_system = slurm).
@@ -147,9 +150,12 @@ input_skymodel = /data/skymodel.txt
 # cpu_partition = batch
 # gpu_partition = batch
 
-# Maximum number of cores and threads per task to use on each node (default = 0 = all).
+# Maximum number of cores and threads per task to use on each node (default = 0 = all)
 # max_cores = 0
 # max_threads = 0
+
+# Number of threads to use by WSClean during deconvolution (default = 0 = all)
+# deconvolution_threads = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a

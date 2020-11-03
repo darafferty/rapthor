@@ -97,6 +97,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
+  - id: wsclean_mem
+    type: float
+    inputBinding:
+      prefix: -mem
   - id: auto_mask
     type: float
     inputBinding:
@@ -105,10 +109,14 @@ inputs:
     type: string
     inputBinding:
       prefix: -idg-mode
-  - id: numthreads
+  - id: num_threads
     type: string
     inputBinding:
       prefix: -j
+  - id: num_deconvolution_threads
+    type: string
+    inputBinding:
+      prefix: -deconvolution-threads
 
 outputs:
   - id: image_nonpb_name

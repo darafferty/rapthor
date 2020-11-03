@@ -36,6 +36,7 @@ class Image(Operation):
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
+                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
                              'do_multiscale_clean': self.field.do_multiscale_clean,
                              'use_mpi': self.field.use_mpi}
 
@@ -150,6 +151,7 @@ class Image(Operation):
                             'taper_arcsec': [sector.taper_arcsec for sector in self.field.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.field.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
+                            'wsclean_mem': [sector.mem_fraction for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
                             'bright_skymodel_pb': [self.field.bright_source_skymodel_file] * nsectors,

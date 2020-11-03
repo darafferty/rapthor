@@ -106,6 +106,8 @@ inputs:
     type: string[]
   - id: taper_arcsec
     type: float[]
+  - id: wsclean_mem
+    type: float[]
   - id: auto_mask
     type: float[]
   - id: idg_mode
@@ -197,6 +199,8 @@ steps:
         source: dir_local
       - id: taper_arcsec
         source: taper_arcsec
+      - id: wsclean_mem
+        source: wsclean_mem
       - id: auto_mask
         source: auto_mask
       - id: idg_mode
@@ -222,7 +226,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, dir_local, taper_arcsec,
+              max_uv_lambda, dir_local, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% else %}
@@ -232,7 +236,7 @@ steps:
               vertices_file, region_file, h5parm, central_patch_name,
               channels_out, deconvolution_channels, wsclean_niter, wsclean_nmiter, robust,
               min_uv_lambda, max_uv_lambda,
-              multiscale_scales_pixel, dir_local, taper_arcsec, auto_mask,
+              multiscale_scales_pixel, dir_local, taper_arcsec, wsclean_mem, auto_mask,
               idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
 {% endif %}
     scatterMethod: dotproduct

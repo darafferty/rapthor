@@ -84,6 +84,8 @@ inputs:
     type: string
   - id: taper_arcsec
     type: float
+  - id: wsclean_mem
+    type: float
   - id: auto_mask
     type: float
   - id: idg_mode
@@ -257,12 +259,16 @@ steps:
         source: deconvolution_channels
       - id: taper_arcsec
         source: taper_arcsec
+      - id: wsclean_mem
+        source: wsclean_mem
       - id: auto_mask
         source: auto_mask
       - id: idg_mode
         source: idg_mode
-      - id: numthreads
+      - id: num_threads
         valueFrom: '{{ max_threads }}'
+      - id: num_deconvolution_threads
+        valueFrom: '{{ deconvolution_threads }}'
     out:
       - id: image_nonpb_name
       - id: image_pb_name

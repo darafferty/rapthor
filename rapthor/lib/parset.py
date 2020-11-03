@@ -477,6 +477,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['use_screens'] = True
 
+    # Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
+    if 'mem_fraction' in parset_dict:
+        parset_dict['mem_fraction'] = parset.getfloat('imaging', 'mem_fraction')
+    else:
+        parset_dict['mem_fraction'] = 0.9
+
     # Use MPI during imaging (default = False).
     if 'use_mpi' in parset_dict:
         parset_dict['use_mpi'] = parset.getboolean('imaging', 'use_mpi')
@@ -542,7 +548,7 @@ def get_imaging_options(parset):
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
                        'multiscale_scales_pixel', 'grid_center_ra', 'grid_center_dec',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
-                       'min_uv_lambda', 'max_uv_lambda',
+                       'min_uv_lambda', 'max_uv_lambda', 'mem_fraction',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'sector_do_multiscale_list', 'use_mpi',
@@ -614,6 +620,12 @@ def get_cluster_options(parset):
     else:
         parset_dict['max_threads'] = 0
 
+    # Number of threads to use by WSClean during deconvolution (default = 0 = all)
+    if 'deconvolution_threads' in parset_dict:
+        parset_dict['deconvolution_threads'] = parset.getint('cluster', 'deconvolution_threads')
+    else:
+        parset_dict['deconvolution_threads'] = 0
+
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes
     if 'dir_local' not in parset_dict:
@@ -622,7 +634,8 @@ def get_cluster_options(parset):
         parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
 
     # Check for invalid options
-    allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores', 'max_threads', 'dir_local']
+    allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
+                       'max_threads', 'deconvolution_threads,' 'dir_local']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '

@@ -74,6 +74,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -t
+  - id: wsclean_mem
+    type: float
+    inputBinding:
+      prefix: -p
   - id: auto_mask
     type: float
     inputBinding:
@@ -90,6 +94,14 @@ inputs:
     type: int
     inputBinding:
       prefix: -q
+  - id: num_threads
+    type: string
+    inputBinding:
+      prefix: -b
+  - id: num_deconvolution_threads
+    type: string
+    inputBinding:
+      prefix: -h
 
 outputs:
   - id: image_nonpb_name
