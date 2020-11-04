@@ -622,7 +622,6 @@ steps:
       (h5parm file). The phases from combine_fast_phases and the phases and
       amplitudes from normalize_slow_amplitudes are used. The result is the
       final solution table, used to make a-term images.
-    label: combine_fast_and_slow_h5parms2
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
