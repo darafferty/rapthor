@@ -352,12 +352,7 @@ class Field(object):
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
         # patches to the true-sky version later
         bright_source_skymodel_apparent_sky = source_skymodel.copy()
-        if not regroup:
-            # Remove the fainter sources from the bright-source sky model. If regrouping
-            # is to be done, this step is done after tessellation to ensure the cut
-            # used there matches this one
-            bright_source_skymodel_apparent_sky.remove('I < {} Jy'.format(target_flux), aggregate='sum')
-        else:
+        if regroup:
             # Regroup by tessellating with the bright sources as the tessellation
             # centers
             self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
@@ -404,6 +399,13 @@ class Field(object):
         for i, sn in enumerate(bright_source_names):
             matching_ind.append(source_names.index(sn))
         bright_source_skymodel.select(np.array(matching_ind))
+
+        # Transfer patches to the bright-source model if needed (i.e., regrouping was not
+        # done)
+        if not regroup:
+            patch_dict = skymodel_true_sky.getPatchPositions()
+            self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
+                                  patch_dict=patch_dict)
 
         # Save the bright-source (i.e., calibrator) flux densities (in Jy) for use
         # in the calibration pipeline for weighting of the directions during screen
