@@ -73,7 +73,6 @@ void CPU::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
 }
 
 std::shared_ptr<Grid> CPU::get_grid() {
-  Grid &grid = *m_grid;
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {

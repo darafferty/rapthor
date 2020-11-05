@@ -584,9 +584,14 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
 }  // end run_splitter_wtiles
 
 void InstanceCPU::init_wtiles(int subgrid_size) {
-  m_wtiles_buffer.resize(kNrWTiles * (kWTileSize + subgrid_size) *
-                         (kWTileSize + subgrid_size) * NR_CORRELATIONS);
-  std::fill(m_wtiles_buffer.begin(), m_wtiles_buffer.end() + 4, 0.0);
+  size_t current_buffer_size = m_wtiles_buffer.size();
+  size_t new_buffer_size = kNrWTiles * (kWTileSize + subgrid_size) *
+                           (kWTileSize + subgrid_size) * NR_CORRELATIONS;
+  m_wtiles_buffer.resize(new_buffer_size, 0.0);
+  std::fill(
+      m_wtiles_buffer.begin(),
+      m_wtiles_buffer.begin() + std::min(current_buffer_size, new_buffer_size),
+      0.0);
 }
 
 }  // namespace cpu

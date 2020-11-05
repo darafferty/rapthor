@@ -2,7 +2,7 @@
 
 ## Introduction
 
-To reserve sufficient space for the convolution by the w-kernel it is important to known the support in advance. This document describes the derivation of an approximate formula for the w-kernel support size
+To reserve sufficient space for the convolution by the w-kernel it is important to know the support in advance. This document describes the derivation of an approximate formula for the w-kernel support size
 
 When the W-term is Nyquist sampled in the image domain, the support in the uv-domain fits exactly inside the grid. Strictly speaking the W-term can not be Nyquist sampled, because its support is infinite. However, the W-term can be considered Nyquist sampled when the phase change from pixel to pixel is smaller then $`\pi`$. This criterion cuts the tails of the convolution function at approximately the 1% level.
 

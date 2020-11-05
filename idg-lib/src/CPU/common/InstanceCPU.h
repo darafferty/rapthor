@@ -18,7 +18,7 @@ namespace cpu {
 
 class InstanceCPU : public KernelsInstance {
  public:
-  static constexpr int kNrWTiles = 400;
+  static constexpr int kNrWTiles = 4000;
   static constexpr int kWTileSize = 128;
 
   // Constructor
