@@ -140,11 +140,11 @@ input_skymodel = /data/skymodel.txt
 # For batch_system = slurm, the maximum number of nodes of the cluster to use at
 # once can be specified with the max_nodes option (default = 12), and the number
 # of processors per task to request from SLURM can be specified with the
-# cpus_per_task option (default = 6). By setting the cpus_per_task value to the
+# cpus_per_task option (default = 0 = all). By setting the cpus_per_task value to the
 # number of processors per node, one can ensure that each task gets the entire
 # node to itself, which is the recommended way of running Rapthor
 # max_nodes = 12
-# cpus_per_task = 6
+# cpus_per_task = 0
 
 # TODO: Slurm partition names?
 # cpu_partition = batch
