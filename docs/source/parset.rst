@@ -251,7 +251,7 @@ All the available options are described below under their respective sections.
 
     cpus_per_task
         For ``batch_system = slurm``, the number of processors per task to
-        request (default = 6). By setting this value to the number of processors
+        request (default = 0 = all). By setting this value to the number of processors
         per node, one can ensure that each task gets the entire node to itself,
         which is the recommended way of running Rapthor.
 
