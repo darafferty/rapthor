@@ -121,9 +121,11 @@ HostMemory::HostMemory(size_t size, int flags) {
   m_capacity = size;
   m_bytes = size;
   _flags = flags;
-  void *ptr;
-  assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
-  set(ptr);
+  if (size != 0) {
+    void *ptr;
+    assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
+    set(ptr);
+  }
 }
 
 HostMemory::~HostMemory() { release(); }
@@ -142,7 +144,13 @@ void HostMemory::resize(size_t size) {
   }
 }
 
-void HostMemory::release() { assertCudaCall(cuMemFreeHost(get())); }
+void HostMemory::release() {
+  void *ptr = get();
+  if (ptr) {
+    assertCudaCall(cuMemFreeHost(ptr));
+    set(nullptr);
+  }
+}
 
 void HostMemory::zero() { memset(get(), 0, m_bytes); }
 
