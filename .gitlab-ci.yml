@@ -5,18 +5,19 @@ stages:
 
 build-base:
   stage: prepare
+  needs: []
   script:
     - docker build --tag idg_base:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_base .
 
 build-integration:
   stage: prepare
+  needs: []
   script:
     - docker build --tag idg_integration:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_integration .
 
 clang-format:
   stage: build
-  dependencies:
-    - build-base
+  needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   before_script:
     - pip3 install clang-format==9.0.0
@@ -25,8 +26,7 @@ clang-format:
 
 idg-python:
   stage: build
-  dependencies:
-    - build-base
+  needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
     - mkdir build
@@ -36,8 +36,7 @@ idg-python:
 
 idg-release:
   stage: build
-  dependencies:
-    - build-base
+  needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
     - mkdir build
@@ -47,8 +46,7 @@ idg-release:
 
 idg-debug:
   stage: build
-  dependencies:
-    - build-base
+  needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
     - mkdir build
@@ -58,8 +56,7 @@ idg-debug:
 
 idg-test:
   stage: build
-  dependencies:
-    - build-base
+  needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
     - pip3 install gcovr
@@ -79,8 +76,7 @@ idg-test:
 idg-integration-docker:
   stage: integration_and_deploy
   image: idg_integration:${CI_COMMIT_SHORT_SHA}
-  dependencies:
-    - build-integration
+  needs: ["build-integration"]
   before_script:
     - pip3 install pytest pytest-lazy-fixture
     - export HOME_DIR=$PWD
@@ -114,6 +110,7 @@ idg-integration-das:
   stage: integration_and_deploy
   tags:
     - ci_gpu
+  needs: []
   before_script:
     # Makes it easy to find the idg source location later on
     - export CURRENT_SOURCE=$PWD
@@ -132,7 +129,7 @@ idg-integration-das:
     # Install everybeam --> replace with module load everybeam/[stable/latest]
     - mkdir -p ~/opt/everybeam && cd ~/opt/everybeam && rm -rf *
     - git clone https://git.astron.nl/RD/EveryBeam.git src
-    - cd src/ && git checkout a097e23f962174074e76c98d22743fc18378e93c && cd ..
+    - cd src/ && git checkout 10a675097e2eaaeaa5cb2e1bf6770695fc0c4470 && cd ..
     - mkdir build && cd build
     - cmake -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH=/cm/shared/package/fftw -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4

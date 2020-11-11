@@ -20,7 +20,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     && cd / && rm -rf aoflagger \
 # Build everybeam, checked-out at master (date: 2020/09/11)
     && mkdir /everybeam && cd /everybeam && git clone https://git.astron.nl/RD/EveryBeam.git src \
-    && cd src/ && git checkout 5f3669a06f1b1a96155a929c6355816867333ff1 && cd .. \
+    && cd src/ && git checkout 10a675097e2eaaeaa5cb2e1bf6770695fc0c4470 && cd .. \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr ../src -DPYTHON_EXECUTABLE=/usr/bin/python3 \
     && make install -j4 \
