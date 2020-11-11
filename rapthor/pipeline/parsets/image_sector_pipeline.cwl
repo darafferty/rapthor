@@ -1,5 +1,11 @@
 cwlVersion: v1.0
 class: Workflow
+label: Rapthor imaging subpipeline
+doc: |
+  This subworkflow performs imaging with direction-dependent corrections. The
+  imaging data are generated (and averaged if possible) and WSClean+IDG is
+  used to perform the imaging. Masking and sky model filtering is then done
+  using PyBDSF.
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -14,96 +20,257 @@ hints:
 
 inputs:
   - id: obs_filename
+    label: Filename of input MS
+    doc: |
+      The filenames of input MS files for which imaging will be done (length =
+      n_obs).
     type: string[]
+
   - id: prepare_filename
+    label: Filename of imaging MS
+    doc: |
+      The filenames of output MS files used for imaging (length = n_obs).
     type: string[]
+
   - id: starttime
+    label: Start time of each obs
+    doc: |
+      The start time (in casacore MVTime) for each observation (length = n_obs).
     type: string[]
+
   - id: ntimes
+    label: Number of times of each obs
+    doc: |
+      The number of timeslots for each observation (length = n_obs).
     type: int[]
+
   - id: image_freqstep
+    label: Averaging interval in frequency
+    doc: |
+      The averaging interval in number of frequency channels (length = n_obs).
     type: int[]
+
   - id: image_timestep
+    label: Fast solution interval in time
+    doc: |
+      The averaging interval in number of timeslots (length = n_obs).
     type: int[]
+
   - id: previous_mask_filename
+    label: Filename of previous mask
+    doc: |
+      The filename of the image mask from the previous iteration (length = 1).
     type: string
+
   - id: mask_filename
+    label: Filename of current mask
+    doc: |
+      The filename of the current image mask (length = 1).
     type: string
+
   - id: phasecenter
+    label: Phase center of image
+    doc: |
+      The phase center of the image in deg (length = 1).
     type: string
+
   - id: ra
+    label: RA of center of image
+    doc: |
+      The RA of the center of the image in deg (length = 1).
     type: float
+
   - id: dec
+    label: Dec of center of image
+    doc: |
+      The Dec of the center of the image in deg (length = 1).
     type: float
+
   - id: image_name
+    label: Filename of output image
+    doc: |
+      The root filename of the output image (length = 1).
     type: string
+
   - id: cellsize_deg
+    label: Pixel size
+    doc: |
+      The size of one pixel of the image in deg (length = 1).
     type: float
+
   - id: wsclean_imsize
+    label: Image size
+    doc: |
+      The size of the image in pixels (length = 2).
     type: int[]
+
   - id: vertices_file
+    label: Filename of vertices file
+    doc: |
+      The filename of the file containing sector vertices (length = 1).
     type: string
+
   - id: region_file
+    label: Filename of region file
+    doc: |
+      The filename of the region file (length = 1).
     type: string
+
 {% if use_screens %}
   - id: aterms_config_file
+    label: Filename of config file
+    doc: |
+      The filename of the a-term config file (length = 1).
     type: string
+
   - id: aterm_image_filenames
+    label: Filenames of a-terms
+    doc: |
+      The filenames of the a-term images (length = 1).
     type: string
 {% if use_mpi %}
   - id: mpi_ntasks_per_node
+    label: Number of tasks
+    doc: |
+      The number of tasks per node for MPI jobs (length = 1).
     type: int
+
   - id: mpi_nnodes
+    label: Number of nodes
+    doc: |
+      The number of nodes for MPI jobs (length = 1).
     type: int
+
 {% endif %}
 {% else %}
   - id: h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions (length =
+      1).
     type: string
+
   - id: central_patch_name
+    label: Name of central patch
+    doc: |
+      The name of the central patch of the sector (length = 1).
     type: string
+
 {% endif %}
   - id: channels_out
+    label: Number of channels
+    doc: |
+      The number of WSClean output channels (length = 1).
     type: int
+
   - id: deconvolution_channels
+    label: Number of deconvolution channels
+    doc: |
+      The number of WSClean deconvolution channels (length = 1).
     type: int
+
   - id: wsclean_niter
+    label: Number of iterations
+    doc: |
+      The number of WSClean iterations (length = 1).
     type: int
+
   - id: wsclean_nmiter
+    label: Number of major iterations
+    doc: |
+      The number of WSClean major iterations (length = 1).
     type: int
+
   - id: robust
+    label: Robust weighting
+    doc: |
+      The value of the WSClean robust weighting parameter (length = 1).
     type: float
+
   - id: min_uv_lambda
+    label: Minimum us distance
+    doc: |
+      The WSClean minimum uv distance in lambda (length = 1).
     type: float
+
   - id: max_uv_lambda
+    label: Maximum us distance
+    doc: |
+      The WSClean maximum uv distance in lambda (length = 1).
     type: float
+
 {% if do_multiscale_clean %}
   - id: multiscale_scales_pixel
+    label: Multiscale scales
+    doc: |
+      The WSClean multiscale scales in pixels (length = 1).
     type: string
+
 {% endif %}
   - id: dir_local
+    label: Scratch directory
+    doc: |
+      The path to a (node-local) scratch directory (length = 1).
     type: string
+
   - id: taper_arcsec
+    label: Taper value
+    doc: |
+      The WSClean taper value in arcsec (length = 1).
     type: float
+
   - id: wsclean_mem
+    label: Memory fraction
+    doc: |
+      The memory fraction limit for WSClean (length = 1).
     type: float
+
   - id: auto_mask
+    label: Auto mask value
+    doc: |
+      The WSClean auto mask value (length = 1).
     type: float
+
   - id: idg_mode
+    label: IDG mode
+    doc: |
+      The WSClean IDG mode (length = 1).
     type: string
+
   - id: threshisl
+    label: Island threshold
+    doc: |
+      The PyBDSF island threshold (length = 1).
     type: float
+
   - id: threshpix
+    label: Pixel threshold
+    doc: |
+      The PyBDSF pixel threshold (length = 1).
     type: float
+
   - id: bright_skymodel_pb
+    label: Bright-source sky model
+    doc: |
+      The primary-beam-corrected bright-source sky model (length = 1).
     type: string
+
   - id: peel_bright
+    label: Peeling flag
+    doc: |
+      The flag that sets whether peeling of bright sources was done in the predict
+      pipeline (length = 1).
     type: string
 
 outputs: []
 
 steps:
   - id: prepare_imaging_data
-    label: prepare_imaging_data
+    label: Prepare imaging data
+    doc: |
+      This step uses DPPP to prepare the input data for imaging. This involves
+      averaging, phase shifting, and optionally the application of the
+      calibration solutions at the center.
 {% if use_screens %}
 
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
@@ -156,7 +323,9 @@ steps:
       - id: msimg
 
   - id: premask
-    label: premask
+    label: Make an image mask
+    doc: |
+      This step makes a FITS mask for the imaging.
     run: {{ rapthor_pipeline_dir }}/steps/blank_image.cwl
     in:
       - id: imagefile
@@ -180,7 +349,9 @@ steps:
 
 {% if use_screens %}
   - id: make_aterm_config
-    label: make_aterm_config
+    label: Make a-term config file
+    doc: |
+      This step makes the a-term configuration file needed for WSClean+IDG.
     run: {{ rapthor_pipeline_dir }}/steps/make_aterm_config.cwl
     in:
       - id: outfile
@@ -192,7 +363,10 @@ steps:
 {% endif %}
 
   - id: image
-    label: image
+    label: Make an image
+    doc: |
+      This step makes an image using WSClean. Direction-dependent effects
+      can be corrected for using a-term images.
 {% if use_screens %}
 {% if use_mpi %}
 {% if do_multiscale_clean %}
@@ -277,7 +451,10 @@ steps:
 
 {% if peel_bright_sources %}
   - id: restore_pb
-    label: restore_pb
+    label: Restore sources to PB image
+    doc: |
+      This step uses WSClean to restore the bright sources to the primary-beam-
+      corrected image.
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
 {% if max_cores is not none %}
     hints:
@@ -298,7 +475,10 @@ steps:
       - id: restored_image
 
   - id: restore_nonpb
-    label: restore_nonpb
+    label: Restore sources to non-PB image
+    doc: |
+      This step uses WSClean to restore the bright sources to the non-primary-beam-
+      corrected image.
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_restore.cwl
 {% if max_cores is not none %}
     hints:
@@ -320,7 +500,10 @@ steps:
 {% endif %}
 
   - id: filter
-    label: filter
+    label: Filter sources
+    doc: |
+      This step uses PyBDSF to filter artifacts from the sky model and make
+      a clean mask for the next iteration.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
       - id: input_image
