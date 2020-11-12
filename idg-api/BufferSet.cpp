@@ -79,8 +79,14 @@ BufferSetImpl::BufferSetImpl(Type architecture)
       m_degridding_watch(Stopwatch::create()) {}
 
 BufferSetImpl::~BufferSetImpl() {
+  // Free all objects allocated via the proxy before destroying the proxy.
+  // CUDA free calls for those objects may not occur after destroying
+  // the CUDA context, which happens when destroying the proxy.
   m_gridderbuffers.clear();
   m_degridderbuffers.clear();
+  m_bulkdegridders.clear();
+  m_grid.reset();
+  m_spheroidal.free();
   m_proxy.reset();
   report_runtime();
 }

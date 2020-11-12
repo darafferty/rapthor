@@ -92,6 +92,12 @@ class Array1D {
     }
   }
 
+  virtual void free() {
+    m_x_dim = 0;
+    m_memory.reset();
+    m_buffer = nullptr;
+  }
+
   void zero() {
     T zero;
     memset((void*)&zero, 0, sizeof(T));
@@ -137,6 +143,12 @@ class Array2D : public Array1D<T> {
     m_y_dim = other.m_y_dim;
     m_x_dim = other.m_x_dim;
     return *this;
+  }
+
+  void free() override {
+    Array1D<T>::free();
+    m_x_dim = 0;
+    m_y_dim = 0;
   }
 
   size_t get_x_dim() const { return m_x_dim; }
@@ -200,6 +212,13 @@ class Array3D : public Array1D<T> {
     m_y_dim = other.m_y_dim;
     m_x_dim = other.m_x_dim;
     return *this;
+  }
+
+  void free() override {
+    Array1D<T>::free();
+    m_x_dim = 0;
+    m_y_dim = 0;
+    m_z_dim = 0;
   }
 
   size_t get_x_dim() const { return m_x_dim; }
@@ -275,6 +294,14 @@ class Array4D : public Array1D<T> {
     m_y_dim = other.m_y_dim;
     m_x_dim = other.m_x_dim;
     return *this;
+  }
+
+  void free() override {
+    Array1D<T>::free();
+    m_x_dim = 0;
+    m_y_dim = 0;
+    m_z_dim = 0;
+    m_w_dim = 0;
   }
 
   size_t get_x_dim() const { return m_x_dim; }

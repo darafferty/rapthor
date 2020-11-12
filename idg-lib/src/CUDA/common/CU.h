@@ -96,7 +96,7 @@ class Memory : public idg::auxiliary::Memory {
 class HostMemory : public Memory {
  public:
   HostMemory(size_t size = 0, int flags = CU_MEMHOSTALLOC_PORTABLE);
-  ~HostMemory();
+  ~HostMemory() override;
 
   void resize(size_t size) override;
   void zero();
@@ -110,7 +110,7 @@ class RegisteredMemory : public Memory {
  public:
   RegisteredMemory(void *ptr, size_t size,
                    int flags = CU_MEMHOSTREGISTER_PORTABLE);
-  ~RegisteredMemory();
+  ~RegisteredMemory() override;
 
   void resize(size_t size) override;
   void zero();

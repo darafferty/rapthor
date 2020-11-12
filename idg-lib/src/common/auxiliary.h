@@ -139,13 +139,13 @@ class Memory {
 class DefaultMemory : public Memory {
  public:
   DefaultMemory(size_t bytes = 0);
-  ~DefaultMemory();
+  ~DefaultMemory() override;
 };
 
 class AlignedMemory : public Memory {
  public:
   AlignedMemory(size_t bytes = 0);
-  ~AlignedMemory();
+  ~AlignedMemory() override;
 
  private:
   static const size_t m_alignment = 64;
