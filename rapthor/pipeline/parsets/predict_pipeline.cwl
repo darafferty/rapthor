@@ -19,20 +19,20 @@ hints:
 
 inputs:
   - id: sector_filename
-    label: Filename of input MS
+    label: Filenames of input MS
     doc: |
       The filenames of input MS files for which prediction will be done (length =
       n_obs * n_sectors).
     type: string[]
 
   - id: sector_model_filename
-    label: Filename of output MS
+    label: Filenames of output MS
     doc: |
       The filenames of output MS files from prediction (length = n_obs * n_sectors).
     type: string[]
 
   - id: sector_starttime
-    label: Start time of each chunk
+    label: Start times of each chunk
     doc: |
       The start time (in casacore MVTime) for each time chunk used in prediction
       (length = n_obs * n_sectors).
