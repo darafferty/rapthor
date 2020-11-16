@@ -1,7 +1,11 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [wsclean]
-label: "Images a dataset using WSClean+IDG"
+label: Make an image
+doc: |
+  This tool makes an image using WSClean with a-term corrections and
+  multiscale cleaning. See wsclean_image.cwl for a detailed description
+  of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -86,6 +90,9 @@ inputs:
     inputBinding:
       prefix: -scale
   - id: multiscale_scales_pixel
+    label: Multiscale scales
+    doc: |
+      The multiscale scales in pixels.
     type: string
     inputBinding:
       prefix: -multiscale-scales

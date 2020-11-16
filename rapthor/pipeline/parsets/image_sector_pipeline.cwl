@@ -20,20 +20,20 @@ hints:
 
 inputs:
   - id: obs_filename
-    label: Filename of input MS
+    label: Filenames of input MS
     doc: |
       The filenames of input MS files for which imaging will be done (length =
       n_obs).
     type: string[]
 
   - id: prepare_filename
-    label: Filename of imaging MS
+    label: Filenames of imaging MS
     doc: |
       The filenames of output MS files used for imaging (length = n_obs).
     type: string[]
 
   - id: starttime
-    label: Start time of each obs
+    label: Start times of each obs
     doc: |
       The start time (in casacore MVTime) for each observation (length = n_obs).
     type: string[]
@@ -51,7 +51,7 @@ inputs:
     type: int[]
 
   - id: image_timestep
-    label: Fast solution interval in time
+    label: Averaging interval in time
     doc: |
       The averaging interval in number of timeslots (length = n_obs).
     type: int[]
@@ -153,7 +153,7 @@ inputs:
   - id: central_patch_name
     label: Name of central patch
     doc: |
-      The name of the central patch of the sector (length = 1).
+      The name of the central-most patch of the sector (length = 1).
     type: string
 
 {% endif %}

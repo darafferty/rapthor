@@ -1,29 +1,47 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [regrid_image.py]
-label: "Regrid FITS images to match a template image"
+label: Regrid an image
+doc: |
+  This tool regrids a FITS image to the grid of the given template FITS
+  image.
 
 requirements:
   InlineJavascriptRequirement: {}
 
 inputs:
   - id: input_image
+    label: Input image
+    doc: |
+      The filename of the input FITS image.
     type: string
     inputBinding:
       position: 1
   - id: template_image
+    label: Input template
+    doc: |
+      The filename of the input template FITS image.
     type: string
     inputBinding:
       position: 2
   - id: vertices_file
+    label: Filename of vertices file
+    doc: |
+      The filename of the sector vertices file.
     type: string
     inputBinding:
       position: 3
   - id: output_image
+    label: Filename of output image
+    doc: |
+      The filename of the regridded FITS image.
     type: string
     inputBinding:
       position: 4
   - id: skip
+    label: Flag to skip processing
+    doc: |
+      The flag that sets whether processing is skipped or not.
     type: string
     inputBinding:
       prefix: --skip=
@@ -31,6 +49,10 @@ inputs:
 
 outputs:
   - id: regridded_image
+    label: Output image
+    doc: |
+      The filename of the regridded FITS image. The value is taken from the input
+      parameter "output_image".
     type: string
     outputBinding:
       outputEval: $(inputs.output_image)

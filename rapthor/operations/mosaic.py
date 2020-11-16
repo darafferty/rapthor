@@ -74,3 +74,6 @@ class Mosaic(Operation):
 
         # TODO: make mosaic of model + QUV?
 #         self.field_model_filename = os.path.join(dst_dir, 'field-MFS-I-model.fits')
+
+        # TODO: clean up template+regridded images
+
