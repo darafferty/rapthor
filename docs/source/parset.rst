@@ -277,7 +277,9 @@ All the available options are described below under their respective sections.
         .. note::
 
             This parameter should not be set in the following situations:
+
             - when :term:`batch_system` = ``singleMachine`` and multiple imaging sectors are
               used (as each sector will overwrite files from the other sectors)
+
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
-              section and ```dir_local``` is not on a shared filesystem
+              section and ``dir_local`` is not on a shared filesystem
