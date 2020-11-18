@@ -45,7 +45,7 @@ void kernel_degridder(
     // Iterate all timesteps
     for (int time = 0; time < nr_timesteps; time++) {
       // Reset pixels
-      memset(pixels, 0,
+      memset((void*)pixels, 0,
              subgridsize * subgridsize * NR_POLARIZATIONS *
                  sizeof(std::complex<float>));
 
@@ -99,7 +99,7 @@ void kernel_degridder(
       for (int chan = channel_begin; chan < channel_end; chan++) {
         // Update all polarizations
         std::complex<float> sum[NR_POLARIZATIONS];
-        memset(sum, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
+        memset((void*)sum, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
 
         // Iterate all pixels in subgrid
         for (int y = 0; y < subgridsize; y++) {

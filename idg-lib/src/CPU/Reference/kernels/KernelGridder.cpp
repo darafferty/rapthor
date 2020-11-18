@@ -41,7 +41,7 @@ void kernel_gridder(
 
     // Storage
     std::complex<float> pixels[NR_POLARIZATIONS][subgridsize][subgridsize];
-    memset(pixels, 0,
+    memset((void*)pixels, 0,
            subgridsize * subgridsize * NR_POLARIZATIONS *
                sizeof(std::complex<float>));
 
@@ -57,7 +57,8 @@ void kernel_gridder(
         for (int time = 0; time < nr_timesteps; time++) {
           // Pixel
           std::complex<float> pixel[NR_POLARIZATIONS];
-          memset(pixel, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
+          memset((void*)pixel, 0,
+                 NR_POLARIZATIONS * sizeof(std::complex<float>));
 
           // Load UVW coordinates
           float u = uvw[time_offset + time].u;
