@@ -135,10 +135,15 @@ install(TARGETS ${PROJECT_NAME}
 install(EXPORT IDGAPITargets
         DESTINATION lib/cmake)
 
+# Prepare config files
 configure_file(
     "${PROJECT_SOURCE_DIR}/cmake/config/idgapi-config.cmake.in"
     "${PROJECT_BINARY_DIR}/CMakeFiles/idgapi-config.cmake" @ONLY)
+configure_file(
+    "${PROJECT_SOURCE_DIR}/cmake/config/idgapi-config-version.cmake.in"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/idgapi-config-version.cmake" @ONLY)
 
 install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/idgapi-config.cmake"
+    "${PROJECT_BINARY_DIR}/CMakeFiles/idgapi-config-version.cmake"
     DESTINATION ${CMAKE_INSTALL_PREFIX}/share/idgapi/cmake)

@@ -22,7 +22,8 @@ else()
         COMMAND bash -c "${GIT_COMMAND} diff --quiet --exit-code && echo +"
         OUTPUT_VARIABLE GIT_DIFF)
     execute_process(
-        COMMAND bash -c "${GIT_COMMAND} describe --exact-match --tags"
+        # No need to do an --exact-match, most recent tag should be OK
+        COMMAND bash -c "${GIT_COMMAND} describe --tags"
         OUTPUT_VARIABLE GIT_TAG ERROR_QUIET)
     execute_process(
         COMMAND bash -c "${GIT_COMMAND} rev-parse --abbrev-ref HEAD"
@@ -33,6 +34,16 @@ else()
     string(STRIP "${GIT_DIFF}" GIT_DIFF)
     string(STRIP "${GIT_TAG}" GIT_TAG)
     string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
+
+    if(GIT_TAG MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+).*" OR GIT_TAG MATCHES "^([0-9]+\\.[0-9]+).*")
+      # Regexp GIT_TAG on major.minor.match or major.minor, strip any commit info
+      set(GIT_TAG "${CMAKE_MATCH_1}")
+    elseif("${GIT_TAG}" STREQUAL "")
+      message(WARNING "Could NOT find a matching (git) version tag. This is not an error, but only indicates that "
+      "applications link against IDG might have troubles in retrieving VERSION info from IDG")
+    else()
+      message(FATAL_ERROR "Unrecognized (git) version tag ${GIT_TAG}")
+    endif()
 endif()
 
 set(GIT_VERSION "const char* GIT_REV=\"${GIT_REV}${GIT_DIFF}\";

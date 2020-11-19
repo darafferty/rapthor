@@ -1,5 +1,8 @@
 FROM ubuntu:20.04
 
+# Set the git tags at which dependencies are checked out
+ENV EVERYBEAM_VERSION_TAG="v0.1.0"
+
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     apt-get install -y \
     g++ cmake libfftw3-dev liblapack-dev libblas-dev python3 python3-pip \
@@ -18,14 +21,13 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr ../src && make install -j4 \
     && cd / && rm -rf aoflagger \
-# Build everybeam, checked-out at master (date: 2020/09/11)
+# Build everybeam, checked-out at tag given by $EVERYBEAM_VERSION_TAG
     && mkdir /everybeam && cd /everybeam && git clone https://git.astron.nl/RD/EveryBeam.git src \
-    && cd src/ && git checkout 10a675097e2eaaeaa5cb2e1bf6770695fc0c4470 && cd .. \
+    && cd src/ && git checkout ${EVERYBEAM_VERSION_TAG} && cd .. \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr ../src -DPYTHON_EXECUTABLE=/usr/bin/python3 \
     && make install -j4 \
     && cd / && rm -rf everybeam \
-# Build DP3, checked out at development (data: 2020/09/11)
 # Install WSRT Measures (extra casacore data, for integration tests)
 # Note: The file on the ftp site is updated daily. When warnings regarding leap
 # seconds appear, ignore them or regenerate the docker image.
