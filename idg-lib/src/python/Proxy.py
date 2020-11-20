@@ -609,7 +609,7 @@ class Proxy(object):
             ctypes.c_int,
             ctypes.c_int]
         ptr = self.lib.Proxy_allocate_grid(
-            self.obj,
+            ctypes.c_void_p(self.obj),
             ctypes.c_int(nr_correlations),
             ctypes.c_int(grid_size))
 
