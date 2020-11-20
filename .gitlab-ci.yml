@@ -169,7 +169,7 @@ idg-integration-das:
     - export PATH=$PATH:~/opt/dp3/bin
     # Extend the LD_LIBRARY_PATH
     - export LD_LIBRARY_PATH=~/opt/everybeam/lib/:~/opt/casacore/lib:~/opt/aoflagger/lib:~/opt/idg/lib:$LD_LIBRARY_PATH
-    - export LD_LIBRARY_PATH=${OPENBLAS_LIB}:$LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
   script:
     - cd ~/opt/idg/build
     # Run unit tests (more precisely: the non-integration tests)
