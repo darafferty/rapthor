@@ -27,7 +27,6 @@ void Proxy_gridding(
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
   std::shared_ptr<idg::Grid> grid_ptr(
       new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
-  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
   reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
       w_step, shift, cell_size, kernel_size, subgrid_size, frequencies,
       nr_channels, visibilities, visibilities_nr_baselines,
@@ -39,7 +38,6 @@ void Proxy_gridding(
       aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
       aterms_offsets_nr_timeslots_plus_one, spheroidal, spheroidal_height,
       spheroidal_width);
-  reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
 }
 
 void Proxy_degridding(
@@ -61,9 +59,6 @@ void Proxy_degridding(
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
-  std::shared_ptr<idg::Grid> grid_ptr(
-      new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
-  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
   reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(
       w_step, shift, cell_size, kernel_size, subgrid_size, frequencies,
       nr_channels, visibilities, visibilities_nr_baselines,
@@ -178,7 +173,6 @@ void Proxy_transform(Proxy* p, int direction, std::complex<float>* grid,
                      unsigned int grid_height, unsigned int grid_width) {
   std::shared_ptr<idg::Grid> grid_ptr(
       new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
-  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
   if (direction != 0) {
     reinterpret_cast<idg::proxy::Proxy*>(p)->transform(
         idg::ImageDomainToFourierDomain, grid, grid_nr_correlations,
@@ -188,7 +182,6 @@ void Proxy_transform(Proxy* p, int direction, std::complex<float>* grid,
         idg::FourierDomainToImageDomain, grid, grid_nr_correlations,
         grid_height, grid_width);
   }
-  reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
 }
 
 void Proxy_destroy(Proxy* p) { delete reinterpret_cast<idg::proxy::Proxy*>(p); }
@@ -198,16 +191,7 @@ void* Proxy_allocate_grid(Proxy* p, unsigned int nr_correlations,
   const unsigned int nr_w_layers = 1;
   auto grid_ptr = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(
       nr_w_layers, nr_correlations, grid_size, grid_size);
-  return grid_ptr->data();
-}
-
-void Proxy_set_grid(Proxy* p, idg::Grid& grid) {
-  std::shared_ptr<idg::Grid> grid_ptr(&grid);
   reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
-}
-
-void Proxy_get_grid(Proxy* p, void* ptr) {
-  auto grid = reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
-  memcpy(ptr, grid->data(), grid->bytes());
+  return grid_ptr->data();
 }
 }

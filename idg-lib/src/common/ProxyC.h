@@ -1,12 +1,11 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-extern "C" {
+#include "Proxy.h"
 
-class Proxy {
- public:
-  virtual void set_grid(idg::Grid& grid) = 0;
-};
+typedef idg::proxy::Proxy Proxy;
+
+extern "C" {
 
 void Proxy_gridding(
     Proxy* p, float w_step, float* shift, const float cell_size,
