@@ -8,33 +8,16 @@
 #  FFTW3_INCLUDE_DIR          - the FFTW3 include directory (cached)
 #  FFTW3_INCLUDE_DIRS         - the FFTW3 include directories
 #                               (identical to FFTW3_INCLUDE_DIR)
-#  FFTW3[FL]?_LIBRARY         - the FFTW3 library - double, single(F), 
+#  FFTW3[FL]?_LIBRARY         - the FFTW3 library - double, single(F),
 #                               long-double(L) precision (cached)
-#  FFTW3[FL]?_THREADS_LIBRARY - the threaded FFTW3 library - double, single(F), 
+#  FFTW3[FL]?_THREADS_LIBRARY - the threaded FFTW3 library - double, single(F),
 #                               long-double(L) precision (cached)
-#  FFTW3[FL]?_OMP_LIBRARY     - the OpenMP FFTW3 library - double, single(F), 
+#  FFTW3[FL]?_OMP_LIBRARY     - the OpenMP FFTW3 library - double, single(F),
 #                               long-double(L) precision (cached)
 #  FFTW3_LIBRARIES            - list of all FFTW3 libraries found
 
-# Copyright (C) 2009-2010
-# ASTRON (Netherlands Institute for Radio Astronomy)
-# P.O.Box 2, 7990 AA Dwingeloo, The Netherlands
-#
-# This file is part of the LOFAR software suite.
-# The LOFAR software suite is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public License as published
-# by the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# The LOFAR software suite is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License along
-# with the LOFAR software suite. If not, see <http://www.gnu.org/licenses/>.
-#
-# $Id: FindFFTW3.cmake 15918 2010-06-25 11:12:42Z loose $
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 # Use double precision by default.
 if(FFTW3_FIND_COMPONENTS MATCHES "^$")
@@ -102,7 +85,7 @@ foreach(_lib ${_libraries})
 endforeach(_lib ${_libraries})
 
 # Search for the header file.
-find_path(FFTW3_INCLUDE_DIR fftw3.h 
+find_path(FFTW3_INCLUDE_DIR fftw3.h
   HINTS ${FFTW3_ROOT_DIR} PATH_SUFFIXES include
   HINTS ENV FFTW3_ROOT_DIR PATH_SUFFIXES include)
   mark_as_advanced(FFTW3_INCLUDE_DIR)

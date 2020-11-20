@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 //
 // Copyright (c) 2013 Juan Palacios juan.palacios.puyana@gmail.com
 // Subject to the BSD 2-Clause License

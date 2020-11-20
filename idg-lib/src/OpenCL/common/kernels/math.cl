@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 typedef float2 fcomplex;
 typedef float4 fcomplex2;
 typedef float8 fcomplex4;

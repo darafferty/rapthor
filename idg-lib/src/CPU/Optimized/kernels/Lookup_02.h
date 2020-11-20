@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 // Constants for sine/cosine lookup table
 #define BITS 12
 #define QRT_PI_INT (1 << BITS)

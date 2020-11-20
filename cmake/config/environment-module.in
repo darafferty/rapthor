@@ -1,5 +1,8 @@
 #%Module
 
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Set variables from CMake
 set root            @CMAKE_INSTALL_PREFIX@
 set TESTS_ENABLED  [ string toupper "@BUILD_TESTING@" ]

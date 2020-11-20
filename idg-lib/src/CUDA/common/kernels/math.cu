@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include <cuComplex.h>
 inline __device__ float2 conj(float2 a) {
     return cuConjf(a);

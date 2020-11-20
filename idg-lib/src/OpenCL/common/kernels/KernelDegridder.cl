@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 #define MAX_NR_CHANNELS 8

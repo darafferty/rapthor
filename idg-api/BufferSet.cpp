@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #include "BufferSetImpl.h"
 #include "BulkDegridderImpl.h"
 #include "GridderBufferImpl.h"

@@ -1,5 +1,8 @@
 #!/bin/bash
-#
+
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Integration test for single point source, centered at the image center
 #
 # Make sure that: 

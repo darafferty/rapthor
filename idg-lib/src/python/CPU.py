@@ -1,3 +1,6 @@
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import os
 import ctypes
 import numpy.ctypeslib
@@ -39,4 +42,3 @@ class Optimized(CPU):
                 ctypes.c_uint(subgrid_size))
         except AttributeError:
             print("The chosen proxy was not built into the library")
-
