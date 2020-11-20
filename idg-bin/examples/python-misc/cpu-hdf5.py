@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
 
 #########
 # imports
@@ -15,7 +17,7 @@ parser = argparse.ArgumentParser(description='Run image domain gridding on a hdf
 parser.add_argument(dest='filename', type=str, help='path to dataset')
 args = parser.parse_args()
 filename = args.filename
- 
+
 ##############
 # read dataset
 ##############
@@ -102,7 +104,7 @@ for plane in range(len(uv)):
     weight_plane = weights[plane]
     vis_plane    = vis[plane]
     w_plane      = w_planes[plane]
-    
+
     # fill idg datastructures
     uvw = numpy.zeros(shape=(nr_baselines, nr_time, 3), dtype=numpy.float32)
     uvw[:,:,0] = uv_plane[:,0]
@@ -110,7 +112,7 @@ for plane in range(len(uv)):
     uvw[:,:,2] = w_plane
     uvw = uvw.view(idg.uvwtype)[:,:,0]
     visibilities = numpy.repeat(vis_plane, nr_polarizations, axis=0).reshape((nr_baselines, nr_time, nr_channels, nr_polarizations))
-    
+
     # grid visibilities
     w_offset = float(plane)
     p.grid_visibilities(

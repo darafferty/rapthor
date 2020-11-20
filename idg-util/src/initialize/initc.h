@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 extern "C" {
 
 void utils_init_identity_spheroidal(void *ptr, int subgrid_size) {

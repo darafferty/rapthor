@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later3
 #
 # Gridding/Degridding integration tests. Integration testing of gridding/degridding with
 # wsclean-idg. The degridding test compares DPPP generated "DATA" column against wsclean

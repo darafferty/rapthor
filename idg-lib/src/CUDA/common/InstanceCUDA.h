@@ -1,3 +1,6 @@
+// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 #ifndef IDG_CUDA_INSTANCE_H_
 #define IDG_CUDA_INSTANCE_H_
 

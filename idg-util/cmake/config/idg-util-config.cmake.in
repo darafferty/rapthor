@@ -1,5 +1,8 @@
 #  Config file for the idg-util library
 
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # Compute paths
 get_filename_component(IDG_UTIL_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
 get_filename_component(IDG_UTIL_CMAKE_DIR_ABS "${IDG_UTIL_CMAKE_DIR}" ABSOLUTE)

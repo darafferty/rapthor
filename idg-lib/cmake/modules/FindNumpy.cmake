@@ -1,3 +1,6 @@
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 # - Try to find the Python Numpy header files and loadable modules.
 # This find module tries to determine the directory path to the Numpy header
 # files and the location of the loadable modules `multiarray` and `scalarmath`.
@@ -75,8 +78,8 @@ if(NOT NUMPY_FOUND)
     set(CMAKE_FIND_LIBRARY_PREFIXES "${_cmake_find_library_prefixes}")
 
   endif(PYTHONINTERP_FOUND)
-  
-  # Handle the QUIETLY and REQUIRED arguments and set NUMPY_FOUND    
+
+  # Handle the QUIETLY and REQUIRED arguments and set NUMPY_FOUND
   include(FindPackageHandleStandardArgs)
   find_package_handle_standard_args(Numpy DEFAULT_MSG
     NUMPY_MULTIARRAY_LIBRARY NUMPY_SCALARMATH_LIBRARY NUMPY_INCLUDE_DIR)
@@ -84,10 +87,10 @@ if(NOT NUMPY_FOUND)
   # Set non-cached variables
   if(NUMPY_FOUND)
     set(NUMPY_INCLUDE_DIRS "${NUMPY_INCLUDE_DIR}")
-    set(NUMPY_LIBRARIES 
+    set(NUMPY_LIBRARIES
       "${NUMPY_MULTIARRAY_LIBRARY}" "${NUMPY_SCALARMATH_LIBRARY}")
   endif(NUMPY_FOUND)
-  
+
   # Find the f2py program
   find_program(F2PY_EXECUTABLE f2py)
 
@@ -120,7 +123,7 @@ macro (add_f2py_module _name)
   endif(_dest_dir MATCHES "^$" OR _dest_dir MATCHES ";")
 
   # Get the compiler-id and map it to compiler vendor as used by f2py.
-  # Currently, we only check for GNU, but this can easily be extended. 
+  # Currently, we only check for GNU, but this can easily be extended.
   # Cache the result, so that we only need to check once.
   if(NOT F2PY_FCOMPILER)
     if(CMAKE_Fortran_COMPILER_ID MATCHES "GNU")
@@ -151,7 +154,7 @@ macro (add_f2py_module _name)
       list(APPEND _fcompiler_opts "--f90exec=${CMAKE_Fortran_COMPILER}")
       if(APPLE)
         list(APPEND _fcompiler_opts "--f90flags=\"-m64\"")
-      endif(APPLE)      
+      endif(APPLE)
     endif(CMAKE_Fortran_COMPILER_SUPPORTS_F90)
   endif(F2PY_FCOMPILER)
 
