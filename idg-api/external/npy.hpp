@@ -41,7 +41,7 @@ namespace npy {
 
 /* Compile-time test for byte order.
    If your compiler does not define these per default, you may want to define
-   one of these constants manually. 
+   one of these constants manually.
    Defaults to little endian order. */
 #if defined(__BYTE_ORDER) && __BYTE_ORDER == __BIG_ENDIAN || \
     defined(__BIG_ENDIAN__) || \
@@ -62,8 +62,8 @@ const char little_endian_char = '<';
 const char big_endian_char = '>';
 const char no_endian_char = '|';
 
-constexpr char host_endian_char = ( big_endian ? 
-    big_endian_char : 
+constexpr char host_endian_char = ( big_endian ?
+    big_endian_char :
     little_endian_char );
 
 /* npy array length */
@@ -105,18 +105,18 @@ struct Typestring {
       return std::string(buf);
     }
 
-    Typestring(const std::vector<float>& v) 
+    Typestring(const std::vector<float>& v)
       :c_endian {host_endian_char}, c_type {'f'}, len {sizeof(float)} {}
-    Typestring(const std::vector<double>& v) 
+    Typestring(const std::vector<double>& v)
       :c_endian {host_endian_char}, c_type {'f'}, len {sizeof(double)} {}
-    Typestring(const std::vector<long double>& v) 
+    Typestring(const std::vector<long double>& v)
       :c_endian {host_endian_char}, c_type {'f'}, len {sizeof(long double)} {}
 
-    Typestring(const std::vector<char>& v) 
+    Typestring(const std::vector<char>& v)
       :c_endian {no_endian_char}, c_type {'i'}, len {sizeof(char)} {}
-    Typestring(const std::vector<short>& v) 
+    Typestring(const std::vector<short>& v)
       :c_endian {host_endian_char}, c_type {'i'}, len {sizeof(short)} {}
-    Typestring(const std::vector<int>& v) 
+    Typestring(const std::vector<int>& v)
       :c_endian {host_endian_char}, c_type {'i'}, len {sizeof(int)} {}
     Typestring(const std::vector<long>& v)
       :c_endian {host_endian_char}, c_type {'i'}, len {sizeof(long)} {}
@@ -349,7 +349,7 @@ inline void parse_header(std::string header, std::string& descr, bool& fortran_o
 
   // TODO: extract info from typestring
   parse_typestring(descr_s);
-  // remove 
+  // remove
   descr = npy::pyparse::parse_str(descr_s);
 
   // convert literal Python bool to C++ bool
@@ -467,7 +467,7 @@ inline void SaveArrayAsNumpy( const std::string& filename, bool fortran_order, u
 
     std::ofstream stream( filename, std::ofstream::binary);
     if(!stream) {
-        throw std::runtime_error("io error: failed to open a file.");
+        throw std::runtime_error("io error: failed to open " + filename + " for writing");
     }
 
     std::vector<ndarray_len_t> shape_v(shape, shape+n_dims);
@@ -484,7 +484,7 @@ inline void LoadArrayFromNumpy(const std::string& filename, std::vector<unsigned
 {
     std::ifstream stream(filename, std::ifstream::binary);
     if(!stream) {
-        throw std::runtime_error("io error: failed to open a file.");
+        throw std::runtime_error("io error: failed to open " + filename + " for reading");
     }
 
     std::string header = read_header(stream);
