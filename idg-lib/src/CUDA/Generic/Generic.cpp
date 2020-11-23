@@ -536,6 +536,10 @@ void Generic::do_degridding(
 #endif
 }  // end degridding
 
+void Generic::set_grid(std::shared_ptr<Grid> grid) {
+  set_grid(grid, 0, 0.0, 0.0, nullptr);
+}
+
 void Generic::set_grid(std::shared_ptr<Grid> grid, int /* subgrid_size */,
                        float /* image_size */, float /* w_step */,
                        const float* /* shift */) {

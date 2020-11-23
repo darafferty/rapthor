@@ -1063,6 +1063,12 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
                              options);
 }
 
+void GenericOptimized::set_grid(std::shared_ptr<Grid> grid) {
+  // Set grid both for CUDA proxy and CPU Proxy
+  cpuProxy->set_grid(grid);
+  CUDA::set_grid(grid);
+}
+
 void GenericOptimized::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
                                 float image_size, float w_step,
                                 const float* shift) {

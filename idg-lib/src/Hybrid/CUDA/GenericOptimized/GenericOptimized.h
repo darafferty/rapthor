@@ -31,6 +31,8 @@ class GenericOptimized : public cuda::CUDA {
 
   virtual bool supports_avg_aterm_correction() { return true; }
 
+  virtual void set_grid(std::shared_ptr<Grid> grid);
+  
   virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
                         float image_size, float w_step,
                         const float* shift) override;

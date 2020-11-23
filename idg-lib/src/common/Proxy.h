@@ -227,8 +227,11 @@ class Proxy {
                                               size_t nr_correlations,
                                               size_t height, size_t width);
 
-  void set_grid(Grid& grid, int subgrid_size, float image_size, float w_step,
-                const float* shift);
+//   void set_grid(Grid& grid, int subgrid_size, float image_size, float w_step,
+//                 const float* shift);
+
+  virtual void set_grid(std::shared_ptr<Grid> grid) {m_grid = grid;}
+
   virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
                         float image_size, float w_step, const float* shift);
   virtual std::shared_ptr<Grid> get_grid();

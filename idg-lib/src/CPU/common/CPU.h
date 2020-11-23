@@ -48,6 +48,8 @@ class CPU : public Proxy {
       Plan::Options options) override;
 
   using Proxy::set_grid;  // prevents hiding set_grid overloads in Proxy
+  virtual void set_grid(std::shared_ptr<Grid> grid);
+  
   virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
                         float image_size, float w_step,
                         const float* shift) override;

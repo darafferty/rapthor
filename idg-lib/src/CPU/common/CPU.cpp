@@ -52,7 +52,7 @@ std::unique_ptr<Plan> CPU::make_plan(
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
-  if (supports_wtiling() && options.w_step != 0.0) {
+  if (supports_wtiling() && options.w_step != 0.0 && m_wtiles.get_wtile_buffer_size()) {
     options.nr_w_layers = INT_MAX;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
@@ -62,6 +62,11 @@ std::unique_ptr<Plan> CPU::make_plan(
                             frequencies, uvw, baselines, aterms_offsets,
                             options);
   }
+}
+
+void CPU::set_grid(std::shared_ptr<Grid> grid) {
+  Proxy::set_grid(grid);
+  m_wtiles = WTiles();
 }
 
 void CPU::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,

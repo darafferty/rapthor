@@ -183,6 +183,8 @@ void* Proxy_allocate_grid(Proxy* p, unsigned int nr_correlations,
   const unsigned int nr_w_layers = 1;
   auto grid_ptr = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(
       nr_w_layers, nr_correlations, grid_size, grid_size);
+
+  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
   return grid_ptr->data();
 }
 

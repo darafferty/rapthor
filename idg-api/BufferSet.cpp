@@ -268,7 +268,7 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 
   m_grid.reset(new Grid(nr_w_layers, 4, m_padded_size, m_padded_size));
   m_grid->zero();
-  m_proxy->set_grid(*m_grid, m_subgridsize, m_image_size, m_w_step,
+  m_proxy->set_grid(m_grid, m_subgridsize, m_image_size, m_w_step,
                     m_shift.data());
 
   m_taper_subgrid.resize(m_subgridsize);
