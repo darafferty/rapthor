@@ -157,7 +157,8 @@ class FITSImage(object):
         """
         if eps is None:
             eps = np.nanstd(self.img_data)*1e-3
-        data = self.img_data[ ~np.isnan(self.img_data) ]  # remove nans
+        data = self.img_data[::4]  # sample every forth pixel
+        data = data[ ~np.isnan(data) ]  # remove nans
         oldrms = 1.
         for i in range(niter):
             rms = np.nanstd(data)

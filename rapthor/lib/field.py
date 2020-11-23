@@ -10,6 +10,7 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
+from rapthor.lib.image import FITSImage
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
@@ -29,7 +30,7 @@ class Field(object):
     """
     def __init__(self, parset, mininmal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
-        # values
+        # values and/or the opertions
         self.name = 'field'
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.parset = parset.copy()
@@ -61,6 +62,8 @@ class Field(object):
         self.imaged_sources_only = False
         self.peel_bright_sources = False
         self.use_scalarphase = True
+        self.field_image_filename_prev = None
+        self.field_image_filename = None
 
         if not mininmal:
             # Scan MS files to get observation info
@@ -946,16 +949,60 @@ class Field(object):
         w.wcs.set_pv([(2, 1, 45.0)])
         self.wcs = w
 
-    def check_selfcal_convergence(self):
+    def check_selfcal_progress(self, convergence_ratio=0.95, divergence_ratio=1.1):
         """
-        Checks whether selfcal has converged or not on a sector-by-sector basis
+        Checks whether selfcal has converged or diverged by comparing the current
+        image noise to that of the previous cycle
+
+        Parameters
+        ----------
+        convergence_ratio : float, optional
+            The maximum ratio of the current noise to the previous noise above
+            which selfcal is considered to have converged (must be in the range
+            0.5 -- 2). E.g., convergence_ratio = 0.95 means that the image noise
+            must improve by ~ 5% or more from the previous cycle for selfcal to be
+            considered as nonconverged
+        divergence_ratio : float, optional
+            The minimum ratio of the current noise to the previous noise above
+            which selfcal is considered to have diverged (must be > 1). E.g.,
+            divergence_ratio = 1.1 means that, if image noise worsens by ~ 10%
+            or more from the previous cycle, selfcal is considered to have
+            diverged
 
         Returns
         -------
         result : bool
-            True if all sectors have converged, False if not
+            True if selfcal has converged, False if not
         """
-        return False
+        # Check that convergence_ratio is sensible
+        if convergence_ratio > 2.0:
+            convergence_ratio = 2.0
+        if convergence_ratio < 0.5:
+            convergence_ratio = 0.5
+        if divergence_ratio < 1.0:
+            divergence_ratio = 1.0
+
+        if self.field_image_filename_prev is None:
+            # No previous iteration, so report nonconvergence
+            return False
+
+        # Get noise from previous and current images
+        image = FITSImage(self.field_image_filename_prev)
+        image.calc_noise()
+        rmspre = image.noise
+        image = FITSImage(self.field_image_filename)
+        image.calc_noise()
+        rmspost = image.noise
+
+        if rmspost / rmspre < convergence_ratio:
+            # Report nonconvergence
+            return False, False
+        elif rmspost / rmspre > divergence_ratio:
+            # Report divergence
+            return False, True
+        else:
+            # Report convergence
+            return True, False
 
     def update(self, step_dict, iter):
         """
