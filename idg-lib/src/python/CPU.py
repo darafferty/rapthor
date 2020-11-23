@@ -17,7 +17,7 @@ class Reference(CPU):
         subgrid_size):
         """Reference CPU implementation"""
         try:
-            self.lib.CPU_Optimized_init.restype = ctypes.c_void_p
+            self.lib.CPU_Reference_init.restype = ctypes.c_void_p
             self.lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
                                                ctypes.c_uint]
             self.obj = self.lib.CPU_Reference_init(
