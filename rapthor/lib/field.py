@@ -971,10 +971,12 @@ class Field(object):
 
         Returns
         -------
-        result : bool
+        converged : bool
             True if selfcal has converged, False if not
+        diverged : bool
+            True if selfcal has diverged, False if not
         """
-        # Check that convergence_ratio is sensible
+        # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
