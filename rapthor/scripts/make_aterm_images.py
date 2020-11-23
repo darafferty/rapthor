@@ -75,6 +75,9 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
     cellsize_deg = float(cellsize_deg)
     smooth_deg = float(smooth_deg)
     smooth_pix = smooth_deg / cellsize_deg
+    if screen_type == 'kl':
+        # No need to smooth KL screens
+        smooth_pix = 0.0
 
     # Check whether we just have one direction. If so, force screen_type to 'voronoi'
     H = h5parm(h5parmfile)
