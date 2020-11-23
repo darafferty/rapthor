@@ -339,11 +339,11 @@ class KLScreen(Screen):
         adjust_order_ph = True
         screen_order = min(20, len(source_positions)-1)
         stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order,
-                          scale_order=True, adjust_order=adjust_order_ph, ncpu=self.ncpu)
+                          scale_order=True, adjust_order=adjust_order_ph)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=screen_order, niter=3,
-                              scale_order=False, adjust_order=adjust_order_amp, ncpu=self.ncpu)
+                              scale_order=False, adjust_order=adjust_order_amp)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
