@@ -11,6 +11,7 @@
 #include "InstanceCUDA.h"
 
 //#define DEBUG_COMPUTE_JOBSIZE
+#define DEBUG_MEMORY_FRAGMENTATION
 
 using namespace idg::kernel::cuda;
 
@@ -319,98 +320,125 @@ void CUDA::initialize(
   compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels,
                   subgrid_size);
 
-  // Allocate and initialize device memory
-  for (unsigned d = 0; d < get_num_devices(); d++) {
-    InstanceCUDA& device = get_device(d);
-    device.set_context();
-    auto jobsize = m_gridding_state.jobsize[d];
-    auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-    cu::Stream& htodstream = device.get_htod_stream();
+  try {
+    // Allocate and initialize device memory
+    for (unsigned d = 0; d < get_num_devices(); d++) {
+      InstanceCUDA& device = get_device(d);
+      device.set_context();
+      auto jobsize = m_gridding_state.jobsize[d];
+      auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+      cu::Stream& htodstream = device.get_htod_stream();
 
-    // Wavenumbers
-    cu::DeviceMemory& d_wavenumbers =
-        device.allocate_device_wavenumbers(wavenumbers.bytes());
-    htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
-                               wavenumbers.bytes());
+      // Wavenumbers
+      cu::DeviceMemory& d_wavenumbers =
+          device.allocate_device_wavenumbers(wavenumbers.bytes());
+      htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
+                                 wavenumbers.bytes());
 
-    // Spheroidal
-    cu::DeviceMemory& d_spheroidal =
-        device.allocate_device_spheroidal(spheroidal.bytes());
-    htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(),
-                               spheroidal.bytes());
+      // Spheroidal
+      cu::DeviceMemory& d_spheroidal =
+          device.allocate_device_spheroidal(spheroidal.bytes());
+      htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(),
+                                 spheroidal.bytes());
 
-    // Aterms
-    cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms.bytes());
-    htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+      // Aterms
+      cu::DeviceMemory& d_aterms =
+          device.allocate_device_aterms(aterms.bytes());
+      htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
 
-    // Aterms indicies
-    size_t sizeof_aterm_indices =
-        auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-    cu::DeviceMemory& d_aterms_indices =
-        device.allocate_device_aterms_indices(sizeof_aterm_indices);
-    htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(),
-                               sizeof_aterm_indices);
+      // Aterms indicies
+      size_t sizeof_aterm_indices =
+          auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+      cu::DeviceMemory& d_aterms_indices =
+          device.allocate_device_aterms_indices(sizeof_aterm_indices);
+      htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(),
+                                 sizeof_aterm_indices);
 
-    // Average aterm correction
-    if (m_avg_aterm_correction.size()) {
-      size_t sizeof_avg_aterm_correction =
-          auxiliary::sizeof_avg_aterm_correction(subgrid_size);
-      cu::DeviceMemory& d_avg_aterm_correction =
-          device.allocate_device_avg_aterm_correction(
-              sizeof_avg_aterm_correction);
-      htodstream.memcpyHtoDAsync(d_avg_aterm_correction,
-                                 m_avg_aterm_correction.data(),
-                                 sizeof_avg_aterm_correction);
+      // Average aterm correction
+      if (m_avg_aterm_correction.size()) {
+        size_t sizeof_avg_aterm_correction =
+            auxiliary::sizeof_avg_aterm_correction(subgrid_size);
+        cu::DeviceMemory& d_avg_aterm_correction =
+            device.allocate_device_avg_aterm_correction(
+                sizeof_avg_aterm_correction);
+        htodstream.memcpyHtoDAsync(d_avg_aterm_correction,
+                                   m_avg_aterm_correction.data(),
+                                   sizeof_avg_aterm_correction);
+      } else {
+        device.allocate_device_avg_aterm_correction(0);
+      }
+
+      // Dynamic memory (per thread)
+      for (unsigned t = 0; t < m_max_nr_streams; t++) {
+        // Visibilities
+        size_t sizeof_visibilities =
+            auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+        device.allocate_device_visibilities(t, sizeof_visibilities);
+
+        // UVW coordinates
+        size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+        device.allocate_device_uvw(t, sizeof_uvw);
+
+        // Subgrids
+        size_t sizeof_subgrids =
+            auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+        device.allocate_device_subgrids(t, sizeof_subgrids);
+
+        // Metadata
+        size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
+        device.allocate_device_metadata(t, sizeof_metadata);
+      }
+
+      // Initialize job data
+      jobs.clear();
+      for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+        unsigned int first_bl, last_bl, current_nr_baselines;
+        plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl,
+                            &current_nr_baselines);
+        if (current_nr_baselines == 0) continue;
+        JobData job;
+        job.current_time_offset = first_bl * nr_timesteps;
+        job.current_nr_baselines = current_nr_baselines;
+        job.current_nr_subgrids =
+            plan.get_nr_subgrids(first_bl, current_nr_baselines);
+        job.current_nr_timesteps =
+            plan.get_nr_timesteps(first_bl, current_nr_baselines);
+        job.metadata_ptr = (void*)plan.get_metadata_ptr(first_bl);
+        job.uvw_ptr = uvw.data(first_bl, 0);
+        job.visibilities_ptr = visibilities.data(first_bl, 0, 0);
+        jobs.push_back(job);
+      }
+
+      // Plan subgrid fft
+      device.plan_subgrid_fft(subgrid_size, max_nr_subgrids);
+
+      // Wait for memory copies
+      htodstream.synchronize();
+    }
+  } catch (cu::Error<CUresult>& error) {
+    if (error == CUDA_ERROR_OUT_OF_MEMORY) {
+      // There should be sufficient GPU memory available,
+      // since compute_jobsize completed succesfully.
+#if defined(DEBUG_MEMORY_FRAGMENTATION)
+      std::cout << "Memory fragmentation detected, retrying to allocate device "
+                   "memory."
+                << std::endl;
+#endif
+
+      // Free all device memory
+      for (unsigned d = 0; d < get_num_devices(); d++) {
+        InstanceCUDA& device = get_device(d);
+        device.set_context();
+        device.free_device_memory();
+      }
+
+      // Try again to allocate device memory
+      initialize(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
+                 frequencies, visibilities, uvw, baselines, aterms,
+                 aterms_offsets, spheroidal);
     } else {
-      device.allocate_device_avg_aterm_correction(0);
+      throw error;
     }
-
-    // Dynamic memory (per thread)
-    for (unsigned t = 0; t < m_max_nr_streams; t++) {
-      // Visibilities
-      size_t sizeof_visibilities =
-          auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
-      device.allocate_device_visibilities(t, sizeof_visibilities);
-
-      // UVW coordinates
-      size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-      device.allocate_device_uvw(t, sizeof_uvw);
-
-      // Subgrids
-      size_t sizeof_subgrids =
-          auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-      device.allocate_device_subgrids(t, sizeof_subgrids);
-
-      // Metadata
-      size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
-      device.allocate_device_metadata(t, sizeof_metadata);
-    }
-
-    // Initialize job data
-    jobs.clear();
-    for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-      unsigned int first_bl, last_bl, current_nr_baselines;
-      plan.initialize_job(nr_baselines, jobsize, bl, &first_bl, &last_bl,
-                          &current_nr_baselines);
-      if (current_nr_baselines == 0) continue;
-      JobData job;
-      job.current_time_offset = first_bl * nr_timesteps;
-      job.current_nr_baselines = current_nr_baselines;
-      job.current_nr_subgrids =
-          plan.get_nr_subgrids(first_bl, current_nr_baselines);
-      job.current_nr_timesteps =
-          plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      job.metadata_ptr = (void*)plan.get_metadata_ptr(first_bl);
-      job.uvw_ptr = uvw.data(first_bl, 0);
-      job.visibilities_ptr = visibilities.data(first_bl, 0, 0);
-      jobs.push_back(job);
-    }
-
-    // Plan subgrid fft
-    device.plan_subgrid_fft(subgrid_size, max_nr_subgrids);
-
-    // Wait for memory copies
-    htodstream.synchronize();
   }
 
   marker.end();

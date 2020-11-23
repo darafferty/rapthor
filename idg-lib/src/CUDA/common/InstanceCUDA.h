@@ -168,10 +168,10 @@ class InstanceCUDA : public KernelsInstance {
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
   void print_device_memory_info();
+  void free_device_memory();
 
  private:
   void free_host_memory();
-  void free_device_memory();
   void reset();
 
  protected:
