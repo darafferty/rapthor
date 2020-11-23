@@ -30,7 +30,7 @@ class Field(object):
     """
     def __init__(self, parset, mininmal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
-        # values and/or the opertions
+        # values and/or the operations
         self.name = 'field'
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.parset = parset.copy()
