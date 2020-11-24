@@ -10,8 +10,10 @@
 
 #include "InstanceCUDA.h"
 
-//#define DEBUG_COMPUTE_JOBSIZE
+#if defined(DEBUG)
+#define DEBUG_COMPUTE_JOBSIZE
 #define DEBUG_MEMORY_FRAGMENTATION
+#endif
 
 using namespace idg::kernel::cuda;
 
