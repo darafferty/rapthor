@@ -437,7 +437,7 @@ void CUDA::initialize(
                  frequencies, visibilities, uvw, baselines, aterms,
                  aterms_offsets, spheroidal);
     } else {
-      throw error;
+      throw;
     }
   }
 
