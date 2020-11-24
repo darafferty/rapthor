@@ -123,7 +123,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     float* phasor_real = allocate_memory<float>(total_nr_visibilities);
     float* phasor_imag = allocate_memory<float>(total_nr_visibilities);
     float* phase = allocate_memory<float>(total_nr_visibilities);
-    float* phase_offset = allocate_memory<float>(nr_pixels);
     idg::float2* subgrid_local =
         allocate_memory<idg::float2>(NR_POLARIZATIONS * nr_pixels);
 
@@ -201,12 +200,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         }
       }
 
-      // Compute phase offset
-      for (unsigned i = 0; i < nr_pixels; i++) {
-        phase_offset[i] =
-            u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
-      }
-
       // Iterate all pixels in subgrid
       for (unsigned i = 0; i < nr_pixels; i++) {
         int y = i / subgrid_size;
@@ -226,13 +219,16 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           // Compute phase index
           float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
 
+          // Compute phase offset
+          float phase_offset = u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+
           // pragma vector aligned
           for (int chan = channel_begin; chan < channel_end; chan++) {
             int chan_idx = chan - channel_begin;
             // Compute phase
             float wavenumber = wavenumbers[chan];
             phase[time * nr_channels_subgrid + chan_idx] =
-                phase_offset[i] - (phase_index * wavenumber);
+                phase_offset - (phase_index * wavenumber);
           }
         }  // end time
 
@@ -273,7 +269,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     free(vis_yx_imag);
     free(vis_yy_imag);
     free(phase);
-    free(phase_offset);
     free(phasor_real);
     free(phasor_imag);
     free(subgrid_local);
