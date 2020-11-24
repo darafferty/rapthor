@@ -124,9 +124,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     float* phasor_imag = allocate_memory<float>(total_nr_visibilities);
     float* phase = allocate_memory<float>(total_nr_visibilities);
     float* phase_offset = allocate_memory<float>(nr_pixels);
-    float* uvw_u = allocate_memory<float>(nr_timesteps);
-    float* uvw_v = allocate_memory<float>(nr_timesteps);
-    float* uvw_w = allocate_memory<float>(nr_timesteps);
     idg::float2* subgrid_local =
         allocate_memory<idg::float2>(NR_POLARIZATIONS * nr_pixels);
 
@@ -204,14 +201,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         }
       }
 
-      // Preload uvw
-      for (int time = 0; time < current_nr_timesteps; time++) {
-        int time_idx = time_offset_global + time_offset_local + time;
-        uvw_u[time] = uvw[time_idx].u;
-        uvw_v[time] = uvw[time_idx].v;
-        uvw_w[time] = uvw[time_idx].w;
-      }
-
       // Compute phase offset
       for (unsigned i = 0; i < nr_pixels; i++) {
         phase_offset[i] =
@@ -228,10 +217,11 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
             __attribute__((aligned(ALIGNMENT)));
 
         for (int time = 0; time < current_nr_timesteps; time++) {
-          // Load UVW coordinates
-          float u = uvw_u[time];
-          float v = uvw_v[time];
-          float w = uvw_w[time];
+          // Load UVW coordinate
+          int time_idx = time_offset_global + time_offset_local + time;
+          float u = uvw[time_idx].u;
+          float v = uvw[time_idx].v;
+          float w = uvw[time_idx].w;
 
           // Compute phase index
           float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
@@ -286,9 +276,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     free(phase_offset);
     free(phasor_real);
     free(phasor_imag);
-    free(uvw_u);
-    free(uvw_v);
-    free(uvw_w);
     free(subgrid_local);
   }  // end s
 }  // end kernel_gridder
