@@ -233,6 +233,13 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
                        phasor_real);
 #else
 
+        float phase_0_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+        float phase_d_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+        float phasor_c_real_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+        float phasor_c_imag_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+        float phasor_d_real_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+        float phasor_d_imag_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+
         for (int time = 0; time < current_nr_timesteps; time++) {
           // Load UVW coordinate
           int time_idx = time_offset_global + time_offset_local + time;
@@ -247,29 +254,34 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           float phase_offset = u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
 
           // Compute phases
-          int current_nr_channels = channel_end - channel_begin;
           float phase_0 = phase_offset - (phase_index * wavenumbers[0]);
           float phase_1 = phase_offset - (phase_index * wavenumbers[channel_end-1]);
-          float phase_d = (phase_1 - phase_0) / (current_nr_channels-1);
+          float phase_d = (phase_1 - phase_0) / (nr_channels_subgrid-1);
+          phase_0_[time] = phase_0;
+          phase_d_[time] = phase_d;
+        }
 
-          // Compute phasors
-          float phasor_0_real = cosf(phase_0);
-          float phasor_0_imag = sinf(phase_0);
-          float phasor_d_real = cosf(phase_d);
-          float phasor_d_imag = sinf(phase_d);
-          float phasor_c_real = phasor_0_real;
-          float phasor_c_imag = phasor_0_imag;
+        // Compute base and delta phasors
+        compute_sincos(current_nr_timesteps, phase_0_, phasor_c_imag_, phasor_c_real_);
+        compute_sincos(current_nr_timesteps, phase_d_, phasor_d_imag_, phasor_d_real_);
 
-          for (int chan = channel_begin; chan < channel_end; chan++) {
-            int chan_idx = chan - channel_begin;
-            phasor_real[time * nr_channels_subgrid + chan_idx] = phasor_c_real;
-            phasor_imag[time * nr_channels_subgrid + chan_idx] = phasor_c_imag;
-            float phasor_c_real_ = phasor_c_real;
-            float phasor_c_imag_ = phasor_c_imag;
-            phasor_c_real  = phasor_c_real_ * phasor_d_real;
-            phasor_c_imag  = phasor_c_real_ * phasor_d_imag;
-            phasor_c_real -= phasor_c_imag_ * phasor_d_imag;
-            phasor_c_imag += phasor_c_imag_ * phasor_d_real;
+        // Extrapolate phasors
+        for (int chan = 0; chan < nr_channels_subgrid; chan++) {
+          for (int time = 0; time < current_nr_timesteps; time++) {
+            float phasor_c_real = phasor_c_real_[time];
+            float phasor_c_imag = phasor_c_imag_[time];
+            float phasor_d_real = phasor_d_real_[time];
+            float phasor_d_imag = phasor_d_imag_[time];
+            phasor_real[time * nr_channels_subgrid + chan] = phasor_c_real;
+            phasor_imag[time * nr_channels_subgrid + chan] = phasor_c_imag;
+            float phasor_c_real_next = 0;
+            float phasor_c_imag_next = 0;
+            phasor_c_real_next  = phasor_c_real * phasor_d_real;
+            phasor_c_imag_next  = phasor_c_real * phasor_d_imag;
+            phasor_c_real_next -= phasor_c_imag * phasor_d_imag;
+            phasor_c_imag_next += phasor_c_imag * phasor_d_real;
+            phasor_c_real_[time] = phasor_c_real_next;
+            phasor_c_imag_[time] = phasor_c_imag_next;
           }
         }
 
