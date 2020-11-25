@@ -222,10 +222,9 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           // Compute phase offset
           float phase_offset = u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
 
-          // pragma vector aligned
+          // Compute phase
           for (int chan = channel_begin; chan < channel_end; chan++) {
             int chan_idx = chan - channel_begin;
-            // Compute phase
             float wavenumber = wavenumbers[chan];
             phase[time * nr_channels_subgrid + chan_idx] =
                 phase_offset - (phase_index * wavenumber);
