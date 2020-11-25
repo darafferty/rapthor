@@ -31,3 +31,4 @@ inline void compute_sincos(
 #endif
 
 #include "Reduction.h"
+#include "Extrapolation.h"

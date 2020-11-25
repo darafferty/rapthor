@@ -266,24 +266,11 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         compute_sincos(current_nr_timesteps, phase_d_, phasor_d_imag_, phasor_d_real_);
 
         // Extrapolate phasors
-        for (int chan = 0; chan < nr_channels_subgrid; chan++) {
-          for (int time = 0; time < current_nr_timesteps; time++) {
-            float phasor_c_real = phasor_c_real_[time];
-            float phasor_c_imag = phasor_c_imag_[time];
-            float phasor_d_real = phasor_d_real_[time];
-            float phasor_d_imag = phasor_d_imag_[time];
-            phasor_real[time * nr_channels_subgrid + chan] = phasor_c_real;
-            phasor_imag[time * nr_channels_subgrid + chan] = phasor_c_imag;
-            float phasor_c_real_next = 0;
-            float phasor_c_imag_next = 0;
-            phasor_c_real_next  = phasor_c_real * phasor_d_real;
-            phasor_c_imag_next  = phasor_c_real * phasor_d_imag;
-            phasor_c_real_next -= phasor_c_imag * phasor_d_imag;
-            phasor_c_imag_next += phasor_c_imag * phasor_d_real;
-            phasor_c_real_[time] = phasor_c_real_next;
-            phasor_c_imag_[time] = phasor_c_imag_next;
-          }
-        }
+        compute_extrapolation(
+          nr_channels_subgrid, current_nr_timesteps,
+          phasor_c_real_, phasor_c_imag_,
+          phasor_d_real_, phasor_d_imag_,
+          phasor_real, phasor_imag);
 
         size_t current_nr_visibilities =
             current_nr_timesteps * nr_channels_subgrid;
