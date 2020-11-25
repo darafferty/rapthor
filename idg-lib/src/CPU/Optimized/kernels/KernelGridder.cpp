@@ -198,6 +198,7 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         int y = i / subgrid_size;
         int x = i % subgrid_size;
 
+#if 0
         // Compute phase
         float phase[current_nr_timesteps * nr_channels_subgrid]
             __attribute__((aligned(ALIGNMENT)));
@@ -230,6 +231,44 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         // Compute phasor
         compute_sincos(current_nr_visibilities, phase, phasor_imag,
                        phasor_real);
+#else
+
+        for (int time = 0; time < current_nr_timesteps; time++) {
+          // Load UVW coordinate
+          int time_idx = time_offset_global + time_offset_local + time;
+          float u = uvw[time_idx].u;
+          float v = uvw[time_idx].v;
+          float w = uvw[time_idx].w;
+
+          // Compute phase index
+          float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
+
+          // Compute phase offset
+          float phase_offset = u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+
+          // Compute phases
+          int current_nr_channels = channel_end - channel_begin;
+          float phase_0 = phase_offset - (phase_index * wavenumbers[0]);
+          float phase_1 = phase_offset - (phase_index * wavenumbers[channel_end-1]);
+          float phase_d = (phase_1 - phase_0) / (current_nr_channels-1);
+
+          // Compute phasors
+          idg::float2 phasor_0 = {cosf(phase_0), sinf(phase_0)};
+          idg::float2 phasor_d = {cosf(phase_d), sinf(phase_d)};
+          idg::float2 phasor_c = phasor_0;
+
+          for (int chan = channel_begin; chan < channel_end; chan++) {
+            int chan_idx = chan - channel_begin;
+            int phasor_idx = time * nr_channels_subgrid + chan_idx;
+            phasor_real[phasor_idx] = phasor_c.real;
+            phasor_imag[phasor_idx] = phasor_c.imag;
+            phasor_c = phasor_c * phasor_d;
+          }
+        }
+
+        size_t current_nr_visibilities =
+            current_nr_timesteps * nr_channels_subgrid;
+#endif
 
         // Compute pixels
         idg::float2 pixels[NR_POLARIZATIONS]
