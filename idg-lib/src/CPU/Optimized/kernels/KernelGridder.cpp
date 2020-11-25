@@ -7,6 +7,8 @@
 
 #include "Math.h"
 
+#define USE_EXTRAPOLATE
+
 inline void update_subgrid(int nr_pixels, int nr_stations, int subgrid_size,
                            int subgrid, int aterm_index, int station1,
                            int station2, const float* spheroidal,
@@ -180,7 +182,11 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           int time_idx = time_offset_global + time_offset_local + time;
           int chan_idx = chan - channel_begin;
           size_t src_idx = index_visibility(nr_channels, time_idx, chan, 0);
+          #if !defined(USE_EXTRAPOLATE)
           size_t dst_idx = time * nr_channels_subgrid + chan_idx;
+          #else
+          size_t dst_idx = chan_idx * current_nr_timesteps + time;
+          #endif
 
           vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
           vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
@@ -198,7 +204,7 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         int y = i / subgrid_size;
         int x = i % subgrid_size;
 
-#if 0
+#if !defined(USE_EXTRAPOLATE)
         // Compute phase
         float phase[current_nr_timesteps * nr_channels_subgrid]
             __attribute__((aligned(ALIGNMENT)));
@@ -232,7 +238,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         compute_sincos(current_nr_visibilities, phase, phasor_imag,
                        phasor_real);
 #else
-
         float phase_0_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
         float phase_d_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
         float phasor_c_real_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));

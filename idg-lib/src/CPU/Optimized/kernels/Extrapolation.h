@@ -16,8 +16,8 @@ void compute_extrapolation_scalar(
     for (int i = *offset; i < inner_dim; i++) {
       float value_current_real = input_real[i];
       float value_current_imag = input_imag[i];
-      output_real[i * outer_dim + o] = value_current_real;
-      output_imag[i * outer_dim + o] = value_current_imag;
+      output_real[o * inner_dim + i] = value_current_real;
+      output_imag[o * inner_dim + i] = value_current_imag;
       float value_next_real = 0;
       float value_next_imag = 0;
       value_next_real  = value_current_real * delta_real[i];
@@ -47,12 +47,10 @@ void compute_extrapolation_avx(
 
   for (int o = 0; o < outer_dim; o++) {
     for (int i = *offset; i < (inner_dim / vector_length) * vector_length; i += vector_length) {
-      for (int ii = 0; ii < vector_length; ii++) {
-        output_real[(i + ii) * outer_dim + o] = input_real[i + ii];
-        output_imag[(i + ii) * outer_dim + o] = input_imag[i + ii];
-      }
       __m256 value_current_r = _mm256_load_ps(&input_real[i]);
       __m256 value_current_i = _mm256_load_ps(&input_imag[i]);
+      _mm256_storeu_ps(&output_real[o * inner_dim + i], value_current_r);
+      _mm256_storeu_ps(&output_imag[o * inner_dim + i], value_current_i);
       __m256 delta_r = _mm256_load_ps(&delta_real[i]);
       __m256 delta_i = _mm256_load_ps(&delta_imag[i]);
       __m256 value_next_r = _mm256_mul_ps(value_current_r, delta_r);
