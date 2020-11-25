@@ -2,32 +2,29 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 void compute_extrapolation(
-  const int nr_channels,
-  const int nr_timesteps,
-  float *phasor_c_real_,
-  float *phasor_c_imag_,
-  float *phasor_d_real_,
-  float *phasor_d_imag_,
-  float *phasor_real,
-  float *phasor_imag
-)
+  const int outer_dim,
+  const int inner_dim,
+        float *input_real,
+        float *input_imag,
+  const float *delta_real,
+  const float *delta_imag,
+        float *output_real,
+        float *output_imag)
 {
-  for (int chan = 0; chan < nr_channels; chan++) {
-    for (int time = 0; time < nr_timesteps; time++) {
-      float phasor_c_real = phasor_c_real_[time];
-      float phasor_c_imag = phasor_c_imag_[time];
-      float phasor_d_real = phasor_d_real_[time];
-      float phasor_d_imag = phasor_d_imag_[time];
-      phasor_real[time * nr_channels + chan] = phasor_c_real;
-      phasor_imag[time * nr_channels + chan] = phasor_c_imag;
-      float phasor_c_real_next = 0;
-      float phasor_c_imag_next = 0;
-      phasor_c_real_next  = phasor_c_real * phasor_d_real;
-      phasor_c_imag_next  = phasor_c_real * phasor_d_imag;
-      phasor_c_real_next -= phasor_c_imag * phasor_d_imag;
-      phasor_c_imag_next += phasor_c_imag * phasor_d_real;
-      phasor_c_real_[time] = phasor_c_real_next;
-      phasor_c_imag_[time] = phasor_c_imag_next;
+  for (int o = 0; o < outer_dim; o++) {
+    for (int i = 0; i < inner_dim; i++) {
+      float value_current_real = input_real[i];
+      float value_current_imag = input_imag[i];
+      output_real[i * outer_dim + o] = value_current_real;
+      output_imag[i * outer_dim + o] = value_current_imag;
+      float value_next_real = 0;
+      float value_next_imag = 0;
+      value_next_real  = value_current_real * delta_real[i];
+      value_next_imag  = value_current_real * delta_imag[i];
+      value_next_real -= value_current_imag * delta_imag[i];
+      value_next_imag += value_current_imag * delta_real[i];
+      input_real[i] = value_next_real;
+      input_imag[i] = value_next_imag;
     }
   }
 }
