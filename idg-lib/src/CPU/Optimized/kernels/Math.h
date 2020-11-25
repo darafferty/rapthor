@@ -4,9 +4,7 @@
 #include "common/Math.h"
 
 #if defined(USE_LOOKUP)
-//#include "Lookup_01.h"
-//#include "Lookup_02.h"
-#include "Lookup_03.h"
+#include "Lookup.h"
 #else
 inline void compute_sincos(const int n, const float *x, float *sin,
                            float *cos) {
