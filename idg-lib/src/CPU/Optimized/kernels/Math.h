@@ -5,19 +5,28 @@
 
 #if defined(USE_LOOKUP)
 #include "Lookup.h"
-#else
-inline void compute_sincos(const int n, const float *x, float *sin,
-                           float *cos) {
-#if defined(USE_VML)
+#elif defined(USE_VML)
+#define VML_PRECISION VML_LA
+#include <mkl_vml.h>
+inline void compute_sincos(
+  const int n, const float *x,
+  float *sin,
+  float *cos)
+{
   vmsSinCos(n, x, sin, cos, VML_PRECISION);
+}
 #else
+inline void compute_sincos(
+  const int n, const float *x,
+  float *sin,
+  float *cos)
+{
   for (int i = 0; i < n; i++) {
     sin[i] = sinf(x[i]);
   }
   for (int i = 0; i < n; i++) {
     cos[i] = cosf(x[i]);
   }
-#endif
 }
 #endif
 
