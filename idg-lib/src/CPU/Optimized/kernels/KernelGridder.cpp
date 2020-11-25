@@ -180,11 +180,11 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           int time_idx = time_offset_global + time_offset_local + time;
           int chan_idx = chan - channel_begin;
           size_t src_idx = index_visibility(nr_channels, time_idx, chan, 0);
-          #if !defined(USE_EXTRAPOLATE)
+#if !defined(USE_EXTRAPOLATE)
           size_t dst_idx = time * nr_channels_subgrid + chan_idx;
-          #else
+#else
           size_t dst_idx = chan_idx * current_nr_timesteps + time;
-          #endif
+#endif
 
           vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
           vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
@@ -218,7 +218,8 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
 
           // Compute phase offset
-          float phase_offset = u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+          float phase_offset =
+              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
 
           // Compute phase
           for (int chan = channel_begin; chan < channel_end; chan++) {
@@ -236,12 +237,18 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         compute_sincos(current_nr_visibilities, phase, phasor_imag,
                        phasor_real);
 #else
-        float phase_0_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
-        float phase_d_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
-        float phasor_c_real_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
-        float phasor_c_imag_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
-        float phasor_d_real_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
-        float phasor_d_imag_[current_nr_timesteps] __attribute__((aligned(ALIGNMENT)));
+        float phase_0_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phase_d_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_c_real_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_c_imag_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_d_real_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_d_imag_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
 
         for (int time = 0; time < current_nr_timesteps; time++) {
           // Load UVW coordinate
@@ -254,26 +261,28 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
 
           // Compute phase offset
-          float phase_offset = u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+          float phase_offset =
+              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
 
           // Compute phases
           float phase_0 = phase_offset - (phase_index * wavenumbers[0]);
-          float phase_1 = phase_offset - (phase_index * wavenumbers[channel_end-1]);
-          float phase_d = (phase_1 - phase_0) / (nr_channels_subgrid-1);
+          float phase_1 =
+              phase_offset - (phase_index * wavenumbers[channel_end - 1]);
+          float phase_d = (phase_1 - phase_0) / (nr_channels_subgrid - 1);
           phase_0_[time] = phase_0;
           phase_d_[time] = phase_d;
         }
 
         // Compute base and delta phasors
-        compute_sincos(current_nr_timesteps, phase_0_, phasor_c_imag_, phasor_c_real_);
-        compute_sincos(current_nr_timesteps, phase_d_, phasor_d_imag_, phasor_d_real_);
+        compute_sincos(current_nr_timesteps, phase_0_, phasor_c_imag_,
+                       phasor_c_real_);
+        compute_sincos(current_nr_timesteps, phase_d_, phasor_d_imag_,
+                       phasor_d_real_);
 
         // Extrapolate phasors
-        compute_extrapolation(
-          nr_channels_subgrid, current_nr_timesteps,
-          phasor_c_real_, phasor_c_imag_,
-          phasor_d_real_, phasor_d_imag_,
-          phasor_real, phasor_imag);
+        compute_extrapolation(nr_channels_subgrid, current_nr_timesteps,
+                              phasor_c_real_, phasor_c_imag_, phasor_d_real_,
+                              phasor_d_imag_, phasor_real, phasor_imag);
 
         size_t current_nr_visibilities =
             current_nr_timesteps * nr_channels_subgrid;

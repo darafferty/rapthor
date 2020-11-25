@@ -99,8 +99,8 @@ inline void compute_sincos_avx(unsigned* offset, const unsigned n,
     __m256 f3 = _mm256_gather_ps(lookup, u4);  // perform lookup of real
     __m256 f4 = _mm256_gather_ps(lookup, u5);  // perform lookup of imag
 #endif
-    _mm256_store_ps(&cos[i], f3); // store output
-    _mm256_store_ps(&sin[i], f4); // store output
+    _mm256_store_ps(&cos[i], f3);  // store output
+    _mm256_store_ps(&sin[i], f4);  // store output
   }
 
   *offset += vector_length * ((n - *offset) / vector_length);
@@ -139,7 +139,6 @@ inline void compute_sincos_scalar(unsigned* offset, const unsigned n,
                                   const float* __restrict__ x,
                                   float* __restrict__ sin,
                                   float* __restrict__ cos) {
-
   for (unsigned i = *offset; i < n; i++) {
     unsigned index = round(x[i] * (TWO_PI_INT / TWO_PI));
     index &= (TWO_PI_INT - 1);
