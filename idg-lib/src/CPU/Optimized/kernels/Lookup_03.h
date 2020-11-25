@@ -151,29 +151,12 @@ inline void compute_sincos_scalar(unsigned* offset, const unsigned n,
                                   const float* __restrict__ x,
                                   float* __restrict__ sin,
                                   float* __restrict__ cos) {
-  const float two_pi_f = TWO_PI;
-  const float two_pi_inv_f = 1 / TWO_PI;
-  const float two_pi_int_f = TWO_PI_INT;
-  const float scale_f = two_pi_int_f * two_pi_inv_f;
-  const int hlf_pi_int_i = HLF_PI_INT;
-  const int mask_i = TWO_PI_INT - 1;
 
   for (unsigned i = *offset; i < n; i++) {
-    float f0 = x[i];               // load input
-    float f1 = f0 * two_pi_inv_f;  // divide input by 2 * pi
-    int i0 = (int)f1;              // get integer part
-    float f2 = (float)i0;          // convert to float
-    float f3 = f2 * two_pi_f;      // get multiple of 2 * pi
-    float f4 = f0 - f3;            // normalize input
-    float f5 = f4 * scale_f;       // apply scale
-    int i1 = (int)round(f5);       // convert to int
-    int i2 = i1 + hlf_pi_int_i;    // shift by 0.5 * pi
-    int i3 = i2 & mask_i;          // apply mask, first index
-    int i4 = i1 & mask_i;          // apply mask, second index
-    float f6 = lookup[i3];         // lookup cosine
-    float f7 = lookup[i4];         // lookup sine
-    cos[i] = f6;                   // store output
-    sin[i] = f7;                   // store output
+    unsigned index = round(x[i] * (TWO_PI_INT / TWO_PI));
+    index &= (TWO_PI_INT - 1);
+    cos[i] = lookup[(index + HLF_PI_INT) & (TWO_PI_INT - 1)];
+    sin[i] = lookup[index];
   }
 
   *offset = n;
