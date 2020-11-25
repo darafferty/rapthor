@@ -7,8 +7,6 @@
 
 #include "Math.h"
 
-#define USE_EXTRAPOLATE
-
 inline void update_subgrid(int nr_pixels, int nr_stations, int subgrid_size,
                            int subgrid, int aterm_index, int station1,
                            int station2, const float* spheroidal,

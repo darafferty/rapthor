@@ -24,6 +24,7 @@ option (PERFORMANCE_REPORT "Report performance metrics" OFF)
 option (COMPILE_VERBOSE "Report compiler flags used during runtime compilation" OFF)
 option (STRICT_WARNINGS "Turn compiliation warnings into errors" ON)
 option (USE_LOOKUP_TABLE "Use sine/cosine lookup table" OFF)
+option (USE_PHASOR_EXTRAPOLATION "Use phasor extrapolation" OFF)
 option (CUDA_KERNEL_DEBUG "Enable debug mode for CUDA kernels" OFF)
 
 # Installation
