@@ -253,16 +253,23 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           float phase_d = (phase_1 - phase_0) / (current_nr_channels-1);
 
           // Compute phasors
-          idg::float2 phasor_0 = {cosf(phase_0), sinf(phase_0)};
-          idg::float2 phasor_d = {cosf(phase_d), sinf(phase_d)};
-          idg::float2 phasor_c = phasor_0;
+          float phasor_0_real = cosf(phase_0);
+          float phasor_0_imag = sinf(phase_0);
+          float phasor_d_real = cosf(phase_d);
+          float phasor_d_imag = sinf(phase_d);
+          float phasor_c_real = phasor_0_real;
+          float phasor_c_imag = phasor_0_imag;
 
           for (int chan = channel_begin; chan < channel_end; chan++) {
             int chan_idx = chan - channel_begin;
-            int phasor_idx = time * nr_channels_subgrid + chan_idx;
-            phasor_real[phasor_idx] = phasor_c.real;
-            phasor_imag[phasor_idx] = phasor_c.imag;
-            phasor_c = phasor_c * phasor_d;
+            phasor_real[time * nr_channels_subgrid + chan_idx] = phasor_c_real;
+            phasor_imag[time * nr_channels_subgrid + chan_idx] = phasor_c_imag;
+            float phasor_c_real_ = phasor_c_real;
+            float phasor_c_imag_ = phasor_c_imag;
+            phasor_c_real  = phasor_c_real_ * phasor_d_real;
+            phasor_c_imag  = phasor_c_real_ * phasor_d_imag;
+            phasor_c_real -= phasor_c_imag_ * phasor_d_imag;
+            phasor_c_imag += phasor_c_imag_ * phasor_d_real;
           }
         }
 
