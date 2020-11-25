@@ -30,7 +30,7 @@ void compute_extrapolation_scalar(
   }
 
   *offset = inner_dim;
-}
+} // compute_extrapolation_scalar
 
 void compute_extrapolation_avx(
         int *offset,
@@ -63,7 +63,7 @@ void compute_extrapolation_avx(
   }
 
   *offset += vector_length * ((inner_dim - *offset) / vector_length);
-}
+} // end compute_extrapolation_avx
 
 void compute_extrapolation_avx_fma(
         int *offset,
@@ -98,7 +98,7 @@ void compute_extrapolation_avx_fma(
 
   *offset += vector_length * ((inner_dim - *offset) / vector_length);
 #endif
-}
+} // end compute_extrapolation_avx_fma
 
 void compute_extrapolation(
   const int outer_dim,
@@ -112,16 +112,19 @@ void compute_extrapolation(
 {
   int offset = 0;
 
+  // Vectorized loop, 8-elements, AVX FMA
   compute_extrapolation_avx_fma(
     &offset, outer_dim, inner_dim,
     input_real, input_imag, delta_real, delta_imag,
     output_real, output_imag);
 
+  // Vectorized loop, 8-elements, AVX
   compute_extrapolation_avx(
     &offset, outer_dim, inner_dim,
     input_real, input_imag, delta_real, delta_imag,
     output_real, output_imag);
 
+  // Remainder loop, scalar
   compute_extrapolation_scalar(
     &offset, outer_dim, inner_dim,
     input_real, input_imag, delta_real, delta_imag,
