@@ -1,7 +1,7 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-void compute_extrapolation_scalar(
+inline void compute_extrapolation_scalar(
         int *offset,
   const int outer_dim,
   const int inner_dim,
@@ -32,7 +32,7 @@ void compute_extrapolation_scalar(
   *offset = inner_dim;
 } // compute_extrapolation_scalar
 
-void compute_extrapolation_avx(
+inline void compute_extrapolation_avx(
         int *offset,
   const int outer_dim,
   const int inner_dim,
@@ -65,7 +65,7 @@ void compute_extrapolation_avx(
   *offset += vector_length * ((inner_dim - *offset) / vector_length);
 } // end compute_extrapolation_avx
 
-void compute_extrapolation_avx_fma(
+inline void compute_extrapolation_avx_fma(
         int *offset,
   const int outer_dim,
   const int inner_dim,
@@ -100,7 +100,7 @@ void compute_extrapolation_avx_fma(
 #endif
 } // end compute_extrapolation_avx_fma
 
-void compute_extrapolation(
+inline void compute_extrapolation(
   const int outer_dim,
   const int inner_dim,
         float *input_real,
