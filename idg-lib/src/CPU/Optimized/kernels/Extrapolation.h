@@ -1,7 +1,8 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-void compute_extrapolation(
+void compute_extrapolation_scalar(
+        int *offset,
   const int outer_dim,
   const int inner_dim,
         float *input_real,
@@ -11,7 +12,7 @@ void compute_extrapolation(
         float *output_real,
         float *output_imag)
 {
-  for (int o = 0; o < outer_dim; o++) {
+  for (int o = *offset; o < outer_dim; o++) {
     for (int i = 0; i < inner_dim; i++) {
       float value_current_real = input_real[i];
       float value_current_imag = input_imag[i];
@@ -27,4 +28,24 @@ void compute_extrapolation(
       input_imag[i] = value_next_imag;
     }
   }
+
+  *offset = outer_dim;
+}
+
+void compute_extrapolation(
+  const int outer_dim,
+  const int inner_dim,
+        float *input_real,
+        float *input_imag,
+  const float *delta_real,
+  const float *delta_imag,
+        float *output_real,
+        float *output_imag)
+{
+  int offset = 0;
+
+  compute_extrapolation_scalar(
+    &offset, outer_dim, inner_dim,
+    input_real, input_imag, delta_real, delta_imag,
+    output_real, output_imag);
 }
