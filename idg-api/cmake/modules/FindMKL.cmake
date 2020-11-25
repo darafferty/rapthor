@@ -31,4 +31,4 @@ find_path(MKL_INCLUDE_DIRS mkl.h PATHS ${_MKL_INCLUDE_DIR})
 set(_MKL_INCLUDE_DIR $ENV{MKL_INCLUDE})
 find_path(MKL_INCLUDE_DIRS mkl.h PATHS ${_MKL_INCLUDE_DIR})
 
-find_package_handle_standard_args(mkl DEFAULT_MSG MKL_LIBRARIES MKL_INCLUDE_DIRS)
+find_package_handle_standard_args(MKL DEFAULT_MSG MKL_LIBRARIES MKL_INCLUDE_DIRS)
