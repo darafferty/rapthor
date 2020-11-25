@@ -10,8 +10,9 @@
 #include <stdint.h>
 #include <omp.h>
 
-#include "Types.h"
-#include "Index.h"
+#include "common/Types.h"
+#include "common/Index.h"
+
 #include "idg-fft.h"
 
 extern "C" {

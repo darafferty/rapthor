@@ -6,8 +6,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "Types.h"
-#include "Index.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
 extern "C" {
 void kernel_splitter(const long nr_subgrids, const long grid_size,

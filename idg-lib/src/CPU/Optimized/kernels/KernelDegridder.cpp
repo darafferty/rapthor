@@ -9,9 +9,9 @@
 #endif
 
 #include "common/memory.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
-#include "Types.h"
-#include "Index.h"
 #include "Math.h"
 
 extern "C" {

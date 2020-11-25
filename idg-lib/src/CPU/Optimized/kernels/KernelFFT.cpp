@@ -8,7 +8,7 @@
 #include <fftw3.h>
 #include <stdint.h>
 
-#include "Types.h"
+#include "common/Types.h"
 
 #include "idg-config.h"
 

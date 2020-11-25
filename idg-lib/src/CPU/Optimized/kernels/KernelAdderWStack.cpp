@@ -5,8 +5,8 @@
 
 #include <omp.h>
 
-#include "Types.h"
-#include "Index.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
 extern "C" {
 void kernel_adder_wstack(const long nr_subgrids, const long grid_size,

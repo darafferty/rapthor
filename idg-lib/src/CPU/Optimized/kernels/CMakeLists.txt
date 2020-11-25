@@ -3,12 +3,6 @@
 
 project(cpu-optimized-kernel)
 
-# Include directories
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../../common/
-    ${FFTW3_INCLUDE_DIR}
-)
-
 # Build type options
 add_compile_options("-Wall")
 add_compile_options("-DDEBUG")
