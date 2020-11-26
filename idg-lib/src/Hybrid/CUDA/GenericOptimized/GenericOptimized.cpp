@@ -77,7 +77,7 @@ void GenericOptimized::run_gridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  device.set_context();
+  auto& context = device.get_context();
 
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
@@ -97,7 +97,7 @@ void GenericOptimized::run_gridding(
   int jobsize = m_gridding_state.jobsize[0];
 
   // Page-locked host memory
-  cu::RegisteredMemory h_metadata((void*)plan.get_metadata_ptr(),
+  cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   auto sizeof_subgrids =
@@ -116,9 +116,9 @@ void GenericOptimized::run_gridding(
   std::vector<std::unique_ptr<cu::Event>> gpuFinished;
   std::vector<std::unique_ptr<cu::Event>> outputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
-    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
-    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
+    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
+    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
+    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
   }
 
   // Load memory objects
@@ -374,7 +374,7 @@ void GenericOptimized::run_degridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  device.set_context();
+  auto& context = device.get_context();
 
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
@@ -394,7 +394,7 @@ void GenericOptimized::run_degridding(
   int jobsize = m_gridding_state.jobsize[0];
 
   // Page-locked host memory
-  cu::RegisteredMemory h_metadata((void*)plan.get_metadata_ptr(),
+  cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   auto sizeof_subgrids =
@@ -413,9 +413,9 @@ void GenericOptimized::run_degridding(
   std::vector<std::unique_ptr<cu::Event>> gpuFinished;
   std::vector<std::unique_ptr<cu::Event>> outputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
-    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
-    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event()));
+    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
+    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
+    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
   }
 
   // Load memory objects
@@ -685,7 +685,6 @@ void GenericOptimized::do_calibrate_init(
 
   // Load device
   InstanceCUDA& device = get_device(0);
-  device.set_context();
   device.set_report(report);
 
   // Load stream
@@ -864,7 +863,7 @@ void GenericOptimized::do_calibrate_update(
 
   // Load device
   InstanceCUDA& device = get_device(0);
-  device.set_context();
+  auto& context = device.get_context();
 
   // Transpose aterms and aterm derivatives
   const unsigned int nr_aterms = nr_stations * nr_timeslots;
@@ -907,17 +906,18 @@ void GenericOptimized::do_calibrate_update(
       device.retrieve_device_memory(d_aterm_idx_id);
 
   // Allocate additional data structures
-  cu::DeviceMemory d_aterms_deriv(aterm_derivatives.bytes());
-  cu::DeviceMemory d_hessian(hessian.bytes());
-  cu::DeviceMemory d_gradient(gradient.bytes());
-  cu::DeviceMemory d_residual(sizeof(double));
-  cu::HostMemory h_hessian(hessian.bytes());
-  cu::HostMemory h_gradient(gradient.bytes());
-  cu::HostMemory h_residual(sizeof(double));
+  cu::DeviceMemory d_aterms_deriv(context, aterm_derivatives.bytes());
+  cu::DeviceMemory d_hessian(context, hessian.bytes());
+  cu::DeviceMemory d_gradient(context, gradient.bytes());
+  cu::DeviceMemory d_residual(context, sizeof(double));
+  cu::HostMemory h_hessian(context, hessian.bytes());
+  cu::HostMemory h_gradient(context, gradient.bytes());
+  cu::HostMemory h_residual(context, sizeof(double));
   // d_hessian.zero();
 
   // Events
-  cu::Event inputCopied, executeFinished, outputCopied;
+  cu::Event inputCopied(context), executeFinished(context),
+      outputCopied(context);
 
   // Copy input data to device
   htodstream.memcpyHtoDAsync(d_aterms, aterms_transposed.data(),

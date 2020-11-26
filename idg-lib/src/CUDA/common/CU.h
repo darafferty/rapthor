@@ -61,20 +61,25 @@ class Device {
 
 class Context {
  public:
-  Context();
   Context(Device &device, int flags = 0);
   ~Context();
-  void setCurrent() const;
-  void setCacheConfig(CUfunc_cache config);
-  void setSharedMemConfig(CUsharedconfig config);
-  void synchronize();
-  void reset();
-
-  operator CUcontext();
 
  private:
+  void setCurrent() const;
+  void freeCurrent() const;
   CUcontext _context;
   CUdevice _device;
+
+  friend class ScopedCurrentContext;
+};
+
+class ScopedCurrentContext {
+ public:
+  ScopedCurrentContext(const Context &context);
+  ~ScopedCurrentContext();
+
+ private:
+  const Context &_context;
 };
 
 class Memory : public idg::auxiliary::Memory {
@@ -98,7 +103,8 @@ class Memory : public idg::auxiliary::Memory {
 
 class HostMemory : public Memory {
  public:
-  HostMemory(size_t size = 0, int flags = CU_MEMHOSTALLOC_PORTABLE);
+  HostMemory(const Context &context, size_t size = 0,
+             int flags = CU_MEMHOSTALLOC_PORTABLE);
   ~HostMemory() override;
 
   void resize(size_t size) override;
@@ -106,12 +112,13 @@ class HostMemory : public Memory {
 
  private:
   void release();
+  const Context &_context;
   int _flags;
 };
 
 class RegisteredMemory : public Memory {
  public:
-  RegisteredMemory(void *ptr, size_t size,
+  RegisteredMemory(const Context &context, void *ptr, size_t size,
                    int flags = CU_MEMHOSTREGISTER_PORTABLE);
   ~RegisteredMemory() override;
 
@@ -120,12 +127,13 @@ class RegisteredMemory : public Memory {
 
  private:
   void release();
+  const Context &_context;
   int _flags;
 };
 
 class DeviceMemory {
  public:
-  DeviceMemory(size_t size);
+  DeviceMemory(const Context &context, size_t size);
   ~DeviceMemory();
 
   size_t capacity();
@@ -152,6 +160,8 @@ class DeviceMemory {
   }
 
  private:
+  void release();
+  const Context &_context;
   CUdeviceptr _ptr;
   size_t _capacity;
   size_t _size;
@@ -160,8 +170,9 @@ class DeviceMemory {
 
 class UnifiedMemory {
  public:
-  UnifiedMemory(void *ptr, size_t size);
-  UnifiedMemory(size_t size, unsigned flags = CU_MEM_ATTACH_GLOBAL);
+  UnifiedMemory(const Context &context, void *ptr, size_t size);
+  UnifiedMemory(const Context &context, size_t size,
+                unsigned flags = CU_MEM_ATTACH_GLOBAL);
   ~UnifiedMemory();
 
   template <typename T>
@@ -172,6 +183,8 @@ class UnifiedMemory {
   void set_advice(CUmem_advise advise, Device &device);
 
  private:
+  void release();
+  const Context &_context;
   CUdeviceptr _ptr;
   size_t _size;
   bool free = false;
@@ -189,20 +202,21 @@ class Source {
 
 class Module {
  public:
-  Module(const char *file_name);
-  Module(const void *data);
+  Module(const Context &context, const char *file_name);
+  Module(const Context &context, const void *data);
   ~Module();
 
   operator CUmodule();
 
  private:
+  const Context &_context;
   CUmodule _module;
 };
 
 class Function {
  public:
-  Function(Module &module, const char *name);
-  Function(CUfunction function);
+  Function(const Context &context, Module &module, const char *name);
+  Function(const Context &context, CUfunction function);
 
   int get_attribute(CUfunction_attribute attribute);
   void setCacheConfig(CUfunc_cache config);
@@ -210,12 +224,13 @@ class Function {
   operator CUfunction();
 
  private:
+  const Context &_context;
   CUfunction _function;
 };
 
 class Event {
  public:
-  Event(int flags = CU_EVENT_DEFAULT);
+  Event(const Context &context, int flags = CU_EVENT_DEFAULT);
   ~Event();
 
   void synchronize();
@@ -224,12 +239,13 @@ class Event {
   operator CUevent();
 
  private:
+  const Context &_context;
   CUevent _event;
 };
 
 class Stream {
  public:
-  Stream(int flags = CU_STREAM_DEFAULT);
+  Stream(const Context &context, int flags = CU_STREAM_DEFAULT);
   ~Stream();
 
   void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
@@ -250,6 +266,7 @@ class Stream {
   operator CUstream();
 
  private:
+  const Context &_context;
   CUstream _stream;
 };
 
