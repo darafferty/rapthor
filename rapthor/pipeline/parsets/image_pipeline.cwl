@@ -295,7 +295,6 @@ steps:
     doc: |
       This step is a subpipeline that performs the processing (imaging, etc) for
       each sector.
-    label: image_sector
     run: {{ pipeline_working_dir }}/subpipeline_parset.cwl
     in:
       - id: obs_filename
