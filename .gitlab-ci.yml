@@ -122,29 +122,6 @@ idg-integration-das:
     - pip3 install --user astropy scipy pytest pytest-lazy-fixture
     # pytest executable is installed in local/bin. Add to PATH
     - export PATH=$PATH:/home/gitlab-runner/.local/bin
-    # Install casacore --> replace with module load casacore/3.[something]
-    - mkdir -p ~/opt/casacore && cd ~/opt/casacore && rm -rf *
-    - git clone --branch v3.3.0 https://github.com/casacore/casacore src
-    - mkdir build && cd build
-    - cmake -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_PREFIX_PATH="${CFITSIO_ROOT_DIR};${WCSLIB_ROOT_DIR};${FFTW3_ROOT_DIR}" -DBUILD_PYTHON=Off -DBUILD_PYTHON3=On -DUSE_FFTW3=On -DDATA_DIR=/cm/shared/package/casacore/v2.4.1-gcc-6.3.0/data/ ../src
-    - make install -j20
-    # Install everybeam --> replace with module load everybeam/[stable/latest]
-    - mkdir -p ~/opt/everybeam && cd ~/opt/everybeam && rm -rf *
-    - git clone https://git.astron.nl/RD/EveryBeam.git src
-    - cd src/ && git checkout v0.1.0 && cd ..
-    - mkdir build && cd build
-    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH=${FFTW3_ROOT_DIR} -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j4
-    # Install aoflagger3 --> replace with module load aoflagger3/[something]
-    - mkdir -p ~/opt/aoflagger && cd ~/opt/aoflagger  && rm -rf *
-    - git clone https://gitlab.com/aroffringa/aoflagger.git src
-    # Remove line from CMakeLists.txt
-    - cd src
-    - grep -v "pkg_check_modules(GTKMM gtkmm-3.0>=3.0.0)" CMakeLists.txt > temp && mv temp CMakeLists.txt
-    - cd ..
-    - mkdir build && cd build
-    - cmake -DCMAKE_LIBRARY_PATH=/usr/lib64:$CMAKE_LIBRARY_PATH -DFFTW3_LIB=${FFTW3_LIB}/libfftw3.so -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j4
     # Install idg
     - mkdir -p ~/opt/idg && cd ~/opt/idg  && rm -rf *
     # Copy source code to src
@@ -159,7 +136,7 @@ idg-integration-das:
     - git clone https://gitlab.com/aroffringa/wsclean.git src
     - cd src/ && git checkout development && cd ..
     - mkdir build && cd build
-    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH="~/opt/idg;~/opt/everybeam;${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
+    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/wsclean/bin
     # Install dp3
@@ -167,11 +144,11 @@ idg-integration-das:
     - git clone https://github.com/lofar-astron/DP3.git src
     - cd src/ && git checkout development && cd ..
     - mkdir build && cd build
-    - cmake -DCASACORE_ROOT_DIR=~/opt/casacore -DCMAKE_PREFIX_PATH="~/opt/aoflagger;~/opt/everybeam;~/opt/idg" -DCMAKE_INSTALL_PREFIX=.. ../src
+    - cmake -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="${AOFLAGGER_ROOT_DIR};${EVERYBEAM_ROOT_DIR};~/opt/idg" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/dp3/bin
     # Extend the LD_LIBRARY_PATH
-    - export LD_LIBRARY_PATH=~/opt/everybeam/lib/:~/opt/casacore/lib:~/opt/aoflagger/lib:~/opt/idg/lib:$LD_LIBRARY_PATH
+    - export LD_LIBRARY_PATH=~/opt/idg/lib:$LD_LIBRARY_PATH
     - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
   script:
     - cd ~/opt/idg/build

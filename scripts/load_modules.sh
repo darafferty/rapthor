@@ -12,3 +12,9 @@ module load lua/5.3.5
 module load boost/1.73-gcc-8.3.0
 module load pybind11/2.4.3
 module load cuda101/toolkit
+
+# Load modulefiles from the "schaap-stack"
+module load casacore/3.3.0-gcc-8.3.0
+module load everybeam/0.1.0-gcc-8.3.0
+module load aoflagger/3.0.0-gcc-8.3.0
+
