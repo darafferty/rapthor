@@ -489,7 +489,10 @@ void Plan::initialize(
   aterm_indices.reserve(nr_baselines * nr_timesteps);
 
   // Set aterm index for every timestep
+  #pragma omp parallel for
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
+    unsigned time_idx = 0;
+
     for (unsigned timeslot = 0; timeslot < nr_timeslots; timeslot++) {
       // Get aterm offset
       const unsigned current_aterms_offset = aterms_offsets(timeslot);
@@ -504,7 +507,7 @@ void Plan::initialize(
 
       for (unsigned timestep = 0; timestep < nr_timesteps_per_aterm;
            timestep++) {
-        aterm_indices.push_back(aterm_index);
+        aterm_indices[bl * nr_timesteps + time_idx++] = aterm_index;
       }
     }
   }
