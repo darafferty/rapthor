@@ -12,12 +12,12 @@ inputs:
     inputBinding:
       prefix: -j
       position: 1
-  - id: source_list
+  - id: residual_image
     type: string
     inputBinding:
       prefix: -restore-list
       position: 2
-  - id: residual_image
+  - id: source_list
     type: string
     inputBinding:
       position: 3
