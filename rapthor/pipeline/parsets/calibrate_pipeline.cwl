@@ -466,6 +466,19 @@ steps:
     out:
       - id: outh5parm
 
+  - id: process_slow_gains1
+    label: Process slow-gain solutions 1
+    doc: |
+      This step processes the gain solutions, smoothing and renormalizing them.
+    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    in:
+      - id: slowh5parm
+        source: combine_slow_gains1/outh5parm
+      - id: smooth
+        valueFrom: 'True'
+    out:
+      - id: outh5parm
+
   - id: combine_fast_and_slow_h5parms1
     label: Combine fast-phase and slow-gain solutions 1
     doc: |
@@ -477,7 +490,7 @@ steps:
       - id: inh5parm1
         source: combine_fast_phases/outh5parm
       - id: inh5parm2
-        source: combine_slow_gains1/outh5parm
+        source: process_slow_gains1/outh5parm
       - id: outh5parm
         source: combined_h5parms1
       - id: mode
@@ -561,8 +574,8 @@ steps:
     out:
       - id: outh5parm
 
-  - id: process_slow_gains
-    label: Process slow-gain solutions
+  - id: process_slow_gains2
+    label: Process slow-gain solutions 2
     doc: |
       This step processes the gain solutions, smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
@@ -584,7 +597,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: process_slow_gains/outh5parm
+        source: process_slow_gains2/outh5parm
       - id: inh5parm2
         source: combine_slow_gains1/outh5parm
       - id: outh5parm
