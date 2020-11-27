@@ -21,6 +21,8 @@ inputs:
     type: string[]
   - id: sector_ntimes
     type: int[]
+  - id: onebeamperpatch
+    type: string
   - id: sector_patches
     type:
       type: array
@@ -96,6 +98,8 @@ steps:
         source: sector_starttime
       - id: ntimes
         source: sector_ntimes
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: h5parm
         source: h5parm
       - id: sourcedb
@@ -131,6 +135,8 @@ steps:
         source: sector_starttime
       - id: ntimes
         source: sector_ntimes
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: h5parm
         source: h5parm
       - id: sourcedb

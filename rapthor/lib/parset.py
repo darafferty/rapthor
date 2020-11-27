@@ -254,6 +254,15 @@ def get_calibration_options(parset):
     else:
         parset_dict['solve_min_uv_lambda'] = 80.0
 
+    # Calculate the beam correction once per calibration patch (default = False)? If
+    # False, the beam correction is calculated separately for each source in the patch.
+    # Setting this to True can speed up calibration and prediction, but can also
+    # reduce the quality of the calibration
+    if 'onebeamperpatch' in parset_dict:
+        parset_dict['onebeamperpatch'] = parset.getboolean('calibration', 'onebeamperpatch')
+    else:
+        parset_dict['onebeamperpatch'] = False
+
     # Solution intervals
     if 'fast_timestep_sec' in parset_dict:
         parset_dict['fast_timestep_sec'] = parset.getfloat('calibration', 'fast_timestep_sec')
@@ -314,7 +323,7 @@ def get_calibration_options(parset):
 
     # Check for invalid options
     allowed_options = ['max_selfcal_loops', 'solve_min_uv_lambda', 'fast_timestep_sec',
-                       'fast_freqstep_hz', 'slow_timestep_sec',
+                       'fast_freqstep_hz', 'slow_timestep_sec', 'onebeamperpatch',
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',

@@ -39,6 +39,8 @@ inputs:
     type: int
   - id: propagatesolutions
     type: string
+  - id: onebeamperpatch
+    type: string
   - id: stepsize
     type: float
   - id: tolerance
@@ -142,6 +144,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -207,6 +211,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -284,6 +290,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -417,6 +425,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
