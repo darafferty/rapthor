@@ -2,12 +2,12 @@ cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [subtract_sector_models.py]
 label: Subtracts sector model data
-  doc: |
-    This tool subtracts sector model uv data from the input MS files. For each
-    sector, all sources that lie outside of the sector are subtracted (or
-    peeled), generating data suitable for use as input to the imaging
-    pipeline. Reweighting by the residuals can also be done, by generating
-    data in which all sources have been subtracted.
+doc: |
+  This tool subtracts sector model uv data from the input MS files. For each
+  sector, all sources that lie outside of the sector are subtracted (or
+  peeled), generating data suitable for use as input to the imaging
+  pipeline. Reweighting by the residuals can also be done, by generating
+  data in which all sources have been subtracted.
 
 requirements:
   InlineJavascriptRequirement: {}
