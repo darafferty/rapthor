@@ -70,25 +70,27 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
     # Add additional breaks to reach the desired number of chunks
     if len(gaps_ind) >= nchunks:
         gaps_ind = gaps_ind[:nchunks]
-        check_gaps = False
-    else:
-        check_gaps = True
-    while check_gaps:
-        chunk_size = int(len(times_fast) / nchunks)
 
-        check_gaps = False
+    while len(gaps_ind) < nchunks:
+        # Find the largest existing gap
+        g_num_largest = 0
+        g_size_largest = 0
         g_start = 0
-        gaps_ind_copy = gaps_ind.copy()
-        for gnum, g_stop in enumerate(gaps_ind_copy):
-            if g_stop - g_start > chunk_size:
-                new_gap = g_start + int((g_stop - g_start) / 2)
-                gaps_ind = np.insert(gaps_ind, gnum, np.array([new_gap]))
-                check_gaps = True
-                break
+        for g_num, g_stop in enumerate(gaps_ind):
+            if g_stop - g_start > g_size_largest:
+                g_num_largest = g_num
+                g_size_largest = g_stop - g_start
             g_start = g_stop
-    if len(gaps_ind) >= nchunks:
-        gaps_ind = gaps_ind[:nchunks]
-        check_gaps = False
+
+        # Now split largest gap into two equal parts
+        if g_num_largest == 0:
+            g_start = 0
+        else:
+            g_start = gaps_ind[g_num_largest-1]
+        g_stop = gaps_ind[g_num_largest]
+        new_gap = g_start + int((g_stop - g_start) / 2)
+        gaps_ind = np.insert(gaps_ind, g_num_largest, np.array([new_gap]))
+
     gaps_sec = []
     for i, gind in enumerate(gaps_ind):
         if i == nchunks-1:
