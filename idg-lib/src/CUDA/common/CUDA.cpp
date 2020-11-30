@@ -432,6 +432,7 @@ void CUDA::initialize(
         InstanceCUDA& device = get_device(d);
         device.set_context();
         device.free_device_memory();
+        device.free_fft_plans();
       }
 
       // Try again to allocate device memory
