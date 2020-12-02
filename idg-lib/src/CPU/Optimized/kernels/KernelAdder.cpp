@@ -7,8 +7,8 @@
 #include <stdint.h>
 #include <omp.h>
 
-#include "Types.h"
-#include "Index.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
 extern "C" {
 void kernel_adder(const long nr_subgrids, const long grid_size,

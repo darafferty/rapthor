@@ -1,17 +1,10 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <cmath>
-
-#if defined(USE_VML)
-#define VML_PRECISION VML_LA
-#include <mkl_vml.h>
-#endif
-
 #include "common/memory.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
-#include "Types.h"
-#include "Index.h"
 #include "Math.h"
 
 inline void update_subgrid(int nr_pixels, int nr_stations, int subgrid_size,
@@ -123,10 +116,6 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     float* phasor_real = allocate_memory<float>(total_nr_visibilities);
     float* phasor_imag = allocate_memory<float>(total_nr_visibilities);
     float* phase = allocate_memory<float>(total_nr_visibilities);
-    float* phase_offset = allocate_memory<float>(nr_pixels);
-    float* uvw_u = allocate_memory<float>(nr_timesteps);
-    float* uvw_v = allocate_memory<float>(nr_timesteps);
-    float* uvw_w = allocate_memory<float>(nr_timesteps);
     idg::float2* subgrid_local =
         allocate_memory<idg::float2>(NR_POLARIZATIONS * nr_pixels);
 
@@ -191,7 +180,11 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           int time_idx = time_offset_global + time_offset_local + time;
           int chan_idx = chan - channel_begin;
           size_t src_idx = index_visibility(nr_channels, time_idx, chan, 0);
+#if !defined(USE_EXTRAPOLATE)
           size_t dst_idx = time * nr_channels_subgrid + chan_idx;
+#else
+          size_t dst_idx = chan_idx * current_nr_timesteps + time;
+#endif
 
           vis_xx_real[dst_idx] = visibilities[src_idx + 0].real;
           vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag;
@@ -204,45 +197,36 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         }
       }
 
-      // Preload uvw
-      for (int time = 0; time < current_nr_timesteps; time++) {
-        int time_idx = time_offset_global + time_offset_local + time;
-        uvw_u[time] = uvw[time_idx].u;
-        uvw_v[time] = uvw[time_idx].v;
-        uvw_w[time] = uvw[time_idx].w;
-      }
-
-      // Compute phase offset
-      for (unsigned i = 0; i < nr_pixels; i++) {
-        phase_offset[i] =
-            u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
-      }
-
       // Iterate all pixels in subgrid
       for (unsigned i = 0; i < nr_pixels; i++) {
         int y = i / subgrid_size;
         int x = i % subgrid_size;
 
+#if !defined(USE_EXTRAPOLATE)
         // Compute phase
         float phase[current_nr_timesteps * nr_channels_subgrid]
             __attribute__((aligned(ALIGNMENT)));
 
         for (int time = 0; time < current_nr_timesteps; time++) {
-          // Load UVW coordinates
-          float u = uvw_u[time];
-          float v = uvw_v[time];
-          float w = uvw_w[time];
+          // Load UVW coordinate
+          int time_idx = time_offset_global + time_offset_local + time;
+          float u = uvw[time_idx].u;
+          float v = uvw[time_idx].v;
+          float w = uvw[time_idx].w;
 
           // Compute phase index
           float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
 
-          // pragma vector aligned
+          // Compute phase offset
+          float phase_offset =
+              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+
+          // Compute phase
           for (int chan = channel_begin; chan < channel_end; chan++) {
             int chan_idx = chan - channel_begin;
-            // Compute phase
             float wavenumber = wavenumbers[chan];
             phase[time * nr_channels_subgrid + chan_idx] =
-                phase_offset[i] - (phase_index * wavenumber);
+                phase_offset - (phase_index * wavenumber);
           }
         }  // end time
 
@@ -252,6 +236,57 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         // Compute phasor
         compute_sincos(current_nr_visibilities, phase, phasor_imag,
                        phasor_real);
+#else
+        float phase_0_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phase_d_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_c_real_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_c_imag_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_d_real_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+        float phasor_d_imag_[current_nr_timesteps]
+            __attribute__((aligned(ALIGNMENT)));
+
+        for (int time = 0; time < current_nr_timesteps; time++) {
+          // Load UVW coordinate
+          int time_idx = time_offset_global + time_offset_local + time;
+          float u = uvw[time_idx].u;
+          float v = uvw[time_idx].v;
+          float w = uvw[time_idx].w;
+
+          // Compute phase index
+          float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
+
+          // Compute phase offset
+          float phase_offset =
+              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+
+          // Compute phases
+          float phase_0 = phase_offset - (phase_index * wavenumbers[0]);
+          float phase_1 =
+              phase_offset - (phase_index * wavenumbers[channel_end - 1]);
+          float phase_d = (phase_1 - phase_0) / (nr_channels_subgrid - 1);
+          phase_0_[time] = phase_0;
+          phase_d_[time] = phase_d;
+        }
+
+        // Compute base and delta phasors
+        compute_sincos(current_nr_timesteps, phase_0_, phasor_c_imag_,
+                       phasor_c_real_);
+        compute_sincos(current_nr_timesteps, phase_d_, phasor_d_imag_,
+                       phasor_d_real_);
+
+        // Extrapolate phasors
+        compute_extrapolation(nr_channels_subgrid, current_nr_timesteps,
+                              phasor_c_real_, phasor_c_imag_, phasor_d_real_,
+                              phasor_d_imag_, phasor_real, phasor_imag);
+
+        size_t current_nr_visibilities =
+            current_nr_timesteps * nr_channels_subgrid;
+#endif
 
         // Compute pixels
         idg::float2 pixels[NR_POLARIZATIONS]
@@ -283,12 +318,8 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     free(vis_yx_imag);
     free(vis_yy_imag);
     free(phase);
-    free(phase_offset);
     free(phasor_real);
     free(phasor_imag);
-    free(uvw_u);
-    free(uvw_v);
-    free(uvw_w);
     free(subgrid_local);
   }  // end s
 }  // end kernel_gridder

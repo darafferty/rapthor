@@ -1,17 +1,10 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include <cmath>
-
-#if defined(USE_VML)
-#define VML_PRECISION VML_LA
-#include <mkl_vml.h>
-#endif
-
 #include "common/memory.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
-#include "Types.h"
-#include "Index.h"
 #include "Math.h"
 
 extern "C" {
