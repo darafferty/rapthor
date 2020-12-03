@@ -531,7 +531,6 @@ void Plan::initialize(
   m_wtile_flush_set = wtiles.get_flush_set();
 
 #if defined(DEBUG)
-  cout << "Plan::" << __func__ << endl;
   std::clog << "nr_baselines    : " << nr_baselines << " (input)" << std::endl;
   std::clog << "nr_timesteps    : " << nr_timesteps << " (per baseline)"
             << std::endl;
