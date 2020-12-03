@@ -14,7 +14,7 @@
 
 using namespace std;
 
-std::tuple<int, int, int, int, float, int, int, int> read_parameters() {
+std::tuple<int, int, int, int, float, int, int, int, bool> read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 44;
   const unsigned int DEFAULT_NR_CHANNELS = 8;
   const unsigned int DEFAULT_NR_TIME = 4096;
@@ -22,6 +22,7 @@ std::tuple<int, int, int, int, float, int, int, int> read_parameters() {
   const float DEFAULT_IMAGESIZE = 0.1f;
   const unsigned int DEFAULT_GRIDSIZE = 4096;
   const unsigned int DEFAULT_SUBGRIDSIZE = 24;
+  const bool DEFAULT_USE_WTILES = false;
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
@@ -52,8 +53,13 @@ std::tuple<int, int, int, int, float, int, int, int> read_parameters() {
   auto kernel_size =
       cstr_kernel_size ? atoi(cstr_kernel_size) : (subgrid_size / 4) + 1;
 
+  char *cstr_use_wtiles = getenv("USE_WTILES");
+  auto use_wtiles =
+      cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
+
   return std::make_tuple(nr_stations, nr_channels, nr_time, nr_timeslots,
-                         image_size, grid_size, subgrid_size, kernel_size);
+                         image_size, grid_size, subgrid_size, kernel_size,
+                         use_wtiles);
 }
 
 void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
@@ -104,10 +110,11 @@ int main(int argc, char **argv) {
   unsigned int grid_size;
   unsigned int subgrid_size;
   unsigned int kernel_size;
+  bool use_wtiles;
 
   // Read parameters from environment
   std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots, image_size,
-           grid_size, subgrid_size, kernel_size) = read_parameters();
+           grid_size, subgrid_size, kernel_size, use_wtiles) = read_parameters();
 
   // Compute nr_baselines
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
@@ -129,9 +136,15 @@ int main(int argc, char **argv) {
   idg::Array1D<unsigned int> aterms_offsets =
       idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
 
+  // W-Tiles
+  idg::WTiles wtiles;
+
   // Create plan
   clog << ">>> Create plan" << endl;
-  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+  idg::Plan plan = use_wtiles
+    ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+                 uvw, baselines, aterms_offsets, wtiles)
+    : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
                  uvw, baselines, aterms_offsets);
 
   // Report plan
