@@ -141,11 +141,13 @@ int main(int argc, char **argv) {
 
   // Create plan
   clog << ">>> Create plan" << endl;
+  idg::Plan::Options options;
+  options.plan_strict = true;
   idg::Plan plan = use_wtiles
     ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
-                 uvw, baselines, aterms_offsets, wtiles)
+                 uvw, baselines, aterms_offsets, wtiles, options)
     : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
-                 uvw, baselines, aterms_offsets);
+                 uvw, baselines, aterms_offsets, options);
 
   // Report plan
   clog << ">>> Plan information" << endl;
