@@ -513,7 +513,9 @@ void Plan::initialize(
   }
 
   // Set nr_aterms
-  for (Metadata& m : metadata) {
+#pragma omp parallel for
+  for (unsigned i = 0; i < metadata.size(); i++) {
+    auto& m = metadata[i];
     auto aterm_index = aterm_indices[m.time_index];
     auto nr_aterms = 1;
     for (auto time = 0; time < m.nr_timesteps; time++) {
