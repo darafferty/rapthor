@@ -12,14 +12,11 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
-using namespace std;
-
-std::tuple<int, int, int, int, float, int, int, int, bool> read_parameters() {
-  const unsigned int DEFAULT_NR_STATIONS = 44;
-  const unsigned int DEFAULT_NR_CHANNELS = 8;
-  const unsigned int DEFAULT_NR_TIME = 4096;
-  const unsigned int DEFAULT_NR_TIMESLOTS = 16;
-  const float DEFAULT_IMAGESIZE = 0.1f;
+std::tuple<int, int, int, int, int, int, int, bool> read_parameters() {
+  const unsigned int DEFAULT_NR_STATIONS = 52;
+  const unsigned int DEFAULT_NR_CHANNELS = 16;
+  const unsigned int DEFAULT_NR_TIMESTEPS = 3600 * 4;
+  const unsigned int DEFAULT_NR_TIMESLOTS = DEFAULT_NR_TIMESTEPS / (60 * 30);
   const unsigned int DEFAULT_GRIDSIZE = 4096;
   const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const bool DEFAULT_USE_WTILES = false;
@@ -32,15 +29,12 @@ std::tuple<int, int, int, int, float, int, int, int, bool> read_parameters() {
   auto nr_channels =
       cstr_nr_channels ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
 
-  char *cstr_nr_time = getenv("NR_TIME");
-  auto nr_time = cstr_nr_time ? atoi(cstr_nr_time) : DEFAULT_NR_TIME;
+  char *cstr_nr_timesteps = getenv("NR_TIMESTEPS");
+  auto nr_timesteps = cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
 
   char *cstr_nr_timeslots = getenv("NR_TIMESLOTS");
   auto nr_timeslots =
       cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
-
-  char *cstr_image_size = getenv("IMAGESIZE");
-  auto image_size = cstr_image_size ? atof(cstr_image_size) : DEFAULT_IMAGESIZE;
 
   char *cstr_grid_size = getenv("GRIDSIZE");
   auto grid_size = cstr_grid_size ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
@@ -57,9 +51,8 @@ std::tuple<int, int, int, int, float, int, int, int, bool> read_parameters() {
   auto use_wtiles =
       cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
 
-  return std::make_tuple(nr_stations, nr_channels, nr_time, nr_timeslots,
-                         image_size, grid_size, subgrid_size, kernel_size,
-                         use_wtiles);
+  return std::make_tuple(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
+                         grid_size, subgrid_size, kernel_size, use_wtiles);
 }
 
 void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
@@ -68,36 +61,36 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
                       unsigned int subgrid_size, unsigned int kernel_size) {
   const int fw1 = 30;
   const int fw2 = 10;
-  ostream &os = clog;
+  std::ostream &os = std::clog;
 
-  os << "-----------" << endl;
-  os << "PARAMETERS:" << endl;
+  os << "-----------" << std::endl;
+  os << "PARAMETERS:" << std::endl;
 
-  os << setw(fw1) << left << "Number of stations"
-     << "== " << setw(fw2) << right << nr_stations << endl;
+  os << std::setw(fw1) << std::left << "Number of stations"
+     << "== " << std::setw(fw2) << std::right << nr_stations << std::endl;
 
-  os << setw(fw1) << left << "Number of channels"
-     << "== " << setw(fw2) << right << nr_channels << endl;
+  os << std::setw(fw1) << std::left << "Number of channels"
+     << "== " << std::setw(fw2) << std::right << nr_channels << std::endl;
 
-  os << setw(fw1) << left << "Number of timesteps"
-     << "== " << setw(fw2) << right << nr_timesteps << endl;
+  os << std::setw(fw1) << std::left << "Number of timesteps"
+     << "== " << std::setw(fw2) << std::right << nr_timesteps << std::endl;
 
-  os << setw(fw1) << left << "Number of timeslots"
-     << "== " << setw(fw2) << right << nr_timeslots << endl;
+  os << std::setw(fw1) << std::left << "Number of timeslots"
+     << "== " << std::setw(fw2) << std::right << nr_timeslots << std::endl;
 
-  os << setw(fw1) << left << "Imagesize"
-     << "== " << setw(fw2) << right << image_size << endl;
+  os << std::setw(fw1) << std::left << "Imagesize"
+     << "== " << std::setw(fw2) << std::right << image_size << std::endl;
 
-  os << setw(fw1) << left << "Grid size"
-     << "== " << setw(fw2) << right << grid_size << endl;
+  os << std::setw(fw1) << std::left << "Grid size"
+     << "== " << std::setw(fw2) << std::right << grid_size << std::endl;
 
-  os << setw(fw1) << left << "Subgrid size"
-     << "== " << setw(fw2) << right << subgrid_size << endl;
+  os << std::setw(fw1) << std::left << "Subgrid size"
+     << "== " << std::setw(fw2) << std::right << subgrid_size << std::endl;
 
-  os << setw(fw1) << left << "Kernel size"
-     << "== " << setw(fw2) << right << kernel_size << endl;
+  os << std::setw(fw1) << std::left << "Kernel size"
+     << "== " << std::setw(fw2) << std::right << kernel_size << std::endl;
 
-  os << "-----------" << endl;
+  os << "-----------" << std::endl;
 }
 
 int main(int argc, char **argv) {
@@ -106,41 +99,67 @@ int main(int argc, char **argv) {
   unsigned int nr_channels;
   unsigned int nr_timesteps;
   unsigned int nr_timeslots;
-  float image_size;
   unsigned int grid_size;
   unsigned int subgrid_size;
   unsigned int kernel_size;
   bool use_wtiles;
 
   // Read parameters from environment
-  std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots, image_size,
+  std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
            grid_size, subgrid_size, kernel_size, use_wtiles) = read_parameters();
 
   // Compute nr_baselines
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
 
-  // Compute cell_size
+  // Initialize Data object
+  std::clog << ">>> Initialize data" << std::endl;
+  idg::Data data;
+
+  // Determine the max baseline length for given grid_size
+  float max_uv = data.compute_max_uv(grid_size);
+
+  // Select only baselines up to max_uv meters long
+  data.limit_max_baseline_length(max_uv);
+
+  // Restrict the number of baselines to nr_baselines
+  data.limit_nr_baselines(nr_baselines);
+
+  // Print data info
+  data.print_info();
+
+  // Get remaining parameters
+  nr_baselines = data.get_nr_baselines();
+  float image_size = data.compute_image_size(grid_size);
   float cell_size = image_size / grid_size;
 
   // Print parameters
   print_parameters(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
                    image_size, grid_size, subgrid_size, kernel_size);
+  std::clog << std::endl;
 
   // Allocate and initialize data structures
-  clog << ">>> Initialize data structures" << endl;
-  idg::Array1D<float> frequencies = idg::get_example_frequencies(nr_channels);
+  std::clog << ">>> Initialize data structures" << std::endl;
+
+  // Initialize frequency data
+  idg::Array1D<float> frequencies(nr_channels);
+  data.get_frequencies(frequencies, image_size);
+
+  // Initalize UVW coordiantes
+  idg::Array2D<idg::UVW<float>> uvw(nr_baselines, nr_timesteps);
+  data.get_uvw(uvw);
+
+  // Initialize metadata
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
-  idg::Array2D<idg::UVW<float>> uvw =
-      idg::get_example_uvw(nr_stations, nr_baselines, nr_timesteps);
   idg::Array1D<unsigned int> aterms_offsets =
       idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
 
   // W-Tiles
   idg::WTiles wtiles;
+  std::clog << std::endl;
 
   // Create plan
-  clog << ">>> Create plan" << endl;
+  std::clog << ">>> Create plan" << std::endl;
   idg::Plan::Options options;
   options.plan_strict = true;
   idg::Plan plan = use_wtiles
@@ -148,17 +167,18 @@ int main(int argc, char **argv) {
                  uvw, baselines, aterms_offsets, wtiles, options)
     : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
                  uvw, baselines, aterms_offsets, options);
+  std::clog << std::endl;
 
   // Report plan
-  clog << ">>> Plan information" << endl;
+  std::clog << ">>> Plan information" << std::endl;
   auto nr_visibilities_gridded = plan.get_nr_visibilities();
   auto nr_visibilities_total = nr_baselines * nr_timesteps * nr_channels;
   auto percentage_visibility_gridded =
       (float)nr_visibilities_gridded / nr_visibilities_total * 100.0f;
-  clog << fixed << setprecision(2);
-  clog << "Subgrid size:                   " << subgrid_size << endl;
-  clog << "Total number of visibilities:   " << nr_visibilities_total << endl;
-  clog << "Gridder number of visibilities: " << nr_visibilities_gridded << " ("
-       << percentage_visibility_gridded << " %)" << endl;
-  clog << "Total number of subgrids:       " << plan.get_nr_subgrids() << endl;
+  std::clog << std::fixed << std::setprecision(2);
+  std::clog << "Subgrid size:                   " << subgrid_size << std::endl;
+  std::clog << "Total number of visibilities:   " << nr_visibilities_total << std::endl;
+  std::clog << "Gridder number of visibilities: " << nr_visibilities_gridded << " ("
+            << percentage_visibility_gridded << " %)" << std::endl;
+  std::clog << "Total number of subgrids:       " << plan.get_nr_subgrids() << std::endl;
 }
