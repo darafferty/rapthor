@@ -21,7 +21,7 @@ std::tuple<int, int, int, int, float, int, int, int, bool> read_parameters() {
   const unsigned int DEFAULT_NR_TIMESLOTS = 16;
   const float DEFAULT_IMAGESIZE = 0.1f;
   const unsigned int DEFAULT_GRIDSIZE = 4096;
-  const unsigned int DEFAULT_SUBGRIDSIZE = 24;
+  const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const bool DEFAULT_USE_WTILES = false;
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
