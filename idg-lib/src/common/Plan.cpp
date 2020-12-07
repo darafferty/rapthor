@@ -131,8 +131,8 @@ class Subgrid {
     int u_pixels = roundf((u_max + u_min) / 2);
     int v_pixels = roundf((v_max + v_min) / 2);
 
-    int wtile_x = floor(double(u_pixels) / wtile_size);
-    int wtile_y = floor(double(v_pixels) / wtile_size);
+    int wtile_x = floorf(float(u_pixels) / wtile_size);
+    int wtile_y = floorf(float(v_pixels) / wtile_size);
 
     // Shift center from middle of grid to top left
     u_pixels += (grid_size / 2);
