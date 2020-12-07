@@ -78,7 +78,7 @@ class Subgrid {
     }
 
     int w_index_ = 0;
-    if (w_step) w_index_ = int(std::floor(w_lambda / w_step));
+    if (w_step) w_index_ = int(floorf(w_lambda));
 
     // if this is not the first sample, it should map to the
     // same w_index as the others, if not, return false
@@ -339,7 +339,7 @@ void Plan::initialize(
               meters_to_pixels(u_meters, image_size, frequencies(channel));
           float v_pixels =
               meters_to_pixels(v_meters, image_size, frequencies(channel));
-          float w_lambda = meters_to_lambda(w_meters, frequencies(channel));
+          float w_lambda = meters_to_lambda(w_meters, frequencies(channel)) / w_step;
 
           datapoints(t, c) = {t, c, u_pixels, v_pixels, w_lambda};
         }  // end for channel
