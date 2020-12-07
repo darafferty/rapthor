@@ -87,15 +87,15 @@ class Subgrid {
     }
 
     // Initialize candidate uv limits
-    float u_min_ = fmin(u_min, u_pixels);
-    float u_max_ = fmax(u_max, u_pixels);
-    float v_min_ = fmin(v_min, v_pixels);
-    float v_max_ = fmax(v_max, v_pixels);
+    float u_min_ = u_min < u_pixels ? u_min : u_pixels;
+    float u_max_ = u_max > u_pixels ? u_max : u_pixels;
+    float v_min_ = v_min < v_pixels ? v_min : v_pixels;
+    float v_max_ = v_max > v_pixels ? v_max : v_pixels;
 
     // Compute candidate uv width
     float u_width_ = u_max_ - u_min_;
     float v_width_ = v_max_ - v_min_;
-    float uv_width_ = fmax(u_width_, v_width_);
+    float uv_width_ = u_width_ > v_width_ ? u_width_ : v_width_;
 
     // Return false if the visibility does not fit
     if ((uv_width_ + kernel_size) >= subgrid_size) {
