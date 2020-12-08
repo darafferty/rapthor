@@ -362,7 +362,7 @@ void InstanceCUDA::set_parameters() {
 }
 
 std::ostream& operator<<(std::ostream& os, InstanceCUDA& d) {
-  cu::ScopedCurrentContext scc(d.get_context());
+  cu::ScopedContext scc(d.get_context());
 
   os << d.get_device().get_name() << std::endl;
   os << std::setprecision(2);
@@ -715,7 +715,7 @@ void InstanceCUDA::launch_calibrate(
 
 void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
                                    DomainAtoDomainB direction) {
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
 
   int sign =
       (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
@@ -815,7 +815,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   }
 #endif
 
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
 
   // Enqueue start of measurement
   UpdateData* data = get_update_data(get_event(), powerSensor, report,
@@ -853,7 +853,7 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
                                            unsigned int batch,
                                            Array3D<std::complex<float>>& grid,
                                            DomainAtoDomainB direction) {
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
 
   int sign =
       (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
@@ -1238,7 +1238,7 @@ void InstanceCUDA::print_device_memory_info() const {
 #if defined(DEBUG)
   std::cout << "InstanceCUDA::" << __func__ << std::endl;
 #endif
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
   auto memory_total =
       device->get_total_memory() / ((float)1024 * 1024 * 1024);  // GBytes
   auto memory_free =
@@ -1251,18 +1251,18 @@ void InstanceCUDA::print_device_memory_info() const {
 }
 
 size_t InstanceCUDA::get_free_memory() const {
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
   return device->get_free_memory();
 }
 
 size_t InstanceCUDA::get_total_memory() const {
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
   return device->get_total_memory();
 }
 
 template <CUdevice_attribute attribute>
 int InstanceCUDA::get_attribute() const {
-  cu::ScopedCurrentContext scc(*context);
+  cu::ScopedContext scc(*context);
   return device->get_attribute<attribute>();
 }
 

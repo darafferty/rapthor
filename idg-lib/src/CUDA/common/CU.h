@@ -70,13 +70,13 @@ class Context {
   CUcontext _context;
   CUdevice _device;
 
-  friend class ScopedCurrentContext;
+  friend class ScopedContext;
 };
 
-class ScopedCurrentContext {
+class ScopedContext {
  public:
-  ScopedCurrentContext(const Context &context);
-  ~ScopedCurrentContext();
+  ScopedContext(const Context &context);
+  ~ScopedContext();
 
  private:
   const Context &_context;
