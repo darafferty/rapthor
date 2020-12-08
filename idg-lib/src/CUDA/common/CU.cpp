@@ -139,6 +139,7 @@ void HostMemory::resize(size_t size) {
   } else if (size > m_capacity) {
     release();
     void *ptr;
+    ScopedCurrentContext scc(_context);
     assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
     m_bytes = size;
     m_capacity = size;
