@@ -290,6 +290,7 @@ void UnifiedMemory::release() {
 
   if (m_free) {
     assertCudaCall(cuMemFree((CUdeviceptr) m_ptr));
+    m_free = false;
   }
 }
 
