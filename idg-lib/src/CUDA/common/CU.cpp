@@ -106,8 +106,7 @@ void Context::freeCurrent() const { assertCudaCall(cuCtxPopCurrent(nullptr)); }
 /*
     ScopedContext
 */
-ScopedContext::ScopedContext(const Context &context)
-    : _context(context) {
+ScopedContext::ScopedContext(const Context &context) : _context(context) {
   _context.setCurrent();
 }
 
@@ -259,7 +258,7 @@ UnifiedMemory::UnifiedMemory(const Context &context, size_t size,
   m_bytes = size;
   m_flags = flags;
   m_free = true;
-  assertCudaCall(cuMemAllocManaged((CUdeviceptr *) &m_ptr, m_bytes, flags));
+  assertCudaCall(cuMemAllocManaged((CUdeviceptr *)&m_ptr, m_bytes, flags));
 }
 
 UnifiedMemory::~UnifiedMemory() { release(); }
@@ -271,25 +270,26 @@ void UnifiedMemory::resize(size_t size) {
   } else if (size > m_capacity) {
     release();
     ScopedContext scc(_context);
-    assertCudaCall(cuMemAllocManaged((CUdeviceptr *) &m_ptr, size, m_flags));
+    assertCudaCall(cuMemAllocManaged((CUdeviceptr *)&m_ptr, size, m_flags));
     m_capacity = size;
     m_bytes = size;
   }
 }
 
 void UnifiedMemory::set_advice(CUmem_advise advice) {
-  assertCudaCall(cuMemAdvise((CUdeviceptr) m_ptr, m_bytes, advice, CU_DEVICE_CPU));
+  assertCudaCall(
+      cuMemAdvise((CUdeviceptr)m_ptr, m_bytes, advice, CU_DEVICE_CPU));
 }
 
 void UnifiedMemory::set_advice(CUmem_advise advice, Device &device) {
-  assertCudaCall(cuMemAdvise((CUdeviceptr) m_ptr, m_bytes, advice, device));
+  assertCudaCall(cuMemAdvise((CUdeviceptr)m_ptr, m_bytes, advice, device));
 }
 
 void UnifiedMemory::release() {
   ScopedContext scc(_context);
 
   if (m_free) {
-    assertCudaCall(cuMemFree((CUdeviceptr) m_ptr));
+    assertCudaCall(cuMemFree((CUdeviceptr)m_ptr));
     m_free = false;
   }
 }
