@@ -134,8 +134,6 @@ class Memory {
  protected:
   Memory(void *ptr) : m_ptr(ptr) {}
   void set(void *ptr) { m_ptr = ptr; }
-
- private:
   void *m_ptr = nullptr;
 };
 

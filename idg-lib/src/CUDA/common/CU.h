@@ -168,26 +168,23 @@ class DeviceMemory {
   static const CUdeviceptr _nullptr = 0;
 };
 
-class UnifiedMemory {
+class UnifiedMemory : public Memory {
  public:
   UnifiedMemory(const Context &context, void *ptr, size_t size);
   UnifiedMemory(const Context &context, size_t size,
                 unsigned flags = CU_MEM_ATTACH_GLOBAL);
-  ~UnifiedMemory();
+  ~UnifiedMemory() override;
 
-  template <typename T>
-  operator T *() {
-    return static_cast<T *>((void *)_ptr);
-  }
+  void resize(size_t size) override;
+
   void set_advice(CUmem_advise advise);
   void set_advice(CUmem_advise advise, Device &device);
 
  private:
   void release();
   const Context &_context;
-  CUdeviceptr _ptr;
-  size_t _size;
-  bool free = false;
+  int m_flags = 0;
+  bool m_free = false;
 };
 
 class Source {
