@@ -102,7 +102,7 @@ void Generic::run_gridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  auto& context = device.get_context();
+  const cu::Context& context = device.get_context();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
@@ -327,7 +327,7 @@ void Generic::run_degridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  auto& context = device.get_context();
+  const cu::Context& context = device.get_context();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();

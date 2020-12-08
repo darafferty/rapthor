@@ -108,7 +108,7 @@ ProxyInfo CUDA::default_info() {
 }  // end default_info
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
-  auto& context = get_device(0).get_context();
+  const cu::Context& context = get_device(0).get_context();
   return std::unique_ptr<auxiliary::Memory>(new cu::HostMemory(context, bytes));
 }
 

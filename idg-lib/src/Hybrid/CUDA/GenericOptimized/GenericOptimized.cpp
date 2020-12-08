@@ -77,7 +77,7 @@ void GenericOptimized::run_gridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  auto& context = device.get_context();
+  const cu::Context& context = device.get_context();
 
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
@@ -374,7 +374,7 @@ void GenericOptimized::run_degridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  auto& context = device.get_context();
+  const cu::Context& context = device.get_context();
 
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
@@ -863,7 +863,7 @@ void GenericOptimized::do_calibrate_update(
 
   // Load device
   InstanceCUDA& device = get_device(0);
-  auto& context = device.get_context();
+  const cu::Context& context = device.get_context();
 
   // Transpose aterms and aterm derivatives
   const unsigned int nr_aterms = nr_stations * nr_timeslots;
