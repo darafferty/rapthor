@@ -101,7 +101,7 @@ Context::~Context() { assertCudaCall(cuCtxDestroy(_context)); }
 
 void Context::setCurrent() const { assertCudaCall(cuCtxPushCurrent(_context)); }
 
-void Context::freeCurrent() const { assertCudaCall(cuCtxPopCurrent(NULL)); }
+void Context::freeCurrent() const { assertCudaCall(cuCtxPopCurrent(nullptr)); }
 
 /*
     ScopedCurrentContext
@@ -169,7 +169,7 @@ RegisteredMemory::RegisteredMemory(const Context &context, void *ptr,
 
   m_bytes = size;
   _flags = flags;
-  assert(ptr != NULL);
+  assert(ptr != nullptr);
   set(ptr);
   checkCudaCall(cuMemHostRegister(ptr, size, _flags));
 }
@@ -225,7 +225,7 @@ void DeviceMemory::resize(size_t size) {
 void DeviceMemory::zero(CUstream stream) {
   ScopedCurrentContext scc(_context);
   if (_size) {
-    if (stream != NULL) {
+    if (stream != nullptr) {
       cuMemsetD8Async(_ptr, 0, _size, stream);
     } else {
       cuMemsetD8(_ptr, 0, _size);

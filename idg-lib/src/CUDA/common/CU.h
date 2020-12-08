@@ -139,7 +139,7 @@ class DeviceMemory {
   size_t capacity();
   size_t size();
   void resize(size_t size);
-  void zero(CUstream stream = NULL);
+  void zero(CUstream stream = nullptr);
 
   template <typename T>
   operator T *() {
