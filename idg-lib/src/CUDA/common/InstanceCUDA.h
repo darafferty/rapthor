@@ -183,7 +183,7 @@ class InstanceCUDA : public KernelsInstance {
   // keep track of the cu::Events used in the UpdateData and
   // free them explicitely using the free_events() method.
   cu::Event& get_event();
-  std::vector<std::shared_ptr<cu::Event>> events;
+  std::vector<std::unique_ptr<cu::Event>> events;
 
  protected:
   cu::Module* compile_kernel(std::string& flags, std::string& src,

@@ -431,9 +431,15 @@ void InstanceCUDA::measure(PowerRecord& record, cu::Stream& stream) {
 }
 
 cu::Event& InstanceCUDA::get_event() {
-  std::shared_ptr<cu::Event> event;
-  event.reset(new cu::Event(*context));
-  events.push_back(event);
+  // Create new event
+  cu::Event* event = new cu::Event(*context);
+
+  // This event is used in a callback, where it can not be destroyed
+  // after use. Instead, register the event globally, and take care of
+  // destruction there.
+  events.push_back(std::unique_ptr<cu::Event>(event));
+
+  // Return a reference to the event
   return *event;
 }
 
