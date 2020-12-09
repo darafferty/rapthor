@@ -250,24 +250,24 @@ void InstanceCUDA::load_kernels() {
   // Load calibration functions
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(*context, function)));
+    functions_calibrate.emplace_back(
+        new cu::Function(*context, function));
     found++;
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(*context, function)));
+    functions_calibrate.emplace_back(
+        new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(*context, function)));
+    functions_calibrate.emplace_back(
+        new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(*context, function)));
+    functions_calibrate.emplace_back(
+        new cu::Function(*context, function));
   }
 
 // Load FFT function
@@ -437,7 +437,7 @@ cu::Event& InstanceCUDA::get_event() {
   // This event is used in a callback, where it can not be destroyed
   // after use. Instead, register the event globally, and take care of
   // destruction there.
-  events.push_back(std::unique_ptr<cu::Event>(event));
+  events.emplace_back(event);
 
   // Return a reference to the event
   return *event;
@@ -1114,7 +1114,7 @@ T* InstanceCUDA::reuse_memory(std::vector<std::unique_ptr<T>>& memories,
   if (memories.size() <= id) {
     ptr = new T(*context, size);
 
-    memories.push_back(std::unique_ptr<T>(ptr));
+    memories.emplace_back(ptr);
   } else {
     ptr = memories[id].get();
   }
@@ -1151,8 +1151,7 @@ cu::DeviceMemory& InstanceCUDA::allocate_device_metadata(unsigned int id,
  *      the memory from the d_misc_ vector
  */
 unsigned int InstanceCUDA::allocate_device_memory(size_t bytes) {
-  cu::DeviceMemory* d_misc = new cu::DeviceMemory(*context, bytes);
-  d_misc_.push_back(std::unique_ptr<cu::DeviceMemory>(d_misc));
+  d_misc_.emplace_back(new cu::DeviceMemory(*context, bytes));
   return d_misc_.size() - 1;
 }
 
@@ -1174,9 +1173,7 @@ void InstanceCUDA::register_host_memory(void* ptr, size_t bytes) {
       return;
     }
   }
-  cu::RegisteredMemory* h_registered =
-      new cu::RegisteredMemory(*context, ptr, bytes);
-  h_registered_.push_back(std::unique_ptr<cu::RegisteredMemory>(h_registered));
+  h_registered_.emplace_back(new cu::RegisteredMemory(*context, ptr, bytes));
 }
 
 /*
