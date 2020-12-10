@@ -12,7 +12,9 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
-std::tuple<int, int, int, int, int, int, int, bool> read_parameters() {
+#define PRINT_METADATA 1
+
+std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;
   const unsigned int DEFAULT_NR_CHANNELS = 16;
   const unsigned int DEFAULT_NR_TIMESTEPS = 3600 * 4;
@@ -20,6 +22,7 @@ std::tuple<int, int, int, int, int, int, int, bool> read_parameters() {
   const unsigned int DEFAULT_GRIDSIZE = 4096;
   const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const bool DEFAULT_USE_WTILES = false;
+  const bool DEFAULT_PRINT_METADATA = false;
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
@@ -51,8 +54,13 @@ std::tuple<int, int, int, int, int, int, int, bool> read_parameters() {
   auto use_wtiles =
       cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
 
+  char *cstr_print_metadata = getenv("PRINT_METADATA");
+  auto print_metadata =
+      cstr_print_metadata ? atoi(cstr_print_metadata) : DEFAULT_PRINT_METADATA;
+
   return std::make_tuple(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-                         grid_size, subgrid_size, kernel_size, use_wtiles);
+                         grid_size, subgrid_size, kernel_size,
+                         use_wtiles, print_metadata);
 }
 
 void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
@@ -103,10 +111,12 @@ int main(int argc, char **argv) {
   unsigned int subgrid_size;
   unsigned int kernel_size;
   bool use_wtiles;
+  bool print_metadata;
 
   // Read parameters from environment
   std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-           grid_size, subgrid_size, kernel_size, use_wtiles) = read_parameters();
+           grid_size, subgrid_size, kernel_size,
+           use_wtiles, print_metadata) = read_parameters();
 
   // Compute nr_baselines
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
@@ -177,8 +187,21 @@ int main(int argc, char **argv) {
       (float)nr_visibilities_gridded / nr_visibilities_total * 100.0f;
   std::clog << std::fixed << std::setprecision(2);
   std::clog << "Subgrid size:                   " << subgrid_size << std::endl;
-  std::clog << "Total number of visibilities:   " << nr_visibilities_total << std::endl;
-  std::clog << "Gridder number of visibilities: " << nr_visibilities_gridded << " ("
-            << percentage_visibility_gridded << " %)" << std::endl;
-  std::clog << "Total number of subgrids:       " << plan.get_nr_subgrids() << std::endl;
+  std::clog << "Total number of visibilities:   " << nr_visibilities_total
+            << std::endl;
+  std::clog << "Gridder number of visibilities: " << nr_visibilities_gridded
+            << " (" << percentage_visibility_gridded << " %)" << std::endl;
+  std::clog << "Total number of subgrids:       " << plan.get_nr_subgrids()
+            << std::endl;
+
+  if (print_metadata)
+  {
+    unsigned int nr_subgrids = plan.get_nr_subgrids();
+    const idg::Metadata* metadata = plan.get_metadata_ptr();
+    for (unsigned i = 0; i < nr_subgrids; i++)
+    {
+      idg::Metadata& m = const_cast<idg::Metadata&>(metadata[i]);
+      std::cout << m << std::endl;;
+    }
+  }
 }
