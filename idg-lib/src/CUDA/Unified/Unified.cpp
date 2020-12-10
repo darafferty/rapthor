@@ -187,10 +187,10 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     assert(grid_height == grid_width);
     auto grid_size = grid_width;
     auto tile_size = device.get_tile_size_grid();
-    cu::UnifiedMemory* u_grid_tiled =
-        new cu::UnifiedMemory(device.get_context(), m_grid->bytes());
-    auto grid_tiled = new Grid(*u_grid_tiled, nr_w_layers, nr_correlations,
-                               grid_height, grid_width);
+    std::unique_ptr<auxiliary::Memory> u_grid_tiled(
+        new cu::UnifiedMemory(device.get_context(), m_grid->bytes()));
+    auto grid_tiled = new Grid(std::move(u_grid_tiled), nr_w_layers,
+                               nr_correlations, grid_height, grid_width);
     m_grid_tiled.reset(grid_tiled);
     device.tile_forward(grid_size, tile_size, *grid, *m_grid_tiled);
   }
