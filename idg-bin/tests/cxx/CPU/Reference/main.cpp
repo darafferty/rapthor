@@ -62,8 +62,10 @@ int test01() {
       idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
-  auto grid = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations, grid_size, grid_size);
-  auto grid_ref = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations, grid_size, grid_size);
+  auto grid = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations,
+                                          grid_size, grid_size);
+  auto grid_ref = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations,
+                                              grid_size, grid_size);
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);

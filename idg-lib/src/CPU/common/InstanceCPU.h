@@ -148,7 +148,7 @@ class InstanceCPU : public KernelsInstance {
 
   std::vector<runtime::Module *> modules;
 
-  std::vector<std::complex<float>> m_wtiles_buffer;
+  idg::Array1D<std::complex<float>> m_wtiles_buffer;
 
   std::unique_ptr<runtime::Function> function_gridder;
   std::unique_ptr<runtime::Function> function_degridder;
