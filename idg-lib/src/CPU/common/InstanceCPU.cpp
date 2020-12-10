@@ -559,7 +559,7 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
 }  // end run_splitter_wtiles
 
 void InstanceCPU::init_wtiles(int subgrid_size) {
-  m_wtiles_buffer = std::vector<std::complex<float>>(
+  m_wtiles_buffer = idg::Array1D<std::complex<float>>(
       kNrWTiles * (kWTileSize + subgrid_size) * (kWTileSize + subgrid_size) *
       NR_CORRELATIONS);
 }

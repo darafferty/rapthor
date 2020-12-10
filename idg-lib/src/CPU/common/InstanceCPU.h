@@ -131,7 +131,7 @@ class InstanceCPU : public KernelsInstance {
   }
 
   virtual void init_wtiles(int subgrid_size);
-  virtual void reset_wtiles() { m_wtiles_buffer.resize(0); }
+  virtual void reset_wtiles() { m_wtiles_buffer.free(); }
 
  protected:
   void compile(Compiler compiler, Compilerflags flags);
@@ -140,7 +140,7 @@ class InstanceCPU : public KernelsInstance {
 
   std::vector<runtime::Module *> modules;
 
-  std::vector<std::complex<float>> m_wtiles_buffer;
+  idg::Array1D<std::complex<float>> m_wtiles_buffer;
 
   runtime::Function *function_gridder;
   runtime::Function *function_degridder;
