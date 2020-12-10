@@ -75,7 +75,7 @@ def get_frequency_chunksize(cluster_parset, channelwidth, solint_slow_freqstep,
                             solint_slow_timestep, antenna, ndir):
     """
     Returns the target chunk size in Hz for an observation (the maximum chunk size
-    that will fit in memory)
+    that will fit in memory during the slow-gain solves in DPPP)
 
     Parameters
     ----------
@@ -95,8 +95,9 @@ def get_frequency_chunksize(cluster_parset, channelwidth, solint_slow_freqstep,
     # Try to make at least as many time chunks as there are nodes
     mem_gb = get_total_memory()
     if antenna == 'HBA':
-        # Memory usage in GB/chan/timeslot/dir of a typical HBA observation
-        mem_usage_gb = 1e-3
+        # Memory usage in GB/chan/timeslot/dir of a typical HBA observation with
+        # only Dutch stations
+        mem_usage_gb = 0.83e-3
     elif antenna == 'LBA':
         # Memory usage in GB/chan/timeslot/dir of a typical LBA observation
         mem_usage_gb = 2.5e-4
@@ -104,14 +105,11 @@ def get_frequency_chunksize(cluster_parset, channelwidth, solint_slow_freqstep,
 
     # Determine if we need to reduce solint_slow_timestep to fit in memory. We adjust
     # the time step rather than the frequency step, as it is less critical and usually
-    # has a finer sampling. However, we ensure that the new time step is an even
-    # divisor of the original one to avoid problems with irregular steps and IDG
+    # has a finer sampling
     if mem_gb / gb_per_solint < 1.0:
         old_solint_slow_timestep = solint_slow_timestep
         solint_slow_timestep *= mem_gb / gb_per_solint
         solint_slow_timestep = max(1, int(round(solint_slow_timestep)))
-        while old_solint_slow_timestep % solint_slow_timestep:
-            solint_slow_timestep -= 1
         log.warn('Not enough memory available for slow-gain solve. Reducing solution '
                  'time interval from {0} to {1}'.format(old_solint_slow_timestep,
                                                         solint_slow_timestep))
