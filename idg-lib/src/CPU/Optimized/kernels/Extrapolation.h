@@ -31,6 +31,7 @@ inline void compute_extrapolation_avx(int *offset, const int outer_dim,
                                       const float *delta_real,
                                       const float *delta_imag,
                                       float *output_real, float *output_imag) {
+#if defined(__AVX__)
   const int vector_length = 8;
 
   for (int o = 0; o < outer_dim; o++) {
@@ -55,6 +56,7 @@ inline void compute_extrapolation_avx(int *offset, const int outer_dim,
   }
 
   *offset += vector_length * ((inner_dim - *offset) / vector_length);
+#endif
 }  // end compute_extrapolation_avx
 
 inline void compute_extrapolation_avx_fma(

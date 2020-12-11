@@ -29,6 +29,7 @@ else()
         include_directories(${MKL_INCLUDE_DIRS})
     else()
         link_libraries(${FFTW3_LIBRARIES})
+        include_directories(${FFTW3_INCLUDE_DIR})
     endif()
 endif()
 
