@@ -67,8 +67,8 @@ InstanceCUDA::~InstanceCUDA() {
   executestream.reset();
   htodstream.reset();
   dtohstream.reset();
-  device.reset();
   context.reset();
+  device.reset();
   delete powerSensor;
 }
 
