@@ -260,7 +260,7 @@ UnifiedMemory::UnifiedMemory(const Context &context, size_t size,
   m_free = true;
   CUdeviceptr ptr;
   assertCudaCall(cuMemAllocManaged(&ptr, m_bytes, flags));
-  set(reinterpret_cast<void*>(ptr));
+  set(reinterpret_cast<void *>(ptr));
 }
 
 UnifiedMemory::~UnifiedMemory() { release(); }
@@ -274,7 +274,7 @@ void UnifiedMemory::resize(size_t size) {
     ScopedContext scc(_context);
     CUdeviceptr ptr;
     assertCudaCall(cuMemAllocManaged(&ptr, size, m_flags));
-    set(reinterpret_cast<void*>(ptr));
+    set(reinterpret_cast<void *>(ptr));
     m_capacity = size;
     m_bytes = size;
   }
@@ -282,8 +282,7 @@ void UnifiedMemory::resize(size_t size) {
 
 void UnifiedMemory::set_advice(CUmem_advise advice) {
   CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(get());
-  assertCudaCall(
-      cuMemAdvise(ptr, m_bytes, advice, CU_DEVICE_CPU));
+  assertCudaCall(cuMemAdvise(ptr, m_bytes, advice, CU_DEVICE_CPU));
 }
 
 void UnifiedMemory::set_advice(CUmem_advise advice, Device &device) {

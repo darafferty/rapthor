@@ -250,24 +250,20 @@ void InstanceCUDA::load_kernels() {
   // Load calibration functions
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.emplace_back(
-        new cu::Function(*context, function));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
     found++;
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.emplace_back(
-        new cu::Function(*context, function));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.emplace_back(
-        new cu::Function(*context, function));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.emplace_back(
-        new cu::Function(*context, function));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
 
 // Load FFT function
