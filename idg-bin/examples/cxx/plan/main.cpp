@@ -33,7 +33,8 @@ std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
       cstr_nr_channels ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
 
   char *cstr_nr_timesteps = getenv("NR_TIMESTEPS");
-  auto nr_timesteps = cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
+  auto nr_timesteps =
+      cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
 
   char *cstr_nr_timeslots = getenv("NR_TIMESLOTS");
   auto nr_timeslots =
@@ -59,8 +60,8 @@ std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
       cstr_print_metadata ? atoi(cstr_print_metadata) : DEFAULT_PRINT_METADATA;
 
   return std::make_tuple(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-                         grid_size, subgrid_size, kernel_size,
-                         use_wtiles, print_metadata);
+                         grid_size, subgrid_size, kernel_size, use_wtiles,
+                         print_metadata);
 }
 
 void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
@@ -114,9 +115,9 @@ int main(int argc, char **argv) {
   bool print_metadata;
 
   // Read parameters from environment
-  std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-           grid_size, subgrid_size, kernel_size,
-           use_wtiles, print_metadata) = read_parameters();
+  std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots, grid_size,
+           subgrid_size, kernel_size, use_wtiles, print_metadata) =
+      read_parameters();
 
   // Compute nr_baselines
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
@@ -172,11 +173,13 @@ int main(int argc, char **argv) {
   std::clog << ">>> Create plan" << std::endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan = use_wtiles
-    ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
-                 uvw, baselines, aterms_offsets, wtiles, options)
-    : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
-                 uvw, baselines, aterms_offsets, options);
+  idg::Plan plan =
+      use_wtiles
+          ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
+                      frequencies, uvw, baselines, aterms_offsets, wtiles,
+                      options)
+          : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
+                      frequencies, uvw, baselines, aterms_offsets, options);
   std::clog << std::endl;
 
   // Report plan
@@ -194,14 +197,12 @@ int main(int argc, char **argv) {
   std::clog << "Total number of subgrids:       " << plan.get_nr_subgrids()
             << std::endl;
 
-  if (print_metadata)
-  {
+  if (print_metadata) {
     unsigned int nr_subgrids = plan.get_nr_subgrids();
-    const idg::Metadata* metadata = plan.get_metadata_ptr();
-    for (unsigned i = 0; i < nr_subgrids; i++)
-    {
-      idg::Metadata& m = const_cast<idg::Metadata&>(metadata[i]);
-      std::cout << m << std::endl;;
+    const idg::Metadata *metadata = plan.get_metadata_ptr();
+    for (unsigned i = 0; i < nr_subgrids; i++) {
+      idg::Metadata &m = const_cast<idg::Metadata &>(metadata[i]);
+      std::cout << m << std::endl;
     }
   }
 }
