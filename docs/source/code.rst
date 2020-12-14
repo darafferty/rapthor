@@ -3,21 +3,19 @@
 Python and CWL code
 ===================
 
-Rapthor is mainly written in Python and CWL. The structure of the Rapthor code tree is organized as follows:
+Rapthor is mainly written in Python and CWL. The structure of the Rapthor code tree is organized as follows::
 
-| rapthor-master
-| ├── bin
-|     └── rapthor
-| ├── docs
-| ├── examples
-| ├── rapthor
-| │   ├── lib
-| │   ├── operations
-| │   ├── pipeline
-| │   └── scripts
-| └── test
-|
-|
+   rapthor-master
+   ├── bin
+   │   └── rapthor
+   ├── docs
+   ├── examples
+   ├── rapthor
+   │   ├── lib
+   │   ├── operations
+   │   ├── pipeline
+   │   └── scripts
+   └── test
 
 In the folder structure above:
 
