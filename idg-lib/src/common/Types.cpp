@@ -25,6 +25,8 @@ ostream& operator<<(ostream& out, Metadata& m) {
       << "channel_end = " << m.channel_end << ", "
       << "baseline = " << m.baseline << ", "
       << "coordinate = " << m.coordinate << ", "
+      << "wtile_coordinate = " << m.wtile_coordinate << ", "
+      << "wtile_index = " << m.wtile_index << ", "
       << "nr_aterms = " << m.nr_aterms << "]";
   return out;
 }

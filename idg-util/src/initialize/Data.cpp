@@ -98,8 +98,6 @@ unsigned int Data::compute_grid_size() {
 
 void Data::set_baselines(std::vector<StationCoordinate>& station_coordinates) {
   unsigned int nr_stations = station_coordinates.size();
-  printf("nr_stations = %d, nr_baselines = %lu\n", nr_stations,
-         m_baselines.size());
 
   // Set baselines from station pairs
   for (unsigned station1 = 0; station1 < nr_stations; station1++) {
