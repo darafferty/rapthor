@@ -30,8 +30,6 @@ class InstanceCUDA : public KernelsInstance {
   cu::Stream& get_htod_stream() const { return *htodstream; };
   cu::Stream& get_dtoh_stream() const { return *dtohstream; };
 
-  void set_context() const { context->setCurrent(); }
-
   std::string get_compiler_flags();
 
   powersensor::State measure();
@@ -167,12 +165,25 @@ class InstanceCUDA : public KernelsInstance {
   // Misc
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
-  void print_device_memory_info();
   void free_device_memory();
+  void free_events();
+
+  // Device interface
+  void print_device_memory_info() const;
+  size_t get_free_memory() const;
+  size_t get_total_memory() const;
+  template <CUdevice_attribute attribute>
+  int get_attribute() const;
 
  private:
   void free_host_memory();
   void reset();
+
+  // Since no CUDA calls are allowed from a callback, we have to
+  // keep track of the cu::Events used in the UpdateData and
+  // free them explicitely using the free_events() method.
+  cu::Event& get_event();
+  std::vector<std::unique_ptr<cu::Event>> events;
 
  protected:
   cu::Module* compile_kernel(std::string& flags, std::string& src,

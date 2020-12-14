@@ -16,14 +16,13 @@ namespace cuda {
 
 class PowerRecord {
  public:
-  PowerRecord();
-  PowerRecord(powersensor::PowerSensor *sensor);
+  PowerRecord(cu::Event &event, powersensor::PowerSensor *sensor);
 
   void enqueue(cu::Stream &stream);
   static void getPower(CUstream, CUresult, void *userData);
   powersensor::PowerSensor *sensor;
   powersensor::State state;
-  cu::Event event;
+  cu::Event &event;
 };
 
 }  // end namespace cuda

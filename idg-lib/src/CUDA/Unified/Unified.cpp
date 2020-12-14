@@ -54,16 +54,15 @@ void Unified::do_transform(DomainAtoDomainB direction,
   InstanceCUDA& device = get_device(0);
 
   // Get UnifiedMemory object for grid data
-  cu::UnifiedMemory u_grid(m_grid_tiled->data(), m_grid_tiled->bytes());
+  cu::UnifiedMemory u_grid(device.get_context(), m_grid_tiled->data(),
+                           m_grid_tiled->bytes());
 
   // Initialize
   cu::Stream& stream = device.get_execute_stream();
-  device.set_context();
 
   // Performance measurements
   report.initialize(0, 0, grid_size);
   device.set_report(report);
-  PowerRecord powerRecords[2];
   State powerStates[4];
   powerStates[0] = hostPowerSensor->read();
   powerStates[2] = device.measure();
@@ -74,9 +73,7 @@ void Unified::do_transform(DomainAtoDomainB direction,
   time_shift += omp_get_wtime();
 
   // Execute fft
-  device.measure(powerRecords[0], stream);
   device.launch_grid_fft_unified(grid_size, nr_correlations, grid, direction);
-  device.measure(powerRecords[1], stream);
   stream.synchronize();
 
   // Perform fft shift
@@ -98,12 +95,11 @@ void Unified::do_transform(DomainAtoDomainB direction,
   powerStates[3] = device.measure();
 
   // Report performance
-  report.update_grid_fft(powerRecords[0].state, powerRecords[1].state);
   report.update_fft_shift(time_shift);
   report.update_fft_scale(time_scale);
+  report.update_host(powerStates[0], powerStates[1]);
   report.print_total();
   report.print_device(powerStates[2], powerStates[3]);
-  clog << endl;
 }  // end transform
 
 void Unified::do_gridding(
@@ -191,9 +187,10 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     assert(grid_height == grid_width);
     auto grid_size = grid_width;
     auto tile_size = device.get_tile_size_grid();
-    cu::UnifiedMemory* u_grid_tiled = new cu::UnifiedMemory(m_grid->bytes());
-    auto grid_tiled = new Grid(*u_grid_tiled, nr_w_layers, nr_correlations,
-                               grid_height, grid_width);
+    std::unique_ptr<auxiliary::Memory> u_grid_tiled(
+        new cu::UnifiedMemory(device.get_context(), m_grid->bytes()));
+    auto grid_tiled = new Grid(std::move(u_grid_tiled), nr_w_layers,
+                               nr_correlations, grid_height, grid_width);
     m_grid_tiled.reset(grid_tiled);
     device.tile_forward(grid_size, tile_size, *grid, *m_grid_tiled);
   }

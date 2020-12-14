@@ -42,7 +42,6 @@ void Generic::do_transform(DomainAtoDomainB direction,
 
   // Initialize
   cu::Stream& stream = device.get_execute_stream();
-  device.set_context();
 
   // Device memory
   cu::DeviceMemory& d_grid = device.retrieve_device_grid();
@@ -50,7 +49,6 @@ void Generic::do_transform(DomainAtoDomainB direction,
   // Performance measurements
   report.initialize(0, 0, grid_size);
   device.set_report(report);
-  PowerRecord powerRecords[4];
   State powerStates[4];
   powerStates[0] = hostPowerSensor->read();
   powerStates[2] = device.measure();
@@ -59,17 +57,13 @@ void Generic::do_transform(DomainAtoDomainB direction,
   device.shift(grid);
 
   // Copy grid to device
-  device.measure(powerRecords[0], stream);
   device.copy_htod(stream, d_grid, grid.data(), grid.bytes());
-  device.measure(powerRecords[1], stream);
 
   // Execute fft
   device.launch_grid_fft(d_grid, grid_size, direction);
 
   // Copy grid to host
-  device.measure(powerRecords[2], stream);
   device.copy_dtoh(stream, grid.data(), d_grid, grid.bytes());
-  device.measure(powerRecords[3], stream);
   stream.synchronize();
 
   // Perform fft shift
@@ -88,11 +82,9 @@ void Generic::do_transform(DomainAtoDomainB direction,
   powerStates[3] = device.measure();
 
   // Report performance
-  report.update_input(powerRecords[0].state, powerRecords[1].state);
-  report.update_output(powerRecords[2].state, powerRecords[3].state);
   report.update_host(powerStates[0], powerStates[1]);
   report.print_total();
-  report.print_device(powerRecords[0].state, powerRecords[3].state);
+  report.print_device(powerStates[2], powerStates[3]);
 }  // end transform
 
 void Generic::run_gridding(
@@ -110,7 +102,7 @@ void Generic::run_gridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  device.set_context();
+  const cu::Context& context = device.get_context();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
@@ -139,10 +131,10 @@ void Generic::run_gridding(
   std::vector<std::unique_ptr<cu::Event>> inputCopied;
   std::vector<std::unique_ptr<cu::Event>> gpuFinished;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(
-        std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
-    gpuFinished.push_back(
-        std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+    inputCopied.push_back(std::unique_ptr<cu::Event>(
+        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
+    gpuFinished.push_back(std::unique_ptr<cu::Event>(
+        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
   }
 
   // Load memory objects
@@ -335,7 +327,7 @@ void Generic::run_degridding(
 #endif
 
   InstanceCUDA& device = get_device(0);
-  device.set_context();
+  const cu::Context& context = device.get_context();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
@@ -365,12 +357,12 @@ void Generic::run_degridding(
   std::vector<std::unique_ptr<cu::Event>> gpuFinished;
   std::vector<std::unique_ptr<cu::Event>> outputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(
-        std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
-    gpuFinished.push_back(
-        std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
-    outputCopied.push_back(
-        std::unique_ptr<cu::Event>(new cu::Event(CU_EVENT_BLOCKING_SYNC)));
+    inputCopied.push_back(std::unique_ptr<cu::Event>(
+        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
+    gpuFinished.push_back(std::unique_ptr<cu::Event>(
+        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
+    outputCopied.push_back(std::unique_ptr<cu::Event>(
+        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
   }
 
   // Load memory objects
@@ -547,7 +539,6 @@ void Generic::do_degridding(
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
-  device.set_context();
   device.allocate_device_grid(grid->bytes());
   cu::DeviceMemory& d_grid = device.retrieve_device_grid();
   cu::Stream& htodstream = device.get_htod_stream();
@@ -557,7 +548,6 @@ void Generic::set_grid(std::shared_ptr<Grid> grid) {
 
 std::shared_ptr<Grid> Generic::get_grid() {
   InstanceCUDA& device = get_device(0);
-  device.set_context();
   cu::DeviceMemory& d_grid = device.retrieve_device_grid();
   cu::Stream& dtohstream = device.get_dtoh_stream();
   device.copy_dtoh(dtohstream, m_grid->data(), d_grid, m_grid->bytes());

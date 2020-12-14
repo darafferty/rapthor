@@ -40,10 +40,9 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_nr, int device_id)
   // Initialize members
   device.reset(new cu::Device(device_id));
   context.reset(new cu::Context(*device));
-  context->setCurrent();
-  executestream.reset(new cu::Stream());
-  htodstream.reset(new cu::Stream());
-  dtohstream.reset(new cu::Stream());
+  executestream.reset(new cu::Stream(*context));
+  htodstream.reset(new cu::Stream(*context));
+  dtohstream.reset(new cu::Stream(*context));
 
   // Set kernel parameters
   set_parameters();
@@ -60,17 +59,16 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_nr, int device_id)
 
 // Destructor
 InstanceCUDA::~InstanceCUDA() {
-  context->setCurrent();
   free_host_memory();
   free_device_memory();
   free_fft_plans();
+  free_events();
   mModules.clear();
   executestream.reset();
   htodstream.reset();
   dtohstream.reset();
-  context->reset();
-  device.reset();
   context.reset();
+  device.reset();
   delete powerSensor;
 }
 
@@ -109,8 +107,6 @@ std::string InstanceCUDA::get_compiler_flags() {
 
 cu::Module* InstanceCUDA::compile_kernel(std::string& flags, std::string& src,
                                          std::string& bin) {
-  context->setCurrent();
-
   // Create a string with the full path to the cubin file "kernel.cubin"
   std::string lib = mInfo.get_path_to_lib() + "/" + bin;
 
@@ -121,7 +117,7 @@ cu::Module* InstanceCUDA::compile_kernel(std::string& flags, std::string& src,
   cu::Source(source.c_str()).compile(lib.c_str(), flags.c_str());
 
   // Create module
-  return new cu::Module(lib.c_str());
+  return new cu::Module(*context, lib.c_str());
 }
 
 void InstanceCUDA::compile_kernels() {
@@ -219,59 +215,55 @@ void InstanceCUDA::load_kernels() {
   // Load gridder function
   if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) ==
       CUDA_SUCCESS) {
-    function_gridder.reset(new cu::Function(function));
+    function_gridder.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load degridder function
   if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) ==
       CUDA_SUCCESS) {
-    function_degridder.reset(new cu::Function(function));
+    function_degridder.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load scalar function
   if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) ==
       CUDA_SUCCESS) {
-    function_scaler.reset(new cu::Function(function));
+    function_scaler.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load adder function
   if (cuModuleGetFunction(&function, *mModules[3], name_adder.c_str()) ==
       CUDA_SUCCESS) {
-    function_adder.reset(new cu::Function(function));
+    function_adder.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load splitter function
   if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) ==
       CUDA_SUCCESS) {
-    function_splitter.reset(new cu::Function(function));
+    function_splitter.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load calibration functions
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(function)));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
     found++;
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(function)));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(function)));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
-    functions_calibrate.push_back(
-        std::unique_ptr<cu::Function>(new cu::Function(function)));
+    functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
 
 // Load FFT function
@@ -366,10 +358,11 @@ void InstanceCUDA::set_parameters() {
 }
 
 std::ostream& operator<<(std::ostream& os, InstanceCUDA& d) {
+  cu::ScopedContext scc(d.get_context());
+
   os << d.get_device().get_name() << std::endl;
   os << std::setprecision(2);
   os << std::fixed;
-  d.get_context().setCurrent();
 
   // Device memory
   auto device_memory_total =
@@ -433,6 +426,19 @@ void InstanceCUDA::measure(PowerRecord& record, cu::Stream& stream) {
   record.enqueue(stream);
 }
 
+cu::Event& InstanceCUDA::get_event() {
+  // Create new event
+  cu::Event* event = new cu::Event(*context);
+
+  // This event is used in a callback, where it can not be destroyed
+  // after use. Instead, register the event globally, and take care of
+  // destruction there.
+  events.emplace_back(event);
+
+  // Return a reference to the event
+  return *event;
+}
+
 typedef struct {
   PowerRecord* start;
   PowerRecord* end;
@@ -440,11 +446,12 @@ typedef struct {
   void (Report::*update_report)(State&, State&);
 } UpdateData;
 
-UpdateData* get_update_data(PowerSensor* sensor, Report* report,
+UpdateData* get_update_data(cu::Event& event, PowerSensor* sensor,
+                            Report* report,
                             void (Report::*update_report)(State&, State&)) {
   UpdateData* data = new UpdateData();
-  data->start = new PowerRecord(sensor);
-  data->end = new PowerRecord(sensor);
+  data->start = new PowerRecord(event, sensor);
+  data->end = new PowerRecord(event, sensor);
   data->report = report;
   data->update_report = update_report;
   return data;
@@ -497,8 +504,8 @@ void InstanceCUDA::launch_gridder(
 
   dim3 grid(nr_subgrids);
   dim3 block(block_gridder);
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_gridder);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_gridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
@@ -522,8 +529,8 @@ void InstanceCUDA::launch_degridder(
 
   dim3 grid(nr_subgrids);
   dim3 block(block_degridder);
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_degridder);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_degridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
@@ -546,8 +553,8 @@ void InstanceCUDA::launch_calibrate(
     cu::DeviceMemory& d_residual) {
   dim3 grid(nr_subgrids);
   dim3 block(block_calibrate);
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_calibrate);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_calibrate);
   start_measurement(data);
 
   // Get functions
@@ -710,6 +717,8 @@ void InstanceCUDA::launch_calibrate(
 
 void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
                                    DomainAtoDomainB direction) {
+  cu::ScopedContext scc(*context);
+
   int sign =
       (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
@@ -724,8 +733,8 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
   }
 
   // Enqueue start of measurement
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_grid_fft);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_grid_fft);
   start_measurement(data);
 
 #if ENABLE_REPEAT_KERNELS
@@ -775,7 +784,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
       m_fft_plan_subgrid.reset(fft_plan);
       auto sizeof_subgrids =
           auxiliary::sizeof_subgrids(m_fft_subgrid_bulk, m_fft_subgrid_size);
-      d_fft_subgrid.reset(new cu::DeviceMemory(sizeof_subgrids));
+      d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
     } catch (cufft::Error& e) {
       // bulk might be too large, try again using half the bulk size
       m_fft_subgrid_bulk /= 2;
@@ -808,9 +817,11 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   }
 #endif
 
+  cu::ScopedContext scc(*context);
+
   // Enqueue start of measurement
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_subgrid_fft);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_subgrid_fft);
   start_measurement(data);
 
   // Execute bulk subgrid fft
@@ -844,6 +855,8 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
                                            unsigned int batch,
                                            Array3D<std::complex<float>>& grid,
                                            DomainAtoDomainB direction) {
+  cu::ScopedContext scc(*context);
+
   int sign =
       (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
   cufft::C2C_1D fft_plan_row(size, 1, 1, 1);
@@ -873,7 +886,7 @@ void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
                               d_subgrid,  d_grid,        &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_adder);
+      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
   start_measurement(data);
   data->start->enqueue(*executestream);
 #if ENABLE_REPEAT_KERNELS
@@ -894,7 +907,7 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
                               d_subgrid,  &u_grid,       &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_adder);
+      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
   start_measurement(data);
   executestream->launchKernel(*function_adder, grid, block_adder, 0,
                               parameters);
@@ -910,8 +923,8 @@ void InstanceCUDA::launch_splitter(int nr_subgrids, long grid_size,
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
                               d_subgrid,  d_grid,        &enable_tiling};
   dim3 grid(nr_subgrids);
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_splitter);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_splitter);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
@@ -930,8 +943,8 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
                               d_subgrid,  &u_grid,       &enable_tiling};
   dim3 grid(nr_subgrids);
-  UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_splitter);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_splitter);
   start_measurement(data);
   executestream->launchKernel(*function_splitter, grid, block_splitter, 0,
                               parameters);
@@ -943,7 +956,7 @@ void InstanceCUDA::launch_scaler(int nr_subgrids, int subgrid_size,
   const void* parameters[] = {&subgrid_size, d_subgrid};
   dim3 grid(nr_subgrids);
   UpdateData* data =
-      get_update_data(powerSensor, report, &Report::update_scaler);
+      get_update_data(get_event(), powerSensor, report, &Report::update_scaler);
   start_measurement(data);
   executestream->launchKernel(*function_scaler, grid, block_scaler, 0,
                               parameters);
@@ -1002,7 +1015,7 @@ void InstanceCUDA::copy_dtoh(cu::Stream& stream, void* dst,
   cu::Marker marker(message, cu::Marker::red);
   marker.start();
   size_t batch = 1024 * 1024 * 1024;  // 1024 Mb
-  cu::HostMemory tmp(batch);
+  cu::HostMemory tmp(*context, batch);
   for (size_t i = 0; i < bytes; i += batch) {
     size_t n = i + batch < bytes ? batch : bytes - i;
     size_t src_ptr = (size_t)src + i;
@@ -1021,7 +1034,7 @@ void InstanceCUDA::copy_htod(cu::Stream& stream, cu::DeviceMemory& dst,
   cu::Marker marker(message, cu::Marker::red);
   marker.start();
   size_t batch = 1024 * 1024 * 1024;  // 1024 Mb
-  cu::HostMemory tmp(batch);
+  cu::HostMemory tmp(*context, batch);
   for (size_t i = 0; i < bytes; i += batch) {
     size_t n = i + batch < bytes ? batch : bytes - i;
     size_t src_ptr = (size_t)src + i;
@@ -1040,7 +1053,7 @@ void InstanceCUDA::copy_htod(cu::Stream& stream, cu::DeviceMemory& dst,
 template <typename T>
 T* InstanceCUDA::reuse_memory(uint64_t size, std::unique_ptr<T>& memory) {
   if (!memory) {
-    memory.reset(new T(size));
+    memory.reset(new T(*context, size));
   } else {
     memory->resize(size);
   }
@@ -1095,9 +1108,9 @@ T* InstanceCUDA::reuse_memory(std::vector<std::unique_ptr<T>>& memories,
   T* ptr = NULL;
 
   if (memories.size() <= id) {
-    ptr = new T(size);
+    ptr = new T(*context, size);
 
-    memories.push_back(std::unique_ptr<T>(ptr));
+    memories.emplace_back(ptr);
   } else {
     ptr = memories[id].get();
   }
@@ -1134,8 +1147,7 @@ cu::DeviceMemory& InstanceCUDA::allocate_device_metadata(unsigned int id,
  *      the memory from the d_misc_ vector
  */
 unsigned int InstanceCUDA::allocate_device_memory(size_t bytes) {
-  cu::DeviceMemory* d_misc = new cu::DeviceMemory(bytes);
-  d_misc_.push_back(std::unique_ptr<cu::DeviceMemory>(d_misc));
+  d_misc_.emplace_back(new cu::DeviceMemory(*context, bytes));
   return d_misc_.size() - 1;
 }
 
@@ -1157,8 +1169,7 @@ void InstanceCUDA::register_host_memory(void* ptr, size_t bytes) {
       return;
     }
   }
-  cu::RegisteredMemory* h_registered = new cu::RegisteredMemory(ptr, bytes);
-  h_registered_.push_back(std::unique_ptr<cu::RegisteredMemory>(h_registered));
+  h_registered_.emplace_back(new cu::RegisteredMemory(*context, ptr, bytes));
 }
 
 /*
@@ -1190,6 +1201,11 @@ void InstanceCUDA::free_device_memory() {
 }
 
 /*
+ * Event destructor
+ */
+void InstanceCUDA::free_events() { events.clear(); }
+
+/*
  * FFT plan destructor
  */
 void InstanceCUDA::free_fft_plans() {
@@ -1208,18 +1224,20 @@ void InstanceCUDA::reset() {
   executestream.reset();
   htodstream.reset();
   dtohstream.reset();
-  context->reset();
   context.reset(new cu::Context(*device));
-  context->setCurrent();
-  executestream.reset(new cu::Stream());
-  htodstream.reset(new cu::Stream());
-  dtohstream.reset(new cu::Stream());
+  executestream.reset(new cu::Stream(*context));
+  htodstream.reset(new cu::Stream(*context));
+  dtohstream.reset(new cu::Stream(*context));
 }
 
-void InstanceCUDA::print_device_memory_info() {
+/*
+ * Device interface
+ */
+void InstanceCUDA::print_device_memory_info() const {
 #if defined(DEBUG)
   std::cout << "InstanceCUDA::" << __func__ << std::endl;
 #endif
+  cu::ScopedContext scc(*context);
   auto memory_total =
       device->get_total_memory() / ((float)1024 * 1024 * 1024);  // GBytes
   auto memory_free =
@@ -1229,6 +1247,22 @@ void InstanceCUDA::print_device_memory_info() {
   std::clog << "total: " << memory_total << " Gb, ";
   std::clog << "used: " << memory_used << " Gb, ";
   std::clog << "free: " << memory_free << " Gb" << std::endl;
+}
+
+size_t InstanceCUDA::get_free_memory() const {
+  cu::ScopedContext scc(*context);
+  return device->get_free_memory();
+}
+
+size_t InstanceCUDA::get_total_memory() const {
+  cu::ScopedContext scc(*context);
+  return device->get_total_memory();
+}
+
+template <CUdevice_attribute attribute>
+int InstanceCUDA::get_attribute() const {
+  cu::ScopedContext scc(*context);
+  return device->get_attribute<attribute>();
 }
 
 }  // end namespace cuda

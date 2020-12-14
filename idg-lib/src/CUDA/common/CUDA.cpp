@@ -108,7 +108,8 @@ ProxyInfo CUDA::default_info() {
 }  // end default_info
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
-  return std::unique_ptr<auxiliary::Memory>(new cu::HostMemory(bytes));
+  const cu::Context& context = get_device(0).get_context();
+  return std::unique_ptr<auxiliary::Memory>(new cu::HostMemory(context, bytes));
 }
 
 std::vector<int> CUDA::compute_jobsize(const Plan& plan,
@@ -221,8 +222,6 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
   std::vector<int> max_nr_subgrids_job(nr_devices);
   for (unsigned i = 0; i < nr_devices; i++) {
     InstanceCUDA* device = devices[i];
-    cu::Context& context = device->get_context();
-    context.setCurrent();
 
     // Print device number
     if (nr_devices > 1) {
@@ -232,7 +231,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
     }
 
     // Get amount of memory available on device
-    auto bytes_free = device->get_device().get_free_memory();
+    auto bytes_free = device->get_free_memory();
 #if defined(DEBUG_COMPUTE_JOBSIZE)
     std::clog << "Bytes free: " << bytes_free << std::endl;
 #endif
@@ -326,7 +325,6 @@ void CUDA::initialize(
     // Allocate and initialize device memory
     for (unsigned d = 0; d < get_num_devices(); d++) {
       InstanceCUDA& device = get_device(d);
-      device.set_context();
       auto jobsize = m_gridding_state.jobsize[d];
       auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
       cu::Stream& htodstream = device.get_htod_stream();
@@ -416,6 +414,9 @@ void CUDA::initialize(
 
       // Wait for memory copies
       htodstream.synchronize();
+
+      // Remove all pre-existing events
+      device.free_events();
     }
   } catch (cu::Error<CUresult>& error) {
     if (error == CUDA_ERROR_OUT_OF_MEMORY) {
@@ -430,7 +431,6 @@ void CUDA::initialize(
       // Free all device memory
       for (unsigned d = 0; d < get_num_devices(); d++) {
         InstanceCUDA& device = get_device(d);
-        device.set_context();
         device.free_device_memory();
         device.free_fft_plans();
       }
@@ -457,7 +457,6 @@ void CUDA::cleanup() {
 
   for (unsigned d = 0; d < get_num_devices(); d++) {
     InstanceCUDA& device = get_device(d);
-    device.set_context();
     device.free_device_wavenumbers();
     device.free_device_spheroidal();
     device.free_device_aterms();
