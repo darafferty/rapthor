@@ -11,8 +11,8 @@ PowerRecord::PowerRecord(cu::Event &event, powersensor::PowerSensor *sensor)
     : sensor(sensor), event(event) {}
 
 void PowerRecord::enqueue(cu::Stream &stream) {
-  stream.record((cu::Event &)event);
-  stream.addCallback((CUstreamCallback)&PowerRecord::getPower, this);
+  stream.record(event);
+  stream.addCallback(&PowerRecord::getPower, this);
 }
 
 void PowerRecord::getPower(CUstream, CUresult, void *userData) {
