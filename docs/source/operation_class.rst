@@ -14,22 +14,22 @@ Subclasses of the Operation class
 
 A subclass of the Operation class is defined for each of Rapthor's operations (see :ref:`operations`): calibrate, predict, image, and mosaic. These subclasses are described in detail below.
 
-Calibrate
-^^^^^^^^^
+The Calibrate class
+^^^^^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.calibrate.Calibrate
    :members:
 
-Predict
-^^^^^^^
+The Predict class
+^^^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.predict.Predict
    :members:
 
-Image
-^^^^^
+The Image class
+^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.image.Image
    :members:
 
-Mosaic
-^^^^^^
+The Mosaic class
+^^^^^^^^^^^^^^^^
 .. autoclass:: rapthor.operations.mosaic.Mosaic
    :members:
