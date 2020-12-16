@@ -3,7 +3,7 @@
 Python and CWL code
 ===================
 
-Rapthor is mainly written in Python and CWL. The structure of the Rapthor code tree is organized as follows::
+Rapthor is mainly written in Python and CWL. The Rapthor code tree is organized as follows::
 
    rapthor-master
    ├── bin
@@ -55,7 +55,7 @@ The following Python classes and modules are the principal ones used in Rapthor.
 Python processing scripts
 -------------------------
 
-The Rapthor pipelines call a number of Python scripts to process the solutions, images, etc. The scripts are located in the ``rapthor/scripts/`` directory of the code tree. For details of each script's function, see the inline documentation in the script's code.
+The Rapthor pipelines call a number of Python scripts to process the solutions, images, etc. The scripts are located in the ``rapthor/scripts/`` directory of the code tree. For details of each script's function, see the inline documentation in the script's code. A description of the inputs can also be obtained by running the script with the ``-h`` flag.
 
 
 .. _cwl:
