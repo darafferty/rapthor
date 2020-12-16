@@ -67,7 +67,8 @@ class Calibrate(Operation):
         solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
         solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
 
-        # Define various output filenames for the solution tables
+        # Define various output filenames for the solution tables. We save some to
+        # as attributes since they are needed in finalize()
         output_fast_h5parm = [str(os.path.join(self.pipeline_working_dir,
                               'fast_phase_{}.h5parm'.format(i)))
                               for i in range(self.field.ntimechunks)]
@@ -76,8 +77,8 @@ class Calibrate(Operation):
         output_slow_h5parm = [str(os.path.join(self.pipeline_working_dir,
                               'slow_gain_{}.h5parm'.format(i)))
                               for i in range(self.field.nfreqchunks)]
-        self.combined_slow_h5parm = os.path.join(self.pipeline_working_dir,
-                                                 'slow_gains.h5parm')
+        combined_slow_h5parm = os.path.join(self.pipeline_working_dir,
+                                            'slow_gains.h5parm')
         self.combined_h5parms = str(os.path.join(self.pipeline_working_dir,
                                                  'combined_solutions.h5'))
         output_slow_h5parm2 = [str(os.path.join(self.pipeline_working_dir,
@@ -129,11 +130,15 @@ class Calibrate(Operation):
                            'split_solutions_{}.h5'.format(i))) for i in
                            range(nsplit)]
 
-        # Set the root filenames for the a-term images
+        # Set the root filenames for the a-term images. We save it to an attribute
+        # since it is needed in finalize()
         aterms_root = str(os.path.join(self.pipeline_working_dir,
                                        'diagonal_aterms'))
         self.output_aterms_root = [aterms_root+'_{}'.format(i) for i in
                                    range(len(split_outh5parm))]
+
+        # Set the type of screen to make
+        screen_type = self.field.screen_type
 
         self.input_parms = {'timechunk_filename': timechunk_filename,
                             'freqchunk_filename': freqchunk_filename,
@@ -152,7 +157,7 @@ class Calibrate(Operation):
                             'output_fast_h5parm': output_fast_h5parm,
                             'combined_fast_h5parm': self.combined_fast_h5parm,
                             'output_slow_h5parm': output_slow_h5parm,
-                            'combined_slow_h5parm': self.combined_slow_h5parm,
+                            'combined_slow_h5parm': combined_slow_h5parm,
                             'calibration_skymodel_file': calibration_skymodel_file,
                             'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
@@ -166,6 +171,7 @@ class Calibrate(Operation):
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'split_outh5parm': split_outh5parm,
                             'output_aterms_root': self.output_aterms_root,
+                            'screen_type': screen_type,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': antennaconstraint_core,
                             'slow_antennaconstraint': antennaconstraint_all,
