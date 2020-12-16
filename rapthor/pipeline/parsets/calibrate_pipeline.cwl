@@ -687,7 +687,7 @@ steps:
       - id: soltabname
         valueFrom: 'gain000'
       - id: screen_type
-        valueFrom: screen_type
+        source: screen_type
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
