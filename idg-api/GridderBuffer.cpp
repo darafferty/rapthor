@@ -272,7 +272,7 @@ void GridderBufferImpl::flush_thread_worker() {
   proxy.gridding(*plan, m_bufferset.get_w_step(), m_shift,
                  m_bufferset.get_cell_size(), m_bufferset.get_kernel_size(),
                  subgridsize, m_frequencies, m_bufferVisibilities2,
-                 m_bufferUVW2, m_bufferStationPairs2, *m_bufferset.get_grid(),
+                 m_bufferUVW2, m_bufferStationPairs2,
                  m_aterms_array, m_aterm_offsets_array,
                  m_bufferset.get_spheroidal());
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Pause();
@@ -302,6 +302,10 @@ void GridderBufferImpl::flush() {
   m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
       m_aterms2.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
       subgridsize, subgridsize);
+
+  // Pass the grid to the proxy
+  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy.set_grid(*m_bufferset.get_grid());
 
   m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 
@@ -339,6 +343,12 @@ void GridderBufferImpl::finished() {
   if (m_flush_thread.joinable()) {
     m_flush_thread.join();
   }
+
+  // Retrieve the grid, this makes sure that any operations in the proxy
+  // (e.g.) w-tiling, is finished and the grid passed in ::flush() can
+  // be used again by the caller.
+  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy.get_grid();
 }
 
 void GridderBufferImpl::malloc_buffers() {

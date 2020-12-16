@@ -122,7 +122,7 @@ int test01() {
   // Grid reference visibilities
   clog << ">>> Grid visibilities" << endl;
   proxy.gridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                 frequencies, visibilities_ref, uvw, baselines, grid_, aterms,
+                 frequencies, visibilities_ref, uvw, baselines, aterms,
                  aterms_offsets, spheroidal);
   proxy.transform(idg::FourierDomainToImageDomain, grid);
 
@@ -141,7 +141,7 @@ int test01() {
   proxy.set_grid(grid_ref_);
 
   proxy.degridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                   frequencies, visibilities, uvw, baselines, grid_ref_, aterms,
+                   frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);
   clog << endl;
 

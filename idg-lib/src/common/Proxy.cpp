@@ -23,12 +23,10 @@ void Proxy::gridding(
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    Grid& grid_deprecated,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
   assert(m_grid != nullptr);
-  assert(grid_deprecated.data() == m_grid->data());
 
   check_dimensions(subgrid_size, frequencies, visibilities, uvw, baselines,
                    *m_grid, aterms, aterms_offsets, spheroidal);
@@ -51,7 +49,6 @@ void Proxy::gridding(
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    Grid& grid_deprecated,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
@@ -67,7 +64,7 @@ void Proxy::gridding(
                 uvw, baselines, aterms_offsets, options);
 
   gridding(*plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-           frequencies, visibilities, uvw, baselines, *m_grid, aterms,
+           frequencies, visibilities, uvw, baselines, aterms,
            aterms_offsets, spheroidal);
 }
 
@@ -82,14 +79,16 @@ void Proxy::gridding(
     unsigned int uvw_nr_baselines, unsigned int uvw_nr_timesteps,
     unsigned int uvw_nr_coordinates, unsigned int* baselines,
     unsigned int baselines_nr_baselines, unsigned int baselines_two,
-    std::complex<float>* grid_deprecated, unsigned int grid_nr_correlations,
-    unsigned int grid_height, unsigned int grid_width,
     std::complex<float>* aterms, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
     unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
+    unsigned int grid_nr_correlations = m_grid->get_z_dim();
+    unsigned int grid_height = m_grid->get_y_dim();
+    unsigned int grid_width = m_grid->get_x_dim();
+
   check_dimensions(subgrid_size, frequencies_nr_channels,
                    visibilities_nr_baselines, visibilities_nr_timesteps,
                    visibilities_nr_channels, visibilities_nr_correlations,
@@ -110,7 +109,6 @@ void Proxy::gridding(
   Array1D<std::pair<unsigned int, unsigned int>> baselines_(
       (std::pair<unsigned int, unsigned int>*)baselines,
       baselines_nr_baselines);
-  Grid grid_(m_grid->data(), 1, grid_nr_correlations, grid_height, grid_width);
   Array4D<Matrix2x2<std::complex<float>>> aterms_(
       (Matrix2x2<std::complex<float>>*)aterms, aterms_nr_timeslots,
       aterms_nr_stations, aterms_aterm_height, aterms_aterm_width);
@@ -119,7 +117,7 @@ void Proxy::gridding(
   Array2D<float> spheroidal_(spheroidal, spheroidal_height, spheroidal_width);
 
   gridding(w_step, shift_, cell_size, kernel_size, subgrid_size, frequencies_,
-           visibilities_, uvw_, baselines_, grid_, aterms_, aterms_offsets_,
+           visibilities_, uvw_, baselines_, aterms_, aterms_offsets_,
            spheroidal_);
 }
 
@@ -133,11 +131,9 @@ void Proxy::degridding(
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid_deprecated,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
-  assert(grid_deprecated.data() == m_grid->data());
 
   check_dimensions(subgrid_size, frequencies, visibilities, uvw, baselines,
                    *m_grid, aterms, aterms_offsets, spheroidal);
@@ -160,7 +156,6 @@ void Proxy::degridding(
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid_deprecated,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
@@ -176,7 +171,7 @@ void Proxy::degridding(
                 uvw, baselines, aterms_offsets, options);
 
   degridding(*plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-             frequencies, visibilities, uvw, baselines, *m_grid, aterms,
+             frequencies, visibilities, uvw, baselines, aterms,
              aterms_offsets, spheroidal);
 }
 
@@ -353,14 +348,17 @@ void Proxy::degridding(
     unsigned int uvw_nr_baselines, unsigned int uvw_nr_timesteps,
     unsigned int uvw_nr_coordinates, unsigned int* baselines,
     unsigned int baselines_nr_baselines, unsigned int baselines_two,
-    std::complex<float>* grid, unsigned int grid_nr_correlations,
-    unsigned int grid_height, unsigned int grid_width,
     std::complex<float>* aterms, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
     unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
+
+  unsigned int grid_nr_correlations = m_grid->get_z_dim();
+  unsigned int grid_height = m_grid->get_y_dim();
+  unsigned int grid_width = m_grid->get_x_dim();
+
   check_dimensions(subgrid_size, frequencies_nr_channels,
                    visibilities_nr_baselines, visibilities_nr_timesteps,
                    visibilities_nr_channels, visibilities_nr_correlations,
@@ -381,7 +379,6 @@ void Proxy::degridding(
   Array1D<std::pair<unsigned int, unsigned int>> baselines_(
       (std::pair<unsigned int, unsigned int>*)baselines,
       baselines_nr_baselines);
-  Grid grid_(grid, 1, grid_nr_correlations, grid_height, grid_width);
   Array4D<Matrix2x2<std::complex<float>>> aterms_(
       (Matrix2x2<std::complex<float>>*)aterms, aterms_nr_timeslots,
       aterms_nr_stations, aterms_aterm_height, aterms_aterm_width);
@@ -390,7 +387,7 @@ void Proxy::degridding(
   Array2D<float> spheroidal_(spheroidal, spheroidal_height, spheroidal_width);
 
   degridding(w_step, shift_, cell_size, kernel_size, subgrid_size, frequencies_,
-             visibilities_, uvw_, baselines_, grid_, aterms_, aterms_offsets_,
+             visibilities_, uvw_, baselines_, aterms_, aterms_offsets_,
              spheroidal_);
 }
 

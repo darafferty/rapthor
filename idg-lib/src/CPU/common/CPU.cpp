@@ -70,18 +70,14 @@ std::unique_ptr<Plan> CPU::make_plan(
 void CPU::set_grid(Grid &grid) {
   Proxy::set_grid(grid);
   m_wtiles = WTiles();
-  kernels.reset_wtiles();
 }
 
 void CPU::set_grid(std::shared_ptr<Grid> grid) {
   Proxy::set_grid(grid);
   m_wtiles = WTiles();
-  kernels.reset_wtiles();
 }
 
 std::shared_ptr<Grid> CPU::get_grid() {
-  std::shared_ptr<Grid> grid_ptr = Proxy::get_grid();
-  Grid &grid = *grid_ptr;
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
@@ -89,9 +85,9 @@ std::shared_ptr<Grid> CPU::get_grid() {
         m_wtiles.get_grid_size(), m_wtiles.get_subgrid_size(),
         m_wtiles.get_image_size(), m_wtiles.get_w_step(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
-        wtile_flush_info.wtile_coordinates.data(), grid.data());
+        wtile_flush_info.wtile_coordinates.data(), m_grid->data());
   }
-  return grid_ptr;
+  return m_grid;
 }
 
 unsigned int CPU::compute_jobsize(const Plan &plan,

@@ -188,15 +188,17 @@ int compare_to_reference(float tol = 1000 *
 
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
+  optimized.set_grid(grid);
   optimized.gridding(plan, w_offset, shift, cell_size, kernel_size,
                      subgrid_size, frequencies, visibilities, uvw, baselines,
-                     *grid, aterms, aterms_offsets, spheroidal);
+                     aterms, aterms_offsets, spheroidal);
   optimized.get_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
+  reference.set_grid(grid_ref);
   reference.gridding(plan, w_offset, shift, cell_size, kernel_size,
                      subgrid_size, frequencies, visibilities, uvw, baselines,
-                     *grid_ref, aterms, aterms_offsets, spheroidal);
+                     aterms, aterms_offsets, spheroidal);
   reference.get_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
@@ -209,14 +211,16 @@ int compare_to_reference(float tol = 1000 *
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
   visibilities_ref.zero();
+  optimized.set_grid(grid);
   optimized.degridding(plan, w_offset, shift, cell_size, kernel_size,
                        subgrid_size, frequencies, visibilities, uvw, baselines,
-                       *grid, aterms, aterms_offsets, spheroidal);
+                       aterms, aterms_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
+  reference.set_grid(grid);
   reference.degridding(plan, w_offset, shift, cell_size, kernel_size,
                        subgrid_size, frequencies, visibilities_ref, uvw,
-                       baselines, *grid, aterms, aterms_offsets, spheroidal);
+                       baselines, aterms, aterms_offsets, spheroidal);
 
   std::clog << std::endl;
 

@@ -313,7 +313,7 @@ void run() {
         if (!disable_gridding)
           proxy.gridding(*plan, w_offset, shift, cell_size, kernel_size,
                          subgrid_size, frequencies, visibilities, uvw,
-                         baselines, *grid, aterms, aterms_offsets, spheroidal);
+                         baselines, aterms, aterms_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
 
@@ -323,7 +323,7 @@ void run() {
         if (!disable_degridding)
           proxy.degridding(*plan, w_offset, shift, cell_size, kernel_size,
                            subgrid_size, frequencies, visibilities, uvw,
-                           baselines, *grid, aterms, aterms_offsets,
+                           baselines, aterms, aterms_offsets,
                            spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
