@@ -166,6 +166,12 @@ inputs:
       The root names of the output a-term images (length = n_obs * n_split).
     type: string[]
 
+  - id: screen_type
+    label: Type of screen for a-terms
+    doc: |
+      The screen type to use to derive the a-term images (length = 1).
+    type: string
+
 {% if do_slowgain_solve %}
   - id: freqchunk_filename
     label: Filename of input MS (frequency)
@@ -681,7 +687,7 @@ steps:
       - id: soltabname
         valueFrom: 'gain000'
       - id: screen_type
-        valueFrom: 'kl'
+        valueFrom: screen_type
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot

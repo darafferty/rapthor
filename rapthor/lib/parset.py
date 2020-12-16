@@ -472,11 +472,16 @@ def get_imaging_options(parset):
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'cpu'
 
-    # Use screens during imaging (default = True).
+    # Use screens during imaging (default = True)? If False, the solutions closest
+    # to the image centers will be used. If True, the type of screen to use can be
+    # specified with screen_type: tessellated (simple, smoothed tessellated screens)
+    # or kl (Karhunen-Lo`eve screens) (default = tessellated)
     if 'use_screens' in parset_dict:
         parset_dict['use_screens'] = parset.getboolean('imaging', 'use_screens')
     else:
         parset_dict['use_screens'] = True
+    if 'screen_type' not in parset_dict:
+        parset_dict['screen_type'] = 'tessellated'
 
     # Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
     if 'mem_fraction' in parset_dict:
@@ -549,7 +554,7 @@ def get_imaging_options(parset):
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
                        'multiscale_scales_pixel', 'grid_center_ra', 'grid_center_dec',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
-                       'min_uv_lambda', 'max_uv_lambda', 'mem_fraction',
+                       'min_uv_lambda', 'max_uv_lambda', 'mem_fraction', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'sector_do_multiscale_list', 'use_mpi',

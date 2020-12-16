@@ -52,6 +52,7 @@ class Field(object):
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.use_screens = self.parset['imaging_specific']['use_screens']
+        self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.reweight = self.parset['imaging_specific']['reweight']

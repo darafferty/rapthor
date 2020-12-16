@@ -9,7 +9,7 @@ from rapthor.lib.screen import KLScreen, VoronoiScreen
 from losoto.h5parm import h5parm
 
 
-def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
+def main(h5parmfile, soltabname='phase000', screen_type='tessellated', outroot='',
          bounds_deg=None, bounds_mid_deg=None, skymodel=None,
          solsetname='sol000', padding_fraction=1.4, cellsize_deg=0.2,
          smooth_deg=0, interp_kind='nearest', ncpu=0):
@@ -23,8 +23,8 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
     soltabname : str, optional
         Name of soltab to use. If "gain" is in the name, phase and amplitudes are used
     screen_type : str, optional
-        Kind of screen to use: 'voronoi' (simple Voronoi tessellation) or 'kl' (Karhunen-
-        Lo`eve transform)
+        Kind of screen to use: 'tessellated' (simple Voronoi tessellation) or 'kl'
+        (Karhunen-Lo`eve transform)
     outroot : str, optional
         Root of filename of output FITS file (root+'_0.fits')
     bounds_deg : list, optional
@@ -79,13 +79,14 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
         # No need to smooth KL screens
         smooth_pix = 0.0
 
-    # Check whether we just have one direction. If so, force screen_type to 'voronoi'
+    # Check whether we just have one direction. If so, force screen_type to 'tessellated'
+    # as it can handle this case and KL screens can't
     H = h5parm(h5parmfile)
     solset = H.getSolset(solsetname)
     soltab = solset.getSoltab(soltab_ph)
     source_names = soltab.dir[:]
     if len(source_names) == 1:
-        screen_type = 'voronoi'
+        screen_type = 'tessellated'
     H.close()
 
     # Fit screens and make a-term images
@@ -95,7 +96,7 @@ def main(h5parmfile, soltabname='phase000', screen_type='voronoi', outroot='',
         screen = KLScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
                           width_deg, width_deg, solset_name=solsetname,
                           phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
-    elif screen_type == 'voronoi':
+    elif screen_type == 'tessellated':
         screen = VoronoiScreen(rootname, h5parmfile, skymodel, bounds_mid_deg[0], bounds_mid_deg[1],
                                width_deg, width_deg, solset_name=solsetname,
                                phase_soltab_name=soltab_ph, amplitude_soltab_name=soltab_amp)
@@ -110,7 +111,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('h5parmfile', help='Filename of input h5parm')
     parser.add_argument('--soltabname', help='Name of soltab', type=str, default='phase000')
-    parser.add_argument('--screen_type', help='Type of screen', type=str, default='voronoi')
+    parser.add_argument('--screen_type', help='Type of screen', type=str, default='tessellated')
     parser.add_argument('--outroot', help='Root of output images', type=str, default='')
     parser.add_argument('--bounds_deg', help='Bounds list in deg', type=str, default=None)
     parser.add_argument('--bounds_mid_deg', help='Bounds mid list in deg', type=str, default=None)
