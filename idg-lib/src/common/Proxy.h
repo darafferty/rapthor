@@ -159,7 +159,7 @@ class Proxy {
 
   //! Applies (inverse) Fourier transform to grid
   void transform(DomainAtoDomainB direction,
-                 Array3D<std::complex<float>>& grid);
+    Grid& grid);
 
   void transform(DomainAtoDomainB direction, std::complex<float>* grid,
                  unsigned int grid_nr_correlations, unsigned int grid_height,
@@ -303,9 +303,13 @@ class Proxy {
 
   //! Applyies (inverse) Fourier transform to grid
   virtual void do_transform(DomainAtoDomainB direction,
-                            Array3D<std::complex<float>>& grid) = 0;
+                            Grid& grid);
+protected:
+  //! Applyies (inverse) Fourier transform to grid
+  // TODO: let every proxy implement the do_transform method.
+  virtual void do_transform(DomainAtoDomainB direction,
+                            idg::Array3D<std::complex<float>>& grid) {};
 
- protected:
   void check_dimensions(
       unsigned int subgrid_size, unsigned int frequencies_nr_channels,
       unsigned int visibilities_nr_baselines,

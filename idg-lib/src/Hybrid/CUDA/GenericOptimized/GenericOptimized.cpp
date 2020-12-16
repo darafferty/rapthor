@@ -50,7 +50,7 @@ GenericOptimized::~GenericOptimized() {
  * FFT
  */
 void GenericOptimized::do_transform(DomainAtoDomainB direction,
-                                    Array3D<std::complex<float>>& grid) {
+                                    Grid& grid) {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
   std::cout << "Transform direction: " << direction << std::endl;

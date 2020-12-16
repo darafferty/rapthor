@@ -124,7 +124,7 @@ int test01() {
   proxy.gridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                  frequencies, visibilities_ref, uvw, baselines, aterms,
                  aterms_offsets, spheroidal);
-  proxy.transform(idg::FourierDomainToImageDomain, grid);
+  proxy.transform(idg::FourierDomainToImageDomain, grid_);
 
   float grid_error = get_accuracy(grid_size * grid_size * nr_correlations,
                                   (std::complex<float> *)grid.data(),
@@ -133,11 +133,12 @@ int test01() {
   // Predict visibilities
   clog << ">>> Predict visibilities" << endl;
 
-  proxy.transform(idg::ImageDomainToFourierDomain, grid_ref);
-
-  // Set reference grid
   idg::Grid grid_ref_(grid_ref.data(), 1, nr_correlations, grid_size,
                       grid_size);
+
+  proxy.transform(idg::ImageDomainToFourierDomain, grid_ref_);
+
+  // Set reference grid
   proxy.set_grid(grid_ref_);
 
   proxy.degridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,

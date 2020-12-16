@@ -336,13 +336,10 @@ void run() {
     // Run fft
     clog << ">>> Run fft" << endl;
     double runtime_fft = -omp_get_wtime();
-    if (!disable_fft)
-      for (unsigned w = 0; w < nr_w_layers; w++) {
-        idg::Array3D<std::complex<float>> grid_(grid->data(w), nr_correlations,
-                                                grid_size, grid_size);
-        proxy.transform(idg::FourierDomainToImageDomain, grid_);
-        proxy.transform(idg::ImageDomainToFourierDomain, grid_);
-      }
+    if (!disable_fft) {
+        proxy.transform(idg::FourierDomainToImageDomain, *grid);
+        proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+    }
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;
 
