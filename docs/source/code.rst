@@ -67,5 +67,5 @@ The CWL pipeline parsets and step definition files are located in the ``rapthor/
 
 .. note::
 
-   The CWL files in Rapthor are jinja2 templates, and so are not directly parsable by CWL tools. Rapthor uses the templates to generate the actual CWL files that are passed to Toil. These generated CWL files are created in the Rapthor working directory at runtime.
+   The CWL parset files in ``rapthor/pipeline/parsets`` are jinja2 templates, and so are not directly parsable by CWL tools. Rapthor uses the templates to generate the actual CWL parsets that are passed to Toil. These generated files are created in the Rapthor working directory in ``workdir/pipelines/operation_name`` at runtime with the following names: the pipeline CWL parset file is named ``pipeline_parset.cwl`` (and ``subpipeline_parset.cwl`` when there is a subpipeline) and the pipeline inputs YAML file is named ``pipeline_inputs.yml``.
 
