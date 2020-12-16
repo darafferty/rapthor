@@ -394,14 +394,6 @@ Array2D<UVW<float>> get_example_uvw(unsigned int nr_stations,
   return uvw;
 }
 
-Array3D<std::complex<float>> get_zero_grid(unsigned int nr_correlations,
-                                           unsigned int height,
-                                           unsigned int width) {
-  Array3D<std::complex<float>> grid(nr_correlations, height, width);
-  std::fill_n(grid.data(), grid.size(), 0);
-  return grid;
-}
-
 Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
     unsigned int nr_timeslots, unsigned int nr_stations, unsigned int height,
     unsigned int width) {
