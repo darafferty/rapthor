@@ -5,7 +5,7 @@ The Rapthor parset
 
 Before Rapthor can be run, a parset describing the reduction must be made. The
 parset is a simple text file defining the parameters of a run in a number of
-sections. For example, a typical parset for a basic reduction on a single
+sections. For example, a minimal parset for a basic reduction on a single
 machine could look like the following (see :ref:`tips` for tips on setting up an
 optimal parset):
 
@@ -17,7 +17,7 @@ optimal parset):
     input_skymodel = /path/to/input/dir/input.sky
 
 
-All the available options are described below under their respective sections.
+The available options are described below under their respective sections.
 
 
 .. _parset_global_options:

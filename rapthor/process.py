@@ -42,28 +42,28 @@ def run(parset_file, logging_level='info'):
     strategy_steps = set_strategy(field)
 
     # Run the strategy
-    for iter, step in enumerate(strategy_steps):
+    for index, step in enumerate(strategy_steps):
         # Update the field object for the current step
-        field.update(step, iter+1)
+        field.update(step, index+1)
 
         # Calibrate
         if field.do_calibrate:
-            op = Calibrate(field, iter+1)
+            op = Calibrate(field, index+1)
             op.run()
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = Predict(field, iter+1)
+            op = Predict(field, index+1)
             op.run()
 
         # Image the sectors
         if field.do_image:
-            op = Image(field, iter+1)
+            op = Image(field, index+1)
             op.run()
 
             # Mosaic the sectors, for now just Stokes I
             # TODO: run mosaic ops for IQUV+residuals
-            op = Mosaic(field, iter+1)
+            op = Mosaic(field, index+1)
             op.run()
 
         # Check for selfcal convergence

@@ -3,14 +3,14 @@
 Starting a Rapthor run
 ----------------------
 
-rapthor can be run with::
+Rapthor can be run with::
 
     $ rapthor rapthor.parset
 
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
 number of options are available and are described below::
 
-    Usage: runrapthor parset
+    Usage: rapthor parset
 
     Options:
       --version             show program's version number and exit
