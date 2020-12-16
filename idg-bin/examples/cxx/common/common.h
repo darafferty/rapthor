@@ -173,16 +173,7 @@ void run() {
 
   // Initialize Data object
   clog << ">>> Initialize data" << endl;
-  idg::Data data;
-
-  // Determine the max baseline length for given grid_size
-  auto max_uv = data.compute_max_uv(grid_padding * grid_size);
-
-  // Select only baselines up to max_uv meters long
-  data.limit_max_baseline_length(max_uv);
-
-  // Restrict the number of baselines to nr_baselines
-  data.limit_nr_baselines(nr_baselines);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();

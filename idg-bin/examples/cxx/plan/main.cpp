@@ -113,6 +113,7 @@ int main(int argc, char **argv) {
   unsigned int kernel_size;
   bool use_wtiles;
   bool print_metadata;
+  float integration_time = 1.0f;
 
   // Read parameters from environment
   std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots, grid_size,
@@ -124,16 +125,7 @@ int main(int argc, char **argv) {
 
   // Initialize Data object
   std::clog << ">>> Initialize data" << std::endl;
-  idg::Data data;
-
-  // Determine the max baseline length for given grid_size
-  float max_uv = data.compute_max_uv(grid_size);
-
-  // Select only baselines up to max_uv meters long
-  data.limit_max_baseline_length(max_uv);
-
-  // Restrict the number of baselines to nr_baselines
-  data.limit_nr_baselines(nr_baselines);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();

@@ -31,19 +31,12 @@ int test01() {
   unsigned int kernel_size = 9;
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
   unsigned int nr_w_layers = 1;
+  float integration_time = 1.0f;
 
   // Initialize Data object
-  idg::Data data;
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
 
-  // Determine the max baseline length for given grid_size
-  auto max_uv = data.compute_max_uv(grid_size);
-
-  // Select only baselines up to max_uv meters long
-  data.limit_max_baseline_length(max_uv);
-  data.print_info();
-
-  // Restrict the number of baselines to nr_baselines
-  data.limit_nr_baselines(nr_baselines);
+  // Print data info
   data.print_info();
 
   // Get remaining parameters
