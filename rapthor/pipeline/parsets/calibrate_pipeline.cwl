@@ -797,7 +797,7 @@ steps:
       - id: soltabname
         valueFrom: 'phase000'
       - id: screen_type
-        valueFrom: 'kl'
+        source: screen_type
       - id: skymodel
         source: calibration_skymodel_file
       - id: outroot
