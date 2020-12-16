@@ -191,17 +191,18 @@ Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
   return baselines;
 }
 
-Array2D<UVW<float>> get_example_uvw(proxy::Proxy &proxy,
-                                    unsigned int nr_stations,
-                                    unsigned int nr_baselines,
-                                    unsigned int nr_timesteps,
-                                    float integration_time) {
+Array2D<UVW<float>> get_example_uvw(
+    proxy::Proxy &proxy,
+    unsigned int max_nr_baselines,
+    unsigned int grid_size,
+    unsigned int nr_timesteps,
+    float integration_time)
+{
+  Data data = get_example_data(max_nr_baselines, grid_size, integration_time);
+  unsigned int nr_baselines = data.get_nr_baselines();
   using T = UVW<float>;
-  Array2D<T> uvw = proxy.allocate_array2d<T>(nr_baselines, nr_timesteps);
-
-  Data data;
+  Array2D<T> uvw = proxy.allocate_array2d<T>(nr_baselines,  nr_timesteps);
   data.get_uvw(uvw);
-
   return uvw;
 }
 
@@ -382,15 +383,36 @@ Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
   return baselines;
 }
 
-Array2D<UVW<float>> get_example_uvw(unsigned int nr_stations,
-                                    unsigned int nr_baselines,
-                                    unsigned int nr_timesteps,
-                                    float integration_time) {
-  Array2D<UVW<float>> uvw(nr_baselines, nr_timesteps);
-
+Data get_example_data(
+  unsigned int max_nr_baselines,
+  unsigned int grid_size,
+  float integration_time)
+ {
+  // Get data instance
   Data data;
-  data.get_uvw(uvw);
 
+  // Determine the max baseline length for given grid_size
+  float max_uv = data.compute_max_uv(grid_size);
+
+  // Select only baselines up to max_uv meters long
+  data.limit_max_baseline_length(max_uv);
+
+  // Restrict the number of baselines to max_nr_baselines
+  data.limit_nr_baselines(max_nr_baselines);
+
+  // Return the resulting data
+  return data;
+}
+
+Array2D<UVW<float>> get_example_uvw(
+    unsigned int max_nr_baselines,
+    unsigned int grid_size,
+    unsigned int nr_timesteps,
+    float integration_time)
+{
+  Data data = get_example_data(max_nr_baselines, grid_size, integration_time);
+  unsigned int nr_baselines = data.get_nr_baselines();
+  idg::Array2D<UVW<float>> uvw = data.get_uvw(nr_baselines, nr_timesteps, integration_time);
   return uvw;
 }
 

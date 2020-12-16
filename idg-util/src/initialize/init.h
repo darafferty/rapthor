@@ -11,6 +11,13 @@
 #include "idg-fft.h"
 
 namespace idg {
+/*
+ * Data generator
+ */
+Data get_example_data(
+  unsigned int max_nr_baselines,
+  unsigned int grid_size,
+  float integration_time);
 
 /*
  * Memory-allocation is handled by Proxy
@@ -34,8 +41,11 @@ Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
     proxy::Proxy& proxy, unsigned int nr_stations, unsigned int nr_baselines);
 
 Array2D<UVW<float>> get_example_uvw(
-    proxy::Proxy& proxy, unsigned int nr_stations, unsigned int nr_baselines,
-    unsigned int nr_timesteps, float integration_time = Data::integration_time);
+    proxy::Proxy& proxy,
+    unsigned int max_nr_baselines,
+    unsigned int grid_size,
+    unsigned int nr_timesteps,
+    float integration_time);
 
 Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
     proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_stations,
@@ -75,8 +85,10 @@ Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
     unsigned int nr_stations, unsigned int nr_baselines);
 
 Array2D<UVW<float>> get_example_uvw(
-    unsigned int nr_stations, unsigned int nr_baselines,
-    unsigned int nr_timesteps, float integration_time = Data::integration_time);
+    unsigned int max_nr_baselines,
+    unsigned int grid_size,
+    unsigned int nr_timesteps,
+    float integration_time);
 
 Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
     unsigned int nr_timeslots, unsigned int nr_stations, unsigned int height,
