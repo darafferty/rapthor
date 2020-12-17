@@ -82,7 +82,7 @@ def set_strategy(field):
                 strategy_steps[i]['max_nmiter'] = 12
             strategy_steps[i]['regroup_model'] = True
 
-            if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
+            if i < min_selfcal_loops or i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_check'] = False
             else:
                 strategy_steps[i]['do_check'] = True
