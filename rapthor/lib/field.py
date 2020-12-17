@@ -58,6 +58,8 @@ class Field(object):
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
+        self.convergence_ratio = 0.95
+        self.divergence_ratio = 1.1
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
@@ -949,7 +951,7 @@ class Field(object):
         w.wcs.set_pv([(2, 1, 45.0)])
         self.wcs = w
 
-    def check_selfcal_progress(self, convergence_ratio=0.95, divergence_ratio=1.1):
+    def check_selfcal_progress(self, convergence_ratio=None, divergence_ratio=None):
         """
         Checks whether selfcal has converged or diverged by comparing the current
         image noise to that of the previous cycle
@@ -957,7 +959,7 @@ class Field(object):
         Parameters
         ----------
         convergence_ratio : float, optional
-            The maximum ratio of the current noise to the previous noise above
+            The minimum ratio of the current noise to the previous noise above
             which selfcal is considered to have converged (must be in the range
             0.5 -- 2). E.g., convergence_ratio = 0.95 means that the image noise
             must improve by ~ 5% or more from the previous cycle for selfcal to be
@@ -976,6 +978,11 @@ class Field(object):
         diverged : bool
             True if selfcal has diverged, False if not
         """
+        if convergence_ratio is None:
+            convergence_ratio = self.convergence_ratio
+        if divergence_ratio is None:
+            divergence_ratio = self.divergence_ratio
+
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
             convergence_ratio = 2.0
@@ -995,15 +1002,17 @@ class Field(object):
         image = FITSImage(self.field_image_filename)
         image.calc_noise()
         rmspost = image.noise
+        self.log.info('Ratio of current image noise to previous image '
+                      'noise = {0:.2f}.'.format(rmspost/rmspre))
 
         if rmspost / rmspre < convergence_ratio:
-            # Report nonconvergence
+            # Report not converged (and not diverged)
             return False, False
         elif rmspost / rmspre > divergence_ratio:
-            # Report divergence
+            # Report diverged (and not converged)
             return False, True
         else:
-            # Report convergence
+            # Report converged (and not diverged)
             return True, False
 
     def update(self, step_dict, iter):

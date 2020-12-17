@@ -72,9 +72,11 @@ def run(parset_file, logging_level='info'):
             if has_converged or has_diverged:
                 # Stop the cycle
                 if has_converged:
-                    log.info("Selfcal has converged")
+                    log.info("Selfcal has converged (ratio of current image noise "
+                             "to previous value is > {})".format(field.convergence_ratio))
                 if has_diverged:
-                    log.warning("Selfcal has diverged")
+                    log.warning("Selfcal has diverged (ratio of current image noise "
+                                "to previous value is > {})".format(field.divergence_ratio))
                 log.info("Stopping at iteration {0} of {1}".format(iter+1, len(strategy_steps)))
                 break
 

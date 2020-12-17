@@ -64,3 +64,9 @@ The following processing parameters my be set:
     do_check
         Boolean flag that determines whether the check for self-calibration convergence should be done for this cycle.
 
+    convergence_ratio
+        Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have converged (must be in the range 0.5 -- 2).
+
+    divergence_ratio
+        Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have diverged (must be > 1).
+
