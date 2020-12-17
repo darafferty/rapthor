@@ -214,6 +214,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::Function> function_adder;
   std::unique_ptr<cu::Function> function_splitter;
   std::unique_ptr<cu::Function> function_scaler;
+  std::unique_ptr<cu::Function> function_average_beam;
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
 
   // One instance per device
@@ -307,6 +308,7 @@ static const std::string name_calibrate_lmnp = "kernel_calibrate_lmnp";
 static const std::string name_calibrate_sums = "kernel_calibrate_sums";
 static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
 static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
+static const std::string name_average_beam = "kernel_average_beam";
 
 }  // end namespace cuda
 }  // end namespace kernel

@@ -191,6 +191,11 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("Calibrate.cubin");
   flags.push_back(flags_common);
 
+  // Average beam
+  src.push_back("KernelAverageBeam.cu");
+  cubin.push_back("AverageBeam.cubin");
+  flags.push_back(flags_common);
+
 // FFT
 #if USE_CUSTOM_FFT
   src.push_back("KernelFFT.cu");
@@ -264,6 +269,15 @@ void InstanceCUDA::load_kernels() {
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
     functions_calibrate.emplace_back(new cu::Function(*context, function));
+  }
+
+  // Load average beam function
+  if (cuModuleGetFunction(&function, *mModules[6], name_average_beam.c_str()) ==
+      CUDA_SUCCESS) {
+    function_average_beam.reset(new cu::Function(*context, function));
+    found++;
+  } else {
+    std::cout << "not found avg beam kernel" << std::endl;
   }
 
 // Load FFT function
