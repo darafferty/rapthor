@@ -445,6 +445,39 @@ void Proxy::do_transform(DomainAtoDomainB direction,
   }
 }
 
+void Proxy::compute_avg_beam(
+    const unsigned int nr_antennas,
+    const unsigned int nr_channels,
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array1D<unsigned int>& aterms_offsets,
+    const Array4D<float>& weights,
+    idg::Array4D<std::complex<float>>& average_beam)
+{
+#if defined(DEBUG)
+  std::cout << __func__ << std::endl;
+#endif
+
+  do_compute_avg_beam(
+      nr_antennas, nr_channels,
+      uvw, baselines, aterms, aterms_offsets,
+      weights, average_beam);
+}
+
+void Proxy::do_compute_avg_beam(
+    const unsigned int nr_antennas,
+    const unsigned int nr_channels,
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array1D<unsigned int>& aterms_offsets,
+    const Array4D<float>& weights,
+    idg::Array4D<std::complex<float>>& average_beam)
+{
+  average_beam.init(1.0f);
+}
+
 void Proxy::check_dimensions(
     unsigned int subgrid_size, unsigned int frequencies_nr_channels,
     unsigned int visibilities_nr_baselines,

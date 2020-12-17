@@ -742,6 +742,156 @@ void CPU::init_wtiles(int grid_size, int subgrid_size, float image_size,
   }
 }
 
+void CPU::do_compute_avg_beam(
+  const unsigned int nr_antennas,
+  const unsigned int nr_channels,
+  const Array2D<UVW<float>>& uvw_array,
+  const Array1D<std::pair<unsigned int, unsigned int>>& baselines_array,
+  const Array4D<Matrix2x2<std::complex<float>>>& aterms_array,
+  const Array1D<unsigned int>& aterms_offsets_array,
+  const Array4D<float>& weights_array,
+  idg::Array4D<std::complex<float>>& average_beam_array)
+{
+  #if defined(DEBUG)
+    std::cout << __func__ << std::endl;
+  #endif
+
+  const unsigned int nr_aterms = aterms_offsets_array.size() - 1;
+  const unsigned int nr_baselines = baselines_array.get_x_dim();
+  const unsigned int nr_timesteps = uvw_array.get_x_dim();
+  const unsigned int subgrid_size = average_beam_array.get_w_dim();
+
+  // Define multidimensional types
+  typedef std::complex<float> AverageBeam[subgrid_size * subgrid_size]
+                                         [NR_CORRELATIONS][NR_CORRELATIONS];
+  typedef std::complex<float> ATerms[nr_aterms][nr_antennas][subgrid_size]
+                                    [subgrid_size][NR_CORRELATIONS];
+  typedef unsigned int ATermOffsets[nr_aterms + 1];
+  typedef unsigned int StationPairs[nr_baselines][2];
+  typedef float UVW[nr_baselines][nr_timesteps][3];
+  typedef float Weights[nr_baselines][nr_timesteps][nr_channels]
+                       [NR_CORRELATIONS];
+  typedef float SumOfWeights[nr_baselines][nr_aterms][NR_CORRELATIONS];
+
+  // Cast class members to multidimensional types used in this method
+  ATerms &aterms = *reinterpret_cast<ATerms *>(aterms_array.data());
+  AverageBeam &average_beam = *reinterpret_cast<AverageBeam *>(average_beam_array.data());
+  ATermOffsets &aterm_offsets =
+      *reinterpret_cast<ATermOffsets *>(aterms_offsets_array.data());
+  StationPairs &station_pairs =
+      *reinterpret_cast<StationPairs *>(baselines_array.data());
+  UVW &uvw = *reinterpret_cast<UVW *>(uvw_array.data());
+  Weights &weights = *reinterpret_cast<Weights *>(weights_array.data());
+
+  // Initialize sum of weights
+  std::vector<float> sum_of_weights_buffer(
+      nr_baselines * nr_aterms * NR_CORRELATIONS, 0.0);
+  SumOfWeights &sum_of_weights =
+      *((SumOfWeights *)sum_of_weights_buffer.data());
+
+// Compute sum of weights
+#pragma omp parallel for
+  for (unsigned int n = 0; n < nr_aterms; n++) {
+    unsigned int time_start = aterm_offsets[n];
+    unsigned int time_end = aterm_offsets[n + 1];
+
+    // Loop over baselines
+    for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+      for (unsigned int t = time_start; t < time_end; t++) {
+        if (std::isinf(uvw[bl][t][0])) continue;
+
+        for (unsigned int ch = 0; ch < nr_channels; ch++) {
+          for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
+            sum_of_weights[bl][n][pol] += weights[bl][t][ch][pol];
+          }
+        }
+      }
+    }
+  }
+
+// Compute average beam for all pixels
+#pragma omp parallel for
+  for (unsigned int i = 0; i < (subgrid_size * subgrid_size); i++) {
+    std::complex<double> sum[NR_CORRELATIONS][NR_CORRELATIONS];
+
+    // Loop over aterms
+    for (unsigned int n = 0; n < nr_aterms; n++) {
+      // Loop over baselines
+      for (unsigned int bl = 0; bl < nr_baselines; bl++) {
+        unsigned int antenna1 = station_pairs[bl][0];
+        unsigned int antenna2 = station_pairs[bl][1];
+
+        // Check whether stationPair is initialized
+        if (antenna1 >= nr_antennas || antenna2 >= nr_antennas) {
+          continue;
+        }
+
+        std::complex<float> aXX1 = aterms[n][antenna1][0][i][0];
+        std::complex<float> aXY1 = aterms[n][antenna1][0][i][1];
+        std::complex<float> aYX1 = aterms[n][antenna1][0][i][2];
+        std::complex<float> aYY1 = aterms[n][antenna1][0][i][3];
+
+        std::complex<float> aXX2 = std::conj(aterms[n][antenna2][0][i][0]);
+        std::complex<float> aXY2 = std::conj(aterms[n][antenna2][0][i][1]);
+        std::complex<float> aYX2 = std::conj(aterms[n][antenna2][0][i][2]);
+        std::complex<float> aYY2 = std::conj(aterms[n][antenna2][0][i][3]);
+
+        std::complex<float> kp[16] = {};
+        kp[0 + 0] = aXX2 * aXX1;
+        kp[0 + 4] = aXX2 * aXY1;
+        kp[0 + 8] = aXY2 * aXX1;
+        kp[0 + 12] = aXY2 * aXY1;
+
+        kp[1 + 0] = aXX2 * aYX1;
+        kp[1 + 4] = aXX2 * aYY1;
+        kp[1 + 8] = aXY2 * aYX1;
+        kp[1 + 12] = aXY2 * aYY1;
+
+        kp[2 + 0] = aYX2 * aXX1;
+        kp[2 + 4] = aYX2 * aXY1;
+        kp[2 + 8] = aYY2 * aXX1;
+        kp[2 + 12] = aYY2 * aXY1;
+
+        kp[3 + 0] = aYX2 * aYX1;
+        kp[3 + 4] = aYX2 * aYY1;
+        kp[3 + 8] = aYY2 * aYX1;
+        kp[3 + 12] = aYY2 * aYY1;
+
+        for (int ii = 0; ii < NR_CORRELATIONS; ii++) {
+          for (int jj = 0; jj < NR_CORRELATIONS; jj++) {
+            // Load weights for current baseline, aterm
+            float *weights = &sum_of_weights[bl][n][0];
+
+            // Compute real and imaginary part of update separately
+            float update_real = 0;
+            float update_imag = 0;
+            for (int p = 0; p < NR_CORRELATIONS; p++) {
+              float kp1_real = kp[4 * ii + p].real();
+              float kp1_imag = -kp[4 * ii + p].imag();
+              float kp2_real = kp[4 * jj + p].real();
+              float kp2_imag = kp[4 * jj + p].imag();
+              update_real +=
+                  weights[p] * (kp1_real * kp2_real - kp1_imag * kp2_imag);
+              update_imag +=
+                  weights[p] * (kp1_real * kp2_imag + kp1_imag * kp2_real);
+            }
+
+            // Add kronecker product to sum
+            sum[ii][jj] += std::complex<float>(update_real, update_imag);
+          }
+        }
+      }  // end for baselines
+    }    // end for aterms
+
+    // Set average beam from sum of kronecker products
+    for (size_t ii = 0; ii < 4; ii++) {
+      for (size_t jj = 0; jj < 4; jj++) {
+        average_beam[i][ii][jj] += sum[ii][jj];
+      }
+    }
+  }  // end for pixels
+}  // end compute_avg_beam
+
 }  // namespace cpu
 }  // namespace proxy
 }  // namespace idg

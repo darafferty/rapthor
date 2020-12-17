@@ -165,6 +165,17 @@ class Proxy {
                  unsigned int grid_nr_correlations, unsigned int grid_height,
                  unsigned int grid_width);
 
+  //! Computes the average beam term
+  virtual void compute_avg_beam(
+      const unsigned int nr_antennas,
+      const unsigned int nr_channels,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array4D<float>& weights,
+      idg::Array4D<std::complex<float>>& average_beam);
+
   //! Methods for W-stacking
   bool supports_wstacking() {
     return (!m_disable_wstacking && do_supports_wstack_gridding() &&
@@ -304,12 +315,23 @@ class Proxy {
   //! Applyies (inverse) Fourier transform to grid
   virtual void do_transform(DomainAtoDomainB direction,
                             Grid& grid);
-protected:
+
   //! Applyies (inverse) Fourier transform to grid
   // TODO: let every proxy implement the do_transform method.
   virtual void do_transform(DomainAtoDomainB direction,
                             idg::Array3D<std::complex<float>>& grid) {};
 
+  virtual void do_compute_avg_beam(
+      const unsigned int nr_antennas,
+      const unsigned int nr_channels,
+      const Array2D<UVW<float>>& uvw_array,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array4D<float>& weights,
+      idg::Array4D<std::complex<float>>& average_beam);
+
+ protected:
   void check_dimensions(
       unsigned int subgrid_size, unsigned int frequencies_nr_channels,
       unsigned int visibilities_nr_baselines,
