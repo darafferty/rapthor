@@ -14,6 +14,7 @@ using namespace std;
 
 #define TEST_GRIDDING     1
 #define TEST_DEGRIDDING   1
+#define TEST_AVERAGE_BEAM 0
 
 // computes sqrt(A^2-B^2) / n
 float get_accuracy(const int n, const std::complex<float> *A,
@@ -234,6 +235,23 @@ int compare_to_reference(float tol = 1000 *
                    (std::complex<float> *)visibilities_ref.data());
 #endif
 
+#if TEST_AVERAGE_BEAM
+  idg::Array4D<std::complex<float>> average_beam(subgrid_size, subgrid_size, 4, 4);
+  idg::Array4D<std::complex<float>> average_beam_ref(subgrid_size, subgrid_size, 4, 4);
+  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+  weights.init(1.0f);
+  average_beam.init(0.0f);
+  average_beam_ref.init(0.0f);
+  reference.compute_avg_beam(nr_stations, nr_channels, uvw, baselines,
+                             aterms, aterms_offsets, weights, average_beam);
+  optimized.compute_avg_beam(nr_stations, nr_channels, uvw, baselines,
+                             aterms, aterms_offsets, weights, average_beam_ref);
+  float average_beam_error =
+      get_accuracy(subgrid_size * subgrid_size * 4 * 4,
+                   (std::complex<float> *)average_beam.data(),
+                   (std::complex<float> *)average_beam_ref.data());
+#endif
+
   // Report results
 #if TEST_GRIDDING
   tol = grid_size * grid_size * std::numeric_limits<float>::epsilon();
@@ -256,11 +274,26 @@ int compare_to_reference(float tol = 1000 *
   }
 #endif
 
+#if TEST_AVERAGE_BEAM
+  tol = subgrid_size * subgrid_size * 4 * 4 *
+        std::numeric_limits<float>::epsilon();
+  if (average_beam_error < tol) {
+    std::cout << "Average beam test PASSED!" << std::endl;
+  } else {
+    std::cout << "Average beam test FAILED!" << std::endl;
+    info = 3;
+  }
+#endif
+
 #if TEST_GRIDDING
   std::cout << "grid_error = " << std::scientific << grid_error << std::endl;
 #endif
 #if TEST_DEGRIDDING
   std::cout << "degrid_error = " << std::scientific << degrid_error
+            << std::endl;
+#endif
+#if TEST_AVERAGE_BEAM
+  std::cout << "average_beam_error = " << std::scientific << average_beam_error
             << std::endl;
 #endif
 
