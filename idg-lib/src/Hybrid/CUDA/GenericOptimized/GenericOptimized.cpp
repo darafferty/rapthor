@@ -80,6 +80,65 @@ void GenericOptimized::do_compute_avg_beam(
   const unsigned int nr_timesteps = uvw_array.get_x_dim();
   const unsigned int subgrid_size = average_beam_array.get_w_dim();
 
+  // GPU implementation
+  #if 1
+  InstanceCUDA& device = get_device(0);
+  cu::Context& context = device.get_context();
+
+  cu::DeviceMemory& d_uvw = device.allocate_device_uvw(0, uvw_array.bytes());
+  cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms_array.bytes());
+
+  cu::DeviceMemory d_baselines(context, baselines_array.bytes());
+  cu::DeviceMemory d_aterms_offsets(context, aterms_offsets_array.bytes());
+  cu::DeviceMemory d_weights(context, weights_array.bytes());
+  cu::DeviceMemory d_average_beam(context, average_beam_array.bytes() * 2); // double-precision!
+
+  cu::Stream& htodstream = device.get_htod_stream();
+  cu::Stream& dtohstream = device.get_dtoh_stream();
+  cu::Stream& executestream = device.get_execute_stream();
+
+  htodstream.memcpyHtoDAsync(d_uvw, uvw_array.data(), uvw_array.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms, aterms_array.data(), aterms_array.bytes());
+  htodstream.memcpyHtoDAsync(d_baselines, baselines_array.data(), baselines_array.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms_offsets, aterms_offsets_array.data(), aterms_offsets_array.bytes());
+  htodstream.memcpyHtoDAsync(d_weights, weights_array.data(), weights_array.bytes());
+  d_average_beam.zero(htodstream);
+
+  htodstream.synchronize();
+
+  device.launch_average_beam(
+    nr_baselines,
+    nr_antennas,
+    nr_timesteps,
+    nr_channels,
+    nr_aterms,
+    subgrid_size,
+    d_uvw,
+    d_baselines,
+    d_aterms,
+    d_aterms_offsets,
+    d_weights,
+    d_average_beam);
+
+  executestream.synchronize();
+
+  idg::Array4D<std::complex<double>> average_beam_double(subgrid_size, subgrid_size, 4, 4);
+  dtohstream.memcpyDtoHAsync(average_beam_double.data(), d_average_beam, average_beam_double.bytes());
+
+  #pragma omp parallel for
+  for (unsigned int i = 0; i < subgrid_size*subgrid_size; i++) {
+    unsigned int y = i / subgrid_size;
+    unsigned int x = i % subgrid_size;
+    for (int ii = 0; ii < 4; ii++) {
+      for (int jj = 0; jj < 4; jj++) {
+        average_beam_array(y, x, ii, jj) = average_beam_double(y, x, ii, jj);
+      }
+    }
+  }
+
+  // GPU-like CPU implementation
+  #else
+
   // Define multidimensional types
   typedef std::complex<float> AverageBeam[subgrid_size * subgrid_size]
                                          [NR_CORRELATIONS][NR_CORRELATIONS];
@@ -215,6 +274,7 @@ void GenericOptimized::do_compute_avg_beam(
       }
     }
   }
+#endif
 }
 
 
