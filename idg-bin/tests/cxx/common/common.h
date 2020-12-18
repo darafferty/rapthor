@@ -23,6 +23,19 @@ float get_accuracy(const int n, const std::complex<float> *A,
   double i_error = 0.0;
   int nnz = 0;
 
+  float r_max = 1;
+  float i_max = 1;
+  for (int i = 0; i < n; i++) {
+    float r_value = abs(A[i].real());
+    float i_value = abs(A[i].imag());
+    if (r_value > r_max) {
+      r_max = r_value;
+    }
+    if (i_value > i_max) {
+      i_max = i_value;
+    }
+  }
+
   for (int i = 0; i < n; i++) {
     float r_cmp = A[i].real();
     float i_cmp = A[i].imag();
@@ -32,8 +45,8 @@ float get_accuracy(const int n, const std::complex<float> *A,
     double i_diff = i_ref - i_cmp;
     if (abs(B[i]) > 0.0f) {
       nnz++;
-      r_error += r_diff * r_diff;
-      i_error += i_diff * i_diff;
+      r_error += (r_diff * r_diff) / r_max;
+      i_error += (i_diff * i_diff) / i_max;
     }
   }
 
