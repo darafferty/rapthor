@@ -554,6 +554,32 @@ void InstanceCUDA::launch_degridder(
   end_measurement(data);
 }
 
+void InstanceCUDA::launch_average_beam(
+  int nr_baselines,
+  int nr_antennas,
+  int nr_timesteps,
+  int nr_channels,
+  int nr_aterms,
+  int subgrid_size,
+  cu::DeviceMemory& d_uvw,
+  cu::DeviceMemory& d_baselines,
+  cu::DeviceMemory& d_aterms,
+  cu::DeviceMemory& d_aterms_offsets,
+  cu::DeviceMemory& d_weights,
+  cu::DeviceMemory& d_average_beam)
+{
+  const void* parameters[] = {&nr_antennas, &nr_timesteps, &nr_channels,
+                              &nr_aterms,   &subgrid_size, d_uvw,
+                              d_baselines,  d_aterms,      d_aterms_offsets,
+                              d_weights,    d_average_beam};
+
+  dim3 grid(nr_baselines);
+  dim3 block(128);
+
+  executestream->launchKernel(*function_average_beam, grid, block, 0,
+                              parameters);
+}
+
 void InstanceCUDA::launch_calibrate(
     int nr_subgrids, int grid_size, int subgrid_size, float image_size,
     float w_step, int total_nr_timesteps, int nr_channels, int nr_stations,
