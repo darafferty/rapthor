@@ -12,6 +12,9 @@ using namespace std;
 #include "idg-cpu.h"   // Reference proxy
 #include "idg-util.h"  // Data init routines
 
+#define TEST_GRIDDING     1
+#define TEST_DEGRIDDING   1
+
 // computes sqrt(A^2-B^2) / n
 float get_accuracy(const int n, const std::complex<float> *A,
                    const std::complex<float> *B) {
@@ -91,7 +94,9 @@ int compare_to_reference(float tol = 1000 *
 
   // Parameters
   unsigned int nr_correlations = 4;
+#if TEST_GRIDDING | TEST_DEGRIDDING
   float w_offset = 0;
+#endif
   unsigned int nr_stations = 9;
   unsigned int nr_channels = 9;
   unsigned int nr_timesteps = 2048;
@@ -175,6 +180,7 @@ int compare_to_reference(float tol = 1000 *
                  uvw, baselines, aterms_offsets, options);
   clog << endl;
 
+#if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
   optimized.set_grid(grid);
@@ -195,7 +201,12 @@ int compare_to_reference(float tol = 1000 *
 
   // Use the same grid for both degridding calls
   reference.set_grid(optimized.get_grid());
+#else
+  optimized.set_grid(grid);
+  reference.set_grid(grid);
+#endif
 
+#if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
@@ -221,8 +232,10 @@ int compare_to_reference(float tol = 1000 *
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
                    (std::complex<float> *)visibilities.data(),
                    (std::complex<float> *)visibilities_ref.data());
+#endif
 
   // Report results
+#if TEST_GRIDDING
   tol = grid_size * grid_size * std::numeric_limits<float>::epsilon();
   if (grid_error < tol) {
     std::cout << "Gridding test PASSED!" << std::endl;
@@ -230,7 +243,9 @@ int compare_to_reference(float tol = 1000 *
     std::cout << "Gridding test FAILED!" << std::endl;
     info = 1;
   }
+#endif
 
+#if TEST_DEGRIDDING
   tol = nr_baselines * nr_timesteps * nr_channels *
         std::numeric_limits<float>::epsilon();
   if (degrid_error < tol) {
@@ -239,10 +254,15 @@ int compare_to_reference(float tol = 1000 *
     std::cout << "Degridding test FAILED!" << std::endl;
     info = 2;
   }
+#endif
 
+#if TEST_GRIDDING
   std::cout << "grid_error = " << std::scientific << grid_error << std::endl;
+#endif
+#if TEST_DEGRIDDING
   std::cout << "degrid_error = " << std::scientific << degrid_error
             << std::endl;
+#endif
 
   return info;
 }
