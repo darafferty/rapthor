@@ -468,51 +468,137 @@ void CUDA::do_compute_avg_beam(
   InstanceCUDA& device = get_device(0);
   cu::Context& context = device.get_context();
 
-  cu::DeviceMemory& d_uvw = device.allocate_device_uvw(0, uvw_array.bytes());
-  cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms_array.bytes());
+  // Performance reporting
+  report.initialize();
+  device.set_report(report);
 
+  // Allocate static device memory
+  cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms_array.bytes());
   cu::DeviceMemory d_baselines(context, baselines_array.bytes());
   cu::DeviceMemory d_aterms_offsets(context, aterms_offsets_array.bytes());
-  cu::DeviceMemory d_weights(context, weights_array.bytes());
   cu::DeviceMemory d_average_beam(context, average_beam_array.bytes() * 2); // double-precision!
 
+  // Set jobsize and allocate dynamic memory (per thread)
+  int jobsize = 128;
+  do {
+    auto bytes_free = device.get_free_memory();
+    size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+    size_t sizeof_weights = auxiliary::sizeof_weights(jobsize, nr_timesteps, nr_channels);
+    auto bytes_required = 2 * sizeof_uvw + 2 * sizeof_weights;
+
+    // Try to allocate memory
+    if (bytes_free > bytes_required) {
+      for (unsigned int i = 0; i < 2; i++) {
+        device.allocate_device_uvw(i, sizeof_uvw);
+        device.allocate_device_visibilities(i, sizeof_weights); // visibilities buffer!
+      }
+      break;
+    } else {
+      jobsize /= 2;
+    }
+  } while (jobsize > 0);
+
+  if (jobsize == 0) {
+    throw std::runtime_error("Could not allocate memory for average beam kernel.");
+  }
+
+  // Initialize job data
+  struct JobData {
+    unsigned int current_nr_baselines;
+    void *uvw_ptr;
+    void *weights_ptr;
+  };
+  std::vector<JobData> jobs;
+  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+    JobData job;
+    unsigned int first_bl = bl;
+    unsigned int last_bl = std::min(bl + jobsize, nr_baselines);
+    job.current_nr_baselines = last_bl - first_bl;
+    job.uvw_ptr = uvw_array.data(first_bl, 0);
+    job.weights_ptr = weights_array.data(first_bl, 0, 0, 0);
+    if (job.current_nr_baselines > 0) {
+      jobs.push_back(job);
+    }
+  }
+
+  // Events
+  std::vector<std::unique_ptr<cu::Event>> inputCopied;
+  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+    inputCopied.push_back(std::unique_ptr<cu::Event>(
+        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
+  }
+
+  // Load streams
   cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
   cu::Stream& executestream = device.get_execute_stream();
 
-  htodstream.memcpyHtoDAsync(d_uvw, uvw_array.data(), uvw_array.bytes());
+  // Copy static data
   htodstream.memcpyHtoDAsync(d_aterms, aterms_array.data(), aterms_array.bytes());
   htodstream.memcpyHtoDAsync(d_baselines, baselines_array.data(), baselines_array.bytes());
   htodstream.memcpyHtoDAsync(d_aterms_offsets, aterms_offsets_array.data(), aterms_offsets_array.bytes());
-  htodstream.memcpyHtoDAsync(d_weights, weights_array.data(), weights_array.bytes());
+
+  // Initialize average beam
   d_average_beam.zero(htodstream);
 
-  htodstream.synchronize();
+  for (unsigned int job_id = 0; job_id < jobs.size(); job_id++) {
+    // Id for double-buffering
+    unsigned local_id = job_id % 2;
+    unsigned job_id_next = job_id + 1;
+    unsigned local_id_next = (local_id + 1) % 2;
 
-  report.initialize();
-  device.set_report(report);
+    auto& job  = jobs[job_id];
+    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
+    cu::DeviceMemory& d_weights = device.retrieve_device_visibilities(local_id);
 
-  device.launch_average_beam(
-    nr_baselines,
-    nr_antennas,
-    nr_timesteps,
-    nr_channels,
-    nr_aterms,
-    subgrid_size,
-    d_uvw,
-    d_baselines,
-    d_aterms,
-    d_aterms_offsets,
-    d_weights,
-    d_average_beam);
+    // Copy input for first job
+    if (job_id == 0) {
+      auto sizeof_uvw = auxiliary::sizeof_uvw(job.current_nr_baselines, nr_timesteps);
+      auto sizeof_weights = auxiliary::sizeof_weights(job.current_nr_baselines, nr_timesteps, nr_channels);
+      htodstream.memcpyHtoDAsync(d_uvw, job.uvw_ptr, sizeof_uvw);
+      htodstream.memcpyHtoDAsync(d_weights, job.weights_ptr, sizeof_weights);
+      htodstream.record(*inputCopied[job_id]);
+    }
 
+    // Copy input for next job (if any)
+    if (job_id_next < jobs.size()) {
+      auto& job_next = jobs[job_id_next];
+      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
+      cu::DeviceMemory& d_weights_next = device.retrieve_device_visibilities(local_id_next);
+      auto sizeof_uvw = auxiliary::sizeof_uvw(job_next.current_nr_baselines, nr_timesteps);
+      auto sizeof_weights = auxiliary::sizeof_weights(job_next.current_nr_baselines, nr_timesteps, nr_channels);
+      htodstream.memcpyHtoDAsync(d_uvw_next, job_next.uvw_ptr, sizeof_uvw);
+      htodstream.memcpyHtoDAsync(d_weights_next, job_next.weights_ptr, sizeof_weights);
+      htodstream.record(*inputCopied[job_id_next]);
+    }
+
+    // Wait for input to be copied
+    executestream.waitEvent(*inputCopied[job_id]);
+
+    // Launch kernel
+    device.launch_average_beam(
+      job.current_nr_baselines,
+      nr_antennas,
+      nr_timesteps,
+      nr_channels,
+      nr_aterms,
+      subgrid_size,
+      d_uvw,
+      d_baselines,
+      d_aterms,
+      d_aterms_offsets,
+      d_weights,
+      d_average_beam);
+  }
+
+  // Wait for execution to finish
   executestream.synchronize();
 
-  report.print_total();
-
+  // Copy result to host
   idg::Array4D<std::complex<double>> average_beam_double(subgrid_size, subgrid_size, 4, 4);
   dtohstream.memcpyDtoHAsync(average_beam_double.data(), d_average_beam, average_beam_double.bytes());
 
+  // Convert to floating-point
   #pragma omp parallel for
   for (unsigned int i = 0; i < subgrid_size*subgrid_size; i++) {
     unsigned int y = i / subgrid_size;
@@ -523,6 +609,9 @@ void CUDA::do_compute_avg_beam(
       }
     }
   }
+
+  // Performance reporting
+  report.print_total();
 }
 
 void CUDA::cleanup() {
