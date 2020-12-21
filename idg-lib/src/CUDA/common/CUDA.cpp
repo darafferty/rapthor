@@ -450,20 +450,20 @@ void CUDA::initialize(
 void CUDA::do_compute_avg_beam(
     const unsigned int nr_antennas,
     const unsigned int nr_channels,
-    const Array2D<UVW<float>>& uvw_array,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines_array,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms_array,
-    const Array1D<unsigned int>& aterms_offsets_array,
-    const Array4D<float>& weights_array,
-    idg::Array4D<std::complex<float>>& average_beam_array) {
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array1D<unsigned int>& aterms_offsets,
+    const Array4D<float>& weights,
+    idg::Array4D<std::complex<float>>& average_beam) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
-  const unsigned int nr_aterms = aterms_offsets_array.size() - 1;
-  const unsigned int nr_baselines = baselines_array.get_x_dim();
-  const unsigned int nr_timesteps = uvw_array.get_x_dim();
-  const unsigned int subgrid_size = average_beam_array.get_w_dim();
+  const unsigned int nr_aterms    = aterms_offsets.size() - 1;
+  const unsigned int nr_baselines = baselines.get_x_dim();
+  const unsigned int nr_timesteps = uvw.get_x_dim();
+  const unsigned int subgrid_size = average_beam.get_w_dim();
 
   InstanceCUDA& device = get_device(0);
   cu::Context& context = device.get_context();
@@ -473,10 +473,10 @@ void CUDA::do_compute_avg_beam(
   device.set_report(report);
 
   // Allocate static device memory
-  cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms_array.bytes());
-  cu::DeviceMemory d_baselines(context, baselines_array.bytes());
-  cu::DeviceMemory d_aterms_offsets(context, aterms_offsets_array.bytes());
-  cu::DeviceMemory d_average_beam(context, average_beam_array.bytes() * 2); // double-precision!
+  cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms.bytes());
+  cu::DeviceMemory d_baselines(context, baselines.bytes());
+  cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
+  cu::DeviceMemory d_average_beam(context, average_beam.bytes() * 2); // double-precision!
 
   // Set jobsize and allocate dynamic memory (per thread)
   int jobsize = 128;
@@ -514,8 +514,8 @@ void CUDA::do_compute_avg_beam(
     unsigned int first_bl = bl;
     unsigned int last_bl = std::min(bl + jobsize, nr_baselines);
     job.current_nr_baselines = last_bl - first_bl;
-    job.uvw_ptr = uvw_array.data(first_bl, 0);
-    job.weights_ptr = weights_array.data(first_bl, 0, 0, 0);
+    job.uvw_ptr = uvw.data(first_bl, 0);
+    job.weights_ptr = weights.data(first_bl, 0, 0, 0);
     if (job.current_nr_baselines > 0) {
       jobs.push_back(job);
     }
@@ -534,9 +534,9 @@ void CUDA::do_compute_avg_beam(
   cu::Stream& executestream = device.get_execute_stream();
 
   // Copy static data
-  htodstream.memcpyHtoDAsync(d_aterms, aterms_array.data(), aterms_array.bytes());
-  htodstream.memcpyHtoDAsync(d_baselines, baselines_array.data(), baselines_array.bytes());
-  htodstream.memcpyHtoDAsync(d_aterms_offsets, aterms_offsets_array.data(), aterms_offsets_array.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+  htodstream.memcpyHtoDAsync(d_baselines, baselines.data(), baselines.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms_offsets, aterms_offsets.data(), aterms_offsets.bytes());
 
   // Initialize average beam
   d_average_beam.zero(htodstream);
@@ -605,7 +605,7 @@ void CUDA::do_compute_avg_beam(
     unsigned int x = i % subgrid_size;
     for (int ii = 0; ii < 4; ii++) {
       for (int jj = 0; jj < 4; jj++) {
-        average_beam_array(y, x, ii, jj) = average_beam_double(y, x, ii, jj);
+        average_beam(y, x, ii, jj) = average_beam_double(y, x, ii, jj);
       }
     }
   }
