@@ -48,7 +48,6 @@ add_library(${PROJECT_NAME}-adder     KernelAdder.cpp)
 add_library(${PROJECT_NAME}-splitter  KernelSplitter.cpp)
 add_library(${PROJECT_NAME}-fft       KernelFFT.cpp)
 add_library(${PROJECT_NAME}-calibrate KernelCalibrate.cpp)
-add_library(${PROJECT_NAME}-average-beam KernelAverageBeam.cpp)
 
 # Add libraries for w-stacking
 add_library(${PROJECT_NAME}-adder-wstack     KernelAdderWStack.cpp)
@@ -71,7 +70,6 @@ SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wstack PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wstack PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wtiles PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wtiles PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-average-beam PROPERTIES SOVERSION 0)
 
 # Copy kernel libraries
 install(
@@ -86,7 +84,6 @@ install(
     ${PROJECT_NAME}-splitter-wstack
     ${PROJECT_NAME}-adder-wtiles
     ${PROJECT_NAME}-splitter-wtiles
-    ${PROJECT_NAME}-average-beam
     DESTINATION
     lib/idg-cpu/Optimized
 )
