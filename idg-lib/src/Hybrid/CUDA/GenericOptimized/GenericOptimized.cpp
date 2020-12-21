@@ -104,6 +104,9 @@ void GenericOptimized::do_compute_avg_beam(
 
   htodstream.synchronize();
 
+  report.initialize();
+  device.set_report(report);
+
   device.launch_average_beam(
     nr_baselines,
     nr_antennas,
@@ -119,6 +122,8 @@ void GenericOptimized::do_compute_avg_beam(
     d_average_beam);
 
   executestream.synchronize();
+
+  report.print_total();
 
   idg::Array4D<std::complex<double>> average_beam_double(subgrid_size, subgrid_size, 4, 4);
   dtohstream.memcpyDtoHAsync(average_beam_double.data(), d_average_beam, average_beam_double.bytes());

@@ -576,8 +576,12 @@ void InstanceCUDA::launch_average_beam(
   dim3 grid(nr_baselines);
   dim3 block(128);
 
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_average_beam);
+  start_measurement(data);
   executestream->launchKernel(*function_average_beam, grid, block, 0,
                               parameters);
+  end_measurement(data);
 }
 
 void InstanceCUDA::launch_calibrate(
