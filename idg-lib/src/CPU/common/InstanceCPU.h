@@ -41,6 +41,12 @@ class InstanceCPU : public KernelsInstance {
                      void *aterm, void *aterm_idx, void *metadata,
                      void *subgrid);
 
+  void run_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
+                        int nr_channels, int nr_aterms, int subgrid_size,
+                        void* uvw, void* baselines, void* aterms,
+                        void* aterms_offsets, void* weights,
+                        void* average_beam);
+
   void run_calibrate(int nr_subgrids, int grid_size, int subgrid_size,
                      float image_size, float w_step, const float *shift,
                      int max_nr_timesteps, int nr_channels, int nr_terms,
@@ -157,6 +163,7 @@ class InstanceCPU : public KernelsInstance {
   runtime::Function *function_splitter_wtiles_from_grid;
   runtime::Function *function_adder_subgrids_to_wtiles;
   runtime::Function *function_splitter_subgrids_from_wtiles;
+  runtime::Function *function_average_beam;
 };
 
 // Kernel names
@@ -182,6 +189,7 @@ static const std::string name_splitter_wtiles_from_grid =
     "kernel_splitter_wtiles_from_grid";
 static const std::string name_fft = "kernel_fft";
 static const std::string name_scaler = "kernel_scaler";
+static const std::string name_average_beam = "kernel_average_beam";
 
 }  // end namespace cpu
 }  // end namespace kernel

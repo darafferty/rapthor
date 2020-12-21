@@ -33,7 +33,8 @@ InstanceCPU::InstanceCPU(std::vector<std::string> libraries)
       function_adder_wtiles_to_grid(nullptr),
       function_splitter_wtiles_from_grid(nullptr),
       function_adder_subgrids_to_wtiles(nullptr),
-      function_splitter_subgrids_from_wtiles(nullptr) {
+      function_splitter_subgrids_from_wtiles(nullptr),
+      function_average_beam(nullptr) {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
@@ -71,6 +72,7 @@ InstanceCPU::~InstanceCPU() {
   delete function_splitter_wtiles_from_grid;
   delete function_adder_subgrids_to_wtiles;
   delete function_splitter_subgrids_from_wtiles;
+  delete function_average_beam;
 
   // Delete power sensor
   delete powerSensor;
@@ -161,6 +163,10 @@ void InstanceCPU::load_kernel_funcions() {
       function_splitter_subgrids_from_wtiles = new runtime::Function(
           *modules[i], name_splitter_subgrids_from_wtiles.c_str());
     }
+    if (dlsym(*modules[i], kernel::cpu::name_average_beam.c_str())) {
+      function_average_beam =
+          new runtime::Function(*modules[i], name_average_beam.c_str());
+    }
   }  // end for
 }  // end load_kernel_funcions
 
@@ -219,6 +225,10 @@ void InstanceCPU::load_kernel_funcions() {
 #define sig_splitter_wtiles_from_grid \
   (void (*)(int, int, int, float, float, int, void *, void *, void *, void *))
 
+#define sig_average_beam \
+  (void (*)(int, int, int, int, int, int, \
+           void *, void *, void *, void *, void *, void *))
+
 void InstanceCPU::run_gridder(int nr_subgrids, int grid_size, int subgrid_size,
                               float image_size, float w_step,
                               const float *shift, int nr_channels,
@@ -255,6 +265,21 @@ void InstanceCPU::run_degridder(int nr_subgrids, int grid_size,
   if (report) {
     report->update_degridder(states[0], states[1]);
   }
+}
+
+void InstanceCPU::run_average_beam(
+    int nr_baselines, int nr_antennas, int nr_timesteps,
+    int nr_channels, int nr_aterms, int subgrid_size,
+    void* uvw, void* baselines, void* aterms,
+    void* aterms_offsets, void* weights,
+    void* average_beam) {
+
+  (sig_average_beam(void *) * function_average_beam)(
+    nr_baselines, nr_antennas, nr_timesteps,
+    nr_channels, nr_aterms, subgrid_size,
+    uvw, baselines, aterms,
+    aterms_offsets, weights,
+    average_beam);
 }
 
 void InstanceCPU::run_calibrate(
