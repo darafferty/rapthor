@@ -761,12 +761,17 @@ void CPU::do_compute_avg_beam(
   const unsigned int nr_timesteps = uvw_array.get_x_dim();
   const unsigned int subgrid_size = average_beam_array.get_w_dim();
 
+  report.initialize();
+  kernels.set_report(report);
+
   kernels.run_average_beam(
     nr_baselines, nr_antennas, nr_timesteps,
     nr_channels, nr_aterms, subgrid_size,
     uvw_array.data(), baselines_array.data(), aterms_array.data(),
     aterms_offsets_array.data(), weights_array.data(),
     average_beam_array.data());
+
+  report.print_total();
 }  // end compute_avg_beam
 
 }  // namespace cpu

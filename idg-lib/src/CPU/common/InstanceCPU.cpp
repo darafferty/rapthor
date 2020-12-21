@@ -273,13 +273,18 @@ void InstanceCPU::run_average_beam(
     void* uvw, void* baselines, void* aterms,
     void* aterms_offsets, void* weights,
     void* average_beam) {
-
+  powersensor::State states[2];
+  states[0] = powerSensor->read();
   (sig_average_beam(void *) * function_average_beam)(
     nr_baselines, nr_antennas, nr_timesteps,
     nr_channels, nr_aterms, subgrid_size,
     uvw, baselines, aterms,
     aterms_offsets, weights,
     average_beam);
+  states[1] = powerSensor->read();
+  if (report) {
+    report->update_average_beam(states[0], states[1]);
+  }
 }
 
 void InstanceCPU::run_calibrate(
