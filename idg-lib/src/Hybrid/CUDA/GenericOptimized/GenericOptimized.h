@@ -65,16 +65,6 @@ class GenericOptimized : public cuda::CUDA {
   virtual void do_transform(DomainAtoDomainB direction,
                             Grid& grid) override;
 
-  virtual void do_compute_avg_beam(
-    const unsigned int nr_antennas,
-    const unsigned int nr_channels,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
-    const Array4D<float>& weights,
-    idg::Array4D<std::complex<float>>& average_beam) override;
-
   void run_gridding(
       const Plan& plan, const float w_step, const Array1D<float>& shift,
       const float cell_size, const unsigned int kernel_size,
