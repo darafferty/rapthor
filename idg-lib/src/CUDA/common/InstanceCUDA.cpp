@@ -555,19 +555,11 @@ void InstanceCUDA::launch_degridder(
 }
 
 void InstanceCUDA::launch_average_beam(
-  int nr_baselines,
-  int nr_antennas,
-  int nr_timesteps,
-  int nr_channels,
-  int nr_aterms,
-  int subgrid_size,
-  cu::DeviceMemory& d_uvw,
-  cu::DeviceMemory& d_baselines,
-  cu::DeviceMemory& d_aterms,
-  cu::DeviceMemory& d_aterms_offsets,
-  cu::DeviceMemory& d_weights,
-  cu::DeviceMemory& d_average_beam)
-{
+    int nr_baselines, int nr_antennas, int nr_timesteps, int nr_channels,
+    int nr_aterms, int subgrid_size, cu::DeviceMemory& d_uvw,
+    cu::DeviceMemory& d_baselines, cu::DeviceMemory& d_aterms,
+    cu::DeviceMemory& d_aterms_offsets, cu::DeviceMemory& d_weights,
+    cu::DeviceMemory& d_average_beam) {
   const void* parameters[] = {&nr_antennas, &nr_timesteps, &nr_channels,
                               &nr_aterms,   &subgrid_size, d_uvw,
                               d_baselines,  d_aterms,      d_aterms_offsets,

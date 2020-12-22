@@ -95,20 +95,16 @@ void GridderBufferImpl::compute_avg_beam() {
   const unsigned int nr_timesteps = m_bufferUVW2.get_x_dim();
   const unsigned int nr_channels = get_frequencies_size();
 
-  Array4D<Matrix2x2<std::complex<float>>> aterms(m_aterms2.data(), nr_aterms, nr_antennas, subgrid_size, subgrid_size);
+  Array4D<Matrix2x2<std::complex<float>>> aterms(
+      m_aterms2.data(), nr_aterms, nr_antennas, subgrid_size, subgrid_size);
   Array1D<unsigned int> aterms_offsets(m_aterm_offsets2.data(), nr_aterms + 1);
-  idg::Array4D<std::complex<float>> average_beam(m_average_beam, subgrid_size, subgrid_size, 4, 4);
+  idg::Array4D<std::complex<float>> average_beam(m_average_beam, subgrid_size,
+                                                 subgrid_size, 4, 4);
 
-  proxy::Proxy& proxy = m_bufferset.get_proxy();
-  proxy.compute_avg_beam(
-    m_nrStations,
-    get_frequencies_size(),
-    m_bufferUVW2,
-    m_bufferStationPairs2,
-    aterms,
-    aterms_offsets,
-    m_buffer_weights2,
-    average_beam);
+  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy.compute_avg_beam(m_nrStations, get_frequencies_size(), m_bufferUVW2,
+                         m_bufferStationPairs2, aterms, aterms_offsets,
+                         m_buffer_weights2, average_beam);
 
   m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Pause();
 
@@ -157,9 +153,8 @@ void GridderBufferImpl::flush_thread_worker() {
   proxy.gridding(*plan, m_bufferset.get_w_step(), m_shift,
                  m_bufferset.get_cell_size(), m_bufferset.get_kernel_size(),
                  subgridsize, m_frequencies, m_bufferVisibilities2,
-                 m_bufferUVW2, m_bufferStationPairs2,
-                 m_aterms_array, m_aterm_offsets_array,
-                 m_bufferset.get_spheroidal());
+                 m_bufferUVW2, m_bufferStationPairs2, m_aterms_array,
+                 m_aterm_offsets_array, m_bufferset.get_spheroidal());
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Pause();
 }
 

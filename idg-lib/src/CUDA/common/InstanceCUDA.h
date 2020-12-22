@@ -54,19 +54,14 @@ class InstanceCUDA : public KernelsInstance {
       cu::DeviceMemory& d_aterm, cu::DeviceMemory& d_aterm_indices,
       cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid);
 
-  void launch_average_beam(
-      int nr_baselines,
-      int nr_antennas,
-      int nr_timesteps,
-      int nr_channels,
-      int nr_aterms,
-      int subgrid_size,
-      cu::DeviceMemory& d_uvw,
-      cu::DeviceMemory& d_baselines,
-      cu::DeviceMemory& d_aterms,
-      cu::DeviceMemory& d_aterms_offsets,
-      cu::DeviceMemory& d_weights,
-      cu::DeviceMemory& d_average_beam);
+  void launch_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
+                           int nr_channels, int nr_aterms, int subgrid_size,
+                           cu::DeviceMemory& d_uvw,
+                           cu::DeviceMemory& d_baselines,
+                           cu::DeviceMemory& d_aterms,
+                           cu::DeviceMemory& d_aterms_offsets,
+                           cu::DeviceMemory& d_weights,
+                           cu::DeviceMemory& d_average_beam);
 
   void launch_calibrate(
       int nr_subgrids, int grid_size, int subgrid_size, float image_size,

@@ -43,9 +43,9 @@ class InstanceCPU : public KernelsInstance {
 
   void run_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
                         int nr_channels, int nr_aterms, int subgrid_size,
-                        void* uvw, void* baselines, void* aterms,
-                        void* aterms_offsets, void* weights,
-                        void* average_beam);
+                        void *uvw, void *baselines, void *aterms,
+                        void *aterms_offsets, void *weights,
+                        void *average_beam);
 
   void run_calibrate(int nr_subgrids, int grid_size, int subgrid_size,
                      float image_size, float w_step, const float *shift,

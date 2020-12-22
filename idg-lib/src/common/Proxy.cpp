@@ -64,8 +64,8 @@ void Proxy::gridding(
                 uvw, baselines, aterms_offsets, options);
 
   gridding(*plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-           frequencies, visibilities, uvw, baselines, aterms,
-           aterms_offsets, spheroidal);
+           frequencies, visibilities, uvw, baselines, aterms, aterms_offsets,
+           spheroidal);
 }
 
 void Proxy::gridding(
@@ -85,9 +85,9 @@ void Proxy::gridding(
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
-    unsigned int grid_nr_correlations = m_grid->get_z_dim();
-    unsigned int grid_height = m_grid->get_y_dim();
-    unsigned int grid_width = m_grid->get_x_dim();
+  unsigned int grid_nr_correlations = m_grid->get_z_dim();
+  unsigned int grid_height = m_grid->get_y_dim();
+  unsigned int grid_width = m_grid->get_x_dim();
 
   check_dimensions(subgrid_size, frequencies_nr_channels,
                    visibilities_nr_baselines, visibilities_nr_timesteps,
@@ -134,7 +134,6 @@ void Proxy::degridding(
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
-
   check_dimensions(subgrid_size, frequencies, visibilities, uvw, baselines,
                    *m_grid, aterms, aterms_offsets, spheroidal);
 
@@ -171,8 +170,8 @@ void Proxy::degridding(
                 uvw, baselines, aterms_offsets, options);
 
   degridding(*plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-             frequencies, visibilities, uvw, baselines, aterms,
-             aterms_offsets, spheroidal);
+             frequencies, visibilities, uvw, baselines, aterms, aterms_offsets,
+             spheroidal);
 }
 
 void Proxy::calibrate_init(
@@ -354,7 +353,6 @@ void Proxy::degridding(
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
-
   unsigned int grid_nr_correlations = m_grid->get_z_dim();
   unsigned int grid_height = m_grid->get_y_dim();
   unsigned int grid_width = m_grid->get_x_dim();
@@ -409,9 +407,7 @@ void Proxy::set_avg_aterm_correction(
 
 void Proxy::unset_avg_aterm_correction() { m_avg_aterm_correction.resize(0); }
 
-void Proxy::transform(DomainAtoDomainB direction,
-                      Grid& grid)
-{
+void Proxy::transform(DomainAtoDomainB direction, Grid& grid) {
   do_transform(direction, grid);
 }
 
@@ -421,16 +417,15 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid,
   throw_assert(grid_height == grid_width, "");  // TODO: remove restriction
   throw_assert(grid_nr_correlations == 1 || grid_nr_correlations == 4, "");
 
-  unsigned int grid_nr_w_layers = 1; // TODO: make this a parameter
+  unsigned int grid_nr_w_layers = 1;  // TODO: make this a parameter
 
-  Grid grid_(grid, grid_nr_w_layers, grid_nr_correlations, grid_height, grid_width);
+  Grid grid_(grid, grid_nr_w_layers, grid_nr_correlations, grid_height,
+             grid_width);
 
   do_transform(direction, grid_);
 }
 
-void Proxy::do_transform(DomainAtoDomainB direction,
-                         Grid& grid)
-{
+void Proxy::do_transform(DomainAtoDomainB direction, Grid& grid) {
   unsigned int nr_w_layers = grid.get_w_dim();
   unsigned int nr_correlations = grid.get_z_dim();
   unsigned int height = grid.get_y_dim();
@@ -440,41 +435,33 @@ void Proxy::do_transform(DomainAtoDomainB direction,
 
   for (unsigned w = 0; w < nr_w_layers; w++) {
     idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations,
-                                               grid_size, grid_size);
+                                            grid_size, grid_size);
     do_transform(direction, grid_);
   }
 }
 
 void Proxy::compute_avg_beam(
-    const unsigned int nr_antennas,
-    const unsigned int nr_channels,
+    const unsigned int nr_antennas, const unsigned int nr_channels,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
-    const Array4D<float>& weights,
-    idg::Array4D<std::complex<float>>& average_beam)
-{
+    const Array1D<unsigned int>& aterms_offsets, const Array4D<float>& weights,
+    idg::Array4D<std::complex<float>>& average_beam) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
 
-  do_compute_avg_beam(
-      nr_antennas, nr_channels,
-      uvw, baselines, aterms, aterms_offsets,
-      weights, average_beam);
+  do_compute_avg_beam(nr_antennas, nr_channels, uvw, baselines, aterms,
+                      aterms_offsets, weights, average_beam);
 }
 
 void Proxy::do_compute_avg_beam(
-    const unsigned int nr_antennas,
-    const unsigned int nr_channels,
+    const unsigned int nr_antennas, const unsigned int nr_channels,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
-    const Array4D<float>& weights,
-    idg::Array4D<std::complex<float>>& average_beam)
-{
+    const Array1D<unsigned int>& aterms_offsets, const Array4D<float>& weights,
+    idg::Array4D<std::complex<float>>& average_beam) {
   average_beam.init(1.0f);
 }
 

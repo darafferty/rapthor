@@ -34,7 +34,8 @@ int test01() {
   float integration_time = 1.0f;
 
   // Initialize Data object
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();

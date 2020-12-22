@@ -743,20 +743,17 @@ void CPU::init_wtiles(int grid_size, int subgrid_size, float image_size,
 }
 
 void CPU::do_compute_avg_beam(
-  const unsigned int nr_antennas,
-  const unsigned int nr_channels,
-  const Array2D<UVW<float>>& uvw,
-  const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-  const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-  const Array1D<unsigned int>& aterms_offsets,
-  const Array4D<float>& weights,
-  idg::Array4D<std::complex<float>>& average_beam)
-{
-  #if defined(DEBUG)
-    std::cout << __func__ << std::endl;
-  #endif
+    const unsigned int nr_antennas, const unsigned int nr_channels,
+    const Array2D<UVW<float>> &uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
+    const Array4D<Matrix2x2<std::complex<float>>> &aterms,
+    const Array1D<unsigned int> &aterms_offsets, const Array4D<float> &weights,
+    idg::Array4D<std::complex<float>> &average_beam) {
+#if defined(DEBUG)
+  std::cout << __func__ << std::endl;
+#endif
 
-  const unsigned int nr_aterms    = aterms_offsets.size() - 1;
+  const unsigned int nr_aterms = aterms_offsets.size() - 1;
   const unsigned int nr_baselines = baselines.get_x_dim();
   const unsigned int nr_timesteps = uvw.get_x_dim();
   const unsigned int subgrid_size = average_beam.get_w_dim();
@@ -765,11 +762,9 @@ void CPU::do_compute_avg_beam(
   kernels.set_report(report);
 
   kernels.run_average_beam(
-    nr_baselines, nr_antennas, nr_timesteps,
-    nr_channels, nr_aterms, subgrid_size,
-    uvw.data(), baselines.data(), aterms.data(),
-    aterms_offsets.data(), weights.data(),
-    average_beam.data());
+      nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
+      subgrid_size, uvw.data(), baselines.data(), aterms.data(),
+      aterms_offsets.data(), weights.data(), average_beam.data());
 
   report.print_total();
 }  // end compute_avg_beam

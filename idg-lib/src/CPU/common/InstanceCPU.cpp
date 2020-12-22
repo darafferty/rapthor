@@ -225,9 +225,9 @@ void InstanceCPU::load_kernel_funcions() {
 #define sig_splitter_wtiles_from_grid \
   (void (*)(int, int, int, float, float, int, void *, void *, void *, void *))
 
-#define sig_average_beam \
-  (void (*)(int, int, int, int, int, int, \
-           void *, void *, void *, void *, void *, void *))
+#define sig_average_beam                                                  \
+  (void (*)(int, int, int, int, int, int, void *, void *, void *, void *, \
+            void *, void *))
 
 void InstanceCPU::run_gridder(int nr_subgrids, int grid_size, int subgrid_size,
                               float image_size, float w_step,
@@ -267,20 +267,18 @@ void InstanceCPU::run_degridder(int nr_subgrids, int grid_size,
   }
 }
 
-void InstanceCPU::run_average_beam(
-    int nr_baselines, int nr_antennas, int nr_timesteps,
-    int nr_channels, int nr_aterms, int subgrid_size,
-    void* uvw, void* baselines, void* aterms,
-    void* aterms_offsets, void* weights,
-    void* average_beam) {
+void InstanceCPU::run_average_beam(int nr_baselines, int nr_antennas,
+                                   int nr_timesteps, int nr_channels,
+                                   int nr_aterms, int subgrid_size, void *uvw,
+                                   void *baselines, void *aterms,
+                                   void *aterms_offsets, void *weights,
+                                   void *average_beam) {
   powersensor::State states[2];
   states[0] = powerSensor->read();
   (sig_average_beam(void *) * function_average_beam)(
-    nr_baselines, nr_antennas, nr_timesteps,
-    nr_channels, nr_aterms, subgrid_size,
-    uvw, baselines, aterms,
-    aterms_offsets, weights,
-    average_beam);
+      nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
+      subgrid_size, uvw, baselines, aterms, aterms_offsets, weights,
+      average_beam);
   states[1] = powerSensor->read();
   if (report) {
     report->update_average_beam(states[0], states[1]);

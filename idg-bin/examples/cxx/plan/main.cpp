@@ -125,7 +125,8 @@ int main(int argc, char **argv) {
 
   // Initialize Data object
   std::clog << ">>> Initialize data" << std::endl;
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();

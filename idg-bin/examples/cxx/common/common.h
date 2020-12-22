@@ -173,7 +173,8 @@ void run() {
 
   // Initialize Data object
   clog << ">>> Initialize data" << endl;
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();
@@ -314,8 +315,7 @@ void run() {
         if (!disable_degridding)
           proxy.degridding(*plan, w_offset, shift, cell_size, kernel_size,
                            subgrid_size, frequencies, visibilities, uvw,
-                           baselines, aterms, aterms_offsets,
-                           spheroidal);
+                           baselines, aterms, aterms_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
 
@@ -328,8 +328,8 @@ void run() {
     clog << ">>> Run fft" << endl;
     double runtime_fft = -omp_get_wtime();
     if (!disable_fft) {
-        proxy.transform(idg::FourierDomainToImageDomain, *grid);
-        proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+      proxy.transform(idg::FourierDomainToImageDomain, *grid);
+      proxy.transform(idg::ImageDomainToFourierDomain, *grid);
     }
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;

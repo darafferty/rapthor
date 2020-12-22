@@ -137,8 +137,8 @@ void BulkDegridderImpl::compute_visibilities(
   proxy.degridding(*plan, bufferset_.get_w_step(), shift_,
                    bufferset_.get_cell_size(), bufferset_.get_kernel_size(),
                    subgridsize, frequencies_, bufferVisibilities, bufferUVW,
-                   bufferStationPairs, aterms_array,
-                   aterm_offsets_array, bufferset_.get_spheroidal());
+                   bufferStationPairs, aterms_array, aterm_offsets_array,
+                   bufferset_.get_spheroidal());
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 
   // Transpose bufferVisibilities into visibilities.

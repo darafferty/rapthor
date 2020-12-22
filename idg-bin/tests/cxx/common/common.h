@@ -12,8 +12,8 @@ using namespace std;
 #include "idg-cpu.h"   // Reference proxy
 #include "idg-util.h"  // Data init routines
 
-#define TEST_GRIDDING     1
-#define TEST_DEGRIDDING   1
+#define TEST_GRIDDING 1
+#define TEST_DEGRIDDING 1
 #define TEST_AVERAGE_BEAM 0
 
 // computes sqrt(A^2-B^2) / n
@@ -122,7 +122,8 @@ int compare_to_reference(float tol = 1000 *
   float integration_time = 1.0f;
 
   // Initialize Data object
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Get remaining parameters
   float image_size = data.compute_image_size(grid_size);
@@ -249,16 +250,19 @@ int compare_to_reference(float tol = 1000 *
 #endif
 
 #if TEST_AVERAGE_BEAM
-  idg::Array4D<std::complex<float>> average_beam(subgrid_size, subgrid_size, 4, 4);
-  idg::Array4D<std::complex<float>> average_beam_ref(subgrid_size, subgrid_size, 4, 4);
-  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+  idg::Array4D<std::complex<float>> average_beam(subgrid_size, subgrid_size, 4,
+                                                 4);
+  idg::Array4D<std::complex<float>> average_beam_ref(subgrid_size, subgrid_size,
+                                                     4, 4);
+  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels,
+                              nr_correlations);
   weights.init(1.0f);
   average_beam.init(0.0f);
   average_beam_ref.init(0.0f);
-  reference.compute_avg_beam(nr_stations, nr_channels, uvw, baselines,
-                             aterms, aterms_offsets, weights, average_beam);
-  optimized.compute_avg_beam(nr_stations, nr_channels, uvw, baselines,
-                             aterms, aterms_offsets, weights, average_beam_ref);
+  reference.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                             aterms_offsets, weights, average_beam);
+  optimized.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                             aterms_offsets, weights, average_beam_ref);
   float average_beam_error =
       get_accuracy(subgrid_size * subgrid_size * 4 * 4,
                    (std::complex<float> *)average_beam.data(),

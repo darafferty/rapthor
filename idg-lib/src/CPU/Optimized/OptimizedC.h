@@ -26,16 +26,16 @@ void CPU_Optimized_gridding(
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
-  p->gridding(
-      w_step, shift, cell_size, kernel_size, subgrid_size, frequencies,
-      nr_channels, visibilities, visibilities_nr_baselines,
-      visibilities_nr_timesteps, visibilities_nr_channels,
-      visibilities_nr_correlations, uvw, uvw_nr_baselines, uvw_nr_timesteps,
-      uvw_nr_coordinates, baselines, baselines_nr_baselines, baselines_two,
-      aterms, aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
-      aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
-      aterms_offsets_nr_timeslots_plus_one, spheroidal, spheroidal_height,
-      spheroidal_width);
+  p->gridding(w_step, shift, cell_size, kernel_size, subgrid_size, frequencies,
+              nr_channels, visibilities, visibilities_nr_baselines,
+              visibilities_nr_timesteps, visibilities_nr_channels,
+              visibilities_nr_correlations, uvw, uvw_nr_baselines,
+              uvw_nr_timesteps, uvw_nr_coordinates, baselines,
+              baselines_nr_baselines, baselines_two, aterms,
+              aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
+              aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
+              aterms_offsets_nr_timeslots_plus_one, spheroidal,
+              spheroidal_height, spheroidal_width);
 }
 
 void CPU_Optimized_degridding(
@@ -55,16 +55,16 @@ void CPU_Optimized_degridding(
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
-  p->degridding(
-      w_step, shift, cell_size, kernel_size, subgrid_size, frequencies,
-      nr_channels, visibilities, visibilities_nr_baselines,
-      visibilities_nr_timesteps, visibilities_nr_channels,
-      visibilities_nr_correlations, uvw, uvw_nr_baselines, uvw_nr_timesteps,
-      uvw_nr_coordinates, baselines, baselines_nr_baselines, baselines_two,
-      aterms, aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
-      aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
-      aterms_offsets_nr_timeslots_plus_one, spheroidal, spheroidal_height,
-      spheroidal_width);
+  p->degridding(w_step, shift, cell_size, kernel_size, subgrid_size,
+                frequencies, nr_channels, visibilities,
+                visibilities_nr_baselines, visibilities_nr_timesteps,
+                visibilities_nr_channels, visibilities_nr_correlations, uvw,
+                uvw_nr_baselines, uvw_nr_timesteps, uvw_nr_coordinates,
+                baselines, baselines_nr_baselines, baselines_two, aterms,
+                aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
+                aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
+                aterms_offsets_nr_timeslots_plus_one, spheroidal,
+                spheroidal_height, spheroidal_width);
 }
 
 void CPU_Optimized_transform(ProxyType* p, int direction,

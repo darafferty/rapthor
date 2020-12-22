@@ -158,8 +158,7 @@ class Proxy {
   void calibrate_finish();
 
   //! Applies (inverse) Fourier transform to grid
-  void transform(DomainAtoDomainB direction,
-    Grid& grid);
+  void transform(DomainAtoDomainB direction, Grid& grid);
 
   void transform(DomainAtoDomainB direction, std::complex<float>* grid,
                  unsigned int grid_nr_correlations, unsigned int grid_height,
@@ -167,8 +166,7 @@ class Proxy {
 
   //! Computes the average beam term
   virtual void compute_avg_beam(
-      const unsigned int nr_antennas,
-      const unsigned int nr_channels,
+      const unsigned int nr_antennas, const unsigned int nr_channels,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -313,17 +311,15 @@ class Proxy {
       Array2D<float>& parameter_vector) {}
 
   //! Applyies (inverse) Fourier transform to grid
-  virtual void do_transform(DomainAtoDomainB direction,
-                            Grid& grid);
+  virtual void do_transform(DomainAtoDomainB direction, Grid& grid);
 
   //! Applyies (inverse) Fourier transform to grid
   // TODO: let every proxy implement the do_transform method.
   virtual void do_transform(DomainAtoDomainB direction,
-                            idg::Array3D<std::complex<float>>& grid) {};
+                            idg::Array3D<std::complex<float>>& grid){};
 
   virtual void do_compute_avg_beam(
-      const unsigned int nr_antennas,
-      const unsigned int nr_channels,
+      const unsigned int nr_antennas, const unsigned int nr_channels,
       const Array2D<UVW<float>>& uvw_array,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
