@@ -148,22 +148,22 @@ class InstanceCPU : public KernelsInstance {
 
   idg::Array1D<std::complex<float>> m_wtiles_buffer;
 
-  runtime::Function *function_gridder;
-  runtime::Function *function_degridder;
-  runtime::Function *function_calibrate;
-  runtime::Function *function_calibrate_hessian_vector_product1;
-  runtime::Function *function_calibrate_hessian_vector_product2;
-  runtime::Function *function_phasor;
-  runtime::Function *function_fft;
-  runtime::Function *function_adder;
-  runtime::Function *function_splitter;
-  runtime::Function *function_adder_wstack;
-  runtime::Function *function_splitter_wstack;
-  runtime::Function *function_adder_wtiles_to_grid;
-  runtime::Function *function_splitter_wtiles_from_grid;
-  runtime::Function *function_adder_subgrids_to_wtiles;
-  runtime::Function *function_splitter_subgrids_from_wtiles;
-  runtime::Function *function_average_beam;
+  std::unique_ptr<runtime::Function> function_gridder;
+  std::unique_ptr<runtime::Function> function_degridder;
+  std::unique_ptr<runtime::Function> function_calibrate;
+  std::unique_ptr<runtime::Function> function_calibrate_hessian_vector_product1;
+  std::unique_ptr<runtime::Function> function_calibrate_hessian_vector_product2;
+  std::unique_ptr<runtime::Function> function_phasor;
+  std::unique_ptr<runtime::Function> function_fft;
+  std::unique_ptr<runtime::Function> function_adder;
+  std::unique_ptr<runtime::Function> function_splitter;
+  std::unique_ptr<runtime::Function> function_adder_wstack;
+  std::unique_ptr<runtime::Function> function_splitter_wstack;
+  std::unique_ptr<runtime::Function> function_adder_wtiles_to_grid;
+  std::unique_ptr<runtime::Function> function_splitter_wtiles_from_grid;
+  std::unique_ptr<runtime::Function> function_adder_subgrids_to_wtiles;
+  std::unique_ptr<runtime::Function> function_splitter_subgrids_from_wtiles;
+  std::unique_ptr<runtime::Function> function_average_beam;
 };
 
 // Kernel names
