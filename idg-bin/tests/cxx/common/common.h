@@ -12,6 +12,7 @@ using namespace std;
 #include "idg-cpu.h"   // Reference proxy
 #include "idg-util.h"  // Data init routines
 
+// Enable/disable tests by setting the corresponding definition
 #define TEST_GRIDDING 1
 #define TEST_DEGRIDDING 1
 #define TEST_AVERAGE_BEAM 0
