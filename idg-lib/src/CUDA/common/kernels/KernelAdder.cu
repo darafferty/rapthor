@@ -70,7 +70,7 @@ __global__ void kernel_adder(
                 long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
                 value = negative_w ? conj(value) : value;
-                atomicAdd(&(grid[dst_idx]), value);
+                atomicAdd(grid[dst_idx], value);
             }
         }
     }

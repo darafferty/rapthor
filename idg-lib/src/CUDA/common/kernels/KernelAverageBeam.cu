@@ -153,7 +153,7 @@ __global__ void kernel_average_beam(
     for (int ii = 0; ii < NR_CORRELATIONS; ii++) {
       for (int jj = 0; jj < NR_CORRELATIONS; jj++) {
         unsigned average_beam_idx = index_average_beam(i, ii, jj);
-        atomicAdd(&average_beam[average_beam_idx], sum[ii][jj]);
+        atomicAdd(average_beam[average_beam_idx], sum[ii][jj]);
       }
     }
   } // end for pixels
