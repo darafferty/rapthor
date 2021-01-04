@@ -15,7 +15,7 @@ using namespace std;
 // Enable/disable tests by setting the corresponding definition
 #define TEST_GRIDDING 1
 #define TEST_DEGRIDDING 1
-#define TEST_AVERAGE_BEAM 0
+#define TEST_AVERAGE_BEAM 1
 
 // computes sqrt(A^2-B^2) / n
 float get_accuracy(const int n, const std::complex<float> *A,
