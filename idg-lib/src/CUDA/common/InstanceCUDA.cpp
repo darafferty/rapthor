@@ -276,8 +276,6 @@ void InstanceCUDA::load_kernels() {
       CUDA_SUCCESS) {
     function_average_beam.reset(new cu::Function(*context, function));
     found++;
-  } else {
-    std::cout << "not found avg beam kernel" << std::endl;
   }
 
 // Load FFT function
