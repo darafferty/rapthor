@@ -269,7 +269,15 @@ void Plan::initialize(
   metadata.reserve(nr_baselines);
 
   // Temporary metadata vector for individual baselines
-  std::vector<Metadata> metadata_[nr_baselines];
+  int max_nr_subgrids_per_baseline =
+      max_nr_timesteps_per_subgrid > 0
+          ? nr_timesteps / max_nr_timesteps_per_subgrid
+          : nr_timesteps;
+  idg::Array2D<Metadata> metadata_(nr_baselines, max_nr_subgrids_per_baseline);
+
+  // Count the actual number of subgrids per baseline
+  idg::Array1D<unsigned> subgrid_count(nr_baselines);
+  subgrid_count.zero();
 
   struct ChannelGroup {
     // This channel group starts at timestep_begin,
@@ -457,19 +465,23 @@ void Plan::initialize(
               .nr_aterms = -1     // nr of aterms, to be filled in later
           };
 
-          metadata_[bl].push_back(m);
+          unsigned subgrid_nr = subgrid_count(bl);
+          metadata_(bl, subgrid_nr++) = m;
 
           // Add additional subgrids for subsequent frequencies
           if (simulate_spectral_line) {
             for (unsigned c = 1; c < nr_channels_; c++) {
               // Compute shifted subgrid for current frequency
               float shift = frequencies(c) / frequencies(0);
-              Metadata m = metadata_[bl].back();
+              Metadata m = metadata_(bl, subgrid_nr);
               m.coordinate.x *= shift;
               m.coordinate.y *= shift;
-              metadata_[bl].push_back(m);
+              metadata_(bl, subgrid_nr++) = m;
             }
           }
+
+          // Update number of subgrids
+          subgrid_count(bl) = subgrid_nr;
         } else if (plan_strict) {
 #pragma omp critical
           {
@@ -494,8 +506,8 @@ void Plan::initialize(
     // Count total number of timesteps for baseline
     int total_nr_timesteps = 0;
 
-    for (unsigned i = 0; i < metadata_[bl].size(); i++) {
-      Metadata& m = metadata_[bl][i];
+    for (unsigned i = 0; i < subgrid_count(bl); i++) {
+      Metadata& m = metadata_(bl, i);
       int subgrid_index = metadata.size();
 
       // Set wtile_index
@@ -503,7 +515,7 @@ void Plan::initialize(
       m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
 
       // Append subgrid
-      metadata.push_back(metadata_[bl][i]);
+      metadata.push_back(metadata_(bl, i));
 
       // Accumulate timesteps, taking only the
       // first channel group into account
