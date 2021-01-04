@@ -67,7 +67,7 @@ void kernel_average_beam(
 
 // Compute average beam for all pixels
 #pragma omp parallel for
-  for (unsigned int i = 0; i < (subgrid_size * subgrid_size); i++) {
+  for (unsigned int i = 0; i < subgrid_size * subgrid_size; i++) {
     std::complex<double> sum[NR_POLARIZATIONS][NR_POLARIZATIONS];
 
     // Loop over aterms
