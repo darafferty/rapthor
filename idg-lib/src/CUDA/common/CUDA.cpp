@@ -231,7 +231,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
     }
 
     // Get amount of memory available on device
-    auto bytes_free = device->get_free_memory();
+    size_t bytes_free = device->get_free_memory();
 #if defined(DEBUG_COMPUTE_JOBSIZE)
     std::clog << "Bytes free: " << bytes_free << std::endl;
 #endif
@@ -480,11 +480,11 @@ void CUDA::do_compute_avg_beam(
   // Set jobsize and allocate dynamic memory (per thread)
   int jobsize = 128;
   do {
-    auto bytes_free = device.get_free_memory();
+    size_t bytes_free = device.get_free_memory();
     size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
     size_t sizeof_weights =
         auxiliary::sizeof_weights(jobsize, nr_timesteps, nr_channels);
-    auto bytes_required = 2 * sizeof_uvw + 2 * sizeof_weights;
+    size_t bytes_required = 2 * sizeof_uvw + 2 * sizeof_weights;
 
     // Try to allocate memory
     if (bytes_free > bytes_required) {
