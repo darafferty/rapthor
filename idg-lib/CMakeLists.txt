@@ -19,7 +19,8 @@ option (BUILD_LIB_CPU "Build CPU libraries" ON)
 option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
 #option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
 option (BUILD_WITH_MKL "Build with MKL (if available)" OFF)
-option (BUILD_WITH_POWERSENSOR " Build with PowerSensor" OFF)
+option (BUILD_WITH_POWERSENSOR "Build with PowerSensor" OFF)
+option (BUILD_WITH_MPI "Build with MPI" OFF)
 option (PERFORMANCE_REPORT "Report performance metrics" OFF)
 option (COMPILE_VERBOSE "Report compiler flags used during runtime compilation" OFF)
 option (STRICT_WARNINGS "Turn compiliation warnings into errors" ON)
@@ -122,6 +123,11 @@ endif()
 # CUDA
 if (BUILD_LIB_CUDA)
 find_package(CUDA QUIET)
+endif()
+
+# MPI
+if (BUILD_WITH_MPI)
+find_package(MPI QUIET)
 endif()
 
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
