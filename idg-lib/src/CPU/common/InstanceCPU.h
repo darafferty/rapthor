@@ -41,6 +41,12 @@ class InstanceCPU : public KernelsInstance {
                      void *aterm, void *aterm_idx, void *metadata,
                      void *subgrid);
 
+  void run_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
+                        int nr_channels, int nr_aterms, int subgrid_size,
+                        void *uvw, void *baselines, void *aterms,
+                        void *aterms_offsets, void *weights,
+                        void *average_beam);
+
   void run_calibrate(int nr_subgrids, int grid_size, int subgrid_size,
                      float image_size, float w_step, const float *shift,
                      int max_nr_timesteps, int nr_channels, int nr_terms,
@@ -131,7 +137,7 @@ class InstanceCPU : public KernelsInstance {
   }
 
   virtual void init_wtiles(int subgrid_size);
-  virtual void reset_wtiles() { m_wtiles_buffer.resize(0); }
+  virtual void reset_wtiles() { m_wtiles_buffer.free(); }
 
  protected:
   void compile(Compiler compiler, Compilerflags flags);
@@ -140,23 +146,24 @@ class InstanceCPU : public KernelsInstance {
 
   std::vector<runtime::Module *> modules;
 
-  std::vector<std::complex<float>> m_wtiles_buffer;
+  idg::Array1D<std::complex<float>> m_wtiles_buffer;
 
-  runtime::Function *function_gridder;
-  runtime::Function *function_degridder;
-  runtime::Function *function_calibrate;
-  runtime::Function *function_calibrate_hessian_vector_product1;
-  runtime::Function *function_calibrate_hessian_vector_product2;
-  runtime::Function *function_phasor;
-  runtime::Function *function_fft;
-  runtime::Function *function_adder;
-  runtime::Function *function_splitter;
-  runtime::Function *function_adder_wstack;
-  runtime::Function *function_splitter_wstack;
-  runtime::Function *function_adder_wtiles_to_grid;
-  runtime::Function *function_splitter_wtiles_from_grid;
-  runtime::Function *function_adder_subgrids_to_wtiles;
-  runtime::Function *function_splitter_subgrids_from_wtiles;
+  std::unique_ptr<runtime::Function> function_gridder;
+  std::unique_ptr<runtime::Function> function_degridder;
+  std::unique_ptr<runtime::Function> function_calibrate;
+  std::unique_ptr<runtime::Function> function_calibrate_hessian_vector_product1;
+  std::unique_ptr<runtime::Function> function_calibrate_hessian_vector_product2;
+  std::unique_ptr<runtime::Function> function_phasor;
+  std::unique_ptr<runtime::Function> function_fft;
+  std::unique_ptr<runtime::Function> function_adder;
+  std::unique_ptr<runtime::Function> function_splitter;
+  std::unique_ptr<runtime::Function> function_adder_wstack;
+  std::unique_ptr<runtime::Function> function_splitter_wstack;
+  std::unique_ptr<runtime::Function> function_adder_wtiles_to_grid;
+  std::unique_ptr<runtime::Function> function_splitter_wtiles_from_grid;
+  std::unique_ptr<runtime::Function> function_adder_subgrids_to_wtiles;
+  std::unique_ptr<runtime::Function> function_splitter_subgrids_from_wtiles;
+  std::unique_ptr<runtime::Function> function_average_beam;
 };
 
 // Kernel names
@@ -182,6 +189,7 @@ static const std::string name_splitter_wtiles_from_grid =
     "kernel_splitter_wtiles_from_grid";
 static const std::string name_fft = "kernel_fft";
 static const std::string name_scaler = "kernel_scaler";
+static const std::string name_average_beam = "kernel_average_beam";
 
 }  // end namespace cpu
 }  // end namespace kernel

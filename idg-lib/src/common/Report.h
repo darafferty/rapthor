@@ -34,6 +34,7 @@ const std::string name_grid_fft("grid-fft");
 const std::string name_fft_shift("fft-shift");
 const std::string name_fft_scale("fft-scale");
 const std::string name_scaler("scaler");
+const std::string name_average_beam("average-beam");
 const std::string name_host("host");
 const std::string name_device("device");
 }  // namespace auxiliary
@@ -204,6 +205,13 @@ class Report {
     update(state_fft_scale, runtime);
   }
 
+  void update_average_beam(powersensor::State& startState,
+                           powersensor::State& endState) {
+    average_beam_enabled = true;
+    average_beam_updated = true;
+    update(state_average_beam, startState, endState);
+  }
+
   void update_input(powersensor::State& startState,
                     powersensor::State& endState) {
     input_enabled = true;
@@ -353,6 +361,13 @@ class Report {
              0, 0, 0, ignore_short);
       fft_scale_updated = false;
     }
+    if ((total && average_beam_enabled) || average_beam_updated) {
+      report(prefix + auxiliary::name_average_beam,
+             total ? state_average_beam.total_seconds
+                   : state_average_beam.current_seconds,
+             0, 0, 0, ignore_short);
+      average_beam_updated = false;
+    }
     if ((total && host_enabled) || host_updated) {
       report(prefix + auxiliary::name_host,
              total ? state_host.total_seconds : state_host.current_seconds,
@@ -414,6 +429,7 @@ class Report {
     fft_scale_enabled = false;
     input_enabled = false;
     output_enabled = false;
+    average_beam_enabled = false;
 
     host_updated = false;
     gridder_updated = false;
@@ -430,6 +446,7 @@ class Report {
     fft_scale_updated = false;
     input_updated = false;
     output_updated = false;
+    average_beam_updated = false;
 
     state_host = state_zero;
     state_gridder = state_zero;
@@ -467,6 +484,7 @@ class Report {
   bool grid_fft_enabled;
   bool fft_shift_enabled;
   bool fft_scale_enabled;
+  bool average_beam_enabled;
   bool input_enabled;
   bool output_enabled;
 
@@ -483,6 +501,7 @@ class Report {
   bool grid_fft_updated;
   bool fft_shift_updated;
   bool fft_scale_updated;
+  bool average_beam_updated;
   bool input_updated;
   bool output_updated;
 
@@ -502,6 +521,7 @@ class Report {
   State state_grid_fft;
   State state_fft_shift;
   State state_fft_scale;
+  State state_average_beam;
   State state_input;
   State state_output;
   std::vector<State> states_device;

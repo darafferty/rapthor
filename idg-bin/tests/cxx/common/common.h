@@ -12,12 +12,30 @@ using namespace std;
 #include "idg-cpu.h"   // Reference proxy
 #include "idg-util.h"  // Data init routines
 
+// Enable/disable tests by setting the corresponding definition
+#define TEST_GRIDDING 1
+#define TEST_DEGRIDDING 1
+#define TEST_AVERAGE_BEAM 1
+
 // computes sqrt(A^2-B^2) / n
 float get_accuracy(const int n, const std::complex<float> *A,
                    const std::complex<float> *B) {
   double r_error = 0.0;
   double i_error = 0.0;
   int nnz = 0;
+
+  float r_max = 1;
+  float i_max = 1;
+  for (int i = 0; i < n; i++) {
+    float r_value = abs(A[i].real());
+    float i_value = abs(A[i].imag());
+    if (r_value > r_max) {
+      r_max = r_value;
+    }
+    if (i_value > i_max) {
+      i_max = i_value;
+    }
+  }
 
   for (int i = 0; i < n; i++) {
     float r_cmp = A[i].real();
@@ -28,8 +46,8 @@ float get_accuracy(const int n, const std::complex<float> *A,
     double i_diff = i_ref - i_cmp;
     if (abs(B[i]) > 0.0f) {
       nnz++;
-      r_error += r_diff * r_diff;
-      i_error += i_diff * i_diff;
+      r_error += (r_diff * r_diff) / r_max;
+      i_error += (i_diff * i_diff) / i_max;
     }
   }
 
@@ -91,7 +109,9 @@ int compare_to_reference(float tol = 1000 *
 
   // Parameters
   unsigned int nr_correlations = 4;
+#if TEST_GRIDDING | TEST_DEGRIDDING
   float w_offset = 0;
+#endif
   unsigned int nr_stations = 9;
   unsigned int nr_channels = 9;
   unsigned int nr_timesteps = 2048;
@@ -100,21 +120,11 @@ int compare_to_reference(float tol = 1000 *
   unsigned int subgrid_size = 32;
   unsigned int kernel_size = 9;
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
+  float integration_time = 1.0f;
 
   // Initialize Data object
-  idg::Data data;
-
-  // Determine the max baseline length for given grid_size
-  auto max_uv = data.compute_max_uv(grid_size);
-  data.print_info();
-
-  // Select only baselines up to max_uv meters long
-  data.limit_max_baseline_length(max_uv);
-  data.print_info();
-
-  // Restrict the number of baselines to nr_baselines
-  data.limit_nr_baselines(nr_baselines);
-  data.print_info();
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Get remaining parameters
   float image_size = data.compute_image_size(grid_size);
@@ -186,17 +196,20 @@ int compare_to_reference(float tol = 1000 *
                  uvw, baselines, aterms_offsets, options);
   clog << endl;
 
+#if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
+  optimized.set_grid(grid);
   optimized.gridding(plan, w_offset, shift, cell_size, kernel_size,
                      subgrid_size, frequencies, visibilities, uvw, baselines,
-                     *grid, aterms, aterms_offsets, spheroidal);
+                     aterms, aterms_offsets, spheroidal);
   optimized.get_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
+  reference.set_grid(grid_ref);
   reference.gridding(plan, w_offset, shift, cell_size, kernel_size,
                      subgrid_size, frequencies, visibilities, uvw, baselines,
-                     *grid_ref, aterms, aterms_offsets, spheroidal);
+                     aterms, aterms_offsets, spheroidal);
   reference.get_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
@@ -204,19 +217,26 @@ int compare_to_reference(float tol = 1000 *
 
   // Use the same grid for both degridding calls
   reference.set_grid(optimized.get_grid());
+#else
+  optimized.set_grid(grid);
+  reference.set_grid(grid);
+#endif
 
+#if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
   visibilities_ref.zero();
+  optimized.set_grid(grid);
   optimized.degridding(plan, w_offset, shift, cell_size, kernel_size,
                        subgrid_size, frequencies, visibilities, uvw, baselines,
-                       *grid, aterms, aterms_offsets, spheroidal);
+                       aterms, aterms_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
+  reference.set_grid(grid);
   reference.degridding(plan, w_offset, shift, cell_size, kernel_size,
                        subgrid_size, frequencies, visibilities_ref, uvw,
-                       baselines, *grid, aterms, aterms_offsets, spheroidal);
+                       baselines, aterms, aterms_offsets, spheroidal);
 
   std::clog << std::endl;
 
@@ -228,8 +248,30 @@ int compare_to_reference(float tol = 1000 *
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
                    (std::complex<float> *)visibilities.data(),
                    (std::complex<float> *)visibilities_ref.data());
+#endif
+
+#if TEST_AVERAGE_BEAM
+  idg::Array4D<std::complex<float>> average_beam(subgrid_size, subgrid_size, 4,
+                                                 4);
+  idg::Array4D<std::complex<float>> average_beam_ref(subgrid_size, subgrid_size,
+                                                     4, 4);
+  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels,
+                              nr_correlations);
+  weights.init(1.0f);
+  average_beam.init(0.0f);
+  average_beam_ref.init(0.0f);
+  reference.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                             aterms_offsets, weights, average_beam);
+  optimized.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                             aterms_offsets, weights, average_beam_ref);
+  float average_beam_error =
+      get_accuracy(subgrid_size * subgrid_size * 4 * 4,
+                   (std::complex<float> *)average_beam.data(),
+                   (std::complex<float> *)average_beam_ref.data());
+#endif
 
   // Report results
+#if TEST_GRIDDING
   tol = grid_size * grid_size * std::numeric_limits<float>::epsilon();
   if (grid_error < tol) {
     std::cout << "Gridding test PASSED!" << std::endl;
@@ -237,7 +279,9 @@ int compare_to_reference(float tol = 1000 *
     std::cout << "Gridding test FAILED!" << std::endl;
     info = 1;
   }
+#endif
 
+#if TEST_DEGRIDDING
   tol = nr_baselines * nr_timesteps * nr_channels *
         std::numeric_limits<float>::epsilon();
   if (degrid_error < tol) {
@@ -246,10 +290,30 @@ int compare_to_reference(float tol = 1000 *
     std::cout << "Degridding test FAILED!" << std::endl;
     info = 2;
   }
+#endif
 
+#if TEST_AVERAGE_BEAM
+  tol = subgrid_size * subgrid_size * 4 * 4 *
+        std::numeric_limits<float>::epsilon();
+  if (average_beam_error < tol) {
+    std::cout << "Average beam test PASSED!" << std::endl;
+  } else {
+    std::cout << "Average beam test FAILED!" << std::endl;
+    info = 3;
+  }
+#endif
+
+#if TEST_GRIDDING
   std::cout << "grid_error = " << std::scientific << grid_error << std::endl;
+#endif
+#if TEST_DEGRIDDING
   std::cout << "degrid_error = " << std::scientific << degrid_error
             << std::endl;
+#endif
+#if TEST_AVERAGE_BEAM
+  std::cout << "average_beam_error = " << std::scientific << average_beam_error
+            << std::endl;
+#endif
 
   return info;
 }

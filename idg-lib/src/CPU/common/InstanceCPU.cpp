@@ -33,7 +33,8 @@ InstanceCPU::InstanceCPU(std::vector<std::string> libraries)
       function_adder_wtiles_to_grid(nullptr),
       function_splitter_wtiles_from_grid(nullptr),
       function_adder_subgrids_to_wtiles(nullptr),
-      function_splitter_subgrids_from_wtiles(nullptr) {
+      function_splitter_subgrids_from_wtiles(nullptr),
+      function_average_beam(nullptr) {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
@@ -54,23 +55,6 @@ InstanceCPU::~InstanceCPU() {
   for (unsigned int i = 0; i < modules.size(); i++) {
     delete modules[i];
   }
-
-  // Unload functions
-  delete function_gridder;
-  delete function_degridder;
-  delete function_calibrate;
-  delete function_calibrate_hessian_vector_product1;
-  delete function_calibrate_hessian_vector_product2;
-  delete function_phasor;
-  delete function_fft;
-  delete function_adder;
-  delete function_splitter;
-  delete function_adder_wstack;
-  delete function_splitter_wstack;
-  delete function_adder_wtiles_to_grid;
-  delete function_splitter_wtiles_from_grid;
-  delete function_adder_subgrids_to_wtiles;
-  delete function_splitter_subgrids_from_wtiles;
 
   // Delete power sensor
   delete powerSensor;
@@ -100,66 +84,75 @@ void InstanceCPU::load_kernel_funcions() {
 
   for (unsigned int i = 0; i < modules.size(); i++) {
     if (dlsym(*modules[i], kernel::cpu::name_gridder.c_str())) {
-      function_gridder =
-          new runtime::Function(*modules[i], name_gridder.c_str());
+      function_gridder.reset(
+          new runtime::Function(*modules[i], name_gridder.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_degridder.c_str())) {
-      function_degridder =
-          new runtime::Function(*modules[i], name_degridder.c_str());
+      function_degridder.reset(
+          new runtime::Function(*modules[i], name_degridder.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_calibrate.c_str())) {
-      function_calibrate =
-          new runtime::Function(*modules[i], name_calibrate.c_str());
+      function_calibrate.reset(
+          new runtime::Function(*modules[i], name_calibrate.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_calibrate_hessian_vector_product1.c_str())) {
-      function_calibrate_hessian_vector_product1 = new runtime::Function(
-          *modules[i], name_calibrate_hessian_vector_product1.c_str());
+      function_calibrate_hessian_vector_product1.reset(
+          new runtime::Function(
+          *modules[i], name_calibrate_hessian_vector_product1.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_calibrate_hessian_vector_product1.c_str())) {
-      function_calibrate_hessian_vector_product2 = new runtime::Function(
-          *modules[i], name_calibrate_hessian_vector_product2.c_str());
+      function_calibrate_hessian_vector_product2.reset(
+          new runtime::Function(
+          *modules[i], name_calibrate_hessian_vector_product2.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_phasor.c_str())) {
-      function_phasor = new runtime::Function(*modules[i], name_phasor.c_str());
+      function_phasor.reset(new runtime::Function(*modules[i], name_phasor.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_fft.c_str())) {
-      function_fft = new runtime::Function(*modules[i], name_fft.c_str());
+      function_fft.reset(new runtime::Function(*modules[i], name_fft.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_adder.c_str())) {
-      function_adder = new runtime::Function(*modules[i], name_adder.c_str());
+      function_adder.reset(new runtime::Function(*modules[i], name_adder.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_splitter.c_str())) {
-      function_splitter =
-          new runtime::Function(*modules[i], name_splitter.c_str());
+      function_splitter.reset(
+          new runtime::Function(*modules[i], name_splitter.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_adder_wstack.c_str())) {
-      function_adder_wstack =
-          new runtime::Function(*modules[i], name_adder_wstack.c_str());
+      function_adder_wstack.reset(
+          new runtime::Function(*modules[i], name_adder_wstack.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_splitter_wstack.c_str())) {
-      function_splitter_wstack =
-          new runtime::Function(*modules[i], name_splitter_wstack.c_str());
+      function_splitter_wstack.reset(
+          new runtime::Function(*modules[i], name_splitter_wstack.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_adder_wtiles_to_grid.c_str())) {
-      function_adder_wtiles_to_grid =
-          new runtime::Function(*modules[i], name_adder_wtiles_to_grid.c_str());
+      function_adder_wtiles_to_grid.reset(
+          new runtime::Function(*modules[i], name_adder_wtiles_to_grid.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_splitter_wtiles_from_grid.c_str())) {
-      function_splitter_wtiles_from_grid = new runtime::Function(
-          *modules[i], name_splitter_wtiles_from_grid.c_str());
+      function_splitter_wtiles_from_grid.reset(
+          new runtime::Function(
+          *modules[i], name_splitter_wtiles_from_grid.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_adder_subgrids_to_wtiles.c_str())) {
-      function_adder_subgrids_to_wtiles = new runtime::Function(
-          *modules[i], name_adder_subgrids_to_wtiles.c_str());
+      function_adder_subgrids_to_wtiles.reset(
+          new runtime::Function(
+          *modules[i], name_adder_subgrids_to_wtiles.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_splitter_subgrids_from_wtiles.c_str())) {
-      function_splitter_subgrids_from_wtiles = new runtime::Function(
-          *modules[i], name_splitter_subgrids_from_wtiles.c_str());
+      function_splitter_subgrids_from_wtiles.reset(
+          new runtime::Function(
+          *modules[i], name_splitter_subgrids_from_wtiles.c_str()));
+    }
+    if (dlsym(*modules[i], kernel::cpu::name_average_beam.c_str())) {
+      function_average_beam.reset(
+          new runtime::Function(*modules[i], name_average_beam.c_str()));
     }
   }  // end for
 }  // end load_kernel_funcions
@@ -219,6 +212,10 @@ void InstanceCPU::load_kernel_funcions() {
 #define sig_splitter_wtiles_from_grid \
   (void (*)(int, int, int, float, float, int, void *, void *, void *, void *))
 
+#define sig_average_beam                                                  \
+  (void (*)(int, int, int, int, int, int, void *, void *, void *, void *, \
+            void *, void *))
+
 void InstanceCPU::run_gridder(int nr_subgrids, int grid_size, int subgrid_size,
                               float image_size, float w_step,
                               const float *shift, int nr_channels,
@@ -254,6 +251,24 @@ void InstanceCPU::run_degridder(int nr_subgrids, int grid_size,
   states[1] = powerSensor->read();
   if (report) {
     report->update_degridder(states[0], states[1]);
+  }
+}
+
+void InstanceCPU::run_average_beam(int nr_baselines, int nr_antennas,
+                                   int nr_timesteps, int nr_channels,
+                                   int nr_aterms, int subgrid_size, void *uvw,
+                                   void *baselines, void *aterms,
+                                   void *aterms_offsets, void *weights,
+                                   void *average_beam) {
+  powersensor::State states[2];
+  states[0] = powerSensor->read();
+  (sig_average_beam(void *) * function_average_beam)(
+      nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
+      subgrid_size, uvw, baselines, aterms, aterms_offsets, weights,
+      average_beam);
+  states[1] = powerSensor->read();
+  if (report) {
+    report->update_average_beam(states[0], states[1]);
   }
 }
 
@@ -559,7 +574,7 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
 }  // end run_splitter_wtiles
 
 void InstanceCPU::init_wtiles(int subgrid_size) {
-  m_wtiles_buffer = std::vector<std::complex<float>>(
+  m_wtiles_buffer = idg::Array1D<std::complex<float>>(
       kNrWTiles * (kWTileSize + subgrid_size) * (kWTileSize + subgrid_size) *
       NR_CORRELATIONS);
 }

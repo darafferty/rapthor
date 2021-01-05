@@ -70,18 +70,14 @@ std::unique_ptr<Plan> CPU::make_plan(
 void CPU::set_grid(Grid &grid) {
   Proxy::set_grid(grid);
   m_wtiles = WTiles();
-  kernels.reset_wtiles();
 }
 
 void CPU::set_grid(std::shared_ptr<Grid> grid) {
   Proxy::set_grid(grid);
   m_wtiles = WTiles();
-  kernels.reset_wtiles();
 }
 
 std::shared_ptr<Grid> CPU::get_grid() {
-  std::shared_ptr<Grid> grid_ptr = Proxy::get_grid();
-  Grid &grid = *grid_ptr;
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
@@ -89,9 +85,9 @@ std::shared_ptr<Grid> CPU::get_grid() {
         m_wtiles.get_grid_size(), m_wtiles.get_subgrid_size(),
         m_wtiles.get_image_size(), m_wtiles.get_w_step(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
-        wtile_flush_info.wtile_coordinates.data(), grid.data());
+        wtile_flush_info.wtile_coordinates.data(), m_grid->data());
   }
-  return grid_ptr;
+  return m_grid;
 }
 
 unsigned int CPU::compute_jobsize(const Plan &plan,
@@ -745,6 +741,33 @@ void CPU::init_wtiles(int grid_size, int subgrid_size, float image_size,
     kernels.init_wtiles(subgrid_size);
   }
 }
+
+void CPU::do_compute_avg_beam(
+    const unsigned int nr_antennas, const unsigned int nr_channels,
+    const Array2D<UVW<float>> &uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
+    const Array4D<Matrix2x2<std::complex<float>>> &aterms,
+    const Array1D<unsigned int> &aterms_offsets, const Array4D<float> &weights,
+    idg::Array4D<std::complex<float>> &average_beam) {
+#if defined(DEBUG)
+  std::cout << __func__ << std::endl;
+#endif
+
+  const unsigned int nr_aterms = aterms_offsets.size() - 1;
+  const unsigned int nr_baselines = baselines.get_x_dim();
+  const unsigned int nr_timesteps = uvw.get_x_dim();
+  const unsigned int subgrid_size = average_beam.get_w_dim();
+
+  report.initialize();
+  kernels.set_report(report);
+
+  kernels.run_average_beam(
+      nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
+      subgrid_size, uvw.data(), baselines.data(), aterms.data(),
+      aterms_offsets.data(), weights.data(), average_beam.data());
+
+  report.print_total();
+}  // end compute_avg_beam
 
 }  // namespace cpu
 }  // namespace proxy

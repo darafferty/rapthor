@@ -62,8 +62,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
-  virtual void do_transform(DomainAtoDomainB direction,
-                            Array3D<std::complex<float>>& grid) override;
+  virtual void do_transform(DomainAtoDomainB direction, Grid& grid) override;
 
   void run_gridding(
       const Plan& plan, const float w_step, const Array1D<float>& shift,

@@ -40,9 +40,19 @@ inline __device__ void operator+=(float2 &a, float2 b) {
     a.y += b.y;
 }
 
-inline  __device__ void atomicAdd(float2 *a, float2 b) {
-    atomicAdd(&a->x, b.x);
-    atomicAdd(&a->y, b.y);
+inline __device__ void operator+=(double2 &a, double2 b) {
+    a.x += b.x;
+    a.y += b.y;
+}
+
+inline  __device__ void atomicAdd(float2 &a, float2 b) {
+    atomicAdd(&(a.x), b.x);
+    atomicAdd(&(a.y), b.y);
+}
+
+inline  __device__ void atomicAdd(double2 &a, double2 b) {
+    atomicAdd(&(a.x), b.x);
+    atomicAdd(&(a.y), b.y);
 }
 
 #if __CUDA_ARCH__ < 600

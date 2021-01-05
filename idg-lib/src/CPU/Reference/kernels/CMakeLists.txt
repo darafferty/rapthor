@@ -34,17 +34,19 @@ endif()
 add_compile_options("-DNR_POLARIZATIONS=4")
 
 # Add libraries
-add_library(${PROJECT_NAME}-gridder   KernelGridder.cpp)
-add_library(${PROJECT_NAME}-degridder KernelDegridder.cpp)
-add_library(${PROJECT_NAME}-adder     KernelAdder.cpp)
-add_library(${PROJECT_NAME}-splitter  KernelSplitter.cpp)
-add_library(${PROJECT_NAME}-fft       KernelFFT.cpp)
+add_library(${PROJECT_NAME}-gridder      KernelGridder.cpp)
+add_library(${PROJECT_NAME}-degridder    KernelDegridder.cpp)
+add_library(${PROJECT_NAME}-adder        KernelAdder.cpp)
+add_library(${PROJECT_NAME}-splitter     KernelSplitter.cpp)
+add_library(${PROJECT_NAME}-fft          KernelFFT.cpp)
+add_library(${PROJECT_NAME}-average-beam KernelAverageBeam.cpp)
 
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-gridder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-degridder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter PROPERTIES SOVERSION 0)
 SET_TARGET_PROPERTIES(${PROJECT_NAME}-fft PROPERTIES SOVERSION 0)
+SET_TARGET_PROPERTIES(${PROJECT_NAME}-average-beam PROPERTIES SOVERSION 0)
 
 # Copy kernel libraries
 install(
@@ -54,6 +56,7 @@ install(
     ${PROJECT_NAME}-adder
     ${PROJECT_NAME}-splitter
     ${PROJECT_NAME}-fft
+    ${PROJECT_NAME}-average-beam
     DESTINATION
     lib/idg-cpu/Reference
 )

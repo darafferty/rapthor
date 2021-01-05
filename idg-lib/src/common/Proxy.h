@@ -49,7 +49,6 @@ class Proxy {
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal);
@@ -61,7 +60,6 @@ class Proxy {
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-                Grid& grid,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal);
@@ -77,8 +75,6 @@ class Proxy {
       unsigned int uvw_nr_coordinates,  // 3 (u, v, w)
       unsigned int* baselines, unsigned int baselines_nr_baselines,
       unsigned int baselines_two,  // antenna1, antenna2
-      std::complex<float>* grid, unsigned int grid_nr_correlations,
-      unsigned int grid_height, unsigned int grid_width,
       std::complex<float>* aterms, unsigned int aterms_nr_timeslots,
       unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
       unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
@@ -96,7 +92,7 @@ class Proxy {
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
 
@@ -107,7 +103,7 @@ class Proxy {
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
 
@@ -122,8 +118,6 @@ class Proxy {
       unsigned int uvw_nr_coordinates,  // 3 (u, v, w)
       unsigned int* baselines, unsigned int baselines_nr_baselines,
       unsigned int baselines_two,  // antenna1, antenna2
-      std::complex<float>* grid, unsigned int grid_nr_correlations,
-      unsigned int grid_height, unsigned int grid_width,
       std::complex<float>* aterms, unsigned int aterms_nr_timeslots,
       unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
       unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
@@ -164,12 +158,21 @@ class Proxy {
   void calibrate_finish();
 
   //! Applies (inverse) Fourier transform to grid
-  void transform(DomainAtoDomainB direction,
-                 Array3D<std::complex<float>>& grid);
+  void transform(DomainAtoDomainB direction, Grid& grid);
 
   void transform(DomainAtoDomainB direction, std::complex<float>* grid,
                  unsigned int grid_nr_correlations, unsigned int grid_height,
                  unsigned int grid_width);
+
+  //! Computes the average beam term
+  virtual void compute_avg_beam(
+      const unsigned int nr_antennas, const unsigned int nr_channels,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array4D<float>& weights,
+      idg::Array4D<std::complex<float>>& average_beam);
 
   //! Methods for W-stacking
   bool supports_wstacking() {
@@ -308,8 +311,21 @@ class Proxy {
       Array2D<float>& parameter_vector) {}
 
   //! Applyies (inverse) Fourier transform to grid
+  virtual void do_transform(DomainAtoDomainB direction, Grid& grid);
+
+  //! Applyies (inverse) Fourier transform to grid
+  // TODO: let every proxy implement the do_transform method.
   virtual void do_transform(DomainAtoDomainB direction,
-                            Array3D<std::complex<float>>& grid) = 0;
+                            idg::Array3D<std::complex<float>>& grid){};
+
+  virtual void do_compute_avg_beam(
+      const unsigned int nr_antennas, const unsigned int nr_channels,
+      const Array2D<UVW<float>>& uvw_array,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array4D<float>& weights,
+      idg::Array4D<std::complex<float>>& average_beam);
 
  protected:
   void check_dimensions(

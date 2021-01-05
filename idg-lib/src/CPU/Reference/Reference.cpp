@@ -24,6 +24,7 @@ std::vector<std::string> Reference::default_libraries() {
   libraries.push_back(prefix + "adder.so");
   libraries.push_back(prefix + "splitter.so");
   libraries.push_back(prefix + "fft.so");
+  libraries.push_back(prefix + "average-beam.so");
   return libraries;
 }
 

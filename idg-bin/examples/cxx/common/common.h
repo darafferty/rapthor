@@ -173,16 +173,8 @@ void run() {
 
   // Initialize Data object
   clog << ">>> Initialize data" << endl;
-  idg::Data data;
-
-  // Determine the max baseline length for given grid_size
-  auto max_uv = data.compute_max_uv(grid_padding * grid_size);
-
-  // Select only baselines up to max_uv meters long
-  data.limit_max_baseline_length(max_uv);
-
-  // Restrict the number of baselines to nr_baselines
-  data.limit_nr_baselines(nr_baselines);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();
@@ -313,7 +305,7 @@ void run() {
         if (!disable_gridding)
           proxy.gridding(*plan, w_offset, shift, cell_size, kernel_size,
                          subgrid_size, frequencies, visibilities, uvw,
-                         baselines, *grid, aterms, aterms_offsets, spheroidal);
+                         baselines, aterms, aterms_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
 
@@ -323,8 +315,7 @@ void run() {
         if (!disable_degridding)
           proxy.degridding(*plan, w_offset, shift, cell_size, kernel_size,
                            subgrid_size, frequencies, visibilities, uvw,
-                           baselines, *grid, aterms, aterms_offsets,
-                           spheroidal);
+                           baselines, aterms, aterms_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
 
@@ -336,13 +327,10 @@ void run() {
     // Run fft
     clog << ">>> Run fft" << endl;
     double runtime_fft = -omp_get_wtime();
-    if (!disable_fft)
-      for (unsigned w = 0; w < nr_w_layers; w++) {
-        idg::Array3D<std::complex<float>> grid_(grid->data(w), nr_correlations,
-                                                grid_size, grid_size);
-        proxy.transform(idg::FourierDomainToImageDomain, grid_);
-        proxy.transform(idg::ImageDomainToFourierDomain, grid_);
-      }
+    if (!disable_fft) {
+      proxy.transform(idg::FourierDomainToImageDomain, *grid);
+      proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+    }
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;
 

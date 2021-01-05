@@ -50,6 +50,7 @@ install(
     kernels/KernelAdder.cu
     kernels/KernelSplitter.cu
     kernels/KernelCalibrate.cu
+    kernels/KernelAverageBeam.cu
     kernels/math.cu
     kernels/Types.h
     DESTINATION

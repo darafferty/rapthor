@@ -191,6 +191,11 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("Calibrate.cubin");
   flags.push_back(flags_common);
 
+  // Average beam
+  src.push_back("KernelAverageBeam.cu");
+  cubin.push_back("AverageBeam.cubin");
+  flags.push_back(flags_common);
+
 // FFT
 #if USE_CUSTOM_FFT
   src.push_back("KernelFFT.cu");
@@ -264,6 +269,13 @@ void InstanceCUDA::load_kernels() {
   if (cuModuleGetFunction(&function, *mModules[5],
                           name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
     functions_calibrate.emplace_back(new cu::Function(*context, function));
+  }
+
+  // Load average beam function
+  if (cuModuleGetFunction(&function, *mModules[6], name_average_beam.c_str()) ==
+      CUDA_SUCCESS) {
+    function_average_beam.reset(new cu::Function(*context, function));
+    found++;
   }
 
 // Load FFT function
@@ -537,6 +549,28 @@ void InstanceCUDA::launch_degridder(
 #endif
     executestream->launchKernel(*function_degridder, grid, block, 0,
                                 parameters);
+  end_measurement(data);
+}
+
+void InstanceCUDA::launch_average_beam(
+    int nr_baselines, int nr_antennas, int nr_timesteps, int nr_channels,
+    int nr_aterms, int subgrid_size, cu::DeviceMemory& d_uvw,
+    cu::DeviceMemory& d_baselines, cu::DeviceMemory& d_aterms,
+    cu::DeviceMemory& d_aterms_offsets, cu::DeviceMemory& d_weights,
+    cu::DeviceMemory& d_average_beam) {
+  const void* parameters[] = {&nr_antennas, &nr_timesteps, &nr_channels,
+                              &nr_aterms,   &subgrid_size, d_uvw,
+                              d_baselines,  d_aterms,      d_aterms_offsets,
+                              d_weights,    d_average_beam};
+
+  dim3 grid(nr_baselines);
+  dim3 block(128);
+
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_average_beam);
+  start_measurement(data);
+  executestream->launchKernel(*function_average_beam, grid, block, 0,
+                              parameters);
   end_measurement(data);
 }
 

@@ -54,6 +54,15 @@ class InstanceCUDA : public KernelsInstance {
       cu::DeviceMemory& d_aterm, cu::DeviceMemory& d_aterm_indices,
       cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid);
 
+  void launch_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
+                           int nr_channels, int nr_aterms, int subgrid_size,
+                           cu::DeviceMemory& d_uvw,
+                           cu::DeviceMemory& d_baselines,
+                           cu::DeviceMemory& d_aterms,
+                           cu::DeviceMemory& d_aterms_offsets,
+                           cu::DeviceMemory& d_weights,
+                           cu::DeviceMemory& d_average_beam);
+
   void launch_calibrate(
       int nr_subgrids, int grid_size, int subgrid_size, float image_size,
       float w_step, int total_nr_timesteps, int nr_channels, int nr_stations,
@@ -214,6 +223,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::Function> function_adder;
   std::unique_ptr<cu::Function> function_splitter;
   std::unique_ptr<cu::Function> function_scaler;
+  std::unique_ptr<cu::Function> function_average_beam;
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
 
   // One instance per device
@@ -307,6 +317,7 @@ static const std::string name_calibrate_lmnp = "kernel_calibrate_lmnp";
 static const std::string name_calibrate_sums = "kernel_calibrate_sums";
 static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
 static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
+static const std::string name_average_beam = "kernel_average_beam";
 
 }  // end namespace cuda
 }  // end namespace kernel

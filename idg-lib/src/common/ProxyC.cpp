@@ -17,24 +17,19 @@ void Proxy_gridding(
     unsigned int uvw_nr_baselines, unsigned int uvw_nr_timesteps,
     unsigned int uvw_nr_coordinates, unsigned int* baselines,
     unsigned int baselines_nr_baselines, unsigned int baselines_two,
-    std::complex<float>* grid, unsigned int grid_nr_correlations,
-    unsigned int grid_height, unsigned int grid_width,
     std::complex<float>* aterms, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
     unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
     unsigned int* aterms_offsets,
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width) {
-  std::shared_ptr<idg::Grid> grid_ptr(
-      new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
   reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
       w_step, shift, cell_size, kernel_size, subgrid_size, frequencies,
       nr_channels, visibilities, visibilities_nr_baselines,
       visibilities_nr_timesteps, visibilities_nr_channels,
       visibilities_nr_correlations, uvw, uvw_nr_baselines, uvw_nr_timesteps,
       uvw_nr_coordinates, baselines, baselines_nr_baselines, baselines_two,
-      grid, grid_nr_correlations, grid_height, grid_width, aterms,
-      aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
+      aterms, aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
       aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
       aterms_offsets_nr_timeslots_plus_one, spheroidal, spheroidal_height,
       spheroidal_width);
@@ -51,8 +46,6 @@ void Proxy_degridding(
     unsigned int uvw_nr_baselines, unsigned int uvw_nr_timesteps,
     unsigned int uvw_nr_coordinates, unsigned int* baselines,
     unsigned int baselines_nr_baselines, unsigned int baselines_two,
-    std::complex<float>* grid, unsigned int grid_nr_correlations,
-    unsigned int grid_height, unsigned int grid_width,
     std::complex<float>* aterms, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
     unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
@@ -65,8 +58,7 @@ void Proxy_degridding(
       visibilities_nr_timesteps, visibilities_nr_channels,
       visibilities_nr_correlations, uvw, uvw_nr_baselines, uvw_nr_timesteps,
       uvw_nr_coordinates, baselines, baselines_nr_baselines, baselines_two,
-      grid, grid_nr_correlations, grid_height, grid_width, aterms,
-      aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
+      aterms, aterms_nr_timeslots, aterms_nr_stations, aterms_aterm_height,
       aterms_aterm_width, aterms_nr_correlations, aterms_offsets,
       aterms_offsets_nr_timeslots_plus_one, spheroidal, spheroidal_height,
       spheroidal_width);
