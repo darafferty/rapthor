@@ -478,7 +478,7 @@ void CUDA::do_compute_avg_beam(
       context, average_beam.bytes() * 2);  // double-precision!
 
   // Set jobsize and allocate dynamic memory (per thread)
-  int jobsize = 128;
+  int jobsize = baselines.size() / 2;
   do {
     size_t bytes_free = device.get_free_memory();
     size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
