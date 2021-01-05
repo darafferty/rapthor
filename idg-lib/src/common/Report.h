@@ -429,6 +429,7 @@ class Report {
     fft_scale_enabled = false;
     input_enabled = false;
     output_enabled = false;
+    average_beam_enabled = false;
 
     host_updated = false;
     gridder_updated = false;
@@ -445,6 +446,7 @@ class Report {
     fft_scale_updated = false;
     input_updated = false;
     output_updated = false;
+    average_beam_updated = false;
 
     state_host = state_zero;
     state_gridder = state_zero;
