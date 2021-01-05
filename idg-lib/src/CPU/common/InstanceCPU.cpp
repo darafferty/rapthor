@@ -97,24 +97,24 @@ void InstanceCPU::load_kernel_funcions() {
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_calibrate_hessian_vector_product1.c_str())) {
-      function_calibrate_hessian_vector_product1.reset(
-          new runtime::Function(
+      function_calibrate_hessian_vector_product1.reset(new runtime::Function(
           *modules[i], name_calibrate_hessian_vector_product1.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_calibrate_hessian_vector_product1.c_str())) {
-      function_calibrate_hessian_vector_product2.reset(
-          new runtime::Function(
+      function_calibrate_hessian_vector_product2.reset(new runtime::Function(
           *modules[i], name_calibrate_hessian_vector_product2.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_phasor.c_str())) {
-      function_phasor.reset(new runtime::Function(*modules[i], name_phasor.c_str()));
+      function_phasor.reset(
+          new runtime::Function(*modules[i], name_phasor.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_fft.c_str())) {
       function_fft.reset(new runtime::Function(*modules[i], name_fft.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_adder.c_str())) {
-      function_adder.reset(new runtime::Function(*modules[i], name_adder.c_str()));
+      function_adder.reset(
+          new runtime::Function(*modules[i], name_adder.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_splitter.c_str())) {
       function_splitter.reset(
@@ -129,25 +129,22 @@ void InstanceCPU::load_kernel_funcions() {
           new runtime::Function(*modules[i], name_splitter_wstack.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_adder_wtiles_to_grid.c_str())) {
-      function_adder_wtiles_to_grid.reset(
-          new runtime::Function(*modules[i], name_adder_wtiles_to_grid.c_str()));
+      function_adder_wtiles_to_grid.reset(new runtime::Function(
+          *modules[i], name_adder_wtiles_to_grid.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_splitter_wtiles_from_grid.c_str())) {
-      function_splitter_wtiles_from_grid.reset(
-          new runtime::Function(
+      function_splitter_wtiles_from_grid.reset(new runtime::Function(
           *modules[i], name_splitter_wtiles_from_grid.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_adder_subgrids_to_wtiles.c_str())) {
-      function_adder_subgrids_to_wtiles.reset(
-          new runtime::Function(
+      function_adder_subgrids_to_wtiles.reset(new runtime::Function(
           *modules[i], name_adder_subgrids_to_wtiles.c_str()));
     }
     if (dlsym(*modules[i],
               kernel::cpu::name_splitter_subgrids_from_wtiles.c_str())) {
-      function_splitter_subgrids_from_wtiles.reset(
-          new runtime::Function(
+      function_splitter_subgrids_from_wtiles.reset(new runtime::Function(
           *modules[i], name_splitter_subgrids_from_wtiles.c_str()));
     }
     if (dlsym(*modules[i], kernel::cpu::name_average_beam.c_str())) {
