@@ -279,26 +279,13 @@ void Plan::initialize(
   idg::Array1D<unsigned> subgrid_count(nr_baselines);
   subgrid_count.zero();
 
-  struct ChannelGroup
-  {
-    // This channel group starts at timestep_begin,
-    // and has channels [channels_begin:channel_end]
-    unsigned int timestep_begin;
-    unsigned int channel_begin;
-    unsigned int channel_end;
-  };
-
-  // The number of channel groups can differ between baselines,
-  // therefore allocate the channel groups as a vector of vectors,
-  // rather than an Array2D
-  std::vector<std::vector<ChannelGroup>> channel_groups(nr_baselines);
-
-// Create channel groups for all baselines and convert UVW coordinates
+// Iterate all baselines
 #pragma omp parallel for
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
     // Get baseline
     unsigned int antenna1 = baselines(bl).first;
     unsigned int antenna2 = baselines(bl).second;
+    Baseline baseline = (Baseline){antenna1, antenna2};
 
     // If the baseline is not valid continue with next baseline
     if (antenna1 == antenna2) continue;
@@ -318,82 +305,53 @@ void Plan::initialize(
     // adding samples over time The 2.0/3.0 is a fudge factor
     float uv_frequency_span = (subgrid_size - kernel_size) * 2.0 / 3.0;
 
-    // Compute the length (in meters) of the current baseline
     float u = uvw(bl, time_offset0).u;
     float v = uvw(bl, time_offset0).v;
     float w = uvw(bl, time_offset0).w;
+
     float baseline_length = std::sqrt(u * u + v * v + w * w);
 
-    std::vector<std::pair<int, int>> channel_groups_ =
+    std::vector<std::pair<int, int>> channel_groups =
         make_channel_groups(baseline_length, uv_frequency_span, image_size,
                             frequencies, max_nr_channels_per_subgrid);
 
-    channel_groups[bl].resize(channel_groups_.size());
-    for (unsigned cg = 0; cg < channel_groups_.size(); cg++)
-    {
-      ChannelGroup channel_group;
-      channel_group.timestep_begin = time_offset0;
-      channel_group.channel_begin = channel_groups_[cg].first;
-      channel_group.channel_end = channel_groups_[cg].second;
-      channel_groups[bl][cg] = channel_group;
-    }
-  } // end for baseline
+    // Compute uv coordinates in pixels
+    struct DataPoint {
+      unsigned timestep;
+      unsigned channel;
+      float u_pixels;
+      float v_pixels;
+      float w_lambda;
+    };
 
-// Iterate all baselines
-#pragma omp parallel for
-  for (unsigned bl = 0; bl < nr_baselines; bl++) {
-    // Get baseline
-    unsigned int antenna1 = baselines(bl).first;
-    unsigned int antenna2 = baselines(bl).second;
-    Baseline baseline = (Baseline){antenna1, antenna2};
+    // Allocate datapoints for first and last channel in a group
+    idg::Array2D<DataPoint> datapoints(nr_timesteps, 2);
 
-    for (auto& channel_group : channel_groups[bl])
-    {
-      int channel_begin = channel_group.channel_begin;
-      int channel_end = channel_group.channel_end;
-      int time_offset0 = channel_group.timestep_begin;
+    for (auto channel_group : channel_groups) {
+      auto channel_begin = channel_group.first;
+      auto channel_end = channel_group.second;
 
       // Initialize subgrid
       Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers,
                       wtile_size);
 
-      // Allocate UVW coordinates for first and last channel in a group
-      idg::Array2D<UVW<float>> uvw_converted(nr_timesteps, 2);
-
-      // Constants over nr_timesteps
-      const double speed_of_light = 299792458.0;
-      const float frequency_begin = frequencies(channel_begin);
-      const float frequency_end   = frequencies(channel_end - 1);
-      const float scale_begin     = frequency_begin / speed_of_light;
-      const float scale_end       = frequency_end / speed_of_light;
-      const float scale_w         = 1.0f / w_step;
-
-      // Convert U,V,W in meters to U,V in pixels and W in lambdas
-      for (unsigned t = time_offset0; t < nr_timesteps; t++)
-      {
-        // U,V,W in meters
+      for (unsigned t = 0; t < nr_timesteps; t++) {
+        // U,V in meters
         float u_meters = uvw(bl, t).u;
         float v_meters = uvw(bl, t).v;
         float w_meters = uvw(bl, t).w;
 
-        // U,V,W for first channel
-        float u_pixels_begin = u_meters * image_size * scale_begin;
-        float v_pixels_begin = v_meters * image_size * scale_begin;
-        float w_lambda_begin = w_meters * scale_begin * scale_w;
+        for (unsigned c = 0; c < 2; c++) {
+          unsigned int channel = c == 0 ? channel_begin : channel_end - 1;
+          float u_pixels =
+              meters_to_pixels(u_meters, image_size, frequencies(channel));
+          float v_pixels =
+              meters_to_pixels(v_meters, image_size, frequencies(channel));
+          float w_lambda = meters_to_lambda(w_meters, frequencies(channel)) / w_step;
 
-        // U,V,W for last channel
-        float u_pixels_end = u_meters * image_size * scale_end;
-        float v_pixels_end = v_meters * image_size * scale_end;
-        float w_lambda_end = 0; // not used
-
-        // Store results
-        uvw_converted(t, 0) = {u_pixels_begin, v_pixels_begin, w_lambda_begin};
-        uvw_converted(t, 1) = {u_pixels_end, v_pixels_end, w_lambda_end};
-      } // end for t
-
-      // Keep track of the number of timesteps already processed for this
-      // baselines, this value is used as time index in the subgrid metadata.
-      unsigned int nr_timesteps_baseline = time_offset0;
+          datapoints(t, c) = {t, c, u_pixels, v_pixels, w_lambda};
+        }  // end for channel
+      }    // end for time
 
       unsigned int time_offset = time_offset0;
       while (time_offset < nr_timesteps) {
@@ -401,18 +359,22 @@ void Plan::initialize(
         subgrid.reset();
         int nr_timesteps_subgrid = 0;
 
+        // Load first visibility
+        DataPoint first_datapoint = datapoints(time_offset, 0);
+        const int first_timestep = first_datapoint.timestep;
+
         // Iterate all datapoints
         for (; time_offset < nr_timesteps; time_offset++) {
           // Visibility for first channel
-          UVW<float>& uvw0 = uvw_converted(time_offset, 0);
-          const float u_pixels0 = uvw0.u;
-          const float v_pixels0 = uvw0.v;
-          const float w_lambda0 = uvw0.w;
+          DataPoint visibility0 = datapoints(time_offset, 0);
+          const float u_pixels0 = visibility0.u_pixels;
+          const float v_pixels0 = visibility0.v_pixels;
+          const float w_lambda0 = visibility0.w_lambda;
 
           // Visibility for last channel
-          UVW<float>& uvw1 = uvw_converted(time_offset, 1);
-          const float u_pixels1 = uvw1.u;
-          const float v_pixels1 = uvw1.v;
+          DataPoint visibility1 = datapoints(time_offset, 1);
+          const float u_pixels1 = visibility1.u_pixels;
+          const float v_pixels1 = visibility1.v_pixels;
 
           // Try to add visibilities to subgrid
           if (subgrid.add_visibility(u_pixels0, v_pixels0, w_lambda0) &&
@@ -427,9 +389,9 @@ void Plan::initialize(
 
         // Handle empty subgrid
         if (nr_timesteps_subgrid == 0) {
-          UVW<float>& uvw = uvw_converted(time_offset, 1);
-          const float u_pixels = uvw.u;
-          const float v_pixels = uvw.v;
+          DataPoint visibility = datapoints(time_offset, 0);
+          const float u_pixels = visibility.u_pixels;
+          const float v_pixels = visibility.v_pixels;
 
           if (std::isfinite(u_pixels) && std::isfinite(v_pixels) &&
               plan_strict) {
@@ -442,14 +404,12 @@ void Plan::initialize(
             // Advance to next timeslot when visibilities for current timeslot
             // had infinite coordinates
             time_offset++;
-            nr_timesteps_baseline++;
             continue;
           }
         }
 
         // Compute time index for first visibility on subgrid
-        auto time_index = bl * nr_timesteps + nr_timesteps_baseline;
-        nr_timesteps_baseline += nr_timesteps_subgrid;
+        auto time_index = bl * nr_timesteps + first_timestep;
 
         // Finish subgrid
         subgrid.finish();
