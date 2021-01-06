@@ -270,7 +270,8 @@ void Plan::initialize(
       max_nr_timesteps_per_subgrid > 0
           ? nr_timesteps / max_nr_timesteps_per_subgrid
           : nr_timesteps;
-  idg::Array2D<Metadata> metadata_(nr_baselines, nr_channels*max_nr_subgrids_per_baseline);
+  idg::Array2D<Metadata> metadata_(nr_baselines,
+                                   nr_channels * max_nr_subgrids_per_baseline);
 
   // Count the actual number of subgrids per baseline
   std::vector<unsigned int> nr_subgrids_per_baseline(nr_baselines);
@@ -333,10 +334,10 @@ void Plan::initialize(
       // Constants over nr_timesteps
       const double speed_of_light = 299792458.0;
       const float frequency_begin = frequencies(channel_begin);
-      const float frequency_end   = frequencies(channel_end - 1);
-      const float scale_begin     = frequency_begin / speed_of_light;
-      const float scale_end       = frequency_end / speed_of_light;
-      const float scale_w         = 1.0f / w_step;
+      const float frequency_end = frequencies(channel_end - 1);
+      const float scale_begin = frequency_begin / speed_of_light;
+      const float scale_end = frequency_end / speed_of_light;
+      const float scale_w = 1.0f / w_step;
 
       for (unsigned t = 0; t < nr_timesteps; t++) {
         // U,V in meters
@@ -352,11 +353,11 @@ void Plan::initialize(
         // U,V,W for last channel
         float u_pixels_end = u_meters * image_size * scale_end;
         float v_pixels_end = v_meters * image_size * scale_end;
-        float w_lambda_end = 0; // not used
+        float w_lambda_end = 0;  // not used
 
         datapoints(t, 0) = {t, u_pixels_begin, v_pixels_begin, w_lambda_begin};
         datapoints(t, 1) = {t, u_pixels_end, v_pixels_end, w_lambda_end};
-      }    // end for time
+      }  // end for time
 
       unsigned int time_offset = time_offset0;
       while (time_offset < nr_timesteps) {
@@ -467,9 +468,9 @@ void Plan::initialize(
     }    // end for channel_groups
   }      // end for bl
 
-
   // Find the total number of subgrids for all baselines
-  int total_nr_subgrids = std::accumulate(nr_subgrids_per_baseline.begin(), nr_subgrids_per_baseline.end(), 0);
+  int total_nr_subgrids = std::accumulate(nr_subgrids_per_baseline.begin(),
+                                          nr_subgrids_per_baseline.end(), 0);
 
   // Allocate member variables
   metadata.resize(total_nr_subgrids);
@@ -515,8 +516,8 @@ void Plan::initialize(
   // Reserve aterm indices
   aterm_indices.resize(nr_baselines * nr_timesteps);
 
-  // Set aterm index for every timestep
-  #pragma omp parallel for
+// Set aterm index for every timestep
+#pragma omp parallel for
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
     unsigned time_idx = 0;
 
