@@ -279,7 +279,8 @@ void Plan::initialize(
   idg::Array1D<unsigned> subgrid_count(nr_baselines);
   subgrid_count.zero();
 
-  struct ChannelGroup {
+  struct ChannelGroup
+  {
     // This channel group starts at timestep_begin,
     // and has channels [channels_begin:channel_end]
     unsigned int timestep_begin;
@@ -328,14 +329,15 @@ void Plan::initialize(
                             frequencies, max_nr_channels_per_subgrid);
 
     channel_groups[bl].resize(channel_groups_.size());
-    for (unsigned cg = 0; cg < channel_groups_.size(); cg++) {
+    for (unsigned cg = 0; cg < channel_groups_.size(); cg++)
+    {
       ChannelGroup channel_group;
       channel_group.timestep_begin = time_offset0;
       channel_group.channel_begin = channel_groups_[cg].first;
       channel_group.channel_end = channel_groups_[cg].second;
       channel_groups[bl][cg] = channel_group;
     }
-  }  // end for baseline
+  } // end for baseline
 
 // Iterate all baselines
 #pragma omp parallel for
@@ -345,7 +347,8 @@ void Plan::initialize(
     unsigned int antenna2 = baselines(bl).second;
     Baseline baseline = (Baseline){antenna1, antenna2};
 
-    for (auto& channel_group : channel_groups[bl]) {
+    for (auto& channel_group : channel_groups[bl])
+    {
       int channel_begin = channel_group.channel_begin;
       int channel_end = channel_group.channel_end;
       int time_offset0 = channel_group.timestep_begin;
@@ -360,13 +363,14 @@ void Plan::initialize(
       // Constants over nr_timesteps
       const double speed_of_light = 299792458.0;
       const float frequency_begin = frequencies(channel_begin);
-      const float frequency_end = frequencies(channel_end - 1);
-      const float scale_begin = frequency_begin / speed_of_light;
-      const float scale_end = frequency_end / speed_of_light;
-      const float scale_w = 1.0f / w_step;
+      const float frequency_end   = frequencies(channel_end - 1);
+      const float scale_begin     = frequency_begin / speed_of_light;
+      const float scale_end       = frequency_end / speed_of_light;
+      const float scale_w         = 1.0f / w_step;
 
       // Convert U,V,W in meters to U,V in pixels and W in lambdas
-      for (unsigned t = time_offset0; t < nr_timesteps; t++) {
+      for (unsigned t = time_offset0; t < nr_timesteps; t++)
+      {
         // U,V,W in meters
         float u_meters = uvw(bl, t).u;
         float v_meters = uvw(bl, t).v;
@@ -380,12 +384,12 @@ void Plan::initialize(
         // U,V,W for last channel
         float u_pixels_end = u_meters * image_size * scale_end;
         float v_pixels_end = v_meters * image_size * scale_end;
-        float w_lambda_end = 0;  // not used
+        float w_lambda_end = 0; // not used
 
         // Store results
         uvw_converted(t, 0) = {u_pixels_begin, v_pixels_begin, w_lambda_begin};
         uvw_converted(t, 1) = {u_pixels_end, v_pixels_end, w_lambda_end};
-      }  // end for t
+      } // end for t
 
       // Keep track of the number of timesteps already processed for this
       // baselines, this value is used as time index in the subgrid metadata.
@@ -536,8 +540,8 @@ void Plan::initialize(
   // Reserve aterm indices
   aterm_indices.reserve(nr_baselines * nr_timesteps);
 
-// Set aterm index for every timestep
-#pragma omp parallel for
+  // Set aterm index for every timestep
+  #pragma omp parallel for
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
     unsigned time_idx = 0;
 
