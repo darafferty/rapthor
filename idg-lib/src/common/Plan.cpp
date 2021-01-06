@@ -265,9 +265,6 @@ void Plan::initialize(
     nr_channels = 1;
   }
 
-  // Allocate metadata
-  metadata.reserve(nr_baselines);
-
   // Temporary metadata vector for individual baselines
   int max_nr_subgrids_per_baseline =
       max_nr_timesteps_per_subgrid > 0
@@ -276,8 +273,7 @@ void Plan::initialize(
   idg::Array2D<Metadata> metadata_(nr_baselines, nr_channels*max_nr_subgrids_per_baseline);
 
   // Count the actual number of subgrids per baseline
-  idg::Array1D<unsigned> subgrid_count(nr_baselines);
-  subgrid_count.zero();
+  std::vector<unsigned int> nr_subgrids_per_baseline(nr_baselines);
 
 // Iterate all baselines
 #pragma omp parallel for
@@ -429,23 +425,23 @@ void Plan::initialize(
               .nr_aterms = -1     // nr of aterms, to be filled in later
           };
 
-          unsigned subgrid_nr = subgrid_count(bl);
-          metadata_(bl, subgrid_nr++) = m;
+          unsigned subgrid_idx = nr_subgrids_per_baseline[bl];
+          metadata_(bl, subgrid_idx++) = m;
 
           // Add additional subgrids for subsequent frequencies
           if (simulate_spectral_line) {
             for (unsigned c = 1; c < nr_channels_; c++) {
               // Compute shifted subgrid for current frequency
               float shift = frequencies(c) / frequencies(0);
-              Metadata m = metadata_(bl, subgrid_nr);
+              Metadata m = metadata_(bl, subgrid_idx);
               m.coordinate.x *= shift;
               m.coordinate.y *= shift;
-              metadata_(bl, subgrid_nr++) = m;
+              metadata_(bl, subgrid_idx++) = m;
             }
           }
 
           // Update number of subgrids
-          subgrid_count(bl) = subgrid_nr;
+          nr_subgrids_per_baseline[bl] = subgrid_idx;
         } else if (plan_strict) {
 #pragma omp critical
           {
@@ -462,24 +458,34 @@ void Plan::initialize(
     }    // end for channel_groups
   }      // end for bl
 
+
+  // Find the total number of subgrids for all baselines
+  int total_nr_subgrids = std::accumulate(nr_subgrids_per_baseline.begin(), nr_subgrids_per_baseline.end(), 0);
+
+  // Allocate member variables
+  metadata.resize(total_nr_subgrids);
+  total_nr_timesteps_per_baseline.resize(nr_baselines);
+  total_nr_visibilities_per_baseline.resize(nr_baselines);
+  subgrid_offset.resize(nr_baselines);
+
   // Combine data structures
+  unsigned subgrid_index = 0;
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
     // The subgrid offset is the number of subgrids for all prior baselines
-    subgrid_offset.push_back(metadata.size());
+    subgrid_offset[bl] = subgrid_index;
 
     // Count total number of timesteps for baseline
     int total_nr_timesteps = 0;
 
-    for (unsigned i = 0; i < subgrid_count(bl); i++) {
+    for (unsigned int i = 0; i < nr_subgrids_per_baseline[bl]; i++) {
       Metadata& m = metadata_(bl, i);
-      int subgrid_index = metadata.size();
 
       // Set wtile_index
       Coordinate& wtile_coordinate = m.wtile_coordinate;
       m.wtile_index = wtiles.add_subgrid(subgrid_index, wtile_coordinate);
 
       // Append subgrid
-      metadata.push_back(metadata_(bl, i));
+      metadata[subgrid_index++] = m;
 
       // Accumulate timesteps, taking only the
       // first channel group into account
@@ -489,16 +495,16 @@ void Plan::initialize(
     }
 
     // Set total total number of timesteps for baseline
-    total_nr_timesteps_per_baseline.push_back(total_nr_timesteps);
+    total_nr_timesteps_per_baseline[bl] = total_nr_timesteps;
 
     // Either all or no channels of a timestep are gridded
     // onto a subgrid, hence total_nr_timesteps * nr_channels
     int total_nr_visibilities = total_nr_timesteps * nr_channels;
-    total_nr_visibilities_per_baseline.push_back(total_nr_visibilities);
+    total_nr_visibilities_per_baseline[bl] = total_nr_visibilities;
   }  // end for bl
 
   // Reserve aterm indices
-  aterm_indices.reserve(nr_baselines * nr_timesteps);
+  aterm_indices.resize(nr_baselines * nr_timesteps);
 
   // Set aterm index for every timestep
   #pragma omp parallel for
