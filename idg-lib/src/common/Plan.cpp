@@ -314,7 +314,6 @@ void Plan::initialize(
     // Compute uv coordinates in pixels
     struct DataPoint {
       unsigned timestep;
-      unsigned channel;
       float u_pixels;
       float v_pixels;
       float w_lambda;
@@ -331,22 +330,32 @@ void Plan::initialize(
       Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers,
                       wtile_size);
 
+      // Constants over nr_timesteps
+      const double speed_of_light = 299792458.0;
+      const float frequency_begin = frequencies(channel_begin);
+      const float frequency_end   = frequencies(channel_end - 1);
+      const float scale_begin     = frequency_begin / speed_of_light;
+      const float scale_end       = frequency_end / speed_of_light;
+      const float scale_w         = 1.0f / w_step;
+
       for (unsigned t = 0; t < nr_timesteps; t++) {
         // U,V in meters
         float u_meters = uvw(bl, t).u;
         float v_meters = uvw(bl, t).v;
         float w_meters = uvw(bl, t).w;
 
-        for (unsigned c = 0; c < 2; c++) {
-          unsigned int channel = c == 0 ? channel_begin : channel_end - 1;
-          float u_pixels =
-              meters_to_pixels(u_meters, image_size, frequencies(channel));
-          float v_pixels =
-              meters_to_pixels(v_meters, image_size, frequencies(channel));
-          float w_lambda = meters_to_lambda(w_meters, frequencies(channel)) / w_step;
+        // U,V,W for first channel
+        float u_pixels_begin = u_meters * image_size * scale_begin;
+        float v_pixels_begin = v_meters * image_size * scale_begin;
+        float w_lambda_begin = w_meters * scale_begin * scale_w;
 
-          datapoints(t, c) = {t, c, u_pixels, v_pixels, w_lambda};
-        }  // end for channel
+        // U,V,W for last channel
+        float u_pixels_end = u_meters * image_size * scale_end;
+        float v_pixels_end = v_meters * image_size * scale_end;
+        float w_lambda_end = 0; // not used
+
+        datapoints(t, 0) = {t, u_pixels_begin, v_pixels_begin, w_lambda_begin};
+        datapoints(t, 1) = {t, u_pixels_end, v_pixels_end, w_lambda_end};
       }    // end for time
 
       unsigned int time_offset = time_offset0;
