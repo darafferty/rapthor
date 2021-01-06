@@ -273,7 +273,7 @@ void Plan::initialize(
       max_nr_timesteps_per_subgrid > 0
           ? nr_timesteps / max_nr_timesteps_per_subgrid
           : nr_timesteps;
-  idg::Array2D<Metadata> metadata_(nr_baselines, max_nr_subgrids_per_baseline);
+  idg::Array2D<Metadata> metadata_(nr_baselines, nr_channels*max_nr_subgrids_per_baseline);
 
   // Count the actual number of subgrids per baseline
   idg::Array1D<unsigned> subgrid_count(nr_baselines);
