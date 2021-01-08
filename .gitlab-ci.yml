@@ -19,15 +19,15 @@ build-base:
     - docker build --tag idg_base:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_base .
   rules:
     - when: always
-    
+
 build-integration:
   stage: prepare
   needs: []
   script:
     - docker build --tag idg_integration:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_integration .
-  rules: 
+  rules:
     - when: always
-  
+
 clang-format:
   stage: build
   needs: ["build-base"]
@@ -78,7 +78,7 @@ idg-debug:
     - make install -j4
   rules:
     - when: on_success
-  
+
 idg-test:
   stage: build
   needs: ["build-base"]
@@ -113,16 +113,15 @@ idg-integration-docker:
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
     - export LD_LIBRARY_PATH="/opt/idg/lib:$LD_LIBRARY_PATH"
-    # Compile against development branch of wsclean
+    # Compile against wsclean
     - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
-    - cd src/ && git checkout development && cd ..
     - mkdir build && cd build
     - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
     - cd $HOME_DIR && rm -rf /wsclean
     # Install dp3
     - mkdir /dp3 && cd /dp3 && git clone https://github.com/lofar-astron/DP3.git src
-    - cd src/ && git checkout development && cd ..
+    - cd src && git checkout v5.0 && cd ..
     - mkdir build && cd build
     - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
@@ -133,7 +132,7 @@ idg-integration-docker:
     # Run in verbose mode -VV as long as it's not properly working
     - ctest -L integration
   rules:
-    - when: on_success  
+    - when: on_success
 
 idg-integration-das:
   stage: integration_and_deploy
@@ -157,10 +156,9 @@ idg-integration-das:
     - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export LD_LIBRARY_PATH="~/opt/idg/lib:$LD_LIBRARY_PATH"
-    # Install wsclean (dev branch, needs libgsl)
+    # Install wsclean (needs libgsl)
     - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
     - git clone https://gitlab.com/aroffringa/wsclean.git src
-    - cd src/ && git checkout development && cd ..
     - mkdir build && cd build
     - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
@@ -168,7 +166,7 @@ idg-integration-das:
     # Install dp3
     - mkdir -p ~/opt/dp3 && cd ~/opt/dp3 && rm -rf *
     - git clone https://github.com/lofar-astron/DP3.git src
-    - cd src/ && git checkout development && cd ..
+    - cd src && git checkout v5.0 && cd ..
     - mkdir build && cd build
     - cmake -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="${AOFLAGGER_ROOT_DIR};${EVERYBEAM_ROOT_DIR};~/opt/idg" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
@@ -185,7 +183,7 @@ idg-integration-das:
     - "python3 -m pip install --user --only-binary=:all: python-casacore"
     - ctest --verbose -L integration
   rules:
-    - when: on_success 
+    - when: on_success
 
 check-stack:
   variables:
@@ -193,14 +191,14 @@ check-stack:
     IDG_TRIGGER_HASH: $CI_COMMIT_SHA
   stage: integration_and_deploy
   needs: []
-  trigger: 
+  trigger:
     project: RD/schaap-stack
     branch: master
     # This will mirror the status of the downstream pipeline
     strategy: depend
   rules:
     # Only add job for a merge request event
-    # NOTE: this creates duplicate pipelines when pushing to a branch 
+    # NOTE: this creates duplicate pipelines when pushing to a branch
     # that has an open MR, see https://gitlab.com/gitlab-org/gitlab/-/issues/201845
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - when: never   
+    - when: never
