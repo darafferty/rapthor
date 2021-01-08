@@ -567,6 +567,7 @@ void run_master() {
       // Run fft
       runtime_fft -= omp_get_wtime();
       proxy.transform(idg::FourierDomainToImageDomain, *grid);
+      proxy.transform(idg::ImageDomainToFourierDomain, *grid);
       runtime_fft += omp_get_wtime();
 
       // Distribute grid
