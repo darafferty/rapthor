@@ -560,6 +560,7 @@ void run_master() {
 
       // Reduce grids
       runtime_reduction -= omp_get_wtime();
+      if (world_size > 1)
       reduce_grids(grid, 0, world_size);
       runtime_reduction += omp_get_wtime();
 
@@ -570,6 +571,7 @@ void run_master() {
 
       // Distribute grid
       runtime_send_grid -= omp_get_wtime();
+      if (world_size > 1)
       distribute_grid(grid, world_size);
       runtime_send_grid += omp_get_wtime();
 
@@ -587,6 +589,7 @@ void run_master() {
 
     // Receive visibilities
     runtime_receive_output -= omp_get_wtime();
+    if (world_size > 1)
     receive_visibilities(visibilities, nr_baselines_per_worker, world_size);
     runtime_receive_output += omp_get_wtime();
 
