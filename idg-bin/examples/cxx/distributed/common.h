@@ -15,8 +15,6 @@
 
 #include <mpi.h>
 
-#include "idg-cpu.h"
-#include "idg-cuda.h"
 #include "idg-util.h"  // Data init routines
 
 using namespace std;
@@ -25,9 +23,6 @@ using namespace std;
 // and visibilities) to all workers. If set 0, the workers will
 // initialize their own data, taking their baseline offset into account.
 #define DISTRIBUTE_INPUT 0
-
-// using ProxyType = idg::proxy::cuda::Generic;
-using ProxyType = idg::proxy::cpu::Optimized;
 
 std::tuple<int, int, int, int, int, int, int, int> read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;      // all LOFAR LBA stations
@@ -379,7 +374,7 @@ void send_visibilities(
   requests.wait();
 }
 
-void run_master(int argc, char *argv[]) {
+void run_master() {
   idg::auxiliary::print_version();
 
   // Constants
@@ -753,7 +748,8 @@ void run_worker() {
   }
 } // end run_worker
 
-int main(int argc, char *argv[]) {
+
+void run() {
   // Initialize the MPI environment
   MPI_Init(NULL, NULL);
 
@@ -764,7 +760,7 @@ int main(int argc, char *argv[]) {
   std::thread master_thread, worker_thread;
   if (rank == 0) {
     print(rank, ">>> Running master");
-    run_master(argc, argv);
+    run_master();
   } else {
     print(rank, ">>> Running worker");
     run_worker();
