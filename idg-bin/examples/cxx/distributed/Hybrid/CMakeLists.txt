@@ -1,7 +1,7 @@
 # Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-project(cpu-optimized-mp.x)
+project(hybrid-cuda-generic-optimized-mp.x)
 
 # Set sources
 set (${PROJECT_NAME}_sources 
@@ -20,7 +20,7 @@ target_include_directories(
 # Set link libaries
 set(LINK_LIBRARIES
     idg-util
-    idg-cpu
+    idg-hybrid-cuda
     ${MPI_mpi_LIBRARY}
     ${MPI_mpi_cxx_LIBRARY}
 )
