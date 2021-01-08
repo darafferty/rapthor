@@ -21,6 +21,11 @@
 
 using namespace std;
 
+// Option to let the master distribute input data (uvw coordinates
+// and visibilities) to all workers. If set 0, the workers will
+// initialize their own data, taking their baseline offset into account.
+#define DISTRIBUTE_INPUT 0
+
 // using ProxyType = idg::proxy::cuda::Generic;
 using ProxyType = idg::proxy::cpu::Optimized;
 
@@ -136,6 +141,14 @@ template <typename T>
 void receive_array(int src, T &array) {
   MPI_Recv(array.data(), array.bytes(), MPI_BYTE, src, 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
+}
+
+void send_bytes(int dst, void *buf, size_t bytes) {
+  MPI_Send(buf, bytes, MPI_BYTE, dst, 0, MPI_COMM_WORLD);
+}
+
+void receive_bytes(int src, void *buf, size_t bytes) {
+  MPI_Recv(buf, bytes, MPI_BYTE, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 class MPIRequest
@@ -258,16 +271,8 @@ void run_master(int argc, char *argv[]) {
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
 
   // Initialize Data object
-  idg::Data data;
-
-  // Determine the max baseline length for given grid_size
-  auto max_uv = data.compute_max_uv(grid_size);
-
-  // Select only baselines up to max_uv meters long
-  data.limit_max_baseline_length(max_uv);
-
-  // Restrict the number of baselines to nr_baselines
-  data.limit_nr_baselines(nr_baselines);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time);
 
   // Print data info
   data.print_info();
@@ -293,9 +298,11 @@ void run_master(int argc, char *argv[]) {
   // Distribute parameters
   for (int dst = 0; dst < world_size; dst++) {
     send_int(dst, nr_stations);
+    send_int(dst, nr_baselines);
     send_int(dst, nr_baselines_per_worker);
     send_int(dst, nr_timesteps);
     send_int(dst, nr_timeslots);
+    send_float(dst, integration_time);
     send_int(dst, nr_channels);
     send_int(dst, nr_correlations);
     send_int(dst, nr_w_layers);
@@ -315,6 +322,13 @@ void run_master(int argc, char *argv[]) {
   for (int dst = 1; dst < world_size; dst++) {
     send_array(dst, frequencies);
   }
+
+  // Distribute data
+  #if !DISTRIBUTE_INPUT
+  for (int dst = 1; dst < world_size; dst++) {
+    send_bytes(dst, &data, sizeof(data));
+  }
+  #endif
 
   // Initialize proxy
   ProxyType proxy;
@@ -338,10 +352,15 @@ void run_master(int argc, char *argv[]) {
   omp_set_nested(true);
 
   // Input buffers for all workers
+  #if DISTRIBUTE_INPUT
   idg::Array2D<idg::UVW<float>> uvw_all(nr_baselines, nr_timesteps);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_all =
-      idg::get_dummy_visibilities(nr_baselines, nr_timesteps,
-                                  nr_channels);
+      idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
+  #else
+  idg::Array2D<idg::UVW<float>> uvw(nr_baselines_master, nr_timesteps);
+  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
+      idg::get_dummy_visibilities(nr_baselines_master, nr_timesteps, nr_channels);
+  #endif
   int time_offset = 0;
 
   // Set grid
@@ -354,6 +373,7 @@ void run_master(int argc, char *argv[]) {
 
   // Iterate all cycles
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
+    #if DISTRIBUTE_INPUT
     // Get UVW coordinates for current cycle
     data.get_uvw(uvw_all, 0, time_offset, integration_time);
 
@@ -386,6 +406,11 @@ void run_master(int argc, char *argv[]) {
     // Get master buffers
     idg::Array2D<idg::UVW<float>> uvw(uvw_all.data(nr_baselines_all_workers, 0), nr_baselines_master, nr_timesteps);
     idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(visibilities_all.data(nr_baselines_all_workers, 0, 0), nr_baselines_master, nr_timesteps, nr_channels);
+    #else
+    // Get UVW coordinates for current cycle
+    data.get_uvw(uvw, nr_baselines_all_workers, time_offset, integration_time);
+    #endif
+
     idg::Array1D<std::pair<unsigned int, unsigned int>> baselines(baselines_all.data(nr_baselines_all_workers), nr_baselines_master);
 
     // Create plan
@@ -452,7 +477,7 @@ void run_master(int argc, char *argv[]) {
   std::cout << std::scientific;
 
   // Report input
-  double input_bw = bytes_input / runtime_input * 1e-9;
+  double input_bw = bytes_input ? bytes_input / runtime_input * 1e-9 : 0;
   std::stringstream report_input;
   report_input << "input: " << runtime_input
                << " s , " << input_bw << " GB/s";
@@ -488,11 +513,17 @@ void run_worker() {
   int rank;
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
+  // Get the number of processes
+  int world_size;
+  MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+
   // Receive parameters
   unsigned int nr_stations = receive_int();
+  unsigned int total_nr_baselines = receive_int();
   unsigned int nr_baselines = receive_int();
   unsigned int nr_timesteps = receive_int();
   unsigned int nr_timeslots = receive_int();
+  float integration_time = receive_float();
   unsigned int nr_channels = receive_int();
   unsigned int nr_correlations = receive_int();
   unsigned int nr_w_layers = receive_int();
@@ -525,20 +556,33 @@ void run_worker() {
   idg::Array1D<float> frequencies = proxy.allocate_array1d<float>(nr_channels);
   receive_array(0, frequencies);
 
+  // Receive data
+  idg::Data data =
+      idg::get_example_data(total_nr_baselines, grid_size, integration_time);
+
   // Plan options
   idg::Plan::Options options = get_plan_options();
   omp_set_nested(true);
 
   // Buffers for input data
   idg::Array2D<idg::UVW<float>> uvw(nr_baselines, nr_timesteps);
+  #if DISTRIBUTE_INPUT
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(
       nr_baselines, nr_timesteps, nr_channels);
+  #else
+  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
+      idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
+  int time_offset = 0;
+  int bl_offset = (rank - 1) * nr_baselines;
+  #endif
 
   // Set grid
   proxy.set_grid(grid);
 
   // Iterate all cycles
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
+
+    #if DISTRIBUTE_INPUT
     // Receive input data
     MPIRequestList requests;
     for (unsigned bl = 0; bl < nr_baselines; bl++) {
@@ -553,8 +597,11 @@ void run_worker() {
       size_t sizeof_uvw = nr_timesteps * sizeof(idg::UVW<float>);
       requests.create()->receive(uvw_ptr, sizeof_uvw, 0);
     }
-
     requests.wait();
+    #else
+    // Get UVW coordinates for current cycle
+    data.get_uvw(uvw, bl_offset, time_offset, integration_time);
+    #endif
 
     // Create plan
     auto plan = std::unique_ptr<idg::Plan>(new idg::Plan(
