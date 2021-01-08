@@ -595,8 +595,10 @@ void run_master() {
   }
 
   // Report timings
+  std::clog << std::endl;
   idg::report("send input", runtime_send_input);
   idg::report("gridding", runtime_gridding);
+  idg::report("grid fft", runtime_fft);
   idg::report("degridding", runtime_degridding);
   idg::report("reduction", runtime_reduction);
   idg::report("send grid", runtime_send_grid);
@@ -605,6 +607,7 @@ void run_master() {
     runtime_send_input + runtime_gridding + runtime_degridding +
     runtime_reduction + runtime_send_grid + runtime_receive_output;
   idg::report("runtime imaging", runtime_imaging);
+  std::clog << std::endl;
 
   // Report throughput
   uint64_t nr_visibilities = 1ULL * nr_baselines * nr_timesteps * nr_channels;
