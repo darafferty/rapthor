@@ -551,33 +551,36 @@ void run_master(int argc, char *argv[]) {
        baselines, aterms_offsets, options));
 
     // Run gridding
-    runtime_gridding = -omp_get_wtime();
+    runtime_gridding -= omp_get_wtime();
     proxy.gridding(*plan, w_offset, shift, cell_size, kernel_size,
         subgrid_size, frequencies, visibilities, uvw,
         baselines, aterms, aterms_offsets, spheroidal);
     synchronize();
     runtime_gridding += omp_get_wtime();
 
-    // Get grid
-    grid = proxy.get_grid();
+    if (cycle == (nr_cycles - 1))
+    {
+      // Get grid
+      grid = proxy.get_grid();
 
-    // Reduce grids
-    runtime_reduction -= omp_get_wtime();
-    reduce_grids(grid, 0, world_size);
-    runtime_reduction += omp_get_wtime();
+      // Reduce grids
+      runtime_reduction -= omp_get_wtime();
+      reduce_grids(grid, 0, world_size);
+      runtime_reduction += omp_get_wtime();
 
-    // Run fft
-    runtime_fft -= omp_get_wtime();
-    proxy.transform(idg::FourierDomainToImageDomain, *grid);
-    runtime_fft += omp_get_wtime();
+      // Run fft
+      runtime_fft -= omp_get_wtime();
+      proxy.transform(idg::FourierDomainToImageDomain, *grid);
+      runtime_fft += omp_get_wtime();
 
-    // Distribute grid
-    runtime_send_grid -= omp_get_wtime();
-    distribute_grid(grid, world_size);
-    runtime_send_grid += omp_get_wtime();
+      // Distribute grid
+      runtime_send_grid -= omp_get_wtime();
+      distribute_grid(grid, world_size);
+      runtime_send_grid += omp_get_wtime();
 
-    // Set grid
-    proxy.set_grid(grid);
+      // Set grid
+      proxy.set_grid(grid);
+    }
 
     // Run degridding
     runtime_degridding -= omp_get_wtime();
@@ -719,20 +722,25 @@ void run_worker() {
         subgrid_size, frequencies, visibilities, uvw,
         baselines, aterms, aterms_offsets, spheroidal);
 
-    // Get grid
-    grid = proxy.get_grid();
+    if (cycle == (nr_cycles - 1))
+    {
+      // Get grid
+      grid = proxy.get_grid();
 
-    // Reduce grids
-    reduce_grids(grid, rank, world_size);
+      // Reduce grids
+      reduce_grids(grid, rank, world_size);
 
-    // Master performs FFT
-    synchronize();
+      // Master performs FFT
+      synchronize();
 
-    // Receive grid
-    receive_grid(grid, 0);
+      // Receive grid
+      receive_grid(grid, 0);
 
-    // Set grid
-    proxy.set_grid(grid);
+      // Set grid
+      proxy.set_grid(grid);
+    } else {
+      synchronize();
+    }
 
     // Run degridding
     proxy.degridding(*plan, w_offset, shift, cell_size, kernel_size,
