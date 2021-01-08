@@ -515,7 +515,7 @@ void run_master(int argc, char *argv[]) {
 
     // Distribute input data
     MPIRequestList requests;
-    runtime_input -= omp_get_wtime();
+    runtime_send_input -= omp_get_wtime();
     for (unsigned int bl = 0; bl < nr_baselines_all_workers; bl++) {
       unsigned int dest = 1 + (bl / nr_baselines_per_worker);
 
@@ -533,7 +533,7 @@ void run_master(int argc, char *argv[]) {
     }
 
     requests.wait();
-    runtime_input += omp_get_wtime();
+    runtime_send_input += omp_get_wtime();
 
     // Get master buffers
     idg::Array2D<idg::UVW<float>> uvw(uvw_all.data(nr_baselines_all_workers, 0), nr_baselines_master, nr_timesteps);
