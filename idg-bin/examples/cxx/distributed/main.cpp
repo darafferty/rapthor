@@ -247,6 +247,51 @@ idg::Plan::Options get_plan_options() {
   return options;
 }
 
+void reduce_grids(
+  std::shared_ptr<idg::Grid> grid,
+  int rank,
+  int world_size)
+{
+  unsigned int nr_w_layers = grid->get_w_dim();
+  unsigned int grid_size = grid->get_y_dim();
+
+  #pragma omp parallel for
+  for (unsigned int y = 0; y < grid_size; y++)
+  {
+    idg::Array1D<std::complex<float>> row(grid_size);
+
+    for (unsigned int w = 0; w < nr_w_layers; w++)
+    {
+      for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++)
+      {
+        for (unsigned int i = (world_size/2); i > 0; i /= 2)
+        {
+          if ((unsigned int) rank < i)
+          {
+            #pragma omp critical
+            {
+              MPIRequest request(true);
+              request.receive(row.data(), row.bytes(), i + rank);
+            }
+
+            for (unsigned int x = 0; x < grid_size; x++)
+            {
+              auto& grid_ = *grid;
+              row(x) += grid_(w, pol, y, x);
+            }
+          } else {
+            #pragma omp critical
+            {
+              MPIRequest request(true);
+              request.send(row.data(), row.bytes(), rank - i);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
 void run_master(int argc, char *argv[]) {
   idg::auxiliary::print_version();
 
@@ -434,37 +479,9 @@ void run_master(int argc, char *argv[]) {
   // Get grid
   grid = proxy.get_grid();
 
-  // Receive grids from workers and add to master grid
-  double runtime_output = 0;
+  // Reduce grids
   double runtime_add_grid = -omp_get_wtime();
-  #pragma omp parallel for
-  for (unsigned int y = 0; y < grid_size; y++)
-  {
-    idg::Array1D<std::complex<float>> row(grid_size);
-
-    for (unsigned int w = 0; w < nr_w_layers; w++)
-    {
-      for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++)
-      {
-        for (unsigned int src = 1; src < (unsigned int) world_size; src++)
-        {
-          #pragma omp critical
-          {
-            runtime_output -= omp_get_wtime();
-            MPIRequest request(true);
-            request.receive(row.data(), row.bytes(), src);
-            runtime_output += omp_get_wtime();
-          }
-
-          for (unsigned int x = 0; x < grid_size; x++)
-          {
-            auto& grid_ = *grid;
-            grid_(w, pol, y, x) = row(x);
-          }
-        }
-      }
-    }
-  }
+  reduce_grids(grid, 0, world_size);
   runtime_add_grid += omp_get_wtime();
 
   synchronize();
@@ -488,17 +505,8 @@ void run_master(int argc, char *argv[]) {
   report_gridding << "gridding: " << runtime_gridding << "s";
   print(0, report_gridding.str());
 
-  // Report output time
-  size_t output_bytes = world_size > 1 ? grid->bytes() * (world_size - 1) : 0;
-  double output_bw = output_bytes / runtime_output * 1e-9;
-  std::stringstream report_output;
-  report_output << "output: " << runtime_output
-                << " s, " << output_bw << " GB/s";
-  print(0, report_output.str());
-
-  // Report grid addition time
   std::stringstream report_add_grid;
-  report_add_grid << "add grid: " << runtime_add_grid << " s";
+  report_add_grid << "reduction: " << runtime_add_grid << " s";
   print(0, report_add_grid.str());
 
   // Report fft runtime
@@ -619,21 +627,8 @@ void run_worker() {
   // Get grid
   grid = proxy.get_grid();
 
-  // Send grid to master
-  MPIRequestList requests;
-  for (unsigned int y = 0; y < grid_size; y++)
-  {
-    for (unsigned int w = 0; w < nr_w_layers; w++)
-    {
-      for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++)
-      {
-        std::complex<float> *row_ptr = grid->data(w, pol, y, 0);
-        size_t sizeof_row = grid_size * sizeof(std::complex<float>);
-        requests.create()->send(row_ptr, sizeof_row, 0);
-      }
-    }
-  }
-  requests.wait();
+  // Reduce grids
+  reduce_grids(grid, rank, world_size);
 
   synchronize();
 } // end run_worker
