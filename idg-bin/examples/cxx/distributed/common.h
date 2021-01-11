@@ -343,9 +343,11 @@ void receive_visibilities(
   unsigned int nr_timesteps = visibilities.get_y_dim();
   unsigned int nr_channels = visibilities.get_x_dim();
   MPIRequestList requests;
-  for (unsigned int bl = 0; bl < nr_baselines; bl++)
+  for (unsigned int source = 1; source < world_size; source++)
   {
-    for (unsigned int source = 1; source < world_size; source++)
+    send_int(source, 0);
+
+    for (unsigned int bl = 0; bl < nr_baselines; bl++)
     {
       void *visibilities_ptr = (void *) visibilities.data(bl, 0, 0);
       size_t sizeof_visibilities = nr_timesteps * nr_channels *
@@ -358,8 +360,9 @@ void receive_visibilities(
 
 void send_visibilities(
   idg::Array3D<idg::Visibility<std::complex<float>>>& visibilities,
-  int dest)
+  int rank)
 {
+  receive_int();
   unsigned int nr_baselines = visibilities.get_z_dim();
   unsigned int nr_timesteps = visibilities.get_y_dim();
   unsigned int nr_channels = visibilities.get_x_dim();
@@ -369,7 +372,7 @@ void send_visibilities(
       void *visibilities_ptr = (void *) visibilities.data(bl, 0, 0);
       size_t sizeof_visibilities = nr_timesteps * nr_channels *
                                    sizeof(idg::Visibility<std::complex<float>>);
-      requests.create()->send(visibilities_ptr, sizeof_visibilities, dest);
+      requests.create()->send(visibilities_ptr, sizeof_visibilities, 0);
   }
   requests.wait();
 }
@@ -751,7 +754,7 @@ void run_worker() {
     synchronize();
 
     // Send visibilities
-    send_visibilities(visibilities, 0);
+    send_visibilities(visibilities, rank);
   }
 } // end run_worker
 
