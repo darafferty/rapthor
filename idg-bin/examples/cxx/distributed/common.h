@@ -242,44 +242,50 @@ void reduce_grids(
   unsigned int rank,
   unsigned int world_size)
 {
-  unsigned int nr_w_layers = grid->get_w_dim();
+  unsigned int w = 0; // W-stacking is handled by the workers
   unsigned int grid_size = grid->get_y_dim();
 
-  #pragma omp parallel for
-  for (unsigned int y = 0; y < grid_size; y++)
+  idg::Array2D<std::complex<float>> tmp(grid_size, grid_size);
+  size_t sizeof_row = grid_size * sizeof(std::complex<float>);
+
+  #pragma omp parallel
   {
-    idg::Array1D<std::complex<float>> row(grid_size);
-
-    for (unsigned int w = 0; w < nr_w_layers; w++)
+    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++)
     {
-      for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++)
+      for (unsigned int i = (world_size+1)/2; i > 0; i /= 2)
       {
-        for (unsigned int i = (world_size+1)/2; i > 0; i /= 2)
+        if ((unsigned int) rank < i)
         {
-          if ((unsigned int) rank < i)
+          if (omp_get_thread_num() == 0)
           {
-            #pragma omp critical
+            MPIRequestList requests;
+            for (unsigned int y = 0; y < grid_size; y++)
             {
-              MPIRequest request(true);
-              request.receive(row.data(), row.bytes(), i + rank);
+              requests.create()->receive(tmp.data(y, 0), sizeof_row, i + rank);
             }
+            requests.wait();
+          }
 
+          auto& grid_ = *grid;
+
+          #pragma omp barrier
+          #pragma omp for
+          for (unsigned int y = 0; y < grid_size; y++)
             for (unsigned int x = 0; x < grid_size; x++)
             {
-              auto& grid_ = *grid;
-              row(x) += grid_(w, pol, y, x);
+              grid_(w, pol, y, x) += *tmp.data(y, x);
             }
-          } else if (rank < (2 * i)) {
-            #pragma omp critical
-            {
-              MPIRequest request(true);
-              request.send(row.data(), row.bytes(), rank - i);
-            }
+        } else if (rank < (2 * i) && omp_get_thread_num() == 0)
+        {
+          MPIRequestList requests;
+          for (unsigned int y = 0; y < grid_size; y++)
+          {
+            requests.create()->send(tmp.data(y, 0), sizeof_row, rank - i);
           }
         }
-      }
-    }
-  }
+      } // end for i
+    } // end for pol
+  } // end pragma parallel
 }
 
 void broadcast_grid(
