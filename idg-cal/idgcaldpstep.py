@@ -8,6 +8,8 @@ import idg.util
 import astropy.io.fits as fits
 import scipy.linalg
 import time
+import logging
+from h5parmwriter import H5ParmWriter
 
 
 class IDGCalDPStep(dppp.DPStep):
@@ -63,10 +65,6 @@ class IDGCalDPStep(dppp.DPStep):
         prefix : str
             Prefix to be used when reading the parset.
         """
-        # TODO: self.parset / self.prefix
-        # should be local to this method
-        self.parset = parset
-        self.prefix = prefix
 
         solint = parset.getInt(prefix + "solint", 0)
         if solint:
@@ -78,38 +76,94 @@ class IDGCalDPStep(dppp.DPStep):
             )
             self.solution_interval_phase = parset.getInt(prefix + "solintphase", 0)
 
+        # solintamplitude should be divisible by solintphase, check and correct if that's not the case
+        remainder = self.solution_interval_amplitude % self.solution_interval_phase
+        if remainder != 0:
+            logging.warning(
+                f"Specified amplitude solution interval {self.solution_interval_amplitude} is not an integer multiple of the phase solution interval {self.solution_interval_phase}. Amplitude soluton interval will be modified to {self.solution_interval_amplitude + remainder}"
+            )
+            self.solution_interval_amplitude += remainder
+
         self.imagename = parset.getString(prefix + "modelimage")
         self.padding = parset.getFloat(prefix + "padding", 1.2)
 
-        self.nr_timeslots = 40
-        self.nr_timesteps_per_slot = 4
+        # TODO: should be refactored once script is up and running
+        # TODO: check these carefully
+        self.nr_timesteps = self.solution_interval_amplitude
+        self.nr_timesteps_per_slot = self.solution_interval_phase
+        self.nr_timeslots = (
+            self.solution_interval_amplitude // self.solution_interval_phase
+        )
 
-        self.nr_timesteps = self.nr_timeslots * self.nr_timesteps_per_slot
+        # WAS PREVIOUSLY:
+        # self.nr_timeslots = 40
+        # self.nr_timesteps_per_slot = 4
+        # self.nr_timesteps = self.nr_timeslots * self.nr_timesteps_per_slot
 
-        self.nr_correlations = 4
-        self.subgrid_size = 32
+        # Number of correlations
+        self.nr_correlations = parset.getInt(prefix + "nrcorrelations", 4)
 
-        self.taper_support = 7
-        self.wterm_support = 5
-        self.aterm_support = 5
+        # Subgrid size to be used in IDG
+        self.subgrid_size = parset.getInt(prefix + "subgridsize", 32)
 
-        self.kernel_size = self.taper_support + self.wterm_support + self.aterm_support
+        self.taper_support = parset.getInt(prefix + "tapersupport", 7)
+        wterm_support = parset.getInt(prefix + "wtermsupport", 5)
+        aterm_support = parset.getInt(prefix + "atermsupport", 5)
 
-        self.nr_parameters_ampl = 6
-        self.nr_parameters_phase = 3
+        self.kernel_size = self.taper_support + wterm_support + aterm_support
+
+        # TODO: was previously:
+        # self.taper_support = 7
+        # self.wterm_support = 5
+        # self.aterm_support = 5
+        # self.kernel_size = self.taper_support + self.wterm_support + self.aterm_support
+        # TODO: remove lines above
+
+        # Get polynomial degrees for amplitude and phase
+        self.polynomial_degree_ampl = parset.getInt(
+            prefix + "polynomialdegamplitude", 2
+        )
+        self.polynomial_degree_phase = parset.getInt(prefix + "polynomialdegphase", 1)
+
+        # Compute corresponding number of parameters (coefficients)
+        self.nr_parameters_ampl = np.sum(
+            np.arange(1, self.polynomial_degree_ampl + 2, 1)
+        )
+        self.nr_parameters_phase = np.sum(
+            np.arange(1, self.polynomial_degree_phase + 2, 1)
+        )
+
         self.nr_parameters0 = self.nr_parameters_ampl + self.nr_parameters_phase
         self.nr_parameters = (
             self.nr_parameters_ampl + self.nr_parameters_phase * self.nr_timeslots
         )
 
-        self.solver_update_gain = 0.5
-        self.pinv_tol = 1e-9
-        self.max_iter = 1
+        # Fraction betwen 0 and 1 with which to update solution between
+        # iterations
+        self.solver_update_gain = parset.getFloat(prefix + "solver_update_gain", 0.5)
 
-        self.w_step = 400.0
+        # Tolerance pseudo inverse
+        self.pinv_tol = parset.getDouble(prefix + "tolerance_pinv", 1e-9)
+
+        # Maximum number of iterations
+        self.max_iter = parset.getInt(prefix + "maxiter", 1)
+
+        # H5Parm file name
+        self.h5parm_fname = parset.getString(prefix + "h5parm", "idgcal.h5")
+
+        self.w_step = parset.getFloat(prefix + "wstep", 400.0)
 
     def initialize(self):
         self.is_initialized = True
+
+        # TODO: check the following:
+        # Extract the time info and cast into a time array
+        tstart = self.info().startTime()
+        nsteps = self.info().ntime()
+        dt = self.info().timeInterval()
+        self.time_array = np.linspace(
+            tstart, tstart + dt * nsteps, num=nsteps, endpoint=False
+        )
 
         self.nr_stations = self.info().nantenna()
         self.nr_baselines = (self.nr_stations * (self.nr_stations - 1)) // 2
@@ -259,31 +313,24 @@ class IDGCalDPStep(dppp.DPStep):
             self.taper2,
         )
 
+        # Initialize coefficients, both for amplitude and phase
+        # The amplitude coefficients are initialized with ones for the constant in the polynomial expansion (X0)
+        # and zeros otherwise (X1). The parameters for the phases are initialized with zeros (X2).
         X0 = np.ones((self.nr_stations, 1))
-        X1 = np.zeros((self.nr_stations, 1))
+        X1 = np.zeros((self.nr_stations, self.nr_parameters_ampl - 1))
+        X2 = np.zeros((self.nr_stations), self.nr_parameters - self.nr_parameters_ampl)
 
-        # initialize parameters
-        parameters = np.concatenate((X0,) + (self.nr_parameters - 1) * (X1,), axis=1)
-
-        for i in range(self.nr_stations):
-            parameters[i, : self.nr_parameters_ampl] = np.dot(
-                np.linalg.inv(self.Tampl), parameters[i, : self.nr_parameters_ampl]
-            )
-            for j in range(self.nr_timeslots):
-                parameters[
-                    i,
-                    self.nr_parameters_ampl
-                    + j * self.nr_parameters_phase : self.nr_parameters_ampl
-                    + (j + 1) * self.nr_parameters_phase,
-                ] = np.dot(
-                    np.linalg.inv(self.Tphase),
-                    parameters[
-                        i,
-                        self.nr_parameters_ampl
-                        + j * self.nr_parameters_phase : self.nr_parameters_ampl
-                        + (j + 1) * self.nr_parameters_phase,
-                    ],
-                )
+        parameters = np.concatenate((X0, X1, X2), axis=1)
+        # Map paramaters to orthonormal basis
+        parameters = transform_parameters(
+            np.linalg.inv(self.Tampl),
+            np.linalg.inv(self.Tphase),
+            parameters,
+            self.nr_parameters_ampl,
+            self.nr_parameters_phase,
+            self.nr_stations,
+            self.nr_timeslots,
+        )
 
         aterms = idg.util.get_identity_aterms(
             self.nr_timeslots, self.nr_stations, self.subgrid_size, self.nr_correlations
@@ -305,6 +352,9 @@ class IDGCalDPStep(dppp.DPStep):
                 axes=((2,), (0,)),
             )
         )
+        # TODO: no need to index here? So simply do (?!):
+        # aterms = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
+        # if so, it would render "aterms = idg.util.get_identity_aterms" obsolete
         aterms[:, :, :, :, :] = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
 
         nr_iterations = 0
@@ -320,9 +370,7 @@ class IDGCalDPStep(dppp.DPStep):
         previous_residual = 0.0
 
         while True:
-
             nr_iterations += 1
-
             print(f"iteration nr {nr_iterations} ")
 
             max_dx = 0.0
@@ -440,6 +488,7 @@ class IDGCalDPStep(dppp.DPStep):
 
                 parameters[i] += self.solver_update_gain * dx
 
+                # TODO: no need to repeat when writing to H5Parm
                 aterm_ampl = np.repeat(
                     np.tensordot(
                         parameters[i, : self.nr_parameters_ampl],
@@ -484,25 +533,62 @@ class IDGCalDPStep(dppp.DPStep):
 
         parameters_polynomial = parameters.copy()
 
-        for i in range(self.nr_stations):
-            parameters_polynomial[i, : self.nr_parameters_ampl] = np.dot(
-                self.Tampl, parameters_polynomial[i, : self.nr_parameters_ampl]
+        # Map parameters back to original basis
+        parameters_polynomial = transform_parameters(
+            self.Tampl,
+            self.Tphase,
+            parameters_polynomial,
+            self.nr_parameters_ampl,
+            self.nr_parameters_phase,
+            self.nr_stations,
+            self.nr_timeslots,
+        )
+
+        # TODO: write parameters to matching block in H5Parm file
+
+
+def transform_parameters(
+    tmat_amplitude,
+    tmat_phase,
+    parameters,
+    nr_amplitude_params,
+    nr_phase_params,
+    nr_stations,
+    nr_timeslots,
+):
+    """
+    Transform parameters (between orthonormalized and regular basis)
+
+    Parameters
+    ----------
+    tmat_amplitude : np.ndarray
+        Transformation matrix for the amplitudes
+    tmat_phase: np.ndarray
+        Transformation matrix for the phases
+    parameters : np.ndarray
+        Matrix with parameters
+    nr_amplitude_params : int
+        Number of amplitude parameters
+    nr_phase_params : int
+        Number of phase parameters
+    nr_stations : int
+        Number of stations
+    nr_timeslots : int
+        Number of timeslots
+    """
+
+    # TODO: should be possible to avoid the loops with numpy
+    for i in range(nr_stations):
+        parameters[i, :nr_amplitude_params] = np.dot(
+            tmat_amplitude, parameters[i, :nr_amplitude_params]
+        )
+        for j in range(nr_timeslots):
+            slicer = slice(
+                nr_amplitude_params + j * nr_phase_params,
+                nr_amplitude_params + (j + 1) * nr_phase_params,
             )
-            for j in range(self.nr_timeslots):
-                parameters_polynomial[
-                    i,
-                    self.nr_parameters_ampl
-                    + j * self.nr_parameters_phase : self.nr_parameters_ampl
-                    + (j + 1) * self.nr_parameters_phase,
-                ] = np.dot(
-                    self.Tphase,
-                    parameters_polynomial[
-                        i,
-                        self.nr_parameters_ampl
-                        + j * self.nr_parameters_phase : self.nr_parameters_ampl
-                        + (j + 1) * self.nr_parameters_phase,
-                    ],
-                )
+            parameters[i, slicer] = np.dot(tmat_phase, parameters[i, slicer],)
+    return parameters
 
 
 def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
@@ -522,7 +608,8 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
     Returns
     -------
     np.ndarray, np.ndarray
-        np.ndarray with evaluation of orthonormal basis functions and TODO (WHAT IS T)?
+        np.ndarray with evaluation of orthonormal basis functions and the transformation matrix
+        that maps the orthonormal basis onto the "regular" basis
     """
     s = image_size / subgrid_size * (subgrid_size - 1)
     l = s * np.linspace(-0.5, 0.5, subgrid_size)
@@ -539,7 +626,7 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
     for n in range(polynomial_order + 1):
         # Loop over polynomial degree (rows in Pascal's triangle)
         for k in range(n + 1):
-            # Loop over unique entries per polynomial degree
+            # Loop over unique entries per polynomial degree (columns in Pascal's triangle)
             offset = np.sum(np.arange(1, n + 1, 1)) + k
             basis_functions[offset, ...] = B1 ** (n - k) * B2 ** k
 
