@@ -423,19 +423,23 @@ void run_master() {
   idg::Plan::Options options = get_plan_options();
   omp_set_nested(true);
 
-  // Input buffers
-  idg::Array2D<idg::UVW<float>> uvw =
-      proxy.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
+  // Buffers for input data
+  unsigned int nr_time_blocks = std::ceil((float) total_nr_timesteps / nr_timesteps);
+  idg::Array3D<idg::UVW<float>> uvws =
+      proxy.allocate_array3d<idg::UVW<float>>(nr_time_blocks, nr_baselines, nr_timesteps);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
       idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps, nr_channels);
   unsigned int bl_offset = 0;
+
+  // Vector of plans
+  std::vector<std::unique_ptr<idg::Plan>> plans;
 
   // Set grid
   proxy.set_grid(grid);
 
   // Performance measurement
-  std::vector<double> runtimes_init(nr_cycles);
-  std::vector<double> runtimes_plan(nr_cycles);
+  std::vector<double> runtimes_init(nr_time_blocks);
+  std::vector<double> runtimes_plan(nr_time_blocks);
   std::vector<double> runtimes_gridding(nr_cycles);
   std::vector<double> runtimes_degridding(nr_cycles);
   std::vector<double> runtimes_grid_reduce(nr_cycles);
@@ -446,19 +450,30 @@ void run_master() {
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
 
     // Run gridding and degridding for all blocks of time
-    for (unsigned int time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps)
+    for (unsigned int t = 0; t < nr_time_blocks; t++)
     {
-      // Get UVW coordinates
-      runtimes_init[cycle] -= omp_get_wtime();
-      data.get_uvw(uvw, bl_offset, time_offset, integration_time);
-      runtimes_init[cycle] += omp_get_wtime();
+      unsigned int time_offset = t * nr_timesteps;
+
+      // Get UVW coordinates for current cycle
+      idg::Array2D<idg::UVW<float>> uvw(uvws.data(t, 0, 0), nr_baselines, nr_timesteps);
+      if (cycle == 0)
+      {
+        runtimes_init[t] -= omp_get_wtime();
+        data.get_uvw(uvw, bl_offset, time_offset, integration_time);
+        runtimes_init[t] += omp_get_wtime();
+      }
 
       // Create plan
-      runtimes_plan[cycle] -= omp_get_wtime();
-      idg::Plan plan(kernel_size, subgrid_size, grid_size,
-                     cell_size, frequencies, uvw, baselines,
-                     aterms_offsets, options);
-      runtimes_plan[cycle] += omp_get_wtime();
+      if (cycle == 0)
+      {
+        runtimes_plan[t] -= omp_get_wtime();
+        plans.emplace_back(new
+          idg::Plan(kernel_size, subgrid_size, grid_size,
+                    cell_size, frequencies, uvw, baselines,
+                    aterms_offsets, options));
+        runtimes_plan[t] += omp_get_wtime();
+      }
+      idg::Plan& plan = *plans[t];
       synchronize();
 
       // Run gridding
@@ -599,11 +614,15 @@ void run_worker() {
   omp_set_nested(true);
 
   // Buffers for input data
-  idg::Array2D<idg::UVW<float>> uvw =
-      proxy.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
+  unsigned int nr_time_blocks = std::ceil((float) total_nr_timesteps / nr_timesteps);
+  idg::Array3D<idg::UVW<float>> uvws =
+      proxy.allocate_array3d<idg::UVW<float>>(nr_time_blocks, nr_baselines, nr_timesteps);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
       idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps, nr_channels);
   unsigned int bl_offset = 0;
+
+  // Vector of plans
+  std::vector<std::unique_ptr<idg::Plan>> plans;
 
   // Set grid
   proxy.set_grid(grid);
@@ -611,15 +630,26 @@ void run_worker() {
   // Iterate all cycles
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
     // Run gridding and degridding for all blocks of time
-    for (unsigned int time_offset = 0; time_offset < total_nr_timesteps; time_offset += nr_timesteps)
+    for (unsigned int t = 0; t < nr_time_blocks; t++)
     {
+      unsigned int time_offset = t * nr_timesteps;
+
       // Get UVW coordinates for current cycle
-      data.get_uvw(uvw, bl_offset, time_offset, integration_time);
+      idg::Array2D<idg::UVW<float>> uvw(uvws.data(t, 0, 0), nr_baselines, nr_timesteps);
+      if (cycle == 0)
+      {
+        data.get_uvw(uvw, bl_offset, time_offset, integration_time);
+      }
 
       // Create plan
-      idg::Plan plan(kernel_size, subgrid_size, grid_size,
-                     cell_size, frequencies, uvw, baselines,
-                     aterms_offsets, options);
+      if (cycle == 0)
+      {
+        plans.emplace_back(new
+          idg::Plan(kernel_size, subgrid_size, grid_size,
+                    cell_size, frequencies, uvw, baselines,
+                    aterms_offsets, options));
+      }
+      idg::Plan& plan = *plans[t];
       synchronize();
 
       // Run gridding
