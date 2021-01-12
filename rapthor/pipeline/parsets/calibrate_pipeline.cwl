@@ -6,7 +6,7 @@ doc: |
   calibration is done in three steps: (1) a fast phase-only calibration (with
   core stations constrianed to have the same solutions) to correct for
   ionospheric effects, (2) a slow amplitude calibration (with all stations
-  constrianed to have the same solutions) to correct for beam errors, and (3) a
+  constrained to have the same solutions) to correct for beam errors, and (3) a
   further unconstrained slow gain calibration to correct for station-to-station
   differences. Steps (2) and (3) are skipped if the calibration is phase-only.
   This calibration scheme works for both HBA and LBA data. The final products of
