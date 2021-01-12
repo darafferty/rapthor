@@ -1,9 +1,9 @@
 .. _structure:
 
-Rapthor structure
+General structure
 =================
 
-Rapthor is effectively a Python wrapper around CWL generic pipelines. The wrapper sets up and executes the pipelines that then perform the actual processing. The overall structure of the processing as done by Rapthor is shown in the figure below. The processing is divided into a number of operations, each of which can be run (or not) as needed.
+Rapthor is effectively a Python wrapper around CWL pipelines. The wrapper sets up and executes the pipelines as "operations" that then perform the actual processing. The overall structure of the processing as done by Rapthor is shown in the figure below. A full processing run is divided into a number of operations, each of which can be run (or not) as needed.
 
 .. _rapthor-flowchart:
 
@@ -12,3 +12,5 @@ Rapthor is effectively a Python wrapper around CWL generic pipelines. The wrappe
    :align: center
 
    Rapthor flowchart
+
+The operations are described in detail in :ref:`operations`. Details of the Python and CWL code are given in :ref:`code`.

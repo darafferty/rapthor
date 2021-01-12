@@ -145,9 +145,9 @@ def meanclip(indata, clipsig=4.0, maxiter=10, converge_num=0.001, verbose=True):
    skpix = indata.reshape( indata.size, )
 
    ct = indata.size
-   iter = 0; c1 = 1.0 ; c2 = 0.0
+   index = 0; c1 = 1.0 ; c2 = 0.0
 
-   while (c1 >= c2) and (iter < maxiter):
+   while (c1 >= c2) and (index < maxiter):
        lastct = ct
        medval = numpy.median(skpix)
        sig = numpy.std(skpix)
@@ -158,7 +158,7 @@ def meanclip(indata, clipsig=4.0, maxiter=10, converge_num=0.001, verbose=True):
 
        c1 = abs(ct - lastct)
        c2 = converge_num * lastct
-       iter += 1
+       index += 1
    # End of while loop
 
    mean  = numpy.mean( skpix )
