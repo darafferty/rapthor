@@ -552,7 +552,7 @@ void run_master() {
   std::clog << std::endl;
 
   // Report throughput
-  uint64_t nr_visibilities = 1ULL * nr_baselines * nr_timesteps * nr_channels * world_size;
+  uint64_t nr_visibilities = 1ULL * nr_baselines * total_nr_timesteps * nr_channels * world_size;
   idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
   idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
   idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
