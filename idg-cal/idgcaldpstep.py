@@ -53,8 +53,21 @@ class IDGCalDPStep(dppp.DPStep):
         self.fetch_weights = True
 
     def read_parset(self, parset, prefix):
+        """
+        Read relevant information from a given parset
+
+        Parameters
+        ----------
+        parset : dppp.ParameterSet
+            ParameterSet object provided by DP3
+        prefix : str
+            Prefix to be used when reading the parset.
+        """
+        # TODO: self.parset / self.prefix
+        # should be local to this method
         self.parset = parset
         self.prefix = prefix
+
         solint = parset.getInt(prefix + "solint", 0)
         if solint:
             self.solution_interval_amplitude = solint
@@ -66,7 +79,6 @@ class IDGCalDPStep(dppp.DPStep):
             self.solution_interval_phase = parset.getInt(prefix + "solintphase", 0)
 
         self.imagename = parset.getString(prefix + "modelimage")
-
         self.padding = parset.getFloat(prefix + "padding", 1.2)
 
         self.nr_timeslots = 40
@@ -182,12 +194,15 @@ class IDGCalDPStep(dppp.DPStep):
         )
 
     def process_buffers(self):
+        """
+        Processing the buffers. This is the central method within any class that
+        derives from dppp.DPStep
+        """
 
         if not self.is_initialized:
             self.initialize()
 
         # Concatenate accumulated data and display just the shapes
-
         visibilities = np.stack(
             [np.array(dpbuffer.get_data(), copy=False) for dpbuffer in self.dpbuffers],
             axis=1,
@@ -212,7 +227,7 @@ class IDGCalDPStep(dppp.DPStep):
         )
         uvw = np.zeros(shape=(self.nr_baselines, self.nr_timesteps), dtype=idg.uvwtype)
 
-        print(f"    shape uvw_: ", uvw_.shape)
+        print(f"    shape uvw_: {uvw_.shape}")
         print(self.auto_corr_mask.shape)
 
         print(uvw_[self.auto_corr_mask, :, 0].shape)
@@ -220,11 +235,11 @@ class IDGCalDPStep(dppp.DPStep):
         uvw["v"] = -uvw_[self.auto_corr_mask, :, 1]
         uvw["w"] = -uvw_[self.auto_corr_mask, :, 2]
 
-        print(f"    shape of baselines: ", self.baselines.shape)
-        print(f"    shape of visibilities: ", visibilities.shape)
-        print(f"    shape of flags: ", flags.shape)
-        print(f"    shape of weights: ", weights.shape)
-        print(f"    shape uvw: ", uvw.shape)
+        print(f"    shape of baselines: {self.baselines.shape}")
+        print(f"    shape of visibilities: {visibilities.shape}")
+        print(f"    shape of flags: {flags.shape}")
+        print(f"    shape of weights: {weights.shape}")
+        print(f"    shape uvw: {uvw.shape}")
 
         weights *= ~flags
 
@@ -308,7 +323,7 @@ class IDGCalDPStep(dppp.DPStep):
 
             nr_iterations += 1
 
-            print("iteration nr {0} ".format(nr_iterations),)
+            print(f"iteration nr {nr_iterations} ")
 
             max_dx = 0.0
             norm_dx = 0.0
@@ -317,8 +332,7 @@ class IDGCalDPStep(dppp.DPStep):
                 print(f"   {i}")
                 timer1 -= time.time()
 
-                # predict visibilities for current solution
-
+                # Predict visibilities for current solution
                 hessian = np.zeros(
                     (self.nr_timeslots, self.nr_parameters0, self.nr_parameters0),
                     dtype=np.float64,
@@ -415,7 +429,7 @@ class IDGCalDPStep(dppp.DPStep):
                 hessian0 = hessian
 
                 dx = np.dot(np.linalg.pinv(hessian, self.pinv_tol), gradient)
-
+                # TODO: norm_dx (formally a squared-norm) not used?
                 norm_dx += np.linalg.norm(dx) ** 2
 
                 if max_dx < np.amax(abs(dx)):
@@ -461,18 +475,11 @@ class IDGCalDPStep(dppp.DPStep):
             converged = (nr_iterations > 1) and (fractional_dresidual < 1e-6)
 
             if converged:
-                msg = "Converged after {nr_iterations} iterations - {max_dx}".format(
-                    nr_iterations=nr_iterations, max_dx=max_dx
-                )
-                print(msg)
+                print(f"Converged after {nr_iterations} iterations - {max_dx}")
                 break
 
             if nr_iterations == self.max_iter:
-                msg = "Did not converge after {nr_iterations} iterations - {max_dx}".format(
-                    nr_iterations=nr_iterations, max_dx=max_dx
-                )
-                print(msg)
-                # figtitle.set_text(msg)
+                print(f"Did not converge after {nr_iterations} iterations - {max_dx}")
                 break
 
         parameters_polynomial = parameters.copy()
@@ -555,8 +562,26 @@ def next_composite(n):
 
 def idgwindow(N, W, padding, offset=0.5, l_range=None):
     """
+    TODO: Documentation goes here
 
-  """
+    Parameters
+    ----------
+    N : [type]
+        [description]
+    W : [type]
+        [description]
+    padding : [type]
+        [description]
+    offset : float, optional
+        [description], by default 0.5
+    l_range : [type], optional
+        [description], by default None
+
+    Returns
+    -------
+    [type]
+        [description]
+    """
 
     l_range_inner = np.linspace(-(1 / padding) / 2, (1 / padding) / 2, N * 16 + 1)
 
