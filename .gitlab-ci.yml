@@ -105,7 +105,7 @@ idg-integration-docker:
   image: idg_integration:${CI_COMMIT_SHORT_SHA}
   needs: ["build-integration"]
   before_script:
-    - pip3 install pytest pytest-lazy-fixture
+    - pip3 install pytest pytest-lazy-fixture h5py
     - export HOME_DIR=$PWD
     # Install IDG
     - mkdir /opt/idg && mkdir build
@@ -131,6 +131,9 @@ idg-integration-docker:
     - cd build
     # Run in verbose mode -VV as long as it's not properly working
     - ctest -L integration
+    # Test the h5parm writer
+    - cd $HOME_DIR/scripts/test
+    - pytest .
   rules:
     - when: on_success
 
@@ -144,7 +147,7 @@ idg-integration-das:
     - export CURRENT_SOURCE=$PWD
     - source scripts/load_modules.sh
     - pip3 install --user --upgrade pip
-    - pip3 install --user astropy scipy pytest pytest-lazy-fixture
+    - pip3 install --user astropy scipy pytest pytest-lazy-fixture h5py
     # pytest executable is installed in local/bin. Add to PATH
     - export PATH=$PATH:/home/gitlab-runner/.local/bin
     # Install idg
@@ -182,6 +185,9 @@ idg-integration-das:
     # Run integration tests
     - "python3 -m pip install --user --only-binary=:all: python-casacore"
     - ctest --verbose -L integration
+    # Test the h5parm writer
+    - cd $CURRENT_SOURCE/scripts/test
+    - pytest .
   rules:
     - when: on_success
 
