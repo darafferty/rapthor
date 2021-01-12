@@ -47,8 +47,7 @@ This operation images the data. If multiple imaging sectors are used, a mosaic o
 
 When multiple nodes are available, it is possible to distribute the imaging over multiple nodes. This is done by running wsclean-mp instead of wsclean. Currently, Toil does not fully support openmpi. To remedy this, a wrapping script around wsclean-mp is used on the 'master' node. Because of this, imaging can only use the worker nodes, and the master node is idle.
 
-TODO Are the subtracted sources are also restored somewhere? (in image or in mosaic?)
-
+Subtracted sources are restored in the image pipeline (near the end, in a step named wsclean_restore).
 
 Primary products (in ``images/image_X``, where ``X`` is the cycle number):
     * ``field-MFS-I-image.fits`` - the Stokes I image
