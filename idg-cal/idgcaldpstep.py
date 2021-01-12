@@ -505,9 +505,25 @@ class IDGCalDPStep(dppp.DPStep):
                 )
 
 
-def polynomial_basis_functions(subgrid_size, image_size, nr_terms):
-    B0 = np.ones((1, subgrid_size, subgrid_size, 1))
+def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
+    """
+    Compute the (orthonormalized) Lagrange polynomial basis function on a
+    given subgrid.
 
+    Parameters
+    ----------
+    polynomial_order : int
+        Polynomial order to be used in the expansion.
+    subgrid_size : int
+        Size of IDG subgrid (assumed to be square)
+    image_size : int
+        Size of image (assumed to be square)
+
+    Returns
+    -------
+    np.ndarray, np.ndarray
+        np.ndarray with evaluation of orthonormal basis functions and TODO (WHAT IS T)?
+    """
     s = image_size / subgrid_size * (subgrid_size - 1)
     l = s * np.linspace(-0.5, 0.5, subgrid_size)
     m = -s * np.linspace(-0.5, 0.5, subgrid_size)
@@ -517,19 +533,16 @@ def polynomial_basis_functions(subgrid_size, image_size, nr_terms):
     B1 = B1[np.newaxis, :, :, np.newaxis]
     B2 = B2[np.newaxis, :, :, np.newaxis]
 
-    basis_functions = []
-    order = 0
-    while True:
-        for i in range(order + 1):
-            basis_functions.append(B1 ** i * B2 ** (order - i))
-            if len(basis_functions) == nr_terms:
-                break
-        if len(basis_functions) == nr_terms:
-            break
+    nr_terms = np.sum(np.arange(1, polynomial_order + 2, 1))
+    basis_functions = np.empty((nr_terms,) + B1.shape[1::])
 
-        order += 1
+    for n in range(polynomial_order + 1):
+        # Loop over polynomial degree (rows in Pascal's triangle)
+        for k in range(n + 1):
+            # Loop over unique entries per polynomial degree
+            offset = np.sum(np.arange(1, n + 1, 1)) + k
+            basis_functions[offset, ...] = B1 ** (n - k) * B2 ** k
 
-    basis_functions = np.concatenate(basis_functions)
     basis_functions = basis_functions.reshape((-1, subgrid_size * subgrid_size)).T
     U, S, V, = np.linalg.svd(basis_functions)
     basis_functions_orthonormal = U[:, :nr_terms]
@@ -541,7 +554,6 @@ def polynomial_basis_functions(subgrid_size, image_size, nr_terms):
     basis_functions_orthonormal = np.kron(
         basis_functions_orthonormal, np.array([1.0, 0.0, 0.0, 1.0])
     )
-
     return basis_functions_orthonormal, T
 
 
@@ -632,3 +644,15 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
         RR = np.array(RR)
 
         return a, B, RR
+
+
+def main():
+    subgrid_size = 32
+    image_size = 1024
+    # n_terms = 10
+    polynomial_degree = 3
+    polynomial_basis_functions(polynomial_degree, subgrid_size, image_size)
+
+
+if __name__ == "__main__":
+    main()
