@@ -163,8 +163,6 @@ void Proxy_calibrate_hessian_vector_product2(
 void Proxy_transform(Proxy* p, int direction, std::complex<float>* grid,
                      unsigned int grid_nr_correlations,
                      unsigned int grid_height, unsigned int grid_width) {
-  std::shared_ptr<idg::Grid> grid_ptr(
-      new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
   if (direction != 0) {
     reinterpret_cast<idg::proxy::Proxy*>(p)->transform(
         idg::ImageDomainToFourierDomain, grid, grid_nr_correlations,

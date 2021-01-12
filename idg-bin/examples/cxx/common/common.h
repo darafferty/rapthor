@@ -329,8 +329,8 @@ void run() {
     clog << ">>> Run fft" << endl;
     double runtime_fft = -omp_get_wtime();
     if (!disable_fft) {
-      proxy.transform(idg::FourierDomainToImageDomain, *grid);
-      proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+      proxy.transform(idg::FourierDomainToImageDomain);
+      proxy.transform(idg::ImageDomainToFourierDomain);
     }
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;

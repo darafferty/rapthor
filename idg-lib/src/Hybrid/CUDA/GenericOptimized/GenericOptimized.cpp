@@ -31,9 +31,6 @@ GenericOptimized::GenericOptimized() : CUDA(default_info()) {
   // Initialize cpu proxy
   cpuProxy = new idg::proxy::cpu::Optimized();
 
-  // Initialize host PowerSensor
-  hostPowerSensor = get_power_sensor(sensor_host);
-
   omp_set_nested(true);
 
   cuProfilerStart();
@@ -41,21 +38,24 @@ GenericOptimized::GenericOptimized() : CUDA(default_info()) {
 
 // Destructor
 GenericOptimized::~GenericOptimized() {
+#if defined(DEBUG)
+  std::cout << "GenericOptimized::" << __func__ << std::endl;
+#endif
+
   delete cpuProxy;
-  delete hostPowerSensor;
   cuProfilerStop();
 }
 
 /*
  * FFT
  */
-void GenericOptimized::do_transform(DomainAtoDomainB direction, Grid& grid) {
+void GenericOptimized::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
   std::cout << "Transform direction: " << direction << std::endl;
 #endif
 
-  cpuProxy->transform(direction, grid);
+  cpuProxy->transform(direction);
 }  // end transform
 
 /*

@@ -158,7 +158,7 @@ class Proxy {
   void calibrate_finish();
 
   //! Applies (inverse) Fourier transform to grid
-  void transform(DomainAtoDomainB direction, Grid& grid);
+  void transform(DomainAtoDomainB direction);
 
   void transform(DomainAtoDomainB direction, std::complex<float>* grid,
                  unsigned int grid_nr_correlations, unsigned int grid_height,
@@ -314,12 +314,7 @@ class Proxy {
       Array2D<float>& parameter_vector) {}
 
   //! Applyies (inverse) Fourier transform to grid
-  virtual void do_transform(DomainAtoDomainB direction, Grid& grid);
-
-  //! Applyies (inverse) Fourier transform to grid
-  // TODO: let every proxy implement the do_transform method.
-  virtual void do_transform(DomainAtoDomainB direction,
-                            idg::Array3D<std::complex<float>>& grid){};
+  virtual void do_transform(DomainAtoDomainB direction) {};
 
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,

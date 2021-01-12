@@ -122,8 +122,7 @@ class CPU : public Proxy {
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array2D<float>& parameter_vector) override;
 
-  virtual void do_transform(DomainAtoDomainB direction,
-                            Array3D<std::complex<float>>& grid) override;
+  virtual void do_transform(DomainAtoDomainB direction) override;
 
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
