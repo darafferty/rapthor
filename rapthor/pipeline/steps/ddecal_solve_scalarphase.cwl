@@ -14,7 +14,6 @@ arguments:
   - solve.mode=scalarphase
   - solve.usebeammodel=True
   - solve.beammode=array_factor
-  - solve.onebeamperpatch=True
 
 inputs:
   - id: msin
@@ -61,6 +60,11 @@ inputs:
     type: string
     inputBinding:
       prefix: solve.propagatesolutions=
+      separate: False
+  - id: onebeamperpatch
+    type: string
+    inputBinding:
+      prefix: solve.onebeamperpatch=
       separate: False
   - id: stepsize
     type: float

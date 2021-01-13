@@ -67,6 +67,7 @@ class Calibrate(Operation):
         slow_smoothnessconstraint = self.field.slow_smoothnessconstraint
         maxiter = self.field.maxiter
         propagatesolutions = self.field.propagatesolutions
+        onebeamperpatch = self.field.onebeamperpatch
         stepsize = self.field.stepsize
         tolerance = self.field.tolerance
         uvlambdamin = self.field.solve_min_uv_lambda
@@ -113,6 +114,7 @@ class Calibrate(Operation):
                             'slow_smoothnessconstraint': slow_smoothnessconstraint,
                             'maxiter': maxiter,
                             'propagatesolutions': propagatesolutions,
+                            'onebeamperpatch': onebeamperpatch,
                             'stepsize': stepsize,
                             'tolerance': tolerance,
                             'uvlambdamin': uvlambdamin,

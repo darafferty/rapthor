@@ -14,7 +14,6 @@ arguments:
   - solve.mode=complexgain
   - solve.usebeammodel=True
   - solve.beammode=array_factor
-  - solve.onebeamperpatch=True
   - solve.applycal.steps=[fastphase,slowamp]
   - solve.applycal.fastphase.correction=phase000
   - solve.applycal.slowamp.correction=amplitude000
@@ -79,6 +78,11 @@ inputs:
     type: string
     inputBinding:
       prefix: solve.propagatesolutions=
+      separate: False
+  - id: onebeamperpatch
+    type: string
+    inputBinding:
+      prefix: solve.onebeamperpatch=
       separate: False
   - id: stepsize
     type: float

@@ -9,6 +9,7 @@ import numpy as np
 import scipy.interpolate as si
 from rapthor.lib import miscellaneous as misc
 from scipy.optimize import curve_fit
+import sys
 
 
 def get_ant_dist(ant_xyz, ref_xyz):
@@ -172,11 +173,15 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
         gaps_ind = np.append(gaps_ind, np.array([len(times)]))
 
     # Find a core station that is not completely flagged
+    csindx = None
     for s in range(len(soltab.ant[:])):
         if 'CS' in soltab.ant[s]:
             if not np.all(initial_flagged_indx[:, :, s, :, :]):
                 csindx = s
                 break
+    if csindx is None:
+        print('ERROR: all core stations are fully flagged! Smoothing cannot be done')
+        sys.exit(1)
 
     for dir in range(len(soltab.dir[:])):
         # Find standard deviation of a core station and determine

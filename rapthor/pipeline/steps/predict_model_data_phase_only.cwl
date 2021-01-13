@@ -18,7 +18,6 @@ arguments:
   - predict.applycal.fastphase.correction=phase000
   - predict.usebeammodel=True
   - predict.beammode=array_factor
-  - predict.onebeamperpatch=True
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0
 
@@ -42,6 +41,11 @@ inputs:
     type: int
     inputBinding:
       prefix: msin.ntimes=
+      separate: False
+  - id: onebeamperpatch
+    type: string
+    inputBinding:
+      prefix: predict.onebeamperpatch=
       separate: False
   - id: h5parm
     type: string

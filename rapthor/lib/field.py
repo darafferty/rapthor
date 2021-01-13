@@ -49,6 +49,7 @@ class Field(object):
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
+        self.onebeamperpatch = self.parset['calibration_specific']['onebeamperpatch']
         self.maxiter = self.parset['calibration_specific']['maxiter']
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
