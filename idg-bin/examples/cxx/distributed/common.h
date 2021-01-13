@@ -445,10 +445,12 @@ void run_master() {
   std::vector<double> runtimes_grid_reduce(nr_cycles);
   std::vector<double> runtimes_grid_fft(nr_cycles);
   std::vector<double> runtimes_grid_broadcast(nr_cycles);
+  double runtime_imaging;
 
   // Iterate all cycles
-  for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
-
+  runtime_imaging = -omp_get_wtime();
+  for (unsigned cycle = 0; cycle < nr_cycles; cycle++)
+  {
     // Run gridding and degridding for all blocks of time
     for (unsigned int t = 0; t < nr_time_blocks; t++)
     {
@@ -477,7 +479,7 @@ void run_master() {
       synchronize();
 
       // Run gridding
-      runtimes_gridding[cycle] = -omp_get_wtime();
+      runtimes_gridding[cycle] -= omp_get_wtime();
       proxy.gridding(plan, w_offset, shift, cell_size, kernel_size,
           subgrid_size, frequencies, visibilities, uvw,
           baselines, aterms, aterms_offsets, spheroidal);
@@ -485,16 +487,13 @@ void run_master() {
       runtimes_gridding[cycle] += omp_get_wtime();
 
       // Run degridding
-      runtimes_degridding[cycle] = -omp_get_wtime();
+      runtimes_degridding[cycle] -= omp_get_wtime();
       proxy.degridding(plan, w_offset, shift, cell_size, kernel_size,
           subgrid_size, frequencies, visibilities, uvw,
           baselines, aterms, aterms_offsets, spheroidal);
       synchronize();
       runtimes_degridding[cycle] += omp_get_wtime();
     }
-
-    // Get grid
-    grid = proxy.get_grid();
 
     // Run FFT
     runtimes_grid_fft[cycle] = -omp_get_wtime();
@@ -504,6 +503,9 @@ void run_master() {
     // Reduce grids
     if (world_size > 1)
     {
+      // Get grid
+      grid = proxy.get_grid();
+
       runtimes_grid_reduce[cycle] = -omp_get_wtime();
       reduce_grids(grid, 0, world_size);
       runtimes_grid_reduce[cycle] += omp_get_wtime();
@@ -518,16 +520,17 @@ void run_master() {
       runtimes_grid_broadcast[cycle] = -omp_get_wtime();
       broadcast_grid(grid, 0);
       runtimes_grid_broadcast[cycle] += omp_get_wtime();
-    }
 
-    // Set grid
-    proxy.set_grid(grid);
+      // Set grid
+      proxy.set_grid(grid);
+    }
 
     // Run FFT
     runtimes_grid_fft[cycle] -= omp_get_wtime();
     proxy.transform(idg::ImageDomainToFourierDomain, *grid);
     runtimes_grid_fft[cycle] += omp_get_wtime();
   }
+  runtime_imaging += omp_get_wtime();
 
   // Report timings
   std::clog << std::endl;
@@ -545,14 +548,11 @@ void run_master() {
   idg::report("degridding", runtime_degridding);
   idg::report("grid reduce", runtime_grid_reduce);
   idg::report("grid broadcast", runtime_grid_broadcast);
-  double runtime_imaging =
-    runtime_gridding + runtime_degridding + runtime_grid_fft +
-    runtime_grid_reduce + runtime_grid_broadcast;
   idg::report("runtime imaging", runtime_imaging);
   std::clog << std::endl;
 
   // Report throughput
-  uint64_t nr_visibilities = 1ULL * nr_baselines * total_nr_timesteps * nr_channels * world_size;
+  uint64_t nr_visibilities = 1ULL * nr_cycles * nr_baselines * total_nr_timesteps * nr_channels * world_size;
   idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
   idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
   idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
