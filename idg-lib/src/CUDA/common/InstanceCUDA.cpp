@@ -926,7 +926,6 @@ void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
   UpdateData* data =
       get_update_data(get_event(), powerSensor, report, &Report::update_adder);
   start_measurement(data);
-  data->start->enqueue(*executestream);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
 #endif
