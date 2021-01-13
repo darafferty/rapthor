@@ -1064,24 +1064,20 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
 }
 
 void GenericOptimized::set_grid(std::shared_ptr<Grid> grid) {
-  // Set grid both for CUDA proxy and CPU Proxy
+  // Defer call to cpuProxy
   cpuProxy->set_grid(grid);
   CUDA::set_grid(grid);
 }
 
-void GenericOptimized::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                                float image_size, float w_step,
-                                const float* shift) {
-  // Set grid both for CUDA proxy and CPU Proxy
-  // cpuProxy manages the wtiles state
-  cpuProxy->set_grid(grid, subgrid_size, image_size, w_step, shift);
-  CUDA::set_grid(grid, subgrid_size, image_size, w_step, shift);
-}
-
 std::shared_ptr<Grid> GenericOptimized::get_grid() {
   // Defer call to cpuProxy
-  // cpuProxy manages the wtiles state
   return cpuProxy->get_grid();
+}
+
+void GenericOptimized::init_wtiles(float subgrid_size) {
+  // Defer call to cpuProxy
+  // cpuProxy manages the wtiles state
+  cpuProxy->init_wtiles(subgrid_size);
 }
 
 }  // namespace hybrid

@@ -54,10 +54,6 @@ class Unified : public Generic {
 
   virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
-  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step,
-                        const float* shift) override;
-
   virtual std::shared_ptr<Grid> get_grid() override;
 
  private:

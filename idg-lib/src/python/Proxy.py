@@ -24,7 +24,6 @@ class Proxy(object):
         visibilities,
         uvw,
         baselines,
-        grid,
         aterms,
         aterms_offsets,
         spheroidal):
@@ -43,9 +42,6 @@ class Proxy(object):
         :param baselines: numpy.ndarray(
                 shape=(nr_baselines),
                 dtype=idg.baselinetype)
-        :param grid: numpy.ndarray(
-                shape=(nr_correlations, height, width),
-                dtype = idg.gridtype)
         :param aterms: numpy.ndarray(
                 shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
                 dtype = idg.atermtype)
@@ -67,9 +63,6 @@ class Proxy(object):
         uvw_nr_coordinates           = 3
         baselines_nr_baselines       = baselines.shape[0]
         baselines_two                = 2
-        grid_nr_correlations         = grid.shape[0]
-        grid_height                  = grid.shape[1]
-        grid_width                   = grid.shape[2]
         aterms_nr_timeslots          = aterms.shape[0]
         aterms_nr_stations           = aterms.shape[1]
         aterms_aterm_height          = aterms.shape[2]
@@ -99,10 +92,6 @@ class Proxy(object):
             ctypes.c_int,
             ctypes.c_int,
             ctypes.c_void_p, # baselines
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # grid
-            ctypes.c_int,
             ctypes.c_int,
             ctypes.c_int,
             ctypes.c_void_p, # aterms
@@ -137,10 +126,6 @@ class Proxy(object):
             baselines.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(baselines_nr_baselines),
             ctypes.c_int(baselines_two),
-            grid.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(grid_nr_correlations),
-            ctypes.c_int(grid_height),
-            ctypes.c_int(grid_width),
             aterms.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(aterms_nr_timeslots),
             ctypes.c_int(aterms_nr_stations),
@@ -164,7 +149,6 @@ class Proxy(object):
         visibilities,
         uvw,
         baselines,
-        grid,
         aterms,
         aterms_offsets,
         spheroidal):
@@ -183,9 +167,6 @@ class Proxy(object):
         :param baselines: numpy.ndarray(
                 shape=(nr_baselines),
                 dtype=idg.baselinetype)
-        :param grid: numpy.ndarray(
-                shape=(nr_correlations, height, width),
-                dtype = idg.gridtype)
         :param aterms: numpy.ndarray(
                 shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
                 dtype = idg.atermtype)
@@ -207,9 +188,6 @@ class Proxy(object):
         uvw_nr_coordinates           = 3
         baselines_nr_baselines       = baselines.shape[0]
         baselines_two                = 2
-        grid_nr_correlations         = grid.shape[0]
-        grid_height                  = grid.shape[1]
-        grid_width                   = grid.shape[2]
         aterms_nr_timeslots          = aterms.shape[0]
         aterms_nr_stations           = aterms.shape[1]
         aterms_aterm_height          = aterms.shape[2]
@@ -239,10 +217,6 @@ class Proxy(object):
             ctypes.c_int,
             ctypes.c_int,
             ctypes.c_void_p, # baselines
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # grid
-            ctypes.c_int,
             ctypes.c_int,
             ctypes.c_int,
             ctypes.c_void_p, # aterms
@@ -277,10 +251,6 @@ class Proxy(object):
             baselines.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(baselines_nr_baselines),
             ctypes.c_int(baselines_two),
-            grid.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(grid_nr_correlations),
-            ctypes.c_int(grid_height),
-            ctypes.c_int(grid_width),
             aterms.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(aterms_nr_timeslots),
             ctypes.c_int(aterms_nr_stations),
@@ -567,35 +537,20 @@ class Proxy(object):
 
     def transform(
         self,
-        direction,
-        grid):
+        direction):
         """
         Transform Fourier Domain<->Image Domain.
 
         :param direction: idg.FourierDomainToImageDomain or idg.ImageDomainToFourierDomain
-        :param grid: numpy.ndarray(
-                shape=(nr_correlations, height, width),
-                dtype = idg.gridtype)
         """
-        # extract dimesions
-        nr_correlations = grid.shape[0]
-        height          = grid.shape[1]
-        width           = grid.shape[2]
 
         # call C function to do the work
         self.lib.Proxy_transform.argtypes = [
                 ctypes.c_void_p,
-                ctypes.c_int,
-                ctypes.c_void_p,
-                ctypes.c_int,
                 ctypes.c_int]
         self.lib.Proxy_transform(
-            self.obj,
-            ctypes.c_int(direction),
-            grid.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(nr_correlations),
-            ctypes.c_int(height),
-            ctypes.c_int(width))
+            ctypes.c_void_p(self.obj),
+            ctypes.c_int(direction))
 
     def allocate_grid(
         self,
@@ -624,3 +579,79 @@ class Proxy(object):
 
         # Return grid
         return grid
+
+    def set_grid(
+        self,
+        grid):
+
+        """
+        Set grid to use in proxy
+
+        :param grid: numpy.ndarray(
+                shape=(nr_correlations, height, width),
+                dtype = idg.gridtype)
+        """
+
+        # Get dimensions
+        shape = grid.shape
+        nr_w_layers = 1
+        nr_correlations = shape[0]
+        grid_size = shape[1]
+        height = grid_size
+        width = grid_size
+
+        # Set argument types
+        self.lib.Proxy_set_grid.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int]
+
+        # Call the C function
+        self.lib.Proxy_set_grid(
+            ctypes.c_void_p(self.obj),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(nr_w_layers),
+            ctypes.c_int(nr_correlations),
+            ctypes.c_int(height),
+            ctypes.c_int(width))
+
+    def get_grid(
+        self,
+        grid):
+
+        """
+        Retrieve grid from proxy
+
+        :param grid: numpy.ndarray(
+                shape=(nr_correlations, height, width),
+                dtype = idg.gridtype)
+        """
+
+        # Get dimensions
+        shape = grid.shape
+        nr_w_layers = 1
+        nr_correlations = shape[0]
+        grid_size = shape[1]
+        height = grid_size
+        width = grid_size
+
+        # Set argument types
+        self.lib.Proxy_set_grid.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int]
+
+        # Call the C function
+        self.lib.Proxy_get_grid(
+            ctypes.c_void_p(self.obj),
+            grid.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_int(nr_w_layers),
+            ctypes.c_int(nr_correlations),
+            ctypes.c_int(height),
+            ctypes.c_int(width))

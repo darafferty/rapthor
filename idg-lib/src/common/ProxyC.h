@@ -78,9 +78,7 @@ void Proxy_calibrate_update_hessian_vector_product2(
     const unsigned int nr_terms, std::complex<float>* aterms,
     std::complex<float>* aterm_derivatives, float* parameter_vector);
 
-void Proxy_transform(Proxy* p, int direction, std::complex<float>* grid,
-                     unsigned int grid_nr_correlations,
-                     unsigned int grid_height, unsigned int grid_width);
+void Proxy_transform(Proxy* p, int direction);
 
 void Proxy_destroy(Proxy* p);
 

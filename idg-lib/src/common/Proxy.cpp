@@ -194,10 +194,9 @@ void Proxy::calibrate_init(
   //    subgrid_size, frequencies, visibilities, uvw, baselines,
   //    grid, aterms, aterms_offsets, spheroidal);
 
-  float image_size = grid.get_x_dim() * cell_size;
   auto grid_shared_ptr =
       std::shared_ptr<Grid>(const_cast<Grid*>(&grid), [](Grid*) {});
-  set_grid(grid_shared_ptr, subgrid_size, image_size, w_step, shift.data());
+  set_grid(grid_shared_ptr);
 
   int nr_w_layers;
 
@@ -533,16 +532,13 @@ std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
       new Grid(nr_w_layers, nr_correlations, height, width));
 }
 
-void Proxy::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                     float image_size, float w_step, const float* shift) {
-  m_grid = grid;
-  m_grid_size = m_grid->get_y_dim();
-  m_subgrid_size = subgrid_size;
-  m_image_size = image_size;
-  m_w_step = w_step;
-  m_shift[0] = shift[0];
-  m_shift[1] = shift[1];
-  m_shift[2] = shift[2];
+void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {
+  // Don't create a new shared_ptr when the grid data pointer is
+  // the same. This can be the case when the C-interface is used.
+  if (!m_grid || m_grid->data() != grid->data())
+  {
+    m_grid = grid;
+  }
 }
 
 std::shared_ptr<Grid> Proxy::get_grid() { return m_grid; }
