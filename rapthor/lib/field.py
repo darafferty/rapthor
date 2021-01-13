@@ -248,22 +248,35 @@ class Field(object):
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
-        # to load them if so
-        if os.path.exists(self.calibration_skymodel_file):
+        # to load them
+        try:
             self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
             self.num_patches = len(self.calibration_skymodel.getPatchNames())
-            self.log.info('Using {} calibration patches'.format(self.num_patches))
             calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
             self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
             self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
             self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
-            # The bright-source model file may not exist if there are no bright sources;
-            # set it to an empty list if not
-            if os.path.exists(self.bright_source_skymodel_file):
-                self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
+            if self.peel_bright_sources:
+                # The bright-source model file may not exist if there are no bright sources,
+                # but also if a reset of the imaging pipeline was done. Unfortunately, there
+                # is no way to determine which of these two possibilities is the case. So, if
+                # it does not exist, we have to regenerate the sky models
+                if os.path.exists(self.bright_source_skymodel_file):
+                    self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
+                    all_skymodels_loaded = True
+                else:
+                    all_skymodels_loaded = False
             else:
                 self.bright_source_skymodel = []
+                all_skymodels_loaded = True
+        except IOError:
+            all_skymodels_loaded = False
+
+        if all_skymodels_loaded:
+            # If all the required sky models were loaded from files, return; otherwise,
+            # continue on to regenerate the sky models from scratch
+            self.log.info('Using {} calibration patches'.format(self.num_patches))
             return
 
         # If sky models do not already exist, make them
