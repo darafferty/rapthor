@@ -456,18 +456,12 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
-  const auto& grid = get_grid();
-
   // Constants
   unsigned int grid_size = m_grid->get_x_dim();
   unsigned int nr_w_layers = m_grid->get_w_dim();
   assert(nr_w_layers == 1);
   unsigned int nr_correlations = m_grid->get_z_dim();
   assert(nr_correlations == 4);
-
-  // Grid pointer (4D to 3D, assume nr_w_layers == 1)
-  idg::Array3D<std::complex<float>> grid_ptr(grid->data(), nr_correlations,
-                                             grid_size, grid_size);
 
   // Load device
   InstanceCUDA& device = get_device(0);
@@ -486,27 +480,16 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   powerStates[2] = device.measure();
 
   // Perform fft shift
-  device.shift(grid_ptr);
-
-  // Copy grid to device
-  device.copy_htod(stream, d_grid, grid->data(), grid->bytes());
+  device.launch_fft_shift(d_grid, nr_correlations, grid_size);
 
   // Execute fft
   device.launch_grid_fft(d_grid, grid_size, direction);
 
-  // Copy grid to host
-  device.copy_dtoh(stream, grid->data(), d_grid, grid->bytes());
-  stream.synchronize();
-
-  // Perform fft shift
-  device.shift(grid_ptr);
-
-  // Perform fft scaling
-  std::complex<float> scale =
-      std::complex<float>(2.0 / (grid_size * grid_size), 0);
-  if (direction == FourierDomainToImageDomain) {
-    device.scale(grid_ptr, scale);
-  }
+  // Perform fft shift and scaling
+  std::complex<float> scale = (direction == FourierDomainToImageDomain)
+    ? std::complex<float>(2.0 / (grid_size * grid_size), 0)
+    : std::complex<float>(1.0, 1.0);
+  device.launch_fft_shift(d_grid, nr_correlations, grid_size, scale);
 
   // End measurements
   stream.synchronize();
