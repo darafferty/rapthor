@@ -36,7 +36,7 @@ mpi_command="mpirun -np \$SLURM_JOB_NUM_NODES --pernode --prefix \$MPI_PREFIX -x
 exec 3<> wsclean_mpi_$infix.slurm
     echo "#!/bin/bash -e" >&3
     echo "#SBATCH --job-name=mpijob" >&3
-    echo "#SBATCH --time=1-00:00:00" >&3
+    echo "#SBATCH --time=4-00:00:00" >&3
     echo "#SBATCH --nodes=${nnodes}" >&3
     echo "#SBATCH --ntasks-per-node=1" >&3
     echo "#SBATCH --cpus-per-task=${ncpus_per_task}" >&3

@@ -99,6 +99,13 @@ All the available options are described below under their respective sections.
     propagatesolutions
         Propagate solutions to next time slot as initial guess (default = ``True``)?
 
+    onebeamperpatch
+        Calculate the beam correction once per calibration patch (default =
+        ``False``)? If ``False``, the beam correction is calculated separately
+        for each source in the patch. Setting this to ``True`` can speed up
+        calibration and prediction, but can also reduce the quality when the
+        patches are large.
+
     stepsize
         Size of steps used during calibration (default = 0.02).
 

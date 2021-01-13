@@ -17,8 +17,7 @@ arguments:
   - solve.type=ddecal
   - solve.mode=scalarphase
   - solve.usebeammodel=True
-  - solve.beammode=array_factor  # element beam was removed at phase center
-  - solve.onebeamperpatch=True  # better set to False, but slow
+  - solve.beammode=array_factor
 
 inputs:
   - id: msin
@@ -101,6 +100,15 @@ inputs:
     type: string
     inputBinding:
       prefix: solve.propagatesolutions=
+      separate: False
+
+  - id: onebeamperpatch
+    label: One beam per patch
+    doc: |
+      Flag that sets beam correction per patch or per source.
+    type: string
+    inputBinding:
+      prefix: solve.onebeamperpatch=
       separate: False
 
   - id: stepsize

@@ -24,8 +24,7 @@ arguments:
   - predict.applycal.slowamp.correction=amplitude000
   - predict.applycal.totalphase.correction=phase000
   - predict.usebeammodel=True
-  - predict.beammode=array_factor  # element beam was removed at phase center
-  - predict.onebeamperpatch=True  # better set to False, but slow
+  - predict.beammode=array_factor
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0  # don't compress data, as they are noiseless
 
@@ -64,6 +63,15 @@ inputs:
     type: int
     inputBinding:
       prefix: msin.ntimes=
+      separate: False
+
+  - id: onebeamperpatch
+    label: One beam per patch
+    doc: |
+      Flag that sets beam correction per patch or per source.
+    type: string
+    inputBinding:
+      prefix: predict.onebeamperpatch=
       separate: False
 
   - id: h5parm

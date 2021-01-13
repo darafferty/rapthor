@@ -89,6 +89,7 @@ class Predict(Operation):
         reweight = self.field.reweight
         min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
         max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
+        onebeamperpatch = self.field.onebeamperpatch
 
         self.input_parms = {'sector_filename': sector_filename,
                             'sector_starttime': sector_starttime,
@@ -103,6 +104,7 @@ class Predict(Operation):
                             'obs_solint_hz': obs_solint_hz,
                             'min_uv_lambda': min_uv_lambda,
                             'max_uv_lambda': max_uv_lambda,
+                            'onebeamperpatch': onebeamperpatch,
                             'obs_filename': obs_filename,
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,

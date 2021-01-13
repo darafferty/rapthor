@@ -50,6 +50,7 @@ input_skymodel = /data/skymodel.txt
 # General solver parameters (defaults shown):
 # maxiter = 50
 # propagatesolutions = True
+# onebeamperpatch = False
 # stepsize = 0.02
 # tolerance = 1e-3
 # solve_min_uv_lambda = 80.0

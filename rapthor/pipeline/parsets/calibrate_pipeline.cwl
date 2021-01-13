@@ -124,6 +124,12 @@ inputs:
       for the next solution interval (length = 1).
     type: string
 
+  - id: onebeamperpatch
+    doc: |
+      Flag that determines whether to apply the beam once per patch or per each
+      source (length = 1).
+    type: string
+
   - id: stepsize
     label: Solver step size
     doc: |
@@ -365,6 +371,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -441,6 +449,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -551,6 +561,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -739,6 +751,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: onebeamperpatch
+        source: onebeamperpatch
       - id: stepsize
         source: stepsize
       - id: tolerance
