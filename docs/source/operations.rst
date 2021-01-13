@@ -3,15 +3,15 @@
 Operations
 ==========
 
-Most of the processing performed by rapthor is done in "operations," which are sets of steps that are grouped together. The available operations and the primary data products of each are described in detail below.
+Most of the processing performed by Rapthor is done in "operations," which are sets of steps that are grouped together into pipelines. The available operations and the primary data products of each are described in detail below.
 
 
 .. _calibrate:
 
-calibrate
+Calibrate
 ---------
 
-This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are three main parts: a phase-only solve (diagonal Jones matrix) on short timescales (the "fast phase solve"), a slow phase-only (diagonal) solve, an amplitude-only (diagonal) solve on long time scales (the "slow-gain" solve), and processing of the resulting solutions, including smoothing and the generation of a-term images. 
+This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are three main parts: a phase-only solve (diagonal Jones matrix) on short timescales (the "fast phase solve"), a slow phase-only (diagonal) solve, an amplitude-only (diagonal) solve on long time scales (the "slow-gain" solve), and processing of the resulting solutions, including smoothing and the generation of a-term images.
 
 The fast and slow diagonal phase-only solve steps use different calibration parameters, such as different antenna constraints.
 
@@ -22,12 +22,12 @@ To model the sources, the clean components are grouped by PyBDSF using the sourc
 When multiple nodes are available, this task is distributed.
 
 Primary products (in ``solutions/calibrate_X``, where ``X`` is the cycle number):
-    * ``field-solutions.h5`` - the calibration solutions table
+    * ``field-solutions.h5`` - the calibration solution table containing both fast- and slow-solve solutions.
 
 
 .. _predict:
 
-predict
+Predict
 -------
 
 This operation predicts visibilities for subtraction. Sources that lie outside of imaged regions are subtracted, as are bright sources inside imaged regions (if desired).
@@ -40,7 +40,7 @@ Primary products (in ``scratch/``):
 
 .. _image:
 
-image (+ mosaic)
+Image (+ mosaic)
 ----------------
 
 This operation images the data. If multiple imaging sectors are used, a mosaic operation is also run to mosaic the sector images together into a single image.

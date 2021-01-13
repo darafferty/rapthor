@@ -3,10 +3,7 @@
 Output
 ======
 
-Directory structure
--------------------
-
-rapthor produces the following output inside the working directory:
+Rapthor produces the following output inside the working directory:
 
 ``logs/``
     Directory containing the log files.
