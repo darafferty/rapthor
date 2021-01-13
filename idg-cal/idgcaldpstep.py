@@ -150,13 +150,18 @@ class IDGCalDPStep(dppp.DPStep):
 
         # H5Parm file name
         self.h5parm_fname = parset.getString(prefix + "h5parm", "idgcal.h5")
+        self.h5parm_solsetname = parset.getString(
+            prefix + "h5parmsolset", "coefficients000"
+        )
 
         self.w_step = parset.getFloat(prefix + "wstep", 400.0)
 
     def initialize(self):
         self.is_initialized = True
 
-        # TODO: check the following:
+        # Counter for the number of calls to process_buffers
+        self.count_process_buffer_calls = 0
+
         # Extract the time info and cast into a time array
         tstart = self.info().startTime()
         nsteps = self.info().ntime()
@@ -178,6 +183,62 @@ class IDGCalDPStep(dppp.DPStep):
         self.auto_corr_mask = station1 != station2
         self.baselines["station1"] = station1[self.auto_corr_mask]
         self.baselines["station2"] = station2[self.auto_corr_mask]
+
+        # TODO: check what to do with last block of times
+        self.time_array_ampl = self.time_array[:: self.solution_interval_amplitude]
+        self.time_array_phase = self.time_array[:: self.solution_interval_phase]
+
+        # Axes data
+        axes_labels = ["ant", "time", "dir"]
+        axes_data_amplitude = dict(
+            zip(
+                axes_labels,
+                (self.nr_stations, self.time_array_ampl.size, self.nr_parameters_ampl),
+            )
+        )
+        axes_data_phase = dict(
+            zip(
+                axes_labels,
+                (
+                    self.nr_stations,
+                    self.time_array_phase.size,
+                    self.nr_parameters_phase,
+                ),
+            )
+        )
+
+        # Initialize h5parm file
+        self.h5writer = H5ParmWriter(
+            self.h5parm_fname, solution_set_name=self.h5parm_solsetname
+        )
+
+        # Add antenna/station info
+        # TODO: to initialize the antenna dataset, we need the following additional pybind wrappers
+        # in the DPInfo class:
+        # - get_antenna_names() --> wrapping DPInfo::antennaNames()
+        # - get_antenna_positions() --> wrapping DPInfo::antennaPos()
+        # h5writer.add_antennas(antenna_names, antenna_positions)
+
+        # Initialize solution tables for amplitude and phase coefficients
+        # TODO: maybe pass parset to HISTORY?
+
+        # Create amplitude coefficients solution table
+        self.h5writer = init_h5parm_solution_table(
+            self.h5writer,
+            "amplitude",
+            axes_data_amplitude,
+            self.time_array_ampl,
+            self.image_size,
+            self.subgrid_size,
+        )
+        self.h5writer = init_h5parm_solution_table(
+            self.h5writer,
+            "phase",
+            axes_data_phase,
+            self.time_array_phase,
+            self.image_size,
+            self.subgrid_size,
+        )
 
         # initialize proxy
         # self.proxy = idg.HybridCUDA.GenericOptimized(self.nr_correlations, self.subgrid_size)
@@ -545,6 +606,68 @@ class IDGCalDPStep(dppp.DPStep):
         )
 
         # TODO: write parameters to matching block in H5Parm file
+        # Reshape amplitude/parameters coefficient to match desired shape
+        amplitude_coefficients = parameters_polynomial[
+            :, : self.nr_parameters_amplitude
+        ].reshape(self.nr_stations, 1, self.nr_parameters_ampl)
+        phase_coefficients = parameters_polynomial[
+            :, self.nr_parameters_amplitude : :
+        ].reshape(self.nr_stations, self.nr_timeslots, self.nr_parameters_phase)
+
+        offset_amplitude = (0, self.count_process_buffer_calls, 0)
+        offset_phase = (0, self.count_process_buffer_calls * self.nr_timeslots, 0)
+        self.h5writer.fill_solution_table(
+            "amplitude_coefficients", amplitude_coefficients, offset_amplitude
+        )
+        self.h5writer.fill_solution_table(
+            "phase_coefficients", phase_coefficients, offset_phas
+        )
+
+        self.count_process_buffer_calls += 1
+
+
+def init_h5parm_solution_table(
+    h5parm_object,
+    soltab_type,
+    axes_info,
+    time_array,
+    image_size,
+    subgrid_size,
+    basisfunction_type="lagrange",
+    history="",
+):
+    soltab_info = {"amplitude": "amplitude_coefficients", "phase": "phase_coefficients"}
+
+    assert soltab_type in soltab_info.keys()
+    soltab_name = soltab_info[soltab_type]
+
+    self.h5writer.create_solution_table(
+        soltab_name,
+        soltab_type,
+        axes_info,
+        dtype=np.float_,
+        history=f'CREATED at {datetime.today().strftime("%Y/%m/%d")}; {history}',
+    )
+
+    # Set info for the "dir" axis
+    self.h5writer.set_axis_meta_data(
+        soltab_name,
+        "dir",
+        attributes={
+            "basisfunction_type": basisfunction_type,
+            "image_size": image_size,
+            "subgrid_size": subgrid_size,
+        },
+    )
+
+    # Set info for the "time" axis
+    h5writer.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
+
+    return h5parm_object
+
+
+def fill_h5parm_solution_table():
+    pass
 
 
 def transform_parameters(
