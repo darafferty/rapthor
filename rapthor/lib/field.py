@@ -981,25 +981,24 @@ class Field(object):
         w.wcs.set_pv([(2, 1, 45.0)])
         self.wcs = w
 
-    def check_selfcal_progress(self, convergence_ratio=None, divergence_ratio=None):
+    def check_selfcal_progress(self):
         """
         Checks whether selfcal has converged or diverged by comparing the current
         image noise to that of the previous cycle
 
-        Parameters
-        ----------
-        convergence_ratio : float, optional
-            The minimum ratio of the current noise to the previous noise above
-            which selfcal is considered to have converged (must be in the range
-            0.5 -- 2). E.g., convergence_ratio = 0.95 means that the image noise
-            must improve by ~ 5% or more from the previous cycle for selfcal to be
-            considered as nonconverged
-        divergence_ratio : float, optional
-            The minimum ratio of the current noise to the previous noise above
-            which selfcal is considered to have diverged (must be > 1). E.g.,
-            divergence_ratio = 1.1 means that, if image noise worsens by ~ 10%
-            or more from the previous cycle, selfcal is considered to have
-            diverged
+        Convergence is determined by comparing the noise ratio to
+        self.convergence_ratio, which is the minimum ratio of the current noise
+        to the previous noise above which selfcal is considered to have
+        converged (must be in the range 0.5 -- 2). E.g., self.convergence_ratio
+        = 0.95 means that the image noise must improve by ~ 5% or more from the
+        previous cycle for selfcal to be considered as nonconverged
+
+        Divergence is determined by comparing the noise ratio to
+        self.divergence_ratio, which is the minimum ratio of the current noise
+        to the previous noise above which selfcal is considered to have diverged
+        (must be >= 1). E.g., divergence_ratio = 1.1 means that, if image noise
+        worsens by ~ 10% or more from the previous cycle, selfcal is considered
+        to have diverged
 
         Returns
         -------
@@ -1008,17 +1007,21 @@ class Field(object):
         diverged : bool
             True if selfcal has diverged, False if not
         """
-        if convergence_ratio is None:
-            convergence_ratio = self.convergence_ratio
-        if divergence_ratio is None:
-            divergence_ratio = self.divergence_ratio
+        convergence_ratio = self.convergence_ratio
+        divergence_ratio = self.divergence_ratio
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
+            self.log.info('The convergence ratio is set to {} but must be <= 2. '
+                          'Using 2.0 instead'.format(convergence_ratio))
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
+            self.log.info('The convergence ratio is set to {} but must be >= 0.5 '
+                          'Using 0.5 instead'.format(convergence_ratio))
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
+            self.log.info('The divergence ratio is set to {} but must be >= 1. '
+                          'Using 1.0 instead'.format(divergence_ratio))
             divergence_ratio = 1.0
 
         if self.field_image_filename_prev is None:
