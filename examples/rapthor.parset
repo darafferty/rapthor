@@ -82,9 +82,12 @@ input_skymodel = /data/skymodel.txt
 # taper_arcsec = 0.0
 # multiscale_scales_pixel = [0, 5, 10, 15]
 
-# Use screens during imaging (default = True)? If False, the solutions closest to the
-# image centers will be used
+# Use screens during imaging (default = True)? If False, the solutions closest
+# to the image centers will be used. If True, the type of screen to use can be
+# specified with screen_type: tessellated (simple, smoothed tessellated screens)
+# or kl (Karhunen-Lo`eve screens) (default = tessellated)
 # use_screens = True
+# screen_type = tessellated
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can be
 # cpu or hybrid

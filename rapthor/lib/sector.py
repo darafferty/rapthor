@@ -46,7 +46,8 @@ class Sector(object):
         self.width_ra = width_ra
         self.width_dec = width_dec
         self.field = field
-        self.vertices_file = os.path.join(field.working_dir, 'regions', '{}_vertices.pkl'.format(self.name))
+        self.vertices_file = os.path.join(field.working_dir, 'regions',
+                                          '{}_vertices.pkl'.format(self.name))
         self.region_file = "'[]'"
         self.I_image_file_true_sky = None  # set by the Image operation
         self.I_image_file_apparent_sky = None  # set by the Image operation
@@ -247,18 +248,18 @@ class Sector(object):
                                         (24 * 60 * 60) / 4)
         return wsclean_nwavelengths_time
 
-    def make_skymodel(self, iter):
+    def make_skymodel(self, index):
         """
         Makes predict sky model
 
         Parameters
         ----------
-        iter : int
+        index : int
             Iteration index
         """
         # First check whether sky model already exists due to a previous run and attempt
         # to load it if so
-        dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(iter))
+        dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(index))
         misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
         if os.path.exists(self.predict_skymodel_file):

@@ -1,5 +1,5 @@
 """
-Module that holds miscellaneous functions
+Module that holds miscellaneous functions and classes
 """
 import os
 import shutil
@@ -10,6 +10,7 @@ from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from astropy.io import fits as pyfits
 from PIL import Image, ImageDraw
+import multiprocessing
 
 
 def read_vertices(filename):
@@ -279,30 +280,19 @@ def _float_approx_equal(x, y, tol=1e-18, rel=1e-7):
 
 
 def approx_equal(x, y, *args, **kwargs):
-    """approx_equal(float1, float2[, tol=1e-18, rel=1e-7]) -> True|False
-    approx_equal(obj1, obj2[, *args, **kwargs]) -> True|False
-
-    Return True if x and y are approximately equal, otherwise False.
+    """
+    Return True if x and y are approximately equal, otherwise False
 
     If x and y are floats, return True if y is within either absolute error
     tol or relative error rel of x. You can disable either the absolute or
     relative check by passing None as tol or rel (but not both).
 
-    For any other objects, x and y are checked in that order for a method
-    __approx_equal__, and the result of that is returned as a bool. Any
-    optional arguments are passed to the __approx_equal__ method.
-
-    __approx_equal__ can return NotImplemented to signal that it doesn't know
-    how to perform that specific comparison, in which case the other object is
-    checked instead. If neither object have the method, or both defer by
-    returning NotImplemented, approx_equal falls back on the same numeric
-    comparison used for floats.
-
-    >>> approx_equal(1.2345678, 1.2345677)
-    True
-    >>> approx_equal(1.234, 1.235)
-    False
-
+    Parameters
+    ----------
+    x : float
+        First value to be compared
+    y : float
+        Second value to be compared
     """
     if not (type(x) is type(y) is float):
         # Skip checking for __approx_equal__ in the common case of two floats.
@@ -328,7 +318,12 @@ def approx_equal(x, y, *args, **kwargs):
 
 def create_directory(dirname):
     """
-    Recursively create a directory, without failing if it already exists.
+    Recursively create a directory, without failing if it already exists
+
+    Parameters
+    ----------
+    dirname : str
+        Path of directory
     """
     try:
         if dirname:
@@ -340,11 +335,90 @@ def create_directory(dirname):
 
 def delete_directory(dirname):
     """
-    Recursively delete a directory tree: Without failing if the dir does not
-    exist
+    Recursively delete a directory tree, without failing if it does not exist
+
+    Parameters
+    ----------
+    dirname : str
+        Path of directory
     """
     try:
         shutil.rmtree(dirname)
     except OSError as e:
         if not e.errno == errno.ENOENT:
             raise e
+
+
+class multiprocManager(object):
+
+    class multiThread(multiprocessing.Process):
+        """
+        This class is a working thread which load parameters from a queue and
+        return in the output queue
+        """
+
+        def __init__(self, inQueue, outQueue, funct):
+            multiprocessing.Process.__init__(self)
+            self.inQueue = inQueue
+            self.outQueue = outQueue
+            self.funct = funct
+
+        def run(self):
+
+            while True:
+                parms = self.inQueue.get()
+
+                # poison pill
+                if parms is None:
+                    self.inQueue.task_done()
+                    break
+
+                self.funct(*parms, outQueue=self.outQueue)
+                self.inQueue.task_done()
+
+    def __init__(self, procs=0, funct=None):
+        """
+        Manager for multiprocessing
+        procs: number of processors, if 0 use all available
+        funct: function to parallelize / note that the last parameter of this function must be the outQueue
+        and it will be linked to the output queue
+        """
+        if procs == 0:
+            procs = multiprocessing.cpu_count()
+        self.procs = procs
+        self._threads = []
+        self.inQueue = multiprocessing.JoinableQueue()
+        self.outQueue = multiprocessing.Queue()
+        self.runs = 0
+
+        for proc in range(self.procs):
+            t = self.multiThread(self.inQueue, self.outQueue, funct)
+            self._threads.append(t)
+            t.start()
+
+    def put(self, args):
+        """
+        Parameters to give to the next jobs sent into queue
+        """
+        self.inQueue.put(args)
+        self.runs += 1
+
+    def get(self):
+        """
+        Return all the results as an iterator
+        """
+        # NOTE: do not use queue.empty() check which is unreliable
+        # https://docs.python.org/2/library/multiprocessing.html
+        for run in range(self.runs):
+            yield self.outQueue.get()
+
+    def wait(self):
+        """
+        Send poison pills to jobs and wait for them to finish
+        The join() should kill all the processes
+        """
+        for t in self._threads:
+            self.inQueue.put(None)
+
+        # wait for all jobs to finish
+        self.inQueue.join()

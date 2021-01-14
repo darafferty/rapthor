@@ -63,6 +63,9 @@ class Operation(object):
         # Temp directory (local to the nodes)
         self.temp_dir = self.parset['cluster_specific']['dir_local']
 
+        # Maximum number of nodes to use
+        self.max_nodes = self.parset['cluster_specific']['max_nodes']
+
         # Directory that holds the pipeline logs in a convenient place
         self.log_dir = os.path.join(self.rapthor_working_dir, 'logs', self.name)
         misc.create_directory(self.log_dir)

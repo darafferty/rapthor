@@ -26,7 +26,7 @@ class Field(object):
     parset : dict
         Parset with processing parameters
     minimal : bool
-        If True, only initialize the minimal required parameters
+        If True, only initialize the minimal set of required parameters
     """
     def __init__(self, parset, mininmal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
@@ -54,6 +54,7 @@ class Field(object):
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.use_screens = self.parset['imaging_specific']['use_screens']
+        self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.reweight = self.parset['imaging_specific']['reweight']
@@ -85,7 +86,11 @@ class Field(object):
         data_fraction : float, optional
             Fraction of data to use during processing
         """
-        self.log.debug('Scanning observation(s)...')
+        if len(self.ms_filenames) > 1:
+            infix = 's'
+        else:
+            infix = ''
+        self.log.debug('Scanning input MS file{}...'.format(infix))
         self.observations = []
         for ms_filename in self.ms_filenames:
             self.observations.append(Observation(ms_filename))
@@ -211,7 +216,7 @@ class Field(object):
 
     def make_skymodels(self, skymodel_true_sky, skymodel_apparent_sky=None, regroup=True,
                        find_sources=False, target_flux=None, target_number=None,
-                       iter=iter):
+                       index=0):
         """
         Groups a sky model into source and calibration patches
 
@@ -236,43 +241,49 @@ class Field(object):
             Target flux in Jy for grouping
         target_number : int, optional
             Target number of patches for grouping
-        iter : int
+        index : index
             Iteration index
         """
         # Make output directories for sky models and define filenames
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
         misc.create_directory(dst_dir)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
+        self.calibrators_only_skymodel_file = os.path.join(dst_dir, 'calibrators_only_skymodel.txt')
         self.source_skymodel_file = os.path.join(dst_dir, 'source_skymodel.txt')
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(iter))
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(index))
         misc.create_directory(dst_dir)
         self.bright_source_skymodel_file = os.path.join(dst_dir, 'bright_source_skymodel.txt')
 
         # First check whether sky models already exist due to a previous run and attempt
-        # to load them if so
-        if os.path.exists(self.calibration_skymodel_file):
+        # to load them
+        try:
             self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
             self.num_patches = len(self.calibration_skymodel.getPatchNames())
-            self.log.info('Using {} calibration patches'.format(self.num_patches))
+            calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
+            self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
+            self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
+            self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
-            # The bright-source model file may not exist if there are no bright sources;
-            # set it to an empty list if not
-            if os.path.exists(self.bright_source_skymodel_file):
-                self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
+            if self.peel_bright_sources:
+                # The bright-source model file may not exist if there are no bright sources,
+                # but also if a reset of the imaging pipeline was done. Unfortunately, there
+                # is no way to determine which of these two possibilities is the case. So, if
+                # it does not exist, we have to regenerate the sky models
+                if os.path.exists(self.bright_source_skymodel_file):
+                    self.bright_source_skymodel = lsmtool.load(str(self.bright_source_skymodel_file))
+                    all_skymodels_loaded = True
+                else:
+                    all_skymodels_loaded = False
             else:
                 self.bright_source_skymodel = []
+                all_skymodels_loaded = True
+        except IOError:
+            all_skymodels_loaded = False
 
-            # The source sky model file may not exist if an older version was run
-            # previously, so generate it if needed
-            if os.path.exists(self.source_skymodel_file):
-                self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
-            else:
-                self.log.info('Identifying sources...')
-                source_skymodel = self.calibration_skymodel.copy()
-                source_skymodel.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
-                source_skymodel.write(self.source_skymodel_file, clobber=True)
-                self.source_skymodel = source_skymodel
-
+        if all_skymodels_loaded:
+            # If all the required sky models were loaded from files, return; otherwise,
+            # continue on to regenerate the sky models from scratch
+            self.log.info('Using {} calibration patches'.format(self.num_patches))
             return
 
         # If sky models do not already exist, make them
@@ -335,7 +346,7 @@ class Field(object):
         patch_dict = source_skymodel.getPatchPositions()
 
         # debug
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
         misc.create_directory(dst_dir)
         skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
         source_skymodel.write(skymodel_true_sky_file, clobber=True)
@@ -361,12 +372,7 @@ class Field(object):
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
         # patches to the true-sky version later
         bright_source_skymodel_apparent_sky = source_skymodel.copy()
-        if not regroup:
-            # Remove the fainter sources from the bright-source sky model. If regrouping
-            # is to be done, this step is done after tessellation to ensure the cut
-            # used there matches this one
-            bright_source_skymodel_apparent_sky.remove('I < {} Jy'.format(target_flux), aggregate='sum')
-        else:
+        if regroup:
             # Regroup by tessellating with the bright sources as the tessellation
             # centers
             self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
@@ -394,7 +400,7 @@ class Field(object):
                     bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
 
             # debug
-            dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(iter))
+            dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
             misc.create_directory(dst_dir)
             skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
             source_skymodel.write(skymodel_true_sky_file, clobber=True)
@@ -405,8 +411,7 @@ class Field(object):
             self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
 
         # For the bright-source true-sky model, duplicate any selections made above to the
-        # apparent-sky model. Then, remove any bright sources that lie outside the
-        # imaged area, as they should not be peeled
+        # apparent-sky model
         bright_source_skymodel = skymodel_true_sky.copy()
         source_names = bright_source_skymodel.getColValues('Name').tolist()
         bright_source_names = bright_source_skymodel_apparent_sky.getColValues('Name').tolist()
@@ -414,6 +419,23 @@ class Field(object):
         for i, sn in enumerate(bright_source_names):
             matching_ind.append(source_names.index(sn))
         bright_source_skymodel.select(np.array(matching_ind))
+
+        # Transfer patches to the bright-source model if needed (i.e., regrouping was not
+        # done)
+        if not regroup:
+            patch_dict = skymodel_true_sky.getPatchPositions()
+            self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
+                                  patch_dict=patch_dict)
+
+        # Save the bright-source (i.e., calibrator) flux densities (in Jy) for use
+        # in the calibration pipeline for weighting of the directions during screen
+        # fitting
+        bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
+        self.calibrator_patch_names = bright_source_skymodel.getPatchNames().tolist()
+        self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum').tolist()
+
+        # Now remove any bright sources that lie outside the imaged area, as they
+        # should not be peeled
         if len(self.imaging_sectors) > 0:
             for i, sector in enumerate(self.imaging_sectors):
                 sm = bright_source_skymodel.copy()
@@ -432,21 +454,25 @@ class Field(object):
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
         self.num_patches = len(calibration_skymodel.getPatchNames())
-        self.log.info('Using {} calibration patches'.format(self.num_patches))
+        if self.num_patches > 1:
+            infix = 'es'
+        else:
+            infix = ''
+        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, infix))
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
         if len(bright_source_skymodel) > 0:
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
-    def update_skymodels(self, iter, regroup, target_flux=None,
+    def update_skymodels(self, index, regroup, target_flux=None,
                          target_number=None):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
         Parameters
         ----------
-        iter : int
+        index : int
             Iteration index (counts starting from 1)
         regroup : bool
             Regroup sky model
@@ -457,12 +483,12 @@ class Field(object):
         """
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
-        if iter == 1:
+        if index == 1:
             # Make initial calibration and source sky models
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
-                                find_sources=True, iter=iter)
+                                find_sources=True, index=index)
         else:
             # Use the sector sky models from the previous iteration to update the master
             # sky model
@@ -540,24 +566,24 @@ class Field(object):
             # to False to preserve the source patches defined in the image pipeline by PyBDSF)
             self.make_skymodels(skymodel_true_sky, skymodel_apparent_sky=skymodel_apparent_sky,
                                 regroup=regroup, find_sources=False, target_flux=target_flux,
-                                target_number=target_number, iter=iter)
+                                target_number=target_number, index=index)
 
         # Adjust sector boundaries to avoid known sources and update their sky models
         self.adjust_sector_boundaries()
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
-            sector.make_skymodel(iter)
+            sector.make_skymodel(index)
 
         # Make bright-source sectors containing only the bright sources that may be
         # subtracted before imaging. These sectors, like the outlier sectors above, are not
         # imaged
-        self.define_bright_source_sectors(iter)
+        self.define_bright_source_sectors(index)
 
         # Make outlier sectors containing any remaining calibration sources (not
         # included in any imaging or bright-source sector sky model). These sectors are
         # not imaged; they are only used in prediction and subtraction
-        self.define_outlier_sectors(iter)
+        self.define_outlier_sectors(index)
 
         # Finally, make a list containing all sectors
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
@@ -617,7 +643,6 @@ class Field(object):
         """
         Defines the imaging sectors
         """
-        self.log.debug('Defining imaging sector(s)...')
         self.imaging_sectors = []
 
         # Determine whether we use a user-supplied list of sectors or a grid
@@ -633,7 +658,11 @@ class Field(object):
                 name = 'sector_{0}'.format(n)
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
-            self.log.info('Using {0} user-defined imaging sector(s)'.format(len(self.imaging_sectors)))
+            if len(self.imaging_sectors) > 1:
+                infix = 's'
+            else:
+                infix = ''
+            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), infix))
             # TODO: check whether flux density in each sector meets minimum and warn if not?
         else:
             # Make a regular grid of sectors
@@ -722,13 +751,13 @@ class Field(object):
                                                                             minRA[0], maxDec[0])
         self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
 
-    def define_outlier_sectors(self, iter):
+    def define_outlier_sectors(self, index):
         """
         Defines the outlier sectors
 
         Parameters
         ----------
-        iter : int
+        index : int
             Iteration index
         """
         self.outlier_sectors = []
@@ -749,16 +778,16 @@ class Field(object):
                     else:
                         endind = startind + int(nsources/nnodes)
                     outlier_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
-                    outlier_sector.make_skymodel(iter)
+                    outlier_sector.make_skymodel(index)
                     self.outlier_sectors.append(outlier_sector)
 
-    def define_bright_source_sectors(self, iter):
+    def define_bright_source_sectors(self, index):
         """
         Defines the bright source sectors
 
         Parameters
         ----------
-        iter : int
+        index : int
             Iteration index
         """
         self.bright_source_sectors = []
@@ -778,7 +807,7 @@ class Field(object):
                     else:
                         endind = startind + int(nsources/nnodes)
                     bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
-                    bright_source_sector.make_skymodel(iter)
+                    bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
 
     def find_intersecting_sources(self):
@@ -1016,14 +1045,14 @@ class Field(object):
             # Report converged (and not diverged)
             return True, False
 
-    def update(self, step_dict, iter):
+    def update(self, step_dict, index):
         """
         Updates parameters, sky models, etc. for current step
         """
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
-        self.update_skymodels(iter, step_dict['regroup_model'],
+        self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=step_dict['target_flux'])
 
         # Check whether outliers and bright sources need to be peeled

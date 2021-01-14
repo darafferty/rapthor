@@ -47,7 +47,7 @@ class Predict(Operation):
         sectors.extend(self.field.bright_source_sectors)
         sectors.extend(self.field.outlier_sectors)
 
-        # Set sector-dependent parameters
+        # Set sector-dependent parameters (input and output filenames, patch names, etc.)
         sector_skymodel = []
         sector_sourcedb = []
         sector_obs_sourcedb = []
@@ -68,7 +68,7 @@ class Predict(Operation):
             sector_starttime.extend(sector.get_obs_parameters('predict_starttime'))
             sector_ntimes.extend(sector.get_obs_parameters('predict_ntimes'))
 
-        # Set observation-specific parameters
+        # Set observation-specific parameters (input filenames, solution intervals, etc.)
         obs_filename = []
         obs_starttime = []
         obs_infix = []
@@ -81,6 +81,7 @@ class Predict(Operation):
             obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
             obs_solint_hz.append(obs.parameters['solint_slow_freqstep'][0] * obs.channelwidth)
 
+        # Set other parameters
         nr_outliers = len(self.field.outlier_sectors)
         peel_outliers = self.field.peel_outliers
         nr_bright = len(self.field.bright_source_sectors)

@@ -5,7 +5,7 @@ The Rapthor parset
 
 Before Rapthor can be run, a parset describing the reduction must be made. The
 parset is a simple text file defining the parameters of a run in a number of
-sections. For example, a typical parset for a basic reduction on a single
+sections. For example, a minimal parset for a basic reduction on a single
 machine could look like the following (see :ref:`tips` for tips on setting up an
 optimal parset):
 
@@ -17,7 +17,7 @@ optimal parset):
     input_skymodel = /path/to/input/dir/input.sky
 
 
-All the available options are described below under their respective sections.
+The available options are described below under their respective sections.
 
 
 .. _parset_global_options:
@@ -159,53 +159,58 @@ All the available options are described below under their respective sections.
         Maximum uv distance in lambda to use in imaging (default = 80).
 
     taper_arcsec
-        Taper to apply when imaging, in arcsec (default = 0)
+        Taper to apply when imaging, in arcsec (default = 0).
 
     multiscale_scales_pixel
-        Scale sizes in pixels to use during multiscale clean (default = ``[0, 5, 10, 15]``)
+        Scale sizes in pixels to use during multiscale clean (default = ``[0, 5, 10, 15]``).
 
     do_multiscale
         Use multiscale cleaning (default = auto)?
 
     use_screens
         Use screens during imaging (default = ``True``)? If ``False``, the
-        solutions closest to the image centers will be used
+        solutions closest to the image centers will be used.
+
+    screen_type
+        Type of screen to use (default = tessellated), if use_screens = ``True``:
+        "tessellated" (simple, smoothed Voronoi tessellated screens) or
+        "kl" (Karhunen-Lo`eve screens).
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``).
-        The mode can be cpu or hybrid
+        The mode can be "cpu" or "hybrid"".
 
     mem_fraction
-        Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
+        Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9).
 
     use_mpi
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each
         WSClean job (i.e., max_nodes / num_images >= 2), then distributed
-        imaging will be used (only available if batch_system = slurm)
+        imaging will be used (only available if batch_system = slurm).
 
         .. note::
 
             If MPI is activated, :term:`dir_local` (under the
             :ref:`parset_cluster_options` section below) must not be set unless
-            it is on a shared filesystem
+            it is on a shared filesystem.
 
     reweight
-        Reweight the visibility data before imaging (default = ``True``)
+        Reweight the visibility data before imaging (default = ``True``).
 
     grid_width_ra_deg
         Size of area to image when using a grid (default = mean FWHM of the
-        primary beam)
+        primary beam).
 
     grid_width_dec_deg
         Size of area to image when using a grid (default = mean FWHM of the
-        primary beam)
+        primary beam).
 
     grid_center_ra
-        Center of area to image when using a grid (default = phase center)
+        Center of area to image when using a grid (default = phase center).
 
     grid_center_dec
-        Center of area to image when using a grid (default = phase center)
+        Center of area to image when using a grid (default = phase center).
 
     grid_nsectors_ra
         Number of sectors along the RA axis (default = 0). The number of sectors
@@ -214,7 +219,7 @@ All the available options are described below under their respective sections.
         :term:`grid_width_ra_deg`, and :term:`grid_width_dec_deg` is imaged. Set
         ``grid_nsectors_ra = 0`` to force a single sector for the full area.
         Multiple sectors are useful for parallelizing the imaging over multiple
-        nodes of a cluster or for computers with limited memory
+        nodes of a cluster or for computers with limited memory.
 
     sector_center_ra_list
         List of image centers (default = ``[]``). Instead of a grid, imaging sectors
@@ -232,7 +237,7 @@ All the available options are described below under their respective sections.
     sector_do_multiscale_list
         List of multiscale flags, one per sector (default = ``[]``). ``None``
         indicates that multiscale clean should be activated automatically if a
-        large source is detected in the sector
+        large source is detected in the sector.
 
     max_peak_smearing
         Max desired peak flux density reduction at center of the image edges due
@@ -271,7 +276,7 @@ All the available options are described below under their respective sections.
         all).
 
     deconvolution_threads
-        Number of threads to use by WSClean during deconvolution (default = 0 = all)
+        Number of threads to use by WSClean during deconvolution (default = 0 = all).
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default =
@@ -284,7 +289,9 @@ All the available options are described below under their respective sections.
         .. note::
 
             This parameter should not be set in the following situations:
+
             - when :term:`batch_system` = ``singleMachine`` and multiple imaging sectors are
               used (as each sector will overwrite files from the other sectors)
+
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
-              section and ```dir_local``` is not on a shared filesystem
+              section and ``dir_local`` is not on a shared filesystem.

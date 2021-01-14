@@ -55,9 +55,9 @@ def run(parset_file):
     operation_list = ['calibrate', 'predict', 'image', 'mosaic']  # in order of execution
     while True:
         pipelines = []
-        for iter, step in enumerate(strategy_steps):
+        for index, step in enumerate(strategy_steps):
             for opname in operation_list:
-                operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, iter+1))
+                operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, index+1))
                 pipelines.extend(check_operation(operation))
 
         # List pipelines and query user
