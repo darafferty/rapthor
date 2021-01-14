@@ -1,23 +1,38 @@
 msin=${MS_PATH}
+<<<<<<< HEAD
 msin.datacolumn=MODEL_DATA
+=======
+>>>>>>> 18d54226... Add machinery for idgcaldpstep integration test
 msout=
 steps=[idgcal]
 
 idgcal.type=python
 idgcal.python.module=idg.idgcaldpstep
 idgcal.python.class=IDGCalDPStep
+<<<<<<< HEAD
 #idgcal.modelimage=${MODELIMAGE_PATH}
 idgcal.modelimage=wsclean-model.fits
 idgcal.maxiter=1000
 idgcal.solintamplitude=50
 idgcal.solintphase=5
+=======
+idgcal.modelimage=${MODELIMAGE_PATH}
+idgcal.maxiter=10
+idgcal.solintamplitude=50
+idgcal.solintphase=25
+>>>>>>> 18d54226... Add machinery for idgcaldpstep integration test
 idgcal.nrcorrelations=4
 idgcal.subgridsize=32
 idgcal.tapersupport=7
 idgcal.wtermsupport=5
 idgcal.atermsupport=5
+<<<<<<< HEAD
 idgcal.polynomialdegamplitude=0
 idgcal.polynomialdegphase=0
+=======
+idgcal.polynomialdegamplitude=2
+idgcal.polynomialdegphase=1
+>>>>>>> 18d54226... Add machinery for idgcaldpstep integration test
 idgcal.solverupdategain=0.5
 idgcal.tolerancepinv=1e-9
 idgcal.h5parm=idgcal.h5parm

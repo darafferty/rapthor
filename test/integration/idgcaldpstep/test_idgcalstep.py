@@ -23,7 +23,7 @@ def run_dppp():
     check_call(
         [
             "DPPP",
-            "DPPP.parset"
+            os.path.join(COMMONDIR, "DPPP.parset")
         ]
     )
 

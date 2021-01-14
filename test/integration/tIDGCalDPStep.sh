@@ -44,13 +44,15 @@ fi
 
 # Substitute variables in DPPP.parset
 # Fill modulefile template and copy to AOFLAGGER_MODULEFILE_PATH
-envsubst '${MODELIMAGE_PATH} ${MS_PATH}' < "${DIR}/idgcaldpstep/DPPP.parset.in" > "${DIR}/idgcaldpstep/DPPP.parset"
+envsubst '${MODELIMAGE_PATH} ${MS_PATH}' < "${COMMON}/DPPP.parset.in" > "${WORKDIR}/DPPP.parset"
 
 mkdir -p $WORKDIR
 cd $WORKDIR
 
-# Run the test
+# Disable warnings due to HDF5 version mismatches
+export HDF5_DISABLE_VERSION_CHECK=2
 
+# Run the test
 # pytest -s captures the print() statements
 # TODO: check/add more fine grained log levels
-pytest --exitfirst ${DIR}/idgcaldpstep/test_idgcalstep.py
+pytest -s --exitfirst ${DIR}/idgcaldpstep/test_idgcalstep.py

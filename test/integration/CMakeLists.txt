@@ -5,9 +5,10 @@
 set(INTEGRATION_TESTS
   tSinglePointSource
   tGridDegrid
+  # tIDGCalDPStep.sh
 )
 
-# Add integration tests to "integration", can be invoked with 
+# Add integration tests to "integration", can be invoked with
 # "ctest -L integration"
 foreach(TEST ${INTEGRATION_TESTS})
   add_test(${TEST} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST}.sh)
