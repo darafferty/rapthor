@@ -8,6 +8,7 @@ import idg.util
 import astropy.io.fits as fits
 import scipy.linalg
 import time
+from datetime import datetime
 import logging
 from h5parmwriter import H5ParmWriter
 
@@ -163,9 +164,9 @@ class IDGCalDPStep(dppp.DPStep):
         self.count_process_buffer_calls = 0
 
         # Extract the time info and cast into a time array
-        tstart = self.info().startTime()
+        tstart = self.info().start_time()
         nsteps = self.info().ntime()
-        dt = self.info().timeInterval()
+        dt = self.info().time_interval()
         self.time_array = np.linspace(
             tstart, tstart + dt * nsteps, num=nsteps, endpoint=False
         )
@@ -213,16 +214,26 @@ class IDGCalDPStep(dppp.DPStep):
         )
 
         # Add antenna/station info
-        # TODO: to initialize the antenna dataset, we need the following additional pybind wrappers
-        # in the DPInfo class:
-        # - get_antenna_names() --> wrapping DPInfo::antennaNames()
-        # - get_antenna_positions() --> wrapping DPInfo::antennaPos()
-        # h5writer.add_antennas(antenna_names, antenna_positions)
+        self.h5writer.add_antennas(
+            self.info().antenna_names(), self.info().antenna_positions()
+        )
+
+        # initialize proxy
+        # self.proxy = idg.HybridCUDA.GenericOptimized(self.nr_correlations, self.subgrid_size)
+        self.proxy = idg.CPU.Optimized(self.nr_correlations, self.subgrid_size)
+
+        # read image dimensions from fits header
+        h = fits.getheader(self.imagename)
+        N0 = h["NAXIS1"]
+        self.cell_size = abs(h["CDELT1"]) / 180 * np.pi
+
+        # compute padded image size
+        N = next_composite(int(N0 * self.padding))
+        self.grid_size = N
+        self.image_size = N * self.cell_size
 
         # Initialize solution tables for amplitude and phase coefficients
-        # TODO: maybe pass parset to HISTORY?
-
-        # Create amplitude coefficients solution table
+        # TODO: maybe pass parset as string to HISTORY?
         self.h5writer = init_h5parm_solution_table(
             self.h5writer,
             "amplitude",
@@ -239,20 +250,6 @@ class IDGCalDPStep(dppp.DPStep):
             self.image_size,
             self.subgrid_size,
         )
-
-        # initialize proxy
-        # self.proxy = idg.HybridCUDA.GenericOptimized(self.nr_correlations, self.subgrid_size)
-        self.proxy = idg.CPU.Optimized(self.nr_correlations, self.subgrid_size)
-
-        # read image dimensions from fits header
-        h = fits.getheader(self.imagename)
-        N0 = h["NAXIS1"]
-        self.cell_size = abs(h["CDELT1"]) / 180 * np.pi
-
-        # compute padded image size
-        N = next_composite(int(N0 * self.padding))
-        self.grid_size = N
-        self.image_size = N * self.cell_size
 
         # Initialize empty grid
         self.grid = np.zeros(
@@ -302,10 +299,10 @@ class IDGCalDPStep(dppp.DPStep):
         )
 
         self.Bampl, self.Tampl = polynomial_basis_functions(
-            self.subgrid_size, self.image_size, self.nr_parameters_ampl
+            self.polynomial_degree_ampl, self.subgrid_size, self.image_size
         )
         self.Bphase, self.Tphase = polynomial_basis_functions(
-            self.subgrid_size, self.image_size, self.nr_parameters_phase
+            self.polynomial_degree_phase, self.subgrid_size, self.image_size
         )
 
     def process_buffers(self):
@@ -379,7 +376,7 @@ class IDGCalDPStep(dppp.DPStep):
         # and zeros otherwise (X1). The parameters for the phases are initialized with zeros (X2).
         X0 = np.ones((self.nr_stations, 1))
         X1 = np.zeros((self.nr_stations, self.nr_parameters_ampl - 1))
-        X2 = np.zeros((self.nr_stations), self.nr_parameters - self.nr_parameters_ampl)
+        X2 = np.zeros((self.nr_stations, self.nr_parameters - self.nr_parameters_ampl))
 
         parameters = np.concatenate((X0, X1, X2), axis=1)
         # Map paramaters to orthonormal basis
@@ -549,7 +546,7 @@ class IDGCalDPStep(dppp.DPStep):
 
                 parameters[i] += self.solver_update_gain * dx
 
-                # TODO: no need to repeat when writing to H5Parm
+                # TODO: probably no need to repeat when writing to H5Parm
                 aterm_ampl = np.repeat(
                     np.tensordot(
                         parameters[i, : self.nr_parameters_ampl],
@@ -605,13 +602,14 @@ class IDGCalDPStep(dppp.DPStep):
             self.nr_timeslots,
         )
 
-        # TODO: write parameters to matching block in H5Parm file
         # Reshape amplitude/parameters coefficient to match desired shape
+        # amplitude parameters: reshaped into (nr_stations, 1, nr_parameters_ampl) array
         amplitude_coefficients = parameters_polynomial[
-            :, : self.nr_parameters_amplitude
+            :, : self.nr_parameters_ampl
         ].reshape(self.nr_stations, 1, self.nr_parameters_ampl)
+        # phase parameters: reshaped into (nr_stations, nr_timeslots, nr_parameters_phase) array
         phase_coefficients = parameters_polynomial[
-            :, self.nr_parameters_amplitude : :
+            :, self.nr_parameters_ampl : :
         ].reshape(self.nr_stations, self.nr_timeslots, self.nr_parameters_phase)
 
         offset_amplitude = (0, self.count_process_buffer_calls, 0)
@@ -620,7 +618,7 @@ class IDGCalDPStep(dppp.DPStep):
             "amplitude_coefficients", amplitude_coefficients, offset_amplitude
         )
         self.h5writer.fill_solution_table(
-            "phase_coefficients", phase_coefficients, offset_phas
+            "phase_coefficients", phase_coefficients, offset_phase
         )
 
         self.count_process_buffer_calls += 1
@@ -641,7 +639,7 @@ def init_h5parm_solution_table(
     assert soltab_type in soltab_info.keys()
     soltab_name = soltab_info[soltab_type]
 
-    self.h5writer.create_solution_table(
+    h5parm_object.create_solution_table(
         soltab_name,
         soltab_type,
         axes_info,
@@ -650,7 +648,7 @@ def init_h5parm_solution_table(
     )
 
     # Set info for the "dir" axis
-    self.h5writer.set_axis_meta_data(
+    h5parm_object.create_axis_meta_data(
         soltab_name,
         "dir",
         attributes={
@@ -661,8 +659,7 @@ def init_h5parm_solution_table(
     )
 
     # Set info for the "time" axis
-    h5writer.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
-
+    h5parm_object.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
     return h5parm_object
 
 
@@ -725,8 +722,8 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
         Polynomial order to be used in the expansion.
     subgrid_size : int
         Size of IDG subgrid (assumed to be square)
-    image_size : int
-        Size of image (assumed to be square)
+    image_size : float
+        Size of image, i.e. nr_pixels x cell_size. Image is (assumed to be square)
 
     Returns
     -------
@@ -854,15 +851,3 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
         RR = np.array(RR)
 
         return a, B, RR
-
-
-def main():
-    subgrid_size = 32
-    image_size = 1024
-    # n_terms = 10
-    polynomial_degree = 3
-    polynomial_basis_functions(polynomial_degree, subgrid_size, image_size)
-
-
-if __name__ == "__main__":
-    main()

@@ -185,8 +185,8 @@ idg-integration-das:
     # Run integration tests
     - "python3 -m pip install --user --only-binary=:all: python-casacore"
     - ctest --verbose -L integration
-    # Test the h5parm writer
-    - cd $CURRENT_SOURCE/scripts/test
+    # Test idg-cal scripts
+    - cd $CURRENT_SOURCE/idg-cal/unit_tests
     - pytest .
   rules:
     - when: on_success

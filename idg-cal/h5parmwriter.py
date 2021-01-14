@@ -315,7 +315,7 @@ class H5ParmWriter:
             if hdf_location + "/" + axis not in self.h5file:
                 # Create axis meta data set
                 self.h5file[hdf_location].create_dataset(
-                    axis, meta_data.size, data_type_h5
+                    axis, meta_data.shape, data_type_h5
                 )
                 self.h5file[hdf_location + "/" + axis][:] = meta_data.astype(
                     data_type_h5
