@@ -113,13 +113,6 @@ class IDGCalDPStep(dppp.DPStep):
 
         self.kernel_size = self.taper_support + wterm_support + aterm_support
 
-        # TODO: was previously:
-        # self.taper_support = 7
-        # self.wterm_support = 5
-        # self.aterm_support = 5
-        # self.kernel_size = self.taper_support + self.wterm_support + self.aterm_support
-        # TODO: remove lines above
-
         # Get polynomial degrees for amplitude and phase
         self.polynomial_degree_ampl = parset.getInt(
             prefix + "polynomialdegamplitude", 2
@@ -661,10 +654,6 @@ def init_h5parm_solution_table(
     # Set info for the "time" axis
     h5parm_object.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
     return h5parm_object
-
-
-def fill_h5parm_solution_table():
-    pass
 
 
 def transform_parameters(
