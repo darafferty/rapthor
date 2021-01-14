@@ -66,10 +66,18 @@ def run(parset_file, logging_level='info'):
             op = Mosaic(field, index+1)
             op.run()
 
-        # Check for selfcal convergence
+        # Check for selfcal convergence/divergence
         if field.do_check:
-            has_converged = field.check_selfcal_convergence()
-            if has_converged:
+            has_converged, has_diverged = field.check_selfcal_progress()
+            if has_converged or has_diverged:
+                # Stop the cycle
+                if has_converged:
+                    log.info("Selfcal has converged (ratio of current image noise "
+                             "to previous value is > {})".format(field.convergence_ratio))
+                if has_diverged:
+                    log.warning("Selfcal has diverged (ratio of current image noise "
+                                "to previous value is > {})".format(field.divergence_ratio))
+                log.info("Stopping at iteration {0} of {1}".format(iter+1, len(strategy_steps)))
                 break
 
     log.info("Rapthor has finished :)")

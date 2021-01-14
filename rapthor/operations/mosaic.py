@@ -69,6 +69,7 @@ class Mosaic(Operation):
         dst_dir = os.path.join(self.field.parset['dir_working'], 'images',
                                'image_{}'.format(self.index))
         misc.create_directory(dst_dir)
+        self.field.field_image_filename_prev = self.field.field_image_filename
         self.field.field_image_filename = os.path.join(dst_dir, 'field-MFS-I-image.fits')
         os.system('cp {0} {1}'.format(self.mosaic_filename, self.field.field_image_filename))
 
