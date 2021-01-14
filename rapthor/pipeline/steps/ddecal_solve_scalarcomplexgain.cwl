@@ -1,7 +1,12 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [DPPP]
-label: "Calibrates a dataset using DDECal"
+label: Calibrates a dataset using DDECal
+doc: |
+  This tool solves for scalar complex gains in multiple directions
+  simultaneously for the given MS file, using the input sourcedb. Output is the
+  solution table in h5parm format. See ddecal_solve_scalarphase.cwl for a
+  detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}

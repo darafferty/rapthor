@@ -548,7 +548,7 @@ class CovWeights:
             CoeffArray[:, :, i][tempars < thres] = thres
         return CoeffArray
 
-    def calcWeights(self, CoeffArray):
+    def calcWeights(self, CoeffArray, max_radius = 5e3):
         ms = pt.table(self.MSName, readonly=False, ack=False)
         ants = pt.table(ms.getkeyword("ANTENNA"), ack=False)
         antnames = ants.getcol("NAME")
@@ -581,6 +581,21 @@ class CovWeights:
                                            CoeffArray[t, j, A1ind[i]] * ant2gainarray[t, i, j] +
                                            CoeffArray[t, j, A0ind[i]] * CoeffArray[t, j, A1ind[i]] +
                                            0.1)
+
+        # If desired, force the weights to be equal for the short baselines (this ensures
+        # that shorter baselines are not downweighted due to, e.g., residual flux from poor
+        # subtraction of the field)
+        if max_radius is not None:
+            u, v, _ = ms.getcol("UVW", startrow=self.startrow, nrow=self.nrow).T
+            uvlen = np.sqrt(u**2 + v**2).reshape(nt, nbl)
+            for t in range(nt):
+                for p in range(npol):
+                    for j in range(nchan):
+                        core_bl_ind = np.where(uvlen[t, :] < max_radius)
+                        w_core = w[t, core_bl_ind, j, p]
+                        w_core[np.isinf(w_core)] = np.nan
+                        w_core[:] = np.nanmean(w_core)
+                        w[t, core_bl_ind, j, p] = w_core
 
         # normalize
         w = w.reshape(nt*nbl, nchan, npol)

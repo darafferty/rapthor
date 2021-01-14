@@ -1,7 +1,12 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [DPPP]
-label: "Prepares a dataset for imaging"
+label: Prepares a dataset for imaging
+doc: |
+  This tool prepares the input data for imaging without screens, including
+  applying the beam model, phase shifting, averaging, and applying phase-only
+  solutions. See prepare_imaging_data.cwl for a detailed description of the
+  inputs and outputs
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -64,11 +69,17 @@ inputs:
       separate: False
       shellQuote: False
   - id: h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions.
     type: string
     inputBinding:
       prefix: applycal.parmdb=
       separate: False
   - id: central_patch_name
+    label: Name of central patch
+    doc: |
+      The name of the central-most patch of the sector.
     type: string
     inputBinding:
       valueFrom: $('['+self+']')

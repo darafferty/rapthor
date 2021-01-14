@@ -1,7 +1,10 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [wsclean]
-label: "Images a dataset using WSClean+IDG"
+label: Make an image
+doc: |
+  This tool makes an image using WSClean with no a-term corrections. See
+  wsclean_image.cwl for a detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}

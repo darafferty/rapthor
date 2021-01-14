@@ -9,7 +9,7 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['do_calibrate'] = True
     strategy_steps[i]['do_slowgain_solve'] = True
 
-    if i < 1:
+    if i == 0:
         strategy_steps[i]['peel_outliers'] = True
     else:
         strategy_steps[i]['peel_outliers'] = False
@@ -34,7 +34,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['max_nmiter'] = 12
     strategy_steps[i]['regroup_model'] = True
 
-    if i < 1 or i == max_selfcal_loops - 1:
+    if i == 0 or i == max_selfcal_loops - 1:
         strategy_steps[i]['do_check'] = False
     else:
         strategy_steps[i]['do_check'] = True

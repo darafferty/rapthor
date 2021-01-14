@@ -72,4 +72,4 @@ def run(parset_file, logging_level='info'):
             if has_converged:
                 break
 
-    log.info("rapthor has finished :)")
+    log.info("Rapthor has finished :)")

@@ -1,7 +1,11 @@
 cwlVersion: v1.0
 class: CommandLineTool
 baseCommand: [run_wsclean_mpi.sh]
-label: "Images a dataset using WSClean+IDG, distributed over multiple nodes with MPI"
+label: Make an image
+doc: |
+  This tool makes an image using WSClean with a-term corrections,
+  distributed over multiple nodes with MPI. See wsclean_image.cwl
+  for a detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -83,10 +87,16 @@ inputs:
     inputBinding:
       prefix: -g
   - id: ntasks
+    label: Number of tasks
+    doc: |
+      The number of tasks per node for MPI jobs.
     type: int
     inputBinding:
       prefix: -y
   - id: nnodes
+    label: Number of nodes
+    doc: |
+      The number of nodes for MPI jobs.
     type: int
     inputBinding:
       prefix: -q
