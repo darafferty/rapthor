@@ -140,10 +140,10 @@ class IDGCalDPStep(dppp.DPStep):
 
         # Fraction betwen 0 and 1 with which to update solution between
         # iterations
-        self.solver_update_gain = parset.getFloat(prefix + "solver_update_gain", 0.5)
+        self.solver_update_gain = parset.getFloat(prefix + "solverupdategain", 0.5)
 
         # Tolerance pseudo inverse
-        self.pinv_tol = parset.getDouble(prefix + "tolerance_pinv", 1e-9)
+        self.pinv_tol = parset.getDouble(prefix + "tolerancepinv", 1e-9)
 
         # Maximum number of iterations
         self.max_iter = parset.getInt(prefix + "maxiter", 1)
