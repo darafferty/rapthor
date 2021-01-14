@@ -194,6 +194,11 @@ void Proxy::calibrate_init(
   //    subgrid_size, frequencies, visibilities, uvw, baselines,
   //    grid, aterms, aterms_offsets, spheroidal);
 
+
+  float image_size = grid.get_x_dim() * cell_size;
+  auto grid_shared_ptr = std::shared_ptr<Grid>(const_cast<Grid*>(&grid), [](Grid*){});
+  set_grid(grid_shared_ptr, subgrid_size, image_size, w_step, shift.data());
+
   int nr_w_layers;
 
   if (w_step != 0.0) {
@@ -304,6 +309,7 @@ void Proxy::calibrate_init(
                     kernel_size, subgrid_size, frequencies,
                     std::move(visibilities1), std::move(weights1),
                     std::move(uvw1), std::move(baselines1), grid, spheroidal);
+  set_grid(nullptr);
 }
 
 void Proxy::calibrate_update(
