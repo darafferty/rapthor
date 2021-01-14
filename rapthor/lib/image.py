@@ -149,15 +149,20 @@ class FITSImage(object):
         # Blank pixels (= NaN) outside of the polygon
         self.img_data = misc.rasterize(verts, self.img_data, blank_value=np.nan)
 
-    def calc_noise(self, niter=1000, eps=None):
+    def calc_noise(self, niter=1000, eps=None, sampling=4):
         """
         Return the rms of all the pixels in an image
         niter : robust rms estimation
         eps : convergency criterion, if None is 0.1% of initial rms
+        sampling : sampling interval to use to speed up the noise calculation (e.g.,
+                   sampling = 4 means use every forth pixel)
         """
         if eps is None:
             eps = np.nanstd(self.img_data)*1e-3
-        data = self.img_data[::4]  # sample every forth pixel
+        sampling = int(sampling)
+        if sampling < 1:
+            sampling = 1
+        data = self.img_data[::sampling]  # sample array
         data = data[ ~np.isnan(data) ]  # remove nans
         oldrms = 1.
         for i in range(niter):
