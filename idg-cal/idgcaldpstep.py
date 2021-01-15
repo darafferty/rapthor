@@ -346,7 +346,14 @@ class IDGCalDPStep(dppp.DPStep):
         print(f"    shape of weights: {weights.shape}")
         print(f"    shape uvw: {uvw.shape}")
 
+        # Flag NaNs
+        flags[np.isnan(visibilities)] = True
+
+        # Set weights of flagged visibilities to zero
         weights *= ~flags
+
+        # Even with weight=0, NaNs still propagate, so set NaN visiblities to zero
+        visibilities[np.isnan(visibilities)] = 0.0
 
         self.proxy.calibrate_init(
             self.w_step,
