@@ -39,7 +39,7 @@ setup(
                  'Operating System :: POSIX :: Linux',
                  'Topic :: Scientific/Engineering :: Astronomy'],
     install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely', 'toil[cwl]',
-                      'Pillow', 'reproject', 'python-dateutil', 'pytz', 'Rtree-linux',
+                      'Pillow', 'reproject', 'python-dateutil', 'pytz', 'Rtree',
                       'loess'],
     scripts=['bin/rapthor',
              'bin/plotrapthor',
