@@ -110,7 +110,9 @@ idg-integration-docker:
     - cd build
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
-    - export LD_LIBRARY_PATH="/opt/idg/lib:$LD_LIBRARY_PATH"
+    # Exported, since integrationstep tIDGCalDPStep needs this variable
+    - export IDG_LIB=~/opt/idg/lib
+    - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
     # Compile against wsclean
     - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
     - mkdir build && cd build
@@ -124,6 +126,7 @@ idg-integration-docker:
     - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
     - cd $HOME_DIR && rm -rf /dp3
+    - export DP3_LIB=/usr/dp3/lib64
   script:
     # Return to idg build directory to run tests
     - cd build
@@ -155,7 +158,9 @@ idg-integration-das:
     # Build with GPU libs
     - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
-    - export LD_LIBRARY_PATH="~/opt/idg/lib:$LD_LIBRARY_PATH"
+    # Exported, since integrationstep tIDGCalDPStep needs this variable
+    - export IDG_LIB=~/opt/idg/lib
+    - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
     # Install wsclean (needs libgsl)
     - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
     - git clone https://gitlab.com/aroffringa/wsclean.git src
@@ -166,13 +171,15 @@ idg-integration-das:
     # Install dp3
     - mkdir -p ~/opt/dp3 && cd ~/opt/dp3 && rm -rf *
     - git clone https://github.com/lofar-astron/DP3.git src
+    # TODO: needs to be checked out at master to to get pybindings working
     - cd src && git checkout v5.0 && cd ..
     - mkdir build && cd build
     - cmake -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="${AOFLAGGER_ROOT_DIR};${EVERYBEAM_ROOT_DIR};~/opt/idg" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/dp3/bin
+    # Exported, since integration test tIDGCalDPSteps needs this
+    - export DP3_LIB=~/opt/dp3/lib64
     # Extend the LD_LIBRARY_PATH
-    - export LD_LIBRARY_PATH=~/opt/idg/lib:$LD_LIBRARY_PATH
     - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
   script:
     - export OPENBLAS_NUM_THREADS=1

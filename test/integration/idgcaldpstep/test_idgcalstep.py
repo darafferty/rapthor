@@ -16,6 +16,7 @@ import pytest
 COMMONDIR = os.environ["COMMON"]
 DATADIR = os.environ["DATADIR"]
 MSNAME = os.environ["MSNAME"]
+WORKDIR = os.environ["WORKDIR"]
 MS = os.path.join(DATADIR, MSNAME)
 
 def run_dppp():
@@ -23,7 +24,7 @@ def run_dppp():
     check_call(
         [
             "DPPP",
-            os.path.join(COMMONDIR, "DPPP.parset")
+            os.path.join(WORKDIR, "DPPP.parset")
         ]
     )
 

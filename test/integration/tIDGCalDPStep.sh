@@ -17,6 +17,27 @@ export COMMON=${DIR}/common
 export MODELIMAGE_PATH=${DATADIR}/${MODELIMAGE}
 export MS_PATH=${DATADIR}/${MSNAME}
 
+# Get the python path to DP3 pybindings
+if [ -z "${DP3_LIB}" ] ;
+then
+      echo "\$DP3_LIB not in environment variables. Please do so!"
+      exit 1;
+fi
+DP3_PYTHON_VERSION=$(ls -l ${DP3_LIB} | grep -P -o -e '\s\Kpython[0-9].[0-9]' | tail -1)
+DP3_PYTHON_PATH=${DP3_LIB}/${DP3_PYTHON_VERSION}/site-packages
+
+# Get the python path to the idg pybindings
+if [ -z "${IDG_LIB}" ] ;
+then
+      echo "\$IDG_LIB not in environment variables. Please do so!"
+      exit 1;
+fi
+IDG_PYTHON_VERSION=$(ls -l ${IDG_LIB} | grep -P -o -e '\s\Kpython[0-9].[0-9]' | tail -1)
+IDG_PYTHON_PATH=${IDG_LIB}/${IDG_PYTHON_VERSION}/site-packages
+
+# Set python path
+export PYTHONPATH=${IDG_PYTHON_PATH}:${DP3_PYTHON_PATH}:${PYTHONPATH}
+
 # Download measurement set into test/tmp/data directory (if needed)
 cd $DIR
 if [ -d $DATADIR/LOFAR_MOCK.ms ]
