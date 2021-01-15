@@ -62,8 +62,8 @@ int test01() {
       idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
-  idg::Grid grid(nr_w_layers, nr_correlations, grid_size, grid_size);
-  idg::Grid grid_ref(nr_w_layers, nr_correlations, grid_size, grid_size);
+  auto grid = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations, grid_size, grid_size);
+  auto grid_ref = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations, grid_size, grid_size);
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
@@ -87,10 +87,10 @@ int test01() {
   int location_x = grid_size / 2 + offset_x;
   int location_y = grid_size / 2 + offset_y;
   float amplitude = 1.0f;
-  grid_ref(0, 0, location_y, location_x) = amplitude;
-  grid_ref(0, 1, location_y, location_x) = amplitude;
-  grid_ref(0, 2, location_y, location_x) = amplitude;
-  grid_ref(0, 3, location_y, location_x) = amplitude;
+  (*grid_ref)(0, 0, location_y, location_x) = amplitude;
+  (*grid_ref)(0, 1, location_y, location_x) = amplitude;
+  (*grid_ref)(0, 2, location_y, location_x) = amplitude;
+  (*grid_ref)(0, 3, location_y, location_x) = amplitude;
   visibilities_ref.zero();
   add_pt_src(visibilities_ref, uvw, frequencies, image_size, grid_size,
              offset_x, offset_y, amplitude);
@@ -114,20 +114,19 @@ int test01() {
 
   // Grid reference visibilities
   clog << ">>> Grid visibilities" << endl;
-  proxy.set_grid(grid);
   proxy.gridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
                  frequencies, visibilities_ref, uvw, baselines, aterms,
                  aterms_offsets, spheroidal);
-  proxy.transform(idg::FourierDomainToImageDomain, grid);
+  proxy.transform(idg::FourierDomainToImageDomain, *grid);
 
   float grid_error = get_accuracy(grid_size * grid_size * nr_correlations,
-                                  (std::complex<float> *)grid.data(),
-                                  (std::complex<float> *)grid_ref.data());
+                                  (std::complex<float> *)grid->data(),
+                                  (std::complex<float> *)grid_ref->data());
 
   // Predict visibilities
   clog << ">>> Predict visibilities" << endl;
 
-  proxy.transform(idg::ImageDomainToFourierDomain, grid_ref);
+  proxy.transform(idg::ImageDomainToFourierDomain, *grid_ref);
 
   // Set reference grid
   proxy.set_grid(grid_ref, subgrid_size, image_size, w_step, shift.data());
