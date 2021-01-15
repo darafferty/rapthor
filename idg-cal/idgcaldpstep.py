@@ -340,12 +340,6 @@ class IDGCalDPStep(dppp.DPStep):
         uvw["v"] = -uvw_[self.auto_corr_mask, :, 1]
         uvw["w"] = -uvw_[self.auto_corr_mask, :, 2]
 
-        print(f"    shape of baselines: {self.baselines.shape}")
-        print(f"    shape of visibilities: {visibilities.shape}")
-        print(f"    shape of flags: {flags.shape}")
-        print(f"    shape of weights: {weights.shape}")
-        print(f"    shape uvw: {uvw.shape}")
-
         # Flag NaNs
         flags[np.isnan(visibilities)] = True
 
