@@ -12,7 +12,7 @@ requirements:
 
 arguments:
   - msin.datacolumn=DATA
-  - msout=.
+  - msout=
   - steps=[solve]
   - solve.type=ddecal
   - solve.mode=scalarphase
