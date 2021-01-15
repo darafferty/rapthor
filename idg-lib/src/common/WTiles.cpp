@@ -41,7 +41,6 @@ WTileUpdateInfo WTiles::clear() {
     wtiles_to_flush.wtile_ids.push_back(wtile.second.wtile_id);
     m_free_wtiles.push_back(wtile.second.wtile_id);
   }
-  m_flush_set.push_back(wtiles_to_flush);
   m_wtile_map.clear();
   return wtiles_to_flush;
 }
