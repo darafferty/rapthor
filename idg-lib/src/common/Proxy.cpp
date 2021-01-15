@@ -194,9 +194,9 @@ void Proxy::calibrate_init(
   //    subgrid_size, frequencies, visibilities, uvw, baselines,
   //    grid, aterms, aterms_offsets, spheroidal);
 
-
   float image_size = grid.get_x_dim() * cell_size;
-  auto grid_shared_ptr = std::shared_ptr<Grid>(const_cast<Grid*>(&grid), [](Grid*){});
+  auto grid_shared_ptr =
+      std::shared_ptr<Grid>(const_cast<Grid*>(&grid), [](Grid*) {});
   set_grid(grid_shared_ptr, subgrid_size, image_size, w_step, shift.data());
 
   int nr_w_layers;
