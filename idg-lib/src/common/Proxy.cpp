@@ -538,19 +538,17 @@ std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
       new Grid(nr_w_layers, nr_correlations, height, width));
 }
 
-void Proxy::set_grid(Grid& grid) {
-  auto nr_w_layers = grid.get_w_dim();
-  auto nr_correlations = grid.get_z_dim();
-  auto grid_height = grid.get_y_dim();
-  auto grid_width = grid.get_x_dim();
-  assert(nr_correlations == NR_CORRELATIONS);
-  assert(grid_height == grid_width);
-  std::shared_ptr<Grid> grid_ptr(new Grid(
-      grid.data(), nr_w_layers, nr_correlations, grid_height, grid_width));
-  m_grid = grid_ptr;
+void Proxy::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
+                     float image_size, float w_step, const float* shift) {
+  m_grid = grid;
+  m_grid_size = m_grid->get_y_dim();
+  m_subgrid_size = subgrid_size;
+  m_image_size = image_size;
+  m_w_step = w_step;
+  m_shift[0] = shift[0];
+  m_shift[1] = shift[1];
+  m_shift[2] = shift[2];
 }
-
-void Proxy::set_grid(std::shared_ptr<Grid> grid) { m_grid = grid; }
 
 std::shared_ptr<Grid> Proxy::get_grid() { return m_grid; }
 

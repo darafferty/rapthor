@@ -402,10 +402,9 @@ BOOST_AUTO_TEST_CASE(custom_factors) {
                  data_aterm.data() + timestep_size * 5, 4, aterm_5678);
 }
 
-// TODO: Fix shift in w-tiling and add WMode::kWTiling test.
 BOOST_DATA_TEST_CASE(shift,
-                     boost::unit_test::data::make({WMode::kNeither,
-                                                   WMode::kWStacking}),
+                     boost::unit_test::data::make(
+                         {WMode::kNeither, WMode::kWStacking, WMode::kWTiling}),
                      wmode) {
   const std::array<int, 2> kShift{10, 20};
 

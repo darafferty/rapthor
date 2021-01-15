@@ -122,7 +122,6 @@ void DegridderBufferImpl::flush() {
 
   // Run degridding
   m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Start();
-  proxy.set_grid(*m_bufferset.get_grid());
   proxy.degridding(*plan, m_bufferset.get_w_step(), m_shift,
                    m_bufferset.get_cell_size(), m_bufferset.get_kernel_size(),
                    subgridsize, m_frequencies, m_bufferVisibilities,

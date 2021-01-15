@@ -4,7 +4,6 @@
 #include <complex>
 #include <algorithm>
 #include <vector>
-#include <iostream>
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -12,6 +11,7 @@
 
 #include "common/Types.h"
 #include "common/Index.h"
+#include "Math.h"
 
 #include "idg-fft.h"
 
@@ -100,9 +100,13 @@ int next_composite(int n) {
 
 void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
                                  int wtile_size, float image_size, float w_step,
-                                 int nr_tiles, int *tile_ids,
+                                 const float *shift, int nr_tiles,
+                                 int *tile_ids,
                                  idg::Coordinate *tile_coordinates,
                                  idg::float2 *tiles, idg::float2 *grid) {
+  const float image_size_shift =
+      image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
+
   float max_abs_w = 0.0;
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate &coordinate = tile_coordinates[i];
@@ -113,7 +117,7 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
   int padded_tile_size = wtile_size + subgrid_size;
 
   int max_tile_size = next_composite(
-      padded_tile_size + int(ceil(max_abs_w * image_size * image_size)));
+      padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
 
   std::vector<idg::float2> tile_buffer(max_tile_size * max_tile_size *
                                        NR_POLARIZATIONS);
@@ -121,8 +125,9 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate &coordinate = tile_coordinates[i];
     float w = (coordinate.z + 0.5f) * w_step;
-    int w_padded_tile_size = next_composite(
-        padded_tile_size + int(ceil(std::abs(w) * image_size * image_size)));
+    int w_padded_tile_size =
+        next_composite(padded_tile_size +
+                       int(ceil(std::abs(w) * image_size_shift * image_size)));
     int w_padding = w_padded_tile_size - padded_tile_size;
     int w_padding2 = w_padding / 2;
     size_t current_buffer_size =
@@ -160,12 +165,9 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
     for (int y = 0; y < w_padded_tile_size; y++) {
       for (int x = 0; x < w_padded_tile_size; x++) {
         // Compute phase
-        const float l = (y - (w_padded_tile_size / 2)) * cell_size;
-        const float m = (x - (w_padded_tile_size / 2)) * cell_size;
-        // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-        // accurately for small values of l and m
-        const float tmp = (l * l) + (m * m);
-        const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
+        const float l = (x - (w_padded_tile_size / 2)) * cell_size;
+        const float m = (y - (w_padded_tile_size / 2)) * cell_size;
+        const float n = compute_n(l, -m, shift);
         const float phase = -2 * M_PI * n * w;
 
         // Compute phasor

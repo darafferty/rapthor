@@ -202,15 +202,18 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   m_cell_size = cell_size;
   m_image_size = m_cell_size * m_padded_size;
 
+  const float image_size_shift =
+      m_image_size + 2 * std::max(std::abs(shiftl), std::abs(shiftm));
+
   // this cuts the w kernel approximately at the 1% level
-  const float max_w_size = max_w * m_image_size * m_image_size;
+  const float max_w_size = max_w * image_size_shift * m_image_size;
 
   int nr_w_layers;
   float w_kernel_size;
 
   if (m_proxy->supports_wtiling()) {
     w_kernel_size = 8;
-    m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
+    m_w_step = 2 * w_kernel_size / (image_size_shift * m_image_size);
     nr_w_layers = 1;
     m_apply_wstack_correction = false;
   } else if (m_proxy->supports_wstacking()) {
@@ -219,14 +222,13 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     // still needs a bit more thinking, and better motivation.
     // but for now does something reasonable
     w_kernel_size = std::max(8, int(std::round(2 * std::sqrt(max_w_size))));
-    m_w_step = 2 * w_kernel_size / (m_image_size * m_image_size);
+    m_w_step = 2 * w_kernel_size / (image_size_shift * m_image_size);
     nr_w_layers = std::ceil(max_w / m_w_step);
 
     // restrict nr w layers
     if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
-
     m_w_step = max_w / nr_w_layers;
-    w_kernel_size = 0.5 * m_w_step * m_image_size * m_image_size;
+    w_kernel_size = 0.5 * m_w_step * image_size_shift * m_image_size;
     m_apply_wstack_correction = true;
   } else {
     w_kernel_size = max_w_size;
@@ -266,7 +268,8 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 
   m_grid.reset(new Grid(nr_w_layers, 4, m_padded_size, m_padded_size));
   m_grid->zero();
-  m_proxy->set_grid(m_grid);
+  m_proxy->set_grid(m_grid, m_subgridsize, m_image_size, m_w_step,
+                    m_shift.data());
 
   m_taper_subgrid.resize(m_subgridsize);
   m_taper_grid.resize(m_padded_size);

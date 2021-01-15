@@ -50,14 +50,13 @@ class InstanceCPU : public KernelsInstance {
   void run_calibrate(int nr_subgrids, int grid_size, int subgrid_size,
                      float image_size, float w_step, const float *shift,
                      int max_nr_timesteps, int nr_channels, int nr_terms,
-                     int nr_stations, int nr_time_slots,
-                     const idg::UVW<float> *uvw, const float *wavenumbers,
-                     idg::float2 *visibilities, const float *weights,
-                     const idg::float2 *aterm,
-                     const idg::float2 *aterm_derivative,
-                     const int *aterms_indices, const idg::Metadata *metadata,
-                     const idg::float2 *subgrid, const idg::float2 *phasors,
-                     double *hessian, double *gradient, double *residual);
+                     int nr_stations, int nr_time_slots, const UVW<float> *uvw,
+                     const float *wavenumbers, float2 *visibilities,
+                     const float *weights, const float2 *aterm,
+                     const float2 *aterm_derivative, const int *aterms_indices,
+                     const Metadata *metadata, const float2 *subgrid,
+                     const float2 *phasors, double *hessian, double *gradient,
+                     double *residual);
 
   void run_calibrate_hessian_vector_product1(
       const int station_nr,
@@ -102,25 +101,29 @@ class InstanceCPU : public KernelsInstance {
                                          void *subgrid);
 
   void run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
-                                float image_size, float w_step, int nr_wtiles,
-                                void *tile_ids, void *tile_coordinates,
-                                void *grid);
+                                float image_size, float w_step,
+                                const float *shift, int nr_tiles, int *tile_ids,
+                                idg::Coordinate *tile_coordinates,
+                                std::complex<float> *grid);
 
   void run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                      float image_size, float w_step,
-                                     int nr_tiles, void *tile_ids,
-                                     void *tile_coordinates, void *grid);
+                                     const float *shift, int nr_tiles,
+                                     int *tile_ids,
+                                     Coordinate *tile_coordinates,
+                                     std::complex<float> *grid);
 
   void run_adder_wtiles(unsigned int nr_subgrids, unsigned int grid_size,
                         unsigned int subgrid_size, float image_size,
-                        float w_step, int subgrid_offset,
+                        float w_step, const float *shift, int subgrid_offset,
                         WTileUpdateSet &wtile_flush_set, void *metadata,
-                        void *subgrid, void *grid);
+                        void *subgrid, std::complex<float> *grid);
 
   void run_splitter_wtiles(int nr_subgrids, int grid_size, int subgrid_size,
-                           float image_size, float w_step, int subgrid_offset,
+                           float image_size, float w_step, const float *shift,
+                           int subgrid_offset,
                            WTileUpdateSet &wtile_initialize_set, void *metadata,
-                           void *subgrid, void *grid);
+                           void *subgrid, std::complex<float> *grid);
 
   bool has_adder_wstack() { return (function_adder_wstack != nullptr); }
 
@@ -137,7 +140,6 @@ class InstanceCPU : public KernelsInstance {
   }
 
   virtual void init_wtiles(int subgrid_size);
-  virtual void reset_wtiles() { m_wtiles_buffer.free(); }
 
  protected:
   void compile(Compiler compiler, Compilerflags flags);

@@ -52,11 +52,9 @@ std::unique_ptr<Plan> CPU::make_plan(
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
-  if (supports_wtiling() && options.w_step != 0.0) {
-    float image_size = grid_size * cell_size;
-    init_wtiles(grid_size, subgrid_size, image_size, options.w_step);
+  if (supports_wtiling() && options.w_step != 0.0 &&
+      m_wtiles.get_wtile_buffer_size()) {
     options.nr_w_layers = INT_MAX;
-
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
                  uvw, baselines, aterms_offsets, m_wtiles, options));
@@ -67,14 +65,17 @@ std::unique_ptr<Plan> CPU::make_plan(
   }
 }
 
-void CPU::set_grid(Grid &grid) {
+void CPU::set_grid(std::shared_ptr<Grid> grid) {
   Proxy::set_grid(grid);
   m_wtiles = WTiles();
 }
 
-void CPU::set_grid(std::shared_ptr<Grid> grid) {
-  Proxy::set_grid(grid);
-  m_wtiles = WTiles();
+void CPU::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
+                   float image_size, float w_step, const float *shift) {
+  Proxy::set_grid(grid, subgrid_size, image_size, w_step, shift);
+  m_wtiles = WTiles(kernel::cpu::InstanceCPU::kNrWTiles,
+                    kernel::cpu::InstanceCPU::kWTileSize);
+  kernels.init_wtiles(subgrid_size);
 }
 
 std::shared_ptr<Grid> CPU::get_grid() {
@@ -82,8 +83,7 @@ std::shared_ptr<Grid> CPU::get_grid() {
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
     kernels.run_adder_wtiles_to_grid(
-        m_wtiles.get_grid_size(), m_wtiles.get_subgrid_size(),
-        m_wtiles.get_image_size(), m_wtiles.get_w_step(),
+        m_grid_size, m_subgrid_size, m_image_size, m_w_step, m_shift,
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
   }
@@ -207,7 +207,7 @@ void CPU::do_gridding(
       void *uvw_ptr = uvw.data(0, 0);
       void *visibilities_ptr = visibilities.data(0, 0, 0);
       void *subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      void *grid_ptr = grid.data();
+      std::complex<float> *grid_ptr = grid.data();
 
       // Gridder kernel
       kernels.run_gridder(
@@ -227,7 +227,7 @@ void CPU::do_gridding(
       } else if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
         kernels.run_adder_wtiles(current_nr_subgrids, grid_size, subgrid_size,
-                                 image_size, w_step, subgrid_offset,
+                                 image_size, w_step, shift_ptr, subgrid_offset,
                                  wtile_flush_set, metadata_ptr, subgrids_ptr,
                                  grid_ptr);
       } else {
@@ -327,7 +327,7 @@ void CPU::do_degridding(
       void *uvw_ptr = uvw.data(0, 0);
       void *visibilities_ptr = visibilities.data(0, 0, 0);
       void *subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      void *grid_ptr = grid.data();
+      std::complex<float> *grid_ptr = grid.data();
 
       // Splitter kernel
       if (w_step == 0.0) {
@@ -336,7 +336,7 @@ void CPU::do_degridding(
       } else if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
         kernels.run_splitter_wtiles(current_nr_subgrids, grid_size,
-                                    subgrid_size, image_size, w_step,
+                                    subgrid_size, image_size, w_step, shift_ptr,
                                     subgrid_offset, wtile_initialize_set,
                                     metadata_ptr, subgrids_ptr, grid_ptr);
       } else {
@@ -429,57 +429,21 @@ void CPU::do_calibrate_init(
     WTileUpdateSet wtile_initialize_set =
         plans[antenna_nr]->get_wtile_initialize_set();
 
-    // initialize wtiles
-    // the front entry of the wtile_initialize_set will be initialized, but it
-    // will remain in the queue
-    //
-    if (plans[antenna_nr]->get_use_wtiles()) {
-      WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
-      kernels.run_splitter_wtiles_from_grid(
-          grid_size, subgrid_size, image_size, w_step,
-          wtile_initialize_info.wtile_ids.size(),
-          wtile_initialize_info.wtile_ids.data(),
-          wtile_initialize_info.wtile_coordinates.data(), grid.data());
-    }
-
     // Get data pointers
     const float *shift_ptr = shift.data();
     void *metadata_ptr = (void *)plans[antenna_nr]->get_metadata_ptr();
     void *subgrids_ptr = subgrids_.data();
-    void *grid_ptr = grid.data();
+    std::complex<float> *grid_ptr = grid.data();
 
     // Splitter kernel
     if (w_step == 0.0) {
       kernels.run_splitter(nr_subgrids, grid_size, subgrid_size, metadata_ptr,
                            subgrids_ptr, grid_ptr);
     } else if (plans[antenna_nr]->get_use_wtiles()) {
-      for (int subgrid_index = 0; subgrid_index < nr_subgrids;) {
-        if (wtile_initialize_set.front().subgrid_index == subgrid_index) {
-          wtile_initialize_set.pop_front();
-          WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
-          kernels.run_splitter_wtiles_from_grid(
-              grid_size, subgrid_size, image_size, w_step,
-              wtile_initialize_info.wtile_ids.size(),
-              wtile_initialize_info.wtile_ids.data(),
-              wtile_initialize_info.wtile_coordinates.data(), grid_ptr);
-        }
-
-        int nr_subgrids_ = nr_subgrids - subgrid_index;
-        if (wtile_initialize_set.front().subgrid_index - subgrid_index <
-            nr_subgrids_) {
-          nr_subgrids_ =
-              wtile_initialize_set.front().subgrid_index - subgrid_index;
-        }
-
-        kernels.run_splitter_subgrids_from_wtiles(
-            nr_subgrids_, grid_size, subgrid_size,
-            &static_cast<Metadata *>(metadata_ptr)[subgrid_index],
-            &static_cast<std::complex<float> *>(
-                subgrids_ptr)[subgrid_index * subgrid_size * subgrid_size *
-                              NR_CORRELATIONS]);
-
-        subgrid_index += nr_subgrids_;
-      }
+      kernels.run_splitter_wtiles(nr_subgrids, grid_size, subgrid_size,
+                                  image_size, w_step, shift_ptr,
+                                  0 /* subgrid_offset */, wtile_initialize_set,
+                                  metadata_ptr, subgrids_ptr, grid_ptr);
     } else {
       kernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
                                   metadata_ptr, subgrids_ptr, grid_ptr);
@@ -731,16 +695,6 @@ void CPU::do_transform(DomainAtoDomainB direction,
     std::cerr << __func__ << " caught unknown exception" << std::endl;
   }
 }  // end transform
-
-void CPU::init_wtiles(int grid_size, int subgrid_size, float image_size,
-                      float w_step) {
-  if (!m_wtiles.get_wtile_buffer_size()) {
-    m_wtiles =
-        WTiles(kernel::cpu::InstanceCPU::kNrWTiles, grid_size, subgrid_size,
-               kernel::cpu::InstanceCPU::kWTileSize, image_size, w_step);
-    kernels.init_wtiles(subgrid_size);
-  }
-}
 
 void CPU::do_compute_avg_beam(
     const unsigned int nr_antennas, const unsigned int nr_channels,

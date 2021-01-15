@@ -185,7 +185,6 @@ void GridderBufferImpl::flush() {
 
   // Pass the grid to the proxy
   proxy::Proxy &proxy = m_bufferset.get_proxy();
-  proxy.set_grid(*m_bufferset.get_grid());
 
   m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 

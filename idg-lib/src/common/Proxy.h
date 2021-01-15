@@ -227,8 +227,11 @@ class Proxy {
                                               size_t nr_correlations,
                                               size_t height, size_t width);
 
-  virtual void set_grid(Grid& grid);
-  virtual void set_grid(std::shared_ptr<Grid> grid);
+  virtual void set_grid(std::shared_ptr<Grid> grid) { m_grid = grid; }
+
+  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
+                        float image_size, float w_step, const float* shift);
+
   virtual std::shared_ptr<Grid> get_grid();
 
   //! Method W-tiling
@@ -364,6 +367,11 @@ class Proxy {
   virtual bool do_supports_wtiles() { return false; }
 
   std::shared_ptr<Grid> m_grid = nullptr;
+  int m_grid_size;
+  int m_subgrid_size;
+  float m_image_size;
+  float m_w_step;
+  float m_shift[3];
 
   Report report;
 

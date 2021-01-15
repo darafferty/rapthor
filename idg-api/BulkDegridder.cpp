@@ -133,7 +133,6 @@ void BulkDegridderImpl::compute_visibilities(
 
   // Run degridding
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Start();
-  proxy.set_grid(bufferset_.get_grid());
   proxy.degridding(*plan, bufferset_.get_w_step(), shift_,
                    bufferset_.get_cell_size(), bufferset_.get_kernel_size(),
                    subgridsize, frequencies_, bufferVisibilities, bufferUVW,
