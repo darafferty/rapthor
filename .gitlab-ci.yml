@@ -131,8 +131,8 @@ idg-integration-docker:
     - cd build
     # Run in verbose mode -VV as long as it's not properly working
     - ctest -L integration
-    # Test the h5parm writer
-    - cd $HOME_DIR/scripts/test
+    # Test idg-cal scripts
+    - cd $HOME_DIR/idg-cal/unit_tests
     - pytest .
   rules:
     - when: on_success
