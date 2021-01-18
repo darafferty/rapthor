@@ -622,6 +622,7 @@ int Plan::get_nr_timesteps(int baseline, int n) const {
 }
 
 int Plan::get_max_nr_timesteps_subgrid() const {
+  if (!metadata.size()) return 0;
   auto max_nr_timesteps = metadata[0].nr_timesteps;
   for (const Metadata& m : metadata) {
     if (m.nr_timesteps > max_nr_timesteps) {

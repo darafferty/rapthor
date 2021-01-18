@@ -44,10 +44,10 @@ option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
 
 if(${CMAKE_VERSION} VERSION_GREATER "3.12.4")
 find_package(Python REQUIRED)
-set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/dist-packages/idg)
+set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/idg)
 else()
 find_package(PythonInterp REQUIRED)
-set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages/idg)
+set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/idg)
 endif()
 
 if (BUILD_TESTING)
@@ -58,6 +58,7 @@ add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
 add_subdirectory("idg-bin")
 add_subdirectory("idg-api")
+add_subdirectory("idg-cal")
 
 # Write environment-module
 configure_file (

@@ -21,7 +21,9 @@ class H5ParmWriter:
     radio astronomical data.
     """
 
-    def __init__(self, file_name, solution_set_name="sol000", attributes=None):
+    def __init__(
+        self, file_name, solution_set_name="sol000", attributes=None, overwrite=True
+    ):
         """
         Initialize H5Parmwriter. The file, specified by file_name, should not yet
         exist. If it does, an error is thrown.
@@ -36,7 +38,7 @@ class H5ParmWriter:
             Dictionary containing attributes for the sol set
         """
 
-        if os.path.isfile(file_name):
+        if os.path.isfile(file_name) and not overwrite:
             raise ValueError(
                 f"File {file_name} already exists, choose a different name!"
             )
@@ -161,11 +163,15 @@ class H5ParmWriter:
 
         hdf_location = self.solution_set + "/" + name
         self.h5file[self.solution_set].create_group(name)
-        self.h5file[hdf_location].attrs["TITLE"] = str.encode(type_name)
+        self.h5file[hdf_location].attrs["TITLE"] = np.asarray(
+            type_name, dtype=f"<S{len(type_name)}"
+        )
         self.__write_version_stamp(self.solution_set + "/" + name)
 
+        # Convert axes labels to S-type
         axes_labels = list(axes.keys())
         axes_labels = ",".join(axes_labels).encode()
+        axes_labels = np.asarray(axes_labels, dtype=f"<S{len(axes_labels)}")
         axes_shape = tuple(axes.values())
 
         dtype = values.dtype if values is not None else dtype
@@ -203,7 +209,9 @@ class H5ParmWriter:
         self.h5file[hdf_location + "/weight"][:] = weights
 
         if history is not None:
-            self.h5file[hdf_location + "/val"].attrs["HISTORY000"] = str.encode(history)
+            self.h5file[hdf_location + "/val"].attrs["HISTORY000"] = np.asarray(
+                history, dtype=f"<S{len(history)}"
+            )
 
     def fill_solution_table(self, name, values, offset=None):
         """
@@ -315,7 +323,7 @@ class H5ParmWriter:
             if hdf_location + "/" + axis not in self.h5file:
                 # Create axis meta data set
                 self.h5file[hdf_location].create_dataset(
-                    axis, meta_data.size, data_type_h5
+                    axis, meta_data.shape, data_type_h5
                 )
                 self.h5file[hdf_location + "/" + axis][:] = meta_data.astype(
                     data_type_h5
@@ -357,7 +365,9 @@ class H5ParmWriter:
         hdf_location : str
             Location where the version stamp will be added.
         """
-        self.h5file[hdf_location].attrs["h5parm_version"] = str.encode(H5PARM_VERSION)
+        self.h5file[hdf_location].attrs["h5parm_version"] = np.asarray(
+            H5PARM_VERSION, dtype=f"<S{len(H5PARM_VERSION)}"
+        )
 
     def __write_attributes(self, hdf_location, attributes, overwrite):
         """
@@ -382,7 +392,9 @@ class H5ParmWriter:
             else:
                 if isinstance(value, str):
                     # Byte encoded string
-                    self.h5file[hdf_location].attrs[key] = str.encode(value)
+                    self.h5file[hdf_location].attrs[key] = np.asarray(
+                        value, dtype=f"<S{len(value)}"
+                    )
                 elif isinstance(value, np.ndarray) and value.dtype.type == np.str_:
                     # Convert to S string
                     data_type_h5 = re.sub(r"[a-zA-Z]", "S", value.dtype.str)
