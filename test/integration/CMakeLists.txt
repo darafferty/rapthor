@@ -5,7 +5,7 @@
 set(INTEGRATION_TESTS
   tSinglePointSource
   tGridDegrid
-  tIDGCalDPStep.sh
+  tIDGCalDPStep
 )
 
 # Add integration tests to "integration", can be invoked with
