@@ -12,7 +12,6 @@ import subprocess
 from astropy.time import Time
 import dateutil.parser
 from rapthor.lib import miscellaneous as misc
-import shutil
 
 
 def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
@@ -210,7 +209,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         else:
             mssrc = msin
         if not os.path.exists(msout):
-            shutil.copytree(mssrc, msout)
+            # Use subprocess to call 'cp' to ensure that the copied version has the
+            # default permissions (e.g., so it's not read only)
+            subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -281,7 +282,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         else:
             mssrc = msin
         if not os.path.exists(msout):
-            shutil.copytree(mssrc, msout)
+            # Use subprocess to call 'cp' to ensure that the copied version has the
+            # default permissions (e.g., so it's not read only)
+            subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -384,7 +387,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         else:
             mssrc = msin
         if not os.path.exists(msout):
-            shutil.copytree(mssrc, msout)
+            # Use subprocess to call 'cp' to ensure that the copied version has the
+            # default permissions (e.g., so it's not read only)
+            subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
