@@ -66,6 +66,7 @@ class IDGCalDPStep(dppp.DPStep):
         prefix : str
             Prefix to be used when reading the parset.
         """
+        self.proxytype = parset.getString(prefix + "proxytype", "CPU")
 
         solint = parset.getInt(prefix + "solint", 0)
         if solint:
@@ -89,17 +90,11 @@ class IDGCalDPStep(dppp.DPStep):
         self.padding = parset.getFloat(prefix + "padding", 1.2)
 
         # TODO: should be refactored once script is up and running
-        # TODO: check these carefully
         self.nr_timesteps = self.solution_interval_amplitude
         self.nr_timesteps_per_slot = self.solution_interval_phase
         self.nr_timeslots = (
             self.solution_interval_amplitude // self.solution_interval_phase
         )
-
-        # WAS PREVIOUSLY:
-        # self.nr_timeslots = 40
-        # self.nr_timesteps_per_slot = 4
-        # self.nr_timesteps = self.nr_timeslots * self.nr_timesteps_per_slot
 
         # Number of correlations
         self.nr_correlations = parset.getInt(prefix + "nrcorrelations", 4)
@@ -179,9 +174,17 @@ class IDGCalDPStep(dppp.DPStep):
         self.baselines["station1"] = station1[self.auto_corr_mask]
         self.baselines["station2"] = station2[self.auto_corr_mask]
 
-        # TODO: check what to do with last block of times
-        self.time_array_ampl = self.time_array[:: self.solution_interval_amplitude]
-        self.time_array_phase = self.time_array[:: self.solution_interval_phase]
+        # Get centre times per amplitude/phase solution interval
+        self.time_array_ampl = self.time_array[
+            self.solution_interval_amplitude // 2 :: self.solution_interval_amplitude
+        ]
+        self.time_array_phase = self.time_array[
+            self.solution_interval_phase // 2 :: self.solution_interval_phase
+        ]
+
+        # Get the final time, dictated by amplitude solution interval, and cut-off time_array_phase accordingly
+        t_max = self.time_array[:: self.solution_interval_amplitude][-1]
+        self.time_array_phase = self.time_array_phase[self.time_array_phase < t_max]
 
         # Axes data
         axes_labels = ["ant", "time", "dir"]
@@ -214,9 +217,12 @@ class IDGCalDPStep(dppp.DPStep):
             self.info().antenna_names(), self.info().antenna_positions()
         )
 
-        # initialize proxy
-        # self.proxy = idg.HybridCUDA.GenericOptimized(self.nr_correlations, self.subgrid_size)
-        self.proxy = idg.CPU.Optimized(self.nr_correlations, self.subgrid_size)
+        if self.proxytype.lower() == "gpu":
+            self.proxy = idg.HybridCUDA.GenericOptimized(
+                self.nr_correlations, self.subgrid_size
+            )
+        else:
+            self.proxy = idg.CPU.Optimized(self.nr_correlations, self.subgrid_size)
 
         # read image dimensions from fits header
         h = fits.getheader(self.imagename)
