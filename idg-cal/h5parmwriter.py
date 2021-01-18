@@ -21,7 +21,9 @@ class H5ParmWriter:
     radio astronomical data.
     """
 
-    def __init__(self, file_name, solution_set_name="sol000", attributes=None):
+    def __init__(
+        self, file_name, solution_set_name="sol000", attributes=None, overwrite=True
+    ):
         """
         Initialize H5Parmwriter. The file, specified by file_name, should not yet
         exist. If it does, an error is thrown.
@@ -36,10 +38,12 @@ class H5ParmWriter:
             Dictionary containing attributes for the sol set
         """
 
-        if os.path.isfile(file_name):
+        if os.path.isfile(file_name) and not overwrite:
             raise ValueError(
                 f"File {file_name} already exists, choose a different name!"
             )
+        elif os.path.isfile(file_name):
+            os.remove(file_name)
 
         # Create file for writing
         self.h5file = h5py.File(file_name, "w")
