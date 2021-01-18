@@ -42,8 +42,6 @@ class H5ParmWriter:
             raise ValueError(
                 f"File {file_name} already exists, choose a different name!"
             )
-        elif os.path.isfile(file_name):
-            os.remove(file_name)
 
         # Create file for writing
         self.h5file = h5py.File(file_name, "w")

@@ -154,7 +154,10 @@ class IDGCalDPStep(dppp.DPStep):
 
         # Extract the time info and cast into a time array
         tstart = self.info().start_time()
-        nsteps = self.info().ntime()
+        # Time array should match "amplitude time blocks"
+        nsteps = (
+            self.info().ntime() // self.solution_interval_amplitude
+        ) * self.solution_interval_amplitude
         dt = self.info().time_interval()
         self.time_array = np.linspace(
             tstart, tstart + dt * nsteps, num=nsteps, endpoint=False
@@ -174,17 +177,15 @@ class IDGCalDPStep(dppp.DPStep):
         self.baselines["station1"] = station1[self.auto_corr_mask]
         self.baselines["station2"] = station2[self.auto_corr_mask]
 
-        # Get centre times per amplitude/phase solution interval
-        self.time_array_ampl = self.time_array[
-            self.solution_interval_amplitude // 2 :: self.solution_interval_amplitude
-        ]
-        self.time_array_phase = self.time_array[
-            self.solution_interval_phase // 2 :: self.solution_interval_phase
-        ]
-
-        # Get the final time, dictated by amplitude solution interval, and cut-off time_array_phase accordingly
-        t_max = self.time_array[:: self.solution_interval_amplitude][-1]
-        self.time_array_phase = self.time_array_phase[self.time_array_phase < t_max]
+        # Get time centroids per amplitude/phase solution interval
+        self.time_array_ampl = (
+            self.time_array[:: self.solution_interval_amplitude]
+            + (self.solution_interval_amplitude - 1) * dt / 2.0
+        )
+        self.time_array_phase = (
+            self.time_array[:: self.solution_interval_phase]
+            + (self.solution_interval_phase - 1) * dt / 2.0
+        )
 
         # Axes data
         axes_labels = ["ant", "time", "dir"]
