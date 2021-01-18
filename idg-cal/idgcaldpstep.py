@@ -5,12 +5,12 @@ import dppp
 import numpy as np
 import idg
 import idg.util
+from idg.h5parmwriter import H5ParmWriter
 import astropy.io.fits as fits
 import scipy.linalg
 import time
 from datetime import datetime
 import logging
-from h5parmwriter import H5ParmWriter
 
 
 class IDGCalDPStep(dppp.DPStep):
@@ -147,6 +147,7 @@ class IDGCalDPStep(dppp.DPStep):
         self.h5parm_solsetname = parset.getString(
             prefix + "h5parmsolset", "coefficients000"
         )
+        self.h5parm_overwrite = parset.getBool(prefix + "h5parmoverwrite", True)
 
         self.w_step = parset.getFloat(prefix + "wstep", 400.0)
 
@@ -203,7 +204,9 @@ class IDGCalDPStep(dppp.DPStep):
 
         # Initialize h5parm file
         self.h5writer = H5ParmWriter(
-            self.h5parm_fname, solution_set_name=self.h5parm_solsetname
+            self.h5parm_fname,
+            solution_set_name=self.h5parm_solsetname,
+            overwrite=self.h5parm_overwrite,
         )
 
         # Add antenna/station info
@@ -231,6 +234,7 @@ class IDGCalDPStep(dppp.DPStep):
             self.h5writer,
             "amplitude",
             axes_data_amplitude,
+            self.info().antenna_names(),
             self.time_array_ampl,
             self.image_size,
             self.subgrid_size,
@@ -239,6 +243,7 @@ class IDGCalDPStep(dppp.DPStep):
             self.h5writer,
             "phase",
             axes_data_phase,
+            self.info().antenna_names(),
             self.time_array_phase,
             self.image_size,
             self.subgrid_size,
@@ -622,6 +627,7 @@ def init_h5parm_solution_table(
     h5parm_object,
     soltab_type,
     axes_info,
+    antenna_names,
     time_array,
     image_size,
     subgrid_size,
@@ -640,6 +646,9 @@ def init_h5parm_solution_table(
         dtype=np.float_,
         history=f'CREATED at {datetime.today().strftime("%Y/%m/%d")}; {history}',
     )
+
+    # Set info for the "ant" axis
+    h5parm_object.create_axis_meta_data(soltab_name, "ant", meta_data=antenna_names)
 
     # Set info for the "dir" axis
     h5parm_object.create_axis_meta_data(
