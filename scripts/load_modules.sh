@@ -17,3 +17,5 @@ module load cuda101/toolkit
 module load casacore/3.3.0-gcc-8.3.0
 module load everybeam/LATEST-gcc-8.3.0
 module load aoflagger/LATEST-gcc-8.3.0
+module load dp3/LATEST-gcc-8.3.0
+

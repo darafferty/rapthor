@@ -168,19 +168,10 @@ idg-integration-das:
     - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/wsclean/bin
-    # Install dp3
-    - mkdir -p ~/opt/dp3 && cd ~/opt/dp3 && rm -rf *
-    - git clone https://github.com/lofar-astron/DP3.git src
-    # TODO: needs to be checked out at master to to get pybindings working
-    - cd src && git checkout v5.0 && cd ..
-    - mkdir build && cd build
-    - cmake -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="${AOFLAGGER_ROOT_DIR};${EVERYBEAM_ROOT_DIR};~/opt/idg" -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j4
-    - export PATH=$PATH:~/opt/dp3/bin
     # Exported, since integration test tIDGCalDPSteps needs this
-    - export DP3_LIB=~/opt/dp3/lib64
+    # - export DP3_LIB=~/opt/dp3/lib64
     # Extend the LD_LIBRARY_PATH
-    - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
+    # - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
   script:
     - export OPENBLAS_NUM_THREADS=1
     - cd ~/opt/idg/build
