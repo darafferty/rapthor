@@ -51,11 +51,6 @@ class Generic : public CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
-  virtual void do_transform(DomainAtoDomainB direction,
-                            Array3D<std::complex<float>>& grid) override;
-
-  powersensor::PowerSensor* hostPowerSensor;
-
   void run_gridding(
       const Plan& plan, const float w_step, const Array1D<float>& shift,
       const float cell_size, const unsigned int kernel_size,
@@ -79,10 +74,7 @@ class Generic : public CUDA {
       const Array2D<float>& spheroidal);
 
  public:
-  virtual void set_grid(std::shared_ptr<Grid> grid);
-  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step,
-                        const float* shift) override;
+  virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
   virtual std::shared_ptr<Grid> get_grid() override;
 

@@ -31,12 +31,11 @@ class GenericOptimized : public cuda::CUDA {
 
   virtual bool supports_avg_aterm_correction() { return true; }
 
-  virtual void set_grid(std::shared_ptr<Grid> grid);
+  virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
-  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step,
-                        const float* shift) override;
   virtual std::shared_ptr<Grid> get_grid() override;
+
+  virtual void init_wtiles(float subgrid_size) override;
 
  private:
   virtual void do_gridding(
@@ -65,7 +64,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
-  virtual void do_transform(DomainAtoDomainB direction, Grid& grid) override;
+  virtual void do_transform(DomainAtoDomainB direction) override;
 
   void run_gridding(
       const Plan& plan, const float w_step, const Array1D<float>& shift,
@@ -132,7 +131,6 @@ class GenericOptimized : public cuda::CUDA {
       Plan::Options options) override;
 
  protected:
-  powersensor::PowerSensor* hostPowerSensor;
   idg::proxy::cpu::CPU* cpuProxy;
 
   /*

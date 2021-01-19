@@ -249,8 +249,7 @@ void run() {
   // Iterate all cycles
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
     // Set grid
-    float w_step = 0.0;
-    proxy.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
+    proxy.set_grid(grid);
 
     // Iterate all time blocks
     for (unsigned time_offset = 0; time_offset < total_nr_timesteps;
@@ -329,8 +328,8 @@ void run() {
     clog << ">>> Run fft" << endl;
     double runtime_fft = -omp_get_wtime();
     if (!disable_fft) {
-      proxy.transform(idg::FourierDomainToImageDomain, *grid);
-      proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+      proxy.transform(idg::FourierDomainToImageDomain);
+      proxy.transform(idg::ImageDomainToFourierDomain);
     }
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;

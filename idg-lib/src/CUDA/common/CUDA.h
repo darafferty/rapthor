@@ -61,12 +61,16 @@ class CUDA : public Proxy {
       const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam) override;
 
+  virtual void do_transform(DomainAtoDomainB direction) override;
+
   void cleanup();
 
  protected:
   void init_devices();
   void free_devices();
   static ProxyInfo default_info();
+
+  powersensor::PowerSensor* hostPowerSensor;
 
   struct {
     unsigned int nr_stations = 0;

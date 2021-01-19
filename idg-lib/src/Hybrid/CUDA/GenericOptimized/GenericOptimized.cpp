@@ -31,9 +31,6 @@ GenericOptimized::GenericOptimized() : CUDA(default_info()) {
   // Initialize cpu proxy
   cpuProxy = new idg::proxy::cpu::Optimized();
 
-  // Initialize host PowerSensor
-  hostPowerSensor = get_power_sensor(sensor_host);
-
   omp_set_nested(true);
 
   cuProfilerStart();
@@ -41,21 +38,24 @@ GenericOptimized::GenericOptimized() : CUDA(default_info()) {
 
 // Destructor
 GenericOptimized::~GenericOptimized() {
+#if defined(DEBUG)
+  std::cout << "GenericOptimized::" << __func__ << std::endl;
+#endif
+
   delete cpuProxy;
-  delete hostPowerSensor;
   cuProfilerStop();
 }
 
 /*
  * FFT
  */
-void GenericOptimized::do_transform(DomainAtoDomainB direction, Grid& grid) {
+void GenericOptimized::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
   std::cout << "Transform direction: " << direction << std::endl;
 #endif
 
-  cpuProxy->transform(direction, grid);
+  cpuProxy->transform(direction);
 }  // end transform
 
 /*
@@ -182,10 +182,10 @@ void GenericOptimized::run_gridding(
         cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
                              metadata_ptr, h_subgrids, grid_ptr);
       } else if (plan.get_use_wtiles()) {
-        cpuKernels.run_adder_wtiles(current_nr_subgrids, grid_size,
-                                    subgrid_size, image_size, w_step, m_shift,
-                                    subgrid_offset, wtile_flush_set,
-                                    metadata_ptr, h_subgrids, grid_ptr);
+        cpuKernels.run_adder_wtiles(
+            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+            shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
+            h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
       } else {
         cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size,
@@ -472,7 +472,7 @@ void GenericOptimized::run_degridding(
       } else if (plan.get_use_wtiles()) {
         cpuKernels.run_splitter_wtiles(
             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            m_shift, subgrid_offset, wtile_initialize_set, metadata_ptr,
+            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
             h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
       } else {
@@ -725,9 +725,9 @@ void GenericOptimized::do_calibrate_init(
       WTileUpdateSet wtile_initialize_set =
           plans[antenna_nr]->get_wtile_initialize_set();
       cpuKernels.run_splitter_wtiles(
-          nr_subgrids, grid_size, subgrid_size, image_size, w_step, m_shift,
-          0 /* subgrid_offset */, wtile_initialize_set, metadata_ptr,
-          subgrids_ptr, grid_ptr);
+          nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+          shift.data(), 0 /* subgrid_offset */, wtile_initialize_set,
+          metadata_ptr, subgrids_ptr, grid_ptr);
     } else {
       cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
                                      metadata_ptr, subgrids_ptr, grid_ptr);
@@ -1064,24 +1064,20 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
 }
 
 void GenericOptimized::set_grid(std::shared_ptr<Grid> grid) {
-  // Set grid both for CUDA proxy and CPU Proxy
+  // Defer call to cpuProxy
   cpuProxy->set_grid(grid);
   CUDA::set_grid(grid);
 }
 
-void GenericOptimized::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                                float image_size, float w_step,
-                                const float* shift) {
-  // Set grid both for CUDA proxy and CPU Proxy
-  // cpuProxy manages the wtiles state
-  cpuProxy->set_grid(grid, subgrid_size, image_size, w_step, shift);
-  CUDA::set_grid(grid, subgrid_size, image_size, w_step, shift);
-}
-
 std::shared_ptr<Grid> GenericOptimized::get_grid() {
   // Defer call to cpuProxy
-  // cpuProxy manages the wtiles state
   return cpuProxy->get_grid();
+}
+
+void GenericOptimized::init_wtiles(float subgrid_size) {
+  // Defer call to cpuProxy
+  // cpuProxy manages the wtiles state
+  cpuProxy->init_wtiles(subgrid_size);
 }
 
 }  // namespace hybrid

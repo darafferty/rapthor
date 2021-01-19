@@ -158,7 +158,7 @@ class Proxy {
   void calibrate_finish();
 
   //! Applies (inverse) Fourier transform to grid
-  void transform(DomainAtoDomainB direction, Grid& grid);
+  void transform(DomainAtoDomainB direction);
 
   void transform(DomainAtoDomainB direction, std::complex<float>* grid,
                  unsigned int grid_nr_correlations, unsigned int grid_height,
@@ -227,12 +227,14 @@ class Proxy {
                                               size_t nr_correlations,
                                               size_t height, size_t width);
 
-  virtual void set_grid(std::shared_ptr<Grid> grid) { m_grid = grid; }
-
-  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step, const float* shift);
+  virtual void set_grid(std::shared_ptr<Grid> grid);
 
   virtual std::shared_ptr<Grid> get_grid();
+
+  virtual void init_wtiles(float subgrid_size){};
+
+  virtual void flush_wtiles(int subgrid_size, float image_size, float w_step,
+                            const Array1D<float>& shift){};
 
   //! Method W-tiling
   virtual std::unique_ptr<Plan> make_plan(
@@ -314,12 +316,7 @@ class Proxy {
       Array2D<float>& parameter_vector) {}
 
   //! Applyies (inverse) Fourier transform to grid
-  virtual void do_transform(DomainAtoDomainB direction, Grid& grid);
-
-  //! Applyies (inverse) Fourier transform to grid
-  // TODO: let every proxy implement the do_transform method.
-  virtual void do_transform(DomainAtoDomainB direction,
-                            idg::Array3D<std::complex<float>>& grid){};
+  virtual void do_transform(DomainAtoDomainB direction){};
 
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
@@ -367,11 +364,6 @@ class Proxy {
   virtual bool do_supports_wtiles() { return false; }
 
   std::shared_ptr<Grid> m_grid = nullptr;
-  int m_grid_size;
-  int m_subgrid_size;
-  float m_image_size;
-  float m_w_step;
-  float m_shift[3];
 
   Report report;
 

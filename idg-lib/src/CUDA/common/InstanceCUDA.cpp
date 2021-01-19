@@ -59,6 +59,10 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_nr, int device_id)
 
 // Destructor
 InstanceCUDA::~InstanceCUDA() {
+#if defined(DEBUG)
+  std::cout << __func__ << std::endl;
+#endif
+
   free_host_memory();
   free_device_memory();
   free_fft_plans();

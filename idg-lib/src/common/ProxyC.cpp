@@ -160,19 +160,13 @@ void Proxy_calibrate_hessian_vector_product2(
           antenna_nr, aterms_, aterm_derivatives_, parameter_vector_);
 }
 
-void Proxy_transform(Proxy* p, int direction, std::complex<float>* grid,
-                     unsigned int grid_nr_correlations,
-                     unsigned int grid_height, unsigned int grid_width) {
-  std::shared_ptr<idg::Grid> grid_ptr(
-      new idg::Grid(grid, 1, grid_nr_correlations, grid_height, grid_width));
+void Proxy_transform(Proxy* p, int direction) {
   if (direction != 0) {
     reinterpret_cast<idg::proxy::Proxy*>(p)->transform(
-        idg::ImageDomainToFourierDomain, grid, grid_nr_correlations,
-        grid_height, grid_width);
+        idg::ImageDomainToFourierDomain);
   } else {
     reinterpret_cast<idg::proxy::Proxy*>(p)->transform(
-        idg::FourierDomainToImageDomain, grid, grid_nr_correlations,
-        grid_height, grid_width);
+        idg::FourierDomainToImageDomain);
   }
 }
 
@@ -181,24 +175,30 @@ void Proxy_destroy(Proxy* p) { delete reinterpret_cast<idg::proxy::Proxy*>(p); }
 void* Proxy_allocate_grid(Proxy* p, unsigned int nr_correlations,
                           unsigned int grid_size) {
   const unsigned int nr_w_layers = 1;
-  auto grid_ptr = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(
+  auto grid = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(
       nr_w_layers, nr_correlations, grid_size, grid_size);
-
-  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr);
-  return grid_ptr->data();
+  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid);
+  return grid->data();
 }
 
-// TODO expose in header file, change arguments to ctypes only
-
-// void Proxy_set_grid(Proxy* p, idg::Grid& grid, subgrid_size, image_size,
-// w_step, shift) {
-//   std::shared_ptr<idg::Grid> grid_ptr(&grid);
-//   reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid_ptr, subgrid_size,
-//   image_size, w_step, shift);
-// }
-
-// void Proxy_get_grid(Proxy* p, void* ptr) {
-//   auto grid = reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
-//   memcpy(ptr, grid->data(), grid->bytes());
-// }
+void Proxy_set_grid(Proxy* p, std::complex<float>* grid_ptr,
+                    unsigned int nr_w_layers, unsigned int nr_correlations,
+                    unsigned int height, unsigned int width) {
+  std::shared_ptr<idg::Grid> grid = std::shared_ptr<idg::Grid>(
+      new idg::Grid(grid_ptr, nr_w_layers, nr_correlations, height, width));
+  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid);
 }
+
+void Proxy_get_grid(Proxy* p, std::complex<float>* grid_ptr,
+                    unsigned int nr_w_layers, unsigned int nr_correlations,
+                    unsigned int height, unsigned int width) {
+  std::shared_ptr<idg::Grid> grid =
+      reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
+  assert(grid->get_w_dim() == nr_w_layers);
+  assert(grid->get_z_dim() == nr_correlations);
+  assert(grid->get_y_dim() == height);
+  assert(grid->get_x_dim() == width);
+  memcpy(grid_ptr, grid->data(), grid->bytes());
+}
+
+}  // end extern "C"

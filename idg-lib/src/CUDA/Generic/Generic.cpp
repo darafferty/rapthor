@@ -18,75 +18,16 @@ Generic::Generic(ProxyInfo info) : CUDA(info) {
 #if defined(DEBUG)
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
-
-  // Initialize host PowerSensor
-  hostPowerSensor = get_power_sensor(sensor_host);
 }
 
 // Destructor
-Generic::~Generic() { delete hostPowerSensor; }
+Generic::~Generic() {
+#if defined(DEBUG)
+  std::cout << "Generic::" << __func__ << std::endl;
+#endif
+}
 
 /* High level routines */
-void Generic::do_transform(DomainAtoDomainB direction,
-                           Array3D<std::complex<float>>& grid) {
-#if defined(DEBUG)
-  std::cout << __func__ << std::endl;
-  std::cout << "Transform direction: " << direction << std::endl;
-#endif
-
-  // Constants
-  auto grid_size = grid.get_x_dim();
-
-  // Load device
-  InstanceCUDA& device = get_device(0);
-
-  // Initialize
-  cu::Stream& stream = device.get_execute_stream();
-
-  // Device memory
-  cu::DeviceMemory& d_grid = device.retrieve_device_grid();
-
-  // Performance measurements
-  report.initialize(0, 0, grid_size);
-  device.set_report(report);
-  State powerStates[4];
-  powerStates[0] = hostPowerSensor->read();
-  powerStates[2] = device.measure();
-
-  // Perform fft shift
-  device.shift(grid);
-
-  // Copy grid to device
-  device.copy_htod(stream, d_grid, grid.data(), grid.bytes());
-
-  // Execute fft
-  device.launch_grid_fft(d_grid, grid_size, direction);
-
-  // Copy grid to host
-  device.copy_dtoh(stream, grid.data(), d_grid, grid.bytes());
-  stream.synchronize();
-
-  // Perform fft shift
-  device.shift(grid);
-
-  // Perform fft scaling
-  std::complex<float> scale =
-      std::complex<float>(2.0 / (grid_size * grid_size), 0);
-  if (direction == FourierDomainToImageDomain) {
-    device.scale(grid, scale);
-  }
-
-  // End measurements
-  stream.synchronize();
-  powerStates[1] = hostPowerSensor->read();
-  powerStates[3] = device.measure();
-
-  // Report performance
-  report.update_host(powerStates[0], powerStates[1]);
-  report.print_total();
-  report.print_device(powerStates[2], powerStates[3]);
-}  // end transform
-
 void Generic::run_gridding(
     const Plan& plan, const float w_step, const Array1D<float>& shift,
     const float cell_size, const unsigned int kernel_size,
@@ -537,12 +478,6 @@ void Generic::do_degridding(
 }  // end degridding
 
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
-  set_grid(grid, 0, 0.0, 0.0, nullptr);
-}
-
-void Generic::set_grid(std::shared_ptr<Grid> grid, int /* subgrid_size */,
-                       float /* image_size */, float /* w_step */,
-                       const float* /* shift */) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
   device.allocate_device_grid(grid->bytes());

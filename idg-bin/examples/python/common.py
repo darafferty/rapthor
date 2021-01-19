@@ -84,9 +84,11 @@ def gridding(
     p.gridding(
         w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
-        grid, aterms, aterms_offsets, spheroidal)
+        aterms, aterms_offsets, spheroidal)
+    p.get_grid(grid)
     util.plot_grid(grid, scaling='log')
-    p.transform(idg.FourierDomainToImageDomain, grid)
+    p.transform(idg.FourierDomainToImageDomain)
+    p.get_grid(grid)
     util.plot_grid(grid)
     #util.plot_grid(grid, pol=0)
 
@@ -97,11 +99,11 @@ def gridding(
 def degridding(
         p, w_step, shift, cell_size, kernel_size, subgrid_size, frequencies, visibilities,
         uvw, baselines, grid, aterms, aterms_offsets, spheroidal):
-    p.transform(idg.ImageDomainToFourierDomain, grid)
+    p.transform(idg.ImageDomainToFourierDomain)
     p.degridding(
         w_step, shift, cell_size, kernel_size, subgrid_size,
         frequencies, visibilities, uvw, baselines,
-        grid, aterms, aterms_offsets, spheroidal)
+        aterms, aterms_offsets, spheroidal)
     #util.plot_visibilities(visibilities)
 
 

@@ -178,9 +178,8 @@ int compare_to_reference(float tol = 1000 *
   }
 
   // Bind the grids to the respective proxies
-  float w_step = 0.0;
-  optimized.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
-  reference.set_grid(grid_ref, subgrid_size, image_size, w_step, shift.data());
+  optimized.set_grid(grid);
+  reference.set_grid(grid_ref);
 
   // Set w-terms to zero
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
@@ -200,14 +199,14 @@ int compare_to_reference(float tol = 1000 *
 #if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
-  optimized.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
+  optimized.set_grid(grid);
   optimized.gridding(plan, w_offset, shift, cell_size, kernel_size,
                      subgrid_size, frequencies, visibilities, uvw, baselines,
                      aterms, aterms_offsets, spheroidal);
   optimized.get_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
-  reference.set_grid(grid_ref, subgrid_size, image_size, w_step, shift.data());
+  reference.set_grid(grid_ref);
   reference.gridding(plan, w_offset, shift, cell_size, kernel_size,
                      subgrid_size, frequencies, visibilities, uvw, baselines,
                      aterms, aterms_offsets, spheroidal);
@@ -217,27 +216,25 @@ int compare_to_reference(float tol = 1000 *
                                   grid->data(), grid_ref->data());
 
   // Use the same grid for both degridding calls
-  reference.set_grid(optimized.get_grid(), subgrid_size, image_size, w_step,
-                     shift.data());
+  reference.set_grid(optimized.get_grid());
 #else
-  optimized.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
-  reference.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
+  optimized.set_grid(grid);
+  reference.set_grid(grid);
 #endif
-  reference.set_grid(optimized.get_grid(), subgrid_size, image_size, w_step,
-                     shift.data());
+  reference.set_grid(optimized.get_grid());
 
 #if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
   visibilities_ref.zero();
-  optimized.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
+  optimized.set_grid(grid);
   optimized.degridding(plan, w_offset, shift, cell_size, kernel_size,
                        subgrid_size, frequencies, visibilities, uvw, baselines,
                        aterms, aterms_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
-  reference.set_grid(grid, subgrid_size, image_size, w_step, shift.data());
+  reference.set_grid(grid);
   reference.degridding(plan, w_offset, shift, cell_size, kernel_size,
                        subgrid_size, frequencies, visibilities_ref, uvw,
                        baselines, aterms, aterms_offsets, spheroidal);

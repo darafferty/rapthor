@@ -449,7 +449,7 @@ void run_master() {
 
     // Run FFT
     runtimes_grid_fft[cycle] = -omp_get_wtime();
-    proxy.transform(idg::FourierDomainToImageDomain, *grid);
+    proxy.transform(idg::FourierDomainToImageDomain);
     runtimes_grid_fft[cycle] += omp_get_wtime();
 
     // Reduce grids
@@ -477,7 +477,7 @@ void run_master() {
 
     // Run FFT
     runtimes_grid_fft[cycle] -= omp_get_wtime();
-    proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+    proxy.transform(idg::ImageDomainToFourierDomain);
     runtimes_grid_fft[cycle] += omp_get_wtime();
   }
   runtime_imaging += omp_get_wtime();
@@ -626,7 +626,7 @@ void run_worker() {
     grid = proxy.get_grid();
 
     // Run FFT
-    proxy.transform(idg::FourierDomainToImageDomain, *grid);
+    proxy.transform(idg::FourierDomainToImageDomain);
 
     // Reduce grids
     reduce_grids(grid, rank, world_size);
@@ -640,7 +640,7 @@ void run_worker() {
     proxy.set_grid(grid);
 
     // Run FFT
-    proxy.transform(idg::ImageDomainToFourierDomain, *grid);
+    proxy.transform(idg::ImageDomainToFourierDomain);
 
     // Subtract model visibilities
     // not implemented

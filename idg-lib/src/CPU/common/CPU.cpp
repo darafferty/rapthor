@@ -21,7 +21,7 @@ namespace cpu {
 // Constructor
 CPU::CPU(std::vector<std::string> libraries) : kernels(libraries) {
 #if defined(DEBUG)
-  std::cout << __func__ << std::endl;
+  std::cout << "CPU::" << __func__ << std::endl;
 #endif
 
   powerSensor = get_power_sensor(sensor_host);
@@ -31,7 +31,7 @@ CPU::CPU(std::vector<std::string> libraries) : kernels(libraries) {
 // Destructor
 CPU::~CPU() {
 #if defined(DEBUG)
-  std::cout << __func__ << std::endl;
+  std::cout << "CPU::" << __func__ << std::endl;
 #endif
 
   // Delete power sensor
@@ -65,29 +65,23 @@ std::unique_ptr<Plan> CPU::make_plan(
   }
 }
 
-void CPU::set_grid(std::shared_ptr<Grid> grid) {
-  Proxy::set_grid(grid);
-  m_wtiles = WTiles();
-}
-
-void CPU::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                   float image_size, float w_step, const float *shift) {
-  Proxy::set_grid(grid, subgrid_size, image_size, w_step, shift);
+void CPU::init_wtiles(float subgrid_size) {
   m_wtiles = WTiles(kernel::cpu::InstanceCPU::kNrWTiles,
                     kernel::cpu::InstanceCPU::kWTileSize);
   kernels.init_wtiles(subgrid_size);
 }
 
-std::shared_ptr<Grid> CPU::get_grid() {
+void CPU::flush_wtiles(int subgrid_size, float image_size, float w_step,
+                       const Array1D<float> &shift) {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
+    int grid_size = m_grid->get_x_dim();
     kernels.run_adder_wtiles_to_grid(
-        m_grid_size, m_subgrid_size, m_image_size, m_w_step, m_shift,
+        grid_size, subgrid_size, image_size, w_step, shift.data(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
   }
-  return m_grid;
 }
 
 unsigned int CPU::compute_jobsize(const Plan &plan,
@@ -646,44 +640,57 @@ void CPU::do_calibrate_update_hessian_vector_product2(
       station_nr, aterms, derivative_aterms, parameter_vector);
 }
 
-void CPU::do_transform(DomainAtoDomainB direction,
-                       Array3D<std::complex<float>> &grid) {
+void CPU::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
   std::cout << "FFT (direction: " << direction << ")" << std::endl;
 #endif
 
   try {
-    int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+    const auto &grid = get_grid();
 
     // Constants
-    auto grid_size = grid.get_x_dim();
+    unsigned int nr_w_layers = grid->get_w_dim();
+    unsigned int nr_correlations = grid->get_z_dim();
+    unsigned int grid_size = grid->get_y_dim();
 
     // Performance measurement
     report.initialize(0, 0, grid_size);
     kernels.set_report(report);
-    State states[2];
-    states[0] = powerSensor->read();
 
-    // FFT shift
-    if (direction == FourierDomainToImageDomain) {
-      kernels.shift(grid);  // TODO: integrate into adder?
-    } else {
-      kernels.shift(grid);  // TODO: remove
+    for (unsigned int w = 0; w < nr_w_layers; w++) {
+      int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+
+      // Grid pointer
+      idg::Array3D<std::complex<float>> grid_ptr(grid->data(w), nr_correlations,
+                                                 grid_size, grid_size);
+
+      // Constants
+      auto grid_size = grid->get_x_dim();
+
+      State states[2];
+      states[0] = powerSensor->read();
+
+      // FFT shift
+      if (direction == FourierDomainToImageDomain) {
+        kernels.shift(grid_ptr);  // TODO: integrate into adder?
+      } else {
+        kernels.shift(grid_ptr);  // TODO: remove
+      }
+
+      // Run FFT
+      kernels.run_fft(grid_size, grid_size, 1, grid->data(), sign);
+
+      // FFT shift
+      if (direction == FourierDomainToImageDomain)
+        kernels.shift(grid_ptr);  // TODO: remove
+      else
+        kernels.shift(grid_ptr);  // TODO: integrate into splitter?
+
+      // End measurement
+      states[1] = powerSensor->read();
+      report.update_host(states[0], states[1]);
     }
-
-    // Run FFT
-    kernels.run_fft(grid_size, grid_size, 1, grid.data(), sign);
-
-    // FFT shift
-    if (direction == FourierDomainToImageDomain)
-      kernels.shift(grid);  // TODO: remove
-    else
-      kernels.shift(grid);  // TODO: integrate into splitter?
-
-    // End measurement
-    states[1] = powerSensor->read();
-    report.update_host(states[0], states[1]);
 
     // Report performance
     report.print_total();

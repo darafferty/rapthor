@@ -17,7 +17,7 @@ class UnifiedOptimized : public cuda::Unified {
 
   ~UnifiedOptimized();
 
-  virtual void do_transform(DomainAtoDomainB direction, Grid& grid);
+  virtual void do_transform(DomainAtoDomainB direction);
 
  private:
   idg::proxy::cpu::CPU* cpuProxy;

@@ -25,13 +25,13 @@ UnifiedOptimized::~UnifiedOptimized() {
   delete cpuProxy;
 }
 
-void UnifiedOptimized::do_transform(DomainAtoDomainB direction, Grid& grid) {
+void UnifiedOptimized::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << "UnifiedOptimized::" << __func__ << std::endl;
   std::cout << "Transform direction: " << direction << std::endl;
 #endif
 
-  cpuProxy->transform(direction, grid);
+  cpuProxy->transform(direction);
 }  // end transform
 
 }  // namespace hybrid

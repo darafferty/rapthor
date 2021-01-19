@@ -194,10 +194,9 @@ void Proxy::calibrate_init(
   //    subgrid_size, frequencies, visibilities, uvw, baselines,
   //    grid, aterms, aterms_offsets, spheroidal);
 
-  float image_size = grid.get_x_dim() * cell_size;
   auto grid_shared_ptr =
       std::shared_ptr<Grid>(const_cast<Grid*>(&grid), [](Grid*) {});
-  set_grid(grid_shared_ptr, subgrid_size, image_size, w_step, shift.data());
+  set_grid(grid_shared_ptr);
 
   int nr_w_layers;
 
@@ -413,11 +412,9 @@ void Proxy::set_avg_aterm_correction(
 
 void Proxy::unset_avg_aterm_correction() { m_avg_aterm_correction.resize(0); }
 
-void Proxy::transform(DomainAtoDomainB direction, Grid& grid) {
-  do_transform(direction, grid);
-}
+void Proxy::transform(DomainAtoDomainB direction) { do_transform(direction); }
 
-void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid,
+void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
                       unsigned int grid_nr_correlations,
                       unsigned int grid_height, unsigned int grid_width) {
   throw_assert(grid_height == grid_width, "");  // TODO: remove restriction
@@ -425,25 +422,15 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid,
 
   unsigned int grid_nr_w_layers = 1;  // TODO: make this a parameter
 
-  Grid grid_(grid, grid_nr_w_layers, grid_nr_correlations, grid_height,
-             grid_width);
+  auto grid = std::shared_ptr<Grid>(new Grid(grid_ptr, grid_nr_w_layers,
+                                             grid_nr_correlations, grid_height,
+                                             grid_width));
 
-  do_transform(direction, grid_);
-}
+  set_grid(grid);
 
-void Proxy::do_transform(DomainAtoDomainB direction, Grid& grid) {
-  unsigned int nr_w_layers = grid.get_w_dim();
-  unsigned int nr_correlations = grid.get_z_dim();
-  unsigned int height = grid.get_y_dim();
-  unsigned int width = grid.get_x_dim();
-  throw_assert(height == width, "");  // TODO: remove restriction
-  unsigned int grid_size = height;
+  do_transform(direction);
 
-  for (unsigned w = 0; w < nr_w_layers; w++) {
-    idg::Array3D<std::complex<float>> grid_(grid.data(w), nr_correlations,
-                                            grid_size, grid_size);
-    do_transform(direction, grid_);
-  }
+  get_grid();
 }
 
 void Proxy::compute_avg_beam(
@@ -544,16 +531,12 @@ std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
       new Grid(nr_w_layers, nr_correlations, height, width));
 }
 
-void Proxy::set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                     float image_size, float w_step, const float* shift) {
-  m_grid = grid;
-  m_grid_size = m_grid->get_y_dim();
-  m_subgrid_size = subgrid_size;
-  m_image_size = image_size;
-  m_w_step = w_step;
-  m_shift[0] = shift[0];
-  m_shift[1] = shift[1];
-  m_shift[2] = shift[2];
+void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {
+  // Don't create a new shared_ptr when the grid data pointer is
+  // the same. This can be the case when the C-interface is used.
+  if (!m_grid || m_grid->data() != grid->data()) {
+    m_grid = grid;
+  }
 }
 
 std::shared_ptr<Grid> Proxy::get_grid() { return m_grid; }

@@ -47,13 +47,10 @@ class CPU : public Proxy {
       const Array1D<unsigned int>& aterms_offsets,
       Plan::Options options) override;
 
-  using Proxy::set_grid;  // prevents hiding set_grid overloads in Proxy
-  virtual void set_grid(std::shared_ptr<Grid> grid);
+  virtual void init_wtiles(float subgrid_size) override;
 
-  virtual void set_grid(std::shared_ptr<Grid> grid, int subgrid_size,
-                        float image_size, float w_step,
-                        const float* shift) override;
-  virtual std::shared_ptr<Grid> get_grid() override;
+  virtual void flush_wtiles(int subgrid_size, float image_size, float w_step,
+                            const Array1D<float>& shift) override;
 
  private:
   unsigned int compute_jobsize(const Plan& plan,
@@ -122,8 +119,7 @@ class CPU : public Proxy {
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array2D<float>& parameter_vector) override;
 
-  virtual void do_transform(DomainAtoDomainB direction,
-                            Array3D<std::complex<float>>& grid) override;
+  virtual void do_transform(DomainAtoDomainB direction) override;
 
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
