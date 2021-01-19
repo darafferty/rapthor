@@ -121,7 +121,6 @@ idg-integration-docker:
     - cd $HOME_DIR && rm -rf /wsclean
     # Install dp3
     - mkdir /dp3 && cd /dp3 && git clone https://github.com/lofar-astron/DP3.git src
-    - cd src && git checkout v5.0 && cd ..
     - mkdir build && cd build
     - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
@@ -146,14 +145,14 @@ idg-integration-das:
     # Makes it easy to find the idg source location later on
     - export CURRENT_SOURCE=$PWD
     - source scripts/load_modules.sh
-    - pip3 install --user --upgrade pip
+    - python3 -m pip install --user --upgrade pip
     # Make sure h5py is build against the hdf5 library loaded by load_modules.sh
     # This is important when h5py is imported in embedded python code
     # and the main executable is also linked against the hdf5 library.
     # This happens for example when DPPP is running a PythonDPStep that is 
     # importing h5py
     - HDF5_DIR=${HDF5_ROOT} python3 -m pip install h5py --user --no-binary=h5py --force-reinstall --no-deps
-    - pip3 install --user astropy scipy pytest pytest-lazy-fixture h5py
+    - python3 -m pip install --user astropy scipy pytest pytest-lazy-fixture h5py
     # pytest executable is installed in local/bin. Add to PATH
     - export PATH=$PATH:/home/gitlab-runner/.local/bin
     # Install idg
@@ -174,10 +173,6 @@ idg-integration-das:
     - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
     - export PATH=$PATH:~/opt/wsclean/bin
-    # Exported, since integration test tIDGCalDPSteps needs this
-    # - export DP3_LIB=~/opt/dp3/lib64
-    # Extend the LD_LIBRARY_PATH
-    # - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
   script:
     - export OPENBLAS_NUM_THREADS=1
     - cd ~/opt/idg/build
