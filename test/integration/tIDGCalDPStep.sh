@@ -23,6 +23,15 @@ then
       echo "\$DP3_LIB not in environment variables. Please do so!"
       exit 1;
 fi
+
+ls -l ${DP3_LIB}
+echo
+ls -l ${DP3_LIB}/python3.8
+echo
+ls -l ${DP3_LIB}/python3.9
+echo
+
+
 DP3_PYTHON_VERSION=$(ls -l ${DP3_LIB} | grep -P -o -e '\s\Kpython[0-9].[0-9]' | tail -1)
 DP3_PYTHON_PATH=${DP3_LIB}/${DP3_PYTHON_VERSION}/site-packages
 
@@ -37,6 +46,8 @@ IDG_PYTHON_PATH=${IDG_LIB}/${IDG_PYTHON_VERSION}/site-packages
 
 # Set python path
 export PYTHONPATH=${IDG_PYTHON_PATH}:${DP3_PYTHON_PATH}:${PYTHONPATH}
+
+
 
 # Download measurement set into test/tmp/data directory (if needed)
 cd $DIR
@@ -73,6 +84,12 @@ cd $WORKDIR
 
 # Disable warnings due to HDF5 version mismatches
 export HDF5_DISABLE_VERSION_CHECK=2
+
+echo ${PYTHONPATH}
+echo ${DP3_PYTHON_PATH}
+ls ${DP3_PYTHON_PATH}
+
+
 
 # Run the test
 # pytest -s captures the print() statements
