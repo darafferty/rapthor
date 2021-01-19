@@ -63,11 +63,12 @@ else
     ./../../scripts/download_modelimage.sh
 fi
 
+mkdir -p $WORKDIR
+
 # Substitute variables in DPPP.parset
 # Fill modulefile template and copy to AOFLAGGER_MODULEFILE_PATH
 envsubst '${MODELIMAGE_PATH} ${MS_PATH}' < "${COMMON}/DPPP.parset.in" > "${WORKDIR}/DPPP.parset"
 
-mkdir -p $WORKDIR
 cd $WORKDIR
 
 # Disable warnings due to HDF5 version mismatches
