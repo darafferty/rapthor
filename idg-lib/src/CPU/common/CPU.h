@@ -49,10 +49,8 @@ class CPU : public Proxy {
 
   virtual void init_wtiles(float subgrid_size) override;
 
-  virtual void flush_wtiles(int subgrid_size,
-                            float image_size,
-                            float w_step,
-                            const Array1D<float> &shift) override;
+  virtual void flush_wtiles(int subgrid_size, float image_size, float w_step,
+                            const Array1D<float>& shift) override;
 
  private:
   unsigned int compute_jobsize(const Plan& plan,

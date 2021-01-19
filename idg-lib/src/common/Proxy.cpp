@@ -412,9 +412,7 @@ void Proxy::set_avg_aterm_correction(
 
 void Proxy::unset_avg_aterm_correction() { m_avg_aterm_correction.resize(0); }
 
-void Proxy::transform(DomainAtoDomainB direction) {
-  do_transform(direction);
-}
+void Proxy::transform(DomainAtoDomainB direction) { do_transform(direction); }
 
 void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
                       unsigned int grid_nr_correlations,
@@ -424,8 +422,9 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
 
   unsigned int grid_nr_w_layers = 1;  // TODO: make this a parameter
 
-  auto grid = std::shared_ptr<Grid>(
-      new Grid(grid_ptr, grid_nr_w_layers, grid_nr_correlations, grid_height, grid_width));
+  auto grid = std::shared_ptr<Grid>(new Grid(grid_ptr, grid_nr_w_layers,
+                                             grid_nr_correlations, grid_height,
+                                             grid_width));
 
   set_grid(grid);
 
@@ -535,8 +534,7 @@ std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
 void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {
   // Don't create a new shared_ptr when the grid data pointer is
   // the same. This can be the case when the C-interface is used.
-  if (!m_grid || m_grid->data() != grid->data())
-  {
+  if (!m_grid || m_grid->data() != grid->data()) {
     m_grid = grid;
   }
 }

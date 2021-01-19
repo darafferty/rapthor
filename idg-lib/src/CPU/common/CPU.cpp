@@ -65,18 +65,14 @@ std::unique_ptr<Plan> CPU::make_plan(
   }
 }
 
-void CPU::init_wtiles(float subgrid_size)
-{
+void CPU::init_wtiles(float subgrid_size) {
   m_wtiles = WTiles(kernel::cpu::InstanceCPU::kNrWTiles,
                     kernel::cpu::InstanceCPU::kWTileSize);
   kernels.init_wtiles(subgrid_size);
 }
 
-void CPU::flush_wtiles(int subgrid_size,
-                       float image_size,
-                       float w_step,
-                       const Array1D<float> &shift)
-{
+void CPU::flush_wtiles(int subgrid_size, float image_size, float w_step,
+                       const Array1D<float> &shift) {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
@@ -651,7 +647,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
 #endif
 
   try {
-    const auto& grid = get_grid();
+    const auto &grid = get_grid();
 
     // Constants
     unsigned int nr_w_layers = grid->get_w_dim();
@@ -662,13 +658,12 @@ void CPU::do_transform(DomainAtoDomainB direction) {
     report.initialize(0, 0, grid_size);
     kernels.set_report(report);
 
-    for (unsigned int w = 0; w < nr_w_layers; w++)
-    {
+    for (unsigned int w = 0; w < nr_w_layers; w++) {
       int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
       // Grid pointer
       idg::Array3D<std::complex<float>> grid_ptr(grid->data(w), nr_correlations,
-                                              grid_size, grid_size);
+                                                 grid_size, grid_size);
 
       // Constants
       auto grid_size = grid->get_x_dim();

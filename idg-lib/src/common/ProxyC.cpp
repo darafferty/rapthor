@@ -181,32 +181,24 @@ void* Proxy_allocate_grid(Proxy* p, unsigned int nr_correlations,
   return grid->data();
 }
 
-void Proxy_set_grid(Proxy* p,
-                    std::complex<float>* grid_ptr,
-                    unsigned int nr_w_layers,
-                    unsigned int nr_correlations,
-                    unsigned int height,
-                    unsigned int width)
-{
-    std::shared_ptr<idg::Grid> grid =
-        std::shared_ptr<idg::Grid>(new idg::Grid(grid_ptr, nr_w_layers, nr_correlations, height, width));
-    reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid);
+void Proxy_set_grid(Proxy* p, std::complex<float>* grid_ptr,
+                    unsigned int nr_w_layers, unsigned int nr_correlations,
+                    unsigned int height, unsigned int width) {
+  std::shared_ptr<idg::Grid> grid = std::shared_ptr<idg::Grid>(
+      new idg::Grid(grid_ptr, nr_w_layers, nr_correlations, height, width));
+  reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid);
 }
 
-void Proxy_get_grid(Proxy* p,
-                    std::complex<float>* grid_ptr,
-                    unsigned int nr_w_layers,
-                    unsigned int nr_correlations,
-                    unsigned int height,
-                    unsigned int width)
-{
-    std::shared_ptr<idg::Grid> grid =
-        reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
-    assert(grid->get_w_dim() == nr_w_layers);
-    assert(grid->get_z_dim() == nr_correlations);
-    assert(grid->get_y_dim() == height);
-    assert(grid->get_x_dim() == width);
-    memcpy(grid_ptr, grid->data(), grid->bytes());
+void Proxy_get_grid(Proxy* p, std::complex<float>* grid_ptr,
+                    unsigned int nr_w_layers, unsigned int nr_correlations,
+                    unsigned int height, unsigned int width) {
+  std::shared_ptr<idg::Grid> grid =
+      reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
+  assert(grid->get_w_dim() == nr_w_layers);
+  assert(grid->get_z_dim() == nr_correlations);
+  assert(grid->get_y_dim() == height);
+  assert(grid->get_x_dim() == width);
+  memcpy(grid_ptr, grid->data(), grid->bytes());
 }
 
 }  // end extern "C"

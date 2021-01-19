@@ -231,12 +231,10 @@ class Proxy {
 
   virtual std::shared_ptr<Grid> get_grid();
 
-  virtual void init_wtiles(float subgrid_size) {};
+  virtual void init_wtiles(float subgrid_size){};
 
-  virtual void flush_wtiles(int subgrid_size,
-                            float image_size,
-                            float w_step,
-                            const Array1D<float> &shift) {};
+  virtual void flush_wtiles(int subgrid_size, float image_size, float w_step,
+                            const Array1D<float>& shift){};
 
   //! Method W-tiling
   virtual std::unique_ptr<Plan> make_plan(
@@ -318,7 +316,7 @@ class Proxy {
       Array2D<float>& parameter_vector) {}
 
   //! Applyies (inverse) Fourier transform to grid
-  virtual void do_transform(DomainAtoDomainB direction) {};
+  virtual void do_transform(DomainAtoDomainB direction){};
 
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,

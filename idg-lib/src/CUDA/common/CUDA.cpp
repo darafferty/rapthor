@@ -451,8 +451,7 @@ void CUDA::initialize(
   marker.end();
 }  // end initialize
 
-void CUDA::do_transform(DomainAtoDomainB direction)
-{
+void CUDA::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
@@ -468,7 +467,7 @@ void CUDA::do_transform(DomainAtoDomainB direction)
 
   // Grid pointer (4D to 3D, assume nr_w_layers == 1)
   idg::Array3D<std::complex<float>> grid_ptr(grid->data(), nr_correlations,
-                                            grid_size, grid_size);
+                                             grid_size, grid_size);
 
   // Load device
   InstanceCUDA& device = get_device(0);
@@ -518,7 +517,6 @@ void CUDA::do_transform(DomainAtoDomainB direction)
   report.update_host(powerStates[0], powerStates[1]);
   report.print_total();
   report.print_device(powerStates[2], powerStates[3]);
-
 }
 
 void CUDA::do_compute_avg_beam(
