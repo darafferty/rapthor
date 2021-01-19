@@ -87,6 +87,9 @@ class InstanceCUDA : public KernelsInstance {
                                Array3D<std::complex<float>>& grid,
                                DomainAtoDomainB direction);
 
+  void launch_fft_shift(cu::DeviceMemory& d_data, int batch, long size,
+                        std::complex<float> scale = {1.0, 1.0});
+
   void launch_adder(int nr_subgrids, long grid_size, int subgrid_size,
                     cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid,
                     cu::DeviceMemory& d_grid);
@@ -224,6 +227,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::Function> function_splitter;
   std::unique_ptr<cu::Function> function_scaler;
   std::unique_ptr<cu::Function> function_average_beam;
+  std::unique_ptr<cu::Function> function_fft_shift;
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
 
   // One instance per device
@@ -318,6 +322,7 @@ static const std::string name_calibrate_sums = "kernel_calibrate_sums";
 static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
 static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
 static const std::string name_average_beam = "kernel_average_beam";
+static const std::string name_fft_shift = "kernel_fft_shift";
 
 }  // end namespace cuda
 }  // end namespace kernel

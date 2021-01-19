@@ -200,6 +200,11 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("AverageBeam.cubin");
   flags.push_back(flags_common);
 
+  // FFT shift
+  src.push_back("KernelFFTShift.cu");
+  cubin.push_back("KernelFFTShift.cubin");
+  flags.push_back(flags_common);
+
 // FFT
 #if USE_CUSTOM_FFT
   src.push_back("KernelFFT.cu");
@@ -282,9 +287,16 @@ void InstanceCUDA::load_kernels() {
     found++;
   }
 
+  // Load FFT shift function
+  if (cuModuleGetFunction(&function, *mModules[7], name_fft_shift.c_str()) ==
+      CUDA_SUCCESS) {
+    function_fft_shift.reset(new cu::Function(*context, function));
+    found++;
+  }
+
 // Load FFT function
 #if USE_CUSTOM_FFT
-  if (cuModuleGetFunction(&function, *mModules[6], name_fft.c_str()) ==
+  if (cuModuleGetFunction(&function, *mModules[8], name_fft.c_str()) ==
       CUDA_SUCCESS) {
     function_fft.reset(new cu::Function(function));
     found++;
@@ -915,6 +927,20 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
   }
 }
 
+void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
+                                    long size, std::complex<float> scale) {
+  const void* parameters[] = {&size, d_data, &scale};
+
+  dim3 grid(batch, ceil(size / 2.0));
+  dim3 block(128);
+
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_fft_shift);
+  start_measurement(data);
+  executestream->launchKernel(*function_fft_shift, grid, block, 0, parameters);
+  end_measurement(data);
+}
+
 void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
                                 int subgrid_size, cu::DeviceMemory& d_metadata,
                                 cu::DeviceMemory& d_subgrid,
@@ -926,7 +952,6 @@ void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
   UpdateData* data =
       get_update_data(get_event(), powerSensor, report, &Report::update_adder);
   start_measurement(data);
-  data->start->enqueue(*executestream);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
 #endif

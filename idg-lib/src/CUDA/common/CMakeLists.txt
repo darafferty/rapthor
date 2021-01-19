@@ -51,6 +51,7 @@ install(
     kernels/KernelSplitter.cu
     kernels/KernelCalibrate.cu
     kernels/KernelAverageBeam.cu
+    kernels/KernelFFTShift.cu
     kernels/math.cu
     kernels/Types.h
     DESTINATION
