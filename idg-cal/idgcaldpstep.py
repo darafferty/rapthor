@@ -4,7 +4,6 @@
 import dppp
 import numpy as np
 import idg
-import idg.util
 from idg.h5parmwriter import H5ParmWriter
 import astropy.io.fits as fits
 import scipy.linalg
@@ -301,7 +300,7 @@ class IDGCalDPStep(dppp.DPStep):
 
         self.proxy.init_cache(self.subgrid_size, self.cell_size, self.w_step, self.shift)
 
-        self.aterms_offsets = idg.util.get_example_aterms_offset(
+        self.aterm_offsets = get_aterm_offsets(
             self.nr_timeslots, self.nr_timesteps
         )
 
@@ -389,10 +388,7 @@ class IDGCalDPStep(dppp.DPStep):
             self.nr_timeslots,
         )
 
-        aterms = idg.util.get_identity_aterms(
-            self.nr_timeslots, self.nr_stations, self.subgrid_size, self.nr_correlations
-        )
-        aterms_offsets = idg.util.get_example_aterms_offset(
+        aterm_offsets = get_aterm_offsets(
             self.nr_timeslots, self.nr_timesteps
         )
 
@@ -409,7 +405,6 @@ class IDGCalDPStep(dppp.DPStep):
                 axes=((2,), (0,)),
             )
         )
-
         aterms = np.ascontiguousarray((aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl).astype(idg.idgtypes.atermtype))
 
         nr_iterations = 0
@@ -845,3 +840,13 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
         RR = np.array(RR)
 
         return a, B, RR
+
+def get_aterm_offsets(nr_timeslots, nr_time):
+    aterm_offsets = np.zeros(
+        (nr_timeslots + 1),
+        dtype = idg.idgtypes.atermoffsettype)
+
+    for i in range(nr_timeslots+1):
+        aterm_offsets[i] = i*(nr_time // nr_timeslots)
+
+    return aterm_offsets
