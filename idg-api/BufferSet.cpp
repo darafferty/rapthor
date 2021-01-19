@@ -73,13 +73,15 @@ BufferSetImpl::BufferSetImpl(Type architecture)
       m_avg_aterm_correction(0, 0, 0, 0),
       m_grid(new Grid(0, 0, 0, 0)),
       m_proxy(create_proxy(architecture)),
-      m_shift{0.0},
+      m_shift(3),
       m_get_image_watch(Stopwatch::create()),
       m_set_image_watch(Stopwatch::create()),
       m_avg_beam_watch(Stopwatch::create()),
       m_plan_watch(Stopwatch::create()),
       m_gridding_watch(Stopwatch::create()),
-      m_degridding_watch(Stopwatch::create()) {}
+      m_degridding_watch(Stopwatch::create()) {
+  m_shift.zero();
+}
 
 BufferSetImpl::~BufferSetImpl() {
   // Free all objects allocated via the proxy before destroying the proxy.
@@ -241,9 +243,9 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
 #endif
 
-  m_shift[0] = shiftl;
-  m_shift[1] = shiftm;
-  m_shift[2] = shiftp;
+  m_shift(0) = shiftl;
+  m_shift(1) = shiftm;
+  m_shift(2) = shiftp;
 
   m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
@@ -585,7 +587,7 @@ void BufferSetImpl::get_image(double* image) {
   m_get_image_watch->Start();
 
   // Flush all pending operations on the grid
-  m_proxy->flush_wtiles();
+  m_proxy->flush_wtiles(m_subgridsize, m_image_size, m_w_step, m_shift);
   m_proxy->get_grid();
 
   double runtime = -omp_get_wtime();

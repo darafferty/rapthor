@@ -183,7 +183,7 @@ void GenericOptimized::run_gridding(
                              metadata_ptr, h_subgrids, grid_ptr);
       } else if (plan.get_use_wtiles()) {
         cpuKernels.run_adder_wtiles(current_nr_subgrids, grid_size,
-                                    subgrid_size, image_size, w_step, m_shift,
+                                    subgrid_size, image_size, w_step, shift.data(),
                                     subgrid_offset, wtile_flush_set,
                                     metadata_ptr, h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
@@ -472,7 +472,7 @@ void GenericOptimized::run_degridding(
       } else if (plan.get_use_wtiles()) {
         cpuKernels.run_splitter_wtiles(
             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            m_shift, subgrid_offset, wtile_initialize_set, metadata_ptr,
+            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
             h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
       } else {
@@ -725,7 +725,7 @@ void GenericOptimized::do_calibrate_init(
       WTileUpdateSet wtile_initialize_set =
           plans[antenna_nr]->get_wtile_initialize_set();
       cpuKernels.run_splitter_wtiles(
-          nr_subgrids, grid_size, subgrid_size, image_size, w_step, m_shift,
+          nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift.data(),
           0 /* subgrid_offset */, wtile_initialize_set, metadata_ptr,
           subgrids_ptr, grid_ptr);
     } else {

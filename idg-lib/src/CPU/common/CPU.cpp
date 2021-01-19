@@ -72,12 +72,17 @@ void CPU::init_wtiles(float subgrid_size)
   kernels.init_wtiles(subgrid_size);
 }
 
-void CPU::flush_wtiles() {
+void CPU::flush_wtiles(int subgrid_size,
+                       float image_size,
+                       float w_step,
+                       const Array1D<float> &shift)
+{
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
+    int grid_size = m_grid->get_x_dim();
     kernels.run_adder_wtiles_to_grid(
-        m_grid_size, m_subgrid_size, m_image_size, m_w_step, m_shift,
+        grid_size, subgrid_size, image_size, w_step, shift.data(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
   }

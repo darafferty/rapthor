@@ -233,7 +233,10 @@ class Proxy {
 
   virtual void init_wtiles(float subgrid_size) {};
 
-  virtual void flush_wtiles() {};
+  virtual void flush_wtiles(int subgrid_size,
+                            float image_size,
+                            float w_step,
+                            const Array1D<float> &shift) {};
 
   //! Method W-tiling
   virtual std::unique_ptr<Plan> make_plan(
@@ -363,11 +366,6 @@ class Proxy {
   virtual bool do_supports_wtiles() { return false; }
 
   std::shared_ptr<Grid> m_grid = nullptr;
-  int m_grid_size;
-  int m_subgrid_size;
-  float m_image_size;
-  float m_w_step;
-  float m_shift[3];
 
   Report report;
 

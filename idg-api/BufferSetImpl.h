@@ -76,7 +76,7 @@ class BufferSetImpl : public virtual BufferSet {
 
   float get_cell_size() const { return m_cell_size; }
   float get_w_step() const { return m_w_step; }
-  const std::array<float, 3>& get_shift() const { return m_shift; }
+  const idg::Array1D<float>& get_shift() const { return m_shift; }
   float get_kernel_size() const { return m_kernel_size; }
   const Array2D<float>& get_spheroidal() const { return m_spheroidal; }
   const std::shared_ptr<Grid>& get_grid() const { return m_grid; }
@@ -116,7 +116,7 @@ class BufferSetImpl : public virtual BufferSet {
   float m_image_size;
   float m_cell_size;
   float m_w_step;
-  std::array<float, 3> m_shift;
+  Array1D<float> m_shift;
   size_t m_size;
   size_t m_padded_size;
   float m_kernel_size;
