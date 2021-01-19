@@ -111,7 +111,7 @@ idg-integration-docker:
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
     # Exported, since integrationstep tIDGCalDPStep needs this variable
-    - export IDG_LIB=~/opt/idg/lib
+    - export IDG_LIB=/opt/idg/lib
     - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
     # Compile against wsclean
     - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
@@ -125,7 +125,7 @@ idg-integration-docker:
     - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
     - cd $HOME_DIR && rm -rf /dp3
-    - export DP3_LIB=/usr/dp3/lib64
+    - export DP3_LIB=/usr/lib
   script:
     # Return to idg build directory to run tests
     - cd build
