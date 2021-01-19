@@ -45,20 +45,33 @@ exec 3<> wsclean_mpi_$infix.slurm
 exec 3>&-
 
 # run sbatch
-sbatch wsclean_mpi_$infix.slurm
+job=$(sbatch wsclean_mpi_$infix.slurm)
 exit_status=$?
 if [ $exit_status -ne 0 ]; then
     echo "Error: problem running sbatch command"
     exit $exit_status
 fi
 
-# check for final image until found
-image_exists=0
-FILE="${name}-MFS-image-pb.fits"
-while [ $image_exists -lt 1 ]
+# loop while batch job is in the queue; wait for it to finish
+jobid=$(echo $job | grep -o '[[:digit:]]\+$')
+while squeue -ho%i -j $jobid 2>/dev/null | grep -q "^$jobid$"
 do
-if test -f "$FILE"; then
-    image_exists=1
-fi
-sleep 60
+    sleep 1
 done
+
+# Fetch ExitCode of batch job "n:m"; where "n" is exit code of the script,
+# and "m" is the signal that terminated the process (if it was signalled).
+# Return 128+m as status if process was signalled, otherwise return n.
+exitcode=$(sacct -no ExitCode -j ${jobid}.batch)
+if [ -z "$exitcode" ]; then
+    echo "Error: failed to fetch accounting information for job $jobid"
+    exit 1
+else
+    status=${exitcode%:*}
+    signal=${exitcode#*:}
+    if [ $signal -ne 0 ]; then
+        exit $((128 + $signal))
+    else
+        exit $status
+    fi
+fi
