@@ -486,9 +486,10 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   device.launch_grid_fft(d_grid, grid_size, direction);
 
   // Perform fft shift and scaling
-  std::complex<float> scale = (direction == FourierDomainToImageDomain)
-    ? std::complex<float>(2.0 / (grid_size * grid_size), 0)
-    : std::complex<float>(1.0, 1.0);
+  std::complex<float> scale =
+      (direction == FourierDomainToImageDomain)
+          ? std::complex<float>(2.0 / (grid_size * grid_size), 0)
+          : std::complex<float>(1.0, 1.0);
   device.launch_fft_shift(d_grid, nr_correlations, grid_size, scale);
 
   // End measurements

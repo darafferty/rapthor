@@ -927,20 +927,17 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
   }
 }
 
-void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data,
-                                   int batch, long size,
-                                   std::complex<float> scale)
-{
+void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
+                                    long size, std::complex<float> scale) {
   const void* parameters[] = {&size, d_data, &scale};
 
-  dim3 grid(batch, ceil(size/2.0));
+  dim3 grid(batch, ceil(size / 2.0));
   dim3 block(128);
 
-  UpdateData* data =
-      get_update_data(get_event(), powerSensor, report, &Report::update_fft_shift);
+  UpdateData* data = get_update_data(get_event(), powerSensor, report,
+                                     &Report::update_fft_shift);
   start_measurement(data);
-  executestream->launchKernel(*function_fft_shift, grid, block, 0,
-                              parameters);
+  executestream->launchKernel(*function_fft_shift, grid, block, 0, parameters);
   end_measurement(data);
 }
 
