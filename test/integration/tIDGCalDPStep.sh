@@ -24,16 +24,8 @@ then
       exit 1;
 fi
 
-ls -l ${DP3_LIB}
-echo
-ls -l ${DP3_LIB}/python3.8
-echo
-ls -l ${DP3_LIB}/python3.9
-echo
-
-
-DP3_PYTHON_VERSION=$(ls -l ${DP3_LIB} | grep -P -o -e '\s\Kpython[0-9].[0-9]' | tail -1)
-DP3_PYTHON_PATH=${DP3_LIB}/${DP3_PYTHON_VERSION}/site-packages
+PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+DP3_PYTHON_PATH=${DP3_LIB}/python${PYTHON_VERSION}/site-packages
 
 # Get the python path to the idg pybindings
 if [ -z "${IDG_LIB}" ] ;
@@ -41,8 +33,7 @@ then
       echo "\$IDG_LIB not in environment variables. Please do so!"
       exit 1;
 fi
-IDG_PYTHON_VERSION=$(ls -l ${IDG_LIB} | grep -P -o -e '\s\Kpython[0-9].[0-9]' | tail -1)
-IDG_PYTHON_PATH=${IDG_LIB}/${IDG_PYTHON_VERSION}/site-packages
+IDG_PYTHON_PATH=${IDG_LIB}/python${PYTHON_VERSION}/site-packages
 
 # Set python path
 export PYTHONPATH=${IDG_PYTHON_PATH}:${DP3_PYTHON_PATH}:${PYTHONPATH}
