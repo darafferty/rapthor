@@ -62,7 +62,7 @@ done
 # Fetch ExitCode of batch job "n:m"; where "n" is exit code of the script,
 # and "m" is the signal that terminated the process (if it was signalled).
 # Return 128+m as status if process was signalled, otherwise return n.
-exitcode=$(sacct -noExitCode -j ${jobid}.batch)
+exitcode=$(sacct -no ExitCode -j ${jobid}.batch)
 if [ -z "$exitcode" ]; then
     echo "Error: failed to fetch accounting information for job $jobid"
     exit 1
