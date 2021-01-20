@@ -7,7 +7,7 @@ import logging
 import casacore.tables as pt
 import numpy as np
 from astropy.time import Time
-from rapthor.lib.cluster import get_time_chunksize, get_frequency_chunksize
+from rapthor.lib.cluster import get_fast_solve_intervals, get_slow_solve_intervals
 from scipy.special import erf
 
 
@@ -137,7 +137,6 @@ class Observation(object):
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
         target_slow_timestep = parset['calibration_specific']['slow_timestep_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
-        target_smoothnessconstraint = parset['calibration_specific']['slow_smoothnessconstraint']
 
         # Find solution intervals for fast-phase solve
         timepersample = self.timepersample
@@ -148,7 +147,6 @@ class Observation(object):
         # Adjust the solution interval if needed to fit the fast solve into the
         # available memory and determine how many calibration chunks to make (to allow
         # parallel jobs)
-        get_fast_solve_intervals(cluster_parset, numsamples, target_timestep, antenna, ndir):
         samplesperchunk, solint_fast_timestep = get_fast_solve_intervals(parset['cluster_specific'],
                                                                          self.numsamples, nobs,
                                                                          solint_fast_timestep,
@@ -211,8 +209,8 @@ class Observation(object):
         self.log.debug('Using {0} frequency chunk{1} for slow-gain '
                        'calibration'.format(self.nfreqchunks, infix))
         self.parameters['freqchunk_filename'] = [self.ms_filename] * self.nfreqchunks
-        self.parameters['startchan'] = [channelsperchunk * i for i in range(nchunks)]
-        self.parameters['nchan'] = [channelsperchunk] * nchunks
+        self.parameters['startchan'] = [samplesperchunk * i for i in range(nchunks)]
+        self.parameters['nchan'] = [samplesperchunk] * nchunks
         self.parameters['nchan'][-1] = 0  # set last entry to extend until end
         self.parameters['slow_starttime'] = [self.convert_mjd(self.starttime)] * nchunks
         self.parameters['slow_ntimes'] = [self.numsamples] * nchunks
