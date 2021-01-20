@@ -17,6 +17,10 @@
 
 #include "idg-util.h"  // Data init routines
 
+#if defined(HAVE_FTI)
+#include <fti.h>
+#endif
+
 using namespace std;
 
 std::tuple<int, int, int, int, int, int, int, int, int> read_parameters() {

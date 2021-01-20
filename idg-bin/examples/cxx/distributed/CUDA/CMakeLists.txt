@@ -4,7 +4,7 @@
 project(cuda-generic-mp.x)
 
 # Set sources
-set (${PROJECT_NAME}_sources 
+set (${PROJECT_NAME}_sources
     main.cpp
 )
 
@@ -13,22 +13,17 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # Set include directories
 target_include_directories(
-    ${PROJECT_NAME} PRIVATE
-    ${MPI_C_COMPILER_INCLUDE_DIRS}
+    ${PROJECT_NAME} PRIVATE ${MPI_C_COMPILER_INCLUDE_DIRS}
+    ${PROJECT_NAME} PRIVATE ${FTI_INCLUDE_DIR}
 )
 
 # Set link libaries
-set(LINK_LIBRARIES
-    idg-util
-    idg-cuda
-    ${MPI_mpi_LIBRARY}
-    ${MPI_mpi_cxx_LIBRARY}
-)
-
-target_link_libraries (
-    ${PROJECT_NAME}
-    ${LINK_LIBRARIES}
-)
+target_link_libraries(${PROJECT_NAME} PRIVATE idg-util idg-cuda)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${MPI_mpi_LIBRARY})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${MPI_mpi_cxx_LIBRARY})
+if (${BUILD_WITH_FTI})
+    target_link_libraries(${PROJECT_NAME} PRIVATE fti.shared)
+endif()
 
 # install
 install(TARGETS ${PROJECT_NAME}
