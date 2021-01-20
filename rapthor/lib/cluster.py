@@ -82,7 +82,7 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
     # nodes and ensure that the solint is a divisor of samples_per_chunk
     # (otherwise we could get a lot of solutions with less than the target time)
     target_numchunks = np.ceil(cluster_parset['max_nodes'] / numobs)
-    samples_per_chunk = np.ceil(numsamples / target_numchunks)
+    samples_per_chunk = int(np.ceil(numsamples / target_numchunks))
     while samples_per_chunk % solint:
         samples_per_chunk -= 1
     if samples_per_chunk < solint:
@@ -169,12 +169,12 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
     # larger chunks require more memory). Therefore, we also need to ensure that
     # the chunk size works with the available memory.
     target_numchunks = np.ceil(cluster_parset['max_nodes'] / numobs)
-    samples_per_chunk = np.ceil(numsamples / target_numchunks)
+    samples_per_chunk = int(np.ceil(numsamples / target_numchunks))
     gb_per_sol = get_gb_per_solution(samples_per_chunk, target_timestep, ndir)
     if mem_gb / gb_per_sol < 1.0:
         samples_per_chunk = samples_per_chunk * mem_gb / gb_per_sol
         samples_per_chunk = max(1, int(round(samples_per_chunk)))
-    if samples_per_chunk < target_freqstep:
-        samples_per_chunk = target_freqstep
+    if samples_per_chunk < solint:
+        samples_per_chunk = solint
 
     return samples_per_chunk, solint
