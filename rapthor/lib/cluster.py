@@ -8,13 +8,13 @@ import numpy as np
 log = logging.getLogger('rapthor:cluster')
 
 
-def get_total_memory():
+def get_available_memory():
     """
-    Returns the total memory in GB
+    Returns the available memory in GB
     """
-    tot_gb, used_gb, free_gb = list(map(int, os.popen('free -t -g').readlines()[-1].split()[1:]))
+    available_gb = list(map(int, os.popen('free -t -g').readlines()[1].split()[1:]))[0]
 
-    return tot_gb
+    return available_gb
 
 
 def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep,
@@ -41,7 +41,7 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
 
     Returns
     -------
-    samplesperchunk : int
+    samples_per_chunk : int
         Size of chunk in number time slots
     solint : int
         Solution interval in number of time slots that will ensure the solve
@@ -64,7 +64,7 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
 
     # Determine whether we need to adjust the solution interval to fit the solve in
     # memory
-    mem_gb = get_total_memory()
+    mem_gb = get_available_memory()
     gb_per_sol = get_mem_per_solution(target_timestep, ndir)
     if mem_gb / gb_per_sol < 1.0:
         solint = target_timestep * mem_gb / gb_per_sol
@@ -79,16 +79,16 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
     # parallelization over nodes).
     #
     # Try to make at least as many chunks (over all observations) as there are
-    # nodes and ensure that the solint is a divisor of samplesperchunk
+    # nodes and ensure that the solint is a divisor of samples_per_chunk
     # (otherwise we could get a lot of solutions with less than the target time)
     target_numchunks = np.ceil(cluster_parset['max_nodes'] / numobs)
-    samplesperchunk = np.ceil(numsamples / target_numchunks)
-    while samplesperchunk % solint:
-        samplesperchunk -= 1
-    if samplesperchunk < solint:
-        samplesperchunk = solint
+    samples_per_chunk = np.ceil(numsamples / target_numchunks)
+    while samples_per_chunk % solint:
+        samples_per_chunk -= 1
+    if samples_per_chunk < solint:
+        samples_per_chunk = solint
 
-    return samplesperchunk, solint
+    return samples_per_chunk, solint
 
 
 def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep,
@@ -117,7 +117,7 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
 
     Returns
     -------
-    samplesperchunk : int
+    samples_per_chunk : int
         Size of chunk in number of frequency channels
     solint : int
         Solution interval in number of frequency channels that will ensure the solve
@@ -129,7 +129,7 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
         # Note: the numbers below were determined empirically from typical (Dutch-only)
         # datasets
         if antenna == 'HBA':
-            # Best-fit coefficients for timestep = 25 time slots
+            # Best-fit coefficients for 25 time slots
             coef = [7.33333333e-01, 8.33333333e-02, 7.66666667e-03, 5.50000000e-03,
                     -3.20833714e-17, -4.39443416e-18]
         elif antenna == 'LBA':
@@ -148,7 +148,7 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
     # Determine whether we need to adjust the solution interval in time to fit
     # the solve in memory. We adjust the time interval rather than the frequency
     # one, as it is less critical and usually has a finer sampling
-    mem_gb = get_total_memory()
+    mem_gb = get_available_memory()
     gb_per_sol = get_gb_per_solution(target_freqstep, target_timestep, ndir)
     if mem_gb / gb_per_sol < 1.0:
         solint = target_timestep * mem_gb / gb_per_sol
@@ -168,19 +168,13 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
     # chunk size (since the solve is parallelized over the channels of a chunk, so
     # larger chunks require more memory). Therefore, we also need to ensure that
     # the chunk size works with the available memory.
-    #
-    # Lastly, the frequency solint should be a divisor of samplesperchunk
-    # (otherwise we could get a lot of solutions with less than the target
-    # frequency width).
     target_numchunks = np.ceil(cluster_parset['max_nodes'] / numobs)
-    samplesperchunk = np.ceil(numsamples / target_numchunks)
-    gb_per_sol = get_gb_per_solution(samplesperchunk, target_timestep, ndir)
+    samples_per_chunk = np.ceil(numsamples / target_numchunks)
+    gb_per_sol = get_gb_per_solution(samples_per_chunk, target_timestep, ndir)
     if mem_gb / gb_per_sol < 1.0:
-        samplesperchunk = samplesperchunk * mem_gb / gb_per_sol
-        samplesperchunk = max(1, int(round(samplesperchunk)))
-    while samplesperchunk % target_freqstep:
-        samplesperchunk -= 1
-    if samplesperchunk < target_freqstep:
-        samplesperchunk = target_freqstep
+        samples_per_chunk = samples_per_chunk * mem_gb / gb_per_sol
+        samples_per_chunk = max(1, int(round(samples_per_chunk)))
+    if samples_per_chunk < target_freqstep:
+        samples_per_chunk = target_freqstep
 
-    return samplesperchunk, solint
+    return samples_per_chunk, solint
