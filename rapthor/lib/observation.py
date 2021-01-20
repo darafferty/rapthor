@@ -189,7 +189,7 @@ class Observation(object):
         # available memory and determine how many calibration chunks to make (to allow
         # parallel jobs)
         samplesperchunk, solint_slow_timestep = get_slow_solve_intervals(parset['cluster_specific'],
-                                                                         self.numsamples, nobs,
+                                                                         self.numchannels, nobs,
                                                                          solint_slow_freqstep,
                                                                          solint_slow_timestep,
                                                                          self.antenna, ndir)
