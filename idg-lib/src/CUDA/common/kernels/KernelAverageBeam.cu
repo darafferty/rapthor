@@ -82,7 +82,7 @@ __global__ void kernel_average_beam(
 
         for (unsigned int t = time_start; t < time_end; t++) {
           float u = uvw[bl * nr_timesteps + t].u;
-          if (std::isinf(u)) continue;
+          if (isinf(u)) continue;
 
           for (unsigned int ch = 0; ch < nr_channels; ch++) {
             for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
