@@ -113,10 +113,16 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         axis_names = st2.getAxesNames()
         pol_ind = axis_names.index('pol')
         val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
-        f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
-        v1 = f(st1.time)
-        f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
-        vals = f(st1.freq) + st1.val
+        if len(st2.time) > 1:
+            f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
+            v1 = f(st1.time)
+        else:
+            v1 = val2
+        if len(st2.freq) > 1:
+            f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
+            vals = f(st1.freq) + st1.val
+        else:
+            vals = v1 + st1.val
         sto = sso.getSoltab('phase000')
         sto.setValues(vals)
 
