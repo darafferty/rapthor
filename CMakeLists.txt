@@ -42,12 +42,21 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR})
 # Python
 option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
 
-if(${CMAKE_VERSION} VERSION_GREATER "3.12.4")
-find_package(Python REQUIRED)
-set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION_MAJOR}.${Python_VERSION_MINOR}/site-packages/idg)
-else()
-find_package(PythonInterp REQUIRED)
-set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/idg)
+if (BUILD_WITH_PYTHON)
+  if(${CMAKE_VERSION} VERSION_GREATER "3.12.4")
+    find_package(Python REQUIRED)
+    set(PYTHON_VERSION ${Python_VERSION})
+    set(PYTHON_VERSION_MAJOR ${Python_VERSION_MAJOR})
+    set(PYTHON_VERSION_MINOR ${Python_VERSION_MINOR})
+  else()
+    find_package(PythonInterp REQUIRED)
+    set(PYTHON_VERSION ${PYTHON_VERSION_STRING})
+  endif()
+
+  if(${PYTHON_VERSION} VERSION_LESS "3.6")
+    message(FATAL_ERROR "IDG requires python version >= 3.6, but found ${PYTHON_VERSION}. Using cmake >= 3.12 might fix this error" )
+  endif()
+  set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/idg)
 endif()
 
 if (BUILD_TESTING)
@@ -58,7 +67,9 @@ add_subdirectory("idg-util")
 add_subdirectory("idg-lib")
 add_subdirectory("idg-bin")
 add_subdirectory("idg-api")
-add_subdirectory("idg-cal")
+if (BUILD_WITH_PYTHON)
+  add_subdirectory("idg-cal")
+endif()
 
 # Write environment-module
 configure_file (
