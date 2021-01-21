@@ -69,14 +69,12 @@ void KernelsInstance::scale(Array3D<std::complex<float>>& data,
   report->update_fft_scale(states[0], states[1]);
 }
 
-void KernelsInstance::tile_backward(const unsigned long grid_size,
-                                    const unsigned int tile_size,
-                                    const Grid& grid_src,
-                                    Grid& grid_dst) const {
+void KernelsInstance::tile_backward(
+    const unsigned long grid_size, const unsigned int tile_size,
+    const Array5D<std::complex<float>>& grid_src, Grid& grid_dst) const {
   ASSERT(grid_src.bytes() == grid_dst.bytes());
 
   std::complex<float>* src_ptr = (std::complex<float>*)grid_src.data();
-  std::complex<float>* dst_ptr = (std::complex<float>*)grid_dst.data();
 
 #pragma omp parallel for
   for (unsigned long pixel = 0; pixel < grid_size * grid_size; pixel++) {
@@ -84,19 +82,16 @@ void KernelsInstance::tile_backward(const unsigned long grid_size,
     int x = pixel % grid_size;
     for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
       long src_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
-      long dst_idx = index_grid(grid_size, 0, pol, y, x);
-
-      dst_ptr[dst_idx] = src_ptr[src_idx];
+      grid_dst(0, pol, y, x) = src_ptr[src_idx];
     }
   }
 }
 
-void KernelsInstance::tile_forward(const unsigned long grid_size,
-                                   const unsigned int tile_size,
-                                   const Grid& grid_src, Grid& grid_dst) const {
+void KernelsInstance::tile_forward(
+    const unsigned long grid_size, const unsigned int tile_size,
+    const Grid& grid_src, Array5D<std::complex<float>>& grid_dst) const {
   ASSERT(grid_src.bytes() == grid_dst.bytes());
 
-  std::complex<float>* src_ptr = (std::complex<float>*)grid_src.data();
   std::complex<float>* dst_ptr = (std::complex<float>*)grid_dst.data();
 
 #pragma omp parallel for
@@ -104,9 +99,8 @@ void KernelsInstance::tile_forward(const unsigned long grid_size,
     int y = pixel / grid_size;
     int x = pixel % grid_size;
     for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
-      long src_idx = index_grid(grid_size, 0, pol, y, x);
       long dst_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
-      dst_ptr[dst_idx] = src_ptr[src_idx];
+      dst_ptr[dst_idx] = grid_src(0, pol, y, x);
     }
   }
 }

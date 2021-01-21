@@ -63,7 +63,7 @@ class Unified : public Generic {
   // of m_grid and (optionally) tiled to match the
   // data access pattern in the unified_adder
   // and unified_splitter kernels.
-  std::unique_ptr<Grid> m_grid_tiled = nullptr;
+  std::unique_ptr<Array5D<std::complex<float>>> m_grid_tiled = nullptr;
 
 };  // class Unified
 
