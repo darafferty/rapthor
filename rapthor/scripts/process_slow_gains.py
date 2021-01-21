@@ -9,6 +9,7 @@ import numpy as np
 import scipy.interpolate as si
 from rapthor.lib import miscellaneous as misc
 from scipy.optimize import curve_fit
+from loess import loess_1d, loess_2d
 import sys
 
 
@@ -151,8 +152,6 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
     parms, weights : arrays
         The smoothed parameters and associated weights
     """
-    from loess import loess_2d
-
     # Work in log space, as required for amplitudes
     if parms is None:
         parms = soltab.val[:]  # axes are ['time', 'freq', 'ant', 'dir', 'pol']
@@ -214,11 +213,24 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
                             # All solutions are flagged, so skip processing
                             g_start = g_stop
                             continue
-                        zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
-                                                  yv[nanind].flatten(),
-                                                  z[nanind].flatten(),
-                                                  rescale=True, frac=frac, degree=1)
-
+                        if len(set(nanind[0])) == 1 and len(set(nanind[1])) == 1:
+                            # The data consist of a single value, so skip processing
+                            g_start = g_stop
+                            continue
+                        if len(set(nanind[0])) == 1 or len(set(nanind[1])) == 1:
+                            # The data are 1-D
+                            if len(set(nanind[0])) == 1:
+                                xv1 = yv[nanind].flatten()
+                            else:
+                                xv1 = xv[nanind].flatten()
+                            xs, zs, w = loess_1d.loess_1d(xv1, z[nanind].flatten(),
+                                                          frac=frac, degree=1)
+                        else:
+                            # The data are 2-D
+                            zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                      yv[nanind].flatten(),
+                                                      z[nanind].flatten(),
+                                                      rescale=True, frac=frac, degree=1)
                         if debug:
                             from plotbin.plot_velfield import plot_velfield
                             import matplotlib.pyplot as plt
@@ -234,10 +246,16 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
 
                         # Interpolate back to original grid
                         zr = zs.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
-                        f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
-                        zr1 = f(times[g_start:g_stop])
-                        f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
-                        zr = f(soltab.freq)
+                        if len(set(nanind[0])) > 1:
+                            f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
+                            zr1 = f(times[g_start:g_stop])
+                        else:
+                            zr1 = zr
+                        if len(set(nanind[1])) > 1:
+                            f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
+                            zr = f(soltab.freq)
+                        else:
+                            zr = zr1
                         parms[time_slice, freq_slice, s, dir, pol] = zr
                     g_start = g_stop
 
@@ -274,8 +292,6 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
     parms, weights : arrays
         The smoothed parameters and associated weights
     """
-    from loess import loess_2d
-
     # Work in real/image space, as required for phases
     if parms is None:
         parms = soltab.val[:]  # axes are ['time', 'freq', 'ant', 'dir', 'pol']
@@ -330,20 +346,40 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
                         yv /= np.min(yv)
                         xv -= np.min(xv)
                         zreal = np.cos(parms[time_slice, freq_slice, s, dir, pol])
+                        zimag = np.sin(parms[time_slice, freq_slice, s, dir, pol])
                         nanind = np.where(~np.isnan(zreal))
                         if len(nanind[0]) == 0:
                             # All solutions are flagged, so skip processing
                             g_start = g_stop
                             continue
-                        zsreal, wreal = loess_2d.loess_2d(xv[nanind].flatten(),
-                                                          yv[nanind].flatten(),
-                                                          zreal[nanind].flatten(),
-                                                          rescale=True, frac=frac, degree=1)
-                        zimag = np.sin(parms[time_slice, freq_slice, s, dir, pol])
-                        zsimag, wimag = loess_2d.loess_2d(xv[nanind].flatten(),
-                                                          yv[nanind].flatten(),
-                                                          zimag[nanind].flatten(),
-                                                          rescale=True, frac=frac, degree=1)
+                        if len(set(nanind[0])) == 1 and len(set(nanind[1])) == 1:
+                            # The data consist of a single value, so skip processing
+                            g_start = g_stop
+                            continue
+                        if len(set(nanind[0])) == 1 or len(set(nanind[1])) == 1:
+                            # The data are 1-D
+                            if len(set(nanind[0])) == 1:
+                                xv1 = yv[nanind].flatten()
+                            else:
+                                xv1 = xv[nanind].flatten()
+                            xsreal, zsreal, wreal = loess_1d.loess_1d(xv1,
+                                                                      zreal[nanind].flatten(),
+                                                                      frac=frac, degree=1)
+                            xsimag, zsimag, wimag = loess_1d.loess_1d(xv1,
+                                                                      zimag[nanind].flatten(),
+                                                                      frac=frac, degree=1)
+                        else:
+                            # The data are 2-D
+                            zsreal, wreal = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                              yv[nanind].flatten(),
+                                                              zreal[nanind].flatten(),
+                                                              rescale=True, frac=frac,
+                                                              degree=1)
+                            zsimag, wimag = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                              yv[nanind].flatten(),
+                                                              zimag[nanind].flatten(),
+                                                              rescale=True, frac=frac,
+                                                              degree=1)
 
                         if debug:
                             from plotbin.plot_velfield import plot_velfield
@@ -360,15 +396,23 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
 
                         # Interpolate back to original grid
                         zr = zsreal.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
-                        f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
-                        zr1 = f(times[g_start:g_stop])
-                        f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
-                        zr = f(soltab.freq)
                         zi = zsimag.reshape((len(times[time_slice][np.array(list(set(nanind[0])))]), len(soltab.freq[freq_slice][np.array(list(set(nanind[1])))])))
-                        f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zi, axis=0, kind='linear', fill_value='extrapolate')
-                        zi1 = f(times[g_start:g_stop])
-                        f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zi1, axis=1, kind='linear', fill_value='extrapolate')
-                        zi = f(soltab.freq)
+                        if len(set(nanind[0])) > 1:
+                            f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zr, axis=0, kind='linear', fill_value='extrapolate')
+                            zr1 = f(times[g_start:g_stop])
+                            f = si.interp1d(times[time_slice][np.array(list(set(nanind[0])))], zi, axis=0, kind='linear', fill_value='extrapolate')
+                            zi1 = f(times[g_start:g_stop])
+                        else:
+                            zr1 = zr
+                            zi1 = zi
+                        if len(set(nanind[1])) > 1:
+                            f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zr1, axis=1, kind='linear', fill_value='extrapolate')
+                            zr = f(soltab.freq)
+                            f = si.interp1d(soltab.freq[freq_slice][np.array(list(set(nanind[1])))], zi1, axis=1, kind='linear', fill_value='extrapolate')
+                            zi = f(soltab.freq)
+                        else:
+                            zr = zr1
+                            zi = zi1
                         parms[time_slice, freq_slice, s, dir, pol] = np.arctan2(zi, zr)
                     g_start = g_stop
 
