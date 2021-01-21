@@ -522,9 +522,14 @@ void run_master() {
 
     // Broadcast model image to workers
     if (world_size > 1) {
-      runtimes_grid_broadcast[cycle] = -omp_get_wtime();
+      double runtime_broadcast = -omp_get_wtime();
       broadcast_grid(grid, 0);
-      runtimes_grid_broadcast[cycle] += omp_get_wtime();
+      runtime_broadcast += omp_get_wtime();
+      runtimes_grid_broadcast[cycle] = runtime_broadcast;
+      size_t sizeof_broadcast = grid->bytes() * (world_size - 1);
+      float bandwidth_broadcast = 1e-9f * sizeof_broadcast / runtime_broadcast;
+      std::cout << "broadcast: " << runtime_broadcast << " s, "
+                << bandwidth_broadcast << " GB/s" << std::endl;
 
       // Set grid
       proxy.set_grid(grid);
