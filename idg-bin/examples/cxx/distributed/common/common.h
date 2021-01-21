@@ -445,6 +445,9 @@ void run_master() {
   std::vector<double> runtimes_grid_reduce(nr_cycles);
   std::vector<double> runtimes_grid_fft(nr_cycles);
   std::vector<double> runtimes_grid_broadcast(nr_cycles);
+  #if defined(HAVE_FTI)
+  std::vector<double> runtimes_checkpoint(nr_cycles);
+  #endif
   double runtime_imaging;
 
   // Iterate all cycles
@@ -452,7 +455,9 @@ void run_master() {
   for (cycle = 0; cycle < nr_cycles; cycle++) {
     // Checkpoint
     #if defined(HAVE_FTI)
+    runtimes_checkpoint[cycle] = -omp_get_wtime();
     make_checkpoint(0, ckpt);
+    runtimes_checkpoint[cycle] += omp_get_wtime();
     #endif
 
     // Info
@@ -558,6 +563,10 @@ void run_master() {
                                                runtimes_grid_reduce.end(), 0.0);
   double runtime_grid_broadcast = std::accumulate(
       runtimes_grid_broadcast.begin(), runtimes_grid_broadcast.end(), 0.0);
+  #if defined(HAVE_FTI)
+  double runtime_checkpoint = std::accumulate(runtimes_checkpoint.begin(),
+                                              runtimes_checkpoint.end(), 0.0);
+  #endif
   idg::report("initialize", runtime_init);
   idg::report("plan", runtime_plan);
   idg::report("gridding", runtime_gridding);
@@ -565,6 +574,9 @@ void run_master() {
   idg::report("degridding", runtime_degridding);
   idg::report("grid reduce", runtime_grid_reduce);
   idg::report("grid broadcast", runtime_grid_broadcast);
+  #if defined(HAVE_FTI)
+  idg::report("checkpoint", runtime_checkpoint);
+  #endif
   idg::report("runtime imaging", runtime_imaging);
   std::clog << std::endl;
 
