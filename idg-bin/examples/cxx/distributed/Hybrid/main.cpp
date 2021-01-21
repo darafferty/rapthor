@@ -5,7 +5,7 @@
 
 using ProxyType = idg::proxy::hybrid::GenericOptimized;
 
-#include "../common.h"
+#include "../common/common.h"
 
 int main(int argc, char *argv[]) {
   run(argc, argv);
