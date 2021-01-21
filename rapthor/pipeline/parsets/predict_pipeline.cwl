@@ -193,37 +193,6 @@ steps:
 {% if do_slowgain_solve %}
     # Corrupt with both fast phases and slow gains
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
-    in:
-      - id: msin
-        source: sector_filename
-      - id: msout
-        source: sector_model_filename
-      - id: starttime
-        source: sector_starttime
-      - id: ntimes
-        source: sector_ntimes
-      - id: onebeamperpatch
-        source: onebeamperpatch
-      - id: h5parm
-        source: h5parm
-      - id: sourcedb
-        source: sector_obs_sourcedb
-      - id: sourcedb2
-        source: make_sourcedb/sourcedb
-      - id: directions
-        source: sector_patches
-      - id: numthreads
-        valueFrom: '{{ max_threads }}'
-    scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
-    scatterMethod: dotproduct
-    out:
-      - id: msmod
 {% else %}
     # Corrupt with fast phases only
     run: {{ rapthor_pipeline_dir }}/steps/predict_model_data_phase_only.cwl
