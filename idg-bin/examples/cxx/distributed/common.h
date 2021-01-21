@@ -734,7 +734,9 @@ void run(int argc, char *argv[]) {
     exit(EXIT_FAILURE);
   }
   const char *fti_config_file = argv[1];
-  FTI_Init(fti_config_file, MPI_COMM_WORLD);
+  if (FTI_Init(fti_config_file, MPI_COMM_WORLD) != 0) {
+    exit(EXIT_FAILURE);
+  };
   #endif
 
   // Get the rank of the process
