@@ -20,7 +20,9 @@ using namespace idg::kernel::cuda;
 namespace idg {
 namespace proxy {
 namespace cuda {
-CUDA::CUDA(ProxyInfo info) : mInfo(info) {
+CUDA::CUDA(ProxyInfo info) :
+  hostPowerSensor(powersensor::get_power_sensor(powersensor::sensor_host)),
+  mInfo(info) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
@@ -30,15 +32,11 @@ CUDA::CUDA(ProxyInfo info) : mInfo(info) {
   print_devices();
   print_compiler_flags();
   cuProfilerStart();
-
-  // Initialize host PowerSensor
-  hostPowerSensor = powersensor::get_power_sensor(powersensor::sensor_host);
 };
 
 CUDA::~CUDA() {
   cuProfilerStop();
   free_devices();
-  delete hostPowerSensor;
 }
 
 void CUDA::init_devices() {

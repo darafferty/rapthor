@@ -68,7 +68,7 @@ class CUDA : public Proxy {
   void free_devices();
   static ProxyInfo default_info();
 
-  powersensor::PowerSensor* hostPowerSensor;
+  std::unique_ptr<powersensor::PowerSensor> hostPowerSensor;
 
   struct {
     unsigned int nr_stations = 0;
