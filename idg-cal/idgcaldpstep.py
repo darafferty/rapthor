@@ -725,12 +725,15 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
     l = s * np.linspace(-0.5, 0.5, subgrid_size)
     m = -s * np.linspace(-0.5, 0.5, subgrid_size)
 
+    # dimension 2
     B1, B2 = np.meshgrid(l, m)
 
+    # dimension 4
     B1 = B1[np.newaxis, :, :, np.newaxis]
     B2 = B2[np.newaxis, :, :, np.newaxis]
 
     nr_terms = np.sum(np.arange(1, polynomial_order + 2, 1))
+    # dimension 4 (nterms, grid_x, grid_y, 1)
     basis_functions = np.empty((nr_terms,) + B1.shape[1::])
 
     for n in range(polynomial_order + 1):
@@ -740,6 +743,7 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
             offset = np.sum(np.arange(1, n + 1, 1)) + k
             basis_functions[offset, ...] = B1 ** (n - k) * B2 ** k
 
+    # Casting into 2D (again?!)
     basis_functions = basis_functions.reshape((-1, subgrid_size * subgrid_size)).T
     U, S, V, = np.linalg.svd(basis_functions)
     basis_functions_orthonormal = U[:, :nr_terms]
@@ -748,6 +752,7 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
         (-1, subgrid_size, subgrid_size, 1)
     )
 
+    # Kronecker product
     basis_functions_orthonormal = np.kron(
         basis_functions_orthonormal, np.array([1.0, 0.0, 0.0, 1.0])
     )
