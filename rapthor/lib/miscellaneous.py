@@ -349,6 +349,37 @@ def delete_directory(dirname):
             raise e
 
 
+def get_reference_station(soltab, max_ind=None):
+    """
+    Return the index of the station with the lowest fraction of flagged
+    solutions
+
+    Parameters
+    ----------
+    soltab : losoto solution table object
+        The input solution table
+    max_ind : int, optional
+        The maximum station index to use when choosing the reference
+        station. The reference station will be drawn from the first
+        max_ind stations. If None, all stations are considered.
+
+    Returns
+    -------
+    ref_ind : int
+        Index of the reference station
+    """
+    if max_ind is None or max_ind > len(soltab.ant):
+        max_ind = len(soltab.ant)
+
+    weights = soltab.getValues(retAxesVals=False, weight=True)
+    weights = np.sum(weights, axis=tuple([i for i, axis_name in
+                                          enumerate(soltab.getAxesNames())
+                                          if axis_name != 'ant']), dtype=np.float)
+    ref_ind = np.where(weights[0:max_ind] == np.max(weights[0:max_ind]))[0][0]
+
+    return ref_ind
+
+
 class multiprocManager(object):
 
     class multiThread(multiprocessing.Process):

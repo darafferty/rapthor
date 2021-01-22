@@ -334,17 +334,21 @@ class KLScreen(Screen):
         vals = [[ra*np.pi/180.0, dec*np.pi/180.0] for ra, dec in zip(ra_deg, dec_deg)]
         sourceTable = list(zip(*(soltab_ph.dir, vals)))
 
-        # Now call LoSoTo's stationscreen operation to do the fitting
+        # Now call LoSoTo's stationscreen operation to do the fitting. For the phase
+        # screens, we reference the phases to the station with the least amount
+        # of flagged solutions, drawn from the first 10 stations (to ensure it is
+        # fairly central)
+        ref_ind = misc.get_reference_station(soltab_ph, 10)
         adjust_order_amp = True
         screen_order_amp = min(12, max(3, int(np.round(len(source_positions) / 2))))
         adjust_order_ph = True
         screen_order = min(20, len(source_positions)-1)
-        stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order,
+        stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order, refAnt=ref_ind,
                           scale_order=True, adjust_order=adjust_order_ph)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
-            stationscreen.run(soltab_amp, 'amplitude_screen000', order=screen_order_amp, niter=3,
-                              scale_order=False, adjust_order=adjust_order_amp)
+            stationscreen.run(soltab_amp, 'amplitude_screen000', order=screen_order_amp,
+                              niter=3, scale_order=False, adjust_order=adjust_order_amp)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
@@ -526,7 +530,8 @@ class VoronoiScreen(Screen):
 
     def fit(self):
         """
-        Fitting is not needed: the input solutions are used directly
+        Fitting is not needed: the input solutions are used directly, after
+        referencing the phases to a single station
         """
         # Open solution tables
         H = h5parm(self.input_h5parm_filename)
@@ -536,8 +541,15 @@ class VoronoiScreen(Screen):
             soltab_amp = solset.getSoltab(self.input_amplitude_soltab_name)
 
         # Input data are [time, freq, ant, dir, pol] for slow amplitudes
-        # and [time, freq, ant, dir] for fast phases (scalarphase).
+        # and [time, freq, ant, dir] for fast phases (scalarphase). We reference
+        # the phases to the station with the least amount of flagged solutions,
+        # drawn from the first 10 stations (to ensure it is fairly central)
         self.vals_ph = soltab_ph.val
+        ref_ind = misc.get_reference_station(soltab_ph, 10)
+        vals_ph_ref = self.vals_ph[:, :, ref_ind, :].copy()
+        for i in range(len(soltab_ph.ant)):
+            # Subtract phases of reference station
+            self.vals_ph[:, :, i, :] -= vals_ph_ref
         self.times_ph = soltab_ph.time
         self.freqs_ph = soltab_ph.freq
         if not self.phase_only:
