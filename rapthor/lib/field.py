@@ -103,7 +103,10 @@ class Field(object):
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
                 tottime = obs.endtime - obs.starttime
                 nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
-                if nchunks > 1:
+                if nchunks == 1:
+                    self.observations.append(Observation(obs.ms_filename, starttime=obs.starttime,
+                                                         endtime=obs.starttime+mintime))
+                else:
                     steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
                     endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
@@ -113,8 +116,6 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
-                else:
-                    self.observations.append(obs)
         obs0 = self.observations[0]
 
         # Check that all observations have the same antenna type
