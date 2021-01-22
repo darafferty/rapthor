@@ -192,7 +192,7 @@ class Field(object):
         ntimechunks = 0
         nfreqchunks = 0
         for obs in self.observations:
-            obs.set_calibration_parameters(self.parset, self.num_patches)
+            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
             ntimechunks += obs.ntimechunks
             nfreqchunks += obs.nfreqchunks
         self.ntimechunks = ntimechunks

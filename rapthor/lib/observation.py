@@ -7,7 +7,7 @@ import logging
 import casacore.tables as pt
 import numpy as np
 from astropy.time import Time
-from rapthor.lib.cluster import get_time_chunksize, get_frequency_chunksize
+from rapthor.lib.cluster import get_fast_solve_intervals, get_slow_solve_intervals
 from scipy.special import erf
 
 
@@ -119,7 +119,7 @@ class Observation(object):
                             + self.ms_filename + " limit ::10000").getcol("el")
         self.mean_el_rad = np.mean(el_values)
 
-    def set_calibration_parameters(self, parset, ndir):
+    def set_calibration_parameters(self, parset, ndir, nobs):
         """
         Sets the calibration parameters
 
@@ -129,13 +129,14 @@ class Observation(object):
             Parset with processing parameters
         ndir : int
             Number of calibration directions/patches
+        nobs : int
+            Number of observations in total
         """
         # Get the target solution intervals
         target_fast_timestep = parset['calibration_specific']['fast_timestep_sec']
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
         target_slow_timestep = parset['calibration_specific']['slow_timestep_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
-        target_smoothnessconstraint = parset['calibration_specific']['slow_smoothnessconstraint']
 
         # Find solution intervals for fast-phase solve
         timepersample = self.timepersample
@@ -143,21 +144,13 @@ class Observation(object):
         solint_fast_timestep = max(1, int(round(target_fast_timestep / timepersample)))
         solint_fast_freqstep = max(1, self.get_nearest_frequstep(target_fast_freqstep / channelwidth))
 
-        # Calculate time ranges of calibration chunks for fast-phase solve. Try
-        # to ensure that the number of samples per chunk is an even multiple of
-        # the solution interval
-
-        # TODO: The optimal number of chunks depends on the number of directions (predict is
-        # parallelized over direction and memory scales with this number), the number of
-        # available cores:
-        #
-        # tot_mem = size of MS / # timeslots * ?
-        target_time_chunksize, solint_fast_timestep = get_time_chunksize(parset['cluster_specific'],
-                                                                         self.timepersample,
-                                                                         self.numsamples,
+        # Adjust the solution interval if needed to fit the fast solve into the
+        # available memory and determine how many calibration chunks to make (to allow
+        # parallel jobs)
+        samplesperchunk, solint_fast_timestep = get_fast_solve_intervals(parset['cluster_specific'],
+                                                                         self.numsamples, nobs,
                                                                          solint_fast_timestep,
                                                                          self.antenna, ndir)
-        samplesperchunk = int(round(target_time_chunksize / timepersample))
         chunksize = samplesperchunk * timepersample
         mystarttime = self.starttime
         myendtime = self.endtime
@@ -192,30 +185,20 @@ class Observation(object):
         solint_slow_timestep = max(1, int(round(target_slow_timestep / timepersample)))
         solint_slow_freqstep = max(1, self.get_nearest_frequstep(target_slow_freqstep / channelwidth))
 
-        # Calculate frequency ranges of calibration chunks for slow-gain solve. Try
-        # to ensure that the number of samples per chunk is an even multiple of
-        # the solution interval
-
-        # TODO: The optimal number of chunks depends on the number of directions (predict is
-        # parallelized over direction and memory scales with this number), the number of
-        # available cores:
-        #
-        # tot_mem = size of MS / # timeslots * ?
-        numchannels = self.numchannels
-        smoothnesscontraint_freqstep = max(1, self.get_nearest_frequstep(target_smoothnessconstraint /
-                                                                         channelwidth))
-        min_freqstep = max(2*smoothnesscontraint_freqstep, solint_slow_freqstep)
-        target_freq_chunksize, solint_slow_timestep = get_frequency_chunksize(
-                                                          parset['cluster_specific'], channelwidth,
-                                                          min_freqstep, solint_slow_timestep,
-                                                          self.antenna, ndir)
-        channelsperchunk = int(round(target_freq_chunksize / channelwidth))
-        chunksize = channelsperchunk * channelwidth
+        # Adjust the solution interval if needed to fit the slow solve into the
+        # available memory and determine how many calibration chunks to make (to allow
+        # parallel jobs)
+        samplesperchunk, solint_slow_timestep = get_slow_solve_intervals(parset['cluster_specific'],
+                                                                         self.numchannels, nobs,
+                                                                         solint_slow_freqstep,
+                                                                         solint_slow_timestep,
+                                                                         self.antenna, ndir)
+        chunksize = samplesperchunk * channelwidth
         mystartfreq = self.startfreq
         myendfreq = self.endfreq
         if (myendfreq-mystartfreq) > chunksize:
             # Divide up the bandwidth into chunks of chunksize or smaller
-            nchunks = int(np.ceil(float(numchannels) * channelwidth / chunksize))
+            nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
         else:
             nchunks = 1
         self.nfreqchunks = nchunks
@@ -226,8 +209,8 @@ class Observation(object):
         self.log.debug('Using {0} frequency chunk{1} for slow-gain '
                        'calibration'.format(self.nfreqchunks, infix))
         self.parameters['freqchunk_filename'] = [self.ms_filename] * self.nfreqchunks
-        self.parameters['startchan'] = [channelsperchunk * i for i in range(nchunks)]
-        self.parameters['nchan'] = [channelsperchunk] * nchunks
+        self.parameters['startchan'] = [samplesperchunk * i for i in range(nchunks)]
+        self.parameters['nchan'] = [samplesperchunk] * nchunks
         self.parameters['nchan'][-1] = 0  # set last entry to extend until end
         self.parameters['slow_starttime'] = [self.convert_mjd(self.starttime)] * nchunks
         self.parameters['slow_ntimes'] = [self.numsamples] * nchunks
