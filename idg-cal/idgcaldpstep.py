@@ -300,9 +300,7 @@ class IDGCalDPStep(dppp.DPStep):
 
         self.proxy.init_cache(self.subgrid_size, self.cell_size, self.w_step, self.shift)
 
-        self.aterm_offsets = get_aterm_offsets(
-            self.nr_timeslots, self.nr_timesteps
-        )
+        self.aterm_offsets = get_aterm_offsets(self.nr_timeslots, self.nr_timesteps)
 
         self.Bampl, self.Tampl = polynomial_basis_functions(
             self.polynomial_degree_ampl, self.subgrid_size, self.image_size
@@ -388,9 +386,7 @@ class IDGCalDPStep(dppp.DPStep):
             self.nr_timeslots,
         )
 
-        aterm_offsets = get_aterm_offsets(
-            self.nr_timeslots, self.nr_timesteps
-        )
+        aterm_offsets = get_aterm_offsets(self.nr_timeslots, self.nr_timesteps)
 
         aterm_ampl = np.tensordot(
             parameters[:, : self.nr_parameters_ampl], self.Bampl, axes=((1,), (0,))
@@ -405,7 +401,12 @@ class IDGCalDPStep(dppp.DPStep):
                 axes=((2,), (0,)),
             )
         )
-        aterms = np.ascontiguousarray((aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl).astype(idg.idgtypes.atermtype))
+
+        aterms = np.ascontiguousarray(
+            (aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl).astype(
+                idg.idgtypes.atermtype
+            )
+        )
 
         nr_iterations = 0
         converged = False
@@ -841,12 +842,11 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
 
         return a, B, RR
 
-def get_aterm_offsets(nr_timeslots, nr_time):
-    aterm_offsets = np.zeros(
-        (nr_timeslots + 1),
-        dtype = idg.idgtypes.atermoffsettype)
 
-    for i in range(nr_timeslots+1):
-        aterm_offsets[i] = i*(nr_time // nr_timeslots)
+def get_aterm_offsets(nr_timeslots, nr_time):
+    aterm_offsets = np.zeros((nr_timeslots + 1), dtype=idg.idgtypes.atermoffsettype)
+
+    for i in range(nr_timeslots + 1):
+        aterm_offsets[i] = i * (nr_time // nr_timeslots)
 
     return aterm_offsets
