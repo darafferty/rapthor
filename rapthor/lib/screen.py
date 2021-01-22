@@ -335,12 +335,19 @@ class KLScreen(Screen):
         sourceTable = list(zip(*(soltab_ph.dir, vals)))
 
         # Now call LoSoTo's stationscreen operation to do the fitting. For the phase
-        # screens, we reference the solutions to station 0
+        # screens, we reference the the phases to the station with the least amount
+        # of flagged solutions, drawn from the first 10 stations (to ensure it is
+        # fairly central)
+        weights = soltab_ph.getValues(retAxesVals=False, weight=True)
+        weights = np.sum(weights, axis=tuple([i for i, axis_name in
+                                              enumerate(soltab_ph.getAxesNames())
+                                              if axis_name != 'ant']), dtype=np.float)
+        ref_ind = np.where(weights[0:10] == np.max(weights[0:10]))[0][0]
         adjust_order_amp = True
         screen_order_amp = min(12, max(3, int(np.round(len(source_positions) / 2))))
         adjust_order_ph = True
         screen_order = min(20, len(source_positions)-1)
-        stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order, refAnt=0,
+        stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order, refAnt=ref_ind,
                           scale_order=True, adjust_order=adjust_order_ph)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
@@ -528,7 +535,7 @@ class VoronoiScreen(Screen):
     def fit(self):
         """
         Fitting is not needed: the input solutions are used directly, after
-        referencing the phases to station 0
+        referencing the phases to a single station
         """
         # Open solution tables
         H = h5parm(self.input_h5parm_filename)
@@ -539,9 +546,15 @@ class VoronoiScreen(Screen):
 
         # Input data are [time, freq, ant, dir, pol] for slow amplitudes
         # and [time, freq, ant, dir] for fast phases (scalarphase). We reference
-        # the phases to station 0
+        # the phases to the station with the least amount of flagged solutions,
+        # drawn from the first 10 stations (to ensure it is fairly central)
+        weights = soltab_ph.getValues(retAxesVals=False, weight=True)
+        weights = np.sum(weights, axis=tuple([i for i, axis_name in
+                                              enumerate(soltab_ph.getAxesNames())
+                                              if axis_name != 'ant']), dtype=np.float)
+        ref_ind = np.where(weights[0:10] == np.max(weights[0:10]))[0][0]
         self.vals_ph = soltab_ph.val
-        vals_ph_ref = self.vals_ph[:, :, 0, :].copy()
+        vals_ph_ref = self.vals_ph[:, :, ref_ind, :].copy()
         for i in range(len(soltab_ph.ant)):
             # Subtract phases of reference station
             self.vals_ph[:, :, i, :] -= vals_ph_ref
