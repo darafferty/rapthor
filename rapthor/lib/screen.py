@@ -335,14 +335,10 @@ class KLScreen(Screen):
         sourceTable = list(zip(*(soltab_ph.dir, vals)))
 
         # Now call LoSoTo's stationscreen operation to do the fitting. For the phase
-        # screens, we reference the the phases to the station with the least amount
+        # screens, we reference the phases to the station with the least amount
         # of flagged solutions, drawn from the first 10 stations (to ensure it is
         # fairly central)
-        weights = soltab_ph.getValues(retAxesVals=False, weight=True)
-        weights = np.sum(weights, axis=tuple([i for i, axis_name in
-                                              enumerate(soltab_ph.getAxesNames())
-                                              if axis_name != 'ant']), dtype=np.float)
-        ref_ind = np.where(weights[0:10] == np.max(weights[0:10]))[0][0]
+        ref_ind = misc.get_reference_station(soltab_ph, 10)
         adjust_order_amp = True
         screen_order_amp = min(12, max(3, int(np.round(len(source_positions) / 2))))
         adjust_order_ph = True
@@ -548,12 +544,8 @@ class VoronoiScreen(Screen):
         # and [time, freq, ant, dir] for fast phases (scalarphase). We reference
         # the phases to the station with the least amount of flagged solutions,
         # drawn from the first 10 stations (to ensure it is fairly central)
-        weights = soltab_ph.getValues(retAxesVals=False, weight=True)
-        weights = np.sum(weights, axis=tuple([i for i, axis_name in
-                                              enumerate(soltab_ph.getAxesNames())
-                                              if axis_name != 'ant']), dtype=np.float)
-        ref_ind = np.where(weights[0:10] == np.max(weights[0:10]))[0][0]
         self.vals_ph = soltab_ph.val
+        ref_ind = misc.get_reference_station(soltab_ph, 10)
         vals_ph_ref = self.vals_ph[:, :, ref_ind, :].copy()
         for i in range(len(soltab_ph.ant)):
             # Subtract phases of reference station
