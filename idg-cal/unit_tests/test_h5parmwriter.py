@@ -38,7 +38,7 @@ def test_h5parmwriter():
     # Add sources info
     h5writer.add_sources(source_names, source_dirs)
 
-    # Add solution table
+    # Add phase solution table (withou data)
     h5writer.create_solution_table(
         "phase000",
         "phase",
@@ -47,7 +47,7 @@ def test_h5parmwriter():
         history=f'CREATED at {datetime.today().strftime("%Y/%m/%d")}',
     )
 
-    # Add solution table (without data)
+    # Add amplitude solution table (without data)
     h5writer.create_solution_table(
         "amplitude000",
         "amplitude",
@@ -61,7 +61,12 @@ def test_h5parmwriter():
     amplitude_coeffs = np.ones((1, 2, 1, 1, 3)) * 500
     h5writer.fill_solution_table("amplitude000", amplitude_coeffs, amplitude_offset)
 
-    # Add meta data to dir axis
+    # Add meta data to ant axis in amplitude soltab
+    h5writer.create_axis_meta_data(
+        "amplitude000", "ant", meta_data=np.array(antenna_names)
+    )
+
+    # Add meta data to dir axis in phase soltab
     h5writer.create_axis_meta_data(
         "phase000",
         "dir",
@@ -116,6 +121,11 @@ def test_h5parmwriter():
     )
     np.testing.assert_equal(
         h5reader[solution_set_name + "/amplitude000/val"][slicer], amplitude_coeffs
+    )
+
+    np.testing.assert_equal(
+        np.char.decode(h5reader[solution_set_name + "/amplitude000/ant"]),
+        np.array(antenna_names),
     )
 
     assert (
