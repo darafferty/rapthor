@@ -400,6 +400,7 @@ void CUDA::initialize(
                             &current_nr_baselines);
         if (current_nr_baselines == 0) continue;
         JobData job;
+        job.first_bl = first_bl;
         job.current_time_offset = first_bl * nr_timesteps;
         job.current_nr_baselines = current_nr_baselines;
         job.current_nr_subgrids =

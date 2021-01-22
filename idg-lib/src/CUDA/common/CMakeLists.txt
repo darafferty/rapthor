@@ -52,6 +52,7 @@ install(
     kernels/KernelCalibrate.cu
     kernels/KernelAverageBeam.cu
     kernels/KernelFFTShift.cu
+    kernels/KernelAdderWtiles.cu
     kernels/math.cu
     kernels/Types.h
     COMPONENT gpu

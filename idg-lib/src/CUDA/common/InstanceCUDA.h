@@ -109,6 +109,30 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_scaler(int nr_subgrids, int subgrid_size, void* u_subgrid);
 
+  void launch_adder_copy_tiles(unsigned int nr_tiles,
+                              unsigned int padded_tile_size,
+                              unsigned int w_padded_tile_size,
+                              cu::DeviceMemory& d_tile_ids,
+                              cu::DeviceMemory& d_padded_tiles,
+                              cu::DeviceMemory& d_w_padded_tiles);
+
+  void launch_adder_apply_phasor(unsigned int nr_tiles,
+                                 float image_size,
+                                 float w_step,
+                                 unsigned int w_padded_tile_size,
+                                 cu::DeviceMemory& d_w_padded_tiles,
+                                 cu::DeviceMemory& d_shift,
+                                 cu::DeviceMemory& d_tile_coordinates);
+
+  void launch_adder_subgrids_to_wtiles(int nr_subgrids,
+                                      long grid_size,
+                                      int subgrid_size,
+                                      int wtile_size,
+                                      int subgrid_offset,
+                                      cu::DeviceMemory& d_metadata,
+                                      cu::DeviceMemory& d_subgrid,
+                                      cu::DeviceMemory& d_padded_tiles);
+
   // Memory management per device
   cu::DeviceMemory& allocate_device_grid(size_t bytes);
   cu::DeviceMemory& allocate_device_wavenumbers(size_t bytes);
@@ -116,6 +140,7 @@ class InstanceCUDA : public KernelsInstance {
   cu::DeviceMemory& allocate_device_aterms_indices(size_t bytes);
   cu::DeviceMemory& allocate_device_spheroidal(size_t bytes);
   cu::DeviceMemory& allocate_device_avg_aterm_correction(size_t bytes);
+  cu::DeviceMemory& allocate_device_wtiles(size_t bytes);
 
   // Memory management per stream
   cu::HostMemory& allocate_host_subgrids(size_t bytes);
@@ -146,6 +171,9 @@ class InstanceCUDA : public KernelsInstance {
   cu::DeviceMemory& retrieve_device_spheroidal() { return *d_spheroidal; }
   cu::DeviceMemory& retrieve_device_avg_aterm_correction() {
     return *d_avg_aterm_correction;
+  }
+  cu::DeviceMemory& retrieve_device_wtiles() {
+    return *d_wtiles;
   }
 
   // Retrieve pre-allocated buffers (per stream)
@@ -231,6 +259,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::Function> function_average_beam;
   std::unique_ptr<cu::Function> function_fft_shift;
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
+  std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
 
   // One instance per device
   std::unique_ptr<cu::DeviceMemory> d_aterms;
@@ -240,6 +269,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
   std::unique_ptr<cu::DeviceMemory> d_spheroidal;
   std::unique_ptr<cu::DeviceMemory> d_grid;
+  std::unique_ptr<cu::DeviceMemory> d_wtiles;
   std::unique_ptr<cu::HostMemory> h_visibilities;
   std::unique_ptr<cu::HostMemory> h_uvw;
   std::unique_ptr<cu::HostMemory> h_subgrids;
@@ -329,6 +359,9 @@ static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
 static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
 static const std::string name_average_beam = "kernel_average_beam";
 static const std::string name_fft_shift = "kernel_fft_shift";
+static const std::string name_adder_copy_tiles = "kernel_copy_tiles";
+static const std::string name_adder_apply_phasor = "kernel_apply_phasor";
+static const std::string name_adder_subgrids_to_wtiles = "kernel_subgrids_to_wtiles";
 
 }  // end namespace cuda
 }  // end namespace kernel

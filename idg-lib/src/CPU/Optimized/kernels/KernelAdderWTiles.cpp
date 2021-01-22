@@ -86,18 +86,6 @@ void kernel_adder_subgrids_to_wtiles(
   }          // end parallel
 }  // end kernel_adder_subgrids_to_wtiles
 
-int next_composite(int n) {
-  n += (n & 1);
-  while (true) {
-    int nn = n;
-    while ((nn % 2) == 0) nn /= 2;
-    while ((nn % 3) == 0) nn /= 3;
-    while ((nn % 5) == 0) nn /= 5;
-    if (nn == 1) return n;
-    n += 2;
-  }
-}
-
 void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
                                  int wtile_size, float image_size, float w_step,
                                  const float *shift, int nr_tiles,

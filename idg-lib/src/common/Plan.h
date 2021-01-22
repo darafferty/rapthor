@@ -26,8 +26,8 @@ class Proxy;
 namespace cpu {
 class CPU;
 }
-namespace cpu {
-class CPU;
+namespace hybrid {
+class UnifiedOptimized;
 }
 }  // namespace proxy
 
@@ -80,6 +80,7 @@ class Plan {
   // only these classes can instantiate a Plan
   friend proxy::Proxy;
   friend proxy::cpu::CPU;
+  friend proxy::hybrid::UnifiedOptimized;
 
  public:
   // Destructor

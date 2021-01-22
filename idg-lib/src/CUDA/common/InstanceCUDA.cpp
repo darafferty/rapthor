@@ -205,6 +205,11 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("KernelFFTShift.cubin");
   flags.push_back(flags_common);
 
+  // Adder wtiles
+  src.push_back("KernelAdderWtiles.cu");
+  cubin.push_back("KernelAdderWtiles.cubin");
+  flags.push_back(flags_common);
+
 // FFT
 #if USE_CUSTOM_FFT
   src.push_back("KernelFFT.cu");
@@ -292,6 +297,21 @@ void InstanceCUDA::load_kernels() {
       CUDA_SUCCESS) {
     function_fft_shift.reset(new cu::Function(*context, function));
     found++;
+  }
+
+  // Load adder_wtiles functions
+  if (cuModuleGetFunction(&function, *mModules[8],
+                          name_adder_copy_tiles.c_str()) == CUDA_SUCCESS) {
+    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+    found++;
+  }
+  if (cuModuleGetFunction(&function, *mModules[8],
+                          name_adder_apply_phasor.c_str()) == CUDA_SUCCESS) {
+    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+  }
+  if (cuModuleGetFunction(&function, *mModules[8],
+                          name_adder_subgrids_to_wtiles.c_str()) == CUDA_SUCCESS) {
+    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
 
 // Load FFT function
@@ -1025,6 +1045,62 @@ void InstanceCUDA::launch_scaler(int nr_subgrids, int subgrid_size,
   end_measurement(data);
 }
 
+void InstanceCUDA::launch_adder_copy_tiles(unsigned int nr_tiles,
+                                           unsigned int padded_tile_size,
+                                           unsigned int w_padded_tile_size,
+                                           cu::DeviceMemory& d_tile_ids,
+                                           cu::DeviceMemory& d_padded_tiles,
+                                           cu::DeviceMemory& d_w_padded_tiles)
+{
+  const void* parameters[] = {&padded_tile_size, &w_padded_tile_size,
+                              d_tile_ids, d_padded_tiles, d_w_padded_tiles};
+  UpdateData* data =
+      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
+  start_measurement(data);
+  dim3 grid(NR_CORRELATIONS, nr_tiles);
+  dim3 block(128);
+  executestream->launchKernel(*functions_adder_wtiles[0], grid, block, 0, parameters);
+  end_measurement(data);
+}
+
+void InstanceCUDA::launch_adder_apply_phasor(unsigned int nr_tiles,
+                                             float image_size,
+                                             float w_step,
+                                             unsigned int w_padded_tile_size,
+                                             cu::DeviceMemory& d_w_padded_tiles,
+                                             cu::DeviceMemory& d_shift,
+                                             cu::DeviceMemory& d_tile_coordinates)
+{
+  const void* parameters[] = {&image_size, &w_step, &w_padded_tile_size,
+                              d_w_padded_tiles, d_shift, d_tile_coordinates};
+  UpdateData* data =
+      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
+  start_measurement(data);
+  dim3 grid(NR_CORRELATIONS, nr_tiles);
+  dim3 block(128);
+  executestream->launchKernel(*functions_adder_wtiles[1], grid, block, 0, parameters);
+  end_measurement(data);
+}
+
+void InstanceCUDA::launch_adder_subgrids_to_wtiles(int nr_subgrids,
+                                                   long grid_size,
+                                                   int subgrid_size,
+                                                   int tile_size,
+                                                   int subgrid_offset,
+                                                   cu::DeviceMemory& d_metadata,
+                                                   cu::DeviceMemory& d_subgrid,
+                                                   cu::DeviceMemory& d_padded_tiles)
+{
+  const void* parameters[] = {&grid_size, &subgrid_size, &tile_size, &subgrid_offset,
+                              d_metadata, d_subgrid, d_padded_tiles};
+  UpdateData* data =
+      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
+  start_measurement(data);
+  dim3 grid(nr_subgrids);
+  executestream->launchKernel(*functions_adder_wtiles[2], grid, block_adder, 0, parameters);
+  end_measurement(data);
+}
+
 typedef struct {
   int nr_timesteps;
   int nr_subgrids;
@@ -1159,6 +1235,11 @@ cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(
   return *reuse_memory(bytes, d_avg_aterm_correction);
 }
 
+cu::DeviceMemory& InstanceCUDA::allocate_device_wtiles(
+    size_t bytes) {
+  return *reuse_memory(bytes, d_wtiles);
+}
+
 /*
  *  Memory management per stream
  *      Maintain multiple memory objects per structure
@@ -1260,6 +1341,7 @@ void InstanceCUDA::free_device_memory() {
   d_wavenumbers.reset();
   d_spheroidal.reset();
   d_grid.reset();
+  d_wtiles.reset();
 }
 
 /*

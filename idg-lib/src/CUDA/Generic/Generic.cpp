@@ -81,7 +81,7 @@ void Generic::run_gridding(
 
   // Load memory objects
   cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
-  
+
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();

@@ -108,6 +108,7 @@ class CUDA : public Proxy {
 
  protected:
   struct JobData {
+    unsigned first_bl;
     unsigned current_time_offset;
     unsigned current_nr_baselines;
     unsigned current_nr_subgrids;
