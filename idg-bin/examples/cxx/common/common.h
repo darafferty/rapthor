@@ -25,7 +25,7 @@
 
 using namespace std;
 
-std::tuple<int, int, int, int, int, int, int, int, int, int, int, float>
+std::tuple<int, int, int, int, int, int, int, int, int, int, int, float, bool>
 read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;      // all LOFAR LBA stations
   const unsigned int DEFAULT_NR_CHANNELS = 16 * 4;  // 16 channels, 4 subbands
@@ -37,6 +37,7 @@ read_parameters() {
   const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const unsigned int DEFAULT_NR_CYCLES = 1;
   const float DEFAULT_GRID_PADDING = 1.0;
+  const bool DEFAULT_USE_WTILES = false;
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
@@ -84,10 +85,14 @@ read_parameters() {
   auto grid_padding =
       cstr_grid_padding ? atof(cstr_grid_padding) : DEFAULT_GRID_PADDING;
 
+  char *cstr_use_wtiles = getenv("USE_WTILES");
+  auto use_wtiles =
+      cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
+
   return std::make_tuple(total_nr_stations, total_nr_channels,
                          total_nr_timesteps, nr_stations, nr_channels,
                          nr_timesteps, nr_timeslots, grid_size, subgrid_size,
-                         kernel_size, nr_cycles, grid_padding);
+                         kernel_size, nr_cycles, grid_padding, use_wtiles);
 }
 
 void print_parameters(unsigned int total_nr_stations,
@@ -163,11 +168,12 @@ void run() {
   unsigned int kernel_size;
   unsigned int nr_cycles;
   float grid_padding;
+  bool use_wtiles;
 
   // Read parameters from environment
   std::tie(total_nr_stations, total_nr_channels, total_nr_timesteps,
            nr_stations, nr_channels, nr_timesteps, nr_timeslots, grid_size,
-           subgrid_size, kernel_size, nr_cycles, grid_padding) =
+           subgrid_size, kernel_size, nr_cycles, grid_padding, use_wtiles) =
       read_parameters();
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
 
@@ -290,11 +296,21 @@ void run() {
         idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(
             visibilities_.data(), nr_baselines, current_nr_timesteps,
             nr_channels_);
+        // W-Tiles
+        idg::WTiles wtiles;
+        std::clog << std::endl;
 
         // Create plan
-        auto plan = std::unique_ptr<idg::Plan>(new idg::Plan(
-            kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
-            baselines, aterms_offsets, options));
+        std::unique_ptr<idg::Plan> plan;
+        if (use_wtiles) {
+          plan.reset(new idg::Plan(kernel_size, subgrid_size, grid_size,
+                                   cell_size, frequencies, uvw, baselines,
+                                   aterms_offsets, wtiles, options));
+        } else {
+          plan.reset(new idg::Plan(kernel_size, subgrid_size, grid_size,
+                                   cell_size, frequencies, uvw, baselines,
+                                   aterms_offsets, options));
+        }
 
         // Start imaging
         double runtime_imaging = -omp_get_wtime();
