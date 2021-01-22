@@ -69,11 +69,11 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
     if mem_gb / gb_per_sol < 1.0:
         solint = target_timestep * mem_gb / gb_per_sol
         solint = max(1, int(round(solint)))
+        if solint < target_timestep:
+            log.warn('Not enough memory available for fast-phase solve. Reducing solution '
+                     'time interval from {0} to {1} time slots'.format(target_timestep, solint))
     else:
         solint = target_timestep
-    if solint < target_timestep:
-        log.warn('Not enough memory available for fast-phase solve. Reducing solution '
-                 'time interval from {0} to {1} time slots'.format(target_timestep, solint))
 
     # Determine the size of chunks to split the calibration into (to allow
     # parallelization over nodes).
@@ -83,8 +83,7 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
     # (otherwise we could get a lot of solutions with less than the target time)
     target_numchunks = np.ceil(cluster_parset['max_nodes'] / numobs)
     samples_per_chunk = int(np.ceil(numsamples / target_numchunks))
-    while samples_per_chunk % solint:
-        samples_per_chunk -= 1
+    samples_per_chunk -= samples_per_chunk % solint
     if samples_per_chunk < solint:
         samples_per_chunk = solint
 
@@ -127,7 +126,11 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
         # Estimate the memory usage in GB per solution
         #
         # Note: the numbers below were determined empirically from typical (Dutch-only)
-        # datasets
+        # datasets by fitting a 2-D quadratic curve of the form:
+        #    Z = C[4]*X**2. + C[5]*Y**2. + C[3]*X*Y + C[1]*X + C[2]*Y + C[0]
+        # where X = ndir, Y = target_freqstep, and Z is the memory usage for 25
+        # time slots (the usage as a function of number of time slots was observed
+        # to be a simple linear scaling so was not included for simplicity)
         if antenna == 'HBA':
             # Best-fit coefficients for 25 time slots
             coef = [7.33333333e-01, 8.33333333e-02, 7.66666667e-03, 5.50000000e-03,
@@ -153,11 +156,11 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
     if mem_gb / gb_per_sol < 1.0:
         solint = target_timestep * mem_gb / gb_per_sol
         solint = max(1, int(round(solint)))
+        if solint < target_timestep:
+            log.warn('Not enough memory available for slow-gain solve. Reducing solution '
+                     'time interval from {0} to {1} time slots'.format(target_timestep, solint))
     else:
         solint = target_timestep
-    if solint < target_timestep:
-        log.warn('Not enough memory available for slow-gain solve. Reducing solution '
-                 'time interval from {0} to {1} time slots'.format(target_timestep, solint))
 
     # Determine the size of the frequency chunks into which to split the calibration.
     #
