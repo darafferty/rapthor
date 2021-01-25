@@ -103,10 +103,10 @@ class Field(object):
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
                 tottime = obs.endtime - obs.starttime
                 if data_fraction < mintime / tottime:
-                    obs.log.warning('The specified value of data_fraction ({0}) results in a '
+                    obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                     'total time for this observation that is less than the '
                                     'slow-gain timestep. The data fraction will be increased '
-                                    'to {1} ensure the slow-gain timestep requirement is '
+                                    'to {1:0.3f} ensure the slow-gain timestep requirement is '
                                     'met.'.format(data_fraction, mintime/tottime))
                 nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
                 if nchunks == 1:
