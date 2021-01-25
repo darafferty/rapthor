@@ -102,8 +102,25 @@ class Field(object):
             for obs in self.full_observations:
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
                 tottime = obs.endtime - obs.starttime
+                if data_fraction < min(1.0, mintime/tottime):
+                    obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                    'total time for this observation that is less than the '
+                                    'slow-gain timestep. The data fraction will be increased '
+                                    'to {1:0.3f} to ensure the slow-gain timestep requirement is '
+                                    'met.'.format(data_fraction, min(1.0, mintime/tottime)))
                 nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
-                if nchunks > 1:
+                if nchunks == 1:
+                    # Center the chunk around the midpoint (which is generally the most
+                    # sensitive, near transit)
+                    midpoint = obs.starttime + tottime / 2
+                    chunktime = min(tottime, max(mintime, data_fraction*tottime))
+                    if chunktime < tottime:
+                        self.observations.append(Observation(obs.ms_filename,
+                                                             starttime=midpoint-chunktime/2,
+                                                             endtime=midpoint+chunktime/2))
+                    else:
+                        self.observations.append(obs)
+                else:
                     steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
                     endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
@@ -113,8 +130,6 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
-                else:
-                    self.observations.append(obs)
         obs0 = self.observations[0]
 
         # Check that all observations have the same antenna type

@@ -81,7 +81,7 @@ class Observation(object):
         else:
             self.goesto_endofms = True
         self.timepersample = tab.getcell('EXPOSURE', 0)
-        self.numsamples = int(np.round((self.endtime - self.starttime) / self.timepersample))
+        self.numsamples = int(np.ceil((self.endtime - self.starttime) / self.timepersample))
         tab.close()
 
         # Get frequency info
