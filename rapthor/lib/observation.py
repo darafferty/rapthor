@@ -308,11 +308,24 @@ class Observation(object):
                                                     sector_name)
         self.parameters['ms_prep_filename'] = ms_prep_filename
 
-        # Get target time and frequency averaging steps
+        # Get target time and frequency averaging steps.
+        #
+        # Note: We limit the averaging to be not more than 2 MHz and 120 s to
+        # avoid extreme values for very small images. Also, due to a limitation
+        # in Dysco, we make sure to have at least 2 time slots after averaging,
+        # otherwise the output MS cannot be written with compression
+        if self.numsamples == 1:
+            self.log.critical('Only one time slot is availble for imaging, but at least '
+                              'two are required. Please increase the fraction of data '
+                              'processed with the data_fraction parameter or supply a '
+                              'measurement set with more time slots.')
+            sys.exit(1)
+        max_timewidth_sec = min(120, int(self.numsamples / 2) * timestep_sec)
         delta_theta_deg = max(width_ra, width_dec) / 2.0
         resolution_deg = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam
-        target_timewidth_sec = min(120.0, self.get_target_timewidth(delta_theta_deg,
+        target_timewidth_sec = min(max_timewidth_sec, self.get_target_timewidth(delta_theta_deg,
                                    resolution_deg, peak_smearing_rapthor))
+
         if use_screens:
             # Ensure we don't average more than the solve time step, as we want to
             # preserve the time resolution that matches that of the screens
