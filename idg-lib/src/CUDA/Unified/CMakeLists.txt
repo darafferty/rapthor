@@ -13,12 +13,14 @@ include_directories (
 set (
     ${PROJECT_NAME}_headers
     Unified.h
+    UnifiedC.h
 )
 
 # Set sources
 set (
     ${PROJECT_NAME}_sources
     Unified.cpp
+    UnifiedC.cpp
 )
 
 # Set build target

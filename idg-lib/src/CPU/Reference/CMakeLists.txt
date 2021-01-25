@@ -6,10 +6,12 @@ project(cpu-reference)
 # sources and header files
 set (${PROJECT_NAME}_headers
     Reference.h
+    ReferenceC.h
 )
 
 set (${PROJECT_NAME}_sources
     Reference.cpp
+    ReferenceC.cpp
 )
 
 # create library

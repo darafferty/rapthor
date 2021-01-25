@@ -125,17 +125,14 @@ void BulkDegridderImpl::compute_visibilities(
   // Create plan
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Start();
   std::unique_ptr<Plan> plan =
-      proxy.make_plan(bufferset_.get_kernel_size(), subgridsize,
-                      bufferset_.get_grid()->get_x_dim(),
-                      bufferset_.get_cell_size(), frequencies_, bufferUVW,
+      proxy.make_plan(bufferset_.get_kernel_size(),
+                      frequencies_, bufferUVW,
                       bufferStationPairs, aterm_offsets_array, options);
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run degridding
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Start();
-  proxy.degridding(*plan, bufferset_.get_w_step(), shift_,
-                   bufferset_.get_cell_size(), bufferset_.get_kernel_size(),
-                   subgridsize, frequencies_, bufferVisibilities, bufferUVW,
+  proxy.degridding(*plan, frequencies_, bufferVisibilities, bufferUVW,
                    bufferStationPairs, aterms_array, aterm_offsets_array,
                    bufferset_.get_spheroidal());
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Pause();

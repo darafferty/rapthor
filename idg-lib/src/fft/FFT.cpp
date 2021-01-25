@@ -205,5 +205,3 @@ void resize2f(int m_in, int n_in, float *data_in, int m_out, int n_out,
 }
 
 }  // end namespace idg
-
-#include "FFTC.h"

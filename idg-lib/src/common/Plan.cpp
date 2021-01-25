@@ -13,32 +13,43 @@ using namespace std;
 namespace idg {
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-           const float cell_size, const Array1D<float>& frequencies,
+           const float cell_size, const Array1D<float>& shift, const Array1D<float>& frequencies,
            const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-           const Array1D<unsigned int>& aterms_offsets, Options options)
-    : use_wtiles(false) {
+           const Array1D<unsigned int>& aterms_offsets, Options options) : 
+    m_subgrid_size(subgrid_size),
+    m_cell_size(cell_size),
+    use_wtiles(false) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << endl;
 #endif
 
   WTiles dummy_wtiles;
+  m_shift(0) = shift(0);
+  m_shift(1) = shift(1);
+  m_shift(2) = shift(2);
 
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterms_offsets, dummy_wtiles, options);
 }
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-           const float cell_size, const Array1D<float>& frequencies,
+           const float cell_size, const Array1D<float>& shift,
+           const Array1D<float>& frequencies,
            const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
            const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
-           Options options)
-    : use_wtiles(true) {
+           Options options):
+    m_subgrid_size(subgrid_size),
+    m_cell_size(cell_size),
+    use_wtiles(true) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << " (with WTiles)" << endl;
 #endif
 
+  m_shift(0) = shift(0);
+  m_shift(1) = shift(1);
+  m_shift(2) = shift(2);
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterms_offsets, wtiles, options);
 }
@@ -241,7 +252,7 @@ void Plan::initialize(
 #endif
 
   // Get options
-  float w_step = options.w_step;
+  m_w_step = options.w_step;
   int nr_w_layers = options.nr_w_layers;
   int max_nr_timesteps_per_subgrid = options.max_nr_timesteps_per_subgrid;
   int max_nr_channels_per_subgrid = options.max_nr_channels_per_subgrid;
@@ -328,7 +339,7 @@ void Plan::initialize(
       auto channel_end = channel_group.second;
 
       // Initialize subgrid
-      Subgrid subgrid(kernel_size, subgrid_size, grid_size, w_step, nr_w_layers,
+      Subgrid subgrid(kernel_size, subgrid_size, grid_size, m_w_step, nr_w_layers,
                       wtile_size);
 
       // Constants over nr_timesteps
@@ -337,7 +348,7 @@ void Plan::initialize(
       const float frequency_end = frequencies(channel_end - 1);
       const float scale_begin = frequency_begin / speed_of_light;
       const float scale_end = frequency_end / speed_of_light;
-      const float scale_w = 1.0f / w_step;
+      const float scale_w = 1.0f / m_w_step;
 
       for (unsigned t = 0; t < nr_timesteps; t++) {
         // U,V in meters
@@ -738,5 +749,3 @@ size_t Plan::baseline_index(size_t antenna1, size_t antenna2,
 }
 
 }  // namespace idg
-
-#include "PlanC.h"

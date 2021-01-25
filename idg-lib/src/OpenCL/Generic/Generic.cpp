@@ -569,5 +569,3 @@ void Generic::do_degridding(
 }  // namespace opencl
 }  // namespace proxy
 }  // namespace idg
-
-#include "GenericC.h"

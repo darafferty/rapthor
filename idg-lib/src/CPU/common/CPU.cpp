@@ -47,8 +47,8 @@ std::unique_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes) {
 }
 
 std::unique_ptr<Plan> CPU::make_plan(
-    const int kernel_size, const int subgrid_size, const int grid_size,
-    const float cell_size, const Array1D<float> &frequencies,
+    const int kernel_size, 
+    const Array1D<float> &frequencies,
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
@@ -56,27 +56,34 @@ std::unique_ptr<Plan> CPU::make_plan(
       m_wtiles.get_wtile_buffer_size()) {
     options.nr_w_layers = INT_MAX;
     return std::unique_ptr<Plan>(
-        new Plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+        new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(), 
+            m_cache_state.cell_size, m_cache_state.shift, frequencies,
                  uvw, baselines, aterms_offsets, m_wtiles, options));
   } else {
-    return Proxy::make_plan(kernel_size, subgrid_size, grid_size, cell_size,
+    return Proxy::make_plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(), 
+                            m_cache_state.cell_size, m_cache_state.shift, 
                             frequencies, uvw, baselines, aterms_offsets,
                             options);
   }
 }
 
-void CPU::init_wtiles(float subgrid_size) {
+void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
+                            const Array1D<float>& shift) {
+  Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
   m_wtiles = WTiles(kernel::cpu::InstanceCPU::kNrWTiles,
                     kernel::cpu::InstanceCPU::kWTileSize);
   kernels.init_wtiles(subgrid_size);
 }
 
-void CPU::flush_wtiles(int subgrid_size, float image_size, float w_step,
-                       const Array1D<float> &shift) {
+void CPU::flush_cache() {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
-    int grid_size = m_grid->get_x_dim();
+    auto grid_size = m_grid->get_x_dim();
+    auto image_size = grid_size * m_cache_state.cell_size;
+    auto subgrid_size = m_cache_state.subgrid_size;
+    auto w_step = m_cache_state.w_step;
+    auto &shift = m_cache_state.shift;
     kernels.run_adder_wtiles_to_grid(
         grid_size, subgrid_size, image_size, w_step, shift.data(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
@@ -135,12 +142,11 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
     High level routines
 */
 void CPU::do_gridding(
-    const Plan &plan, const float w_step, const Array1D<float> &shift,
-    const float cell_size, const unsigned int kernel_size,
-    const unsigned int subgrid_size, const Array1D<float> &frequencies,
+    const Plan &plan,
+    const Array1D<float> &frequencies,
     const Array3D<Visibility<std::complex<float>>> &visibilities,
     const Array2D<UVW<float>> &uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>> &baselines, Grid &grid,
+    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array4D<Matrix2x2<std::complex<float>>> &aterms,
     const Array1D<unsigned int> &aterms_offsets,
     const Array2D<float> &spheroidal) {
@@ -150,17 +156,15 @@ void CPU::do_gridding(
 
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-  // Checks arguments
-  if (kernel_size <= 0 || kernel_size >= subgrid_size - 1) {
-    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
-  }
-
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
   auto nr_timesteps = visibilities.get_y_dim();
   auto nr_channels = visibilities.get_x_dim();
-  auto grid_size = grid.get_x_dim();
-  auto image_size = cell_size * grid_size;
+  auto grid_size = m_grid->get_x_dim();
+  auto subgrid_size = plan.get_subgrid_size();
+  auto &shift = plan.get_shift();
+  auto w_step = plan.get_w_step();
+  auto image_size = plan.get_cell_size() * grid_size;
   auto nr_stations = aterms.get_z_dim();
 
   WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
@@ -201,7 +205,7 @@ void CPU::do_gridding(
       void *uvw_ptr = uvw.data(0, 0);
       void *visibilities_ptr = visibilities.data(0, 0, 0);
       void *subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      std::complex<float> *grid_ptr = grid.data();
+      std::complex<float> *grid_ptr = m_grid->data();
 
       // Gridder kernel
       kernels.run_gridder(
@@ -258,13 +262,12 @@ void CPU::do_gridding(
 }  // end gridding
 
 void CPU::do_degridding(
-    const Plan &plan, const float w_step, const Array1D<float> &shift,
-    const float cell_size, const unsigned int kernel_size,
-    const unsigned int subgrid_size, const Array1D<float> &frequencies,
+    const Plan &plan,
+    const Array1D<float> &frequencies,
     Array3D<Visibility<std::complex<float>>> &visibilities,
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
-    const Grid &grid, const Array4D<Matrix2x2<std::complex<float>>> &aterms,
+    const Array4D<Matrix2x2<std::complex<float>>> &aterms,
     const Array1D<unsigned int> &aterms_offsets,
     const Array2D<float> &spheroidal) {
 #if defined(DEBUG)
@@ -273,18 +276,16 @@ void CPU::do_degridding(
 
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-  // Checks arguments
-  if (kernel_size <= 0 || kernel_size >= subgrid_size - 1) {
-    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
-  }
-
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
   auto nr_timesteps = visibilities.get_y_dim();
   auto nr_channels = visibilities.get_x_dim();
-  auto grid_size = grid.get_x_dim();
-  auto image_size = cell_size * grid_size;
+  auto grid_size = m_grid->get_x_dim();
+  auto image_size = plan.get_cell_size() * grid_size;
+  auto subgrid_size = plan.get_subgrid_size();
+  auto w_step = plan.get_w_step();
   auto nr_stations = aterms.get_z_dim();
+  auto &shift = plan.get_shift();
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
@@ -321,7 +322,7 @@ void CPU::do_degridding(
       void *uvw_ptr = uvw.data(0, 0);
       void *visibilities_ptr = visibilities.data(0, 0, 0);
       void *subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      std::complex<float> *grid_ptr = grid.data();
+      std::complex<float> *grid_ptr = m_grid->data();
 
       // Splitter kernel
       if (w_step == 0.0) {
@@ -380,19 +381,20 @@ void CPU::do_degridding(
 }  // end degridding
 
 void CPU::do_calibrate_init(
-    std::vector<std::unique_ptr<Plan>> &&plans, float w_step,
-    Array1D<float> &&shift, float cell_size, unsigned int kernel_size,
-    unsigned int subgrid_size, const Array1D<float> &frequencies,
+    std::vector<std::unique_ptr<Plan>> &&plans, 
+    const Array1D<float> &frequencies,
     Array4D<Visibility<std::complex<float>>> &&visibilities,
     Array4D<Visibility<float>> &&weights, Array3D<UVW<float>> &&uvw,
     Array2D<std::pair<unsigned int, unsigned int>> &&baselines,
-    const Grid &grid, const Array2D<float> &spheroidal) {
+    const Array2D<float> &spheroidal) {
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
   auto nr_antennas = plans.size();
-  auto grid_size = grid.get_x_dim();
-  auto image_size = cell_size * grid_size;
+  auto grid_size = m_grid->get_x_dim();
+  auto image_size = m_cache_state.cell_size * grid_size;
+  auto w_step = m_cache_state.w_step;
+  auto subgrid_size = m_cache_state.subgrid_size;
   auto nr_baselines = visibilities.get_z_dim();
   auto nr_timesteps = visibilities.get_y_dim();
   auto nr_channels = visibilities.get_x_dim();
@@ -418,16 +420,16 @@ void CPU::do_calibrate_init(
     // Allocate subgrids for current antenna
     int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations,
-                                           subgrid_size, subgrid_size);
+                                           m_cache_state.subgrid_size, m_cache_state.subgrid_size);
 
     WTileUpdateSet wtile_initialize_set =
         plans[antenna_nr]->get_wtile_initialize_set();
 
     // Get data pointers
-    const float *shift_ptr = shift.data();
+    const float *shift_ptr = m_cache_state.shift.data();
     void *metadata_ptr = (void *)plans[antenna_nr]->get_metadata_ptr();
     void *subgrids_ptr = subgrids_.data();
-    std::complex<float> *grid_ptr = grid.data();
+    std::complex<float> *grid_ptr = m_grid->data();
 
     // Splitter kernel
     if (w_step == 0.0) {
@@ -449,11 +451,11 @@ void CPU::do_calibrate_init(
 
     // Apply spheroidal
     for (int i = 0; i < nr_subgrids; i++) {
-      for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
-        for (unsigned int j = 0; j < subgrid_size; j++) {
-          for (unsigned int k = 0; k < subgrid_size; k++) {
-            unsigned int y = (j + (subgrid_size / 2)) % subgrid_size;
-            unsigned int x = (k + (subgrid_size / 2)) % subgrid_size;
+      for (int pol = 0; pol < nr_polarizations; pol++) {
+        for (int j = 0; j < subgrid_size; j++) {
+          for (int k = 0; k < subgrid_size; k++) {
+            int y = (j + (subgrid_size / 2)) % subgrid_size;
+            int x = (k + (subgrid_size / 2)) % subgrid_size;
             subgrids_(i, pol, y, x) *= spheroidal(j, k);
           }
         }
@@ -493,13 +495,6 @@ void CPU::do_calibrate_init(
 
   // Set calibration state member variables
   m_calibrate_state = {std::move(plans),
-                       w_step,
-                       std::move(shift),
-                       cell_size,
-                       image_size,
-                       kernel_size,
-                       (unsigned int)grid_size,
-                       subgrid_size,
                        (unsigned int)nr_baselines,
                        (unsigned int)nr_timesteps,
                        (unsigned int)nr_channels,
@@ -524,6 +519,9 @@ void CPU::do_calibrate_update(
   auto subgrid_size = aterms.get_y_dim();
   auto nr_stations = aterms.get_z_dim();
   auto nr_timeslots = aterms.get_w_dim();
+  auto grid_size = m_grid->get_y_dim();
+  auto image_size = grid_size * m_cache_state.cell_size;
+  auto w_step = m_cache_state.w_step;
 
   // Performance measurement
   if (antenna_nr == 0) {
@@ -531,7 +529,7 @@ void CPU::do_calibrate_update(
   }
 
   // Data pointers
-  auto shift_ptr = m_calibrate_state.shift.data();
+  auto shift_ptr = m_cache_state.shift.data();
   auto wavenumbers_ptr = m_calibrate_state.wavenumbers.data();
   idg::float2 *aterm_ptr = (idg::float2 *)aterms.data();
   idg::float2 *aterm_derivative_ptr = (idg::float2 *)aterm_derivatives.data();
@@ -554,8 +552,8 @@ void CPU::do_calibrate_update(
 
   // Run calibration update step
   kernels.run_calibrate(
-      nr_subgrids, m_calibrate_state.grid_size, m_calibrate_state.subgrid_size,
-      m_calibrate_state.image_size, m_calibrate_state.w_step, shift_ptr,
+      nr_subgrids, grid_size, subgrid_size,
+      image_size, w_step, shift_ptr,
       max_nr_timesteps, nr_channels, nr_terms, nr_stations, nr_timeslots,
       uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr, aterm_ptr,
       aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr,

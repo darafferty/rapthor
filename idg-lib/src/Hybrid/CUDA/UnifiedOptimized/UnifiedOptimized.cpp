@@ -37,5 +37,3 @@ void UnifiedOptimized::do_transform(DomainAtoDomainB direction) {
 }  // namespace hybrid
 }  // namespace proxy
 }  // namespace idg
-
-#include "UnifiedOptimizedC.h"

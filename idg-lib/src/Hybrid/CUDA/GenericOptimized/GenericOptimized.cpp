@@ -62,9 +62,8 @@ void GenericOptimized::do_transform(DomainAtoDomainB direction) {
  * Gridding
  */
 void GenericOptimized::run_gridding(
-    const Plan& plan, const float w_step, const Array1D<float>& shift,
-    const float cell_size, const unsigned int kernel_size,
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan,
+    const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
@@ -86,7 +85,11 @@ void GenericOptimized::run_gridding(
   auto nr_channels = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
   auto grid_size = grid.get_x_dim();
+  auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
+  auto subgrid_size = plan.get_subgrid_size();
+  auto w_step = plan.get_w_step();
+  auto &shift = plan.get_shift();
 
   WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
 
@@ -322,13 +325,10 @@ void GenericOptimized::run_gridding(
 
 void GenericOptimized::do_gridding(
     const Plan& plan,
-    const float w_step,  // in lambda
-    const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size,  // full width in pixels
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
@@ -339,15 +339,13 @@ void GenericOptimized::do_gridding(
 #if defined(DEBUG)
   std::clog << "### Initialize gridding" << std::endl;
 #endif
-  CUDA::initialize(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                   frequencies, visibilities, uvw, baselines, aterms,
+  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
   std::clog << "### Run gridding" << std::endl;
 #endif
-  run_gridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-               frequencies, visibilities, uvw, baselines, grid, aterms,
+  run_gridding(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
                aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
@@ -359,9 +357,8 @@ void GenericOptimized::do_gridding(
  * Degridding
  */
 void GenericOptimized::run_degridding(
-    const Plan& plan, const float w_step, const Array1D<float>& shift,
-    const float cell_size, const unsigned int kernel_size,
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan, 
+    const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -383,7 +380,11 @@ void GenericOptimized::run_degridding(
   auto nr_channels = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
   auto grid_size = grid.get_x_dim();
+  auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
+  auto subgrid_size = plan.get_subgrid_size();
+  auto w_step = plan.get_w_step();
+  auto &shift = plan.get_shift();
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
@@ -620,29 +621,24 @@ void GenericOptimized::run_degridding(
 
 void GenericOptimized::do_degridding(
     const Plan& plan,
-    const float w_step,  // in lambda
-    const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size,  // full width in pixels
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
   std::clog << "### Initialize degridding" << std::endl;
 #endif
-  CUDA::initialize(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                   frequencies, visibilities, uvw, baselines, aterms,
+  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
   std::clog << "### Run degridding" << std::endl;
 #endif
-  run_degridding(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                 frequencies, visibilities, uvw, baselines, grid, aterms,
+  run_degridding(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
                  aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
@@ -651,13 +647,12 @@ void GenericOptimized::do_degridding(
 }  // end do_degridding
 
 void GenericOptimized::do_calibrate_init(
-    std::vector<std::unique_ptr<Plan>>&& plans, float w_step,
-    Array1D<float>&& shift, float cell_size, unsigned int kernel_size,
-    unsigned int subgrid_size, const Array1D<float>& frequencies,
+    std::vector<std::unique_ptr<Plan>>&& plans,
+    const Array1D<float>& frequencies,
     Array4D<Visibility<std::complex<float>>>&& visibilities,
     Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
     Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-    const Grid& grid, const Array2D<float>& spheroidal) {
+    const Array2D<float>& spheroidal) {
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
   cpuKernels.set_report(report);
 
@@ -665,13 +660,16 @@ void GenericOptimized::do_calibrate_init(
 
   // Arguments
   auto nr_antennas = plans.size();
-  auto grid_size = grid.get_x_dim();
-  auto image_size = cell_size * grid_size;
+  auto grid_size = m_grid->get_x_dim();
+  auto image_size = m_cache_state.cell_size * grid_size;
+  auto w_step = m_cache_state.w_step;
+  auto subgrid_size = m_cache_state.subgrid_size;
   auto nr_baselines = visibilities.get_z_dim();
   auto nr_timesteps = visibilities.get_y_dim();
   auto nr_channels = visibilities.get_x_dim();
   auto max_nr_terms = m_calibrate_max_nr_terms;
   auto nr_correlations = 4;
+  auto &shift = m_cache_state.shift;
 
   // Allocate subgrids for all antennas
   std::vector<Array4D<std::complex<float>>> subgrids;
@@ -714,7 +712,7 @@ void GenericOptimized::do_calibrate_init(
     // Get data pointers
     void* metadata_ptr = (void*)plans[antenna_nr]->get_metadata_ptr();
     void* subgrids_ptr = subgrids_.data();
-    std::complex<float>* grid_ptr = grid.data();
+    std::complex<float>* grid_ptr = m_grid->data();
     void* aterm_idx_ptr = (void*)plans[antenna_nr]->get_aterm_indices_ptr();
 
     // Splitter kernel
@@ -738,12 +736,12 @@ void GenericOptimized::do_calibrate_init(
                                subgrids_ptr, CUFFT_FORWARD);
 
     // Apply spheroidal
-    for (unsigned int i = 0; i < nr_subgrids; i++) {
-      for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
-        for (unsigned int j = 0; j < subgrid_size; j++) {
-          for (unsigned int k = 0; k < subgrid_size; k++) {
-            unsigned int y = (j + (subgrid_size / 2)) % subgrid_size;
-            unsigned int x = (k + (subgrid_size / 2)) % subgrid_size;
+    for (int i = 0; i < (int) nr_subgrids; i++) {
+      for (int pol = 0; pol < nr_polarizations; pol++) {
+        for (int j = 0; j < subgrid_size; j++) {
+          for (int k = 0; k < subgrid_size; k++) {
+            int y = (j + (subgrid_size / 2)) % subgrid_size;
+            int x = (k + (subgrid_size / 2)) % subgrid_size;
             subgrids_(i, pol, y, x) *= spheroidal(j, k);
           }
         }
@@ -801,13 +799,6 @@ void GenericOptimized::do_calibrate_init(
 
   // Set calibration state member variables
   m_calibrate_state.plans = std::move(plans);
-  m_calibrate_state.w_step = w_step;
-  m_calibrate_state.shift = std::move(shift);
-  m_calibrate_state.cell_size = cell_size;
-  m_calibrate_state.image_size = image_size;
-  m_calibrate_state.kernel_size = kernel_size;
-  m_calibrate_state.grid_size = grid_size;
-  m_calibrate_state.subgrid_size = subgrid_size;
   m_calibrate_state.nr_baselines = nr_baselines;
   m_calibrate_state.nr_timesteps = nr_timesteps;
   m_calibrate_state.nr_channels = nr_channels;
@@ -846,9 +837,9 @@ void GenericOptimized::do_calibrate_update(
   auto subgrid_size = aterms.get_y_dim();
   auto nr_timeslots = aterms.get_w_dim();
   auto nr_stations = aterms.get_z_dim();
-  auto grid_size = m_calibrate_state.grid_size;
-  auto image_size = m_calibrate_state.image_size;
-  auto w_step = m_calibrate_state.w_step;
+  auto grid_size = m_grid->get_y_dim();
+  auto image_size = m_cache_state.cell_size * grid_size;
+  auto w_step = m_cache_state.w_step;
   auto nr_correlations = 4;
 
   // Performance measurement
@@ -1050,15 +1041,14 @@ void GenericOptimized::do_calibrate_update_hessian_vector_product2(
 }
 
 std::unique_ptr<Plan> GenericOptimized::make_plan(
-    const int kernel_size, const int subgrid_size, const int grid_size,
-    const float cell_size, const Array1D<float>& frequencies,
+    const int kernel_size, const Array1D<float>& frequencies,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array1D<unsigned int>& aterms_offsets, Plan::Options options) {
   // Defer call to cpuProxy
   // cpuProxy manages the wtiles state
   // plan will be made accordingly
-  return cpuProxy->make_plan(kernel_size, subgrid_size, grid_size, cell_size,
+  return cpuProxy->make_plan(kernel_size,
                              frequencies, uvw, baselines, aterms_offsets,
                              options);
 }
@@ -1074,14 +1064,21 @@ std::shared_ptr<Grid> GenericOptimized::get_grid() {
   return cpuProxy->get_grid();
 }
 
-void GenericOptimized::init_wtiles(float subgrid_size) {
+void GenericOptimized::init_cache(int subgrid_size, float cell_size, float w_step,
+                  const Array1D<float>& shift)
+{
   // Defer call to cpuProxy
   // cpuProxy manages the wtiles state
-  cpuProxy->init_wtiles(subgrid_size);
+  cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);
+}
+
+void GenericOptimized::flush_cache()
+{
+  // Defer call to cpuProxy
+  // cpuProxy manages the wtiles state
+  cpuProxy->flush_cache();
 }
 
 }  // namespace hybrid
 }  // namespace proxy
 }  // namespace idg
-
-#include "GenericOptimizedC.h"

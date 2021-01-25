@@ -31,5 +31,3 @@ std::vector<std::string> Reference::default_libraries() {
 }  // namespace cpu
 }  // namespace proxy
 }  // namespace idg
-
-#include "ReferenceC.h"

@@ -144,6 +144,9 @@ int main(int argc, char **argv) {
   // Allocate and initialize data structures
   std::clog << ">>> Initialize data structures" << std::endl;
 
+  // Initialize shift
+  idg::Array1D<float> shift = idg::get_zero_shift();
+
   // Initialize frequency data
   idg::Array1D<float> frequencies(nr_channels);
   data.get_frequencies(frequencies, image_size);
@@ -169,10 +172,10 @@ int main(int argc, char **argv) {
   idg::Plan plan =
       use_wtiles
           ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                      frequencies, uvw, baselines, aterms_offsets, wtiles,
+                      shift, frequencies, uvw, baselines, aterms_offsets, wtiles,
                       options)
           : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                      frequencies, uvw, baselines, aterms_offsets, options);
+                      shift, frequencies, uvw, baselines, aterms_offsets, options);
   std::clog << std::endl;
 
   // Report plan

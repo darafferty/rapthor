@@ -13,12 +13,14 @@ include_directories (
 set (
     ${PROJECT_NAME}_headers
     UnifiedOptimized.h
+    UnifiedOptimizedC.h
 )
 
 # Set sources
 set (
     ${PROJECT_NAME}_sources
     UnifiedOptimized.cpp
+    UnifiedOptimizedC.cpp
 )
 
 # Set build target

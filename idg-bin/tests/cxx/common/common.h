@@ -109,9 +109,6 @@ int compare_to_reference(float tol = 1000 *
 
   // Parameters
   unsigned int nr_correlations = 4;
-#if TEST_GRIDDING | TEST_DEGRIDDING
-  float w_offset = 0;
-#endif
   unsigned int nr_stations = 9;
   unsigned int nr_channels = 9;
   unsigned int nr_timesteps = 2048;
@@ -192,7 +189,7 @@ int compare_to_reference(float tol = 1000 *
   clog << ">>> Create plan" << endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
+  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
                  uvw, baselines, aterms_offsets, options);
   clog << endl;
 
@@ -200,15 +197,13 @@ int compare_to_reference(float tol = 1000 *
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
   optimized.set_grid(grid);
-  optimized.gridding(plan, w_offset, shift, cell_size, kernel_size,
-                     subgrid_size, frequencies, visibilities, uvw, baselines,
+  optimized.gridding(plan, frequencies, visibilities, uvw, baselines,
                      aterms, aterms_offsets, spheroidal);
   optimized.get_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
   reference.set_grid(grid_ref);
-  reference.gridding(plan, w_offset, shift, cell_size, kernel_size,
-                     subgrid_size, frequencies, visibilities, uvw, baselines,
+  reference.gridding(plan, frequencies, visibilities, uvw, baselines,
                      aterms, aterms_offsets, spheroidal);
   reference.get_grid();
 
@@ -229,14 +224,12 @@ int compare_to_reference(float tol = 1000 *
   visibilities.zero();
   visibilities_ref.zero();
   optimized.set_grid(grid);
-  optimized.degridding(plan, w_offset, shift, cell_size, kernel_size,
-                       subgrid_size, frequencies, visibilities, uvw, baselines,
+  optimized.degridding(plan, frequencies, visibilities, uvw, baselines,
                        aterms, aterms_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
   reference.set_grid(grid);
-  reference.degridding(plan, w_offset, shift, cell_size, kernel_size,
-                       subgrid_size, frequencies, visibilities_ref, uvw,
+  reference.degridding(plan, frequencies, visibilities_ref, uvw,
                        baselines, aterms, aterms_offsets, spheroidal);
 
   std::clog << std::endl;

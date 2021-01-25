@@ -154,7 +154,6 @@ void run() {
   // Constants
   unsigned int nr_w_layers = 1;
   unsigned int nr_correlations = 4;
-  float w_offset = 0;
   unsigned int total_nr_stations;
   unsigned int total_nr_timesteps;
   unsigned int total_nr_channels;
@@ -301,16 +300,9 @@ void run() {
         std::clog << std::endl;
 
         // Create plan
-        std::unique_ptr<idg::Plan> plan;
-        if (use_wtiles) {
-          plan.reset(new idg::Plan(kernel_size, subgrid_size, grid_size,
-                                   cell_size, frequencies, uvw, baselines,
-                                   aterms_offsets, wtiles, options));
-        } else {
-          plan.reset(new idg::Plan(kernel_size, subgrid_size, grid_size,
-                                   cell_size, frequencies, uvw, baselines,
-                                   aterms_offsets, options));
-        }
+        auto plan = std::unique_ptr<idg::Plan>(new idg::Plan(
+            kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies, uvw,
+            baselines, aterms_offsets, options));
 
         // Start imaging
         double runtime_imaging = -omp_get_wtime();
@@ -319,8 +311,7 @@ void run() {
         clog << ">>> Run gridding" << endl;
         double runtime_gridding = -omp_get_wtime();
         if (!disable_gridding)
-          proxy.gridding(*plan, w_offset, shift, cell_size, kernel_size,
-                         subgrid_size, frequencies, visibilities, uvw,
+          proxy.gridding(*plan, frequencies, visibilities, uvw,
                          baselines, aterms, aterms_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
@@ -329,8 +320,7 @@ void run() {
         clog << ">>> Run degridding" << endl;
         double runtime_degridding = -omp_get_wtime();
         if (!disable_degridding)
-          proxy.degridding(*plan, w_offset, shift, cell_size, kernel_size,
-                           subgrid_size, frequencies, visibilities, uvw,
+          proxy.degridding(*plan, frequencies, visibilities, uvw,
                            baselines, aterms, aterms_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;

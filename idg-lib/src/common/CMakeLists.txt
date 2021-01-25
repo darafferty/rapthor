@@ -15,6 +15,7 @@ set (${PROJECT_NAME}_headers
     Index.h
     KernelsInstance.h
     Proxy.h
+    ProxyC.h
 	Plan.h
     PlanC.h
     PowerSensor.h
@@ -31,7 +32,8 @@ set (${PROJECT_NAME}_sources
     KernelsInstance.cpp
     Proxy.cpp
     ProxyC.cpp
-	Plan.cpp
+    Plan.cpp
+    PlanC.cpp
     PowerSensor.cpp
     Report.cpp
     WTiles.cpp

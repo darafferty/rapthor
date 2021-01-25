@@ -1,14 +1,8 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "Proxy.h"
-
-typedef idg::proxy::Proxy Proxy;
-
-extern "C" {
-
 void Proxy_gridding(
-    Proxy* p, float w_step, float* shift, const float cell_size,
+    struct Proxy* p, float w_step, float* shift, const float cell_size,
     unsigned int kernel_size, unsigned int subgrid_size, float* frequencies,
     unsigned int nr_channels, std::complex<float>* visibilities,
     unsigned int visibilities_nr_baselines,
@@ -26,7 +20,7 @@ void Proxy_gridding(
     unsigned int spheroidal_height, unsigned int spheroidal_width);
 
 void Proxy_degridding(
-    Proxy* p, float w_step, float* shift, const float cell_size,
+    struct Proxy* p, float w_step, float* shift, const float cell_size,
     unsigned int kernel_size, unsigned int subgrid_size, float* frequencies,
     unsigned int nr_channels, std::complex<float>* visibilities,
     unsigned int visibilities_nr_baselines,
@@ -43,7 +37,7 @@ void Proxy_degridding(
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width);
 
-void Proxy_calibrate_init(Proxy* p, float w_step, float* shift,
+void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
                           const float cell_size, unsigned int kernel_size,
                           unsigned int subgrid_size, unsigned int nr_channels,
                           unsigned int nr_baselines, unsigned int nr_timesteps,
@@ -56,23 +50,23 @@ void Proxy_calibrate_init(Proxy* p, float w_step, float* shift,
                           unsigned int* aterms_offsets, float* spheroidal);
 
 void Proxy_calibrate_update(
-    Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
+    struct Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
     const unsigned int nr_stations, const unsigned int nr_time_slots,
     const unsigned int nr_terms, std::complex<float>* aterms,
     std::complex<float>* aterm_derivatives, double* hessian, double* gradient,
     double* residual);
 
-void Proxy_calibrate_finish(Proxy* p);
+void Proxy_calibrate_finish(struct Proxy* p);
 
-void Proxy_calibrate_init_hessian_vector_product(Proxy* p);
+void Proxy_calibrate_init_hessian_vector_product(struct Proxy* p);
 
 void Proxy_calibrate_hessian_vector_product1(
-    Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
+    struct Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
     const unsigned int nr_stations, const unsigned int nr_time_slots,
     const unsigned int nr_terms, std::complex<float>* aterms,
     std::complex<float>* aterm_derivatives, float* parameter_vector);
 
-void Proxy_calibrate_update_hessian_vector_product2(
+void struct Proxy_calibrate_update_hessian_vector_product2(
     Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
     const unsigned int nr_stations, const unsigned int nr_time_slots,
     const unsigned int nr_terms, std::complex<float>* aterms,
