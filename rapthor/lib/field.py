@@ -102,10 +102,21 @@ class Field(object):
             for obs in self.full_observations:
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
                 tottime = obs.endtime - obs.starttime
+                if data_fraction < mintime / tottime:
+                    obs.log.warning('The specified value of data_fraction ({0}) results in a '
+                                    'total time for this observation that is less than the '
+                                    'slow-gain timestep. The data fraction will be increased '
+                                    'to {1} ensure the slow-gain timestep requirement is '
+                                    'met.'.format(data_fraction, mintime/tottime))
                 nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
                 if nchunks == 1:
-                    self.observations.append(Observation(obs.ms_filename, starttime=obs.starttime,
-                                                         endtime=obs.starttime+mintime))
+                    # Center the chunk around the midpoint (which is generally the most
+                    # sensitive, near transit)
+                    midpoint = obs.starttime + tottime / 2
+                    chunktime = max(mintime, data_fraction*tottime)
+                    self.observations.append(Observation(obs.ms_filename,
+                                                         starttime=midpoint-chunktime/2,
+                                                         endtime=midpoint+chunktime/2))
                 else:
                     steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
