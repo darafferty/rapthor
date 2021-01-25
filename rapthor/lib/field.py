@@ -106,7 +106,7 @@ class Field(object):
                     obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                     'total time for this observation that is less than the '
                                     'slow-gain timestep. The data fraction will be increased '
-                                    'to {1:0.3f} ensure the slow-gain timestep requirement is '
+                                    'to {1:0.3f} to ensure the slow-gain timestep requirement is '
                                     'met.'.format(data_fraction, min(1.0, mintime/tottime)))
                 nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
                 if nchunks == 1:
