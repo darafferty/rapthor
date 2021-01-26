@@ -3,7 +3,8 @@
 
 workflow:
   rules:
-    - if: '$CI_MERGE_REQUEST_TITLE =~ /(?i)(^WIP.*)/ || $CI_MERGE_REQUEST_TITLE =~ /(?i)(^DRAFT.*)/'
+    # don't create a pipeline if its a commit pipeline, on a branch and that branch has open merge requests (bc we will get a MR build instead)
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - when: always
 
@@ -32,8 +33,6 @@ clang-format:
   stage: build
   needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
-  before_script:
-    - pip3 install clang-format==9.0.0
   script:
     - ./scripts/run-clang-format.sh
   rules:
@@ -84,7 +83,6 @@ idg-test:
   needs: ["build-base"]
   image: idg_base:${CI_COMMIT_SHORT_SHA}
   script:
-    - pip3 install gcovr
     - mkdir build
     - cd build
     - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
@@ -92,8 +90,9 @@ idg-test:
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
     - ctest -j8 --verbose -LE integration
     # Capture coverage
-    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*'
-    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --xml > coverage.xml
+    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json -o run-unit.json
+    - gcovr --add-tracefile run-unit.json --xml > coverage.xml
+    - gcovr --add-tracefile run-unit.json
   rules:
     - when: on_success
   artifacts:
@@ -105,7 +104,6 @@ idg-integration-docker:
   image: idg_integration:${CI_COMMIT_SHORT_SHA}
   needs: ["build-integration"]
   before_script:
-    - pip3 install pytest pytest-lazy-fixture h5py
     - export HOME_DIR=$PWD
     # Install IDG
     - mkdir /opt/idg && mkdir build
