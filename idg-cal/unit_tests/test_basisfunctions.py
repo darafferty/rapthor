@@ -95,3 +95,6 @@ def test_expand(order, x, y):
         np.testing.assert_equal(basis[0], np.ones((2, 2)))
         np.testing.assert_equal(basis[1], X)
         np.testing.assert_equal(basis[2], Y)
+
+        print(basis.reshape((-1, 2 * 2)).T)
+        # basis_functions = basis_functions.reshape((-1, subgrid_size * subgrid_size)).T

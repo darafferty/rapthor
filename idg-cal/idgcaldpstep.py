@@ -5,6 +5,7 @@ import dppp
 import numpy as np
 import idg
 from idg.h5parmwriter import H5ParmWriter
+from idg.basisfunctions import LagrangePolynomial
 import astropy.io.fits as fits
 import scipy.linalg
 import time
@@ -94,6 +95,9 @@ class IDGCalDPStep(dppp.DPStep):
         self.nr_timeslots = (
             self.solution_interval_amplitude // self.solution_interval_phase
         )
+        self.nr_phase_updates = (
+            self.solution_interval_amplitude // self.solution_interval_phase
+        )
 
         # Number of correlations
         self.nr_correlations = parset.getInt(prefix + "nrcorrelations", 4)
@@ -121,10 +125,24 @@ class IDGCalDPStep(dppp.DPStep):
             np.arange(1, self.polynomial_degree_phase + 2, 1)
         )
 
-        self.nr_parameters0 = self.nr_parameters_ampl + self.nr_parameters_phase
+        # get polynomial degrees for amplitude/phase
+        ampl_order = parset.getInt(prefix + "polynomialdegamplitude", 2)
+        phase_order = parset.getInt(prefix + "polynomialdegphase", 1)
+
+        # Initialize amplitude polynomial
+        self.ampl_poly = LagrangePolynomial(order=ampl_order)
+        self.phase_poly = LagrangePolynomial(order=phase_order)
+
+        self.nr_parameters0 = self.ampl_poly.nr_coeffs + self.phase_poly.nr_coeffs
         self.nr_parameters = (
-            self.nr_parameters_ampl + self.nr_parameters_phase * self.nr_timeslots
+            self.ampl_poly.nr_coeffs + self.phase_poly.nr_coeffs * self.nr_phase_updates
         )
+
+        # TODO: remove
+        # self.nr_parameters0 = self.nr_parameters_ampl + self.nr_parameters_phase
+        # self.nr_parameters = (
+        #     self.nr_parameters_ampl + self.nr_parameters_phase * self.nr_timeslots
+        # )
 
         # Fraction betwen 0 and 1 with which to update solution between
         # iterations
@@ -302,11 +320,11 @@ class IDGCalDPStep(dppp.DPStep):
 
         self.aterm_offsets = get_aterm_offsets(self.nr_timeslots, self.nr_timesteps)
 
-        self.Bampl, self.Tampl = polynomial_basis_functions(
-            self.polynomial_degree_ampl, self.subgrid_size, self.image_size
+        self.Bampl, self.Tampl = expand_basis_functions(
+            self.ampl_poly, self.subgrid_size, self.image_size
         )
-        self.Bphase, self.Tphase = polynomial_basis_functions(
-            self.polynomial_degree_phase, self.subgrid_size, self.image_size
+        self.Bphase, self.Tphase = expand_basis_functions(
+            self.phase_poly, self.subgrid_size, self.image_size
         )
 
     def process_buffers(self):
@@ -701,15 +719,16 @@ def transform_parameters(
     return parameters
 
 
-def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
+def expand_basis_functions(polynomial, subgrid_size, image_size):
     """
-    Compute the (orthonormalized) Lagrange polynomial basis function on a
-    given subgrid.
+    Expand the (orthonormalized) Lagrange polynomial basis on a
+    given subgrid. Also returns the transformation matrix for the mapping
+
 
     Parameters
     ----------
-    polynomial_order : int
-        Polynomial order to be used in the expansion.
+    polynomial : idg.basisfunctions.LagrangePolynomial
+        Polynomial to be used in the expansion
     subgrid_size : int
         Size of IDG subgrid (assumed to be square)
     image_size : float
@@ -725,34 +744,19 @@ def polynomial_basis_functions(polynomial_order, subgrid_size, image_size):
     l = s * np.linspace(-0.5, 0.5, subgrid_size)
     m = -s * np.linspace(-0.5, 0.5, subgrid_size)
 
-    # dimension 2
-    B1, B2 = np.meshgrid(l, m)
+    basis_functions = polynomial.expand_basis(l, m)
 
-    # dimension 4
-    B1 = B1[np.newaxis, :, :, np.newaxis]
-    B2 = B2[np.newaxis, :, :, np.newaxis]
-
-    nr_terms = np.sum(np.arange(1, polynomial_order + 2, 1))
-    # dimension 4 (nterms, grid_x, grid_y, 1)
-    basis_functions = np.empty((nr_terms,) + B1.shape[1::])
-
-    for n in range(polynomial_order + 1):
-        # Loop over polynomial degree (rows in Pascal's triangle)
-        for k in range(n + 1):
-            # Loop over unique entries per polynomial degree (columns in Pascal's triangle)
-            offset = np.sum(np.arange(1, n + 1, 1)) + k
-            basis_functions[offset, ...] = B1 ** (n - k) * B2 ** k
-
-    # Casting into 2D (again?!)
+    # Casting dim 3 matrix into dim 2 matrix
     basis_functions = basis_functions.reshape((-1, subgrid_size * subgrid_size)).T
+
     U, S, V, = np.linalg.svd(basis_functions)
-    basis_functions_orthonormal = U[:, :nr_terms]
+    basis_functions_orthonormal = U[:, : polynomial.nr_coeffs]
     T = np.dot(np.linalg.pinv(basis_functions), basis_functions_orthonormal)
     basis_functions_orthonormal = basis_functions_orthonormal.T.reshape(
         (-1, subgrid_size, subgrid_size, 1)
     )
 
-    # Kronecker product
+    # Kronecker product --> in order to account for polarizations (?)
     basis_functions_orthonormal = np.kron(
         basis_functions_orthonormal, np.array([1.0, 0.0, 0.0, 1.0])
     )

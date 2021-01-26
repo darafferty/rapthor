@@ -6,6 +6,7 @@ install(FILES
 #        __init__.py
         h5parmwriter.py
         idgcaldpstep.py
+        basisfunctions.py
 
         DESTINATION
         ${PYTHON_INSTALL_DIR})
