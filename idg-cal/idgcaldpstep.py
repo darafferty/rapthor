@@ -301,28 +301,10 @@ class IDGCalDPStep(dppp.DPStep):
             self.initialize()
 
         # Concatenate accumulated data and display just the shapes
-        visibilities = np.stack(
-            [np.array(dpbuffer.get_data(), copy=False) for dpbuffer in self.dpbuffers],
-            axis=1,
-        )
-        visibilities = visibilities[self.auto_corr_mask, :, :]
-        flags = np.stack(
-            [np.array(dpbuffer.get_flags(), copy=False) for dpbuffer in self.dpbuffers],
-            axis=1,
-        )
-        flags = flags[self.auto_corr_mask, :, :]
-        weights = np.stack(
-            [
-                np.array(dpbuffer.get_weights(), copy=False)
-                for dpbuffer in self.dpbuffers
-            ],
-            axis=1,
-        )
-        weights = weights[self.auto_corr_mask, :, :]
-        uvw_ = np.stack(
-            [np.array(dpbuffer.get_uvw(), copy=False) for dpbuffer in self.dpbuffers],
-            axis=1,
-        )
+        visibilities = self.__extract_buffer("visibilities")
+        flags = self.__extract_buffer("flags")
+        weights = self.__extract_buffer("weights")
+        uvw_ = self.__extract_buffer("uvw", apply_autocorr_mask=False)
         uvw = np.zeros(shape=(self.nr_baselines, self.ampl_interval), dtype=idg.uvwtype)
 
         uvw["u"] = uvw_[self.auto_corr_mask, :, 0]
@@ -370,6 +352,9 @@ class IDGCalDPStep(dppp.DPStep):
 
         aterm_offsets = get_aterm_offsets(self.nr_phase_updates, self.ampl_interval)
 
+        # parameters has shape (nr_stations, nr_coeffs) for amplitude and (nr_stations, nr_phase_updates, nr_coeffs)
+        # for amplitude
+        # amplitude/phase basis (Bampl/Bphase) (nr_coeffs, subgridsize, subgridzise, nr_polarizations)
         aterm_ampl = np.tensordot(
             parameters[:, : self.ampl_poly.nr_coeffs], self.Bampl, axes=((1,), (0,))
         )
@@ -384,6 +369,7 @@ class IDGCalDPStep(dppp.DPStep):
             )
         )
 
+        # aterms will have shape (nr_phase_updates, nr_stations, subgrid size, subgrid size, nr polarizations)
         aterms = np.ascontiguousarray(
             (aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl).astype(
                 idg.idgtypes.atermtype
@@ -392,16 +378,13 @@ class IDGCalDPStep(dppp.DPStep):
 
         nr_iterations = 0
         converged = False
+        previous_residual = 0.0
 
         max_dx = 0.0
 
         timer = -time.time()
-
         timer0 = 0
         timer1 = 0
-
-        previous_residual = 0.0
-
         while True:
             nr_iterations += 1
             print(f"iteration nr {nr_iterations} ")
@@ -410,7 +393,7 @@ class IDGCalDPStep(dppp.DPStep):
             norm_dx = 0.0
             residual_sum = 0.0
             for i in range(self.nr_stations):
-                print(f"   {i}")
+                print(f"   Station {i}")
                 timer1 -= time.time()
 
                 # Predict visibilities for current solution
@@ -443,6 +426,7 @@ class IDGCalDPStep(dppp.DPStep):
                     )
                 )
 
+                # new-axis is introduced at "stations" axis
                 aterm_derivatives_ampl = (
                     aterm_phase[:, np.newaxis, :, :, :]
                     * self.Bampl[np.newaxis, :, :, :, :]
@@ -468,9 +452,7 @@ class IDGCalDPStep(dppp.DPStep):
                 )
 
                 timer0 += time.time()
-
                 residual0 = residual[0]
-
                 residual_sum += residual[0]
 
                 gradient = np.concatenate(
@@ -522,10 +504,8 @@ class IDGCalDPStep(dppp.DPStep):
                     i_max = i
 
                 p0 = parameters[i].copy()
-
                 parameters[i] += self.solver_update_gain * dx
 
-                # TODO: probably no need to repeat when writing to H5Parm
                 aterm_ampl = np.repeat(
                     np.tensordot(
                         parameters[i, : self.ampl_poly.nr_coeffs],
@@ -586,7 +566,7 @@ class IDGCalDPStep(dppp.DPStep):
         amplitude_coefficients = parameters_polynomial[
             :, : self.ampl_poly.nr_coeffs
         ].reshape(self.nr_stations, 1, self.ampl_poly.nr_coeffs)
-        # phase parameters: reshaped into (nr_stations, nr_timeslots, nr_parameters_phase) array
+        # phase parameters: reshaped into (nr_stations, nr_phase_updates, nr_parameters_phase) array
         phase_coefficients = parameters_polynomial[
             :, self.ampl_poly.nr_coeffs : :
         ].reshape(self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
@@ -599,8 +579,46 @@ class IDGCalDPStep(dppp.DPStep):
         self.h5writer.fill_solution_table(
             "phase_coefficients", phase_coefficients, offset_phase
         )
-
         self.count_process_buffer_calls += 1
+
+    def __extract_buffer(self, name, apply_autocorr_mask=True):
+        """
+        Extract buffer from buffered data.
+
+        Parameters
+        ----------
+        name : str
+            Should be any of ("visibilities", "weights", "flags", "uvw")
+        apply_autocorr_mask : bool, optional
+            Remove autocorrelation from returned result? Defaults to True
+
+        Returns
+        -------
+        np.ndarray
+        """
+
+        if name == "visibilities":
+            result = [
+                np.array(dpbuffer.get_data(), copy=False) for dpbuffer in self.dpbuffers
+            ]
+        elif name == "flags":
+            result = [
+                np.array(dpbuffer.get_flags(), copy=False)
+                for dpbuffer in self.dpbuffers
+            ]
+        elif name == "weights":
+            result = [
+                np.array(dpbuffer.get_weights(), copy=False)
+                for dpbuffer in self.dpbuffers
+            ]
+        elif name == "uvw":
+            result = [
+                np.array(dpbuffer.get_uvw(), copy=False) for dpbuffer in self.dpbuffers
+            ]
+        else:
+            raise ValueError("Name not recognized")
+        result = np.stack(result, axis=1)
+        return result[self.auto_corr_mask, :, :] if apply_autocorr_mask else result
 
 
 def init_h5parm_solution_table(
@@ -614,6 +632,35 @@ def init_h5parm_solution_table(
     basisfunction_type="lagrange",
     history="",
 ):
+    """
+    Initialize h5parm solution table
+
+    Parameters
+    ----------
+    h5parm_object : idg.h5parmwriter.H5ParmWriter
+        h5parm object
+    soltab_type : str
+        Any of ("amplitude", "phase")
+    axes_info : dict
+        Dict containing axes info (name, length)
+    antenna_names : np.ndarray
+        Array of strings containing antenna names
+    time_array : np.ndarray
+        Array of times
+    image_size : float
+        Pixel size
+    subgrid_size : int
+        Subgrid size, used in IDG
+    basisfunction_type : str, optional
+        Which basis function was used? Defaults to "lagrange"
+    history : str, optional
+        History attribute, by default ""
+
+    Returns
+    -------
+    idg.h5parmwriter.H5ParmWriter
+        Extended H5ParmWriter object
+    """
     soltab_info = {"amplitude": "amplitude_coefficients", "phase": "phase_coefficients"}
 
     assert soltab_type in soltab_info.keys()
@@ -825,8 +872,6 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
 
 def get_aterm_offsets(nr_timeslots, nr_time):
     aterm_offsets = np.zeros((nr_timeslots + 1), dtype=idg.idgtypes.atermoffsettype)
-
     for i in range(nr_timeslots + 1):
         aterm_offsets[i] = i * (nr_time // nr_timeslots)
-
     return aterm_offsets

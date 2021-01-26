@@ -1,9 +1,34 @@
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import numpy as np
 from numpy.polynomial.polynomial import polyval as np_polyval
 
 
 class LagrangePolynomial:
+    """
+    Class implementing functionality for (Lagrange)Polynomials
+    """
+
     def __init__(self, order=None, nr_coeffs=None):
+        """
+        Initialize LagrangePolynomial, by either specifying
+
+        Parameters
+        ----------
+        order : int, optional
+            Polynomial order. If not specified, it will be
+            derived from the number of coefficients
+        nr_coeffs : int, optional
+            Number of coefficients. If not specified, it will be
+            derived from the polynomial order.
+
+        Raises
+        ------
+        ValueError
+            If neither the order nor the nr_coeffs are specified,
+            or if both are specified.
+        """
         if (order is None and nr_coeffs is None) or (
             order is not None and nr_coeffs is not None
         ):
@@ -22,17 +47,17 @@ class LagrangePolynomial:
 
         Parameters
         ----------
-        x : [type]
-            [description]
-        y : [type]
-            [description]
-        coeffs : [type]
-            [description]
+        x : float, np.ndarray
+            x-coordinate(s), can be scalar or 1D vector
+        y : float, np.ndarray
+            y-coordinate(s), can be scalar or 1D vector
+        coeffs : np.ndarray
+            Expansion coefficients
 
         Returns
         -------
-        [type]
-            [description]
+        np.ndarray
+            Array storing the polynomial evaluations at x,y
         """
         # Evaluate polynomial using Horner's method
         assert coeffs.size == self.nr_coeffs
@@ -53,24 +78,23 @@ class LagrangePolynomial:
 
     def expand_basis(self, x, y):
         """
-        Expand the basis on the give coordinates
+        Expand the basis for the given coordinates. Accepted input is:
+        - x and y both scalar
+        - x and y both vector (which will be expanded on a grid)
 
         Parameters
         ----------
-        x : scalar, np.ndarray
-            [description]
-        y : scalar, np.ndarray
-            [description]
+        x : float, np.ndarray
+            x coordinate(s)
+        y : float, np.ndarray
+            y coordinate(s)
 
         Returns
         -------
-        [type]
-            [description]
-
-        Raises
-        ------
-        TypeError
-            [description]
+        np.ndarray
+            numpy array with expanded basis functions. Return size will be:
+            - if x and y both scalar (nr_coeffs, 1) array
+            - if x and y both vector (nr_coeffs, x.len, y.len)
         """
 
         if not isinstance(x, np.ndarray) and not isinstance(y, np.ndarray):
@@ -118,6 +142,31 @@ class LagrangePolynomial:
 
     @staticmethod
     def get_indices_right_diagonal(order, diag_nr):
+        """
+        Get indices in corresponding to right diagonal number in Pascal's triangle.
+        Take the triangle for a second order polynomial
+
+        ::
+              0
+            1   2
+          3   4   5
+
+        Diagonal 2 will return [3], diagonal 1 will return [1, 4] and
+        diagonal 0 will return [5, 2, 0]
+
+        Parameters
+        ----------
+        order : int
+            Polynomial order
+        diag_nr : int
+            Index of the diagonal. Should be <= order
+
+        Returns
+        -------
+        np.ndarray
+            Numpy array with indices
+        """
+
         if diag_nr > order:
             raise ValueError("Diagonal number should be smaller than polynomial order")
 
@@ -129,23 +178,3 @@ class LagrangePolynomial:
         for i in range(diag_nr + 1, order + 1):
             indices.append(indices[-1] + i + 1)
         return np.array(indices)
-
-
-# TODO: make unit tests
-def main():
-    poly = LagrangePolynomial(order=1)
-    # result = poly.evaluate(1, 2, coeffs=np.array([1, 2, 3]))
-    x = 1
-    y = np.array([1, 2])
-
-    # X, Y = np.meshgrid(x, y)
-    # print(X)
-    # print(Y)
-    result = poly.evaluate(x, y, coeffs=np.array([1, 2, 3]))
-    # result = poly.evaluate(2, 3, coeffs=np.array([1, 2, 3, 4, 5, 6]))
-    print(result)
-    # print(np_polyval())
-
-
-if __name__ == "__main__":
-    main()

@@ -1,11 +1,13 @@
+#!/usr/bin/env python3
+# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later3
+
 import sys
 
 sys.path.append("..")
 from basisfunctions import LagrangePolynomial
 import numpy as np
 import pytest
-
-# import os
 
 
 def explicit_evaluation(x, y, order, coeffs):
@@ -26,9 +28,9 @@ def explicit_evaluation(x, y, order, coeffs):
         (1.0, 2.0, np.array(range(1, 4))),
         (1.0, 2.0, np.array(range(1, 7))),
         (1.0, 2.0, np.array(range(1, 11))),
-        # # x vector, y scalar (only third order polynomial)
+        # x vector, y scalar (only third order polynomial)
         (np.array(range(-2, 10)), 2.0, np.array(range(1, 11))),
-        # # x scalar, y vector (only third order polynomial)
+        # x scalar, y vector (only third order polynomial)
         (2.0, np.array(range(-2, 10)), np.array(range(1, 11))),
         # both vector (outcome is 2d matrix)
         (np.array(range(-2, 10)), np.array(range(-2, 10)), np.array(range(1, 11))),
