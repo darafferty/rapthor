@@ -10,16 +10,11 @@ lib = idg.load_library('libidg-opencl.so')
 
 class Generic(Proxy):
 
-    def __init__(
-        self,
-        nr_correlations,
-        subgrid_size):
+    def __init__(self):
         """Generic OpenCL implementation"""
         try:
-            lib.OpenCL_Generic_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint]
-            self.obj = lib.OpenCL_Generic_init(
-                ctypes.c_uint(nr_correlations),
-                ctypes.c_uint(subgrid_size))
+            self.lib.OpenCL_Generic_create.restype = ctypes.c_void_p
+            self.lib.OpenCL_Generic_create.argtypes = []
+            self.obj = lib.OpenCL_Generic_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")

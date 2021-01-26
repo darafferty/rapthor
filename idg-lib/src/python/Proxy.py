@@ -639,7 +639,7 @@ class Proxy(object):
         width = grid_size
 
         # Set argument types
-        self.lib.Proxy_set_grid.argtypes = [
+        self.lib.Proxy_get_grid.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,

@@ -11,34 +11,22 @@ class CPU(Proxy):
 
 class Reference(CPU):
 
-    def __init__(
-        self,
-        nr_correlations,
-        subgrid_size):
+    def __init__(self):
         """Reference CPU implementation"""
         try:
-            self.lib.CPU_Reference_init.restype = ctypes.c_void_p
-            self.lib.CPU_Reference_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint]
-            self.obj = self.lib.CPU_Reference_init(
-                ctypes.c_uint(nr_correlations),
-                ctypes.c_uint(subgrid_size))
+            self.lib.CPU_Reference_create.restype = ctypes.c_void_p
+            self.lib.CPU_Reference_create.argtypes = []
+            self.obj = self.lib.CPU_Reference_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")
 
 class Optimized(CPU):
 
-    def __init__(
-        self,
-        nr_correlations,
-        subgrid_size):
+    def __init__(self):
         """Optimized CPU implementation"""
         try:
-            self.lib.CPU_Optimized_init.restype = ctypes.c_void_p
-            self.lib.CPU_Optimized_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint]
-            self.obj = self.lib.CPU_Optimized_init(
-                ctypes.c_uint(nr_correlations),
-                ctypes.c_uint(subgrid_size))
+            self.lib.CPU_Optimized_create.restype = ctypes.c_void_p
+            self.lib.CPU_Optimized_create.argtypes = []
+            self.obj = self.lib.CPU_Optimized_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")
