@@ -25,12 +25,11 @@ class IDGCalDPStep(dppp.DPStep):
         print("IDGCalDPStep")
 
     def process(self, dpbuffer):
-
         # Accumulate buffers
         self.dpbuffers.append(dpbuffer)
 
         # If we have accumulated enough data, process it
-        if len(self.dpbuffers) == self.nr_timesteps:
+        if len(self.dpbuffers) == self.ampl_interval:
             self.process_buffers()
 
             # Send processed data to the next step
@@ -66,68 +65,61 @@ class IDGCalDPStep(dppp.DPStep):
         prefix : str
             Prefix to be used when reading the parset.
         """
+
+        ## BEGIN: read parset
         self.proxytype = parset.getString(prefix + "proxytype", "CPU")
 
         solint = parset.getInt(prefix + "solint", 0)
         if solint:
-            self.solution_interval_amplitude = solint
-            self.solution_interval_phase = solint
+            self.ampl_interval = solint
+            self.phase_interval = solint
         else:
-            self.solution_interval_amplitude = parset.getInt(
-                prefix + "solintamplitude", 0
-            )
-            self.solution_interval_phase = parset.getInt(prefix + "solintphase", 0)
+            self.ampl_interval = parset.getInt(prefix + "solintamplitude", 0)
+            self.phase_interval = parset.getInt(prefix + "solintphase", 0)
 
         # solintamplitude should be divisible by solintphase, check and correct if that's not the case
-        remainder = self.solution_interval_amplitude % self.solution_interval_phase
+        remainder = self.ampl_interval % self.phase_interval
         if remainder != 0:
             logging.warning(
-                f"Specified amplitude solution interval {self.solution_interval_amplitude} is not an integer multiple of the phase solution interval {self.solution_interval_phase}. Amplitude soluton interval will be modified to {self.solution_interval_amplitude + remainder}"
+                f"Specified amplitude solution interval {self.ampl_interval} is not an integer multiple of the phase solution interval {self.phase_interval}. Amplitude soluton interval will be modified to {self.ampl_interval + remainder}"
             )
-            self.solution_interval_amplitude += remainder
+            self.ampl_interval += remainder
 
         self.imagename = parset.getString(prefix + "modelimage")
         self.padding = parset.getFloat(prefix + "padding", 1.2)
-
-        # TODO: should be refactored once script is up and running
-        self.nr_timesteps = self.solution_interval_amplitude
-        self.nr_timesteps_per_slot = self.solution_interval_phase
-        self.nr_timeslots = (
-            self.solution_interval_amplitude // self.solution_interval_phase
-        )
-        self.nr_phase_updates = (
-            self.solution_interval_amplitude // self.solution_interval_phase
-        )
-
-        # Number of correlations
         self.nr_correlations = parset.getInt(prefix + "nrcorrelations", 4)
-
-        # Subgrid size to be used in IDG
         self.subgrid_size = parset.getInt(prefix + "subgridsize", 32)
 
         self.taper_support = parset.getInt(prefix + "tapersupport", 7)
         wterm_support = parset.getInt(prefix + "wtermsupport", 5)
         aterm_support = parset.getInt(prefix + "atermsupport", 5)
-
         self.kernel_size = self.taper_support + wterm_support + aterm_support
-
-        # Get polynomial degrees for amplitude and phase
-        self.polynomial_degree_ampl = parset.getInt(
-            prefix + "polynomialdegamplitude", 2
-        )
-        self.polynomial_degree_phase = parset.getInt(prefix + "polynomialdegphase", 1)
-
-        # Compute corresponding number of parameters (coefficients)
-        self.nr_parameters_ampl = np.sum(
-            np.arange(1, self.polynomial_degree_ampl + 2, 1)
-        )
-        self.nr_parameters_phase = np.sum(
-            np.arange(1, self.polynomial_degree_phase + 2, 1)
-        )
 
         # get polynomial degrees for amplitude/phase
         ampl_order = parset.getInt(prefix + "polynomialdegamplitude", 2)
         phase_order = parset.getInt(prefix + "polynomialdegphase", 1)
+
+        # Solver related
+        # Factor between 0 and 1 with which to update solution between iterations
+        self.solver_update_gain = parset.getFloat(prefix + "solverupdategain", 0.5)
+        # Tolerance pseudo inverse
+        self.pinv_tol = parset.getDouble(prefix + "tolerancepinv", 1e-9)
+        # Maximum number of iterations
+        self.max_iter = parset.getInt(prefix + "maxiter", 1)
+
+        # H5Parm output file related
+        self.h5parm_fname = parset.getString(prefix + "h5parm", "idgcal.h5")
+        self.h5parm_solsetname = parset.getString(
+            prefix + "h5parmsolset", "coefficients000"
+        )
+        self.h5parm_overwrite = parset.getBool(prefix + "h5parmoverwrite", True)
+
+        self.w_step = parset.getFloat(prefix + "wstep", 400.0)
+        self.shift = np.array((0.0, 0.0, 0.0), dtype=np.float32)
+        ## BEGIN: read parset
+
+        # Number of phase updates per amplitude interval
+        self.nr_phase_updates = self.ampl_interval // self.phase_interval
 
         # Initialize amplitude polynomial
         self.ampl_poly = LagrangePolynomial(order=ampl_order)
@@ -138,32 +130,6 @@ class IDGCalDPStep(dppp.DPStep):
             self.ampl_poly.nr_coeffs + self.phase_poly.nr_coeffs * self.nr_phase_updates
         )
 
-        # TODO: remove
-        # self.nr_parameters0 = self.nr_parameters_ampl + self.nr_parameters_phase
-        # self.nr_parameters = (
-        #     self.nr_parameters_ampl + self.nr_parameters_phase * self.nr_timeslots
-        # )
-
-        # Fraction betwen 0 and 1 with which to update solution between
-        # iterations
-        self.solver_update_gain = parset.getFloat(prefix + "solverupdategain", 0.5)
-
-        # Tolerance pseudo inverse
-        self.pinv_tol = parset.getDouble(prefix + "tolerancepinv", 1e-9)
-
-        # Maximum number of iterations
-        self.max_iter = parset.getInt(prefix + "maxiter", 1)
-
-        # H5Parm file name
-        self.h5parm_fname = parset.getString(prefix + "h5parm", "idgcal.h5")
-        self.h5parm_solsetname = parset.getString(
-            prefix + "h5parmsolset", "coefficients000"
-        )
-        self.h5parm_overwrite = parset.getBool(prefix + "h5parmoverwrite", True)
-
-        self.w_step = parset.getFloat(prefix + "wstep", 400.0)
-        self.shift = np.array((0.0, 0.0, 0.0), dtype=np.float32)
-
     def initialize(self):
         self.is_initialized = True
 
@@ -173,9 +139,7 @@ class IDGCalDPStep(dppp.DPStep):
         # Extract the time info and cast into a time array
         tstart = self.info().start_time()
         # Time array should match "amplitude time blocks"
-        nsteps = (
-            self.info().ntime() // self.solution_interval_amplitude
-        ) * self.solution_interval_amplitude
+        nsteps = (self.info().ntime() // self.ampl_interval) * self.ampl_interval
         dt = self.info().time_interval()
         self.time_array = np.linspace(
             tstart, tstart + dt * nsteps, num=nsteps, endpoint=False
@@ -197,12 +161,11 @@ class IDGCalDPStep(dppp.DPStep):
 
         # Get time centroids per amplitude/phase solution interval
         self.time_array_ampl = (
-            self.time_array[:: self.solution_interval_amplitude]
-            + (self.solution_interval_amplitude - 1) * dt / 2.0
+            self.time_array[:: self.ampl_interval] + (self.ampl_interval - 1) * dt / 2.0
         )
         self.time_array_phase = (
-            self.time_array[:: self.solution_interval_phase]
-            + (self.solution_interval_phase - 1) * dt / 2.0
+            self.time_array[:: self.phase_interval]
+            + (self.phase_interval - 1) * dt / 2.0
         )
 
         # Axes data
@@ -210,7 +173,7 @@ class IDGCalDPStep(dppp.DPStep):
         axes_data_amplitude = dict(
             zip(
                 axes_labels,
-                (self.nr_stations, self.time_array_ampl.size, self.nr_parameters_ampl),
+                (self.nr_stations, self.time_array_ampl.size, self.ampl_poly.nr_coeffs),
             )
         )
         axes_data_phase = dict(
@@ -219,7 +182,7 @@ class IDGCalDPStep(dppp.DPStep):
                 (
                     self.nr_stations,
                     self.time_array_phase.size,
-                    self.nr_parameters_phase,
+                    self.phase_poly.nr_coeffs,
                 ),
             )
         )
@@ -318,7 +281,9 @@ class IDGCalDPStep(dppp.DPStep):
 
         self.proxy.init_cache(self.subgrid_size, self.cell_size, self.w_step, self.shift)
 
-        self.aterm_offsets = get_aterm_offsets(self.nr_timeslots, self.nr_timesteps)
+        self.aterm_offsets = get_aterm_offsets(
+            self.nr_phase_updates, self.ampl_interval
+        )
 
         self.Bampl, self.Tampl = expand_basis_functions(
             self.ampl_poly, self.subgrid_size, self.image_size
@@ -359,7 +324,7 @@ class IDGCalDPStep(dppp.DPStep):
             [np.array(dpbuffer.get_uvw(), copy=False) for dpbuffer in self.dpbuffers],
             axis=1,
         )
-        uvw = np.zeros(shape=(self.nr_baselines, self.nr_timesteps), dtype=idg.uvwtype)
+        uvw = np.zeros(shape=(self.nr_baselines, self.ampl_interval), dtype=idg.uvwtype)
 
         uvw["u"] = uvw_[self.auto_corr_mask, :, 0]
         uvw["v"] = -uvw_[self.auto_corr_mask, :, 1]
@@ -389,8 +354,8 @@ class IDGCalDPStep(dppp.DPStep):
         # The amplitude coefficients are initialized with ones for the constant in the polynomial expansion (X0)
         # and zeros otherwise (X1). The parameters for the phases are initialized with zeros (X2).
         X0 = np.ones((self.nr_stations, 1))
-        X1 = np.zeros((self.nr_stations, self.nr_parameters_ampl - 1))
-        X2 = np.zeros((self.nr_stations, self.nr_parameters - self.nr_parameters_ampl))
+        X1 = np.zeros((self.nr_stations, self.ampl_poly.nr_coeffs - 1))
+        X2 = np.zeros((self.nr_stations, self.nr_parameters - self.ampl_poly.nr_coeffs))
 
         parameters = np.concatenate((X0, X1, X2), axis=1)
         # Map parameters to orthonormal basis
@@ -398,22 +363,22 @@ class IDGCalDPStep(dppp.DPStep):
             np.linalg.inv(self.Tampl),
             np.linalg.inv(self.Tphase),
             parameters,
-            self.nr_parameters_ampl,
-            self.nr_parameters_phase,
+            self.ampl_poly.nr_coeffs,
+            self.phase_poly.nr_coeffs,
             self.nr_stations,
-            self.nr_timeslots,
+            self.nr_phase_updates,
         )
 
-        aterm_offsets = get_aterm_offsets(self.nr_timeslots, self.nr_timesteps)
+        aterm_offsets = get_aterm_offsets(self.nr_phase_updates, self.ampl_interval)
 
         aterm_ampl = np.tensordot(
-            parameters[:, : self.nr_parameters_ampl], self.Bampl, axes=((1,), (0,))
+            parameters[:, : self.ampl_poly.nr_coeffs], self.Bampl, axes=((1,), (0,))
         )
         aterm_phase = np.exp(
             1j
             * np.tensordot(
-                parameters[:, self.nr_parameters_ampl :].reshape(
-                    (self.nr_stations, self.nr_timeslots, self.nr_parameters_phase)
+                parameters[:, self.ampl_poly.nr_coeffs :].reshape(
+                    (self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
                 ),
                 self.Bphase,
                 axes=((2,), (0,)),
@@ -451,28 +416,28 @@ class IDGCalDPStep(dppp.DPStep):
 
                 # Predict visibilities for current solution
                 hessian = np.zeros(
-                    (self.nr_timeslots, self.nr_parameters0, self.nr_parameters0),
+                    (self.nr_phase_updates, self.nr_parameters0, self.nr_parameters0),
                     dtype=np.float64,
                 )
                 gradient = np.zeros(
-                    (self.nr_timeslots, self.nr_parameters0), dtype=np.float64
+                    (self.nr_phase_updates, self.nr_parameters0), dtype=np.float64
                 )
                 residual = np.zeros((1,), dtype=np.float64)
 
                 aterm_ampl = np.repeat(
                     np.tensordot(
-                        parameters[i, : self.nr_parameters_ampl],
+                        parameters[i, : self.ampl_poly.nr_coeffs],
                         self.Bampl,
                         axes=((0,), (0,)),
                     )[np.newaxis, :],
-                    self.nr_timeslots,
+                    self.nr_phase_updates,
                     axis=0,
                 )
                 aterm_phase = np.exp(
                     1j
                     * np.tensordot(
-                        parameters[i, self.nr_parameters_ampl :].reshape(
-                            (self.nr_timeslots, self.nr_parameters_phase)
+                        parameters[i, self.ampl_poly.nr_coeffs :].reshape(
+                            (self.nr_phase_updates, self.phase_poly.nr_coeffs)
                         ),
                         self.Bphase,
                         axes=((1,), (0,)),
@@ -511,32 +476,38 @@ class IDGCalDPStep(dppp.DPStep):
 
                 gradient = np.concatenate(
                     (
-                        np.sum(gradient[:, : self.nr_parameters_ampl], axis=0),
-                        gradient[:, self.nr_parameters_ampl :].flatten(),
+                        np.sum(gradient[:, : self.ampl_poly.nr_coeffs], axis=0),
+                        gradient[:, self.ampl_poly.nr_coeffs :].flatten(),
                     )
                 )
 
                 H00 = hessian[
-                    :, : self.nr_parameters_ampl, : self.nr_parameters_ampl
+                    :, : self.ampl_poly.nr_coeffs, : self.ampl_poly.nr_coeffs
                 ].sum(axis=0)
                 H01 = np.concatenate(
                     [
-                        hessian[t, : self.nr_parameters_ampl, self.nr_parameters_ampl :]
-                        for t in range(self.nr_timeslots)
+                        hessian[
+                            t, : self.ampl_poly.nr_coeffs, self.ampl_poly.nr_coeffs :
+                        ]
+                        for t in range(self.nr_phase_updates)
                     ],
                     axis=1,
                 )
                 H10 = np.concatenate(
                     [
-                        hessian[t, self.nr_parameters_ampl :, : self.nr_parameters_ampl]
-                        for t in range(self.nr_timeslots)
+                        hessian[
+                            t, self.ampl_poly.nr_coeffs :, : self.ampl_poly.nr_coeffs
+                        ]
+                        for t in range(self.nr_phase_updates)
                     ],
                     axis=0,
                 )
                 H11 = scipy.linalg.block_diag(
                     *[
-                        hessian[t, self.nr_parameters_ampl :, self.nr_parameters_ampl :]
-                        for t in range(self.nr_timeslots)
+                        hessian[
+                            t, self.ampl_poly.nr_coeffs :, self.ampl_poly.nr_coeffs :
+                        ]
+                        for t in range(self.nr_phase_updates)
                     ]
                 )
 
@@ -558,18 +529,18 @@ class IDGCalDPStep(dppp.DPStep):
                 # TODO: probably no need to repeat when writing to H5Parm
                 aterm_ampl = np.repeat(
                     np.tensordot(
-                        parameters[i, : self.nr_parameters_ampl],
+                        parameters[i, : self.ampl_poly.nr_coeffs],
                         self.Bampl,
                         axes=((0,), (0,)),
                     )[np.newaxis, :],
-                    self.nr_timeslots,
+                    self.nr_phase_updates,
                     axis=0,
                 )
                 aterm_phase = np.exp(
                     1j
                     * np.tensordot(
-                        parameters[i, self.nr_parameters_ampl :].reshape(
-                            (self.nr_timeslots, self.nr_parameters_phase)
+                        parameters[i, self.ampl_poly.nr_coeffs :].reshape(
+                            (self.nr_phase_updates, self.phase_poly.nr_coeffs)
                         ),
                         self.Bphase,
                         axes=((1,), (0,)),
@@ -605,24 +576,24 @@ class IDGCalDPStep(dppp.DPStep):
             self.Tampl,
             self.Tphase,
             parameters_polynomial,
-            self.nr_parameters_ampl,
-            self.nr_parameters_phase,
+            self.ampl_poly.nr_coeffs,
+            self.phase_poly.nr_coeffs,
             self.nr_stations,
-            self.nr_timeslots,
+            self.nr_phase_updates,
         )
 
         # Reshape amplitude/parameters coefficient to match desired shape
         # amplitude parameters: reshaped into (nr_stations, 1, nr_parameters_ampl) array
         amplitude_coefficients = parameters_polynomial[
-            :, : self.nr_parameters_ampl
-        ].reshape(self.nr_stations, 1, self.nr_parameters_ampl)
+            :, : self.ampl_poly.nr_coeffs
+        ].reshape(self.nr_stations, 1, self.ampl_poly.nr_coeffs)
         # phase parameters: reshaped into (nr_stations, nr_timeslots, nr_parameters_phase) array
         phase_coefficients = parameters_polynomial[
-            :, self.nr_parameters_ampl : :
-        ].reshape(self.nr_stations, self.nr_timeslots, self.nr_parameters_phase)
+            :, self.ampl_poly.nr_coeffs : :
+        ].reshape(self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
 
         offset_amplitude = (0, self.count_process_buffer_calls, 0)
-        offset_phase = (0, self.count_process_buffer_calls * self.nr_timeslots, 0)
+        offset_phase = (0, self.count_process_buffer_calls * self.nr_phase_updates, 0)
         self.h5writer.fill_solution_table(
             "amplitude_coefficients", amplitude_coefficients, offset_amplitude
         )
