@@ -4,7 +4,7 @@
 #include "Unified.h"
 
 extern "C" {
-    idg::proxy::Proxy* CUDA_Unified_create() {
-        return new idg::proxy::cuda::Unified(); 
-    }
+idg::proxy::Proxy* CUDA_Unified_create() {
+  return new idg::proxy::cuda::Unified();
+}
 }

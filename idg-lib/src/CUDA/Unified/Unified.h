@@ -27,8 +27,7 @@ class Unified : public Generic {
   ~Unified();
 
   void do_gridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -37,8 +36,7 @@ class Unified : public Generic {
       const Array2D<float>& spheroidal) override;
 
   void do_degridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,

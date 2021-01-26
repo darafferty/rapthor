@@ -4,7 +4,7 @@
 #include "Optimized.h"
 
 extern "C" {
-    struct idg::proxy::Proxy* CPU_Optimized_create() {
-        return new idg::proxy::cpu::Optimized();
-    }
+struct idg::proxy::Proxy* CPU_Optimized_create() {
+  return new idg::proxy::cpu::Optimized();
+}
 }

@@ -301,8 +301,8 @@ void run() {
 
         // Create plan
         auto plan = std::unique_ptr<idg::Plan>(new idg::Plan(
-            kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies, uvw,
-            baselines, aterms_offsets, options));
+            kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
+            uvw, baselines, aterms_offsets, options));
 
         // Start imaging
         double runtime_imaging = -omp_get_wtime();
@@ -311,8 +311,8 @@ void run() {
         clog << ">>> Run gridding" << endl;
         double runtime_gridding = -omp_get_wtime();
         if (!disable_gridding)
-          proxy.gridding(*plan, frequencies, visibilities, uvw,
-                         baselines, aterms, aterms_offsets, spheroidal);
+          proxy.gridding(*plan, frequencies, visibilities, uvw, baselines,
+                         aterms, aterms_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
 
@@ -320,8 +320,8 @@ void run() {
         clog << ">>> Run degridding" << endl;
         double runtime_degridding = -omp_get_wtime();
         if (!disable_degridding)
-          proxy.degridding(*plan, frequencies, visibilities, uvw,
-                           baselines, aterms, aterms_offsets, spheroidal);
+          proxy.degridding(*plan, frequencies, visibilities, uvw, baselines,
+                           aterms, aterms_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
 

@@ -50,21 +50,22 @@ void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
                           unsigned int* aterms_offsets, float* spheroidal);
 
 void Proxy_calibrate_update(
-    struct Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
-    const unsigned int nr_stations, const unsigned int nr_time_slots,
-    const unsigned int nr_terms, std::complex<float>* aterms,
-    std::complex<float>* aterm_derivatives, double* hessian, double* gradient,
-    double* residual);
+    struct Proxy* p, const unsigned int station_nr,
+    const unsigned int subgrid_size, const unsigned int nr_stations,
+    const unsigned int nr_time_slots, const unsigned int nr_terms,
+    std::complex<float>* aterms, std::complex<float>* aterm_derivatives,
+    double* hessian, double* gradient, double* residual);
 
 void Proxy_calibrate_finish(struct Proxy* p);
 
 void Proxy_calibrate_init_hessian_vector_product(struct Proxy* p);
 
 void Proxy_calibrate_hessian_vector_product1(
-    struct Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,
-    const unsigned int nr_stations, const unsigned int nr_time_slots,
-    const unsigned int nr_terms, std::complex<float>* aterms,
-    std::complex<float>* aterm_derivatives, float* parameter_vector);
+    struct Proxy* p, const unsigned int station_nr,
+    const unsigned int subgrid_size, const unsigned int nr_stations,
+    const unsigned int nr_time_slots, const unsigned int nr_terms,
+    std::complex<float>* aterms, std::complex<float>* aterm_derivatives,
+    float* parameter_vector);
 
 void struct Proxy_calibrate_update_hessian_vector_product2(
     Proxy* p, const unsigned int station_nr, const unsigned int subgrid_size,

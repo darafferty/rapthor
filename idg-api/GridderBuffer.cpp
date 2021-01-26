@@ -134,16 +134,16 @@ void GridderBufferImpl::flush_thread_worker() {
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
-  std::unique_ptr<Plan> plan =
-      proxy.make_plan(m_bufferset.get_kernel_size(), m_frequencies, m_bufferUVW2,
-                      m_bufferStationPairs2, m_aterm_offsets_array, options);
+  std::unique_ptr<Plan> plan = proxy.make_plan(
+      m_bufferset.get_kernel_size(), m_frequencies, m_bufferUVW2,
+      m_bufferStationPairs2, m_aterm_offsets_array, options);
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run gridding
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Start();
-  proxy.gridding(*plan, m_frequencies, m_bufferVisibilities2,
-                 m_bufferUVW2, m_bufferStationPairs2, m_aterms_array,
-                 m_aterm_offsets_array, m_bufferset.get_spheroidal());
+  proxy.gridding(*plan, m_frequencies, m_bufferVisibilities2, m_bufferUVW2,
+                 m_bufferStationPairs2, m_aterms_array, m_aterm_offsets_array,
+                 m_bufferset.get_spheroidal());
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Pause();
 }
 

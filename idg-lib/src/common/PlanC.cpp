@@ -13,9 +13,8 @@ idg::Plan* Plan_create(
     const unsigned int baselines_nr_baselines, const unsigned int baselines_two,
     unsigned int* aterms_offsets,
     const unsigned int aterms_offsets_nr_timeslots_plus_one) {
-
   float shift[2] = {0.0, 0.0};
-  idg::Array1D<float> shift_(shift,2);
+  idg::Array1D<float> shift_(shift, 2);
   idg::Array1D<float> frequencies_(frequencies, frequencies_nr_channels);
   idg::Array2D<idg::UVW<float>> uvw_((idg::UVW<float>*)uvw, uvw_nr_baselines,
                                      uvw_nr_timesteps);
@@ -25,8 +24,8 @@ idg::Plan* Plan_create(
   idg::Array1D<unsigned int> aterms_offsets_(
       aterms_offsets, aterms_offsets_nr_timeslots_plus_one);
 
-  return new idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                       shift_, frequencies_, uvw_, baselines_, aterms_offsets_);
+  return new idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, shift_,
+                       frequencies_, uvw_, baselines_, aterms_offsets_);
 }
 
 int Plan_get_nr_subgrids(idg::Plan* plan) { return plan->get_nr_subgrids(); }
@@ -37,5 +36,4 @@ void Plan_copy_metadata(idg::Plan* plan, void* ptr) {
 
 void Plan_destroy(idg::Plan* plan) { delete plan; }
 
-} // extern "C"
-
+}  // extern "C"

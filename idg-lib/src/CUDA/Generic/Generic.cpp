@@ -220,8 +220,7 @@ void Generic::run_gridding(
 }  // end run_gridding
 
 void Generic::do_gridding(
-    const Plan& plan,
-    const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -440,8 +439,7 @@ void Generic::run_degridding(
 }  // end run_degridding
 
 void Generic::do_degridding(
-    const Plan& plan,
-    const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -461,9 +459,8 @@ void Generic::do_degridding(
 #if defined(DEBUG)
   std::clog << "### Run degridding" << std::endl;
 #endif
-  run_degridding(plan,
-                 frequencies, visibilities, uvw, baselines, *m_grid, aterms,
-                 aterms_offsets, spheroidal);
+  run_degridding(plan, frequencies, visibilities, uvw, baselines, *m_grid,
+                 aterms, aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
   std::clog << "### Finish degridding" << std::endl;

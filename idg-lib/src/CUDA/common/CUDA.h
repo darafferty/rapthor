@@ -42,8 +42,7 @@ class CUDA : public Proxy {
                                    const unsigned int subgrid_size);
 
   void initialize(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,

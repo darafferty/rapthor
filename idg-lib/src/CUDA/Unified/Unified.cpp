@@ -35,8 +35,7 @@ Unified::~Unified() {
 }
 
 void Unified::do_gridding(
-    const Plan& plan,
-    const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -71,8 +70,7 @@ void Unified::do_gridding(
 }  // end gridding
 
 void Unified::do_degridding(
-    const Plan& plan,
-    const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -102,9 +100,8 @@ void Unified::do_degridding(
     grid_ptr =
         new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
   }
-  Generic::run_degridding(plan, frequencies, visibilities, uvw,
-                          baselines, *grid_ptr, aterms, aterms_offsets,
-                          spheroidal);
+  Generic::run_degridding(plan, frequencies, visibilities, uvw, baselines,
+                          *grid_ptr, aterms, aterms_offsets, spheroidal);
 }  // end degridding
 
 void Unified::set_grid(std::shared_ptr<Grid> grid) {

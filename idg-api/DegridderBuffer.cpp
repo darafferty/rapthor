@@ -120,9 +120,9 @@ void DegridderBufferImpl::flush() {
 
   // Run degridding
   m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Start();
-  proxy.degridding(*plan, m_frequencies, m_bufferVisibilities,
-                   m_bufferUVW, m_bufferStationPairs, m_aterms_array,
-                   m_aterm_offsets_array, m_bufferset.get_spheroidal());
+  proxy.degridding(*plan, m_frequencies, m_bufferVisibilities, m_bufferUVW,
+                   m_bufferStationPairs, m_aterms_array, m_aterm_offsets_array,
+                   m_bufferset.get_spheroidal());
   m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 
   // Prepare next batch

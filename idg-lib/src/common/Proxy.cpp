@@ -14,8 +14,7 @@ Proxy::Proxy() {}
 Proxy::~Proxy() {}
 
 void Proxy::gridding(
-    const Plan& plan,
-    const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -24,8 +23,8 @@ void Proxy::gridding(
     const Array2D<float>& spheroidal) {
   assert(m_grid != nullptr);
 
-  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw, baselines,
-                   *m_grid, aterms, aterms_offsets, spheroidal);
+  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
+                   baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) && (!do_supports_wstack_gridding())) {
     throw std::invalid_argument(
@@ -33,8 +32,7 @@ void Proxy::gridding(
         "W-stacking.");
   }
 
-  do_gridding(plan,
-              frequencies, visibilities, uvw, baselines, aterms,
+  do_gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
               aterms_offsets, spheroidal);
 }
 
@@ -56,25 +54,23 @@ void Proxy::gridding(
   options.nr_w_layers = nr_w_layers;
 
   std::unique_ptr<Plan> plan =
-      make_plan(kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
-                uvw, baselines, aterms_offsets, options);
+      make_plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                frequencies, uvw, baselines, aterms_offsets, options);
 
-  gridding(*plan,
-           frequencies, visibilities, uvw, baselines, aterms, aterms_offsets,
-           spheroidal);
+  gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
+           aterms_offsets, spheroidal);
 }
 
 void Proxy::degridding(
-    const Plan& plan,
-    const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
-  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw, baselines,
-                   *m_grid, aterms, aterms_offsets, spheroidal);
+  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
+                   baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) && (!do_supports_wstack_degridding())) {
     throw std::invalid_argument(
@@ -82,8 +78,7 @@ void Proxy::degridding(
         "W-stacking.");
   }
 
-  do_degridding(plan,
-                frequencies, visibilities, uvw, baselines, aterms,
+  do_degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
                 aterms_offsets, spheroidal);
 }
 
@@ -105,17 +100,15 @@ void Proxy::degridding(
   options.nr_w_layers = nr_w_layers;
 
   std::unique_ptr<Plan> plan =
-      make_plan(kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
-                uvw, baselines, aterms_offsets, options);
+      make_plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                frequencies, uvw, baselines, aterms_offsets, options);
 
-  degridding(*plan,
-             frequencies, visibilities, uvw, baselines, aterms, aterms_offsets,
-             spheroidal);
+  degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
+             aterms_offsets, spheroidal);
 }
 
 void Proxy::calibrate_init(
-    const unsigned int kernel_size,
-    const Array1D<float>& frequencies,
+    const unsigned int kernel_size, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     Array3D<Visibility<float>>& weights, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -221,8 +214,7 @@ void Proxy::calibrate_init(
 
   for (unsigned int i = 0; i < nr_antennas; i++) {
     plans.push_back(make_plan(
-        kernel_size, 
-        frequencies,
+        kernel_size, frequencies,
         Array2D<UVW<float>>(uvw1.data(i), nr_antennas - 1, nr_timesteps),
         Array1D<std::pair<unsigned int, unsigned int>>(baselines1.data(i),
                                                        nr_antennas - 1),
@@ -230,10 +222,9 @@ void Proxy::calibrate_init(
   }
 
   // Initialize calibration
-  do_calibrate_init(std::move(plans),
-                    frequencies,
-                    std::move(visibilities1), std::move(weights1),
-                    std::move(uvw1), std::move(baselines1), spheroidal);
+  do_calibrate_init(std::move(plans), frequencies, std::move(visibilities1),
+                    std::move(weights1), std::move(uvw1), std::move(baselines1),
+                    spheroidal);
   set_grid(nullptr);
 }
 

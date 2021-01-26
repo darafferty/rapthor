@@ -4,7 +4,7 @@
 #include "GenericOptimized.h"
 
 extern "C" {
-    idg::proxy::Proxy* HybridCUDA_GenericOptimized_create() {
-        return new idg::proxy::hybrid::GenericOptimized();
-    }
+idg::proxy::Proxy* HybridCUDA_GenericOptimized_create() {
+  return new idg::proxy::hybrid::GenericOptimized();
+}
 }

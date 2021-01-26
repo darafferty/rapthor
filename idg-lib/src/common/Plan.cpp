@@ -13,13 +13,11 @@ using namespace std;
 namespace idg {
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-           const float cell_size, const Array1D<float>& shift, const Array1D<float>& frequencies,
-           const Array2D<UVW<float>>& uvw,
+           const float cell_size, const Array1D<float>& shift,
+           const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-           const Array1D<unsigned int>& aterms_offsets, Options options) : 
-    m_subgrid_size(subgrid_size),
-    m_cell_size(cell_size),
-    use_wtiles(false) {
+           const Array1D<unsigned int>& aterms_offsets, Options options)
+    : m_subgrid_size(subgrid_size), m_cell_size(cell_size), use_wtiles(false) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << endl;
 #endif
@@ -35,14 +33,11 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const float cell_size, const Array1D<float>& shift,
-           const Array1D<float>& frequencies,
-           const Array2D<UVW<float>>& uvw,
+           const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
            const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
-           Options options):
-    m_subgrid_size(subgrid_size),
-    m_cell_size(cell_size),
-    use_wtiles(true) {
+           Options options)
+    : m_subgrid_size(subgrid_size), m_cell_size(cell_size), use_wtiles(true) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << " (with WTiles)" << endl;
 #endif
@@ -339,8 +334,8 @@ void Plan::initialize(
       auto channel_end = channel_group.second;
 
       // Initialize subgrid
-      Subgrid subgrid(kernel_size, subgrid_size, grid_size, m_w_step, nr_w_layers,
-                      wtile_size);
+      Subgrid subgrid(kernel_size, subgrid_size, grid_size, m_w_step,
+                      nr_w_layers, wtile_size);
 
       // Constants over nr_timesteps
       const double speed_of_light = 299792458.0;

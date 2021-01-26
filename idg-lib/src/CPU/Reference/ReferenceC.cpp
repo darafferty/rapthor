@@ -4,7 +4,7 @@
 #include "Reference.h"
 
 extern "C" {
-    idg::proxy::Proxy* CPU_Reference_create() {
-        return new idg::proxy::cpu::Reference(); 
-    }
+idg::proxy::Proxy* CPU_Reference_create() {
+  return new idg::proxy::cpu::Reference();
+}
 }  // end extern "C"

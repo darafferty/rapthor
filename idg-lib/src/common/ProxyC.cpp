@@ -25,23 +25,25 @@ void Proxy_gridding(
   idg::Array1D<float> shift_(shift, 3);
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      (idg::Visibility<std::complex<float>>*)visibilities, visibilities_nr_baselines,
-      visibilities_nr_timesteps, visibilities_nr_channels);
+      (idg::Visibility<std::complex<float>>*)visibilities,
+      visibilities_nr_baselines, visibilities_nr_timesteps,
+      visibilities_nr_channels);
   idg::Array2D<idg::UVW<float>> uvw_((idg::UVW<float>*)uvw, uvw_nr_baselines,
-                           uvw_nr_timesteps);
+                                     uvw_nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(
       (std::pair<unsigned int, unsigned int>*)baselines,
       baselines_nr_baselines);
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       (idg::Matrix2x2<std::complex<float>>*)aterms, aterms_nr_timeslots,
       aterms_nr_stations, aterms_aterm_height, aterms_aterm_width);
-  idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets,
-                                        aterms_offsets_nr_timeslots_plus_one);
-  idg::Array2D<float> spheroidal_(spheroidal, spheroidal_height, spheroidal_width);
+  idg::Array1D<unsigned int> aterms_offsets_(
+      aterms_offsets, aterms_offsets_nr_timeslots_plus_one);
+  idg::Array2D<float> spheroidal_(spheroidal, spheroidal_height,
+                                  spheroidal_width);
 
-  reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(w_step, shift_, cell_size, kernel_size, subgrid_size, frequencies_,
-           visibilities_, uvw_, baselines_, aterms_, aterms_offsets_,
-           spheroidal_);
+  reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
+      w_step, shift_, cell_size, kernel_size, subgrid_size, frequencies_,
+      visibilities_, uvw_, baselines_, aterms_, aterms_offsets_, spheroidal_);
 }
 
 void Proxy_degridding(
@@ -64,23 +66,25 @@ void Proxy_degridding(
   idg::Array1D<float> shift_(shift, 3);
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      (idg::Visibility<std::complex<float>>*)visibilities, visibilities_nr_baselines,
-      visibilities_nr_timesteps, visibilities_nr_channels);
+      (idg::Visibility<std::complex<float>>*)visibilities,
+      visibilities_nr_baselines, visibilities_nr_timesteps,
+      visibilities_nr_channels);
   idg::Array2D<idg::UVW<float>> uvw_((idg::UVW<float>*)uvw, uvw_nr_baselines,
-                           uvw_nr_timesteps);
+                                     uvw_nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(
       (std::pair<unsigned int, unsigned int>*)baselines,
       baselines_nr_baselines);
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       (idg::Matrix2x2<std::complex<float>>*)aterms, aterms_nr_timeslots,
       aterms_nr_stations, aterms_aterm_height, aterms_aterm_width);
-  idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets,
-                                        aterms_offsets_nr_timeslots_plus_one);
-  idg::Array2D<float> spheroidal_(spheroidal, spheroidal_height, spheroidal_width);
+  idg::Array1D<unsigned int> aterms_offsets_(
+      aterms_offsets, aterms_offsets_nr_timeslots_plus_one);
+  idg::Array2D<float> spheroidal_(spheroidal, spheroidal_height,
+                                  spheroidal_width);
 
-  reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(w_step, shift_, cell_size, kernel_size, subgrid_size, frequencies_,
-             visibilities_, uvw_, baselines_, aterms_, aterms_offsets_,
-             spheroidal_);
+  reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(
+      w_step, shift_, cell_size, kernel_size, subgrid_size, frequencies_,
+      visibilities_, uvw_, baselines_, aterms_, aterms_offsets_, spheroidal_);
 }
 
 void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
@@ -111,17 +115,16 @@ void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
   idg::Array2D<float> spheroidal_(spheroidal, subgrid_size, subgrid_size);
 
   reinterpret_cast<idg::proxy::Proxy*>(p)->calibrate_init(
-      kernel_size, frequencies_,
-      visibilities_, weights_, uvw_, baselines_, aterms_offsets_,
-      spheroidal_);
+      kernel_size, frequencies_, visibilities_, weights_, uvw_, baselines_,
+      aterms_offsets_, spheroidal_);
 }
 
 void Proxy_calibrate_update(
-    struct Proxy* p, const unsigned int antenna_nr, const unsigned int subgrid_size,
-    const unsigned int nr_antennas, const unsigned int nr_timeslots,
-    const unsigned int nr_terms, std::complex<float>* aterms,
-    std::complex<float>* aterm_derivatives, double* hessian, double* gradient,
-    double* residual) {
+    struct Proxy* p, const unsigned int antenna_nr,
+    const unsigned int subgrid_size, const unsigned int nr_antennas,
+    const unsigned int nr_timeslots, const unsigned int nr_terms,
+    std::complex<float>* aterms, std::complex<float>* aterm_derivatives,
+    double* hessian, double* gradient, double* residual) {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
       nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
@@ -144,10 +147,11 @@ void Proxy_calibrate_init_hessian_vector_product(struct Proxy* p) {
 }
 
 void Proxy_calibrate_hessian_vector_product1(
-    struct Proxy* p, const unsigned int antenna_nr, const unsigned int subgrid_size,
-    const unsigned int nr_antennas, const unsigned int nr_timeslots,
-    const unsigned int nr_terms, std::complex<float>* aterms,
-    std::complex<float>* aterm_derivatives, float* parameter_vector) {
+    struct Proxy* p, const unsigned int antenna_nr,
+    const unsigned int subgrid_size, const unsigned int nr_antennas,
+    const unsigned int nr_timeslots, const unsigned int nr_terms,
+    std::complex<float>* aterms, std::complex<float>* aterm_derivatives,
+    float* parameter_vector) {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
       nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
@@ -162,10 +166,11 @@ void Proxy_calibrate_hessian_vector_product1(
 }
 
 void Proxy_calibrate_hessian_vector_product2(
-    struct Proxy* p, const unsigned int antenna_nr, const unsigned int subgrid_size,
-    const unsigned int nr_antennas, const unsigned int nr_timeslots,
-    const unsigned int nr_terms, std::complex<float>* aterms,
-    std::complex<float>* aterm_derivatives, float* parameter_vector) {
+    struct Proxy* p, const unsigned int antenna_nr,
+    const unsigned int subgrid_size, const unsigned int nr_antennas,
+    const unsigned int nr_timeslots, const unsigned int nr_terms,
+    std::complex<float>* aterms, std::complex<float>* aterm_derivatives,
+    float* parameter_vector) {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
       nr_timeslots, nr_antennas, subgrid_size, subgrid_size);
@@ -189,7 +194,9 @@ void Proxy_transform(struct Proxy* p, int direction) {
   }
 }
 
-void Proxy_destroy(struct Proxy* p) { delete reinterpret_cast<idg::proxy::Proxy*>(p); }
+void Proxy_destroy(struct Proxy* p) {
+  delete reinterpret_cast<idg::proxy::Proxy*>(p);
+}
 
 void* Proxy_allocate_grid(struct Proxy* p, unsigned int nr_correlations,
                           unsigned int grid_size) {

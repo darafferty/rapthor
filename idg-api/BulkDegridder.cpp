@@ -125,8 +125,7 @@ void BulkDegridderImpl::compute_visibilities(
   // Create plan
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Start();
   std::unique_ptr<Plan> plan =
-      proxy.make_plan(bufferset_.get_kernel_size(),
-                      frequencies_, bufferUVW,
+      proxy.make_plan(bufferset_.get_kernel_size(), frequencies_, bufferUVW,
                       bufferStationPairs, aterm_offsets_array, options);
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 

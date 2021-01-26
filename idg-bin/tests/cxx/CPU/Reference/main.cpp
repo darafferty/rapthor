@@ -108,8 +108,8 @@ int test01() {
   clog << ">>> Create plan" << endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
-                 uvw, baselines, aterms_offsets, options);
+  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                 frequencies, uvw, baselines, aterms_offsets, options);
   clog << endl;
 
   // Grid reference visibilities

@@ -4,7 +4,7 @@
 #include "Generic.h"
 
 extern "C" {
-    idg::proxy::Proxy* CUDA_Generic_create() {
-        return new idg::proxy::cuda::Generic();
-    }
+idg::proxy::Proxy* CUDA_Generic_create() {
+  return new idg::proxy::cuda::Generic();
+}
 }  // end extern "C"

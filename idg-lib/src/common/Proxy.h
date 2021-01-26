@@ -40,12 +40,11 @@ class Proxy {
   */
   //! Add visibilities to a grid, applying aterms
   //
-  // Before calling this function, the grid needs to have been set 
+  // Before calling this function, the grid needs to have been set
   // by a call to the set_grid function
   // The plan can be obtained by a call to the make_plan function.
   // This plan can be either caching or non-caching
-  void gridding(const Plan& plan,
-                const Array1D<float>& frequencies,
+  void gridding(const Plan& plan, const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -53,9 +52,8 @@ class Proxy {
                 const Array1D<unsigned int>& aterms_offsets,
                 const Array2D<float>& spheroidal);
 
-
   //! Grid the visibilities onto a uniform grid
-  // Before calling this function, the grid needs to have been set 
+  // Before calling this function, the grid needs to have been set
   // by a call to the set_grid function
   // Internally a non-caching plan will be created
   // To use caching, use the gridding function that accepts a plan as parameter
@@ -71,8 +69,7 @@ class Proxy {
                 const Array2D<float>& spheroidal);
 
   void degridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -93,8 +90,7 @@ class Proxy {
 
   // Prepare a calibration cycle
   void calibrate_init(
-      const unsigned int kernel_size,
-      const Array1D<float>& frequencies,
+      const unsigned int kernel_size, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       Array3D<Visibility<float>>& weights, const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -201,7 +197,7 @@ class Proxy {
 
   //! Methods for cache management
   virtual void init_cache(int subgrid_size, float cell_size, float w_step,
-                            const Array1D<float>& shift){
+                          const Array1D<float>& shift) {
     m_cache_state.subgrid_size = subgrid_size;
     m_cache_state.cell_size = cell_size;
     m_cache_state.w_step = w_step;
@@ -215,10 +211,8 @@ class Proxy {
   // Create a non-caching plan
   virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const int subgrid_size, const int grid_size,
-      const float cell_size, 
-      const Array1D<float>& shift,
-      const Array1D<float>& frequencies,
-      const Array2D<UVW<float>>& uvw,
+      const float cell_size, const Array1D<float>& shift,
+      const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
       Plan::Options options = Plan::Options()) {
@@ -230,27 +224,22 @@ class Proxy {
   // Create a caching plan
   // The cache needs to have been initialized by call to init_cache first
   virtual std::unique_ptr<Plan> make_plan(
-      const int kernel_size, 
-      const Array1D<float>& frequencies,
+      const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
       Plan::Options options = Plan::Options()) {
     options.w_step = m_cache_state.w_step;
-    return std::unique_ptr<Plan>(new Plan(kernel_size, 
-                                          m_cache_state.subgrid_size, 
-                                          m_grid->get_y_dim(),
-                                          m_cache_state.cell_size, 
-                                          m_cache_state.shift,
-                                          frequencies, uvw,
-                                          baselines, aterms_offsets, options));
+    return std::unique_ptr<Plan>(
+        new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
+                 m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
+                 baselines, aterms_offsets, options));
   }
 
  private:
   //! Degrid the visibilities from a uniform grid
   virtual void do_gridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -259,8 +248,7 @@ class Proxy {
       const Array2D<float>& spheroidal) = 0;
 
   virtual void do_degridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -356,10 +344,10 @@ class Proxy {
   bool m_disable_wtiling = false;
 
   struct {
-      int subgrid_size;
-      float cell_size;
-      float w_step;
-      Array1D<float> shift{3};
+    int subgrid_size;
+    float cell_size;
+    float w_step;
+    Array1D<float> shift{3};
   } m_cache_state;
 
 };  // end class Proxy

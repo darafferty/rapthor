@@ -189,22 +189,22 @@ int compare_to_reference(float tol = 1000 *
   clog << ">>> Create plan" << endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
-                 uvw, baselines, aterms_offsets, options);
+  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                 frequencies, uvw, baselines, aterms_offsets, options);
   clog << endl;
 
 #if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
   optimized.set_grid(grid);
-  optimized.gridding(plan, frequencies, visibilities, uvw, baselines,
-                     aterms, aterms_offsets, spheroidal);
+  optimized.gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                     aterms_offsets, spheroidal);
   optimized.get_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
   reference.set_grid(grid_ref);
-  reference.gridding(plan, frequencies, visibilities, uvw, baselines,
-                     aterms, aterms_offsets, spheroidal);
+  reference.gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                     aterms_offsets, spheroidal);
   reference.get_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
@@ -224,13 +224,13 @@ int compare_to_reference(float tol = 1000 *
   visibilities.zero();
   visibilities_ref.zero();
   optimized.set_grid(grid);
-  optimized.degridding(plan, frequencies, visibilities, uvw, baselines,
-                       aterms, aterms_offsets, spheroidal);
+  optimized.degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                       aterms_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
   reference.set_grid(grid);
-  reference.degridding(plan, frequencies, visibilities_ref, uvw,
-                       baselines, aterms, aterms_offsets, spheroidal);
+  reference.degridding(plan, frequencies, visibilities_ref, uvw, baselines,
+                       aterms, aterms_offsets, spheroidal);
 
   std::clog << std::endl;
 

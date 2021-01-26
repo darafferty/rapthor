@@ -171,11 +171,11 @@ int main(int argc, char **argv) {
   options.plan_strict = true;
   idg::Plan plan =
       use_wtiles
-          ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                      shift, frequencies, uvw, baselines, aterms_offsets, wtiles,
+          ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                      frequencies, uvw, baselines, aterms_offsets, wtiles,
                       options)
-          : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                      shift, frequencies, uvw, baselines, aterms_offsets, options);
+          : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                      frequencies, uvw, baselines, aterms_offsets, options);
   std::clog << std::endl;
 
   // Report plan

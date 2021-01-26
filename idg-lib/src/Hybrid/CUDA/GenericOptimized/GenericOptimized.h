@@ -42,8 +42,7 @@ class GenericOptimized : public cuda::CUDA {
 
  private:
   void do_gridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -52,8 +51,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<float>& spheroidal) override;
 
   void do_degridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -64,8 +62,7 @@ class GenericOptimized : public cuda::CUDA {
   void do_transform(DomainAtoDomainB direction) override;
 
   void run_gridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -74,8 +71,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<float>& spheroidal);
 
   void run_degridding(
-      const Plan& plan,
-      const Array1D<float>& frequencies,
+      const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -115,8 +111,7 @@ class GenericOptimized : public cuda::CUDA {
       Array2D<float>& parameter_vector) override;
 
   virtual std::unique_ptr<Plan> make_plan(
-      const int kernel_size,
-      const Array1D<float>& frequencies,
+      const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
