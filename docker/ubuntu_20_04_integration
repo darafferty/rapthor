@@ -36,4 +36,4 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     && tar xfz /WSRT_Measures.ztar \
     && rm /WSRT_Measures.ztar \
 # Install some python packages
-    && pip3 install astropy scipy
+    && pip3 install astropy scipy pytest pytest-lazy-fixture h5py
