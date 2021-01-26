@@ -8,7 +8,7 @@ import pytest
 # import os
 
 
-def lazy_evaluation(x, y, order, coeffs):
+def explicit_evaluation(x, y, order, coeffs):
     sol = 0.0
     idx = 0
     for n in range(order + 1):
@@ -56,7 +56,7 @@ def test_evaluate(x, y, coeffs):
     ref = np.empty((y.size, x.size), dtype=result.dtype)
     for i, ycoord in enumerate(y):
         for j, xcoord in enumerate(x):
-            ref[i, j] = lazy_evaluation(xcoord, ycoord, poly.order, coeffs)
+            ref[i, j] = explicit_evaluation(xcoord, ycoord, poly.order, coeffs)
     np.testing.assert_equal(result, ref)
 
 
@@ -95,6 +95,3 @@ def test_expand(order, x, y):
         np.testing.assert_equal(basis[0], np.ones((2, 2)))
         np.testing.assert_equal(basis[1], X)
         np.testing.assert_equal(basis[2], Y)
-
-        print(basis.reshape((-1, 2 * 2)).T)
-        # basis_functions = basis_functions.reshape((-1, subgrid_size * subgrid_size)).T

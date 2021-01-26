@@ -115,8 +115,9 @@ class IDGCalDPStep(dppp.DPStep):
         self.h5parm_overwrite = parset.getBool(prefix + "h5parmoverwrite", True)
 
         self.w_step = parset.getFloat(prefix + "wstep", 400.0)
+        ## END: read parset
+
         self.shift = np.array((0.0, 0.0, 0.0), dtype=np.float32)
-        ## BEGIN: read parset
 
         # Number of phase updates per amplitude interval
         self.nr_phase_updates = self.ampl_interval // self.phase_interval
@@ -141,8 +142,15 @@ class IDGCalDPStep(dppp.DPStep):
         # Time array should match "amplitude time blocks"
         nsteps = (self.info().ntime() // self.ampl_interval) * self.ampl_interval
         dt = self.info().time_interval()
-        self.time_array = np.linspace(
+        time_array = np.linspace(
             tstart, tstart + dt * nsteps, num=nsteps, endpoint=False
+        )
+        # Get time centroids per amplitude/phase solution interval
+        self.time_array_ampl = (
+            time_array[:: self.ampl_interval] + (self.ampl_interval - 1) * dt / 2.0
+        )
+        self.time_array_phase = (
+            time_array[:: self.phase_interval] + (self.phase_interval - 1) * dt / 2.0
         )
 
         self.nr_stations = self.info().nantenna()
@@ -158,15 +166,6 @@ class IDGCalDPStep(dppp.DPStep):
         self.auto_corr_mask = station1 != station2
         self.baselines["station1"] = station1[self.auto_corr_mask]
         self.baselines["station2"] = station2[self.auto_corr_mask]
-
-        # Get time centroids per amplitude/phase solution interval
-        self.time_array_ampl = (
-            self.time_array[:: self.ampl_interval] + (self.ampl_interval - 1) * dt / 2.0
-        )
-        self.time_array_phase = (
-            self.time_array[:: self.phase_interval]
-            + (self.phase_interval - 1) * dt / 2.0
-        )
 
         # Axes data
         axes_labels = ["ant", "time", "dir"]
@@ -676,17 +675,18 @@ def transform_parameters(
         Number of timeslots
     """
 
-    # TODO: should be possible to avoid the loops with numpy
-    for i in range(nr_stations):
-        parameters[i, :nr_amplitude_params] = np.dot(
-            tmat_amplitude, parameters[i, :nr_amplitude_params]
+    # Map the amplitudes
+    parameters[:, :nr_amplitude_params] = np.dot(
+        parameters[:, :nr_amplitude_params], tmat_amplitude.T
+    )
+
+    # Map the phases
+    for j in range(nr_timeslots):
+        slicer = slice(
+            nr_amplitude_params + j * nr_phase_params,
+            nr_amplitude_params + (j + 1) * nr_phase_params,
         )
-        for j in range(nr_timeslots):
-            slicer = slice(
-                nr_amplitude_params + j * nr_phase_params,
-                nr_amplitude_params + (j + 1) * nr_phase_params,
-            )
-            parameters[i, slicer] = np.dot(tmat_phase, parameters[i, slicer],)
+        parameters[:, slicer] = np.dot(parameters[:, slicer], tmat_phase.T)
     return parameters
 
 

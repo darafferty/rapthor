@@ -108,23 +108,13 @@ class LagrangePolynomial:
 
     @staticmethod
     def compute_nr_coeffs(order):
-        return np.sum(np.arange(1, order + 2))
+        return (order + 1) * (order + 2) // 2
 
     @staticmethod
     def compute_order(nr_coeffs):
-        order = 0
-        term_counter = 1
-        while term_counter < nr_coeffs:
-            order += 1
-            term_counter += order + 1
-
-        # Raise error if specified nr_coeffs does not match
-        # computed number of terms
-        if term_counter != nr_coeffs:
-            raise ValueError(
-                f"Term counter does not exactly match the number of coefficients, {term_counter} != {nr_coeffs}. You probably specified a wrong number of input coeffs."
-            )
-        return order
+        # Solution to the quadratic expression (order + 1)(order + 2) / 2 = nr_coeffs,
+        # for the positive discriminant
+        return int((-3 + np.sqrt(1 + 8 * nr_coeffs)) // 2)
 
     @staticmethod
     def get_indices_right_diagonal(order, diag_nr):
