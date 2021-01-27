@@ -393,19 +393,20 @@ class Field(object):
             self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
             source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
                                   weightBySize=True)
-
-            # Update the patch positions after the tessellation to ensure they match the
-            # ones from the meanshift grouping. If there was insufficient flux in the
-            # sky model to meet the target flux, LSMTool will put all sources into a
-            # single patch with the name 'Patch', which will not correspond to any of
-            # the meanshift patches. So, check for this case and set the patch position
-            # to the weighted mean
             tesselation_patches = source_skymodel.getPatchNames()
             if len(tesselation_patches) == 1 and tesselation_patches[0] == 'Patch':
-                source_skymodel.setPatchPositions(method='wmean')
-                patch_dict = source_skymodel.getPatchPositions()
-            else:
-                source_skymodel.setPatchPositions(patchDict=patch_dict)
+                # If there was insufficient flux in the sky model to meet the
+                # target flux, LSMTool will put all sources into a single patch
+                # with the name 'Patch'. So, check for this case and exit if found
+                self.log.critical('No groups found that meet the target flux density. Please '
+                                  'check the sky model (in working_dir/skymodels/calibrate_{}/) '
+                                  'for problems or lower the target flux density. '
+                                  'Exiting...'.format(index))
+                sys.exit(1)
+
+            # Update the patch positions after the tessellation to ensure they match the
+            # ones from the meanshift grouping
+            source_skymodel.setPatchPositions(patchDict=patch_dict)
 
             # Match the bright-source sky model to the tessellated one by removing
             # patches that are not present in the tessellated model
