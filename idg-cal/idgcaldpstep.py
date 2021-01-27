@@ -406,44 +406,10 @@ class IDGCalDPStep(dppp.DPStep):
                 )
                 residual = np.zeros((1,), dtype=np.float64)
 
-                aterm_ampl = np.repeat(
-                    np.tensordot(
-                        parameters[i, : self.ampl_poly.nr_coeffs],
-                        self.Bampl,
-                        axes=((0,), (0,)),
-                    )[np.newaxis, :],
-                    self.nr_phase_updates,
-                    axis=0,
-                )
-                aterm_phase = np.exp(
-                    1j
-                    * np.tensordot(
-                        parameters[i, self.ampl_poly.nr_coeffs :].reshape(
-                            (self.nr_phase_updates, self.phase_poly.nr_coeffs)
-                        ),
-                        self.Bphase,
-                        axes=((1,), (0,)),
-                    )
-                )
-
-                # new-axis is introduced at "stations" axis
-                aterm_derivatives_ampl = (
-                    aterm_phase[:, np.newaxis, :, :, :]
-                    * self.Bampl[np.newaxis, :, :, :, :]
-                )
-
-                aterm_derivatives_phase = (
-                    1j
-                    * aterm_ampl[:, np.newaxis, :, :, :]
-                    * aterm_phase[:, np.newaxis, :, :, :]
-                    * self.Bphase[np.newaxis, :, :, :, :]
-                )
-
-                aterm_derivatives = np.concatenate(
-                    (aterm_derivatives_ampl, aterm_derivatives_phase), axis=1
-                )
-                aterm_derivatives = np.ascontiguousarray(
-                    aterm_derivatives, dtype=np.complex64
+                aterm_ampl = self.__compute_amplitude(i, parameters)
+                aterm_phase = self.__compute_phase(i, parameters)
+                aterm_derivatives = compute_aterm_derivatives(
+                    aterm_ampl, aterm_phase, self.Bampl, self.Bphase
                 )
 
                 timer0 -= time.time()
@@ -496,37 +462,16 @@ class IDGCalDPStep(dppp.DPStep):
                 hessian0 = hessian
 
                 dx = np.dot(np.linalg.pinv(hessian, self.pinv_tol), gradient)
-                # TODO: norm_dx (formally a squared-norm) not used?
-                norm_dx += np.linalg.norm(dx) ** 2
 
                 if max_dx < np.amax(abs(dx)):
                     max_dx = np.amax(abs(dx))
                     i_max = i
 
-                p0 = parameters[i].copy()
                 parameters[i] += self.solver_update_gain * dx
 
-                aterm_ampl = np.repeat(
-                    np.tensordot(
-                        parameters[i, : self.ampl_poly.nr_coeffs],
-                        self.Bampl,
-                        axes=((0,), (0,)),
-                    )[np.newaxis, :],
-                    self.nr_phase_updates,
-                    axis=0,
-                )
-                aterm_phase = np.exp(
-                    1j
-                    * np.tensordot(
-                        parameters[i, self.ampl_poly.nr_coeffs :].reshape(
-                            (self.nr_phase_updates, self.phase_poly.nr_coeffs)
-                        ),
-                        self.Bphase,
-                        axes=((1,), (0,)),
-                    )
-                )
-
-                aterms0 = aterms.copy()
+                # Recompute aterms with updated parameters
+                aterm_ampl = self.__compute_amplitude(i, parameters)
+                aterm_phase = self.__compute_phase(i, parameters)
                 aterms[:, i] = aterm_ampl * aterm_phase
 
                 timer1 += time.time()
@@ -619,6 +564,117 @@ class IDGCalDPStep(dppp.DPStep):
             raise ValueError("Name not recognized")
         result = np.stack(result, axis=1)
         return result[self.auto_corr_mask, :, :] if apply_autocorr_mask else result
+
+    def __compute_amplitude(self, i, parameters):
+        """
+        Return the amplitude, given station index is and expansion coefficients
+
+        Parameters
+        ----------
+        i : int
+            Station index
+        parameters : np.ndarray
+            Array containing the expansion coefficients both for amplitude and phase
+
+        Returns
+        -------
+        np.ndarray
+            Array containing the complex exponential, shape is (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+        """
+        # Result is repeated nr_phase_updates times to match complex exponential term
+        return np.repeat(
+            np.tensordot(
+                parameters[i, : self.ampl_poly.nr_coeffs],
+                self.Bampl,
+                axes=((0,), (0,)),
+            )[np.newaxis, :],
+            self.nr_phase_updates,
+            axis=0,
+        )
+
+    def __compute_phase(self, i, parameters):
+        """
+        Return the complex exponential, given station index i and the expansion coefficients
+
+        Parameters
+        ----------
+        i : int
+            Station index
+        parameters : np.ndarray
+            Array containing the expansion coefficients both for amplitude and phase
+
+        Returns
+        -------
+        np.ndarray
+            Array containing the complex exponential, shape is (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+        """
+        return np.exp(
+            1j
+            * np.tensordot(
+                parameters[i, self.ampl_poly.nr_coeffs :].reshape(
+                    (self.nr_phase_updates, self.phase_poly.nr_coeffs)
+                ),
+                self.Bphase,
+                axes=((1,), (0,)),
+            )
+        )
+
+
+def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
+    """
+
+
+    Returns
+    -------
+    np.ndarray
+        Numpy array of shape (nr_phase_updates, nr_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+        where nr_coeffs = len(x_a) + len(x_p)
+    """
+
+
+def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
+    """
+    Compute the partial derivatives of g = B_a*x_a * exp(j*B_p*x_p):
+    - \partial g / \partial x_a = B_a * exp(j*B_p*x_p)
+    - \partial g / \partial x_p = B_a * x_a * j * B_p * exp(j*B_p*x_p)
+    where x_a and x_p the unknown expansion coefficients for the amplitude and
+    the phase, respectively.
+
+    Parameters
+    ----------
+    aterm_ampl : np.ndarray
+        Amplitude tensor product B_a * x_a, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+    aterm_phase : np.ndarray
+        Phase tensor product B_p * x_p, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+    B_a : np.ndarray
+        Expanded (amplitude) basis functions, should have shape (nr_ampl_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+    B_p : np.ndarray
+        Expande (phase) basis functions, should have shape (nr_phase_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+
+    Returns
+    -------
+    np.ndarray
+        Column stacked derivative [\partial g/ \partial x_a, \partial g / \partial x_p]^T
+        Output has shape (nr_phase_updates, nr_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+        where nr_coeffs = len(x_a) + len(x_p)
+    """
+    # new-axis is introduced at "stations" axis
+    aterm_derivatives_ampl = (
+        aterm_phase[:, np.newaxis, :, :, :] * B_a[np.newaxis, :, :, :, :]
+    )
+
+    aterm_derivatives_phase = (
+        1j
+        * aterm_ampl[:, np.newaxis, :, :, :]
+        * aterm_phase[:, np.newaxis, :, :, :]
+        * B_p[np.newaxis, :, :, :, :]
+    )
+
+    aterm_derivatives = np.concatenate(
+        (aterm_derivatives_ampl, aterm_derivatives_phase), axis=1
+    )
+    aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
+    return aterm_derivatives
 
 
 def init_h5parm_solution_table(
@@ -866,7 +922,6 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
             RR.append(D * (Q - S))
         B = np.array(B)
         RR = np.array(RR)
-
         return a, B, RR
 
 
