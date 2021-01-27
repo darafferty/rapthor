@@ -15,6 +15,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
 import glob
+import copy
 
 
 class Field(object):
@@ -236,6 +237,16 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
+
+        # Update the copies stored in the imaging sectors
+        for sector in self.imaging_sectors:
+            sector.observations = []
+            for obs in self.observations:
+                obs.log = None  # deepcopy cannot copy the log object
+                cobs = copy.deepcopy(obs)
+                obs.log = logging.getLogger('rapthor:{}'.format(obs.name))
+                cobs.log = logging.getLogger('rapthor:{}'.format(cobs.name))
+                sector.observations.append(cobs)
 
     def set_obs_parameters(self):
         """
