@@ -70,12 +70,12 @@ class Field(object):
         self.field_image_filename = None
 
         if not mininmal:
-            # Scan MS files to get observation info
-            self.scan_observations(self.parset['data_fraction'])
-
             # Set up imaging sectors
             self.makeWCS()
             self.define_imaging_sectors()
+
+            # Scan MS files to get observation info
+            self.scan_observations(self.parset['data_fraction'])
 
     def scan_observations(self, data_fraction=1.0):
         """
@@ -95,7 +95,11 @@ class Field(object):
         for ms_filename in self.ms_filenames:
             self.observations.append(Observation(ms_filename))
 
-        # Break observations into smaller time chunks if desired
+        # Break observations into smaller time chunks if desired. Chunking is done if:
+        #   - the specified data_fraction < 1 (so part of an observation is to be processed)
+        #   - nobs * nsectors < nnodes (so all nodes can be used efficiently. In particular,
+        #     the predict pipeline parallelizes over sectors and observations, so we need
+        #     enough observations to allow all nodes to be occupied.)
         if data_fraction < 1.0:
             self.full_observations = self.observations[:]
             self.observations = []
@@ -130,6 +134,30 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
+        minnobs = self.parset['cluster_specific']['max_nodes']
+        if len(self.imaging_sectors)*len(self.observations) < minnobs:
+            # To ensure all the nodes are used efficiently, try to divide up the observations
+            # to reach at least minnobs in total. For simplicity, we try to divide each existing
+            # observation into minnobs number of new observations (since there is no
+            # drawback to having more than minnobs observations in total)
+            mintime = self.parset['calibration_specific']['slow_timestep_sec']
+            prev_observations = self.observations[:]
+            self.observations = []
+            for obs in prev_observations:
+                tottime = obs.endtime - obs.starttime
+                nchunks = min(minnobs, max(1, int(tottime / mintime)))
+                if nchunks > 1:
+                    steptime = tottime / nchunks
+                    steptime -= steptime % mintime
+                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
+                    endtimes = [st+steptime for st in starttimes]
+                    for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
+                        if nc == len(endtimes)-1:
+                            endtime = obs.endtime
+                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
+                                                             endtime=endtime))
+
+        # Define a single observation for the comparisons below
         obs0 = self.observations[0]
 
         # Check that all observations have the same antenna type
