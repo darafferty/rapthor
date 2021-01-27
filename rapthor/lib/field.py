@@ -237,6 +237,8 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
+                else:
+                    self.observations.append(obs)
 
         # Update the copies stored in the imaging sectors
         for sector in self.imaging_sectors:
