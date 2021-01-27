@@ -70,21 +70,19 @@ class Field(object):
         self.field_image_filename = None
 
         if not mininmal:
+            # Scan MS files to get observation info
+            self.scan_observations()
+
             # Set up imaging sectors
             self.makeWCS()
             self.define_imaging_sectors()
 
-            # Scan MS files to get observation info
-            self.scan_observations(self.parset['data_fraction'])
+            # Chunk the observations into smaller parts if needed
+            self.chunk_observations(self.parset['data_fraction'])
 
-    def scan_observations(self, data_fraction=1.0):
+    def scan_observations(self):
         """
         Checks input MS files and initializes the associated Observation objects
-
-        Parameters
-        ----------
-        data_fraction : float, optional
-            Fraction of data to use during processing
         """
         if len(self.ms_filenames) > 1:
             infix = 's'
@@ -95,69 +93,7 @@ class Field(object):
         for ms_filename in self.ms_filenames:
             self.observations.append(Observation(ms_filename))
 
-        # Break observations into smaller time chunks if desired. Chunking is done if:
-        #   - the specified data_fraction < 1 (so part of an observation is to be processed)
-        #   - nobs * nsectors < nnodes (so all nodes can be used efficiently. In particular,
-        #     the predict pipeline parallelizes over sectors and observations, so we need
-        #     enough observations to allow all nodes to be occupied.)
-        if data_fraction < 1.0:
-            self.full_observations = self.observations[:]
-            self.observations = []
-            for obs in self.full_observations:
-                mintime = self.parset['calibration_specific']['slow_timestep_sec']
-                tottime = obs.endtime - obs.starttime
-                if data_fraction < min(1.0, mintime/tottime):
-                    obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                                    'total time for this observation that is less than the '
-                                    'slow-gain timestep. The data fraction will be increased '
-                                    'to {1:0.3f} to ensure the slow-gain timestep requirement is '
-                                    'met.'.format(data_fraction, min(1.0, mintime/tottime)))
-                nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
-                if nchunks == 1:
-                    # Center the chunk around the midpoint (which is generally the most
-                    # sensitive, near transit)
-                    midpoint = obs.starttime + tottime / 2
-                    chunktime = min(tottime, max(mintime, data_fraction*tottime))
-                    if chunktime < tottime:
-                        self.observations.append(Observation(obs.ms_filename,
-                                                             starttime=midpoint-chunktime/2,
-                                                             endtime=midpoint+chunktime/2))
-                    else:
-                        self.observations.append(obs)
-                else:
-                    steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
-                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
-                    endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
-                    for starttime, endtime in zip(starttimes, endtimes):
-                        if endtime > obs.endtime:
-                            starttime = obs.endtime - mintime
-                            endtime = obs.endtime
-                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                             endtime=endtime))
-        minnobs = self.parset['cluster_specific']['max_nodes']
-        if len(self.imaging_sectors)*len(self.observations) < minnobs:
-            # To ensure all the nodes are used efficiently, try to divide up the observations
-            # to reach at least minnobs in total. For simplicity, we try to divide each existing
-            # observation into minnobs number of new observations (since there is no
-            # drawback to having more than minnobs observations in total)
-            mintime = self.parset['calibration_specific']['slow_timestep_sec']
-            prev_observations = self.observations[:]
-            self.observations = []
-            for obs in prev_observations:
-                tottime = obs.endtime - obs.starttime
-                nchunks = min(minnobs, max(1, int(tottime / mintime)))
-                if nchunks > 1:
-                    steptime = tottime / nchunks
-                    steptime -= steptime % mintime
-                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
-                    endtimes = [st+steptime for st in starttimes]
-                    for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
-                        if nc == len(endtimes)-1:
-                            endtime = obs.endtime
-                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                             endtime=endtime))
-
-        # Define a single observation for the comparisons below
+        # Define a reference observation for the comparisons below
         obs0 = self.observations[0]
 
         # Check that all observations have the same antenna type
@@ -227,6 +163,79 @@ class Field(object):
         mid_time = np.average(times, weights=weights)
         mid_index = np.argmin(np.abs(np.array(times)-mid_time))
         self.beam_ms_filename = self.observations[mid_index].ms_filename
+
+    def chunk_observations(self, data_fraction=1.0):
+        """
+        Break observations into smaller time chunks if desired
+
+        Chunking is done if:
+
+        - the specified data_fraction < 1 (so part of an observation is to be processed)
+        - nobs * nsectors < nnodes (so all nodes can be used efficiently. In particular,
+          the predict pipeline parallelizes over sectors and observations, so we need
+          enough observations to allow all nodes to be occupied.)
+
+        Parameters
+        ----------
+        data_fraction : float, optional
+            Fraction of data to use during processing
+        """
+        if data_fraction < 1.0:
+            self.full_observations = self.observations[:]
+            self.observations = []
+            for obs in self.full_observations:
+                mintime = self.parset['calibration_specific']['slow_timestep_sec']
+                tottime = obs.endtime - obs.starttime
+                if data_fraction < min(1.0, mintime/tottime):
+                    obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                    'total time for this observation that is less than the '
+                                    'slow-gain timestep. The data fraction will be increased '
+                                    'to {1:0.3f} to ensure the slow-gain timestep requirement is '
+                                    'met.'.format(data_fraction, min(1.0, mintime/tottime)))
+                nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
+                if nchunks == 1:
+                    # Center the chunk around the midpoint (which is generally the most
+                    # sensitive, near transit)
+                    midpoint = obs.starttime + tottime / 2
+                    chunktime = min(tottime, max(mintime, data_fraction*tottime))
+                    if chunktime < tottime:
+                        self.observations.append(Observation(obs.ms_filename,
+                                                             starttime=midpoint-chunktime/2,
+                                                             endtime=midpoint+chunktime/2))
+                    else:
+                        self.observations.append(obs)
+                else:
+                    steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
+                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
+                    endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
+                    for starttime, endtime in zip(starttimes, endtimes):
+                        if endtime > obs.endtime:
+                            starttime = obs.endtime - mintime
+                            endtime = obs.endtime
+                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
+                                                             endtime=endtime))
+        minnobs = self.parset['cluster_specific']['max_nodes']
+        if len(self.imaging_sectors)*len(self.observations) < minnobs:
+            # To ensure all the nodes are used efficiently, try to divide up the observations
+            # to reach at least minnobs in total. For simplicity, we try to divide each existing
+            # observation into minnobs number of new observations (since there is no
+            # drawback to having more than minnobs observations in total)
+            mintime = self.parset['calibration_specific']['slow_timestep_sec']
+            prev_observations = self.observations[:]
+            self.observations = []
+            for obs in prev_observations:
+                tottime = obs.endtime - obs.starttime
+                nchunks = min(minnobs, max(1, int(tottime / mintime)))
+                if nchunks > 1:
+                    steptime = tottime / nchunks
+                    steptime -= steptime % mintime
+                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
+                    endtimes = [st+steptime for st in starttimes]
+                    for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
+                        if nc == len(endtimes)-1:
+                            endtime = obs.endtime
+                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
+                                                             endtime=endtime))
 
     def set_obs_parameters(self):
         """
