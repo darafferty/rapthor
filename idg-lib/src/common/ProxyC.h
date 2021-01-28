@@ -37,16 +37,16 @@ void Proxy_degridding(
     unsigned int aterms_offsets_nr_timeslots_plus_one, float* spheroidal,
     unsigned int spheroidal_height, unsigned int spheroidal_width);
 
-void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
-                          const float cell_size, unsigned int kernel_size,
-                          unsigned int subgrid_size, unsigned int nr_channels,
+void Proxy_init_cache(struct Proxy* p, unsigned int subgrid_size, const float cell_size, float w_step, float* shift)
+
+void Proxy_calibrate_init(struct Proxy* p,
+                          unsigned int kernel_size,
+                          unsigned int subgrid_size,
+                          unsigned int nr_channels,
                           unsigned int nr_baselines, unsigned int nr_timesteps,
                           unsigned int nr_timeslots,
-                          unsigned int nr_correlations,
-                          unsigned int grid_height, unsigned int grid_width,
                           float* frequencies, std::complex<float>* visibilities,
                           float* weights, float* uvw, unsigned int* baselines,
-                          std::complex<float>* grid,
                           unsigned int* aterms_offsets, float* spheroidal);
 
 void Proxy_calibrate_update(

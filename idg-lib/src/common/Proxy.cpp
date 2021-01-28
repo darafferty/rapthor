@@ -225,7 +225,6 @@ void Proxy::calibrate_init(
   do_calibrate_init(std::move(plans), frequencies, std::move(visibilities1),
                     std::move(weights1), std::move(uvw1), std::move(baselines1),
                     spheroidal);
-  set_grid(nullptr);
 }
 
 void Proxy::calibrate_update(

@@ -87,18 +87,19 @@ void Proxy_degridding(
       visibilities_, uvw_, baselines_, aterms_, aterms_offsets_, spheroidal_);
 }
 
-void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
-                          const float cell_size, unsigned int kernel_size,
-                          unsigned int subgrid_size, unsigned int nr_channels,
+void Proxy_init_cache(struct Proxy* p, unsigned int subgrid_size, const float cell_size, float w_step, float* shift) {
+  idg::Array1D<float> shift_(shift, 3);
+  reinterpret_cast<idg::proxy::Proxy*>(p)->init_cache(subgrid_size, cell_size, w_step, shift_);
+}
+
+void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
+                          unsigned int subgrid_size,
+                          unsigned int nr_channels,
                           unsigned int nr_baselines, unsigned int nr_timesteps,
                           unsigned int nr_timeslots,
-                          unsigned int nr_correlations,
-                          unsigned int grid_height, unsigned int grid_width,
                           float* frequencies, std::complex<float>* visibilities,
                           float* weights, float* uvw, unsigned int* baselines,
-                          std::complex<float>* grid,
                           unsigned int* aterms_offsets, float* spheroidal) {
-  idg::Array1D<float> shift_(shift, 3);
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
       (idg::Visibility<std::complex<float>>*)visibilities, nr_baselines,
@@ -110,7 +111,6 @@ void Proxy_calibrate_init(struct Proxy* p, float w_step, float* shift,
                                      nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(
       (std::pair<unsigned int, unsigned int>*)baselines, nr_baselines);
-  idg::Grid grid_(grid, 1, nr_correlations, grid_height, grid_width);
   idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
   idg::Array2D<float> spheroidal_(spheroidal, subgrid_size, subgrid_size);
 

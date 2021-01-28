@@ -263,26 +263,38 @@ class Proxy(object):
             ctypes.c_int(spheroidal_height),
             ctypes.c_int(spheroidal_width))
 
+    def init_cache(self, subgrid_size, cell_size, w_step, shift):
+        self.lib.Proxy_init_cache.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_uint,               #unsigned int subgrid_size,
+            ctypes.c_float,              #const float cell_size,
+            ctypes.c_float,              #float w_step,
+            np.ctypeslib.ndpointer(
+                dtype=np.float32,
+                shape=(3,),
+                flags='C_CONTIGUOUS')]   #float* shift,
+        self.lib.Proxy_init_cache(
+            self.obj,
+            subgrid_size,
+            cell_size,
+            w_step,
+            shift)
+
     def calibrate_init(
         self,
-        w_step,
-        shift,
-        cell_size,
         kernel_size,
-        subgrid_size,
         frequencies,
         visibilities,
         weights,
         uvw,
         baselines,
-        grid,
         aterms_offsets,
         spheroidal):
         """
         Calibrate
 
         :param frequencies: numpy.ndarray(
-                shapenr_channels,
+                shape = (nr_channels,)
                 dtype = idg.frequenciestype)
         :param visibilities: numpy.ndarray(
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
@@ -301,33 +313,23 @@ class Proxy(object):
                 dtype = idg.spheroidaltype)
         """
         # extract dimensions
+        subgrid_size    = spheroidal.shape[0]
         nr_channels     = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
         nr_correlations = visibilities.shape[3]
-        grid_height     = grid.shape[1]
-        grid_width      = grid.shape[2]
         nr_timeslots    = aterms_offsets.shape[0] - 1
 
         # call C function to do the work
 
         self.lib.Proxy_calibrate_init.argtypes = [
             ctypes.c_void_p,             #Proxy* p,
-            ctypes.c_float,              #float w_step,
-            np.ctypeslib.ndpointer(
-                dtype=np.float32,
-                shape=(3,),
-                flags='C_CONTIGUOUS'),   #float* shift,
-            ctypes.c_float,              #const float cell_size,
             ctypes.c_uint,               #unsigned int kernel_size,
             ctypes.c_uint,               #unsigned int subgrid_size,
             ctypes.c_uint,               #unsigned int nr_channels,
             ctypes.c_uint,               #unsigned int nr_baselines,
             ctypes.c_uint,               #unsigned int nr_timesteps,
             ctypes.c_uint,               #unsigned int nr_timeslots,
-            ctypes.c_uint,               #unsigned int nr_correlations,
-            ctypes.c_uint,               #unsigned int grid_height,
-            ctypes.c_uint,               #unsigned int grid_width,
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
                 shape=(nr_channels,),
@@ -349,10 +351,6 @@ class Proxy(object):
                 shape=(nr_baselines,),
                 flags='C_CONTIGUOUS'),   #unsigned int* baselines,
             np.ctypeslib.ndpointer(
-                dtype=idg.gridtype,
-                shape=(nr_correlations, grid_height, grid_width),
-                flags='C_CONTIGUOUS'),   #std::complex<float>* grid,
-            np.ctypeslib.ndpointer(
                 dtype=np.int32,
                 ndim=1,
                 shape=(nr_timeslots+1, ),
@@ -366,24 +364,17 @@ class Proxy(object):
 
         self.lib.Proxy_calibrate_init(
             self.obj,
-            w_step,
-            shift,
-            cell_size,
             kernel_size,
             subgrid_size,
             nr_channels,
             nr_baselines,
             nr_timesteps,
             nr_timeslots,
-            nr_correlations,
-            grid_height,
-            grid_width,
             frequencies,
             visibilities,
             weights,
             uvw,
             baselines,
-            grid,
             aterms_offsets,
             spheroidal)
 
