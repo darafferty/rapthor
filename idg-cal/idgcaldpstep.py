@@ -145,6 +145,7 @@ class IDGCalDPStep(dppp.DPStep):
         self.h5parm_overwrite = parset.getBool(prefix + "h5parmoverwrite", True)
 
         self.w_step = parset.getFloat(prefix + "wstep", 400.0)
+        self.shift = np.array((0.0, 0.0, 0.0), dtype=np.float32)
 
     def initialize(self):
         self.is_initialized = True
@@ -223,7 +224,7 @@ class IDGCalDPStep(dppp.DPStep):
                 self.nr_correlations, self.subgrid_size
             )
         else:
-            self.proxy = idg.CPU.Optimized(self.nr_correlations, self.subgrid_size)
+            self.proxy = idg.CPU.Optimized()
 
         # read image dimensions from fits header
         h = fits.getheader(self.imagename)
@@ -295,9 +296,10 @@ class IDGCalDPStep(dppp.DPStep):
             0, 0, :, :
         ] / np.outer(taper_grid0, taper_grid0)
 
-        self.proxy.transform(idg.ImageDomainToFourierDomain, self.grid)
+        self.proxy.set_grid(self.grid)
+        self.proxy.transform(idg.ImageDomainToFourierDomain)
 
-        self.shift = np.array((0.0, 0.0, 0.0), dtype=np.float32)
+        self.proxy.init_cache(self.subgrid_size, self.cell_size, self.w_step, self.shift)
 
         self.aterms_offsets = idg.util.get_example_aterms_offset(
             self.nr_timeslots, self.nr_timesteps
@@ -362,18 +364,13 @@ class IDGCalDPStep(dppp.DPStep):
         visibilities[np.isnan(visibilities)] = 0.0
 
         self.proxy.calibrate_init(
-            self.w_step,
-            self.shift,
-            self.cell_size,
             self.kernel_size,
-            self.subgrid_size,
             self.frequencies,
             visibilities,
             weights,
             uvw,
             self.baselines,
-            self.grid,
-            self.aterms_offsets,
+            self.aterm_offsets,
             self.taper2,
         )
 
