@@ -283,8 +283,7 @@ void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
 }
 
 #if defined(HAVE_FTI)
-void make_checkpoint(int rank, cInfo& ckpt)
-{
+void make_checkpoint(int rank, cInfo &ckpt) {
   if (FTI_Status() != 0) {
     if (FTI_Recover() != 0) {
       MPI_Abort(MPI_COMM_WORLD, 1);
@@ -431,10 +430,10 @@ void run_master() {
   fti_id_t ckptInfo;
 
   // Initialize the FTI data type
-  FTI_InitType(&ckptInfo, 2*sizeof(int));
+  FTI_InitType(&ckptInfo, 2 * sizeof(int));
   FTI_Protect(0, &ckpt, 1, ckptInfo);
   FTI_Protect(1, &cycle, 1, FTI_UINT);
-  FTI_Protect(2, grid->data(), grid->bytes()/sizeof(float), FTI_SFLT);
+  FTI_Protect(2, grid->data(), grid->bytes() / sizeof(float), FTI_SFLT);
 #endif
 
   // Performance measurement
@@ -445,20 +444,20 @@ void run_master() {
   std::vector<double> runtimes_grid_reduce(nr_cycles);
   std::vector<double> runtimes_grid_fft(nr_cycles);
   std::vector<double> runtimes_grid_broadcast(nr_cycles);
-  #if defined(HAVE_FTI)
+#if defined(HAVE_FTI)
   std::vector<double> runtimes_checkpoint(nr_cycles);
-  #endif
+#endif
   double runtime_imaging;
 
   // Iterate all cycles
   runtime_imaging = -omp_get_wtime();
   for (cycle = 0; cycle < nr_cycles; cycle++) {
-    // Checkpoint
-    #if defined(HAVE_FTI)
+// Checkpoint
+#if defined(HAVE_FTI)
     runtimes_checkpoint[cycle] = -omp_get_wtime();
     make_checkpoint(0, ckpt);
     runtimes_checkpoint[cycle] += omp_get_wtime();
-    #endif
+#endif
 
     // Info
     std::cout << "===============" << std::endl;
@@ -565,10 +564,10 @@ void run_master() {
                                                runtimes_grid_reduce.end(), 0.0);
   double runtime_grid_broadcast = std::accumulate(
       runtimes_grid_broadcast.begin(), runtimes_grid_broadcast.end(), 0.0);
-  #if defined(HAVE_FTI)
+#if defined(HAVE_FTI)
   double runtime_checkpoint = std::accumulate(runtimes_checkpoint.begin(),
                                               runtimes_checkpoint.end(), 0.0);
-  #endif
+#endif
   idg::report("initialize", runtime_init);
   idg::report("plan", runtime_plan);
   idg::report("gridding", runtime_gridding);
@@ -576,9 +575,9 @@ void run_master() {
   idg::report("degridding", runtime_degridding);
   idg::report("grid reduce", runtime_grid_reduce);
   idg::report("grid broadcast", runtime_grid_broadcast);
-  #if defined(HAVE_FTI)
+#if defined(HAVE_FTI)
   idg::report("checkpoint", runtime_checkpoint);
-  #endif
+#endif
   idg::report("runtime imaging", runtime_imaging);
   std::clog << std::endl;
 
@@ -670,18 +669,18 @@ void run_worker() {
   fti_id_t ckptInfo;
 
   // Initialize the FTI data type
-  FTI_InitType(&ckptInfo, 2*sizeof(int));
+  FTI_InitType(&ckptInfo, 2 * sizeof(int));
   FTI_Protect(0, &ckpt, 1, ckptInfo);
   FTI_Protect(1, &cycle, 1, FTI_UINT);
-  FTI_Protect(2, grid->data(), grid->bytes()/sizeof(float), FTI_SFLT);
+  FTI_Protect(2, grid->data(), grid->bytes() / sizeof(float), FTI_SFLT);
 #endif
 
   // Iterate all cycles
   for (cycle = 0; cycle < nr_cycles; cycle++) {
-    // Checkpoint
-    #if defined(HAVE_FTI)
+// Checkpoint
+#if defined(HAVE_FTI)
     make_checkpoint(rank, ckpt);
-    #endif
+#endif
 
     // Run gridding and degridding for all blocks of time
     bool init = plans.size() == 0 || cycle == 0;
@@ -746,8 +745,8 @@ void run(int argc, char *argv[]) {
   // Initialize the MPI environment
   MPI_Init(&argc, &argv);
 
-  // Initialize the FTI environment
-  #if defined(HAVE_FTI)
+// Initialize the FTI environment
+#if defined(HAVE_FTI)
   if (argc != 2) {
     std::cerr << "Usage: " << argv[0] << " <fti_config_file>" << std::endl;
     exit(EXIT_FAILURE);
@@ -756,7 +755,7 @@ void run(int argc, char *argv[]) {
   if (FTI_Init(fti_config_file, MPI_COMM_WORLD) != 0) {
     exit(EXIT_FAILURE);
   };
-  #endif
+#endif
 
   // Get the rank of the process
   int rank;
@@ -773,10 +772,10 @@ void run(int argc, char *argv[]) {
 
   print(rank, ">>> Finalize");
 
-  // Finalize the FTI environment
-  #if defined(HAVE_FTI)
+// Finalize the FTI environment
+#if defined(HAVE_FTI)
   FTI_Finalize();
-  #endif
+#endif
 
   // Finalize the MPI environment.
   MPI_Finalize();
