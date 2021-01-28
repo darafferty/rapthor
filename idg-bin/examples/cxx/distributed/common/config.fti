@@ -1,0 +1,26 @@
+
+[basic]
+head                           = 0
+node_size                      = 1
+ckpt_dir                       = ./checkpoints/local
+glbl_dir                       = ./checkpoints/global
+meta_dir                       = ./checkpoints/meta
+keep_last_ckpt                 = 0
+group_size                     = 4
+max_sync_intv                  = 0
+ckpt_io                        = 1
+verbosity                      = 2
+
+
+[restart]
+failure                        = 0
+exec_id                        = 0
+
+
+[advanced]
+block_size                     = 1024
+transfer_size                  = 16
+mpi_tag                        = 2612
+local_test                     = 1
+
+

@@ -17,6 +17,15 @@
 
 #include "idg-util.h"  // Data init routines
 
+#if defined(HAVE_FTI)
+#include <fti.h>
+
+typedef struct cInfo {
+  int id;
+  int level;
+} cInfo;
+#endif
+
 using namespace std;
 
 std::tuple<int, int, int, int, int, int, int, int, int> read_parameters() {
@@ -269,6 +278,21 @@ void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
   }
 }
 
+#if defined(HAVE_FTI)
+void make_checkpoint(int rank, cInfo &ckpt) {
+  if (FTI_Status() != 0) {
+    if (FTI_Recover() != 0) {
+      MPI_Abort(MPI_COMM_WORLD, 1);
+    } else {
+      print(rank, "recover from checkpoint");
+    }
+  } else {
+    FTI_Checkpoint(ckpt.id, ckpt.level);
+  }
+  ckpt.id++;
+}
+#endif
+
 void run_master() {
   idg::auxiliary::print_version();
 
@@ -393,6 +417,21 @@ void run_master() {
   // Set grid
   proxy.set_grid(grid);
 
+  // Initialize
+  unsigned int cycle;
+#if defined(HAVE_FTI)
+  cInfo ckpt = {1, 1};
+
+  // Create FTI data type
+  fti_id_t ckptInfo;
+
+  // Initialize the FTI data type
+  FTI_InitType(&ckptInfo, 2 * sizeof(int));
+  FTI_Protect(0, &ckpt, 1, ckptInfo);
+  FTI_Protect(1, &cycle, 1, FTI_UINT);
+  FTI_Protect(2, grid->data(), grid->bytes() / sizeof(float), FTI_SFLT);
+#endif
+
   // Performance measurement
   std::vector<double> runtimes_init(nr_time_blocks);
   std::vector<double> runtimes_plan(nr_time_blocks);
@@ -401,26 +440,42 @@ void run_master() {
   std::vector<double> runtimes_grid_reduce(nr_cycles);
   std::vector<double> runtimes_grid_fft(nr_cycles);
   std::vector<double> runtimes_grid_broadcast(nr_cycles);
+#if defined(HAVE_FTI)
+  std::vector<double> runtimes_checkpoint(nr_cycles);
+#endif
   double runtime_imaging;
 
   // Iterate all cycles
   runtime_imaging = -omp_get_wtime();
-  for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
+  for (cycle = 0; cycle < nr_cycles; cycle++) {
+// Checkpoint
+#if defined(HAVE_FTI)
+    runtimes_checkpoint[cycle] = -omp_get_wtime();
+    make_checkpoint(0, ckpt);
+    runtimes_checkpoint[cycle] += omp_get_wtime();
+#endif
+
+    // Info
+    std::cout << "===============" << std::endl;
+    std::cout << "=== CYCLE " << cycle << " ===" << std::endl;
+    std::cout << "===============" << std::endl;
+
     // Run gridding and degridding for all blocks of time
+    bool init = plans.size() == 0 || cycle == 0;
     for (unsigned int t = 0; t < nr_time_blocks; t++) {
       unsigned int time_offset = t * nr_timesteps;
 
       // Get UVW coordinates for current cycle
       idg::Array2D<idg::UVW<float>> uvw(uvws.data(t, 0, 0), nr_baselines,
                                         nr_timesteps);
-      if (cycle == 0) {
+      if (init) {
         runtimes_init[t] -= omp_get_wtime();
         data.get_uvw(uvw, bl_offset, time_offset, integration_time);
         runtimes_init[t] += omp_get_wtime();
       }
 
       // Create plan
-      if (cycle == 0) {
+      if (init) {
         runtimes_plan[t] -= omp_get_wtime();
         plans.emplace_back(new idg::Plan(kernel_size, subgrid_size, grid_size,
                                          cell_size, frequencies, uvw, baselines,
@@ -457,9 +512,11 @@ void run_master() {
       // Get grid
       grid = proxy.get_grid();
 
-      runtimes_grid_reduce[cycle] = -omp_get_wtime();
+      double runtime_reduce = -omp_get_wtime();
       reduce_grids(grid, 0, world_size);
-      runtimes_grid_reduce[cycle] += omp_get_wtime();
+      runtime_reduce += omp_get_wtime();
+      runtimes_grid_reduce[cycle] = runtime_reduce;
+      std::cout << "reduce: " << runtime_reduce << " s" << std::endl;
     }
 
     // Deconvolution
@@ -467,9 +524,14 @@ void run_master() {
 
     // Broadcast model image to workers
     if (world_size > 1) {
-      runtimes_grid_broadcast[cycle] = -omp_get_wtime();
+      double runtime_broadcast = -omp_get_wtime();
       broadcast_grid(grid, 0);
-      runtimes_grid_broadcast[cycle] += omp_get_wtime();
+      runtime_broadcast += omp_get_wtime();
+      runtimes_grid_broadcast[cycle] = runtime_broadcast;
+      size_t sizeof_broadcast = grid->bytes() * (world_size - 1);
+      float bandwidth_broadcast = 1e-9f * sizeof_broadcast / runtime_broadcast;
+      std::cout << "broadcast: " << runtime_broadcast << " s, "
+                << bandwidth_broadcast << " GB/s" << std::endl;
 
       // Set grid
       proxy.set_grid(grid);
@@ -498,6 +560,10 @@ void run_master() {
                                                runtimes_grid_reduce.end(), 0.0);
   double runtime_grid_broadcast = std::accumulate(
       runtimes_grid_broadcast.begin(), runtimes_grid_broadcast.end(), 0.0);
+#if defined(HAVE_FTI)
+  double runtime_checkpoint = std::accumulate(runtimes_checkpoint.begin(),
+                                              runtimes_checkpoint.end(), 0.0);
+#endif
   idg::report("initialize", runtime_init);
   idg::report("plan", runtime_plan);
   idg::report("gridding", runtime_gridding);
@@ -505,6 +571,9 @@ void run_master() {
   idg::report("degridding", runtime_degridding);
   idg::report("grid reduce", runtime_grid_reduce);
   idg::report("grid broadcast", runtime_grid_broadcast);
+#if defined(HAVE_FTI)
+  idg::report("checkpoint", runtime_checkpoint);
+#endif
   idg::report("runtime imaging", runtime_imaging);
   std::clog << std::endl;
 
@@ -587,21 +656,42 @@ void run_worker() {
   // Set grid
   proxy.set_grid(grid);
 
+  // Initialize
+  unsigned int cycle = 0;
+#if defined(HAVE_FTI)
+  cInfo ckpt = {1, 1};
+
+  // Create FTI data type
+  fti_id_t ckptInfo;
+
+  // Initialize the FTI data type
+  FTI_InitType(&ckptInfo, 2 * sizeof(int));
+  FTI_Protect(0, &ckpt, 1, ckptInfo);
+  FTI_Protect(1, &cycle, 1, FTI_UINT);
+  FTI_Protect(2, grid->data(), grid->bytes() / sizeof(float), FTI_SFLT);
+#endif
+
   // Iterate all cycles
-  for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
+  for (cycle = 0; cycle < nr_cycles; cycle++) {
+// Checkpoint
+#if defined(HAVE_FTI)
+    make_checkpoint(rank, ckpt);
+#endif
+
     // Run gridding and degridding for all blocks of time
+    bool init = plans.size() == 0 || cycle == 0;
     for (unsigned int t = 0; t < nr_time_blocks; t++) {
       unsigned int time_offset = t * nr_timesteps;
 
       // Get UVW coordinates for current cycle
       idg::Array2D<idg::UVW<float>> uvw(uvws.data(t, 0, 0), nr_baselines,
                                         nr_timesteps);
-      if (cycle == 0) {
+      if (init) {
         data.get_uvw(uvw, bl_offset, time_offset, integration_time);
       }
 
       // Create plan
-      if (cycle == 0) {
+      if (init) {
         plans.emplace_back(new idg::Plan(kernel_size, subgrid_size, grid_size,
                                          cell_size, frequencies, uvw, baselines,
                                          aterms_offsets, options));
@@ -647,9 +737,21 @@ void run_worker() {
   }
 }  // end run_worker
 
-void run() {
+void run(int argc, char *argv[]) {
   // Initialize the MPI environment
-  MPI_Init(NULL, NULL);
+  MPI_Init(&argc, &argv);
+
+// Initialize the FTI environment
+#if defined(HAVE_FTI)
+  if (argc != 2) {
+    std::cerr << "Usage: " << argv[0] << " <fti_config_file>" << std::endl;
+    exit(EXIT_FAILURE);
+  }
+  const char *fti_config_file = argv[1];
+  if (FTI_Init(fti_config_file, MPI_COMM_WORLD) != 0) {
+    exit(EXIT_FAILURE);
+  };
+#endif
 
   // Get the rank of the process
   int rank;
@@ -665,6 +767,11 @@ void run() {
   }
 
   print(rank, ">>> Finalize");
+
+// Finalize the FTI environment
+#if defined(HAVE_FTI)
+  FTI_Finalize();
+#endif
 
   // Finalize the MPI environment.
   MPI_Finalize();
