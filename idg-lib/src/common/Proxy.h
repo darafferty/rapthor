@@ -43,24 +43,7 @@ class Proxy {
   // Before calling this function, the grid needs to have been set
   // by a call to the set_grid function
   // The plan can be obtained by a call to the make_plan function.
-  // This plan can be either caching or non-caching
   void gridding(const Plan& plan, const Array1D<float>& frequencies,
-                const Array3D<Visibility<std::complex<float>>>& visibilities,
-                const Array2D<UVW<float>>& uvw,
-                const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array1D<unsigned int>& aterms_offsets,
-                const Array2D<float>& spheroidal);
-
-  //! Grid the visibilities onto a uniform grid
-  // Before calling this function, the grid needs to have been set
-  // by a call to the set_grid function
-  // Internally a non-caching plan will be created
-  // To use caching, use the gridding function that accepts a plan as parameter
-  void gridding(const float w_step, const Array1D<float>& shift,
-                const float cell_size, const unsigned int kernel_size,
-                const unsigned int subgrid_size,
-                const Array1D<float>& frequencies,
                 const Array3D<Visibility<std::complex<float>>>& visibilities,
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -70,17 +53,6 @@ class Proxy {
 
   void degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal);
-
-  void degridding(
-      const float w_step, const Array1D<float>& shift, const float cell_size,
-      const unsigned int kernel_size, const unsigned int subgrid_size,
-      const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -208,20 +180,7 @@ class Proxy {
 
   virtual void flush_cache(){};
 
-  // Create a non-caching plan
-  virtual std::unique_ptr<Plan> make_plan(
-      const int kernel_size, const int subgrid_size, const int grid_size,
-      const float cell_size, const Array1D<float>& shift,
-      const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
-      Plan::Options options = Plan::Options()) {
-    return std::unique_ptr<Plan>(new Plan(kernel_size, subgrid_size, grid_size,
-                                          cell_size, shift, frequencies, uvw,
-                                          baselines, aterms_offsets, options));
-  }
-
-  // Create a caching plan
+  // Create a plan
   // The cache needs to have been initialized by call to init_cache first
   virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const Array1D<float>& frequencies,

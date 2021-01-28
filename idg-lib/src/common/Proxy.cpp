@@ -36,31 +36,6 @@ void Proxy::gridding(
               aterms_offsets, spheroidal);
 }
 
-void Proxy::gridding(
-    const float w_step, const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size, const unsigned int subgrid_size,
-    const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
-    const Array2D<float>& spheroidal) {
-  auto grid_size = m_grid->get_x_dim();
-  auto nr_w_layers = m_grid->get_w_dim();
-
-  Plan::Options options;
-  options.w_step = w_step;
-  options.nr_w_layers = nr_w_layers;
-
-  std::unique_ptr<Plan> plan =
-      make_plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
-                frequencies, uvw, baselines, aterms_offsets, options);
-
-  gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-           aterms_offsets, spheroidal);
-}
-
 void Proxy::degridding(
     const Plan& plan, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
@@ -80,31 +55,6 @@ void Proxy::degridding(
 
   do_degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
                 aterms_offsets, spheroidal);
-}
-
-void Proxy::degridding(
-    const float w_step, const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size, const unsigned int subgrid_size,
-    const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
-    const Array2D<float>& spheroidal) {
-  auto grid_size = m_grid->get_x_dim();
-  auto nr_w_layers = m_grid->get_w_dim();
-
-  Plan::Options options;
-  options.w_step = w_step;
-  options.nr_w_layers = nr_w_layers;
-
-  std::unique_ptr<Plan> plan =
-      make_plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
-                frequencies, uvw, baselines, aterms_offsets, options);
-
-  degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-             aterms_offsets, spheroidal);
 }
 
 void Proxy::calibrate_init(

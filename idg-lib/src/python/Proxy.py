@@ -15,21 +15,18 @@ class Proxy(object):
 
     def gridding(
         self,
-        w_step,
-        shift,
-        cell_size,
         kernel_size,
-        subgrid_size,
         frequencies,
         visibilities,
         uvw,
         baselines,
         aterms,
         aterms_offsets,
-        spheroidal):
+        taper):
         """
         Grid visibilities onto grid.
 
+        :param kernel_size: int
         :param frequencies: numpy.ndarray(
                 shapenr_channels,
                 dtype = idg.frequenciestype)
@@ -48,110 +45,87 @@ class Proxy(object):
         :param aterms_offsets: numpy.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = idg.atermoffsettype)
-        :param spheroidal: numpy.ndarray(
+        :param taper: numpy.ndarray(
                 shape=(height, width),
-                dtype = idg.spheroidaltype)
+                dtype = idg.tapertype)
         """
         # extract dimensions
         nr_channels = frequencies.shape[0]
-        visibilities_nr_baselines    = visibilities.shape[0]
-        visibilities_nr_timesteps    = visibilities.shape[1]
-        visibilities_nr_channels     = visibilities.shape[2]
-        visibilities_nr_correlations = visibilities.shape[3]
-        uvw_nr_baselines             = uvw.shape[0]
-        uvw_nr_timesteps             = uvw.shape[1]
-        uvw_nr_coordinates           = 3
-        baselines_nr_baselines       = baselines.shape[0]
-        baselines_two                = 2
-        aterms_nr_timeslots          = aterms.shape[0]
-        aterms_nr_stations           = aterms.shape[1]
-        aterms_aterm_height          = aterms.shape[2]
-        aterms_aterm_width           = aterms.shape[3]
-        aterms_nr_correlations       = aterms.shape[4]
-        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
-        spheroidal_height            = spheroidal.shape[0]
-        spheroidal_width             = spheroidal.shape[1]
+        nr_baselines    = visibilities.shape[0]
+        nr_timesteps    = visibilities.shape[1]
+        nr_correlations = 4
+        nr_timeslots       = aterms.shape[0]
+        nr_stations        = aterms.shape[1]
+        subgrid_size       = aterms.shape[2]
 
-        # call C function to do the work
+        #Set C function signature
         self.lib.Proxy_gridding.argtypes = [
             ctypes.c_void_p, # proxy
-            ctypes.c_float,  # w_step
-            ctypes.c_void_p, # shift
-            ctypes.c_float,  # cell_size
             ctypes.c_int,    # kernel_size
             ctypes.c_int,    # subgrid_size
-            ctypes.c_void_p, # frequencies
-            ctypes.c_int,
-            ctypes.c_void_p, # visibilities
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # uvw
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # baselines
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # aterms
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # aterms_offsets
-            ctypes.c_int,
-            ctypes.c_void_p, # spheroidal
-            ctypes.c_int,
-            ctypes.c_int]
+            ctypes.c_int,    # nr_channels
+            ctypes.c_int,    # nr_baselines
+            ctypes.c_int,    # nr_timesteps, 
+            ctypes.c_int,    # nr_correlations, 
+            ctypes.c_int,    # nr_timeslots
+            ctypes.c_int,    # int nr_stations
+            np.ctypeslib.ndpointer(
+                dtype=idg.frequenciestype,
+                shape=(nr_channels,),
+                flags='C_CONTIGUOUS'),   # frequencies
+            np.ctypeslib.ndpointer(
+                dtype=idg.visibilitiestype,
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                flags='C_CONTIGUOUS'), # visibilities
+            np.ctypeslib.ndpointer(
+                dtype=idg.uvwtype,
+                shape=(nr_baselines, nr_timesteps),
+                flags='C_CONTIGUOUS'), # uvw
+            np.ctypeslib.ndpointer(
+                dtype=idg.baselinetype,
+                shape=(nr_baselines,),
+                flags='C_CONTIGUOUS'),# baselines
+            np.ctypeslib.ndpointer(
+                dtype=idg.atermtype,
+                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'), # aterms
+            np.ctypeslib.ndpointer(
+                dtype=idg.atermoffsettype,
+                shape=(nr_timeslots+1, ),
+                flags='C_CONTIGUOUS'), # aterms_offsets
+            np.ctypeslib.ndpointer(
+                dtype=idg.tapertype,
+                shape=(subgrid_size, subgrid_size),
+                flags='C_CONTIGUOUS')] # taper
+        # call C function to do the work
         self.lib.Proxy_gridding(
-            ctypes.c_void_p(self.obj),
-            ctypes.c_float(w_step),
-            shift.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_float(cell_size),
-            ctypes.c_int(kernel_size),
-            ctypes.c_int(subgrid_size),
-            frequencies.ctypes.data_as(ctypes.c_void_p),
+            self.obj,
+            kernel_size, 
+            subgrid_size, 
             nr_channels,
-            visibilities.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(visibilities_nr_baselines),
-            ctypes.c_int(visibilities_nr_timesteps),
-            ctypes.c_int(visibilities_nr_channels),
-            ctypes.c_int(visibilities_nr_correlations),
-            uvw.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(uvw_nr_baselines),
-            ctypes.c_int(uvw_nr_timesteps),
-            ctypes.c_int(uvw_nr_coordinates),
-            baselines.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(baselines_nr_baselines),
-            ctypes.c_int(baselines_two),
-            aterms.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(aterms_nr_timeslots),
-            ctypes.c_int(aterms_nr_stations),
-            ctypes.c_int(aterms_aterm_height),
-            ctypes.c_int(aterms_aterm_width),
-            ctypes.c_int(aterms_nr_correlations),
-            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(aterms_offsets_nr_timeslots),
-            spheroidal.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(spheroidal_height),
-            ctypes.c_int(spheroidal_width))
+            nr_baselines,
+            nr_timesteps, 
+            nr_correlations,
+            nr_timeslots,
+            nr_stations,
+            frequencies,
+            visibilities,
+            uvw,
+            baselines,
+            aterms,
+            aterms_offsets,
+            taper)
 
     def degridding(
         self,
-        w_step,
-        shift,
-        cell_size,
         kernel_size,
-        subgrid_size,
         frequencies,
         visibilities,
         uvw,
         baselines,
         aterms,
         aterms_offsets,
-        spheroidal):
+        taper):
         """
         Degrid visibilities from grid.
 
@@ -173,95 +147,77 @@ class Proxy(object):
         :param aterms_offsets: numpy.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = idg.atermoffsettype)
-        :param spheroidal: numpy.ndarray(
+        :param taper: numpy.ndarray(
                 shape=(height, width),
-                dtype = idg.spheroidaltype)
+                dtype = idg.tapertype)
         """
         # extract dimensions
         nr_channels = frequencies.shape[0]
-        visibilities_nr_baselines    = visibilities.shape[0]
-        visibilities_nr_timesteps    = visibilities.shape[1]
-        visibilities_nr_channels     = visibilities.shape[2]
-        visibilities_nr_correlations = visibilities.shape[3]
-        uvw_nr_baselines             = uvw.shape[0]
-        uvw_nr_timesteps             = uvw.shape[1]
-        uvw_nr_coordinates           = 3
-        baselines_nr_baselines       = baselines.shape[0]
-        baselines_two                = 2
-        aterms_nr_timeslots          = aterms.shape[0]
-        aterms_nr_stations           = aterms.shape[1]
-        aterms_aterm_height          = aterms.shape[2]
-        aterms_aterm_width           = aterms.shape[3]
-        aterms_nr_correlations       = aterms.shape[4]
-        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
-        spheroidal_height            = spheroidal.shape[0]
-        spheroidal_width             = spheroidal.shape[1]
+        nr_baselines    = visibilities.shape[0]
+        nr_timesteps    = visibilities.shape[1]
+        nr_correlations = 4
+        nr_timeslots       = aterms.shape[0]
+        nr_stations        = aterms.shape[1]
+        subgrid_size       = aterms.shape[2]
 
-        # call C function to do the work
+        # Set C function signature
         self.lib.Proxy_degridding.argtypes = [
             ctypes.c_void_p, # proxy
-            ctypes.c_float,  # w_step
-            ctypes.c_void_p, # shift
-            ctypes.c_float,  # cell_size
             ctypes.c_int,    # kernel_size
             ctypes.c_int,    # subgrid_size
-            ctypes.c_void_p, # frequencies
-            ctypes.c_int,
-            ctypes.c_void_p, # visibilities
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # uvw
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # baselines
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # aterms
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p, # aterms_offsets
-            ctypes.c_int,
-            ctypes.c_void_p, # spheroidal
-            ctypes.c_int,
-            ctypes.c_int]
+            ctypes.c_int,    # nr_channels
+            ctypes.c_int,    # nr_baselines
+            ctypes.c_int,    # nr_timesteps, 
+            ctypes.c_int,    # nr_correlations, 
+            ctypes.c_int,    # nr_timeslots
+            ctypes.c_int,    # int nr_stations
+            np.ctypeslib.ndpointer(
+                dtype=idg.frequenciestype,
+                shape=(nr_channels,),
+                flags='C_CONTIGUOUS'),   # frequencies
+            np.ctypeslib.ndpointer(
+                dtype=idg.visibilitiestype,
+                shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
+                flags='C_CONTIGUOUS'), # visibilities
+            np.ctypeslib.ndpointer(
+                dtype=idg.uvwtype,
+                shape=(nr_baselines, nr_timesteps),
+                flags='C_CONTIGUOUS'), # uvw
+            np.ctypeslib.ndpointer(
+                dtype=idg.baselinetype,
+                shape=(nr_baselines,),
+                flags='C_CONTIGUOUS'),# baselines
+            np.ctypeslib.ndpointer(
+                dtype=idg.atermtype,
+                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'), # aterms
+            np.ctypeslib.ndpointer(
+                dtype=idg.atermoffsettype,
+                shape=(nr_timeslots+1, ),
+                flags='C_CONTIGUOUS'), # aterms_offsets
+            np.ctypeslib.ndpointer(
+                dtype=idg.tapertype,
+                shape=(subgrid_size, subgrid_size),
+                flags='C_CONTIGUOUS')] # taper
+        # call C function to do the work
+        print("aterms.shape = ", aterms.shape)
         self.lib.Proxy_degridding(
             self.obj,
-            ctypes.c_float(w_step),
-            shift.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_float(cell_size),
-            ctypes.c_int(kernel_size),
-            ctypes.c_int(subgrid_size),
-            frequencies.ctypes.data_as(ctypes.c_void_p),
+            kernel_size, 
+            subgrid_size, 
             nr_channels,
-            visibilities.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(visibilities_nr_baselines),
-            ctypes.c_int(visibilities_nr_timesteps),
-            ctypes.c_int(visibilities_nr_channels),
-            ctypes.c_int(visibilities_nr_correlations),
-            uvw.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(uvw_nr_baselines),
-            ctypes.c_int(uvw_nr_timesteps),
-            ctypes.c_int(uvw_nr_coordinates),
-            baselines.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(baselines_nr_baselines),
-            ctypes.c_int(baselines_two),
-            aterms.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(aterms_nr_timeslots),
-            ctypes.c_int(aterms_nr_stations),
-            ctypes.c_int(aterms_aterm_height),
-            ctypes.c_int(aterms_aterm_width),
-            ctypes.c_int(aterms_nr_correlations),
-            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(aterms_offsets_nr_timeslots),
-            spheroidal.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(spheroidal_height),
-            ctypes.c_int(spheroidal_width))
+            nr_baselines,
+            nr_timesteps, 
+            nr_correlations,
+            nr_timeslots,
+            nr_stations,
+            frequencies,
+            visibilities,
+            uvw,
+            baselines,
+            aterms,
+            aterms_offsets,
+            taper)
 
     def init_cache(self, subgrid_size, cell_size, w_step, shift):
         self.lib.Proxy_init_cache.argtypes = [
@@ -289,7 +245,7 @@ class Proxy(object):
         uvw,
         baselines,
         aterms_offsets,
-        spheroidal):
+        taper):
         """
         Calibrate
 
@@ -308,12 +264,12 @@ class Proxy(object):
         :param grid: numpy.ndarray(
                 shape=(nr_correlations, height, width),
                 dtype = idg.gridtype)
-        :param spheroidal: numpy.ndarray(
+        :param taper: numpy.ndarray(
                 shape=(height, width),
-                dtype = idg.spheroidaltype)
+                dtype = idg.tapertype)
         """
         # extract dimensions
-        subgrid_size    = spheroidal.shape[0]
+        subgrid_size    = taper.shape[0]
         nr_channels     = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
@@ -354,12 +310,12 @@ class Proxy(object):
                 dtype=np.int32,
                 ndim=1,
                 shape=(nr_timeslots+1, ),
-                flags='C_CONTIGUOUS'),    #int* aterms_offsets);
+                flags='C_CONTIGUOUS'),    # aterms_offsets
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
                 ndim=2,
                 shape=(subgrid_size, subgrid_size),
-                flags='C_CONTIGUOUS')    #float* spheroidal);
+                flags='C_CONTIGUOUS')    # taper
             ]
 
         self.lib.Proxy_calibrate_init(
@@ -376,7 +332,7 @@ class Proxy(object):
             uvw,
             baselines,
             aterms_offsets,
-            spheroidal)
+            taper)
 
     def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient, residual):
 

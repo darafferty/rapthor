@@ -25,7 +25,7 @@ metadatatype = numpy.dtype([ ('time_index', numpy.intc),
                              ('nr_aterms', numpy.intc)])
 atermtype = numpy.complex64
 atermoffsettype = numpy.intc
-spheroidaltype = numpy.float32
+tapertype = numpy.float32
 
 FourierDomainToImageDomain = 0
 ImageDomainToFourierDomain = 1

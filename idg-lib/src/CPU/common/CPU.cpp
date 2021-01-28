@@ -59,9 +59,7 @@ std::unique_ptr<Plan> CPU::make_plan(
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
                  baselines, aterms_offsets, m_wtiles, options));
   } else {
-    return Proxy::make_plan(kernel_size, m_cache_state.subgrid_size,
-                            m_grid->get_y_dim(), m_cache_state.cell_size,
-                            m_cache_state.shift, frequencies, uvw, baselines,
+    return Proxy::make_plan(kernel_size, frequencies, uvw, baselines,
                             aterms_offsets, options);
   }
 }
