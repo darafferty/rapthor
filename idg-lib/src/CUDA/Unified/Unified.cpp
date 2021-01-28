@@ -63,7 +63,13 @@ void Unified::do_gridding(
 #if defined(DEBUG)
   std::clog << "### Run gridding" << std::endl;
 #endif
-  auto grid_ptr = m_enable_tiling ? m_grid_tiled.get() : m_grid.get();
+  auto grid_ptr = m_grid.get();
+  if (m_enable_tiling) {
+    auto height = m_grid->get_y_dim();
+    auto width = m_grid->get_x_dim();
+    grid_ptr =
+        new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
+  }
   Generic::run_gridding(plan, w_step, shift, cell_size, kernel_size,
                         subgrid_size, frequencies, visibilities, uvw, baselines,
                         *grid_ptr, aterms, aterms_offsets, spheroidal);
@@ -98,7 +104,13 @@ void Unified::do_degridding(
 #if defined(DEBUG)
   std::clog << "### Run degridding" << std::endl;
 #endif
-  auto grid_ptr = m_enable_tiling ? m_grid_tiled.get() : m_grid.get();
+  auto grid_ptr = m_grid.get();
+  if (m_enable_tiling) {
+    auto height = m_grid->get_y_dim();
+    auto width = m_grid->get_x_dim();
+    grid_ptr =
+        new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
+  }
   Generic::run_degridding(plan, w_step, shift, cell_size, kernel_size,
                           subgrid_size, frequencies, visibilities, uvw,
                           baselines, *grid_ptr, aterms, aterms_offsets,
@@ -119,10 +131,14 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     assert(grid_height == grid_width);
     auto grid_size = grid_width;
     auto tile_size = device.get_tile_size_grid();
-    std::unique_ptr<auxiliary::Memory> u_grid_tiled(
-        new cu::UnifiedMemory(device.get_context(), m_grid->bytes()));
-    auto grid_tiled = new Grid(std::move(u_grid_tiled), nr_w_layers,
-                               nr_correlations, grid_height, grid_width);
+    const cu::Context& context = device.get_context();
+    cu::UnifiedMemory* u_grid_tiled =
+        new cu::UnifiedMemory(context, m_grid->bytes());
+    assert(nr_w_layers == 1);
+    auto nr_tiles_1d = grid_size / tile_size;
+    auto* grid_tiled = new Array5D<std::complex<float>>(
+        *u_grid_tiled, nr_tiles_1d, nr_tiles_1d, nr_correlations, tile_size,
+        tile_size);
     m_grid_tiled.reset(grid_tiled);
     device.tile_forward(grid_size, tile_size, *grid, *m_grid_tiled);
   }
