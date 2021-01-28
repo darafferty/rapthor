@@ -19,15 +19,11 @@
 
 #if defined(HAVE_FTI)
 #include <fti.h>
-#define COMM_WORLD MPI_COMM_WORLD
 
 typedef struct cInfo {
   int id;
   int level;
 } cInfo;
-
-#else
-#define COMM_WORLD MPI_COMM_WORLD
 #endif
 
 using namespace std;
