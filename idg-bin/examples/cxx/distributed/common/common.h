@@ -517,9 +517,11 @@ void run_master() {
       // Get grid
       grid = proxy.get_grid();
 
-      runtimes_grid_reduce[cycle] = -omp_get_wtime();
+      double runtime_reduce = -omp_get_wtime();
       reduce_grids(grid, 0, world_size);
-      runtimes_grid_reduce[cycle] += omp_get_wtime();
+      runtime_reduce += omp_get_wtime();
+      runtimes_grid_reduce[cycle] = runtime_reduce;
+      std::cout << "reduce: " << runtime_reduce << " s" << std::endl;
     }
 
     // Deconvolution
