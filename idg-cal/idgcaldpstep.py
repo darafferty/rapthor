@@ -346,10 +346,6 @@ class IDGCalDPStep(dppp.DPStep):
         )
         uvw = np.zeros(shape=(self.nr_baselines, self.nr_timesteps), dtype=idg.uvwtype)
 
-        print(f"    shape uvw_: {uvw_.shape}")
-        print(self.auto_corr_mask.shape)
-
-        print(uvw_[self.auto_corr_mask, :, 0].shape)
         uvw["u"] = uvw_[self.auto_corr_mask, :, 0]
         uvw["v"] = -uvw_[self.auto_corr_mask, :, 1]
         uvw["w"] = -uvw_[self.auto_corr_mask, :, 2]
@@ -382,7 +378,7 @@ class IDGCalDPStep(dppp.DPStep):
         X2 = np.zeros((self.nr_stations, self.nr_parameters - self.nr_parameters_ampl))
 
         parameters = np.concatenate((X0, X1, X2), axis=1)
-        # Map paramaters to orthonormal basis
+        # Map parameters to orthonormal basis
         parameters = transform_parameters(
             np.linalg.inv(self.Tampl),
             np.linalg.inv(self.Tphase),
@@ -413,10 +409,8 @@ class IDGCalDPStep(dppp.DPStep):
                 axes=((2,), (0,)),
             )
         )
-        # TODO: no need to index here? So simply do (?!):
-        # aterms = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
-        # if so, it would render "aterms = idg.util.get_identity_aterms" obsolete
-        aterms[:, :, :, :, :] = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
+
+        aterms = np.ascontiguousarray((aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl).astype(idg.idgtypes.atermtype))
 
         nr_iterations = 0
         converged = False
@@ -508,8 +502,6 @@ class IDGCalDPStep(dppp.DPStep):
                     )
                 )
 
-                for t in range(self.nr_timeslots):
-                    print(hessian[t, :, :])
                 H00 = hessian[
                     :, : self.nr_parameters_ampl, : self.nr_parameters_ampl
                 ].sum(axis=0)
@@ -582,7 +574,7 @@ class IDGCalDPStep(dppp.DPStep):
 
             previous_residual = residual_sum
 
-            converged = (nr_iterations > 1) and (fractional_dresidual < 1e-6)
+            converged = (nr_iterations > 1) and (fractional_dresidual < 1e-2)
 
             if converged:
                 print(f"Converged after {nr_iterations} iterations - {max_dx}")
@@ -668,7 +660,6 @@ def init_h5parm_solution_table(
     # Set info for the "time" axis
     h5parm_object.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
     return h5parm_object
-
 
 def transform_parameters(
     tmat_amplitude,
