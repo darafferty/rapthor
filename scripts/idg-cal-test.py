@@ -14,10 +14,6 @@ import pytest
 MS = "/var/scratch/maljaars/data/L258627_tsteps150_RStations_3.dppp"
 IMAGENAME = "/home/maljaars/Documents/tests/idgcalstep/modelimage.fits"
 
-# ms = "/var/scratch/maljaars/data/L258627_tsteps150_RStations_3.dppp"
-# imagename = "/home/maljaars/Documents/tests/idgcalstep/modelimage.fits"
-
-
 # @pytest.fixture
 def set_parameters():
     params = {}
@@ -30,6 +26,9 @@ def set_parameters():
     params["taper_support"] = 7
     params["wterm_support"] = 7
     params["aterm_support"] = 11
+
+    params["nr_ampl_terms"] = 6
+    params["nr_phase_terms"] = 3
 
     params["w_step"] = 400.0
     params["shift"] = np.array((0.0, 0.0, 0.0), dtype=np.float32)
@@ -55,6 +54,9 @@ def read_ms(nr_timesteps, nr_correlations):
     ms_dict["nr_baselines"] = nr_baselines
     nr_channels = table[0]["DATA"].shape[0]
     ms_dict["nr_channels"] = nr_channels
+    ms_dict["frequencies"] = np.asarray(t_spw[0]["CHAN_FREQ"], dtype=np.float32)[
+        :nr_channels
+    ]
 
     nr_rows = ms_dict["nr_baselines"] * nr_timesteps
     ms_dict["antenna1"] = table.getcol("ANTENNA1", startrow=0, nrow=nr_rows).reshape(
@@ -160,67 +162,47 @@ uvw, visibilities, weights = init_buffers(
     params["nr_correlations"],
 )
 
-datacolumn = "DATA"
+# datacolumn = "DATA"
 
-######################################################################
-# Open measurementset
-######################################################################
-table = casacore.tables.taql("SELECT * FROM $MS WHERE ANTENNA1 != ANTENNA2")
+# ######################################################################
+# # Open measurementset
+# ######################################################################
+# table = casacore.tables.taql("SELECT * FROM $MS WHERE ANTENNA1 != ANTENNA2")
 
-# Read parameters from measurementset
-t_ant = casacore.tables.table(table.getkeyword("ANTENNA"))
-t_spw = casacore.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
+# # Read parameters from measurementset
+# t_ant = casacore.tables.table(table.getkeyword("ANTENNA"))
+# t_spw = casacore.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
 
 
 ######################################################################
 # Parameters
 ######################################################################
-nr_stations = len(t_ant)
-nr_baselines = (nr_stations * (nr_stations - 1)) // 2
-nr_channels = table[0][datacolumn].shape[0]
-
-nr_timesteps = 4
-
-nr_timeslots = 2
-nr_correlations = 4
-subgrid_size = 40
+# User settings
+nr_timesteps = params["nr_timesteps"]
+nr_timeslots = params["nr_timeslots"]
+nr_correlations = params["nr_correlations"]
+subgrid_size = params["subgrid_size"]
 
 kernel_size = (
     params["taper_support"] + params["wterm_support"] + params["aterm_support"]
 )
 
-nr_parameters_ampl = 6
-nr_parameters_phase = 3
+nr_parameters_ampl = params["nr_ampl_terms"]
+nr_parameters_phase = params["nr_phase_terms"]
 nr_parameters0 = nr_parameters_ampl + nr_parameters_phase
 nr_parameters = nr_parameters_ampl + nr_parameters_phase * nr_timeslots
 
-frequencies = np.asarray(t_spw[0]["CHAN_FREQ"], dtype=np.float32)[:nr_channels]
-
-# # Initialize empty buffers
-# uvw = np.zeros(shape=(nr_baselines, nr_timesteps), dtype=idg.uvwtype)
-# # uvw_test = np.zeros(shape=(nr_baselines, nr_timesteps), dtype=idg.uvwtype)
-
-# visibilities = np.zeros(
-#     shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
-#     dtype=idg.visibilitiestype,
-# )
-# weights = np.zeros(
-#     shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations), dtype=np.float32
-# )
-# baselines = np.zeros(shape=(nr_baselines), dtype=idg.baselinetype)
+# MS related
+nr_stations = ms_dict["nr_stations"]
+nr_baselines = ms_dict["nr_baselines"]
+nr_channels = ms_dict["nr_channels"]
+frequencies = ms_dict["frequencies"]
 
 # Init proxy
-proxy = idg.CPU.Optimized()
 taper, grid = init_tapered_grid(params)
-
-# Initialize grid in proxy
+proxy = idg.CPU.Optimized()
 proxy.set_grid(grid)
 proxy.transform(idg.ImageDomainToFourierDomain)
-
-p = []
-
-start_row = 0
-nr_rows = nr_baselines * nr_timesteps
 
 antenna1_block = ms_dict["antenna1"]
 antenna2_block = ms_dict["antenna2"]
@@ -376,6 +358,7 @@ for i in range(nr_stations):
     gradient = np.zeros((nr_timeslots, nr_parameters0), dtype=np.float64)
     residual = np.zeros((1,), dtype=np.float64)
 
+    # TODO: can be condensed once refactor is merged
     aterm_ampl = np.repeat(
         np.tensordot(parameters[i, :nr_parameters_ampl], Bampl, axes=((0,), (0,)))[
             np.newaxis, :
@@ -423,7 +406,6 @@ for i in range(nr_stations):
         ),
         dtype=idg.visibilitiestype,
     )
-
     aterms_local = aterms.copy()
 
     # iterate over degrees of freedom
@@ -457,6 +439,8 @@ for i in range(nr_stations):
     # compute vector and  matrix
     v = np.zeros((nr_timeslots, nr_parameters0, 1), dtype=np.float64)
     M = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.float64)
+    # v = np.zeros((nr_timeslots, nr_parameters0, 1), dtype=np.complex64)
+    # M = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.complex64)
 
     for l in range(nr_timeslots):
         time_idx = slice(aterms_offsets[l], aterms_offsets[l + 1])
@@ -480,6 +464,9 @@ for i in range(nr_stations):
     gradient_err = np.amax(abs(gradient - v[:, :, 0]) / np.maximum(abs(gradient), 1.0))
     residual_err = abs(residual[0] - residual_ref) / residual[0]
 
+    print(hessian_err)
+    print(gradient_err)
+    print(residual_err)
     assert (
         hessian_err < 1e-4
     ), f"Hessian error {hessian_err:.2e} for station {i} larger than threshold of 1e-4"
