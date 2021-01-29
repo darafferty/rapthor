@@ -14,19 +14,20 @@ import pytest
 MS = "/var/scratch/maljaars/data/L258627_tsteps150_RStations_3.dppp"
 IMAGENAME = "/home/maljaars/Documents/tests/idgcalstep/modelimage.fits"
 
-# @pytest.fixture
+
+@pytest.fixture
 def set_parameters():
     params = {}
-    params["padding"] = 1.2
-
     params["nr_timesteps"] = 4
     params["nr_timeslots"] = 2
     params["nr_correlations"] = 4
+    # Image related
+    params["padding"] = 1.2
     params["subgrid_size"] = 40
     params["taper_support"] = 7
     params["wterm_support"] = 7
     params["aterm_support"] = 11
-
+    # Base function related
     params["nr_ampl_terms"] = 6
     params["nr_phase_terms"] = 3
 
@@ -35,10 +36,9 @@ def set_parameters():
     return params
 
 
-# @pytest.fixture
 def read_ms(nr_timesteps, nr_correlations):
     ms_dict = {}
-    table = casacore.tables.taql("SELECT * FROM $MS WHERE ANTENNA1 != ANTENNA2")
+    table = casacore.tables.taql(f"SELECT * FROM {MS} WHERE ANTENNA1 != ANTENNA2")
 
     nr_timesteps_in_ms = len(casacore.tables.taql("SELECT UNIQUE TIME FROM $table"))
     if nr_timesteps > nr_timesteps_in_ms:
@@ -77,7 +77,6 @@ def read_ms(nr_timesteps, nr_correlations):
     return ms_dict
 
 
-# @pytest.fixture
 def read_fits_parameters(padding):
     fits_dict = {}
     h = fits.getheader(IMAGENAME)
@@ -107,7 +106,9 @@ def init_tapered_grid(params):
     taper_ = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(taper)))
     taper_grid = np.zeros(grid_size, dtype=np.complex128)
     taper_grid[
-        (grid_size - subgrid_size) // 2 : (grid_size + params["subgrid_size"]) // 2
+        (grid_size - params["subgrid_size"])
+        // 2 : (grid_size + params["subgrid_size"])
+        // 2
     ] = (
         taper_
         * np.exp(
@@ -149,256 +150,148 @@ def init_buffers(nr_baselines, nr_channels, nr_timesteps, nr_correlations):
     return (uvw, visibilities, weights)
 
 
-params = set_parameters()
-fits_settings = read_fits_parameters(params["padding"])
-N0 = fits_settings["N0"]
-N = fits_settings["N"]
-ms_dict = read_ms(params["nr_timesteps"], params["nr_correlations"])
+@pytest.mark.parametrize("params", [pytest.lazy_fixture("set_parameters")])
+def test_idgcal(params):
+    # params = set_parameters()
+    fits_settings = read_fits_parameters(params["padding"])
+    N0 = fits_settings["N0"]
+    N = fits_settings["N"]
+    ms_dict = read_ms(params["nr_timesteps"], params["nr_correlations"])
 
-uvw, visibilities, weights = init_buffers(
-    ms_dict["nr_baselines"],
-    ms_dict["nr_channels"],
-    params["nr_timesteps"],
-    params["nr_correlations"],
-)
-
-# datacolumn = "DATA"
-
-# ######################################################################
-# # Open measurementset
-# ######################################################################
-# table = casacore.tables.taql("SELECT * FROM $MS WHERE ANTENNA1 != ANTENNA2")
-
-# # Read parameters from measurementset
-# t_ant = casacore.tables.table(table.getkeyword("ANTENNA"))
-# t_spw = casacore.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
-
-
-######################################################################
-# Parameters
-######################################################################
-# User settings
-nr_timesteps = params["nr_timesteps"]
-nr_timeslots = params["nr_timeslots"]
-nr_correlations = params["nr_correlations"]
-subgrid_size = params["subgrid_size"]
-
-kernel_size = (
-    params["taper_support"] + params["wterm_support"] + params["aterm_support"]
-)
-
-nr_parameters_ampl = params["nr_ampl_terms"]
-nr_parameters_phase = params["nr_phase_terms"]
-nr_parameters0 = nr_parameters_ampl + nr_parameters_phase
-nr_parameters = nr_parameters_ampl + nr_parameters_phase * nr_timeslots
-
-# MS related
-nr_stations = ms_dict["nr_stations"]
-nr_baselines = ms_dict["nr_baselines"]
-nr_channels = ms_dict["nr_channels"]
-frequencies = ms_dict["frequencies"]
-
-# Init proxy
-taper, grid = init_tapered_grid(params)
-proxy = idg.CPU.Optimized()
-proxy.set_grid(grid)
-proxy.transform(idg.ImageDomainToFourierDomain)
-
-antenna1_block = ms_dict["antenna1"]
-antenna2_block = ms_dict["antenna2"]
-uvw_block = ms_dict["uvw"]
-vis_block = ms_dict["visibilities"]
-flags_block = ms_dict["flags"]
-weight_block = np.ones(flags_block.shape) * ~flags_block
-
-vis_block[np.isnan(vis_block)] = 0
-uvw_block[:, 1:3] = -uvw_block[:, 1:3]
-
-# Change precision
-uvw_block = uvw_block.astype(np.float32)
-
-# Construct baseline array
-baselines = np.array(
-    [(a1, a2) for a1, a2 in zip(antenna1_block[0, :], antenna2_block[0, :])],
-    dtype=idg.baselinetype,
-)
-
-# Transpose uvw, visibilities and weights
-uvw_t = uvw_block.transpose((1, 0, 2))
-uvw[...]["u"] = uvw_t[..., 0]
-uvw[...]["v"] = uvw_t[..., 1]
-uvw[...]["w"] = uvw_t[..., 2]
-visibilities[...] = vis_block.transpose((1, 0, 2, 3))
-weights[...] = weight_block.transpose((1, 0, 2, 3))
-
-# Grid visibilities
-aterms = util.get_identity_aterms(
-    nr_timeslots, nr_stations, subgrid_size, nr_correlations
-)
-aterms_offsets = util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
-
-B0 = np.ones((1, subgrid_size, subgrid_size, 1))
-
-x = np.linspace(-0.5, 0.5, subgrid_size)
-
-B1, B2 = np.meshgrid(x, x)
-B1 = B1[np.newaxis, :, :, np.newaxis]
-B2 = B2[np.newaxis, :, :, np.newaxis]
-B3 = B1 * B1
-B4 = B2 * B2
-B5 = B1 * B2
-
-BB = np.concatenate((B0, B1, B2, B3, B4, B5))
-B = np.kron(BB, np.array([1.0, 0.0, 0.0, 1.0]))
-
-Bampl = B[:nr_parameters_ampl]
-Bphase = B[:nr_parameters_phase]
-
-proxy.init_cache(
-    subgrid_size, fits_settings["cell_size"], params["w_step"], params["shift"]
-)
-proxy.calibrate_init(
-    kernel_size,
-    frequencies,
-    visibilities,
-    weights,
-    uvw,
-    baselines,
-    aterms_offsets,
-    taper,
-)
-
-X0 = np.zeros((nr_stations, 1))
-X1 = np.ones((nr_stations, 1))
-X2 = -0.2 * np.ones((nr_stations, 1)) + 0.4 * np.random.random((nr_stations, 1))
-
-parameters = np.concatenate(
-    (X1,)
-    + (nr_parameters_ampl - 1) * (X0,)
-    + (X2,)
-    + (nr_parameters_phase * nr_timeslots - 1) * (X0,),
-    axis=1,
-)
-
-aterm_ampl = np.tensordot(parameters[:, :nr_parameters_ampl], Bampl, axes=((1,), (0,)))
-aterm_phase = np.exp(
-    1j
-    * np.tensordot(
-        parameters[:, nr_parameters_ampl:].reshape(
-            (nr_stations, nr_timeslots, nr_parameters_phase)
-        ),
-        Bphase,
-        axes=((2,), (0,)),
+    uvw, visibilities, weights = init_buffers(
+        ms_dict["nr_baselines"],
+        ms_dict["nr_channels"],
+        params["nr_timesteps"],
+        params["nr_correlations"],
     )
-)
-aterms[:, :, :, :, :] = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
 
-uvw1 = np.zeros(shape=(nr_stations, nr_stations - 1, nr_timesteps), dtype=idg.uvwtype)
-visibilities1 = np.zeros(
-    shape=(nr_stations, nr_stations - 1, nr_timesteps, nr_channels, nr_correlations),
-    dtype=idg.visibilitiestype,
-)
-weights1 = np.zeros(
-    shape=(nr_stations, nr_stations - 1, nr_timesteps, nr_channels, nr_correlations),
-    dtype=np.float32,
-)
-baselines1 = np.zeros(shape=(nr_stations, nr_stations - 1), dtype=idg.baselinetype)
+    ######################################################################
+    # Parameters
+    ######################################################################
+    # User settings
+    nr_timesteps = params["nr_timesteps"]
+    nr_timeslots = params["nr_timeslots"]
+    nr_correlations = params["nr_correlations"]
+    subgrid_size = params["subgrid_size"]
 
-for bl in range(nr_baselines):
-    # Set baselines
-    antenna1 = antenna1_block[0, bl]
-    antenna2 = antenna2_block[0, bl]
-
-    bl1 = antenna2 - (antenna2 > antenna1)
-
-    # print bl, antenna1, antenna2, bl1
-    baselines1[antenna1][bl1] = (antenna1, antenna2)
-
-    # Set uvw
-    uvw1[antenna1][bl1] = uvw[bl]
-
-    # Set visibilities
-    visibilities1[antenna1][bl1] = visibilities[bl]
-    weights1[antenna1][bl1] = weights[bl]
-
-    antenna1, antenna2 = antenna2, antenna1
-    bl1 = antenna2 - (antenna2 > antenna1)
-    baselines1[antenna1][bl1] = (antenna1, antenna2)
-
-    # Set uvw
-    uvw1[antenna1][bl1]["u"] = -uvw[bl]["u"]
-    uvw1[antenna1][bl1]["v"] = -uvw[bl]["v"]
-    uvw1[antenna1][bl1]["w"] = -uvw[bl]["w"]
-
-    # Set visibilities
-    visibilities1[antenna1][bl1] = np.conj(
-        visibilities[bl, :, :, (0, 2, 1, 3)].transpose((1, 2, 0))
+    kernel_size = (
+        params["taper_support"] + params["wterm_support"] + params["aterm_support"]
     )
-    weights1[antenna1][bl1] = weights[bl, :, :, (0, 2, 1, 3)].transpose((1, 2, 0))
 
+    nr_parameters_ampl = params["nr_ampl_terms"]
+    nr_parameters_phase = params["nr_phase_terms"]
+    nr_parameters0 = nr_parameters_ampl + nr_parameters_phase
+    nr_parameters = nr_parameters_ampl + nr_parameters_phase * nr_timeslots
 
-predicted_visibilities = np.zeros_like(visibilities)
-print(f"Shape predicted visibilities {predicted_visibilities.shape}")
-proxy.degridding(
-    kernel_size,
-    frequencies,
-    predicted_visibilities,
-    uvw,
-    baselines,
-    aterms,
-    aterms_offsets,
-    taper,
-)
-residual_visibilities = visibilities - predicted_visibilities
+    # MS related
+    nr_stations = ms_dict["nr_stations"]
+    nr_baselines = ms_dict["nr_baselines"]
+    nr_channels = ms_dict["nr_channels"]
+    frequencies = ms_dict["frequencies"]
 
-for i in range(nr_stations):
-    bl_sel = [i in bl for bl in baselines]
-    # Predict visibilities for current solution
-    hessian = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.float64)
-    gradient = np.zeros((nr_timeslots, nr_parameters0), dtype=np.float64)
-    residual = np.zeros((1,), dtype=np.float64)
+    # Init proxy
+    taper, grid = init_tapered_grid(params)
+    proxy = idg.CPU.Optimized()
+    proxy.set_grid(grid)
+    proxy.transform(idg.ImageDomainToFourierDomain)
 
-    # TODO: can be condensed once refactor is merged
-    aterm_ampl = np.repeat(
-        np.tensordot(parameters[i, :nr_parameters_ampl], Bampl, axes=((0,), (0,)))[
-            np.newaxis, :
-        ],
-        nr_timeslots,
-        axis=0,
+    antenna1_block = ms_dict["antenna1"]
+    antenna2_block = ms_dict["antenna2"]
+    uvw_block = ms_dict["uvw"]
+    vis_block = ms_dict["visibilities"]
+    flags_block = ms_dict["flags"]
+    weight_block = np.ones(flags_block.shape) * ~flags_block
+
+    vis_block[np.isnan(vis_block)] = 0
+    uvw_block[:, 1:3] = -uvw_block[:, 1:3]
+
+    # Change precision
+    uvw_block = uvw_block.astype(np.float32)
+
+    # Construct baseline array
+    baselines = np.array(
+        [(a1, a2) for a1, a2 in zip(antenna1_block[0, :], antenna2_block[0, :])],
+        dtype=idg.baselinetype,
+    )
+
+    # Transpose uvw, visibilities and weights
+    uvw_t = uvw_block.transpose((1, 0, 2))
+    uvw[...]["u"] = uvw_t[..., 0]
+    uvw[...]["v"] = uvw_t[..., 1]
+    uvw[...]["w"] = uvw_t[..., 2]
+    visibilities[...] = vis_block.transpose((1, 0, 2, 3))
+    weights[...] = weight_block.transpose((1, 0, 2, 3))
+
+    # Grid visibilities
+    aterms = util.get_identity_aterms(
+        nr_timeslots, nr_stations, subgrid_size, nr_correlations
+    )
+    aterms_offsets = util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
+
+    B0 = np.ones((1, subgrid_size, subgrid_size, 1))
+
+    x = np.linspace(-0.5, 0.5, subgrid_size)
+
+    B1, B2 = np.meshgrid(x, x)
+    B1 = B1[np.newaxis, :, :, np.newaxis]
+    B2 = B2[np.newaxis, :, :, np.newaxis]
+    B3 = B1 * B1
+    B4 = B2 * B2
+    B5 = B1 * B2
+
+    BB = np.concatenate((B0, B1, B2, B3, B4, B5))
+    B = np.kron(BB, np.array([1.0, 0.0, 0.0, 1.0]))
+
+    Bampl = B[:nr_parameters_ampl]
+    Bphase = B[:nr_parameters_phase]
+
+    proxy.init_cache(
+        subgrid_size, fits_settings["cell_size"], params["w_step"], params["shift"]
+    )
+    proxy.calibrate_init(
+        kernel_size,
+        frequencies,
+        visibilities,
+        weights,
+        uvw,
+        baselines,
+        aterms_offsets,
+        taper,
+    )
+
+    X0 = np.zeros((nr_stations, 1))
+    X1 = np.ones(X0.shape)
+    X2 = -0.2 * np.ones(X0.shape) + 0.4 * np.random.random(X0.shape)
+
+    parameters = np.concatenate(
+        (X1,)
+        + (nr_parameters_ampl - 1) * (X0,)
+        + (X2,)
+        + (nr_parameters_phase * nr_timeslots - 1) * (X0,),
+        axis=1,
+    )
+
+    aterm_ampl = np.tensordot(
+        parameters[:, :nr_parameters_ampl], Bampl, axes=((1,), (0,))
     )
     aterm_phase = np.exp(
         1j
         * np.tensordot(
-            parameters[i, nr_parameters_ampl:].reshape(
-                (nr_timeslots, nr_parameters_phase)
+            parameters[:, nr_parameters_ampl:].reshape(
+                (nr_stations, nr_timeslots, nr_parameters_phase)
             ),
             Bphase,
-            axes=((1,), (0,)),
+            axes=((2,), (0,)),
         )
     )
+    aterms[:, :, :, :, :] = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
 
-    aterm_derivatives_ampl = (
-        aterm_phase[:, np.newaxis, :, :, :] * Bampl[np.newaxis, :, :, :, :]
+    uvw1 = np.zeros(
+        shape=(nr_stations, nr_stations - 1, nr_timesteps), dtype=idg.uvwtype
     )
-
-    aterm_derivatives_phase = (
-        1j
-        * aterm_ampl[:, np.newaxis, :, :, :]
-        * aterm_phase[:, np.newaxis, :, :, :]
-        * Bphase[np.newaxis, :, :, :, :]
-    )
-
-    aterm_derivatives = np.concatenate(
-        (aterm_derivatives_ampl, aterm_derivatives_phase), axis=1
-    )
-    aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
-
-    proxy.calibrate_update(i, aterms, aterm_derivatives, hessian, gradient, residual)
-
-    # Predict visibilities for current solution
-    predicted_visibilities1 = np.zeros(
+    visibilities1 = np.zeros(
         shape=(
-            nr_parameters + 1,
+            nr_stations,
             nr_stations - 1,
             nr_timesteps,
             nr_channels,
@@ -406,73 +299,189 @@ for i in range(nr_stations):
         ),
         dtype=idg.visibilitiestype,
     )
-    aterms_local = aterms.copy()
+    weights1 = np.zeros(
+        shape=(
+            nr_stations,
+            nr_stations - 1,
+            nr_timesteps,
+            nr_channels,
+            nr_correlations,
+        ),
+        dtype=np.float32,
+    )
+    baselines1 = np.zeros(shape=(nr_stations, nr_stations - 1), dtype=idg.baselinetype)
 
-    # iterate over degrees of freedom
-    for j in range(nr_parameters0 + 1):
-        # fill a-term with derivative
-        if j > 0:
-            aterms_local[:, i, :, :, :] = aterm_derivatives[:, j - 1, :, :, :]
+    for bl in range(nr_baselines):
+        # Set baselines
+        antenna1 = antenna1_block[0, bl]
+        antenna2 = antenna2_block[0, bl]
 
-        proxy.degridding(
-            kernel_size,
-            frequencies,
-            predicted_visibilities1[j],
-            uvw1[i],
-            baselines1[i],
-            aterms_local,
-            aterms_offsets,
-            taper,
+        bl1 = antenna2 - (antenna2 > antenna1)
+
+        # print bl, antenna1, antenna2, bl1
+        baselines1[antenna1][bl1] = (antenna1, antenna2)
+
+        # Set uvw
+        uvw1[antenna1][bl1] = uvw[bl]
+
+        # Set visibilities
+        visibilities1[antenna1][bl1] = visibilities[bl]
+        weights1[antenna1][bl1] = weights[bl]
+
+        antenna1, antenna2 = antenna2, antenna1
+        bl1 = antenna2 - (antenna2 > antenna1)
+        baselines1[antenna1][bl1] = (antenna1, antenna2)
+
+        # Set uvw
+        uvw1[antenna1][bl1]["u"] = -uvw[bl]["u"]
+        uvw1[antenna1][bl1]["v"] = -uvw[bl]["v"]
+        uvw1[antenna1][bl1]["w"] = -uvw[bl]["w"]
+
+        # Set visibilities
+        visibilities1[antenna1][bl1] = np.conj(
+            visibilities[bl, :, :, (0, 2, 1, 3)].transpose((1, 2, 0))
+        )
+        weights1[antenna1][bl1] = weights[bl, :, :, (0, 2, 1, 3)].transpose((1, 2, 0))
+
+    predicted_visibilities = np.zeros_like(visibilities)
+    print(f"Shape predicted visibilities {predicted_visibilities.shape}")
+    proxy.degridding(
+        kernel_size,
+        frequencies,
+        predicted_visibilities,
+        uvw,
+        baselines,
+        aterms,
+        aterms_offsets,
+        taper,
+    )
+    residual_visibilities = visibilities - predicted_visibilities
+
+    for i in range(nr_stations):
+        bl_sel = [i in bl for bl in baselines]
+        # Predict visibilities for current solution
+        hessian = np.zeros(
+            (nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.float64
+        )
+        gradient = np.zeros((nr_timeslots, nr_parameters0), dtype=np.float64)
+        residual = np.zeros((1,), dtype=np.float64)
+
+        # TODO: can be condensed once refactor is merged
+        aterm_ampl = np.repeat(
+            np.tensordot(parameters[i, :nr_parameters_ampl], Bampl, axes=((0,), (0,)))[
+                np.newaxis, :
+            ],
+            nr_timeslots,
+            axis=0,
+        )
+        aterm_phase = np.exp(
+            1j
+            * np.tensordot(
+                parameters[i, nr_parameters_ampl:].reshape(
+                    (nr_timeslots, nr_parameters_phase)
+                ),
+                Bphase,
+                axes=((1,), (0,)),
+            )
         )
 
-    ## compute residual visibilities
-    residual_visibilities1 = visibilities1[i] - predicted_visibilities1[0]
+        aterm_derivatives_ampl = (
+            aterm_phase[:, np.newaxis, :, :, :] * Bampl[np.newaxis, :, :, :, :]
+        )
 
-    residual_ref1 = np.sum(
-        weights1[i] * residual_visibilities1 * np.conj(residual_visibilities1)
-    ).real
-    residual_ref = np.sum(
-        residual_visibilities[bl_sel]
-        * residual_visibilities[bl_sel].conj()
-        * weights[bl_sel]
-    ).real
-    # compute vector and  matrix
-    v = np.zeros((nr_timeslots, nr_parameters0, 1), dtype=np.float64)
-    M = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.float64)
-    # v = np.zeros((nr_timeslots, nr_parameters0, 1), dtype=np.complex64)
-    # M = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.complex64)
+        aterm_derivatives_phase = (
+            1j
+            * aterm_ampl[:, np.newaxis, :, :, :]
+            * aterm_phase[:, np.newaxis, :, :, :]
+            * Bphase[np.newaxis, :, :, :, :]
+        )
 
-    for l in range(nr_timeslots):
-        time_idx = slice(aterms_offsets[l], aterms_offsets[l + 1])
-        for j in range(nr_parameters0):
-            v[l, j] = np.sum(
-                weights1[i, :, time_idx, :, :]
-                * residual_visibilities1[:, time_idx, :, :]
-                * np.conj(predicted_visibilities1[j + 1, :, time_idx, :, :])
+        aterm_derivatives = np.concatenate(
+            (aterm_derivatives_ampl, aterm_derivatives_phase), axis=1
+        )
+        aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
+
+        proxy.calibrate_update(
+            i, aterms, aterm_derivatives, hessian, gradient, residual
+        )
+
+        # Predict visibilities for current solution
+        predicted_visibilities1 = np.zeros(
+            shape=(
+                nr_parameters + 1,
+                nr_stations - 1,
+                nr_timesteps,
+                nr_channels,
+                nr_correlations,
+            ),
+            dtype=idg.visibilitiestype,
+        )
+        aterms_local = aterms.copy()
+
+        # iterate over degrees of freedom
+        for j in range(nr_parameters0 + 1):
+            # fill a-term with derivative
+            if j > 0:
+                aterms_local[:, i, :, :, :] = aterm_derivatives[:, j - 1, :, :, :]
+
+            proxy.degridding(
+                kernel_size,
+                frequencies,
+                predicted_visibilities1[j],
+                uvw1[i],
+                baselines1[i],
+                aterms_local,
+                aterms_offsets,
+                taper,
             )
-            for k in range(j + 1):
-                M[l, j, k] = np.sum(
+
+        ## compute residual visibilities
+        residual_visibilities1 = visibilities1[i] - predicted_visibilities1[0]
+
+        residual_ref1 = np.sum(
+            weights1[i] * residual_visibilities1 * np.conj(residual_visibilities1)
+        ).real
+        residual_ref = np.sum(
+            residual_visibilities[bl_sel]
+            * residual_visibilities[bl_sel].conj()
+            * weights[bl_sel]
+        ).real
+        # compute vector and  matrix
+        v = np.zeros((nr_timeslots, nr_parameters0, 1), dtype=np.complex64)
+        M = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.complex64)
+
+        for l in range(nr_timeslots):
+            time_idx = slice(aterms_offsets[l], aterms_offsets[l + 1])
+            for j in range(nr_parameters0):
+                v[l, j] = np.sum(
                     weights1[i, :, time_idx, :, :]
-                    * predicted_visibilities1[j + 1, :, time_idx, :, :]
-                    * np.conj(predicted_visibilities1[k + 1, :, time_idx, :, :])
+                    * residual_visibilities1[:, time_idx, :, :]
+                    * np.conj(predicted_visibilities1[j + 1, :, time_idx, :, :])
                 )
-                M[l, k, j] = np.conj(M[l, j, k])
+                for k in range(j + 1):
+                    M[l, j, k] = np.sum(
+                        weights1[i, :, time_idx, :, :]
+                        * predicted_visibilities1[j + 1, :, time_idx, :, :]
+                        * np.conj(predicted_visibilities1[k + 1, :, time_idx, :, :])
+                    )
+                    M[l, k, j] = np.conj(M[l, j, k])
 
-    hessian_err = np.amax(
-        (abs(hessian) > 1e-3) * abs(hessian - M) / np.maximum(abs(hessian), 1.0)
-    )
-    gradient_err = np.amax(abs(gradient - v[:, :, 0]) / np.maximum(abs(gradient), 1.0))
-    residual_err = abs(residual[0] - residual_ref) / residual[0]
+        hessian_err = np.amax(
+            (abs(hessian) > 1e-3)
+            * abs(hessian - np.real(M))
+            / np.maximum(abs(hessian), 1.0)
+        )
+        gradient_err = np.amax(
+            abs(gradient - np.real(v[:, :, 0])) / np.maximum(abs(gradient), 1.0)
+        )
+        residual_err = abs(residual[0] - residual_ref) / residual[0]
 
-    print(hessian_err)
-    print(gradient_err)
-    print(residual_err)
-    assert (
-        hessian_err < 1e-4
-    ), f"Hessian error {hessian_err:.2e} for station {i} larger than threshold of 1e-4"
-    assert (
-        gradient_err < 1e-4
-    ), f"Gradient error {gradient_err:.2e} for station {i} larger than threshold of 1e-4"
-    assert (
-        residual_err < 1e-4
-    ), f"Residual error {residual_err:.2e} for station {i} larger than threshold of 1e-4"
+        assert (
+            hessian_err < 1e-4
+        ), f"Hessian error {hessian_err:.2e} for station {i} larger than threshold of 1e-4"
+        assert (
+            gradient_err < 1e-4
+        ), f"Gradient error {gradient_err:.2e} for station {i} larger than threshold of 1e-4"
+        assert (
+            residual_err < 1e-4
+        ), f"Residual error {residual_err:.2e} for station {i} larger than threshold of 1e-4"
