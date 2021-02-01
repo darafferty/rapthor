@@ -308,6 +308,12 @@ void CUDA::initialize(
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
+  if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
+    throw std::invalid_argument(
+        "CUDA proxies do not support phase shifting for l,m-shifted images. "
+        "Shift parameter should be all zeros.");
+  }
+
   cu::Marker marker("initialize");
   marker.start();
 

@@ -129,7 +129,13 @@ void Generic::do_gridding(
 
   // Checks arguments
   if (kernel_size <= 0 || kernel_size >= subgrid_size - 1) {
-    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+  }
+
+  if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
+    throw std::invalid_argument(
+        "OpenCL proxy does not support phase shifting for l,m-shifted images. "
+        "Shift parameter should be all zeros.");
   }
 
   // Arguments
@@ -356,7 +362,13 @@ void Generic::do_degridding(
 
   // Checks arguments
   if (kernel_size <= 0 || kernel_size >= subgrid_size - 1) {
-    throw invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
+  }
+
+  if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
+    throw std::invalid_argument(
+        "OpenCL proxy does not support phase shifting for l,m-shifted images. "
+        "Shift parameter should be all zeros.");
   }
 
   // Arguments
