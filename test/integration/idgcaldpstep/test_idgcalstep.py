@@ -16,6 +16,7 @@ import pytest
 COMMONDIR = os.environ["COMMON"]
 DATADIR = os.environ["DATADIR"]
 MSNAME = os.environ["MSNAME"]
+MSNAME = "LOFAR_MOCK.ms"
 WORKDIR = os.environ["WORKDIR"]
 MS = os.path.join(DATADIR, MSNAME)
 
@@ -27,12 +28,19 @@ def run_dppp():
     check_call(
         [
             "DPPP",
-            os.path.join(WORKDIR, "DPPP.parset")
+            os.path.join(WORKDIR, "DPPP.parset"),
+            f"msin={MS}"
         ]
     )
 
-def create_input_h5parm():
-    pass
+def create_input_h5parm(h5parm_in):
+    f = h5py.File(h5parm_in, 'r+')
+    amplitudes = f['coefficients000']['amplitude_coefficients']['val']
+    phases = f['coefficients000']['phase_coefficients']['val']
+
+    amplitudes[:] = np.random.uniform(low=0.5, high=2.0, size=amplitudes.shape)
+    phases[:] = np.random.uniform(low=-np.pi/4, high=np.pi/4, size=phases.shape)
+    f.close()
 
 def create_model_image():
     """
@@ -99,16 +107,27 @@ def run_wsclean_predict():
         "-predict",
         "-use-idg",
         "-no-reorder",
+        "-aterm-config", "aterm.conf",
         MS
     )
     check_call(cmd)
 
-def run_compare_h5parm():
-    pass
+def run_compare_h5parm(h5parm_in, h5parm_out):
+    f_in = h5py.File(h5parm_in)
+    f_out = h5py.File(h5parm_out)
+
+    amplitude_values_in = f_in['coefficients000']['amplitude_coefficients']['val'][:]
+    amplitude_values_out = f_out['coefficients000']['amplitude_coefficients']['val'][:]
+    # phase_values = f['coefficients000']['phase_coefficients']['val'][:]
+
+    print(amplitude_values_in)
+    print(amplitude_values_out)
+    print(np.abs(amplitude_values_in - amplitude_values_out))
+    # print(phase_values)
 
 def test_idgcalstep():
-    create_input_h5parm()
+    create_input_h5parm("idgcal_in.h5parm")
     create_model_image()
     run_wsclean_predict()
     run_dppp()
-    run_compare_h5parm()
+    run_compare_h5parm("idgcal_in.h5parm","idgcal_out.h5parm")
