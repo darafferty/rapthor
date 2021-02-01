@@ -108,9 +108,7 @@ def init_tapered_grid(params):
     grid_size = N
 
     d = np.zeros(shape=(N0, N0), dtype=np.float32)
-    for x in range(200, N0 - 200, 200):
-        for y in range(200, N0 - 200, 200):
-            d[x, y] = 1.0
+    d[range(200, N0 - 200, 200), range(200, N0 - 200, 200)] = 1.0
 
     taper_ = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(taper)))
     taper_grid = np.zeros(grid_size, dtype=np.complex128)
@@ -161,7 +159,6 @@ def init_buffers(nr_baselines, nr_channels, nr_timesteps, nr_correlations):
 
 @pytest.mark.parametrize("params", [pytest.lazy_fixture("set_parameters")])
 def test_idgcal(params):
-    # params = set_parameters()
     fits_settings = read_fits_parameters(params["padding"])
     N0 = fits_settings["N0"]
     N = fits_settings["N"]
@@ -323,8 +320,6 @@ def test_idgcal(params):
         antenna2 = antenna2_block[0, bl]
 
         bl1 = antenna2 - (antenna2 > antenna1)
-
-        # print bl, antenna1, antenna2, bl1
         baselines1[antenna1][bl1] = (antenna1, antenna2)
 
         # Set uvw

@@ -11,5 +11,3 @@ install(FILES
 
         DESTINATION
         ${PYTHON_INSTALL_DIR})
-
-add_subdirectory(test)

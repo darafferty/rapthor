@@ -149,10 +149,10 @@ idg-integration-das:
     # Make sure h5py is build against the hdf5 library loaded by load_modules.sh
     # This is important when h5py is imported in embedded python code
     # and the main executable is also linked against the hdf5 library.
-    # This happens for example when DPPP is running a PythonDPStep that is 
+    # This happens for example when DPPP is running a PythonDPStep that is
     # importing h5py
     - HDF5_DIR=${HDF5_ROOT} python3 -m pip install h5py --user --no-binary=h5py --force-reinstall --no-deps
-    - python3 -m pip install --user astropy scipy pytest pytest-lazy-fixture h5py
+    - python3 -m pip install --user astropy scipy pytest pytest-lazy-fixture h5py matplotlib
     # pytest executable is installed in local/bin. Add to PATH
     - export PATH=$PATH:/home/gitlab-runner/.local/bin
     # Install idg
