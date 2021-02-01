@@ -75,23 +75,26 @@ class Array1D {
 
   bool contains_inf() const {
     volatile bool contains_inf = false;
-#pragma omp parallel for
-    for (size_t i = 0; i < size(); i++) {
-      if (contains_inf) {
-        continue;
-      }
-      T* value = data(i);
-      if (!isfinite(*value)) {
-        contains_inf = true;
+#pragma omp parallel
+    {
+      // Normal openmp for loops do not allow break statements.
+      // This custom loop will stop all threads at the first infinite value.
+      const std::pair<size_t, size_t> range = omp_range();
+      for (size_t i = range.first; i < range.second && !contains_inf; ++i) {
+        if (!isfinite(*data(i))) {
+          contains_inf = true;
+        }
       }
     }
     return contains_inf;
   }
 
   void init(const T& a) {
-#pragma omp parallel for
-    for (size_t i = 0; i < size(); ++i) {
-      m_buffer[i] = a;
+#pragma omp parallel
+    {
+      // Use a single std::fill per thread instead of an openmp for loop.
+      const std::pair<size_t, size_t> range = omp_range();
+      std::fill(m_buffer + range.first, m_buffer + range.second, a);
     }
   }
 
@@ -103,13 +106,26 @@ class Array1D {
 
   void zero() {
     T zero;
-    memset((void*)&zero, 0, sizeof(T));
+    memset(static_cast<void*>(&zero), 0, sizeof(T));
     init(zero);
   }
 
   T& operator()(size_t i) { return m_buffer[i]; }
 
   const T& operator()(size_t i) const { return m_buffer[i]; }
+
+ private:
+  /**
+   * @return 'start' and 'next' indices for use in openmp blocks.
+   */
+  std::pair<size_t, size_t> omp_range() const {
+    const int thread_num = omp_get_thread_num();
+    const bool last = (thread_num + 1 == omp_get_num_threads());
+    const int chunk_size = size() / omp_get_num_threads();
+    size_t start = chunk_size * thread_num;
+    size_t next = last ? size() : start + chunk_size;
+    return std::make_pair(start, next);
+  }
 
  protected:
   size_t m_x_dim;

@@ -88,7 +88,7 @@ idg-test:
     - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
     - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest -j8 --verbose -LE integration
+    - ctest -j8 --output-on-failure -LE integration
     # Capture coverage
     - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json -o run-unit.json
     - gcovr --add-tracefile run-unit.json --xml > coverage.xml
@@ -127,8 +127,7 @@ idg-integration-docker:
   script:
     # Return to idg build directory to run tests
     - cd build
-    # Run in verbose mode -VV as long as it's not properly working
-    - ctest -L integration
+    - ctest --output-on-failure -L integration
     # Test idg-cal scripts
     - cd $HOME_DIR/idg-cal/unit_tests
     - pytest .
@@ -178,11 +177,11 @@ idg-integration-das:
   script:
     - cd ~/opt/idg/build
     # Run unit tests (more precisely: the non-integration tests)
-    - ctest -j8 --verbose -LE integration
+    - ctest -j8 --output-on-failure -LE integration
     - echo "Finished unit tests"
     # Run integration tests
     - "python3 -m pip install --user --only-binary=:all: python-casacore"
-    - ctest --verbose -L integration
+    - ctest --output-on-failure -L integration
     # Test idg-cal scripts
     - cd $CURRENT_SOURCE/idg-cal/unit_tests
     - pytest .

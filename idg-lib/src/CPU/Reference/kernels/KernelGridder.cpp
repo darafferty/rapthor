@@ -48,10 +48,17 @@ void kernel_gridder(
     // Iterate all pixels in subgrid
     for (int y = 0; y < subgridsize; y++) {
       for (int x = 0; x < subgridsize; x++) {
-        // Compute l,m,n
-        const float l = compute_l(x, subgridsize, imagesize);
-        const float m = compute_m(y, subgridsize, imagesize);
-        const float n = compute_n(l, m, shift);
+        // Compute l,m,n for phase offset and phase index calculation.
+        const float l_offset = compute_l(x, subgridsize, imagesize);
+        const float m_offset = compute_m(y, subgridsize, imagesize);
+        const float l_index = l_offset + shift[0];  // l: Positive direction
+        const float m_index = m_offset - shift[1];  // m: Negative direction
+        const float n_index = compute_n(l_index, m_index);
+        const float n_offset = n_index + shift[2];
+
+        // Compute phase offset
+        const float phase_offset =
+            u_offset * l_offset + v_offset * m_offset + w_offset * n_offset;
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
@@ -61,15 +68,12 @@ void kernel_gridder(
                  NR_POLARIZATIONS * sizeof(std::complex<float>));
 
           // Load UVW coordinates
-          float u = uvw[time_offset + time].u;
-          float v = uvw[time_offset + time].v;
-          float w = uvw[time_offset + time].w;
+          const float u = uvw[time_offset + time].u;
+          const float v = uvw[time_offset + time].v;
+          const float w = uvw[time_offset + time].w;
 
-          // Compute phase index
-          float phase_index = u * l + v * m + w * n;
-
-          // Compute phase offset
-          float phase_offset = u_offset * l + v_offset * m + w_offset * n;
+          // Compute phase index, including phase shift.
+          const float phase_index = u * l_index + v * m_index + w * n_index;
 
           // Update pixel for every channel
           for (int chan = channel_begin; chan < channel_end; chan++) {

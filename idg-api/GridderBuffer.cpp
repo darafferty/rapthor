@@ -38,11 +38,10 @@ GridderBufferImpl::~GridderBufferImpl() {
   if (m_flush_thread.joinable()) m_flush_thread.join();
 }
 
-void GridderBufferImpl::grid_visibilities(size_t timeIndex, size_t antenna1,
-                                          size_t antenna2,
-                                          const double *uvwInMeters,
-                                          std::complex<float> *visibilities,
-                                          const float *weights) {
+void GridderBufferImpl::grid_visibilities(
+    size_t timeIndex, size_t antenna1, size_t antenna2,
+    const double *uvwInMeters, const std::complex<float> *visibilities,
+    const float *weights) {
   // exclude auto-correlations
   if (antenna1 == antenna2) return;
 
@@ -91,15 +90,13 @@ void GridderBufferImpl::compute_avg_beam() {
   const unsigned int nr_correlations = 4;
   const unsigned int nr_aterms = m_aterm_offsets2.size() - 1;
   const unsigned int nr_antennas = m_nrStations;
-  const unsigned int nr_baselines = m_bufferStationPairs2.get_x_dim();
-  const unsigned int nr_timesteps = m_bufferUVW2.get_x_dim();
-  const unsigned int nr_channels = get_frequencies_size();
 
   Array4D<Matrix2x2<std::complex<float>>> aterms(
       m_aterms2.data(), nr_aterms, nr_antennas, subgrid_size, subgrid_size);
   Array1D<unsigned int> aterms_offsets(m_aterm_offsets2.data(), nr_aterms + 1);
   idg::Array4D<std::complex<float>> average_beam(m_average_beam, subgrid_size,
-                                                 subgrid_size, 4, 4);
+                                                 subgrid_size, nr_correlations,
+                                                 nr_correlations);
 
   proxy::Proxy &proxy = m_bufferset.get_proxy();
   proxy.compute_avg_beam(m_nrStations, get_frequencies_size(), m_bufferUVW2,
@@ -119,16 +116,12 @@ void GridderBufferImpl::flush_thread_worker() {
 
   const size_t subgridsize = m_bufferset.get_subgridsize();
 
-  const Array4D<std::complex<float>> *aterm_correction;
-  if (m_bufferset.get_apply_aterm()) {
-    aterm_correction = &m_bufferset.get_avg_aterm_correction();
-  } else {
+  if (!m_bufferset.get_apply_aterm()) {
     m_aterm_offsets_array = Array1D<unsigned int>(
         m_default_aterm_offsets.data(), m_default_aterm_offsets.size());
     m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
         m_default_aterms.data(), m_default_aterm_offsets.size() - 1,
         m_nrStations, subgridsize, subgridsize);
-    aterm_correction = &m_bufferset.get_default_aterm_correction();
   }
 
   // Set Plan options
@@ -182,9 +175,6 @@ void GridderBufferImpl::flush() {
   m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
       m_aterms2.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
       subgridsize, subgridsize);
-
-  // Pass the grid to the proxy
-  proxy::Proxy &proxy = m_bufferset.get_proxy();
 
   m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 
