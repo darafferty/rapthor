@@ -38,8 +38,6 @@ IDG_PYTHON_PATH=${IDG_LIB}/python${PYTHON_VERSION}/site-packages
 # Set python path
 export PYTHONPATH=${IDG_PYTHON_PATH}:${DP3_PYTHON_PATH}:${PYTHONPATH}
 
-
-
 # Download measurement set into test/tmp/data directory (if needed)
 cd $DIR
 if [ -d $DATADIR/LOFAR_MOCK.ms ]
@@ -80,9 +78,6 @@ echo ${PYTHONPATH}
 echo ${DP3_PYTHON_PATH}
 ls ${DP3_PYTHON_PATH}
 
-
-
 # Run the test
 # pytest -s captures the print() statements
-# TODO: check/add more fine grained log levels
 pytest -s --exitfirst ${DIR}/idgcaldpstep/test_idgcalstep.py

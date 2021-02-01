@@ -1,11 +1,14 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+# NOTE: integration tests run only after installing IDG
+
 # List of integration tests
 set(INTEGRATION_TESTS
   tSinglePointSource
   tGridDegrid
   tIDGCalDPStep
+  tCalibrate
 )
 
 # Add integration tests to "integration", can be invoked with
