@@ -73,7 +73,7 @@ int test01() {
       idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
   idg::Array2D<float> spheroidal =
       idg::get_identity_spheroidal(subgrid_size, subgrid_size);
-  idg::Array1D<float> shift(3);  // zero shift
+  idg::Array1D<float> shift = idg::get_zero_shift();
   clog << endl;
 
   // Set w-terms to zero

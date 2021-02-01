@@ -69,17 +69,23 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
 
   // Compute l,m,n
   const unsigned nr_pixels = subgrid_size * subgrid_size;
-  float l_[nr_pixels];
-  float m_[nr_pixels];
-  float n_[nr_pixels];
+  float l_offset[nr_pixels];
+  float m_offset[nr_pixels];
+  float n_offset[nr_pixels];
+  float l_index[nr_pixels];
+  float m_index[nr_pixels];
+  float n_index[nr_pixels];
 
   for (unsigned i = 0; i < nr_pixels; i++) {
     int y = i / subgrid_size;
     int x = i % subgrid_size;
 
-    l_[i] = compute_l(x, subgrid_size, image_size);
-    m_[i] = compute_m(y, subgrid_size, image_size);
-    n_[i] = compute_n(-l_[i], m_[i], shift);
+    l_offset[i] = compute_l(x, subgrid_size, image_size);
+    m_offset[i] = compute_m(y, subgrid_size, image_size);
+    l_index[i] = l_offset[i] + shift[0];
+    m_index[i] = m_offset[i] - shift[1];
+    n_index[i] = compute_n(l_index[i], m_index[i]);
+    n_offset[i] = n_index[i] + shift[2];
   }
 
 // Iterate all subgrids
@@ -207,24 +213,26 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
         float phase[current_nr_timesteps * nr_channels_subgrid]
             __attribute__((aligned(ALIGNMENT)));
 
+        // Compute phase offset
+        const float phase_offset = u_offset * l_offset[i] +
+                                   v_offset * m_offset[i] +
+                                   w_offset * n_offset[i];
+
         for (int time = 0; time < current_nr_timesteps; time++) {
           // Load UVW coordinate
-          int time_idx = time_offset_global + time_offset_local + time;
-          float u = uvw[time_idx].u;
-          float v = uvw[time_idx].v;
-          float w = uvw[time_idx].w;
+          const int time_idx = time_offset_global + time_offset_local + time;
+          const float u = uvw[time_idx].u;
+          const float v = uvw[time_idx].v;
+          const float w = uvw[time_idx].w;
 
-          // Compute phase index
-          float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
-
-          // Compute phase offset
-          float phase_offset =
-              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+          // Compute phase index, including phase shift.
+          const float phase_index =
+              u * l_index[i] + v * m_index[i] + w * n_index[i];
 
           // Compute phase
           for (int chan = channel_begin; chan < channel_end; chan++) {
-            int chan_idx = chan - channel_begin;
-            float wavenumber = wavenumbers[chan];
+            const int chan_idx = chan - channel_begin;
+            const float wavenumber = wavenumbers[chan];
             phase[time * nr_channels_subgrid + chan_idx] =
                 phase_offset - (phase_index * wavenumber);
           }
@@ -252,23 +260,29 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
 
         for (int time = 0; time < current_nr_timesteps; time++) {
           // Load UVW coordinate
-          int time_idx = time_offset_global + time_offset_local + time;
-          float u = uvw[time_idx].u;
-          float v = uvw[time_idx].v;
-          float w = uvw[time_idx].w;
+          const int time_idx = time_offset_global + time_offset_local + time;
+          const float u = uvw[time_idx].u;
+          const float v = uvw[time_idx].v;
+          const float w = uvw[time_idx].w;
 
-          // Compute phase index
-          float phase_index = u * l_[i] + v * m_[i] + w * n_[i];
+          // Compute phase shift.
+          // Sign flip u because subgrid l runs in positive direction.
+          const float phase_shift = -u * shift[0] + v * shift[1] + w * shift[2];
+
+          // Compute phase index and apply phase shift.
+          const float phase_index =
+              u * l_index[i] + v * m_index[i] + w * n_index[i] - phase_shift;
 
           // Compute phase offset
-          float phase_offset =
-              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
+          const float phase_offset = u_offset * l_offset[i] +
+                                     v_offset * m_offset[i] +
+                                     w_offset * n_offset[i];
 
           // Compute phases
-          float phase_0 = phase_offset - (phase_index * wavenumbers[0]);
-          float phase_1 =
+          const float phase_0 = phase_offset - (phase_index * wavenumbers[0]);
+          const float phase_1 =
               phase_offset - (phase_index * wavenumbers[channel_end - 1]);
-          float phase_d = (phase_1 - phase_0) / (nr_channels_subgrid - 1);
+          const float phase_d = (phase_1 - phase_0) / (nr_channels_subgrid - 1);
           phase_0_[time] = phase_0;
           phase_d_[time] = phase_d;
         }

@@ -57,7 +57,7 @@ class GridderBuffer : public virtual Buffer {
    */
   virtual void grid_visibilities(size_t timeIndex, size_t antenna1,
                                  size_t antenna2, const double* uvwInMeters,
-                                 std::complex<float>* visibilities,
+                                 const std::complex<float>* visibilities,
                                  const float* weights) = 0;
 
  protected:

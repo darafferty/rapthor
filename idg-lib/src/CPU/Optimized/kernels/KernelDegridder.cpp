@@ -24,17 +24,23 @@ void kernel_degridder(const int nr_subgrids, const int grid_size,
 
   // Compute l,m,n
   const unsigned nr_pixels = subgrid_size * subgrid_size;
-  float l_[nr_pixels];
-  float m_[nr_pixels];
-  float n_[nr_pixels];
+  float l_offset[nr_pixels];
+  float m_offset[nr_pixels];
+  float n_offset[nr_pixels];
+  float l_index[nr_pixels];
+  float m_index[nr_pixels];
+  float n_index[nr_pixels];
 
   for (unsigned i = 0; i < nr_pixels; i++) {
     int y = i / subgrid_size;
     int x = i % subgrid_size;
 
-    l_[i] = compute_l(x, subgrid_size, image_size);
-    m_[i] = compute_m(y, subgrid_size, image_size);
-    n_[i] = compute_n(-l_[i], m_[i], shift);
+    l_offset[i] = compute_l(x, subgrid_size, image_size);
+    m_offset[i] = compute_m(y, subgrid_size, image_size);
+    l_index[i] = l_offset[i] + shift[0];
+    m_index[i] = m_offset[i] - shift[1];
+    n_index[i] = compute_n(l_index[i], m_index[i]);
+    n_offset[i] = n_index[i] + shift[2];
   }
 
 // Iterate all subgrids
@@ -68,6 +74,7 @@ void kernel_degridder(const int nr_subgrids, const int grid_size,
     float* phasor_imag = allocate_memory<float>(nr_pixels);
     float* phase = allocate_memory<float>(nr_pixels);
     float* phase_offset = allocate_memory<float>(nr_pixels);
+    float* phase_index = allocate_memory<float>(nr_pixels);
 
     // Compute u and v offset in wavelenghts
     const float u_offset = (x_coordinate + subgrid_size / 2 - grid_size / 2) *
@@ -75,6 +82,12 @@ void kernel_degridder(const int nr_subgrids, const int grid_size,
     const float v_offset = (y_coordinate + subgrid_size / 2 - grid_size / 2) *
                            (2 * M_PI / image_size);
     const float w_offset = 2 * M_PI * w_offset_in_lambda;
+
+    // Compute phase offset
+    for (unsigned i = 0; i < nr_pixels; i++) {
+      phase_offset[i] = u_offset * l_offset[i] + v_offset * m_offset[i] +
+                        w_offset * n_offset[i];
+    }
 
     // Iterate all timesteps
     for (int time = 0; time < nr_timesteps; time++) {
@@ -94,17 +107,9 @@ void kernel_degridder(const int nr_subgrids, const int grid_size,
 #endif
       aterm_changed = aterm_idx_previous != aterm_idx_current;
 
-      float phase_index[nr_pixels];
-
+      // Compute phase index and apply phase shift.
       for (unsigned i = 0; i < nr_pixels; i++) {
-        // Compute phase index
-        phase_index[i] = u * l_[i] + v * m_[i] + w * n_[i];
-
-        // Compute phase offset
-        if (time == 0) {
-          phase_offset[i] =
-              u_offset * l_[i] + v_offset * m_[i] + w_offset * n_[i];
-        }
+        phase_index[i] = u * l_index[i] + v * m_index[i] + w * n_index[i];
       }
 
       // Apply aterm to subgrid

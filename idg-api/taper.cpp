@@ -6,16 +6,6 @@
 #include <cmath>
 #include <vector>
 
-// #if defined(HAVE_MKL)
-//     #include <mkl_lapacke.h>
-// #else
-//     // Workaround: Prevent c-linkage of templated complex<double> in
-//     lapacke.h #include <complex.h> #define lapack_complex_float    float
-//     _Complex #define lapack_complex_double   double _Complex
-//     // End workaround
-//     #include <lapacke.h>
-// #endif
-
 /* DGESVD prototype */
 extern "C" void dgesvd_(char* jobu, char* jobvt, int* m, int* n, double* a,
                         int* lda, double* s, double* u, int* ldu, double* vt,
@@ -82,7 +72,6 @@ void init_optimal_taper_1D(int subgridsize, int padded_size, int size,
   double S1[N / 2];
   double U1[N / 2][N / 2];
   double V1T[N / 2][N / 2];
-  double superb[N / 2 - 1];
 
   double* taper = new double[N * 16 + 1];
 
@@ -108,10 +97,6 @@ void init_optimal_taper_1D(int subgridsize, int padded_size, int size,
         }
       }
     }
-
-    //         LAPACKE_dgesvd( LAPACK_COL_MAJOR, 'A', 'A', N/2, N/2, (double*)
-    //         R, N/2, (double*) S1, (double*) U1, N/2, (double*) V1T, N/2,
-    //         (double*) superb );
 
     int lwork = -1;
     int m = N / 2;
@@ -222,10 +207,6 @@ void init_optimal_gridding_taper_1D(int subgridsize, int gridsize,
   double S[N / 2];
   double U[N / 2][N / 2];
   double VT[N / 2][N / 2];
-  double superb[N / 2 - 1];
-
-  //     LAPACKE_dgesvd( LAPACK_COL_MAJOR, 'A', 'A', N/2, N/2, (double*) R, N/2,
-  //     (double*) S, (double*) U, N/2, (double*) VT, N/2, (double*) superb );
 
   int lwork = -1;
   int m = N / 2;

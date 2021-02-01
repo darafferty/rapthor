@@ -6,6 +6,7 @@ project(test-idg-api.x)
 
 set (${PROJECT_NAME}_sources
     main.cpp
+    gridder-common.cpp
     tGridder.cpp
     tDegridder.cpp
 )

@@ -98,28 +98,33 @@ void kernel_degridder(
       // Iterate all channels
       for (int chan = channel_begin; chan < channel_end; chan++) {
         // Update all polarizations
-        std::complex<float> sum[NR_POLARIZATIONS];
-        memset((void*)sum, 0, NR_POLARIZATIONS * sizeof(std::complex<float>));
+        std::array<std::complex<float>, NR_POLARIZATIONS> sum;
+        sum.fill(0.0f);
 
         // Iterate all pixels in subgrid
         for (int y = 0; y < subgridsize; y++) {
           for (int x = 0; x < subgridsize; x++) {
-            // Compute l,m,n
-            const float l = compute_l(x, subgridsize, imagesize);
-            const float m = compute_m(y, subgridsize, imagesize);
-            const float n = compute_n(-l, m, shift);
-
-            // Compute phase index
-            float phase_index = u * l + v * m + w * n;
+            // Compute l,m,n for phase offset and phase index calculation.
+            const float l_offset = compute_l(x, subgridsize, imagesize);
+            const float m_offset = compute_m(y, subgridsize, imagesize);
+            const float l_index = l_offset + shift[0];  // l: Positive direction
+            const float m_index = m_offset - shift[1];  // m: Negative direction
+            const float n_index = compute_n(l_index, m_index);
+            const float n_offset = n_index + shift[2];
 
             // Compute phase offset
-            float phase_offset = u_offset * l + v_offset * m + w_offset * n;
+            const float phase_offset =
+                u_offset * l_offset + v_offset * m_offset + w_offset * n_offset;
+
+            // Compute phase index, including phase shift.
+            const float phase_index = u * l_index + v * m_index + w * n_index;
 
             // Compute phase
-            float phase = (phase_index * wavenumbers[chan]) - phase_offset;
+            const float phase =
+                (phase_index * wavenumbers[chan]) - phase_offset;
 
             // Compute phasor
-            std::complex<float> phasor = {cosf(phase), sinf(phase)};
+            const std::complex<float> phasor = {cosf(phase), sinf(phase)};
 
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
               sum[pol] += pixels[y][x][pol] * phasor;

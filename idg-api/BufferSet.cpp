@@ -98,7 +98,6 @@ BufferSetImpl::~BufferSetImpl() {
 
 std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
   std::unique_ptr<proxy::Proxy> proxy;
-  int nr_correlations = 4;
 
   if (architecture == Type::CPU_REFERENCE) {
 #if defined(BUILD_LIB_CPU)
@@ -551,13 +550,11 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 }
 
 void BufferSetImpl::write_grid(idg::Grid& grid) {
-  auto nr_w_layers = grid.get_w_dim();
-  auto nr_correlations = grid.get_z_dim();
-  auto height = grid.get_y_dim();
-  auto width = grid.get_y_dim();
+  size_t nr_w_layers = grid.get_w_dim();
+  size_t nr_correlations = grid.get_z_dim();
+  size_t grid_size = grid.get_y_dim();
   assert(nr_correlations == 4);
-  assert(height == width);
-  auto grid_size = height;
+  assert(grid_size == grid.get_x_dim());
 
   std::vector<float> grid_real(nr_w_layers * nr_correlations * grid_size *
                                grid_size * sizeof(float));
