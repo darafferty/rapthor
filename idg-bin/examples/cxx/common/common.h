@@ -250,6 +250,7 @@ void run() {
   options.simulate_spectral_line = simulate_spectral_line;
   options.max_nr_timesteps_per_subgrid = 128;
   options.max_nr_channels_per_subgrid = 8;
+  options.w_step = w_step;
   omp_set_nested(true);
 
   // Iterate all cycles
