@@ -35,6 +35,12 @@ UnifiedOptimized::UnifiedOptimized() :
 
   omp_set_nested(true);
 
+  // Increase the fraction of reserved memory
+  set_fraction_reserved(0.4);
+
+  // Enable unified memory
+  enable_unified_memory();
+
   cuProfilerStart();
 }
 
@@ -613,6 +619,25 @@ std::unique_ptr<Plan> UnifiedOptimized::make_plan(
   }
 }
 
+std::shared_ptr<Grid> UnifiedOptimized::allocate_grid(size_t nr_w_layers,
+                                                      size_t nr_correlations,
+                                                      size_t height, size_t width) {
+  if (m_use_unified_memory)
+  {
+    assert(height == width);
+    size_t grid_size = height;
+    size_t sizeof_grid = nr_w_layers * auxiliary::sizeof_grid(grid_size, nr_correlations);
+    InstanceCUDA& device = get_device(0);
+    cu::Context& context = device.get_context();
+    std::unique_ptr<cu::UnifiedMemory> u_grid(new cu::UnifiedMemory(context, sizeof_grid));
+    return std::shared_ptr<Grid>(
+        new Grid(std::move(u_grid), nr_w_layers, nr_correlations, height, width));
+  } else {
+    // Defer call to cpuProxy
+    return cpuProxy->allocate_grid(nr_w_layers, nr_correlations, height, width);
+  }
+}
+
 void UnifiedOptimized::set_grid(std::shared_ptr<Grid> grid) {
   CUDA::set_grid(grid);
   cpuProxy->set_grid(grid);
@@ -741,43 +766,55 @@ void UnifiedOptimized::run_wtiles_to_grid(
     // Launch forward FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
-    // Copy w_padded_tile to host
-    stream.memcpyDtoHAsync(h_w_padded_tiles, d_w_padded_tiles, sizeof_w_padded_tiles);
-
-    // Wait for GPU to finish
-    stream.synchronize();
-
-    // Add tile to grid
-    #pragma omp parallel
+    if (m_use_unified_memory)
     {
-      for (unsigned tile_index = 0; tile_index < current_nr_tiles; tile_index++) {
-        // Compute the padded size of the current tile
-        idg::Coordinate &coordinate = tile_coordinates[tile_offset + tile_index];
-        float w = (coordinate.z + 0.5f) * w_step;
+      // Call kernel_wtiles_to_grid
+      cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
+      device.launch_adder_wtiles_to_grid(current_nr_tiles, m_wtile_size,
+        w_padded_tile_size, grid_size, d_tile_coordinates, d_w_padded_tiles,
+        u_grid);
 
-        int x0 = coordinate.x * m_wtile_size - (w_padded_tile_size - m_wtile_size) / 2 +
-                 grid_size / 2;
-        int y0 = coordinate.y * m_wtile_size - (w_padded_tile_size - m_wtile_size) / 2 +
-                 grid_size / 2;
-        int x_start = std::max(0, x0);
-        int y_start = std::max(0, y0);
-        int x_end = std::min(x0 + w_padded_tile_size, (int) grid_size);
-        int y_end = std::min(y0 + w_padded_tile_size, (int) grid_size);
+      // Wait for GPU to finish
+      stream.synchronize();
+    } else {
+      // Copy w_padded_tiles to host
+      stream.memcpyDtoHAsync(h_w_padded_tiles, d_w_padded_tiles, sizeof_w_padded_tiles);
 
-        #pragma omp for
-        for (int y = y_start; y < y_end; y++) {
-          for (int x = x_start; x < x_end; x++) {
-            for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
-              unsigned long dst_idx = index_grid(grid_size, pol, y, x);
-              unsigned long src_idx = index_grid(w_padded_tile_size, tile_index, pol, (y - y0), (x - x0));
-              std::complex<float>* tile_ptr = (std::complex<float> *) h_w_padded_tiles.ptr();
-              std::complex<float>* grid_ptr = m_grid->data();
-              grid_ptr[dst_idx] += tile_ptr[src_idx];
-            } // end for pol
-          } // end for x
-        } // end for y
-      } // end for tile_index
-    } // end omp parallel
+      // Wait for GPU to finish
+      stream.synchronize();
+
+      // Add tile to grid
+      #pragma omp parallel
+      {
+        for (unsigned tile_index = 0; tile_index < current_nr_tiles; tile_index++) {
+          // Compute the padded size of the current tile
+          idg::Coordinate &coordinate = tile_coordinates[tile_offset + tile_index];
+          float w = (coordinate.z + 0.5f) * w_step;
+
+          int x0 = coordinate.x * m_wtile_size - (w_padded_tile_size - m_wtile_size) / 2 +
+                   grid_size / 2;
+          int y0 = coordinate.y * m_wtile_size - (w_padded_tile_size - m_wtile_size) / 2 +
+                   grid_size / 2;
+          int x_start = std::max(0, x0);
+          int y_start = std::max(0, y0);
+          int x_end = std::min(x0 + w_padded_tile_size, (int) grid_size);
+          int y_end = std::min(y0 + w_padded_tile_size, (int) grid_size);
+
+          #pragma omp for
+          for (int y = y_start; y < y_end; y++) {
+            for (int x = x_start; x < x_end; x++) {
+              for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
+                unsigned long dst_idx = index_grid(grid_size, pol, y, x);
+                unsigned long src_idx = index_grid(w_padded_tile_size, tile_index, pol, (y - y0), (x - x0));
+                std::complex<float>* tile_ptr = (std::complex<float> *) h_w_padded_tiles.ptr();
+                std::complex<float>* grid_ptr = m_grid->data();
+                grid_ptr[dst_idx] += tile_ptr[src_idx];
+              } // end for pol
+            } // end for x
+          } // end for y
+        } // end for tile_index
+      } // end omp parallel
+    } // end if m_use_unified_memory
   } // end for tile_offset
 
   runtime += omp_get_wtime();

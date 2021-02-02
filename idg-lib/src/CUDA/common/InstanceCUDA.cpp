@@ -313,6 +313,10 @@ void InstanceCUDA::load_kernels() {
                           name_adder_subgrids_to_wtiles.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
+  if (cuModuleGetFunction(&function, *mModules[8],
+                          name_adder_wtiles_to_grid.c_str()) == CUDA_SUCCESS) {
+    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+  }
 
 // Load FFT function
 #if USE_CUSTOM_FFT
@@ -1098,6 +1102,25 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(int nr_subgrids,
   start_measurement(data);
   dim3 grid(nr_subgrids);
   executestream->launchKernel(*functions_adder_wtiles[2], grid, block_adder, 0, parameters);
+  end_measurement(data);
+}
+
+void InstanceCUDA::launch_adder_wtiles_to_grid(int nr_tiles,
+                                               int tile_size,
+                                               int w_padded_tile_size,
+                                               long grid_size,
+                                               cu::DeviceMemory& d_tile_coordinates,
+                                               cu::DeviceMemory& d_padded_tiles,
+                                               void* u_grid)
+{
+  const void* parameters[] = {&tile_size, &w_padded_tile_size, &grid_size,
+                              d_tile_coordinates, d_padded_tiles, &u_grid};
+  UpdateData* data =
+      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
+  start_measurement(data);
+  dim3 grid(NR_CORRELATIONS, nr_tiles);
+  dim3 block(128);
+  executestream->launchKernel(*functions_adder_wtiles[3], grid, block, 0, parameters);
   end_measurement(data);
 }
 

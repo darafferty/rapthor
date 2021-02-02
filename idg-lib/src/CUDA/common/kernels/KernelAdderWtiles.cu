@@ -207,4 +207,57 @@ __global__ void kernel_subgrids_to_wtiles(
     }
 }
 
+__global__ void kernel_wtiles_to_grid(
+    const unsigned int tile_size,
+    const unsigned int w_padded_tile_size,
+    const unsigned int grid_size,
+    const Coordinate* __restrict__ tile_coordinates,
+    const float2*   __restrict__ padded_tiles,
+          float2*   __restrict__ grid)
+{
+    // Map blockIdx.x to polarizations
+    assert(gridDim.x == NR_POLARIZATIONS);
+    unsigned int pol = blockIdx.x;
+
+    // Map blockIdx.x to tiles
+    unsigned int tile_index = blockIdx.y;
+
+    // Map threadIdx.x to thread id
+    unsigned int tid = threadIdx.x;
+
+    // Compute the number of threads working on one polarizaton of a tile
+    unsigned int nr_threads = blockDim.x;
+
+    // Compute the padded size of the current tile
+    const Coordinate& coordinate = tile_coordinates[tile_index];
+
+    // Compute position of tile in grid
+    int x0 = coordinate.x * tile_size - (w_padded_tile_size - tile_size) / 2 +
+             grid_size / 2;
+    int y0 = coordinate.y * tile_size - (w_padded_tile_size - tile_size) / 2 +
+             grid_size / 2;
+    int x_start = max(0, x0);
+    int y_start = max(0, y0);
+
+    // Add tile to grid
+    for (unsigned int i = tid; i < (w_padded_tile_size * w_padded_tile_size); i += nr_threads)
+    {
+        unsigned int y = i / w_padded_tile_size;
+        unsigned int x = i % w_padded_tile_size;
+
+        unsigned int y_dst = y_start + y;
+        unsigned int x_dst = x_start + x;
+
+        unsigned int y_src = y_dst - y0;
+        unsigned int x_src = x_dst - x0;
+
+        if (y < w_padded_tile_size)
+        {
+            unsigned long dst_idx = index_grid(grid_size, pol, y_dst, x_dst);
+            unsigned long src_idx = index_grid(w_padded_tile_size, tile_index, pol, y_src, x_src);
+            atomicAdd(grid[dst_idx], padded_tiles[src_idx]);
+        }
+    }
+}
+
 } // end extern "C"

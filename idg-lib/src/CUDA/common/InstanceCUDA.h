@@ -133,6 +133,14 @@ class InstanceCUDA : public KernelsInstance {
                                       cu::DeviceMemory& d_subgrid,
                                       cu::DeviceMemory& d_padded_tiles);
 
+  void launch_adder_wtiles_to_grid(int nr_tiles,
+                                   int tile_size,
+                                   int w_padded_tile_size,
+                                   long grid_size,
+                                   cu::DeviceMemory& d_tile_coordinates,
+                                   cu::DeviceMemory& d_padded_tiles,
+                                   void* u_grid);
+
   // Memory management per device
   cu::DeviceMemory& allocate_device_grid(size_t bytes);
   cu::DeviceMemory& allocate_device_wavenumbers(size_t bytes);
@@ -362,6 +370,7 @@ static const std::string name_fft_shift = "kernel_fft_shift";
 static const std::string name_adder_copy_tiles = "kernel_copy_tiles";
 static const std::string name_adder_apply_phasor = "kernel_apply_phasor";
 static const std::string name_adder_subgrids_to_wtiles = "kernel_subgrids_to_wtiles";
+static const std::string name_adder_wtiles_to_grid = "kernel_wtiles_to_grid";
 
 }  // end namespace cuda
 }  // end namespace kernel

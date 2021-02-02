@@ -22,6 +22,10 @@ class UnifiedOptimized : public cuda::CUDA {
 
   virtual bool supports_avg_aterm_correction() { return true; }
 
+  virtual std::shared_ptr<Grid> allocate_grid(size_t nr_w_layers,
+                                              size_t nr_correlations,
+                                              size_t height, size_t width) override;
+
   virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
   virtual std::shared_ptr<Grid> get_grid() override;
