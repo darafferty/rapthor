@@ -713,6 +713,7 @@ void UnifiedOptimized::run_wtiles_to_grid(
   cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_w_padded_tiles));
 
   // Iterate all tiles
+  double runtime = -omp_get_wtime();
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles; tile_offset += current_nr_tiles) {
     current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
@@ -778,6 +779,9 @@ void UnifiedOptimized::run_wtiles_to_grid(
       } // end for tile_index
     } // end omp parallel
   } // end for tile_offset
+
+  runtime += omp_get_wtime();
+  std::cout << "runtime: " << runtime << std::endl;
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
