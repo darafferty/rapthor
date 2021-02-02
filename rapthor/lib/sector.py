@@ -262,6 +262,7 @@ class Sector(object):
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(index))
         misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
+        source_skymodel = None
         if os.path.exists(self.predict_skymodel_file):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))
         else:
@@ -289,7 +290,26 @@ class Sector(object):
                     skymodel.remove(np.array(matching_ind))
 
             # Write filtered sky model to file for later prediction
-            skymodel.write(self.predict_skymodel_file, clobber=True)
+            if len(skymodel) > 0:
+                skymodel.write(self.predict_skymodel_file, clobber=True)
+            else:
+                # No sources, so just make a dummy sky model with single,
+                # very faint source at center
+                dummylines = ["Format = Name, Type, Patch, Ra, Dec, I, SpectralIndex, LogarithmicSI, "
+                              "ReferenceFrequency='100000000.0', MajorAxis, MinorAxis, Orientation\n"]
+                ra = misc.ra2hhmmss(self.ra)
+                sra = str(ra[0]).zfill(2)+':'+str(ra[1]).zfill(2)+':'+str("%.6f" % (ra[2])).zfill(6)
+                dec = misc.dec2ddmmss(self.dec)
+                decsign = ('-' if dec[3] < 0 else '+')
+                sdec = decsign+str(dec[0]).zfill(2)+'.'+str(dec[1]).zfill(2)+'.'+str("%.6f" % (dec[2])).zfill(6)
+                patch = self.calibration_skymodel.getPatchNames[0]
+                dummylines.append(',,{0},{1},{2}\n'.format(patch, sra, sdec))
+                dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'
+                                  '[0.0,0.0],false,100000000.0,,,\n'.format(patch, sra, sdec))
+                with open(self.predict_skymodel_file, 'w') as f:
+                    f.writelines(dummylines)
+                skymodel = lsmtool.load(str(self.predict_skymodel_file))
+                source_skymodel = []
 
         # Save list of patches (directions) in the format written by DDECal in the h5parm
         self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
@@ -304,11 +324,12 @@ class Sector(object):
             self.central_patch = patch_names[patch_dist.index(min(patch_dist))]
 
             # Filter the field source sky model and store source sizes
-            all_source_names = self.field.source_skymodel.getColValues('Name').tolist()
-            source_names = skymodel.getColValues('Name')
-            in_sector = np.array([all_source_names.index(sn) for sn in source_names])
-            source_skymodel = self.field.source_skymodel.copy()
-            source_skymodel.select(in_sector)
+            if source_skymodel is None:
+                all_source_names = self.field.source_skymodel.getColValues('Name').tolist()
+                source_names = skymodel.getColValues('Name')
+                in_sector = np.array([all_source_names.index(sn) for sn in source_names])
+                source_skymodel = self.field.source_skymodel.copy()
+                source_skymodel.select(in_sector)
             if len(source_skymodel) > 0:
                 self.source_sizes = source_skymodel.getPatchSizes(units='degree')
             else:

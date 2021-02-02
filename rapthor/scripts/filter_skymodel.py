@@ -14,31 +14,6 @@ from astropy.io import fits as pyfits
 from astropy import wcs
 
 
-def ra2hhmmss(deg):
-    """Convert RA coordinate (in degrees) to HH MM SS"""
-
-    from math import modf
-    if deg < 0:
-        deg += 360.0
-    x, hh = modf(deg/15.)
-    x, mm = modf(x*60)
-    ss = x*60
-
-    return (int(hh), int(mm), ss)
-
-
-def dec2ddmmss(deg):
-    """Convert DEC coordinate (in degrees) to DD MM SS"""
-
-    from math import modf
-    sign = (-1 if deg < 0 else 1)
-    x, dd = modf(abs(deg))
-    x, ma = modf(x*60)
-    sa = x*60
-
-    return (int(dd), int(ma), sa, sign)
-
-
 def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
          vertices_file, threshisl=5.0, threshpix=7.5, rmsbox=(150, 50),
          rmsbox_bright=(35, 7), adaptive_rmsbox=True,
@@ -201,9 +176,9 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         ra, dec = img.pix2sky((img.shape[-2]/2.0, img.shape[-1]/2.0))
         if ra < 0.0:
             ra += 360.0
-        ra = ra2hhmmss(ra)
+        ra = misc.ra2hhmmss(ra)
         sra = str(ra[0]).zfill(2)+':'+str(ra[1]).zfill(2)+':'+str("%.6f" % (ra[2])).zfill(6)
-        dec = dec2ddmmss(dec)
+        dec = misc.dec2ddmmss(dec)
         decsign = ('-' if dec[3] < 0 else '+')
         sdec = decsign+str(dec[0]).zfill(2)+'.'+str(dec[1]).zfill(2)+'.'+str("%.6f" % (dec[2])).zfill(6)
         dummylines.append(',,p1,{0},{1}\n'.format(sra, sdec))

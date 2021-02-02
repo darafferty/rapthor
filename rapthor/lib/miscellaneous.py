@@ -349,6 +349,31 @@ def delete_directory(dirname):
             raise e
 
 
+def ra2hhmmss(deg):
+    """Convert RA coordinate (in degrees) to HH MM SS"""
+
+    from math import modf
+    if deg < 0:
+        deg += 360.0
+    x, hh = modf(deg/15.)
+    x, mm = modf(x*60)
+    ss = x*60
+
+    return (int(hh), int(mm), ss)
+
+
+def dec2ddmmss(deg):
+    """Convert DEC coordinate (in degrees) to DD MM SS"""
+
+    from math import modf
+    sign = (-1 if deg < 0 else 1)
+    x, dd = modf(abs(deg))
+    x, ma = modf(x*60)
+    sa = x*60
+
+    return (int(dd), int(ma), sa, sign)
+
+
 def get_reference_station(soltab, max_ind=None):
     """
     Return the index of the station with the lowest fraction of flagged
