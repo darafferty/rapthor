@@ -466,7 +466,6 @@ void InstanceCPU::run_adder_wtiles(
     float image_size, float w_step, const float *shift, int subgrid_offset,
     WTileUpdateSet &wtile_flush_set, void *metadata, void *subgrid,
     std::complex<float> *grid) {
-
   powersensor::State states[2];
   states[0] = powerSensor->read();
 
