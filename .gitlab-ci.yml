@@ -175,6 +175,7 @@ idg-integration-das:
     - export LD_LIBRARY_PATH=~/opt/idg/lib:$LD_LIBRARY_PATH
     - export LD_LIBRARY_PATH=${BLAS_LIB}:$LD_LIBRARY_PATH
   script:
+    - export OPENBLAS_NUM_THREADS=1
     - cd ~/opt/idg/build
     # Run unit tests (more precisely: the non-integration tests)
     - ctest -j8 --output-on-failure -LE integration
