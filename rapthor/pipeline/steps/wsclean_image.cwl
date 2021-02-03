@@ -135,7 +135,7 @@ inputs:
     label: Number of deconvolution channels
     doc: |
       The number of deconvolution channels.
-     type: int
+    type: int
     inputBinding:
       prefix: -deconvolution-channels
   - id: taper_arcsec
