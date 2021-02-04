@@ -89,8 +89,8 @@ __global__ void kernel_apply_phasor(
     // Compute cell_size
     float cell_size = image_size / w_padded_tile_size;
 
-    // Compute scale (correct for 2x 2D FFT)
-    float scale = (w_padded_tile_size * w_padded_tile_size);
+    // Compute scale
+    float scale = 1.0f / (w_padded_tile_size * w_padded_tile_size);
 
     // Compute W
     const Coordinate& coordinate = tile_coordinates[tile_index];
@@ -106,14 +106,15 @@ __global__ void kernel_apply_phasor(
             const float l = (x - (w_padded_tile_size / 2)) * cell_size;
             const float m = (y - (w_padded_tile_size / 2)) * cell_size;
             const float n = compute_n(l, -m, shift);
-            const float phase = -2 * M_PI * n * w;
+            const float pi = (float) M_PI;
+            const float phase = -2 * pi * n * w;
 
             // Compute phasor
-            float2 phasor = make_float2(cosf(phase), sinf(phase));
+            float2 phasor = make_float2(cosf(phase), sinf(phase)) * scale;
 
             // Apply correction
             size_t idx = index_grid(w_padded_tile_size, tile_index, pol, y, x);
-            w_padded_tiles[idx] = (w_padded_tiles[idx] * phasor) * scale;
+            w_padded_tiles[idx] = (w_padded_tiles[idx] * phasor);
         }
     }
 } // end kernel_apply_phasor
