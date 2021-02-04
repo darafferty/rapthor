@@ -310,6 +310,7 @@ void run_master() {
   unsigned int subgrid_size;
   unsigned int kernel_size;
   unsigned int nr_cycles;
+  bool use_wtiles = false;
 
   // Read parameters from environment
   std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
@@ -328,6 +329,7 @@ void run_master() {
   nr_baselines = data.get_nr_baselines();
   float image_size = data.compute_image_size(grid_size);
   float cell_size = image_size / grid_size;
+  float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
   // Print parameters
   print_parameters(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
@@ -414,6 +416,9 @@ void run_master() {
   // Vector of plans
   std::vector<std::unique_ptr<idg::Plan>> plans;
 
+  // Init cache
+  proxy.init_cache(subgrid_size, cell_size, w_offset, shift);
+
   // Set grid
   proxy.set_grid(grid);
 
@@ -477,9 +482,8 @@ void run_master() {
       // Create plan
       if (init) {
         runtimes_plan[t] -= omp_get_wtime();
-        plans.emplace_back(new idg::Plan(kernel_size, subgrid_size, grid_size,
-                                         cell_size, frequencies, uvw, baselines,
-                                         aterms_offsets, options));
+        plans.emplace_back(proxy.make_plan(kernel_size, frequencies, uvw,
+                                           baselines, aterms_offsets, options));
         runtimes_plan[t] += omp_get_wtime();
       }
       idg::Plan &plan = *plans[t];
@@ -487,17 +491,15 @@ void run_master() {
 
       // Run gridding
       runtimes_gridding[cycle] -= omp_get_wtime();
-      proxy.gridding(plan, w_offset, shift, cell_size, kernel_size,
-                     subgrid_size, frequencies, visibilities, uvw, baselines,
-                     aterms, aterms_offsets, spheroidal);
+      proxy.gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                     aterms_offsets, spheroidal);
       synchronize();
       runtimes_gridding[cycle] += omp_get_wtime();
 
       // Run degridding
       runtimes_degridding[cycle] -= omp_get_wtime();
-      proxy.degridding(plan, w_offset, shift, cell_size, kernel_size,
-                       subgrid_size, frequencies, visibilities, uvw, baselines,
-                       aterms, aterms_offsets, spheroidal);
+      proxy.degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                       aterms_offsets, spheroidal);
       synchronize();
       runtimes_degridding[cycle] += omp_get_wtime();
     }
@@ -604,7 +606,7 @@ void run_worker() {
   unsigned int nr_channels = receive_int();
   unsigned int nr_correlations = receive_int();
   unsigned int nr_w_layers = receive_int();
-  float w_offset = receive_float();
+  float w_step = receive_float();
   unsigned int grid_size = receive_int();
   unsigned int subgrid_size = receive_int();
   unsigned int kernel_size = receive_int();
@@ -653,6 +655,9 @@ void run_worker() {
   // Vector of plans
   std::vector<std::unique_ptr<idg::Plan>> plans;
 
+  // Init cache
+  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
+
   // Set grid
   proxy.set_grid(grid);
 
@@ -692,23 +697,20 @@ void run_worker() {
 
       // Create plan
       if (init) {
-        plans.emplace_back(new idg::Plan(kernel_size, subgrid_size, grid_size,
-                                         cell_size, frequencies, uvw, baselines,
-                                         aterms_offsets, options));
+        plans.emplace_back(proxy.make_plan(kernel_size, frequencies, uvw,
+                                           baselines, aterms_offsets, options));
       }
       idg::Plan &plan = *plans[t];
       synchronize();
 
       // Run gridding
-      proxy.gridding(plan, w_offset, shift, cell_size, kernel_size,
-                     subgrid_size, frequencies, visibilities, uvw, baselines,
-                     aterms, aterms_offsets, spheroidal);
+      proxy.gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                     aterms_offsets, spheroidal);
       synchronize();
 
       // Run degridding
-      proxy.degridding(plan, w_offset, shift, cell_size, kernel_size,
-                       subgrid_size, frequencies, visibilities, uvw, baselines,
-                       aterms, aterms_offsets, spheroidal);
+      proxy.degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                       aterms_offsets, spheroidal);
       synchronize();
     }
 
