@@ -9,6 +9,8 @@
 #include <cuda.h>
 #include <cufft.h>
 
+#include "CU.h"
+
 namespace cufft {
 
 class Error : public std::exception {
@@ -25,8 +27,9 @@ class Error : public std::exception {
 
 class C2C_1D {
  public:
-  C2C_1D(unsigned n, unsigned count);
-  C2C_1D(unsigned n, unsigned stride, unsigned dist, unsigned count);
+  C2C_1D(const cu::Context& context, unsigned n, unsigned count);
+  C2C_1D(const cu::Context& context, unsigned n,
+         unsigned stride, unsigned dist, unsigned count);
   ~C2C_1D();
   void setStream(CUstream stream);
   void execute(cufftComplex *in, cufftComplex *out,
@@ -34,13 +37,14 @@ class C2C_1D {
 
  private:
   cufftHandle plan;
+  const cu::Context& context;
 };
 
 class C2C_2D {
  public:
-  C2C_2D(unsigned nx, unsigned ny);
-  C2C_2D(unsigned nx, unsigned ny, unsigned stride, unsigned dist,
-         unsigned count);
+  C2C_2D(const cu::Context& context, unsigned nx, unsigned ny);
+  C2C_2D(const cu::Context& context, unsigned nx, unsigned ny,
+         unsigned stride, unsigned dist, unsigned count);
   ~C2C_2D();
   void setStream(CUstream stream);
   void execute(cufftComplex *in, cufftComplex *out,
@@ -48,6 +52,7 @@ class C2C_2D {
 
  private:
   cufftHandle plan;
+  const cu::Context& context;
 };
 
 }  // end namespace cufft

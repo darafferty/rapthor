@@ -772,7 +772,7 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
       m_fft_plan_grid.reset();
     }
     m_fft_grid_size = grid_size;
-    m_fft_plan_grid.reset(new cufft::C2C_2D(grid_size, grid_size));
+    m_fft_plan_grid.reset(new cufft::C2C_2D(*context, grid_size, grid_size));
     m_fft_plan_grid->setStream(*executestream);
   }
 
@@ -822,7 +822,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
       // Plan bulk fft
       unsigned stride = 1;
       unsigned dist = size * size;
-      auto fft_plan = new cufft::C2C_2D(size, size, stride, dist,
+      auto fft_plan = new cufft::C2C_2D(*context, size, size, stride, dist,
                                         m_fft_subgrid_bulk * NR_CORRELATIONS);
       fft_plan->setStream(*executestream);
       m_fft_plan_subgrid.reset(fft_plan);
@@ -903,8 +903,9 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
 
   int sign =
       (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
-  cufft::C2C_1D fft_plan_row(size, 1, 1, 1);
-  cufft::C2C_1D fft_plan_col(size, size, 1, 1);
+
+  cufft::C2C_1D fft_plan_row(*context, size, 1, 1, 1);
+  cufft::C2C_1D fft_plan_col(*context, size, size, 1, 1);
 
   for (unsigned i = 0; i < batch; i++) {
     // Execute 1D FFT over all columns

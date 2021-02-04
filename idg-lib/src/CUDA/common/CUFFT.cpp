@@ -67,46 +67,65 @@ const char *Error::what() const throw() {
 /*
     C2C_1D
 */
-C2C_1D::C2C_1D(unsigned n, unsigned count) {
+C2C_1D::C2C_1D(const cu::Context& context, unsigned n, unsigned count)
+    : context(context) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftPlan1d(&plan, n, CUFFT_C2C, count));
 }
 
-C2C_1D::C2C_1D(unsigned n, unsigned stride, unsigned dist, unsigned count) {
+C2C_1D::C2C_1D(const cu::Context& context, unsigned n,
+               unsigned stride, unsigned dist, unsigned count)
+    : context(context) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftPlanMany(&plan, 1, (int *)&n, (int *)&n, stride, dist,
                                (int *)&n, stride, dist, CUFFT_C2C, count));
 }
 
-C2C_1D::~C2C_1D() { checkCuFFTcall(cufftDestroy(plan)); }
+C2C_1D::~C2C_1D() {
+  cu::ScopedContext scc(context);
+  checkCuFFTcall(cufftDestroy(plan));
+}
 
 void C2C_1D::setStream(CUstream stream) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftSetStream(plan, stream));
 }
 
 void C2C_1D::execute(cufftComplex *in, cufftComplex *out, int direction) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftExecC2C(plan, in, out, direction));
 }
 
 /*
     C2C_2D
 */
-C2C_2D::C2C_2D(unsigned nx, unsigned ny) {
+C2C_2D::C2C_2D(const cu::Context& context, unsigned nx, unsigned ny)
+    : context(context) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftPlan2d(&plan, nx, ny, CUFFT_C2C));
 }
 
-C2C_2D::C2C_2D(unsigned nx, unsigned ny, unsigned stride, unsigned dist,
-               unsigned count) {
+C2C_2D::C2C_2D(const cu::Context& context, unsigned nx, unsigned ny,
+               unsigned stride, unsigned dist, unsigned count)
+    : context(context) {
+  cu::ScopedContext scc(context);
   int n[] = {(int)ny, (int)nx};
   checkCuFFTcall(cufftPlanMany(&plan, 2, n, n, stride, dist, n, stride, dist,
                                CUFFT_C2C, count));
 }
 
-C2C_2D::~C2C_2D() { checkCuFFTcall(cufftDestroy(plan)); }
+C2C_2D::~C2C_2D() {
+  cu::ScopedContext scc(context);
+  checkCuFFTcall(cufftDestroy(plan));
+}
 
 void C2C_2D::setStream(CUstream stream) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftSetStream(plan, stream));
 }
 
 void C2C_2D::execute(cufftComplex *in, cufftComplex *out, int direction) {
+  cu::ScopedContext scc(context);
   checkCuFFTcall(cufftExecC2C(plan, in, out, direction));
 }
 
