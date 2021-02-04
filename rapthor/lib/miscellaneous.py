@@ -267,7 +267,7 @@ def string2list(invar):
     return str_list
 
 
-def _float_approx_equal(x, y, tol=1e-18, rel=1e-7):
+def _float_approx_equal(x, y, tol=None, rel=None):
     if tol is rel is None:
         raise TypeError('cannot specify both absolute and relative errors are None')
     tests = []
