@@ -178,8 +178,6 @@ class Proxy {
     m_cache_state.shift(2) = shift(2);
   };
 
-  virtual void flush_cache(){};
-
   // Create a plan
   // The cache needs to have been initialized by call to init_cache first
   virtual std::unique_ptr<Plan> make_plan(

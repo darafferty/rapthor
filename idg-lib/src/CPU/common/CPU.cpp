@@ -72,7 +72,7 @@ void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
   kernels.init_wtiles(subgrid_size);
 }
 
-void CPU::flush_cache() {
+std::shared_ptr<Grid> CPU::get_grid() {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
@@ -86,6 +86,7 @@ void CPU::flush_cache() {
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
   }
+  return m_grid;
 }
 
 unsigned int CPU::compute_jobsize(const Plan &plan,

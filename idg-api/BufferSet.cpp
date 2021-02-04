@@ -580,7 +580,6 @@ void BufferSetImpl::get_image(double* image) {
   m_get_image_watch->Start();
 
   // Flush all pending operations on the grid
-  m_proxy->flush_cache();
   m_proxy->get_grid();
 
   double runtime = -omp_get_wtime();

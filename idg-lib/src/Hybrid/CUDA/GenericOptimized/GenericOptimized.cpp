@@ -1064,12 +1064,7 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
   // Defer call to cpuProxy
   // cpuProxy manages the wtiles state
   cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);
-}
-
-void GenericOptimized::flush_cache() {
-  // Defer call to cpuProxy
-  // cpuProxy manages the wtiles state
-  cpuProxy->flush_cache();
+  cuda::CUDA::init_cache(subgrid_size, cell_size, w_step, shift);
 }
 
 }  // namespace hybrid

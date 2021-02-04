@@ -38,7 +38,12 @@ class GenericOptimized : public cuda::CUDA {
   void init_cache(int subgrid_size, float cell_size, float w_step,
                   const Array1D<float>& shift) override;
 
-  void flush_cache() override;
+  virtual std::unique_ptr<Plan> make_plan(
+      const int kernel_size, const Array1D<float>& frequencies,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array1D<unsigned int>& aterms_offsets,
+      Plan::Options options) override;
 
  private:
   void do_gridding(
@@ -109,13 +114,6 @@ class GenericOptimized : public cuda::CUDA {
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array2D<float>& parameter_vector) override;
-
-  virtual std::unique_ptr<Plan> make_plan(
-      const int kernel_size, const Array1D<float>& frequencies,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
-      Plan::Options options) override;
 
  protected:
   idg::proxy::cpu::CPU* cpuProxy;

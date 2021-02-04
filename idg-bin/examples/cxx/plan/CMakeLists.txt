@@ -12,7 +12,7 @@ set (${PROJECT_NAME}_sources
 add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
-set(LINK_LIBRARIES idg-util idg-common)
+set(LINK_LIBRARIES idg-util idg-common idg-cpu)
 
 target_link_libraries (
     ${PROJECT_NAME}

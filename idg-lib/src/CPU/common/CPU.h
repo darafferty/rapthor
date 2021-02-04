@@ -49,7 +49,7 @@ class CPU : public Proxy {
   void init_cache(int subgrid_size, float cell_size, float w_step,
                   const Array1D<float>& shift) override;
 
-  void flush_cache() override;
+  std::shared_ptr<Grid> get_grid() override;
 
  private:
   unsigned int compute_jobsize(const Plan& plan,

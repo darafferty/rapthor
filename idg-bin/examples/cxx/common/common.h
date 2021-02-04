@@ -188,6 +188,7 @@ void run() {
   nr_baselines = data.get_nr_baselines();
   float image_size = data.compute_image_size(grid_padding * grid_size);
   float cell_size = image_size / grid_size;
+  float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
   // Print parameters
   print_parameters(total_nr_stations, total_nr_channels, total_nr_timesteps,
@@ -255,6 +256,7 @@ void run() {
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
     // Set grid
     proxy.set_grid(grid);
+    proxy.init_cache(subgrid_size, cell_size, w_step, shift);
 
     // Iterate all time blocks
     for (unsigned time_offset = 0; time_offset < total_nr_timesteps;
@@ -295,14 +297,10 @@ void run() {
         idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(
             visibilities_.data(), nr_baselines, current_nr_timesteps,
             nr_channels_);
-        // W-Tiles
-        idg::WTiles wtiles;
-        std::clog << std::endl;
 
         // Create plan
-        auto plan = std::unique_ptr<idg::Plan>(new idg::Plan(
-            kernel_size, subgrid_size, grid_size, cell_size, shift, frequencies,
-            uvw, baselines, aterms_offsets, options));
+        auto plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines,
+                                    aterms_offsets, options);
 
         // Start imaging
         double runtime_imaging = -omp_get_wtime();

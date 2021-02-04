@@ -161,26 +161,25 @@ int main(int argc, char **argv) {
   idg::Array1D<unsigned int> aterms_offsets =
       idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
 
-  // W-Tiles
-  idg::WTiles wtiles;
-  std::clog << std::endl;
+  unsigned int nr_correlations = 4;
+  idg::proxy::cpu::Reference proxy;
+  auto grid = proxy.allocate_grid(1, nr_correlations, grid_size, grid_size);
+  proxy.set_grid(grid);
+  float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
+
+  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
 
   // Create plan
   std::clog << ">>> Create plan" << std::endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan =
-      use_wtiles
-          ? idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
-                      frequencies, uvw, baselines, aterms_offsets, wtiles,
-                      options)
-          : idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
-                      frequencies, uvw, baselines, aterms_offsets, options);
+  auto plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines,
+                              aterms_offsets, options);
   std::clog << std::endl;
 
   // Report plan
   std::clog << ">>> Plan information" << std::endl;
-  auto nr_visibilities_gridded = plan.get_nr_visibilities();
+  auto nr_visibilities_gridded = plan->get_nr_visibilities();
   auto nr_visibilities_total = nr_baselines * nr_timesteps * nr_channels;
   auto percentage_visibility_gridded =
       (float)nr_visibilities_gridded / nr_visibilities_total * 100.0f;
@@ -190,12 +189,12 @@ int main(int argc, char **argv) {
             << std::endl;
   std::clog << "Gridder number of visibilities: " << nr_visibilities_gridded
             << " (" << percentage_visibility_gridded << " %)" << std::endl;
-  std::clog << "Total number of subgrids:       " << plan.get_nr_subgrids()
+  std::clog << "Total number of subgrids:       " << plan->get_nr_subgrids()
             << std::endl;
 
   if (print_metadata) {
-    unsigned int nr_subgrids = plan.get_nr_subgrids();
-    const idg::Metadata *metadata = plan.get_metadata_ptr();
+    unsigned int nr_subgrids = plan->get_nr_subgrids();
+    const idg::Metadata *metadata = plan->get_metadata_ptr();
     for (unsigned i = 0; i < nr_subgrids; i++) {
       idg::Metadata &m = const_cast<idg::Metadata &>(metadata[i]);
       std::cout << m << std::endl;
