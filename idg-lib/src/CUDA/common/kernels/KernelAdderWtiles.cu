@@ -6,29 +6,6 @@
 #include "Types.h"
 #include "math.cu"
 
-inline __device__ size_t index_tile(
-    unsigned int tile_size,
-    unsigned int tile_id,
-    unsigned int pol,
-    unsigned int y,
-    unsigned int x)
-{
-    // tile: [NR_TILES][NR_POLARIZATIONS][tile_size][tile_size]
-    return tile_id * NR_POLARIZATIONS * tile_size * tile_size +
-                                  pol * tile_size * tile_size +
-                                                y * tile_size +
-                                                              x;
-}
-
-inline __device__ size_t index_tile(
-    unsigned int tile_size,
-    unsigned int pol,
-    unsigned int y,
-    unsigned int x)
-{
-    return index_tile(tile_size, 0, pol, y, x);
-}
-
 extern "C" {
 __global__ void kernel_copy_tiles(
     const unsigned int             padded_tile_size,
@@ -56,14 +33,14 @@ __global__ void kernel_copy_tiles(
     int w_padding2 = w_padding / 2;
 
     // Reset w_padded_tile to zero
-    for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
+    for (unsigned int i = tid; i < (w_padded_tile_size * w_padded_tile_size); i += nr_threads)
     {
-        unsigned int y = i / padded_tile_size;
-        unsigned int x = i % padded_tile_size;
+        unsigned int y = i / w_padded_tile_size;
+        unsigned int x = i % w_padded_tile_size;
 
-        if (y < padded_tile_size)
+        if (y < w_padded_tile_size)
         {
-            size_t dst_idx = index_tile(w_padded_tile_size, dst_tile_index, pol, y, x);
+            size_t dst_idx = index_grid(w_padded_tile_size, dst_tile_index, pol, y, x);
             w_padded_tiles[dst_idx] = make_float2(0, 0);
         }
     }
@@ -80,10 +57,9 @@ __global__ void kernel_copy_tiles(
 
         if (y < padded_tile_size)
         {
-            size_t src_idx = index_tile(padded_tile_size, src_tile_index, pol, y, x);
-            size_t dst_idx = index_tile(w_padded_tile_size, dst_tile_index, pol, y2, x2);
+            size_t src_idx = index_grid(padded_tile_size, src_tile_index, pol, y, x);
+            size_t dst_idx = index_grid(w_padded_tile_size, dst_tile_index, pol, y2, x2);
             w_padded_tiles[dst_idx] = padded_tiles[src_idx];
-            //w_padded_tiles[dst_idx] = make_float2(1, 0);
             padded_tiles[src_idx] = make_float2(0, 0);
         }
     }
@@ -136,7 +112,7 @@ __global__ void kernel_apply_phasor(
             float2 phasor = make_float2(cosf(phase), sinf(phase));
 
             // Apply correction
-            size_t idx = index_tile(w_padded_tile_size, tile_index, pol, y, x);
+            size_t idx = index_grid(w_padded_tile_size, tile_index, pol, y, x);
             w_padded_tiles[idx] = (w_padded_tiles[idx] * phasor) * scale;
         }
     }
