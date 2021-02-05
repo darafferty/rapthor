@@ -178,7 +178,7 @@ class Plan {
   float get_cell_size() const { return m_cell_size; }
 
  private:
-  Array1D<float> m_shift{3};
+  Array1D<float> m_shift{2};
   int m_subgrid_size;
   float m_w_step;
   float m_cell_size;
