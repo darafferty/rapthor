@@ -1,6 +1,8 @@
 # Changes to the Proxy interface to enable caching strategies
 
-The interface of the Proxy has been changed to allow proxies to implement caching strategies. The `gridding(...)` and `degridding(...)` calls in the previous interface used to be completely independent from each other. Each call provided all parameters describing the job.
+The interface of the Proxy has been changed to allow proxies to implement caching strategies. 
+In the previous interface in a series of subsequent calls to the `gridding(...)` method
+each call was independent from the other. Independent in the sense that for each call all parameters describing the job were passed as arguments. The same applied to a series of `degridding(...)` calls.
 
 In practice often a series of calls is made using the same parameters, while only the data is different. Proxies can implement more efficient strategies when it is known beforehand that a series of similar calls is about to be executed. Examples of these are (and currently the only ones implemented)
 
@@ -23,7 +25,7 @@ In the new interface the only way is the following series of calls, in this prec
 ```
 proxy.set_grid(grid);
 proxy.init_cache(subgrid_size, cell_size, w_step, shift);
-auto plan = plan.make_plan(kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
+std::unique_ptr<Plan> plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
 proxy.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms, aterms_offsets, spheroidal);
 proxy.get_grid();
 ```
@@ -39,7 +41,7 @@ is
 ```
 proxy.set_grid(grid);
 proxy.init_cache(subgrid_size, cell_size, w_step, shift);
-auto plan = plan.make_plan(kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
+std::unique_ptr<Plan> plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
 proxy.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms, aterms_offsets, spheroidal);
 ```
 where the `make_plan(...); degridding(...);` calls can be repeated as many times as there blocks of data to be degridded.
