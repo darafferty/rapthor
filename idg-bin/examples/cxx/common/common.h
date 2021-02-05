@@ -234,7 +234,8 @@ void run() {
   vector<double> runtimes_degridding;
   vector<double> runtimes_fft;
   vector<double> runtimes_imaging;
-  unsigned long nr_visibilities = 0;
+  unsigned long nr_visibilities =
+      nr_cycles * nr_baselines * total_nr_timesteps * nr_channels;
 
   // Enable/disable routines
   bool disable_gridding = getenv("DISABLE_GRIDDING");
@@ -364,29 +365,18 @@ void run() {
   double runtime_imaging =
       accumulate(runtimes_imaging.begin(), runtimes_imaging.end(), 0.0);
 
-  // Ignore slowest run
-  if (nr_cycles > 1) {
-    runtime_gridding -= max_runtime_gridding;
-    runtime_degridding -= max_runtime_degridding;
-    runtime_fft -= max_runtime_fft;
-    runtime_imaging -= max_runtime_imaging;
-    nr_cycles -= 1;
-  }
-
-  // Compute runtime for one cycle
-  runtime_gridding /= nr_cycles;
-  runtime_degridding /= nr_cycles;
-  runtime_imaging /= nr_cycles;
-  runtime_imaging /= nr_cycles;
+  std::cout << std::endl;
 
   // Report runtime
-  idg::report("gridding", runtime_gridding);
-  idg::report("degridding", runtime_degridding);
-  idg::report("fft", runtime_fft);
+  if (!disable_gridding) idg::report("gridding", runtime_gridding);
+  if (!disable_degridding) idg::report("degridding", runtime_degridding);
+  if (!disable_fft) idg::report("fft", runtime_fft);
   idg::report("imaging", runtime_imaging);
 
   // Report throughput
-  idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
-  idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
+  if (!disable_gridding)
+    idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
+  if (!disable_degridding)
+    idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
   idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
 }
