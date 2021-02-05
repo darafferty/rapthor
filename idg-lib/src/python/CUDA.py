@@ -11,34 +11,22 @@ class CUDA(Proxy):
 
 class Generic(CUDA):
 
-    def __init__(
-        self,
-        nr_correlations,
-        subgrid_size):
+    def __init__(self):
         """Generic CUDA implementation"""
         try:
-            self.lib.CUDA_Generic_init.restype = ctypes.c_void_p
-            self.lib.CUDA_Generic_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint]
-            self.obj = self.lib.CUDA_Generic_init(
-                ctypes.c_uint(nr_correlations),
-                ctypes.c_uint(subgrid_size))
+            self.lib.CUDA_Generic_create.restype = ctypes.c_void_p
+            self.lib.CUDA_Generic_create.argtypes = []
+            self.obj = self.lib.CUDA_Generic_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")
 
 class Unified(CUDA):
 
-    def __init__(
-        self,
-        nr_correlations,
-        subgrid_size):
+    def __init__(self):
         """Unified CUDA implementation"""
         try:
-            self.lib.CUDA_Unified_init.restype = ctypes.c_void_p
-            self.lib.CUDA_Unified_init.argtypes = [ctypes.c_uint, \
-                                               ctypes.c_uint]
-            self.obj = self.lib.CUDA_Unified_init(
-                ctypes.c_uint(nr_correlations),
-                ctypes.c_uint(subgrid_size))
+            self.lib.CUDA_Unified_create.restype = ctypes.c_void_p
+            self.lib.CUDA_Unified_create.argtypes = []
+            self.obj = self.lib.CUDA_Unified_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")

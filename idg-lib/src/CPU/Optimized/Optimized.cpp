@@ -37,5 +37,3 @@ std::vector<std::string> Optimized::default_libraries() {
 }  // namespace cpu
 }  // namespace proxy
 }  // namespace idg
-
-#include "OptimizedC.h"

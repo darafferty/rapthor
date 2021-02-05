@@ -18,6 +18,19 @@
 
 namespace idg {
 
+// forward declaration of friend classes
+// The Plan constructors are private
+// only these classes can instantiate a Plan
+namespace proxy {
+class Proxy;
+namespace cpu {
+class CPU;
+}
+namespace cpu {
+class CPU;
+}
+}  // namespace proxy
+
 class Plan {
  public:
   struct Options {
@@ -46,20 +59,29 @@ class Plan {
   // Constructors
   Plan(){};
 
+  Plan(Plan&&) = default;
+
+ private:
   Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-       const float cell_size, const Array1D<float>& frequencies,
-       const Array2D<UVW<float>>& uvw,
+       const float cell_size, const Array1D<float>& shift,
+       const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
        const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
        const Array1D<unsigned int>& aterms_offsets,
        Options options = Options());
 
   Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-       const float cell_size, const Array1D<float>& frequencies,
-       const Array2D<UVW<float>>& uvw,
+       const float cell_size, const Array1D<float>& shift,
+       const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
        const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
        const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
        Options options = Options());
 
+  // The constructors are private
+  // only these classes can instantiate a Plan
+  friend proxy::Proxy;
+  friend proxy::cpu::CPU;
+
+ public:
   // Destructor
   virtual ~Plan() = default;
 
@@ -149,7 +171,17 @@ class Plan {
   static size_t baseline_index(size_t antenna1, size_t antenna2,
                                size_t nr_stations);
 
+  int get_subgrid_size() const { return m_subgrid_size; }
+  float get_w_step() const { return m_w_step; }
+
+  const Array1D<float>& get_shift() const { return m_shift; }
+  float get_cell_size() const { return m_cell_size; }
+
  private:
+  Array1D<float> m_shift{3};
+  int m_subgrid_size;
+  float m_w_step;
+  float m_cell_size;
   std::vector<Metadata> metadata;
   std::vector<int> subgrid_offset;
   std::vector<int> total_nr_timesteps_per_baseline;

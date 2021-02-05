@@ -13,12 +13,14 @@ include_directories (
 set (
     ${PROJECT_NAME}_headers
     GenericOptimized.h
+    GenericOptimizedC.h
 )
 
 # Set sources
 set (
     ${PROJECT_NAME}_sources
     GenericOptimized.cpp
+    GenericOptimizedC.cpp
 )
 
 # Set build target

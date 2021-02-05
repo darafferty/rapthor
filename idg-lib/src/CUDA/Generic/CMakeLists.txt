@@ -13,12 +13,14 @@ include_directories (
 set (
     ${PROJECT_NAME}_headers
     Generic.h
+    GenericC.h
 )
 
 # Set sources
 set (
     ${PROJECT_NAME}_sources
     Generic.cpp
+    GenericC.cpp
 )
 
 # Set build target

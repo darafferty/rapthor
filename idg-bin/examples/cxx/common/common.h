@@ -154,7 +154,6 @@ void run() {
   // Constants
   unsigned int nr_w_layers = 1;
   unsigned int nr_correlations = 4;
-  float w_offset = 0;
   unsigned int total_nr_stations;
   unsigned int total_nr_timesteps;
   unsigned int total_nr_channels;
@@ -189,6 +188,7 @@ void run() {
   nr_baselines = data.get_nr_baselines();
   float image_size = data.compute_image_size(grid_padding * grid_size);
   float cell_size = image_size / grid_size;
+  float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
   // Print parameters
   print_parameters(total_nr_stations, total_nr_channels, total_nr_timesteps,
@@ -256,6 +256,7 @@ void run() {
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
     // Set grid
     proxy.set_grid(grid);
+    proxy.init_cache(subgrid_size, cell_size, w_step, shift);
 
     // Iterate all time blocks
     for (unsigned time_offset = 0; time_offset < total_nr_timesteps;
@@ -296,21 +297,10 @@ void run() {
         idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(
             visibilities_.data(), nr_baselines, current_nr_timesteps,
             nr_channels_);
-        // W-Tiles
-        idg::WTiles wtiles;
-        std::clog << std::endl;
 
         // Create plan
-        std::unique_ptr<idg::Plan> plan;
-        if (use_wtiles) {
-          plan.reset(new idg::Plan(kernel_size, subgrid_size, grid_size,
-                                   cell_size, frequencies, uvw, baselines,
-                                   aterms_offsets, wtiles, options));
-        } else {
-          plan.reset(new idg::Plan(kernel_size, subgrid_size, grid_size,
-                                   cell_size, frequencies, uvw, baselines,
-                                   aterms_offsets, options));
-        }
+        auto plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines,
+                                    aterms_offsets, options);
 
         // Start imaging
         double runtime_imaging = -omp_get_wtime();
@@ -319,9 +309,8 @@ void run() {
         clog << ">>> Run gridding" << endl;
         double runtime_gridding = -omp_get_wtime();
         if (!disable_gridding)
-          proxy.gridding(*plan, w_offset, shift, cell_size, kernel_size,
-                         subgrid_size, frequencies, visibilities, uvw,
-                         baselines, aterms, aterms_offsets, spheroidal);
+          proxy.gridding(*plan, frequencies, visibilities, uvw, baselines,
+                         aterms, aterms_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
 
@@ -329,9 +318,8 @@ void run() {
         clog << ">>> Run degridding" << endl;
         double runtime_degridding = -omp_get_wtime();
         if (!disable_degridding)
-          proxy.degridding(*plan, w_offset, shift, cell_size, kernel_size,
-                           subgrid_size, frequencies, visibilities, uvw,
-                           baselines, aterms, aterms_offsets, spheroidal);
+          proxy.degridding(*plan, frequencies, visibilities, uvw, baselines,
+                           aterms, aterms_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
 

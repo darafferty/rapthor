@@ -109,9 +109,6 @@ int compare_to_reference(float tol = 1000 *
 
   // Parameters
   unsigned int nr_correlations = 4;
-#if TEST_GRIDDING | TEST_DEGRIDDING
-  float w_offset = 0;
-#endif
   unsigned int nr_stations = 9;
   unsigned int nr_channels = 9;
   unsigned int nr_timesteps = 2048;
@@ -188,39 +185,38 @@ int compare_to_reference(float tol = 1000 *
     }
   }
 
+  optimized.set_grid(grid);
+  float w_step =
+      optimized.supports_wtiling() ? 4.0 / (image_size * image_size) : 0.0;
+  optimized.init_cache(subgrid_size, cell_size, w_step, shift);
+
   // Create plan
   clog << ">>> Create plan" << endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
-                 uvw, baselines, aterms_offsets, options);
+  std::unique_ptr<idg::Plan> plan = optimized.make_plan(
+      kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
   clog << endl;
 
 #if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
-  optimized.set_grid(grid);
-  optimized.gridding(plan, w_offset, shift, cell_size, kernel_size,
-                     subgrid_size, frequencies, visibilities, uvw, baselines,
-                     aterms, aterms_offsets, spheroidal);
+  optimized.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
+                     aterms_offsets, spheroidal);
   optimized.get_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
   reference.set_grid(grid_ref);
-  reference.gridding(plan, w_offset, shift, cell_size, kernel_size,
-                     subgrid_size, frequencies, visibilities, uvw, baselines,
-                     aterms, aterms_offsets, spheroidal);
+  reference.init_cache(subgrid_size, cell_size, w_step, shift);
+  reference.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
+                     aterms_offsets, spheroidal);
   reference.get_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
                                   grid->data(), grid_ref->data());
+#endif
 
   // Use the same grid for both degridding calls
-  reference.set_grid(optimized.get_grid());
-#else
-  optimized.set_grid(grid);
-  reference.set_grid(grid);
-#endif
   reference.set_grid(optimized.get_grid());
 
 #if TEST_DEGRIDDING
@@ -229,21 +225,19 @@ int compare_to_reference(float tol = 1000 *
   visibilities.zero();
   visibilities_ref.zero();
   optimized.set_grid(grid);
-  optimized.degridding(plan, w_offset, shift, cell_size, kernel_size,
-                       subgrid_size, frequencies, visibilities, uvw, baselines,
-                       aterms, aterms_offsets, spheroidal);
+  optimized.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
+                       aterms_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
   reference.set_grid(grid);
-  reference.degridding(plan, w_offset, shift, cell_size, kernel_size,
-                       subgrid_size, frequencies, visibilities_ref, uvw,
-                       baselines, aterms, aterms_offsets, spheroidal);
+  reference.degridding(*plan, frequencies, visibilities_ref, uvw, baselines,
+                       aterms, aterms_offsets, spheroidal);
 
   std::clog << std::endl;
 
   // Ignore visibilities that are not included in the plan
-  plan.mask_visibilities(visibilities);
-  plan.mask_visibilities(visibilities_ref);
+  plan->mask_visibilities(visibilities);
+  plan->mask_visibilities(visibilities_ref);
 
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,

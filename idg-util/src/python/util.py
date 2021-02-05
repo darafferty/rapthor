@@ -435,7 +435,7 @@ def plot_spheroidal(spheroidal, interpolation_method='none'):
     """Plot spheroidal
     Input:
     spheroidal - numpy.ndarray(shape=(subgrid_size, subgrid_size),
-                               dtype = idg.spheroidaltype)
+                               dtype = idg.tapertype)
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
@@ -705,9 +705,9 @@ def get_zero_grid(nr_polarizations, grid_size,
     return grid
 
 
-def get_identity_spheroidal(subgrid_size, dtype=spheroidaltype, info=False):
+def get_identity_spheroidal(subgrid_size, dtype=tapertype, info=False):
     spheroidal = numpy.zeros(shape=(subgrid_size, subgrid_size),
-                             dtype=spheroidaltype)
+                             dtype=tapertype)
     init_identity_spheroidal(spheroidal)
     if info==True:
         print("grid: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \
@@ -908,9 +908,9 @@ def get_example_aterms_offset(nr_timeslots, nr_time,
 
 
 def get_example_spheroidal(subgrid_size,
-                           dtype=spheroidaltype, info=False):
+                           dtype=tapertype, info=False):
     spheroidal = numpy.ones((subgrid_size, subgrid_size),
-                            dtype=spheroidaltype)
+                            dtype=tapertype)
     init_example_spheroidal(spheroidal)
     if info==True:
         print("spheroidal: numpy.ndarray(shape = (subgrid_size, subgrid_size), " + \

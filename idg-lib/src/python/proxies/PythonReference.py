@@ -253,7 +253,7 @@ class Reference(Proxy):
                 dtype = idg.atermoffsettype)
         :param spheroidal: numpy.ndarray(
                 shape=(height, width),
-                dtype = idg.spheroidaltype)
+                dtype = idg.tapertype)
         """
         # extract dimensions
         nr_channels = frequencies.shape[0]
@@ -373,7 +373,7 @@ class Reference(Proxy):
                 dtype = idg.atermoffsettype)
         :param spheroidal: numpy.ndarray(
                 shape=(height, width),
-                dtype = idg.spheroidaltype)
+                dtype = idg.tapertype)
         """
         # extract dimensions
         nr_channels = frequencies.shape[0]

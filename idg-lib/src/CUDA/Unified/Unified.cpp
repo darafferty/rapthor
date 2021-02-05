@@ -35,14 +35,10 @@ Unified::~Unified() {
 }
 
 void Unified::do_gridding(
-    const Plan& plan,
-    const float w_step,  // in lambda
-    const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size,  // full width in pixels
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
@@ -56,8 +52,7 @@ void Unified::do_gridding(
 #if defined(DEBUG)
   std::clog << "### Initialize gridding" << std::endl;
 #endif
-  CUDA::initialize(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                   frequencies, visibilities, uvw, baselines, aterms,
+  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
@@ -70,21 +65,16 @@ void Unified::do_gridding(
     grid_ptr =
         new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
   }
-  Generic::run_gridding(plan, w_step, shift, cell_size, kernel_size,
-                        subgrid_size, frequencies, visibilities, uvw, baselines,
+  Generic::run_gridding(plan, frequencies, visibilities, uvw, baselines,
                         *grid_ptr, aterms, aterms_offsets, spheroidal);
 }  // end gridding
 
 void Unified::do_degridding(
-    const Plan& plan,
-    const float w_step,  // in lambda
-    const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size,  // full width in pixels
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
@@ -97,8 +87,7 @@ void Unified::do_degridding(
 #if defined(DEBUG)
   std::clog << "### Initialize degridding" << std::endl;
 #endif
-  CUDA::initialize(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                   frequencies, visibilities, uvw, baselines, aterms,
+  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);
 
 #if defined(DEBUG)
@@ -111,10 +100,8 @@ void Unified::do_degridding(
     grid_ptr =
         new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
   }
-  Generic::run_degridding(plan, w_step, shift, cell_size, kernel_size,
-                          subgrid_size, frequencies, visibilities, uvw,
-                          baselines, *grid_ptr, aterms, aterms_offsets,
-                          spheroidal);
+  Generic::run_degridding(plan, frequencies, visibilities, uvw, baselines,
+                          *grid_ptr, aterms, aterms_offsets, spheroidal);
 }  // end degridding
 
 void Unified::set_grid(std::shared_ptr<Grid> grid) {
@@ -158,5 +145,3 @@ std::shared_ptr<Grid> Unified::get_grid() {
 }  // namespace cuda
 }  // namespace proxy
 }  // namespace idg
-
-#include "UnifiedC.h"

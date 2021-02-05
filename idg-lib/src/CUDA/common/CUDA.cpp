@@ -295,9 +295,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
 }  // end compute_jobsize
 
 void CUDA::initialize(
-    const Plan& plan, const float w_step, const Array1D<float>& shift,
-    const float cell_size, const unsigned int kernel_size,
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -308,16 +306,20 @@ void CUDA::initialize(
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
+  auto& shift = m_cache_state.shift;
   if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
     throw std::invalid_argument(
         "CUDA proxies do not support phase shifting for l,m-shifted images. "
-        "Shift parameter should be all zeros.");
+        "Shift parameter should be all zeros."
+        "shift is now " +
+        std::to_string(shift(0)) + ", " + std::to_string(shift(1)));
   }
 
   cu::Marker marker("initialize");
   marker.start();
 
   // Arguments
+  auto subgrid_size = plan.get_subgrid_size();
   auto nr_channels = frequencies.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
   auto nr_timeslots = aterms.get_w_dim();
@@ -446,8 +448,7 @@ void CUDA::initialize(
       }
 
       // Try again to allocate device memory
-      initialize(plan, w_step, shift, cell_size, kernel_size, subgrid_size,
-                 frequencies, visibilities, uvw, baselines, aterms,
+      initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
                  aterms_offsets, spheroidal);
     } else {
       throw;

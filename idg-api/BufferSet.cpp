@@ -268,7 +268,7 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   m_grid.reset(new Grid(nr_w_layers, 4, m_padded_size, m_padded_size));
   m_grid->zero();
   m_proxy->set_grid(m_grid);
-  m_proxy->init_wtiles(m_subgridsize);
+  m_proxy->init_cache(m_subgridsize, m_cell_size, m_w_step, m_shift);
 
   m_taper_subgrid.resize(m_subgridsize);
   m_taper_grid.resize(m_padded_size);
@@ -580,7 +580,6 @@ void BufferSetImpl::get_image(double* image) {
   m_get_image_watch->Start();
 
   // Flush all pending operations on the grid
-  m_proxy->flush_wtiles(m_subgridsize, m_image_size, m_w_step, m_shift);
   m_proxy->get_grid();
 
   double runtime = -omp_get_wtime();

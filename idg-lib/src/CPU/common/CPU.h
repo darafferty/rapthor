@@ -39,18 +39,17 @@ class CPU : public Proxy {
 
   kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
 
-  virtual std::unique_ptr<Plan> make_plan(
-      const int kernel_size, const int subgrid_size, const int grid_size,
-      const float cell_size, const Array1D<float>& frequencies,
+  std::unique_ptr<Plan> make_plan(
+      const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
       Plan::Options options) override;
 
-  virtual void init_wtiles(float subgrid_size) override;
+  void init_cache(int subgrid_size, float cell_size, float w_step,
+                  const Array1D<float>& shift) override;
 
-  virtual void flush_wtiles(int subgrid_size, float image_size, float w_step,
-                            const Array1D<float>& shift) override;
+  std::shared_ptr<Grid> get_grid() override;
 
  private:
   unsigned int compute_jobsize(const Plan& plan,
@@ -59,69 +58,58 @@ class CPU : public Proxy {
                                const unsigned int subgrid_size);
 
   // Routines
-  virtual void do_gridding(
-      const Plan& plan,
-      const float w_step,  // in lambda
-      const Array1D<float>& shift, const float cell_size,
-      const unsigned int kernel_size,  // full width in pixels
-      const unsigned int subgrid_size, const Array1D<float>& frequencies,
+  void do_gridding(
+      const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
-  virtual void do_degridding(
-      const Plan& plan,
-      const float w_step,  // in lambda
-      const Array1D<float>& shift, const float cell_size,
-      const unsigned int kernel_size,  // full width in pixels
-      const unsigned int subgrid_size, const Array1D<float>& frequencies,
+  void do_degridding(
+      const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
-  virtual void do_calibrate_init(
+  void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
-      float w_step,  // in lambda
-      Array1D<float>&& shift, float cell_size,
-      unsigned int kernel_size,  // full width in pixels
-      unsigned int subgrid_size, const Array1D<float>& frequencies,
+      const Array1D<float>& frequencies,
       Array4D<Visibility<std::complex<float>>>&& visibilities,
       Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Grid& grid, const Array2D<float>& spheroidal) override;
+      const Array2D<float>& spheroidal) override;
 
-  virtual void do_calibrate_update(
+  void do_calibrate_update(
       const int station_nr,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array3D<double>& hessian, Array2D<double>& gradient,
       double& residual) override;
 
-  virtual void do_calibrate_finish() override;
+  void do_calibrate_finish() override;
 
-  virtual void do_calibrate_init_hessian_vector_product() override;
+  void do_calibrate_init_hessian_vector_product() override;
 
-  virtual void do_calibrate_update_hessian_vector_product1(
+  void do_calibrate_update_hessian_vector_product1(
       const int station_nr,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       const Array2D<float>& parameter_vector) override;
 
-  virtual void do_calibrate_update_hessian_vector_product2(
+  void do_calibrate_update_hessian_vector_product2(
       const int station_nr,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array2D<float>& parameter_vector) override;
 
-  virtual void do_transform(DomainAtoDomainB direction) override;
+  void do_transform(DomainAtoDomainB direction) override;
 
-  virtual void do_compute_avg_beam(
+  void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -156,13 +144,6 @@ class CPU : public Proxy {
 
   struct {
     std::vector<std::unique_ptr<Plan>> plans;
-    float w_step;  // in lambda
-    Array1D<float> shift;
-    float cell_size;
-    float image_size;
-    unsigned int kernel_size;
-    unsigned int grid_size;
-    unsigned int subgrid_size;
     unsigned int nr_baselines;
     unsigned int nr_timesteps;
     unsigned int nr_channels;

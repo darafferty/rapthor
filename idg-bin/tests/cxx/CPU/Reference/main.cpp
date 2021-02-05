@@ -21,7 +21,6 @@ int test01() {
 
   // Parameters
   unsigned int nr_correlations = 4;
-  float w_offset = 0;
   unsigned int nr_stations = 8;
   unsigned int nr_channels = 9;
   unsigned int nr_timesteps = 2048;
@@ -104,19 +103,20 @@ int test01() {
 
   // Set grid
   proxy.set_grid(grid);
+  float w_step = 0.0;
+  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
 
   // Create plan
   clog << ">>> Create plan" << endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, frequencies,
-                 uvw, baselines, aterms_offsets, options);
+  std::unique_ptr<idg::Plan> plan = proxy.make_plan(
+      kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
   clog << endl;
 
   // Grid reference visibilities
   clog << ">>> Grid visibilities" << endl;
-  proxy.gridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                 frequencies, visibilities_ref, uvw, baselines, aterms,
+  proxy.gridding(*plan, frequencies, visibilities_ref, uvw, baselines, aterms,
                  aterms_offsets, spheroidal);
   proxy.transform(idg::FourierDomainToImageDomain);
 
@@ -133,8 +133,7 @@ int test01() {
   // Set reference grid
   proxy.set_grid(grid_ref);
 
-  proxy.degridding(plan, w_offset, shift, cell_size, kernel_size, subgrid_size,
-                   frequencies, visibilities, uvw, baselines, aterms,
+  proxy.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
                    aterms_offsets, spheroidal);
   clog << endl;
 
