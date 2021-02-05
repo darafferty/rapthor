@@ -10,7 +10,7 @@ export DATADIR=${DIR}/tmp/data
 export WORKDIR=${DIR}/tmp/workdir
 
 export MODELIMAGE="modelimage.fits"
-export MSNAME="LOFAR_MOCK_3STATIONS.ms"
+export MSNAME="LOFAR_MOCK_15STATIONS.ms"
 export PATH="$PATH:${DIR}/common"
 export COMMON=${DIR}/common
 
@@ -51,8 +51,9 @@ if [ -d $DATADIR/$MSNAME ]
 then
     echo "Already found a reduced size MS named ${MSNAME}"
 else
-    # Reduce the LOFAR_MOCK.ms even further by selecting just 3 baselines, write to ${MSNAME}
-    DPPP msin=$DATADIR/LOFAR_MOCK.ms 'filter.baseline=[R]S30*&&[R]S30*' msout=$DATADIR/$MSNAME steps=[filter] filter.remove=true msout.overwrite=true
+    # Reduce the LOFAR_MOCK.ms even further by selecting 15 statios, write to ${MSNAME}
+    DPPP msin=$DATADIR/LOFAR_MOCK.ms 'filter.baseline=0,10,20,30,40,50,52~60&' msout=$DATADIR/$MSNAME steps=[filter] filter.remove=true msout.overwrite=true
+    # DPPP msin=$DATADIR/LOFAR_MOCK.ms 'filter.baseline=0~15&' msout=$DATADIR/$MSNAME steps=[filter] filter.remove=true msout.overwrite=true
 fi
 
 # Download the modelimage.ms if it does not yet exist
@@ -64,11 +65,6 @@ else
 fi
 
 mkdir -p $WORKDIR
-
-# Substitute variables in DPPP.parset
-# Fill modulefile template and copy to AOFLAGGER_MODULEFILE_PATH
-envsubst '${MODELIMAGE_PATH} ${MS_PATH}' < "${COMMON}/DPPP.parset.in" > "${WORKDIR}/DPPP.parset"
-
 cd $WORKDIR
 
 # Disable warnings due to HDF5 version mismatches

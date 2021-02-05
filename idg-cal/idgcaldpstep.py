@@ -6,11 +6,10 @@ import numpy as np
 import idg
 from idg.h5parmwriter import H5ParmWriter
 from idg.basisfunctions import LagrangePolynomial
-from idg.idgcalutils import next_composite, idgwindow, get_aterm_offsets
+from idg.idgcalutils import next_composite, idgwindow, get_aterm_offsets, init_h5parm_solution_table
 import astropy.io.fits as fits
 import scipy.linalg
 import time
-from datetime import datetime
 import logging
 
 
@@ -123,7 +122,7 @@ class IDGCalDPStep(dppp.DPStep):
         # Number of phase updates per amplitude interval
         self.nr_phase_updates = self.ampl_interval // self.phase_interval
 
-        # Initialize amplitude polynomial
+        # Initialize amplitude and phase polynomial
         self.ampl_poly = LagrangePolynomial(order=ampl_order)
         self.phase_poly = LagrangePolynomial(order=phase_order)
 
@@ -218,7 +217,7 @@ class IDGCalDPStep(dppp.DPStep):
 
         # Initialize solution tables for amplitude and phase coefficients
         # TODO: maybe pass parset as string to HISTORY?
-        self.h5writer = init_h5parm_solution_table(
+        init_h5parm_solution_table(
             self.h5writer,
             "amplitude",
             axes_data_amplitude,
@@ -227,7 +226,7 @@ class IDGCalDPStep(dppp.DPStep):
             self.image_size,
             self.subgrid_size,
         )
-        self.h5writer = init_h5parm_solution_table(
+        init_h5parm_solution_table(
             self.h5writer,
             "phase",
             axes_data_phase,
@@ -283,11 +282,17 @@ class IDGCalDPStep(dppp.DPStep):
             self.subgrid_size, self.cell_size, self.w_step, self.shift
         )
 
-        self.aterm_offsets = get_aterm_offsets(self.nr_timeslots, self.nr_timesteps)
-
-        self.Bampl, self.Tampl = polynomial_basis_functions(
-            self.polynomial_degree_ampl, self.subgrid_size, self.image_size
+        self.aterm_offsets = get_aterm_offsets(
+            self.nr_phase_updates, self.ampl_interval
         )
+
+        self.Bampl, self.Tampl = expand_basis_functions(
+            self.ampl_poly, self.subgrid_size, self.image_size
+        )
+        self.Bphase, self.Tphase = expand_basis_functions(
+            self.phase_poly, self.subgrid_size, self.image_size
+        )
+
 
     def process_buffers(self):
         """
@@ -347,8 +352,6 @@ class IDGCalDPStep(dppp.DPStep):
             self.nr_stations,
             self.nr_phase_updates,
         )
-
-        aterm_offsets = get_aterm_offsets(self.nr_phase_updates, self.ampl_interval)
 
         # parameters has shape (nr_stations, nr_coeffs) for amplitude and (nr_stations, nr_phase_updates, nr_coeffs)
         # for amplitude
@@ -482,7 +485,8 @@ class IDGCalDPStep(dppp.DPStep):
 
             previous_residual = residual_sum
 
-            converged = (nr_iterations > 1) and (fractional_dresidual < 1e-2)
+            # converged = (nr_iterations > 1) and (fractional_dresidual < 1e-2)
+            converged = (nr_iterations > 1) and (max_dx < 1e-2)
 
             if converged:
                 print(f"Converged after {nr_iterations} iterations - {max_dx}")
@@ -675,77 +679,6 @@ def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
     aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
     return aterm_derivatives
 
-
-def init_h5parm_solution_table(
-    h5parm_object,
-    soltab_type,
-    axes_info,
-    antenna_names,
-    time_array,
-    image_size,
-    subgrid_size,
-    basisfunction_type="lagrange",
-    history="",
-):
-    """
-    Initialize h5parm solution table
-
-    Parameters
-    ----------
-    h5parm_object : idg.h5parmwriter.H5ParmWriter
-        h5parm object
-    soltab_type : str
-        Any of ("amplitude", "phase")
-    axes_info : dict
-        Dict containing axes info (name, length)
-    antenna_names : np.ndarray
-        Array of strings containing antenna names
-    time_array : np.ndarray
-        Array of times
-    image_size : float
-        Pixel size
-    subgrid_size : int
-        Subgrid size, used in IDG
-    basisfunction_type : str, optional
-        Which basis function was used? Defaults to "lagrange"
-    history : str, optional
-        History attribute, by default ""
-
-    Returns
-    -------
-    idg.h5parmwriter.H5ParmWriter
-        Extended H5ParmWriter object
-    """
-    soltab_info = {"amplitude": "amplitude_coefficients", "phase": "phase_coefficients"}
-
-    assert soltab_type in soltab_info.keys()
-    soltab_name = soltab_info[soltab_type]
-
-    h5parm_object.create_solution_table(
-        soltab_name,
-        soltab_type,
-        axes_info,
-        dtype=np.float_,
-        history=f'CREATED at {datetime.today().strftime("%Y/%m/%d")}; {history}',
-    )
-
-    # Set info for the "ant" axis
-    h5parm_object.create_axis_meta_data(soltab_name, "ant", meta_data=antenna_names)
-
-    # Set info for the "dir" axis
-    h5parm_object.create_axis_meta_data(
-        soltab_name,
-        "dir",
-        attributes={
-            "basisfunction_type": basisfunction_type,
-            "image_size": image_size,
-            "subgrid_size": subgrid_size,
-        },
-    )
-
-    # Set info for the "time" axis
-    h5parm_object.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
-    return h5parm_object
 
 def transform_parameters(
     tmat_amplitude,
