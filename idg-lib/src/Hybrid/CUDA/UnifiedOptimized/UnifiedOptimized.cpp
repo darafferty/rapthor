@@ -160,18 +160,14 @@ void UnifiedOptimized::run_gridding(
       auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
       unsigned local_id = job_id % 2;
 
-
-      // Wait for scaler to finish
+      // Wait for FFT to finish
       locks_cpu[job_id].lock();
 
-      // Run adder on host
-      cu::Marker marker_adder("run_adder", cu::Marker::blue);
-      marker_adder.start();
-
-      // Run adder wtiles
+      // Run wtiling
+      cu::Marker marker_wtiling("run_wtiling", cu::Marker::blue);
+      marker_wtiling.start();
       run_subgrids_to_wtiles(local_id, current_nr_subgrids, subgrid_size, image_size, w_step, shift, wtile_flush_set);
-
-      marker_adder.end();
+      marker_wtiling.end();
 
       // Report performance
       device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
@@ -745,7 +741,6 @@ void UnifiedOptimized::run_wtiles_to_grid(
   cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_w_padded_tiles));
 
   // Iterate all tiles
-  double runtime = -omp_get_wtime();
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles; tile_offset += current_nr_tiles) {
     current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
@@ -823,9 +818,6 @@ void UnifiedOptimized::run_wtiles_to_grid(
       } // end omp parallel
     } // end if m_use_unified_memory
   } // end for tile_offset
-
-  runtime += omp_get_wtime();
-  std::cout << "runtime: " << runtime << std::endl;
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
@@ -845,6 +837,10 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
   cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
   cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
   cu::DeviceMemory& d_padded_tiles = device.retrieve_device_wtiles();
+
+  // Performance measurement
+  State startState, endState;
+  startState = device.measure();
 
   for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;)
   {
@@ -885,6 +881,10 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
     // Increment the subgrid index by the actual number of processed subgrids
     subgrid_index += nr_subgrids_to_process;
   }
+
+  // End performance measurement
+  endState = device.measure();
+  report.update_wtiling(startState, endState);
 }
 
 void UnifiedOptimized::flush_wtiles() {
@@ -901,7 +901,14 @@ void UnifiedOptimized::flush_wtiles() {
 
   // Project wtiles to master grid
   if (wtile_flush_info.wtile_ids.size()) {
+    report.initialize();
+    InstanceCUDA& device = get_device(0);
+    State startState, endState;
+    startState = device.measure();
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift, wtile_flush_info);
+    endState = device.measure();
+    report.update_wtiling(startState, endState);
+    report.print_total();
   }
 }
 
