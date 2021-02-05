@@ -175,7 +175,6 @@ class Proxy {
     m_cache_state.w_step = w_step;
     m_cache_state.shift(0) = shift(0);
     m_cache_state.shift(1) = shift(1);
-    m_cache_state.shift(2) = shift(2);
   };
 
   // Create a plan
@@ -304,7 +303,7 @@ class Proxy {
     int subgrid_size;
     float cell_size;
     float w_step;
-    Array1D<float> shift{3};
+    Array1D<float> shift{2};
   } m_cache_state;
 
 };  // end class Proxy

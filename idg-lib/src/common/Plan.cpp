@@ -25,7 +25,6 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
   WTiles dummy_wtiles;
   m_shift(0) = shift(0);
   m_shift(1) = shift(1);
-  m_shift(2) = shift(2);
 
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterms_offsets, dummy_wtiles, options);
@@ -44,7 +43,6 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
 
   m_shift(0) = shift(0);
   m_shift(1) = shift(1);
-  m_shift(2) = shift(2);
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterms_offsets, wtiles, options);
 }
