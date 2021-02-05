@@ -31,8 +31,7 @@ class BufferSetImpl : public virtual BufferSet {
   GridderBuffer* get_gridder(int i) final override;
 
   virtual void init(size_t width, float cellsize, float max_w, float shiftl,
-                    float shiftm, float shiftp,
-                    options_type& options) final override;
+                    float shiftm, options_type& options) final override;
 
   virtual void init_buffers(size_t bufferTimesteps,
                             std::vector<std::vector<double>> bands,

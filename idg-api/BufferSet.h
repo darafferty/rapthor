@@ -40,7 +40,13 @@ class BufferSet {
   static uint64_t get_memory_per_timestep(size_t nStations, size_t nChannels);
 
   virtual void init(size_t width, float cellsize, float max_w, float shiftl,
-                    float shiftm, float shiftp, options_type& options) = 0;
+                    float shiftm, options_type& options) = 0;
+
+  // Legacy API. To be removed when DP3 / wsclean do not use it anymore
+  void init(size_t width, float cellsize, float max_w, float shiftl,
+            float shiftm, float /*shiftp*/, options_type& options) {
+    init(width, cellsize, max_w, shiftl, shiftm, options);
+  }
 
   virtual void init_buffers(size_t bufferTimesteps,
                             std::vector<std::vector<double>> bands,

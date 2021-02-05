@@ -26,16 +26,13 @@ inline float FUNCTION_ATTRIBUTES compute_n(float l, float m) {
  * Calculates n from l, m and the 3 shift parameters.
  * result = 1 - sqrt(1 - lc^2 - mc^2) + pshift
  * with lc = l - lshift, mc = m - mshift
- * @param shift array of size 3 with [lshift, mshift, pshift] parameters
+ * @param shift array of size 2 with [lshift, mshift] parameters
  *        lshift is positive if the rA is larger than the rA at the center.
  *        mshift is positive if the dec is larger than the dec at the center.
  */
 inline float FUNCTION_ATTRIBUTES compute_n(float l, float m,
                                            const float *__restrict__ shift) {
-  const float lc = l - shift[0];
-  const float mc = m - shift[1];
-  const float tmp = (lc * lc) + (mc * mc);
-  return tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp)) + shift[2];
+  return compute_n(l - shift[0], m - shift[1]);
 }
 
 template <typename T>

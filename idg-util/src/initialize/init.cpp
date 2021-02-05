@@ -496,10 +496,8 @@ Array2D<float> get_example_spheroidal(unsigned int height, unsigned int width) {
 }
 
 Array1D<float> get_zero_shift() {
-  Array1D<float> shift(3);
-  shift(0) = 0.0f;
-  shift(1) = 0.0f;
-  shift(2) = 0.0f;
+  Array1D<float> shift(2);
+  shift.zero();
   return shift;
 }
 

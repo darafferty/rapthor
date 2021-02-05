@@ -32,7 +32,7 @@ BufferImpl::BufferImpl(const BufferSetImpl& bufferset, size_t bufferTimesteps)
       m_nrStations(0),
       m_nr_baselines(0),
       m_nrPolarizations(4),
-      m_shift(3),
+      m_shift(2),
       m_default_aterm_offsets(2),
       m_aterm_offsets_array(0),
       m_frequencies(0),
@@ -46,7 +46,7 @@ BufferImpl::BufferImpl(const BufferSetImpl& bufferset, size_t bufferTimesteps)
   assert(bufferset.get_grid()->get_x_dim() ==
          bufferset.get_grid()->get_y_dim());
 
-  assert(bufferset.get_shift().size() == 3);
+  assert(bufferset.get_shift().size() == 2);
   std::copy_n(bufferset.get_shift().data(), m_shift.size(), m_shift.data());
 
   m_default_aterm_offsets[0] = 0;

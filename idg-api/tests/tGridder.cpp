@@ -36,10 +36,8 @@ std::unique_ptr<idg::api::BufferSet> CreateBufferset(
   // By convention l runs in negative direction.
   const double shiftl = shift[0] * -kCellSize;
   const double shiftm = shift[1] * kCellSize;
-  const double shiftp = sqrt(1.0 - shiftl * shiftl - shiftm * shiftm) - 1.0;
 
-  bufferset->init(kImageSize, kCellSize, max_w, shiftl, shiftm, shiftp,
-                  options);
+  bufferset->init(kImageSize, kCellSize, max_w, shiftl, shiftm, options);
   bufferset->init_buffers(kBufferSize, kBands, kNrStations, max_baseline,
                           options, idg::api::BufferSetType::gridding);
   return bufferset;
