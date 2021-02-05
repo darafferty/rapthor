@@ -1058,13 +1058,9 @@ void InstanceCUDA::launch_adder_copy_tiles(unsigned int nr_tiles,
 {
   const void* parameters[] = {&padded_tile_size, &w_padded_tile_size,
                               d_tile_ids, d_padded_tiles, d_w_padded_tiles};
-  UpdateData* data =
-      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
-  start_measurement(data);
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_adder_wtiles[0], grid, block, 0, parameters);
-  end_measurement(data);
 }
 
 void InstanceCUDA::launch_adder_apply_phasor(unsigned int nr_tiles,
@@ -1077,13 +1073,9 @@ void InstanceCUDA::launch_adder_apply_phasor(unsigned int nr_tiles,
 {
   const void* parameters[] = {&image_size, &w_step, &w_padded_tile_size,
                               d_w_padded_tiles, d_shift, d_tile_coordinates};
-  UpdateData* data =
-      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
-  start_measurement(data);
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_adder_wtiles[1], grid, block, 0, parameters);
-  end_measurement(data);
 }
 
 void InstanceCUDA::launch_adder_subgrids_to_wtiles(int nr_subgrids,
@@ -1097,12 +1089,8 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(int nr_subgrids,
 {
   const void* parameters[] = {&grid_size, &subgrid_size, &tile_size, &subgrid_offset,
                               d_metadata, d_subgrid, d_padded_tiles};
-  UpdateData* data =
-      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
-  start_measurement(data);
   dim3 grid(nr_subgrids);
   executestream->launchKernel(*functions_adder_wtiles[2], grid, block_adder, 0, parameters);
-  end_measurement(data);
 }
 
 void InstanceCUDA::launch_adder_wtiles_to_grid(int nr_tiles,
@@ -1115,13 +1103,9 @@ void InstanceCUDA::launch_adder_wtiles_to_grid(int nr_tiles,
 {
   const void* parameters[] = {&tile_size, &w_padded_tile_size, &grid_size,
                               d_tile_coordinates, d_padded_tiles, &u_grid};
-  UpdateData* data =
-      get_update_data(get_event(), powerSensor, report, &Report::update_adder);
-  start_measurement(data);
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_adder_wtiles[3], grid, block, 0, parameters);
-  end_measurement(data);
 }
 
 typedef struct {
