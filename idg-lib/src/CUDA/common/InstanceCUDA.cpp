@@ -1221,6 +1221,10 @@ cu::HostMemory& InstanceCUDA::allocate_host_uvw(size_t bytes) {
   return *reuse_memory(bytes, h_uvw);
 }
 
+cu::HostMemory& InstanceCUDA::allocate_host_padded_tiles(size_t bytes) {
+  return *reuse_memory(bytes, h_padded_tiles);
+}
+
 cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(size_t bytes) {
   return *reuse_memory(bytes, d_aterms);
 }
@@ -1242,9 +1246,14 @@ cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(
   return *reuse_memory(bytes, d_avg_aterm_correction);
 }
 
-cu::DeviceMemory& InstanceCUDA::allocate_device_wtiles(
+cu::DeviceMemory& InstanceCUDA::allocate_device_tiles(
     size_t bytes) {
-  return *reuse_memory(bytes, d_wtiles);
+  return *reuse_memory(bytes, d_tiles);
+}
+
+cu::DeviceMemory& InstanceCUDA::allocate_device_padded_tiles(
+    size_t bytes) {
+  return *reuse_memory(bytes, d_padded_tiles);
 }
 
 /*
@@ -1329,6 +1338,7 @@ void InstanceCUDA::free_host_memory() {
   h_visibilities.reset();
   h_uvw.reset();
   h_subgrids.reset();
+  h_padded_tiles.reset();
   h_registered_.clear();
 }
 
@@ -1348,7 +1358,8 @@ void InstanceCUDA::free_device_memory() {
   d_wavenumbers.reset();
   d_spheroidal.reset();
   d_grid.reset();
-  d_wtiles.reset();
+  d_tiles.reset();
+  d_padded_tiles.reset();
 }
 
 /*

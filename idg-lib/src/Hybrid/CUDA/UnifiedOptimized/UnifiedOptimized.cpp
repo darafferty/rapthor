@@ -613,17 +613,32 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size, float w_ste
   // Initialize cache
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
 
-  // Initialize wtiles metadata
-  m_wtiles = WTiles(m_nr_wtiles, m_wtile_size);
-
   // Allocate wtiles on GPU
   InstanceCUDA& device = get_device(0);
-  int padded_tile_size = m_wtile_size + subgrid_size;
-  size_t sizeof_padded_tiles = m_nr_wtiles * NR_CORRELATIONS * padded_tile_size * padded_tile_size * sizeof(idg::float2);
-  device.allocate_device_wtiles(sizeof_padded_tiles);
+  int tile_size = m_tile_size + subgrid_size;
+
+  // Determine the amount of free device memory
+  size_t free_memory = device.get_free_memory();
+
+  // Compute the size of one tile
+  size_t sizeof_tile = NR_CORRELATIONS * tile_size *  tile_size * sizeof(idg::float2);
+
+  // We need GPU memory for:
+  // - The tiles: d_tiles (tile_size + subgrid_size)
+  // - The padded tiles: d_padded_tiles (tile_size + subgrid_size + w_size)
+  // - An FFT plan for the padded tiles
+  // - Some miscellaneous buffers (tile ids, tile coordinates)
+  // Assume that the first three will use the same amount of memory
+  // Thus, given that padded tiles are larger than tiles, the padded
+  // tiles will always need to be processed in batches.
+  m_nr_tiles = (free_memory * 0.30) / sizeof_tile;
+  size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
+  device.allocate_device_tiles(sizeof_tiles);
+  device.allocate_device_padded_tiles(sizeof_tiles);
+  device.allocate_host_padded_tiles(sizeof_tiles);
 
   // Initialize wtiles metadata
-  m_wtiles = WTiles(m_nr_wtiles, m_wtile_size);
+  m_wtiles = WTiles(m_nr_tiles, m_tile_size);
 }
 
 /*
@@ -645,13 +660,16 @@ void UnifiedOptimized::run_wtiles_to_grid(
   cu::Stream& stream = device.get_execute_stream();
 
   // Load buffers
-  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_wtiles();
+  cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
+  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_padded_tiles();
+  cu::HostMemory& h_padded_tiles = device.allocate_host_padded_tiles(d_padded_tiles.size());
 
   // Get information on what wtiles to flush
-  unsigned int nr_tiles = wtile_flush_info.wtile_ids.size();
+  const int tile_size = m_tile_size;
+  const unsigned int nr_tiles = wtile_flush_info.wtile_ids.size();
   std::vector<idg::Coordinate>& tile_coordinates = wtile_flush_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_flush_info.wtile_ids;
-  int padded_tile_size = m_wtile_size + subgrid_size;
+  const int padded_tile_size = tile_size + subgrid_size;
 
   // Compute the maximum w value for all tiles
   float max_abs_w = 0.0;
@@ -670,11 +688,9 @@ void UnifiedOptimized::run_wtiles_to_grid(
   // Allocate padded tiles buffer
   size_t free_memory = device.get_free_memory();
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size * NR_CORRELATIONS * sizeof(idg::float2);
-  unsigned int nr_tiles_batch = (free_memory * 0.4) / sizeof_w_padded_tile;
+  unsigned int nr_tiles_batch = d_padded_tiles.size() / sizeof_w_padded_tile;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
   size_t sizeof_w_padded_tiles = nr_tiles_batch * sizeof_w_padded_tile;
-  cu::HostMemory h_w_padded_tiles(context, sizeof_w_padded_tiles);
-  cu::DeviceMemory d_w_padded_tiles(context, sizeof_w_padded_tiles);
 
   // Allocate coordinates buffer
   size_t sizeof_tile_coordinates = nr_tiles_batch * sizeof(idg::Coordinate);
@@ -695,7 +711,7 @@ void UnifiedOptimized::run_wtiles_to_grid(
   cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size,
                     stride, dist, batch);
   fft.setStream(stream);
-  cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_w_padded_tiles));
+  cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
 
   // Iterate all tiles
   unsigned int current_nr_tiles = nr_tiles_batch;
@@ -713,14 +729,15 @@ void UnifiedOptimized::run_wtiles_to_grid(
     // Call kernel_copy_tile
     device.launch_adder_copy_tiles(
       current_nr_tiles, padded_tile_size, w_padded_tile_size,
-      d_tile_ids, d_padded_tiles, d_w_padded_tiles);
+      d_tile_ids, d_tiles, d_padded_tiles);
 
     // Launch inverse FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
-    device.launch_adder_apply_phasor(current_nr_tiles, image_size, w_step, w_padded_tile_size,
-      d_w_padded_tiles, d_shift, d_tile_coordinates);
+    device.launch_adder_apply_phasor(
+      current_nr_tiles, image_size, w_step, w_padded_tile_size,
+      d_padded_tiles, d_shift, d_tile_coordinates);
 
     // Launch forward FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
@@ -729,15 +746,15 @@ void UnifiedOptimized::run_wtiles_to_grid(
     {
       // Call kernel_wtiles_to_grid
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
-      device.launch_adder_wtiles_to_grid(current_nr_tiles, m_wtile_size,
-        w_padded_tile_size, grid_size, d_tile_coordinates, d_w_padded_tiles,
+      device.launch_adder_wtiles_to_grid(current_nr_tiles, m_tile_size,
+        w_padded_tile_size, grid_size, d_tile_coordinates, d_padded_tiles,
         u_grid);
 
       // Wait for GPU to finish
       stream.synchronize();
     } else {
       // Copy w_padded_tiles to host
-      stream.memcpyDtoHAsync(h_w_padded_tiles, d_w_padded_tiles, sizeof_w_padded_tiles);
+      stream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_w_padded_tiles);
 
       // Wait for GPU to finish
       stream.synchronize();
@@ -750,14 +767,14 @@ void UnifiedOptimized::run_wtiles_to_grid(
           idg::Coordinate &coordinate = tile_coordinates[tile_offset + tile_index];
           float w = (coordinate.z + 0.5f) * w_step;
 
-          int x0 = coordinate.x * m_wtile_size - (w_padded_tile_size - m_wtile_size) / 2 +
+          int x0 = coordinate.x * tile_size - (w_padded_tile_size - tile_size) / 2 +
                    grid_size / 2;
-          int y0 = coordinate.y * m_wtile_size - (w_padded_tile_size - m_wtile_size) / 2 +
+          int y0 = coordinate.y * tile_size - (w_padded_tile_size - tile_size) / 2 +
                    grid_size / 2;
           int x_start = std::max(0, x0);
           int y_start = std::max(0, y0);
-          int x_end = std::min(x0 + w_padded_tile_size, (int) grid_size);
-          int y_end = std::min(y0 + w_padded_tile_size, (int) grid_size);
+          int x_end = std::min(x0 + padded_tile_size, (int) grid_size);
+          int y_end = std::min(y0 + padded_tile_size, (int) grid_size);
 
           #pragma omp for
           for (int y = y_start; y < y_end; y++) {
@@ -765,7 +782,7 @@ void UnifiedOptimized::run_wtiles_to_grid(
               for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
                 unsigned long dst_idx = index_grid(grid_size, pol, y, x);
                 unsigned long src_idx = index_grid(w_padded_tile_size, tile_index, pol, (y - y0), (x - x0));
-                std::complex<float>* tile_ptr = (std::complex<float> *) h_w_padded_tiles.ptr();
+                std::complex<float>* tile_ptr = (std::complex<float> *) h_padded_tiles.ptr();
                 std::complex<float>* grid_ptr = m_grid->data();
                 grid_ptr[dst_idx] += tile_ptr[src_idx];
               } // end for pol
@@ -793,7 +810,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
   // Load buffers
   cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
   cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
-  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_wtiles();
+  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_tiles();
 
   // Performance measurement
   State startState, endState;
@@ -831,7 +848,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
 
     // Add all subgrids to the wtiles
     unsigned int grid_size = m_grid->get_x_dim();
-    device.launch_adder_subgrids_to_wtiles(nr_subgrids_to_process, grid_size, subgrid_size, m_wtile_size,
+    device.launch_adder_subgrids_to_wtiles(nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
       subgrid_index, d_metadata, d_subgrids, d_padded_tiles);
     stream.synchronize();
 

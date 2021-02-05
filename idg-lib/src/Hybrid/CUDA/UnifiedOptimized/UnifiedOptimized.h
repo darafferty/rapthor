@@ -102,8 +102,8 @@ class UnifiedOptimized : public cuda::CUDA {
 
   // W-Tiling
   WTiles m_wtiles;
-  const unsigned int m_nr_wtiles = 1024;
-  const unsigned int m_wtile_size = 128;
+  unsigned int m_nr_tiles = 0; // configured in init_cache
+  const unsigned int m_tile_size = 128;
 
 };  // class UnifiedOptimized
 
