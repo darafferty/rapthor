@@ -878,7 +878,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
 
     // Add all subgrids to the wtiles
     unsigned int grid_size = m_grid->get_x_dim();
-    device.launch_adder_subgrids_to_wtiles(nr_subgrids, grid_size, subgrid_size, m_wtile_size,
+    device.launch_adder_subgrids_to_wtiles(nr_subgrids_to_process, grid_size, subgrid_size, m_wtile_size,
       subgrid_index, d_metadata, d_subgrids, d_padded_tiles);
     stream.synchronize();
 
