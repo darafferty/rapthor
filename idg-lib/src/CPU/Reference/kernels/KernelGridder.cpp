@@ -54,7 +54,7 @@ void kernel_gridder(
         const float l_index = l_offset + shift[0];  // l: Positive direction
         const float m_index = m_offset - shift[1];  // m: Negative direction
         const float n_index = compute_n(l_index, m_index);
-        const float n_offset = n_index + shift[2];
+        const float n_offset = n_index;
 
         // Compute phase offset
         const float phase_offset =

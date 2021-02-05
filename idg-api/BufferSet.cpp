@@ -73,7 +73,7 @@ BufferSetImpl::BufferSetImpl(Type architecture)
       m_avg_aterm_correction(0, 0, 0, 0),
       m_grid(new Grid(0, 0, 0, 0)),
       m_proxy(create_proxy(architecture)),
-      m_shift(3),
+      m_shift(2),
       m_get_image_watch(Stopwatch::create()),
       m_set_image_watch(Stopwatch::create()),
       m_avg_beam_watch(Stopwatch::create()),
@@ -164,8 +164,7 @@ std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
 }
 
 void BufferSetImpl::init(size_t size, float cell_size, float max_w,
-                         float shiftl, float shiftm, float shiftp,
-                         options_type& options) {
+                         float shiftl, float shiftm, options_type& options) {
   const float taper_kernel_size = 7.0;
   const float a_term_kernel_size = (options.count("a_term_kernel_size"))
                                        ? (float)options["a_term_kernel_size"]
@@ -244,7 +243,6 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
 
   m_shift(0) = shiftl;
   m_shift(1) = shiftm;
-  m_shift(2) = shiftp;
 
   m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
@@ -475,8 +473,6 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
             const float w_offset = (w + 0.5) * m_w_step;
             const float l = (x - ((int)m_size / 2)) * m_cell_size;
             const float m = (y - ((int)m_size / 2)) * m_cell_size;
-            // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-            // accurately for small values of l and m
             const float n = compute_n(l, -m, m_shift.data());
             phases[x] = 2 * M_PI * n * w_offset;
           }  // end for x
@@ -681,8 +677,6 @@ void BufferSetImpl::get_image(double* image) {
             const float w_offset = (w + 0.5) * m_w_step;
             const float l = (x - ((int)m_size / 2)) * m_cell_size;
             const float m = (y - ((int)m_size / 2)) * m_cell_size;
-            // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-            // accurately for small values of l and m
             const float n = compute_n(l, -m, m_shift.data());
             phases[x] = -2 * M_PI * n * w_offset;
           }

@@ -85,7 +85,7 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
     l_index[i] = l_offset[i] + shift[0];
     m_index[i] = m_offset[i] - shift[1];
     n_index[i] = compute_n(l_index[i], m_index[i]);
-    n_offset[i] = n_index[i] + shift[2];
+    n_offset[i] = n_index[i];
   }
 
 // Iterate all subgrids
@@ -265,13 +265,9 @@ void kernel_gridder(const int nr_subgrids, const int grid_size,
           const float v = uvw[time_idx].v;
           const float w = uvw[time_idx].w;
 
-          // Compute phase shift.
-          // Sign flip u because subgrid l runs in positive direction.
-          const float phase_shift = -u * shift[0] + v * shift[1] + w * shift[2];
-
           // Compute phase index and apply phase shift.
           const float phase_index =
-              u * l_index[i] + v * m_index[i] + w * n_index[i] - phase_shift;
+              u * l_index[i] + v * m_index[i] + w * n_index[i];
 
           // Compute phase offset
           const float phase_offset = u_offset * l_offset[i] +

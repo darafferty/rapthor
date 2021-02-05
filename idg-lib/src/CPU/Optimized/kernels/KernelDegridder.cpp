@@ -40,7 +40,7 @@ void kernel_degridder(const int nr_subgrids, const int grid_size,
     l_index[i] = l_offset[i] + shift[0];
     m_index[i] = m_offset[i] - shift[1];
     n_index[i] = compute_n(l_index[i], m_index[i]);
-    n_offset[i] = n_index[i] + shift[2];
+    n_offset[i] = n_index[i];
   }
 
 // Iterate all subgrids
