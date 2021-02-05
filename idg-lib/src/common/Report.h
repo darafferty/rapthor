@@ -35,6 +35,7 @@ const std::string name_fft_shift("fft-shift");
 const std::string name_fft_scale("fft-scale");
 const std::string name_scaler("scaler");
 const std::string name_average_beam("average-beam");
+const std::string name_wtiling("wtiling");
 const std::string name_host("host");
 const std::string name_device("device");
 }  // namespace auxiliary
@@ -212,6 +213,13 @@ class Report {
     update(state_average_beam, startState, endState);
   }
 
+  void update_wtiling(powersensor::State& startState,
+                      powersensor::State& endState) {
+    wtiling_enabled = true;
+    wtiling_updated = true;
+    update(state_wtiling, startState, endState);
+  }
+
   void update_input(powersensor::State& startState,
                     powersensor::State& endState) {
     input_enabled = true;
@@ -368,6 +376,13 @@ class Report {
              0, 0, 0, ignore_short);
       average_beam_updated = false;
     }
+    if ((total && wtiling_enabled) || wtiling_updated) {
+      report(prefix + auxiliary::name_wtiling,
+             total ? state_wtiling.total_seconds
+                   : state_wtiling.current_seconds,
+             0, 0, 0, ignore_short);
+      wtiling_updated = false;
+    }
     if ((total && host_enabled) || host_updated) {
       report(prefix + auxiliary::name_host,
              total ? state_host.total_seconds : state_host.current_seconds,
@@ -430,6 +445,7 @@ class Report {
     input_enabled = false;
     output_enabled = false;
     average_beam_enabled = false;
+    wtiling_enabled = false;
 
     host_updated = false;
     gridder_updated = false;
@@ -447,6 +463,7 @@ class Report {
     input_updated = false;
     output_updated = false;
     average_beam_updated = false;
+    wtiling_updated = false;
 
     state_host = state_zero;
     state_gridder = state_zero;
@@ -461,6 +478,8 @@ class Report {
     state_fft_scale = state_zero;
     state_input = state_zero;
     state_output = state_zero;
+    state_average_beam = state_zero;
+    state_wtiling = state_zero;
     states_device.clear();
 
     counters.total_nr_subgrids = 0;
@@ -485,6 +504,7 @@ class Report {
   bool fft_shift_enabled;
   bool fft_scale_enabled;
   bool average_beam_enabled;
+  bool wtiling_enabled;
   bool input_enabled;
   bool output_enabled;
 
@@ -502,6 +522,7 @@ class Report {
   bool fft_shift_updated;
   bool fft_scale_updated;
   bool average_beam_updated;
+  bool wtiling_updated;
   bool input_updated;
   bool output_updated;
 
@@ -522,6 +543,7 @@ class Report {
   State state_fft_shift;
   State state_fft_scale;
   State state_average_beam;
+  State state_wtiling;
   State state_input;
   State state_output;
   std::vector<State> states_device;
