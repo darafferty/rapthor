@@ -141,43 +141,6 @@ void UnifiedOptimized::run_gridding(
   startStates[device_id] = device.measure();
   startStates[nr_devices] = hostPowerSensor->read();
 
-  // Locks to make the GPU wait
-  std::vector<std::mutex> locks_gpu(jobs.size());
-  for (auto& lock : locks_gpu) {
-    lock.lock();
-  }
-
-  // Locks to make the CPU wait
-  std::vector<std::mutex> locks_cpu(jobs.size());
-  for (auto& lock : locks_cpu) {
-    lock.lock();
-  }
-
-  // Start asynchronous computation on the host
-  std::thread host_thread = std::thread([&]() {
-    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-      // Get parameters for current job
-      auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-      unsigned local_id = job_id % 2;
-
-      // Wait for FFT to finish
-      locks_cpu[job_id].lock();
-
-      // Run wtiling
-      cu::Marker marker_wtiling("run_wtiling", cu::Marker::blue);
-      marker_wtiling.start();
-      run_subgrids_to_wtiles(local_id, current_nr_subgrids, subgrid_size, image_size, w_step, shift, wtile_flush_set);
-      marker_wtiling.end();
-
-      // Report performance
-      device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
-                            jobs[job_id].current_nr_subgrids);
-
-      // Signal that the subgrids are added
-      locks_gpu[job_id].unlock();
-    }
-  });
-
   // Iterate all jobs
   for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
     // Id for double-buffering
@@ -244,11 +207,6 @@ void UnifiedOptimized::run_gridding(
       htodstream.record(*inputCopied[job_id_next]);
     }
 
-    // Wait for output buffer to be free
-    if (job_id > 1) {
-      locks_gpu[job_id - 2].lock();
-    }
-
     // Initialize subgrids to zero
     d_subgrids.zero(executestream);
 
@@ -264,19 +222,18 @@ void UnifiedOptimized::run_gridding(
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
                               FourierDomainToImageDomain);
+
+    // Run W-tiling
+    run_subgrids_to_wtiles(local_id, current_nr_subgrids, subgrid_size, image_size, w_step, shift, wtile_flush_set);
+
+    // Report performance
+    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+                          jobs[job_id].current_nr_subgrids);
+
+    // Wait for GPU to finish
     executestream.record(*gpuFinished[job_id]);
-
-    // Wait for FFT to finish
     gpuFinished[job_id]->synchronize();
-
-    // Signal that the subgrids are computed
-    locks_cpu[job_id].unlock();
   }  // end for bl
-
-  // Wait for host thread
-  if (host_thread.joinable()) {
-    host_thread.join();
-  }
 
   // End performance measurement
   endStates[device_id] = device.measure();
