@@ -106,6 +106,10 @@ class Operation(object):
         # task gets the entire node to itself
         self.cpus_per_task = self.parset['cluster_specific']['cpus_per_task']
 
+        # Get the amount of memory in GB per node (SLRUM only). This is passed to
+        # sbatch's --mem option (see https://slurm.schedmd.com/sbatch.html)
+        self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_task_gb']
+
         # Set the temp directory local to each node
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
 
@@ -183,7 +187,7 @@ class Operation(object):
         if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
             args.extend(['--defaultCores', str(self.cpus_per_task)])
-            args.extend(['--defaultMemory', '1M'])
+            args.extend(['--defaultMemory', '{}G'.format(self.mem_per_node_gb)])
         args.extend(['--maxLocalJobs', str(self.max_nodes)])
         args.extend(['--jobStore', self.jobstore])
         if os.path.exists(self.jobstore):
