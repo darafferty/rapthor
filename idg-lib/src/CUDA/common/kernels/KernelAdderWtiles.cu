@@ -28,33 +28,45 @@ __global__ void kernel_copy_tiles(
     // Compute the number of threads working on one polarizaton of a tile
     unsigned int nr_threads = blockDim.x;
 
-    // Compute padding
+    // Compute remaining parameters
     int padding = dst_tile_size - src_tile_size;
+    int copy_tile_size = min(src_tile_size, dst_tile_size);
 
-    // Reset dst_tile to zero
-    for (unsigned int i = tid; i < (dst_tile_size * dst_tile_size); i += nr_threads)
+    // Reset dst_tile to zero if src_tile is smaller
+    if (padding > 0)
     {
-        unsigned int y = i / dst_tile_size;
-        unsigned int x = i % dst_tile_size;
-
-        if (y < dst_tile_size)
+        for (unsigned int i = tid; i < (dst_tile_size * dst_tile_size); i += nr_threads)
         {
-            size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, y, x);
-            dst_tiles[dst_idx] = make_float2(0, 0);
+            unsigned int y = i / dst_tile_size;
+            unsigned int x = i % dst_tile_size;
+
+            if (y < dst_tile_size)
+            {
+                size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, y, x);
+                dst_tiles[dst_idx] = make_float2(0, 0);
+            }
         }
     }
 
     __syncthreads();
 
     // Copy src_tile to dst_tile and reset src_tile to zero
-    for (unsigned int i = tid; i < (src_tile_size * src_tile_size); i += nr_threads)
+    for (unsigned int i = tid; i < (copy_tile_size * copy_tile_size); i += nr_threads)
     {
-        unsigned int src_y = i / src_tile_size;
-        unsigned int src_x = i % src_tile_size;
-        unsigned int dst_y = src_y + (padding / 2);
-        unsigned int dst_x = src_x + (padding / 2);
+        unsigned int src_y = i / copy_tile_size;
+        unsigned int src_x = i % copy_tile_size;
+        unsigned int dst_y = src_y;
+        unsigned int dst_x = src_x;
 
-        if (src_y < src_tile_size)
+        if (padding > 0) {
+            dst_y += padding / 2;
+            dst_x += padding / 2;
+        } else if (padding < 0) {
+            src_y -= padding / 2;
+            src_x -= padding / 2;
+        }
+
+        if (src_y < src_tile_size && dst_y < dst_tile_size)
         {
             size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, dst_y, dst_x);
             size_t src_idx = index_grid(src_tile_size, src_tile_index, pol, src_y, src_x);
