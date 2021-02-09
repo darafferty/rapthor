@@ -1,0 +1,17 @@
+msin.datacolumn=MODEL_DATA
+msout=
+steps=[idgcal]
+
+idgcal.type=python
+idgcal.python.module=idg.idgcaldpstep
+idgcal.python.class=IDGCalDPStep
+idgcal.modelimage=wsclean-model.fits
+idgcal.maxiter=200
+idgcal.nrcorrelations=4
+idgcal.subgridsize=32
+idgcal.tapersupport=7
+idgcal.wtermsupport=5
+idgcal.atermsupport=5
+idgcal.solverupdategain=0.5
+idgcal.tolerancepinv=1e-9
+idgcal.h5parm=idgcal_out.h5parm

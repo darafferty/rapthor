@@ -15,5 +15,7 @@ module load cuda101/toolkit
 
 # Load modulefiles from the "schaap-stack"
 module load casacore/3.3.0-gcc-8.3.0
-module load everybeam/0.1.1-gcc-8.3.0
-module load aoflagger/3.0.0-gcc-8.3.0
+module load everybeam/LATEST-gcc-8.3.0
+module load aoflagger/LATEST-gcc-8.3.0
+module load dp3/LATEST-gcc-8.3.0
+

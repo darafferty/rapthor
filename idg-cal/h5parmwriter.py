@@ -118,17 +118,17 @@ class H5ParmWriter:
         assert names.ndim == 1
         assert names.dtype.type == np.str_
 
+        # Convert names to bytes
+        names = self.__convert_np_str_to_bytes(names)
         # Set proper dtype for names string (replace U by S):
-        data_type_h5 = re.sub(r"[a-zA-Z]", "S", names.dtype.str)
         antenna_type = np.dtype(
             {
                 "names": ["name", "dir"],
-                "formats": [data_type_h5, (directions.dtype, (2,))],
+                "formats": [names.dtype, (directions.dtype, (2,))],
             }
         )
-
         arr = np.ndarray(len(names), antenna_type)
-        arr["name"] = names.astype(data_type_h5)
+        arr["name"] = names
         arr["dir"] = directions
 
         self.h5file[self.solution_set].create_dataset(
@@ -313,21 +313,15 @@ class H5ParmWriter:
             )
 
         if meta_data is not None:
-            data_type = meta_data.dtype
-            # Convert to S string if needed
-            data_type_h5 = (
-                re.sub(r"[a-zA-Z]", "S", data_type.str)
-                if data_type.type == np.str_
-                else data_type
-            )
+            if meta_data.dtype.type == np.str_:
+                meta_data = self.__convert_np_str_to_bytes(meta_data)
+
             if hdf_location + "/" + axis not in self.h5file:
                 # Create axis meta data set
                 self.h5file[hdf_location].create_dataset(
-                    axis, meta_data.shape, data_type_h5
+                    axis, meta_data.shape, meta_data.dtype
                 )
-                self.h5file[hdf_location + "/" + axis][:] = meta_data.astype(
-                    data_type_h5
-                )
+                self.h5file[hdf_location + "/" + axis][:] = meta_data
             elif overwrite is True:
                 axis_dataset = self.h5file[hdf_location + "/" + axis]
                 if axis_dataset.shape == meta_data.shape:
@@ -351,9 +345,6 @@ class H5ParmWriter:
             )
 
     def close_file(self):
-        """
-        Close h5file
-        """
         self.h5file.close()
 
     def __write_version_stamp(self, hdf_location):
@@ -392,12 +383,34 @@ class H5ParmWriter:
             else:
                 if isinstance(value, str):
                     # Byte encoded string
-                    self.h5file[hdf_location].attrs[key] = np.asarray(
-                        value, dtype=f"<S{len(value)}"
-                    )
+                    value = np.asarray(value, dtype=f"<S{len(value) + 1}")
                 elif isinstance(value, np.ndarray) and value.dtype.type == np.str_:
-                    # Convert to S string
-                    data_type_h5 = re.sub(r"[a-zA-Z]", "S", value.dtype.str)
-                    self.h5file[hdf_location].attrs[key] = value.astype(data_type_h5)
-                else:
-                    self.h5file[hdf_location].attrs[key] = value
+                    # Convert to bytes string
+                    value = self.__convert_np_str_to_bytes(value)
+                self.h5file[hdf_location].attrs[key] = value
+
+    @staticmethod
+    def __convert_np_str_to_bytes(array):
+        """
+        Convert a numpy array of strings to a (H5) writable/readable
+        bytes array. In order to do so, the length is extended with one additional
+        position (to get the correct result in the CPP H5 reader)
+
+        Parameters
+        ----------
+        array : np.ndarray
+            Input array
+
+        Returns
+        -------
+        np.ndarray
+            Numpy array with converted dtype
+        """
+
+        assert array.dtype.type == np.str_
+
+        # Capture the length of the string, and extend with 1 position
+        str_length = int(re.match(r"<\w(\d*)", array.dtype.str).group(1)) + 1
+        # dtype is S string, rather than U (unicode) string
+        dtype_h5 = f"<S{str_length}"
+        return array.astype(dtype=dtype_h5)
