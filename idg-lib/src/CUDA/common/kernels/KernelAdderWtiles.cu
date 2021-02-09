@@ -8,11 +8,11 @@
 
 extern "C" {
 __global__ void kernel_copy_tiles(
-    const unsigned int             padded_tile_size,
-    const unsigned int             w_padded_tile_size,
+    const unsigned int             src_tile_size,
+    const unsigned int             dst_tile_size,
     const int*        __restrict__ tile_ids,
-          float2*     __restrict__ padded_tiles,
-          float2*     __restrict__ w_padded_tiles)
+          float2*     __restrict__ src_tiles,
+          float2*     __restrict__ dst_tiles)
 {
     // Map blockIdx.x to polarizations
     assert(gridDim.x == NR_POLARIZATIONS);
@@ -28,42 +28,41 @@ __global__ void kernel_copy_tiles(
     // Compute the number of threads working on one polarizaton of a tile
     unsigned int nr_threads = blockDim.x;
 
-    // Compute additional parameters
-    int w_padding = w_padded_tile_size - padded_tile_size;
-    int w_padding2 = w_padding / 2;
+    // Compute padding
+    int padding = dst_tile_size - src_tile_size;
 
-    // Reset w_padded_tile to zero
-    for (unsigned int i = tid; i < (w_padded_tile_size * w_padded_tile_size); i += nr_threads)
+    // Reset dst_tile to zero
+    for (unsigned int i = tid; i < (dst_tile_size * dst_tile_size); i += nr_threads)
     {
-        unsigned int y = i / w_padded_tile_size;
-        unsigned int x = i % w_padded_tile_size;
+        unsigned int y = i / dst_tile_size;
+        unsigned int x = i % dst_tile_size;
 
-        if (y < w_padded_tile_size)
+        if (y < dst_tile_size)
         {
-            size_t dst_idx = index_grid(w_padded_tile_size, dst_tile_index, pol, y, x);
-            w_padded_tiles[dst_idx] = make_float2(0, 0);
+            size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, y, x);
+            dst_tiles[dst_idx] = make_float2(0, 0);
         }
     }
 
     __syncthreads();
 
-    // Copy padded_tile to w_padded_tile and reset padded_tile to zero
-    for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
+    // Copy src_tile to dst_tile and reset src_tile to zero
+    for (unsigned int i = tid; i < (src_tile_size * src_tile_size); i += nr_threads)
     {
-        unsigned int y = i / padded_tile_size;
-        unsigned int x = i % padded_tile_size;
-        unsigned int y2 = y + w_padding2;
-        unsigned int x2 = x + w_padding2;
+        unsigned int src_y = i / src_tile_size;
+        unsigned int src_x = i % src_tile_size;
+        unsigned int dst_y = src_y + (padding / 2);
+        unsigned int dst_x = src_x + (padding / 2);
 
-        if (y < padded_tile_size)
+        if (src_y < src_tile_size)
         {
-            size_t src_idx = index_grid(padded_tile_size, src_tile_index, pol, y, x);
-            size_t dst_idx = index_grid(w_padded_tile_size, dst_tile_index, pol, y2, x2);
-            w_padded_tiles[dst_idx] = padded_tiles[src_idx];
-            padded_tiles[src_idx] = make_float2(0, 0);
+            size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, dst_y, dst_x);
+            size_t src_idx = index_grid(src_tile_size, src_tile_index, pol, src_y, src_x);
+            dst_tiles[dst_idx] = src_tiles[src_idx];
+            src_tiles[src_idx] = make_float2(0, 0);
         }
     }
-} // end kernel_copy_tile
+} // end kernel_copy_tiles
 
 __global__ void kernel_apply_phasor(
     const float                    image_size,
