@@ -108,7 +108,7 @@ class Operation(object):
 
         # Get the amount of memory in GB per node (SLRUM only). This is passed to
         # sbatch's --mem option (see https://slurm.schedmd.com/sbatch.html)
-        self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_task_gb']
+        self.mem_per_node_gb = self.parset['cluster_specific']['mem_per_node_gb']
 
         # Set the temp directory local to each node
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
