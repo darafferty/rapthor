@@ -345,16 +345,6 @@ void run() {
     proxy.get_grid();
   }  // end for i (nr_cycles)
 
-  // Compute maximum runtime
-  double max_runtime_gridding =
-      *max_element(runtimes_gridding.begin(), runtimes_gridding.end());
-  double max_runtime_degridding =
-      *max_element(runtimes_degridding.begin(), runtimes_degridding.end());
-  double max_runtime_fft =
-      *max_element(runtimes_fft.begin(), runtimes_fft.end());
-  double max_runtime_imaging =
-      *max_element(runtimes_imaging.begin(), runtimes_imaging.end());
-
   // Compute total runtime
   double runtime_gridding =
       accumulate(runtimes_gridding.begin(), runtimes_gridding.end(), 0.0);
