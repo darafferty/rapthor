@@ -85,7 +85,7 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
                       unsigned int nr_timesteps, unsigned int nr_timeslots,
                       unsigned int total_nr_timesteps, float image_size,
                       unsigned int grid_size, unsigned int subgrid_size,
-                      unsigned int kernel_size) {
+                      unsigned int kernel_size, float w_step) {
   const int fw1 = 30;
   const int fw2 = 10;
   ostream &os = clog;
@@ -119,6 +119,9 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
 
   os << setw(fw1) << left << "Kernel size"
      << "== " << setw(fw2) << right << kernel_size << endl;
+
+  os << setw(fw1) << left << "W step size"
+     << "== " << setw(fw2) << right << w_step << endl;
 
   os << "-----------" << endl;
 }
@@ -334,7 +337,7 @@ void run_master() {
   // Print parameters
   print_parameters(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
                    total_nr_timesteps, image_size, grid_size, subgrid_size,
-                   kernel_size);
+                   kernel_size, w_step);
 
   // Get the number of processes
   int world_size;

@@ -101,7 +101,8 @@ void print_parameters(unsigned int total_nr_stations,
                       unsigned int nr_channels, unsigned int nr_timesteps,
                       unsigned int nr_timeslots, float image_size,
                       unsigned int grid_size, unsigned int subgrid_size,
-                      unsigned int kernel_size, float grid_padding) {
+                      unsigned int kernel_size, float w_step,
+                      float grid_padding) {
   const int fw1 = 30;
   const int fw2 = 10;
   ostream &os = clog;
@@ -141,6 +142,9 @@ void print_parameters(unsigned int total_nr_stations,
 
   os << setw(fw1) << left << "Kernel size"
      << "== " << setw(fw2) << right << kernel_size << endl;
+
+  os << setw(fw1) << left << "W step size"
+     << "== " << setw(fw2) << right << w_step << endl;
 
   os << setw(fw1) << left << "Grid padding"
      << "== " << setw(fw2) << right << grid_padding << endl;
@@ -193,7 +197,7 @@ void run() {
   // Print parameters
   print_parameters(total_nr_stations, total_nr_channels, total_nr_timesteps,
                    nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-                   image_size, grid_size, subgrid_size, kernel_size,
+                   image_size, grid_size, subgrid_size, kernel_size, w_step,
                    grid_padding);
 
   // Warn for unrealistic number of timesteps
