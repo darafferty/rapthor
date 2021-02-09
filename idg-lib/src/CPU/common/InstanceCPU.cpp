@@ -419,15 +419,9 @@ void InstanceCPU::run_splitter_wstack(int nr_subgrids, int grid_size,
 void InstanceCPU::run_adder_subgrids_to_wtiles(int nr_subgrids, int grid_size,
                                                int subgrid_size, void *metadata,
                                                void *subgrid) {
-  powersensor::State states[2];
-  states[0] = powerSensor->read();
   (sig_adder_subgrids_to_wtiles(void *) * function_adder_subgrids_to_wtiles)(
       nr_subgrids, grid_size, subgrid_size, kWTileSize, metadata, subgrid,
       m_wtiles_buffer.data());
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
-  }
 }
 
 void InstanceCPU::run_splitter_subgrids_from_wtiles(int nr_subgrids,
@@ -435,16 +429,10 @@ void InstanceCPU::run_splitter_subgrids_from_wtiles(int nr_subgrids,
                                                     int subgrid_size,
                                                     void *metadata,
                                                     void *subgrid) {
-  powersensor::State states[2];
-  states[0] = powerSensor->read();
   (sig_splitter_subgrids_from_wtiles(void *) *
    function_splitter_subgrids_from_wtiles)(nr_subgrids, grid_size, subgrid_size,
                                            kWTileSize, metadata, subgrid,
                                            m_wtiles_buffer.data());
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
-  }
 }
 
 void InstanceCPU::run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
@@ -453,17 +441,11 @@ void InstanceCPU::run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
                                            int *tile_ids,
                                            idg::Coordinate *tile_coordinates,
                                            std::complex<float> *grid) {
-  powersensor::State states[2];
-  states[0] = powerSensor->read();
   (sig_adder_wtiles_to_grid(void *) * function_adder_wtiles_to_grid)(
       grid_size, subgrid_size, kWTileSize, image_size, w_step, shift, nr_tiles,
       tile_ids, tile_coordinates,
       reinterpret_cast<idg::float2 *>(m_wtiles_buffer.data()),
       reinterpret_cast<idg::float2 *>(grid));
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
-  }
 }
 
 void InstanceCPU::run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
@@ -472,17 +454,11 @@ void InstanceCPU::run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                                 int nr_tiles, int *tile_ids,
                                                 Coordinate *tile_coordinates,
                                                 std::complex<float> *grid) {
-  powersensor::State states[2];
-  states[0] = powerSensor->read();
   (sig_splitter_wtiles_from_grid(void *) * function_splitter_wtiles_from_grid)(
       grid_size, subgrid_size, kWTileSize, image_size, w_step, shift, nr_tiles,
       tile_ids, tile_coordinates,
       reinterpret_cast<float2 *>(m_wtiles_buffer.data()),
       reinterpret_cast<float2 *>(grid));
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
-  }
 }
 
 void InstanceCPU::run_adder_wtiles(
@@ -490,6 +466,9 @@ void InstanceCPU::run_adder_wtiles(
     float image_size, float w_step, const float *shift, int subgrid_offset,
     WTileUpdateSet &wtile_flush_set, void *metadata, void *subgrid,
     std::complex<float> *grid) {
+  powersensor::State states[2];
+  states[0] = powerSensor->read();
+
   for (int subgrid_index = 0; subgrid_index < (int)nr_subgrids;) {
     // Is a flush needed right now?
     if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index ==
@@ -529,6 +508,11 @@ void InstanceCPU::run_adder_wtiles(
     // Increment the subgrid index by the actual number of processed subgrids
     subgrid_index += nr_subgrids_to_process;
   }
+
+  states[1] = powerSensor->read();
+  if (report) {
+    report->update_adder(states[0], states[1]);
+  }
 }
 
 void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
@@ -538,6 +522,9 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
                                       WTileUpdateSet &wtile_initialize_set,
                                       void *metadata, void *subgrid,
                                       std::complex<float> *grid) {
+  powersensor::State states[2];
+  states[0] = powerSensor->read();
+
   for (int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Check whether initialize is needed right now
     if (!wtile_initialize_set.empty() &&
@@ -581,6 +568,11 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
     // Increment the subgrid index by the actual number of processed subgrids
     subgrid_index += nr_subgrids_to_process;
   }  // end for subgrid_index
+
+  states[1] = powerSensor->read();
+  if (report) {
+    report->update_splitter(states[0], states[1]);
+  }
 }  // end run_splitter_wtiles
 
 void InstanceCPU::init_wtiles(int subgrid_size) {

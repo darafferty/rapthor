@@ -101,7 +101,8 @@ void print_parameters(unsigned int total_nr_stations,
                       unsigned int nr_channels, unsigned int nr_timesteps,
                       unsigned int nr_timeslots, float image_size,
                       unsigned int grid_size, unsigned int subgrid_size,
-                      unsigned int kernel_size, float grid_padding) {
+                      unsigned int kernel_size, float w_step,
+                      float grid_padding) {
   const int fw1 = 30;
   const int fw2 = 10;
   ostream &os = clog;
@@ -141,6 +142,9 @@ void print_parameters(unsigned int total_nr_stations,
 
   os << setw(fw1) << left << "Kernel size"
      << "== " << setw(fw2) << right << kernel_size << endl;
+
+  os << setw(fw1) << left << "W step size"
+     << "== " << setw(fw2) << right << w_step << endl;
 
   os << setw(fw1) << left << "Grid padding"
      << "== " << setw(fw2) << right << grid_padding << endl;
@@ -193,7 +197,7 @@ void run() {
   // Print parameters
   print_parameters(total_nr_stations, total_nr_channels, total_nr_timesteps,
                    nr_stations, nr_channels, nr_timesteps, nr_timeslots,
-                   image_size, grid_size, subgrid_size, kernel_size,
+                   image_size, grid_size, subgrid_size, kernel_size, w_step,
                    grid_padding);
 
   // Warn for unrealistic number of timesteps
@@ -234,7 +238,8 @@ void run() {
   vector<double> runtimes_degridding;
   vector<double> runtimes_fft;
   vector<double> runtimes_imaging;
-  unsigned long nr_visibilities = 0;
+  unsigned long nr_visibilities =
+      nr_cycles * nr_baselines * total_nr_timesteps * nr_channels;
 
   // Enable/disable routines
   bool disable_gridding = getenv("DISABLE_GRIDDING");
@@ -250,6 +255,7 @@ void run() {
   options.simulate_spectral_line = simulate_spectral_line;
   options.max_nr_timesteps_per_subgrid = 128;
   options.max_nr_channels_per_subgrid = 8;
+  options.w_step = w_step;
   omp_set_nested(true);
 
   // Iterate all cycles
@@ -343,16 +349,6 @@ void run() {
     proxy.get_grid();
   }  // end for i (nr_cycles)
 
-  // Compute maximum runtime
-  double max_runtime_gridding =
-      *max_element(runtimes_gridding.begin(), runtimes_gridding.end());
-  double max_runtime_degridding =
-      *max_element(runtimes_degridding.begin(), runtimes_degridding.end());
-  double max_runtime_fft =
-      *max_element(runtimes_fft.begin(), runtimes_fft.end());
-  double max_runtime_imaging =
-      *max_element(runtimes_imaging.begin(), runtimes_imaging.end());
-
   // Compute total runtime
   double runtime_gridding =
       accumulate(runtimes_gridding.begin(), runtimes_gridding.end(), 0.0);
@@ -363,29 +359,18 @@ void run() {
   double runtime_imaging =
       accumulate(runtimes_imaging.begin(), runtimes_imaging.end(), 0.0);
 
-  // Ignore slowest run
-  if (nr_cycles > 1) {
-    runtime_gridding -= max_runtime_gridding;
-    runtime_degridding -= max_runtime_degridding;
-    runtime_fft -= max_runtime_fft;
-    runtime_imaging -= max_runtime_imaging;
-    nr_cycles -= 1;
-  }
-
-  // Compute runtime for one cycle
-  runtime_gridding /= nr_cycles;
-  runtime_degridding /= nr_cycles;
-  runtime_imaging /= nr_cycles;
-  runtime_imaging /= nr_cycles;
+  std::cout << std::endl;
 
   // Report runtime
-  idg::report("gridding", runtime_gridding);
-  idg::report("degridding", runtime_degridding);
-  idg::report("fft", runtime_fft);
+  if (!disable_gridding) idg::report("gridding", runtime_gridding);
+  if (!disable_degridding) idg::report("degridding", runtime_degridding);
+  if (!disable_fft) idg::report("fft", runtime_fft);
   idg::report("imaging", runtime_imaging);
 
   // Report throughput
-  idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
-  idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
+  if (!disable_gridding)
+    idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
+  if (!disable_degridding)
+    idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
   idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
 }

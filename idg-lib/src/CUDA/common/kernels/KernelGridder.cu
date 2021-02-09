@@ -207,7 +207,7 @@ __device__ void
                 int k = v / 2;
                 int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
                 int idx_chan = channel_offset + (k % current_nr_channels);
-                int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                long idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
                 float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
                 visibilities_[k][j] = vis_ptr[j];
             }
