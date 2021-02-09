@@ -657,7 +657,8 @@ void UnifiedOptimized::run_wtiles_to_grid(
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Context& context = device.get_context();
-  cu::Stream& stream = device.get_execute_stream();
+  cu::Stream& executestream = device.get_execute_stream();
+  cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load buffers
   cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
@@ -707,11 +708,11 @@ void UnifiedOptimized::run_wtiles_to_grid(
   {
     padded_tile_ids[i] = i;
   }
-  stream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(), sizeof_tile_ids);
+  executestream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(), sizeof_tile_ids);
 
   // Copy shift to device
   cu::DeviceMemory d_shift(context, shift.bytes());
-  stream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
+  executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
 
   // Initialize FFT for w_padded_tiles
   unsigned stride = 1;
@@ -719,7 +720,7 @@ void UnifiedOptimized::run_wtiles_to_grid(
   unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
   cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size,
                     stride, dist, batch);
-  fft.setStream(stream);
+  fft.setStream(executestream);
   cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
 
   // Iterate all tiles
@@ -731,9 +732,9 @@ void UnifiedOptimized::run_wtiles_to_grid(
 
     // Copy tile metadata to GPU
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
-    stream.memcpyHtoDAsync(d_tile_ids, &tile_ids[tile_offset], sizeof_tile_ids);
+    executestream.memcpyHtoDAsync(d_tile_ids, &tile_ids[tile_offset], sizeof_tile_ids);
     sizeof_tile_coordinates = current_nr_tiles * sizeof(idg::Coordinate);
-    stream.memcpyHtoDAsync(d_tile_coordinates, &tile_coordinates[tile_offset], sizeof_tile_coordinates);
+    executestream.memcpyHtoDAsync(d_tile_coordinates, &tile_coordinates[tile_offset], sizeof_tile_coordinates);
 
     // Call kernel_copy_tiles
     device.launch_adder_copy_tiles(
@@ -765,16 +766,19 @@ void UnifiedOptimized::run_wtiles_to_grid(
         d_tile_ids, d_tile_coordinates, d_tiles, u_grid);
 
       // Wait for GPU to finish
-      stream.synchronize();
+      executestream.synchronize();
     } else {
       // Copy tile for tile to host
+      cu::Event event(context);
+      executestream.record(event);
+      dtohstream.waitEvent(event);
       for (unsigned tile_index = tile_offset; tile_index < current_nr_tiles; tile_index++) {
         CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_tiles);
         size_t sizeof_padded_tile = padded_tile_size * padded_tile_size * NR_CORRELATIONS * sizeof(idg::float2);
         d_tile_ptr += tile_ids[tile_index] * sizeof_padded_tile;
         char* h_tile_ptr = static_cast<char*>(h_padded_tiles);
         h_tile_ptr += tile_index * sizeof_padded_tile;
-        stream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr, sizeof_padded_tile);
+        dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr, sizeof_padded_tile);
       }
     } // end if m_use_unified_memory
   } // end for tile_offset
@@ -782,10 +786,10 @@ void UnifiedOptimized::run_wtiles_to_grid(
   // Add wtiles to grid on host
   if (!m_use_unified_memory)
   {
-    // Wait for GPU to finish
-    stream.synchronize();
+    // Wait for tiles to be copied
+    dtohstream.synchronize();
 
-    // Add tile to grid
+    // Add tiles to grid
     #pragma omp parallel
     {
       for (unsigned tile_index = 0; tile_index < nr_tiles; tile_index++) {
