@@ -132,6 +132,13 @@ class Sector(object):
                 padding_pix *= minsize / max(self.imsize)  # scale padding to new imsize
                 self.poly_padded = self.poly.buffer(padding_pix)
                 self.imsize = [minsize, minsize]
+
+            # Lastly, make sure the image size is an even number (odd sizes cause the
+            # peak to lie not necessarily in the img center)
+            if self.imsize[0] % 2:
+                self.imsize[0] += 1
+                self.imsize[1] += 1
+
         self.wsclean_imsize = "'{0} {1}'".format(self.imsize[0], self.imsize[1])
         self.log.debug('Image size is {0} x {1} pixels'.format(
                        self.imsize[0], self.imsize[1]))
