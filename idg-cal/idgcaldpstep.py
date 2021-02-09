@@ -625,18 +625,6 @@ class IDGCalDPStep(dppp.DPStep):
 
 def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
     """
-
-
-    Returns
-    -------
-    np.ndarray
-        Numpy array of shape (nr_phase_updates, nr_coeffs, subgrid_size, subgrid_size, nr_polarizations)
-        where nr_coeffs = len(x_a) + len(x_p)
-    """
-
-
-def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
-    """
     Compute the partial derivatives of g = B_a*x_a * exp(j*B_p*x_p):
     - \partial g / \partial x_a = B_a * exp(j*B_p*x_p)
     - \partial g / \partial x_p = B_a * x_a * j * B_p * exp(j*B_p*x_p)
@@ -762,7 +750,8 @@ def expand_basis_functions(polynomial, subgrid_size, image_size):
         (-1, subgrid_size, subgrid_size, 1)
     )
 
-    # Kronecker product --> in order to account for polarizations (?)
+    # Kronecker product to expand scalar to length 4 vectors
+    # representing 2x2 identity (Jones) matrices accounting for polarization
     basis_functions_orthonormal = np.kron(
         basis_functions_orthonormal, np.array([1.0, 0.0, 0.0, 1.0])
     )

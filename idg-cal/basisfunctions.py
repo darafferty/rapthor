@@ -12,7 +12,8 @@ class LagrangePolynomial:
 
     def __init__(self, order=None, nr_coeffs=None):
         """
-        Initialize LagrangePolynomial, by either specifying
+        Initialize LagrangePolynomial, by either specifying the order
+        or the number of expansion coefficients. Do not specify both!
 
         Parameters
         ----------
@@ -143,8 +144,8 @@ class LagrangePolynomial:
     @staticmethod
     def get_indices_right_diagonal(order, diag_nr):
         """
-        Get indices in corresponding to right diagonal number in Pascal's triangle.
-        Take the triangle for a second order polynomial
+        Get indices in right diagonal in Pascal's triangle, given diagonal index.
+        Consider the triangle for a second order polynomial as an example:
 
         ::
               0

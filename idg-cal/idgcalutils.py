@@ -11,6 +11,19 @@ Script containing some utility functions for the idgcaldpstep class
 
 
 def next_composite(n):
+    """
+    Find smallest integer equal to or higher than n that is a composite of prime factors 2,3 and 5.
+    This can be used to find a grid size of at least n, for which the FFT can be computed efficiently.
+
+    Parameters
+    ----------
+    n : int
+
+    Returns
+    -------
+    int
+        smallest composite of prime factors 2,3 and 5, equal to or larger than n.
+    """
     n += n & 1
     while True:
         nn = n
@@ -27,25 +40,27 @@ def next_composite(n):
 
 def idgwindow(N, W, padding, offset=0.5, l_range=None):
     """
-    TODO: Documentation goes here
+    TODO: Compute an optimal taper of size N, and support W
 
     Parameters
     ----------
-    N : [type]
-        [description]
-    W : [type]
-        [description]
-    padding : [type]
-        [description]
+    N : int
+        size of taper in pixels
+    W : int
+        support in the Fourier domain (pixels)
+    padding : float
+        padding factor used for main grid.
+        taper will be optimized for unpadded region, 
     offset : float, optional
-        [description], by default 0.5
-    l_range : [type], optional
-        [description], by default None
+        For even taper sizes N, an offset of 0.5 (the default) results in a symmetric taper.
+    l_range : np.array(dtype=float), optional
+        custom sampling of taper.
+        For default value None, the taper is sampled at N equidistant points
 
     Returns
     -------
-    [type]
-        [description]
+    np.array(shape=(N,), dtype=np.float)
+        Optimal taper
     """
 
     l_range_inner = np.linspace(-(1 / padding) / 2, (1 / padding) / 2, N * 16 + 1)
