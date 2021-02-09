@@ -600,7 +600,7 @@ def get_cluster_options(parset):
 
     # The number of processors and amount of memory per task to request from
     # SLURM can be specified with the cpus_per_task (default = 0 = all) and
-    # mem_per_node_gb options (default = 0 = all). By setting the cpus_per_task
+    # mem_per_node_gb options (default = 190). By setting the cpus_per_task
     # value to the number of processors per node, one can ensure that each task
     # gets the entire node to itself, which is the recommended way of running
     # Rapthor
@@ -611,9 +611,9 @@ def get_cluster_options(parset):
     if parset_dict['cpus_per_task'] == 0:
         parset_dict['cpus_per_task'] = multiprocessing.cpu_count()
     if 'mem_per_node_gb' in parset_dict:
-        parset_dict['mem_per_node_gb'] = parset.getfloat('cluster', 'mem_per_node_gb')
+        parset_dict['mem_per_node_gb'] = parset.getint('cluster', 'mem_per_node_gb')
     else:
-        parset_dict['mem_per_node_gb'] = 192
+        parset_dict['mem_per_node_gb'] = 190
 
     # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
