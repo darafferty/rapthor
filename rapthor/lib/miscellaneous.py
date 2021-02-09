@@ -11,6 +11,7 @@ from shapely.prepared import prep
 from astropy.io import fits as pyfits
 from PIL import Image, ImageDraw
 import multiprocessing
+from math import modf
 
 
 def read_vertices(filename):
@@ -350,12 +351,25 @@ def delete_directory(dirname):
 
 
 def ra2hhmmss(deg):
-    """Convert RA coordinate (in degrees) to HH MM SS"""
+    """
+    Convert RA coordinate (in degrees) to HH MM SS
 
-    from math import modf
-    if deg < 0:
-        deg += 360.0
-    x, hh = modf(deg/15.)
+    Parameters
+    ----------
+    deg : float
+        The RA coordinate in degrees
+
+    Returns
+    -------
+    hh : int
+        The hour (HH) part
+    mm : int
+        The minute (MM) part
+    ss : float
+        The second (SS) part
+    """
+    deg = deg % 360
+    x, hh = modf(deg/15)
     x, mm = modf(x*60)
     ss = x*60
 
@@ -363,9 +377,25 @@ def ra2hhmmss(deg):
 
 
 def dec2ddmmss(deg):
-    """Convert DEC coordinate (in degrees) to DD MM SS"""
+    """
+    Convert Dec coordinate (in degrees) to DD MM SS
 
-    from math import modf
+    Parameters
+    ----------
+    deg : float
+        The Dec coordinate in degrees
+
+    Returns
+    -------
+    dd : int
+        The degree (DD) part
+    mm : int
+        The arcminute (MM) part
+    ss : float
+        The arcsecond (SS) part
+    sign : int
+        The sign (+/-)
+    """
     sign = (-1 if deg < 0 else 1)
     x, dd = modf(abs(deg))
     x, ma = modf(x*60)
