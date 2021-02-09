@@ -699,6 +699,15 @@ void UnifiedOptimized::run_wtiles_to_grid(
   // Allocate ids buffer
   size_t sizeof_tile_ids = nr_tiles_batch * sizeof(int);
   cu::DeviceMemory d_tile_ids(context, sizeof_tile_ids);
+  cu::DeviceMemory d_padded_tile_ids(context, sizeof_tile_ids);
+
+  // Initialize d_padded_tile_ids
+  std::vector<int> padded_tile_ids(nr_tiles_batch);
+  for (unsigned int i = 0; i < nr_tiles_batch; i++)
+  {
+    padded_tile_ids[i] = i;
+  }
+  stream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(), sizeof_tile_ids);
 
   // Copy shift to device
   cu::DeviceMemory d_shift(context, shift.bytes());
@@ -729,7 +738,7 @@ void UnifiedOptimized::run_wtiles_to_grid(
     // Call kernel_copy_tile
     device.launch_adder_copy_tiles(
       current_nr_tiles, padded_tile_size, w_padded_tile_size,
-      d_tile_ids, d_tiles, d_padded_tiles);
+      d_tile_ids, d_padded_tile_ids, d_tiles, d_padded_tiles);
 
     // Launch inverse FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);

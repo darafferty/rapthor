@@ -1052,12 +1052,14 @@ void InstanceCUDA::launch_scaler(int nr_subgrids, int subgrid_size,
 void InstanceCUDA::launch_adder_copy_tiles(unsigned int nr_tiles,
                                            unsigned int src_tile_size,
                                            unsigned int dst_tile_size,
-                                           cu::DeviceMemory& d_tile_ids,
+                                           cu::DeviceMemory& d_src_tile_ids,
+                                           cu::DeviceMemory& d_dst_tile_ids,
                                            cu::DeviceMemory& d_src_tiles,
                                            cu::DeviceMemory& d_dst_tiles)
 {
   const void* parameters[] = {&src_tile_size, &dst_tile_size,
-                              d_tile_ids, d_src_tiles, d_dst_tiles};
+                              d_src_tile_ids, d_dst_tile_ids,
+                              d_src_tiles, d_dst_tiles};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_adder_wtiles[0], grid, block, 0, parameters);

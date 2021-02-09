@@ -10,7 +10,8 @@ extern "C" {
 __global__ void kernel_copy_tiles(
     const unsigned int             src_tile_size,
     const unsigned int             dst_tile_size,
-    const int*        __restrict__ tile_ids,
+    const int*        __restrict__ src_tile_ids,
+    const int*        __restrict__ dst_tile_ids,
           float2*     __restrict__ src_tiles,
           float2*     __restrict__ dst_tiles)
 {
@@ -19,8 +20,8 @@ __global__ void kernel_copy_tiles(
     unsigned int pol = blockIdx.x;
 
     // Map blockIdx.y to tile_id
-    unsigned int dst_tile_index = blockIdx.y;
-    unsigned int src_tile_index = tile_ids[blockIdx.y];
+    unsigned int src_tile_index = src_tile_ids[blockIdx.y];
+    unsigned int dst_tile_index = dst_tile_ids[blockIdx.y];
 
     // Map threadIdx.x to thread id
     unsigned int tid = threadIdx.x;
