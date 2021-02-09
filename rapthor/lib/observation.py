@@ -9,6 +9,7 @@ import numpy as np
 from astropy.time import Time
 from rapthor.lib.cluster import get_fast_solve_intervals, get_slow_solve_intervals
 from scipy.special import erf
+import copy
 
 
 class Observation(object):
@@ -42,6 +43,19 @@ class Observation(object):
         else:
             # Include starttime to avoid naming conflicts
             self.infix = '.mjd{}'.format(int(self.starttime))
+
+    def copy(self):
+        """
+        Returns a copy of the observation
+        """
+        # The logger's stream handlers are not copyable with deepcopy, so copy
+        # them by hand:
+        self.log = None
+        obs_copy = copy.deepcopy(self)
+        obs_copy.log = logging.getLogger('rapthor:{}'.format(self.name))
+        self.log = logging.getLogger('rapthor:{}'.format(self.name))
+
+        return obs_copy
 
     def scan_ms(self):
         """

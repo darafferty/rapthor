@@ -53,15 +53,15 @@ def set_strategy(field):
 
             strategy_steps[i]['do_image'] = True
             if i == 0:
-                strategy_steps[i]['auto_mask'] = 3.6
+                strategy_steps[i]['auto_mask'] = 5.0
                 strategy_steps[i]['threshisl'] = 5.0
                 strategy_steps[i]['threshpix'] = 7.5
             elif i == 1:
-                strategy_steps[i]['auto_mask'] = 3.3
+                strategy_steps[i]['auto_mask'] = 5.0
                 strategy_steps[i]['threshisl'] = 5.0
                 strategy_steps[i]['threshpix'] = 6.0
             else:
-                strategy_steps[i]['auto_mask'] = 3.0
+                strategy_steps[i]['auto_mask'] = 5.0
                 strategy_steps[i]['threshisl'] = 4.0
                 strategy_steps[i]['threshpix'] = 5.0
 
@@ -99,7 +99,7 @@ def set_strategy(field):
         strategy_steps[0]['peel_outliers'] = False
 
         strategy_steps[0]['do_image'] = True
-        strategy_steps[0]['auto_mask'] = 3.0
+        strategy_steps[0]['auto_mask'] = 5.0
         strategy_steps[0]['threshisl'] = 4.0
         strategy_steps[0]['threshpix'] = 5.0
         strategy_steps[0]['max_nmiter'] = 12

@@ -11,6 +11,7 @@ from shapely.prepared import prep
 from astropy.io import fits as pyfits
 from PIL import Image, ImageDraw
 import multiprocessing
+from math import modf
 
 
 def read_vertices(filename):
@@ -267,7 +268,7 @@ def string2list(invar):
     return str_list
 
 
-def _float_approx_equal(x, y, tol=1e-18, rel=1e-7):
+def _float_approx_equal(x, y, tol=None, rel=None):
     if tol is rel is None:
         raise TypeError('cannot specify both absolute and relative errors are None')
     tests = []
@@ -347,6 +348,60 @@ def delete_directory(dirname):
     except OSError as e:
         if not e.errno == errno.ENOENT:
             raise e
+
+
+def ra2hhmmss(deg):
+    """
+    Convert RA coordinate (in degrees) to HH MM SS
+
+    Parameters
+    ----------
+    deg : float
+        The RA coordinate in degrees
+
+    Returns
+    -------
+    hh : int
+        The hour (HH) part
+    mm : int
+        The minute (MM) part
+    ss : float
+        The second (SS) part
+    """
+    deg = deg % 360
+    x, hh = modf(deg/15)
+    x, mm = modf(x*60)
+    ss = x*60
+
+    return (int(hh), int(mm), ss)
+
+
+def dec2ddmmss(deg):
+    """
+    Convert Dec coordinate (in degrees) to DD MM SS
+
+    Parameters
+    ----------
+    deg : float
+        The Dec coordinate in degrees
+
+    Returns
+    -------
+    dd : int
+        The degree (DD) part
+    mm : int
+        The arcminute (MM) part
+    ss : float
+        The arcsecond (SS) part
+    sign : int
+        The sign (+/-)
+    """
+    sign = (-1 if deg < 0 else 1)
+    x, dd = modf(abs(deg))
+    x, ma = modf(x*60)
+    sa = x*60
+
+    return (int(dd), int(ma), sa, sign)
 
 
 def get_reference_station(soltab, max_ind=None):
