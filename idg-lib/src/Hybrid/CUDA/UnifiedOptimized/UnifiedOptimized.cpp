@@ -38,9 +38,6 @@ UnifiedOptimized::UnifiedOptimized() :
   // Increase the fraction of reserved memory
   set_fraction_reserved(0.4);
 
-  // Enable unified memory
-  enable_unified_memory();
-
   cuProfilerStart();
 }
 
