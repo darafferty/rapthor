@@ -1097,14 +1097,17 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(int nr_subgrids,
 
 void InstanceCUDA::launch_adder_wtiles_to_grid(int nr_tiles,
                                                int tile_size,
-                                               int w_padded_tile_size,
+                                               int padded_tile_size,
                                                long grid_size,
+                                               cu::DeviceMemory& d_tile_ids,
                                                cu::DeviceMemory& d_tile_coordinates,
-                                               cu::DeviceMemory& d_padded_tiles,
-                                               void* u_grid)
+                                               cu::DeviceMemory& d_tiles,
+                                               cu::UnifiedMemory& u_grid)
 {
-  const void* parameters[] = {&tile_size, &w_padded_tile_size, &grid_size,
-                              d_tile_coordinates, d_padded_tiles, &u_grid};
+  CUdeviceptr grid_ptr = u_grid;
+  const void* parameters[] = {&tile_size, &padded_tile_size, &grid_size,
+                              d_tile_ids, d_tile_coordinates,
+                              d_tiles, &grid_ptr};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_adder_wtiles[3], grid, block, 0, parameters);

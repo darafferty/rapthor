@@ -735,7 +735,7 @@ void UnifiedOptimized::run_wtiles_to_grid(
     sizeof_tile_coordinates = current_nr_tiles * sizeof(idg::Coordinate);
     stream.memcpyHtoDAsync(d_tile_coordinates, &tile_coordinates[tile_offset], sizeof_tile_coordinates);
 
-    // Call kernel_copy_tile
+    // Call kernel_copy_tiles
     device.launch_adder_copy_tiles(
       current_nr_tiles, padded_tile_size, w_padded_tile_size,
       d_tile_ids, d_padded_tile_ids, d_tiles, d_padded_tiles);
@@ -751,13 +751,18 @@ void UnifiedOptimized::run_wtiles_to_grid(
     // Launch forward FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
+    // Call kernel_copy_tiles
+    device.launch_adder_copy_tiles(
+      current_nr_tiles, w_padded_tile_size, padded_tile_size,
+      d_padded_tile_ids, d_tile_ids, d_padded_tiles, d_tiles);
+
     if (m_use_unified_memory)
     {
       // Call kernel_wtiles_to_grid
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
-      device.launch_adder_wtiles_to_grid(current_nr_tiles, m_tile_size,
-        w_padded_tile_size, grid_size, d_tile_coordinates, d_padded_tiles,
-        u_grid);
+      device.launch_adder_wtiles_to_grid(
+        current_nr_tiles, tile_size, padded_tile_size, grid_size,
+        d_tile_ids, d_tile_coordinates, d_tiles, u_grid);
 
       // Wait for GPU to finish
       stream.synchronize();

@@ -136,11 +136,12 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_adder_wtiles_to_grid(int nr_tiles,
                                    int tile_size,
-                                   int w_padded_tile_size,
+                                   int padded_tile_size,
                                    long grid_size,
+                                   cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
                                    cu::DeviceMemory& d_padded_tiles,
-                                   void* u_grid);
+                                   cu::UnifiedMemory& u_grid);
 
   // Memory management per device
   cu::DeviceMemory& allocate_device_grid(size_t bytes);
