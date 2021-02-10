@@ -897,7 +897,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
 
 void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
                                            unsigned int batch,
-                                           Array3D<std::complex<float>>& grid,
+                                           cu::UnifiedMemory& u_grid,
                                            DomainAtoDomainB direction) {
   cu::ScopedContext scc(*context);
 
@@ -909,13 +909,15 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
   for (unsigned i = 0; i < batch; i++) {
     // Execute 1D FFT over all columns
     for (unsigned col = 0; col < size; col++) {
-      cufftComplex* ptr = (cufftComplex*)grid.data(i, col, 0);
+      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.get());
+      ptr += i * size * size + col;
       fft_plan_row.execute(ptr, ptr, sign);
     }
 
     // Execute 1D FFT over all rows
     for (unsigned row = 0; row < size; row++) {
-      cufftComplex* ptr = (cufftComplex*)grid.data(i, 0, row);
+      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.get());
+      ptr += i * size * size + row * size;
       fft_plan_col.execute(ptr, ptr, sign);
     }
   }
@@ -958,10 +960,11 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
                                         int subgrid_size,
                                         cu::DeviceMemory& d_metadata,
                                         cu::DeviceMemory& d_subgrid,
-                                        void* u_grid) {
-  const bool enable_tiling = true;
+                                        cu::UnifiedMemory& u_grid) {
+  CUdeviceptr grid_ptr = u_grid;
+  bool enable_tiling = true;
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
-                              d_subgrid,  &u_grid,       &enable_tiling};
+                              d_subgrid,  &grid_ptr,     &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
       get_update_data(get_event(), powerSensor, report, &Report::update_adder);
@@ -995,10 +998,11 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
                                            int subgrid_size,
                                            cu::DeviceMemory& d_metadata,
                                            cu::DeviceMemory& d_subgrid,
-                                           void* u_grid) {
+                                           cu::UnifiedMemory& u_grid) {
+  CUdeviceptr grid_ptr = u_grid;
   const bool enable_tiling = true;
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
-                              d_subgrid,  &u_grid,       &enable_tiling};
+                              d_subgrid,  &grid_ptr,     &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data = get_update_data(get_event(), powerSensor, report,
                                      &Report::update_splitter);

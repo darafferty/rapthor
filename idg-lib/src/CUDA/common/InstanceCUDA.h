@@ -80,7 +80,7 @@ class InstanceCUDA : public KernelsInstance {
                           DomainAtoDomainB direction);
 
   void launch_grid_fft_unified(unsigned long size, unsigned batch,
-                               Array3D<std::complex<float>>& grid,
+                               cu::UnifiedMemory& u_grid,
                                DomainAtoDomainB direction);
 
   void launch_fft_shift(cu::DeviceMemory& d_data, int batch, long size,
@@ -92,7 +92,8 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_adder_unified(int nr_subgrids, long grid_size, int subgrid_size,
                             cu::DeviceMemory& d_metadata,
-                            cu::DeviceMemory& d_subgrid, void* u_grid);
+                            cu::DeviceMemory& d_subgrid,
+                            cu::UnifiedMemory& u_grid);
 
   void launch_splitter(int nr_subgrids, long grid_size, int subgrid_size,
                        cu::DeviceMemory& d_metadata,
@@ -100,7 +101,8 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_splitter_unified(int nr_subgrids, long grid_size,
                                int subgrid_size, cu::DeviceMemory& d_metadata,
-                               cu::DeviceMemory& d_subgrid, void* u_grid);
+                               cu::DeviceMemory& d_subgrid,
+                               cu::UnifiedMemory& u_grid);
 
   void launch_scaler(int nr_subgrids, int subgrid_size,
                      cu::DeviceMemory& d_subgrid);
