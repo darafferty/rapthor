@@ -50,6 +50,13 @@ UnifiedOptimized::~UnifiedOptimized() {
   std::cout << "UnifiedOptimized::" << __func__ << std::endl;
 #endif
 
+  // Explicitely free the grid before
+  // the CUDA Context is destroyed
+  if (m_use_unified_memory)
+  {
+    m_grid.reset();
+  }
+
   cuProfilerStop();
 }
 
