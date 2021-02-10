@@ -80,7 +80,7 @@ __global__ void kernel_copy_tiles(
 __global__ void kernel_apply_phasor(
     const float                    image_size,
     const float                    w_step,
-    const unsigned int             w_padded_tile_size,
+    const int                      w_padded_tile_size,
           float2*     __restrict__ w_padded_tiles,
     const float*      __restrict__ shift,
     const Coordinate* __restrict__ tile_coordinates)
@@ -108,10 +108,10 @@ __global__ void kernel_apply_phasor(
     const Coordinate& coordinate = tile_coordinates[tile_index];
     float w = (coordinate.z + 0.5f) * w_step;
 
-    for (unsigned int i = tid; i < (w_padded_tile_size * w_padded_tile_size); i += nr_threads)
+    for (int i = tid; i < (w_padded_tile_size * w_padded_tile_size); i += nr_threads)
     {
-        unsigned int y = i / w_padded_tile_size;
-        unsigned int x = i % w_padded_tile_size;
+        int y = i / w_padded_tile_size;
+        int x = i % w_padded_tile_size;
 
         if (y < w_padded_tile_size) {
             // Compute phase
