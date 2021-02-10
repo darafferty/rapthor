@@ -720,23 +720,33 @@ void UnifiedOptimized::run_wtiles_to_grid(
   fft.setStream(executestream);
   cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
 
-  // Locks and events
-  int nr_iterations = (nr_tiles / nr_tiles_batch) + 1;
-  std::vector<std::mutex> locks(nr_iterations);
-  std::vector<std::unique_ptr<cu::Event>> gpuFinished;
-  std::vector<std::unique_ptr<cu::Event>> outputCopied;
-  for (unsigned int i = 0; i < nr_iterations; i++) {
-    gpuFinished.emplace_back(new cu::Event(context));
-    outputCopied.emplace_back(new cu::Event(context));
-  }
+  // Create jobs
+  struct JobData {
+    int tile_offset;
+    int current_nr_tiles;
+    std::unique_ptr<cu::Event> gpuFinished;
+    std::unique_ptr<cu::Event> outputCopied;
+  };
 
-  // Iterate all tiles
+  std::vector<JobData> jobs;
+
   unsigned int current_nr_tiles = nr_tiles_batch;
-  unsigned int iteration = 0;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles; tile_offset += current_nr_tiles) {
     current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
-                       ? current_nr_tiles : nr_tiles - tile_offset;
-    int tile_id = tile_ids[tile_offset];
+                                   ? current_nr_tiles : nr_tiles - tile_offset;
+
+    JobData job;
+    job.current_nr_tiles = current_nr_tiles;
+    job.tile_offset = tile_offset;
+    job.gpuFinished.reset(new cu::Event(context));
+    job.outputCopied.reset(new cu::Event(context));
+    jobs.push_back(std::move(job));
+  }
+
+  // Iterate all jobs
+  for (auto& job : jobs) {
+    int tile_offset = job.tile_offset;
+    int current_nr_tiles = job.current_nr_tiles;
 
     // Copy tile metadata to GPU
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
@@ -777,8 +787,8 @@ void UnifiedOptimized::run_wtiles_to_grid(
       executestream.synchronize();
     } else {
       // Copy tile for tile to host
-      executestream.record(*gpuFinished[iteration]);
-      dtohstream.waitEvent(*gpuFinished[iteration]);
+      executestream.record(*job.gpuFinished);
+      dtohstream.waitEvent(*job.gpuFinished);
       for (unsigned tile_index = tile_offset; tile_index < current_nr_tiles; tile_index++) {
         CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_tiles);
         size_t sizeof_padded_tile = padded_tile_size * padded_tile_size * NR_CORRELATIONS * sizeof(idg::float2);
@@ -787,30 +797,25 @@ void UnifiedOptimized::run_wtiles_to_grid(
         h_tile_ptr += tile_index * sizeof_padded_tile;
         dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr, sizeof_padded_tile);
       }
-      dtohstream.record(*outputCopied[iteration]);
+      dtohstream.record(*job.outputCopied);
     } // end if m_use_unified_memory
-
-    iteration++;
   } // end for tile_offset
 
   if (!m_use_unified_memory)
   {
     #pragma omp parallel
     {
-      unsigned int iteration = 0;
-      unsigned int current_nr_tiles = nr_tiles_batch;
-
-      for (unsigned int tile_offset = 0; tile_offset < nr_tiles; tile_offset += current_nr_tiles) {
-        current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
-                           ? current_nr_tiles : nr_tiles - tile_offset;
+      // Iterate all jobs
+      for (auto& job : jobs) {
+        int tile_offset = job.tile_offset;
+        int current_nr_tiles = job.current_nr_tiles;
 
         // Wait for output to be copied
-        outputCopied[iteration++]->synchronize();
+        job.outputCopied->synchronize();
 
         // Add tiles to grid on host
         for (unsigned tile_index = tile_offset; tile_index < current_nr_tiles; tile_index++) {
 
-          // Compute the padded size of the current tile
           idg::Coordinate &coordinate = tile_coordinates[tile_index];
           float w = (coordinate.z + 0.5f) * w_step;
 
