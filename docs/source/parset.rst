@@ -269,7 +269,7 @@ The available options are described below under their respective sections.
 
     mem_per_node_gb
         For ``batch_system = slurm``, the amount of memory per node in GB to request
-        (default = 190).
+        (default = 0 = all).
 
     max_cores
         Maximum number of cores per task to use on each node (default = 0 =

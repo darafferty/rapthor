@@ -613,7 +613,7 @@ def get_cluster_options(parset):
     if 'mem_per_node_gb' in parset_dict:
         parset_dict['mem_per_node_gb'] = parset.getint('cluster', 'mem_per_node_gb')
     else:
-        parset_dict['mem_per_node_gb'] = 190
+        parset_dict['mem_per_node_gb'] = 0
 
     # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
