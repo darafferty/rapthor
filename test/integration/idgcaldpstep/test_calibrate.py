@@ -22,10 +22,12 @@ the idg libraries are pieced together during installation.
 MS = os.path.join(os.environ["DATADIR"], os.environ["MSNAME"])
 IMAGENAME = os.path.join(os.environ["DATADIR"], os.environ["MODELIMAGE"])
 
+proxies = ["idg.CPU.Optimized", "idg.HybridCUDA.GenericOptimized"]
 
-@pytest.fixture
-def set_parameters():
+@pytest.fixture(params = proxies)
+def set_parameters(request):
     params = {}
+    params["proxy"] = request.param
     params["nr_timesteps"] = 4
     params["nr_timeslots"] = 2
     params["nr_correlations"] = 4
@@ -41,7 +43,7 @@ def set_parameters():
 
     params["w_step"] = 400.0
     params["shift"] = np.array((0.0, 0.0, 0.0), dtype=np.float32)
-    return params
+    yield params
 
 
 def read_ms(nr_timesteps, nr_correlations):
@@ -192,7 +194,10 @@ def test_idgcal(params):
 
     # Init proxy
     taper, grid = init_tapered_grid(params)
-    proxy = idg.CPU.Optimized()
+    try:
+        proxy = eval(params["proxy"])()
+    except:
+        pytest.skip(f"could not instantiate proxy {params['proxy']}")
     proxy.set_grid(grid)
     proxy.transform(idg.ImageDomainToFourierDomain)
 

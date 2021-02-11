@@ -615,7 +615,7 @@ void InstanceCUDA::launch_calibrate(
 
   // Precompute l,m,n and phase offset
   const void* parameters_lmnp[] = {&grid_size, &subgrid_size, &image_size,
-                                   &w_step,    &d_metadata,   &d_lmnp};
+                                   &w_step,    d_metadata,    d_lmnp};
   executestream->launchKernel(*function_lmnp, grid, block, 0, parameters_lmnp);
 
   unsigned int max_nr_terms = 8;
