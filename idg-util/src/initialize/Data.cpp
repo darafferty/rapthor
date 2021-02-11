@@ -70,26 +70,30 @@ void Data::print_info() {
             << std::endl;
 }
 
-float Data::compute_image_size(unsigned long grid_size) {
+float Data::compute_image_size(unsigned long grid_size,
+                               unsigned int nr_channels) {
   // the origin of the grid is at the center, therefore any baseline
   // should fit within half of the diameter of the grid
   grid_size /= (2 * grid_padding);
-  auto max_uv = get_max_uv();
-  return grid_size / max_uv * (SPEED_OF_LIGHT / start_frequency);
+  float max_uv = get_max_uv();
+  float end_frequency = start_frequency + nr_channels * frequency_increment;
+  return grid_size / max_uv * (SPEED_OF_LIGHT / end_frequency);
 }
 
-float Data::compute_max_uv(unsigned long grid_size) {
+float Data::compute_max_uv(unsigned long grid_size, unsigned int nr_channels) {
   float fov_arcsec = fov_deg * 3600;
-  float wavelength = SPEED_OF_LIGHT / start_frequency;
+  float end_frequency = start_frequency + nr_channels * frequency_increment;
+  float wavelength = SPEED_OF_LIGHT / end_frequency;
   float res_arcsec = fov_arcsec / grid_size;
   float max_uv = (180 * 3600) * weight * wavelength / (M_PI * res_arcsec);
   return max_uv;
 }
 
-unsigned int Data::compute_grid_size() {
+unsigned int Data::compute_grid_size(unsigned int nr_channels) {
   float max_uv = get_max_uv();
   float fov_arcsec = fov_deg * 3600;
-  float wavelength = SPEED_OF_LIGHT / start_frequency;
+  float end_frequency = start_frequency + nr_channels * frequency_increment;
+  float wavelength = SPEED_OF_LIGHT / end_frequency;
   float res_arcsec = ((180 * 3600) * weight * wavelength / M_PI) / max_uv;
   unsigned int grid_size = fov_arcsec / res_arcsec;
   grid_size *= grid_padding;

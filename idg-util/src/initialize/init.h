@@ -15,7 +15,7 @@ namespace idg {
  * Data generator
  */
 Data get_example_data(unsigned int max_nr_baselines, unsigned int grid_size,
-                      float integration_time);
+                      float integration_time, unsigned int nr_channels);
 
 /*
  * Memory-allocation is handled by Proxy

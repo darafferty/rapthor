@@ -33,14 +33,14 @@ int test01() {
   float integration_time = 1.0f;
 
   // Initialize Data object
-  idg::Data data =
-      idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
+                                         integration_time, nr_channels);
 
   // Print data info
   data.print_info();
 
   // Get remaining parameters
-  auto image_size = data.compute_image_size(grid_size);
+  auto image_size = data.compute_image_size(grid_size, nr_channels);
   double cell_size = image_size / grid_size;
 
   // Print parameters

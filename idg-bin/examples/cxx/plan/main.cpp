@@ -125,15 +125,15 @@ int main(int argc, char **argv) {
 
   // Initialize Data object
   std::clog << ">>> Initialize data" << std::endl;
-  idg::Data data =
-      idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
+                                         integration_time, nr_channels);
 
   // Print data info
   data.print_info();
 
   // Get remaining parameters
   nr_baselines = data.get_nr_baselines();
-  float image_size = data.compute_image_size(grid_size);
+  float image_size = data.compute_image_size(grid_size, nr_channels);
   float cell_size = image_size / grid_size;
 
   // Print parameters

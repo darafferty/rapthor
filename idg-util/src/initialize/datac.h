@@ -7,16 +7,18 @@ idg::Data* DATA_init(const char* layout_file) {
   return new idg::Data(layout_file);
 }
 
-float DATA_compute_image_size(idg::Data* data, unsigned grid_size) {
-  return data->compute_image_size(grid_size);
+float DATA_compute_image_size(idg::Data* data, unsigned long grid_size,
+                              unsigned int nr_channels) {
+  return data->compute_image_size(grid_size, nr_channels);
 }
 
-float DATA_compute_max_uv(idg::Data* data, unsigned long grid_size) {
-  return data->compute_max_uv(grid_size);
+float DATA_compute_max_uv(idg::Data* data, unsigned long grid_size,
+                          unsigned int nr_channels) {
+  return data->compute_max_uv(grid_size, nr_channels);
 }
 
-unsigned int DATA_compute_grid_size(idg::Data* data) {
-  return data->compute_grid_size();
+unsigned int DATA_compute_grid_size(idg::Data* data, unsigned int nr_channels) {
+  return data->compute_grid_size(nr_channels);
 }
 
 void DATA_limit_max_baseline_length(idg::Data* data, float max_uv) {

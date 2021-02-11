@@ -120,11 +120,11 @@ int compare_to_reference(float tol = 1000 *
   float integration_time = 1.0f;
 
   // Initialize Data object
-  idg::Data data =
-      idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
+                                         integration_time, nr_channels);
 
   // Get remaining parameters
-  float image_size = data.compute_image_size(grid_size);
+  float image_size = data.compute_image_size(grid_size, nr_channels);
   float cell_size = image_size / grid_size;
 
   // Print parameters
