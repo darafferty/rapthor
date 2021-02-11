@@ -598,17 +598,22 @@ def get_cluster_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Number of processors per task to request from SLURM
-    # (the --ntasks-per-node option in sbatch) can be specified with the
-    # cpus_per_task option (default = 0 = all). By setting the cpus_per_task value to the
-    # number of processors per node, one can ensure that each task gets the entire
-    # node to itself, which is the recommended way of running Rapthor
+    # The number of processors and amount of memory per task to request from
+    # SLURM can be specified with the cpus_per_task (default = 0 = all) and
+    # mem_per_node_gb options (default = 190). By setting the cpus_per_task
+    # value to the number of processors per node, one can ensure that each task
+    # gets the entire node to itself, which is the recommended way of running
+    # Rapthor
     if 'cpus_per_task' in parset_dict:
         parset_dict['cpus_per_task'] = parset.getint('cluster', 'cpus_per_task')
     else:
         parset_dict['cpus_per_task'] = 0
     if parset_dict['cpus_per_task'] == 0:
         parset_dict['cpus_per_task'] = multiprocessing.cpu_count()
+    if 'mem_per_node_gb' in parset_dict:
+        parset_dict['mem_per_node_gb'] = parset.getint('cluster', 'mem_per_node_gb')
+    else:
+        parset_dict['mem_per_node_gb'] = 0
 
     # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
@@ -657,7 +662,8 @@ def get_cluster_options(parset):
 
     # Check for invalid options
     allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
-                       'max_threads', 'deconvolution_threads,' 'dir_local']
+                       'max_threads', 'deconvolution_threads,' 'dir_local',
+                       'mem_per_node_gb']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '

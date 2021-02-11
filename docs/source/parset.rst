@@ -267,6 +267,10 @@ The available options are described below under their respective sections.
         per node, one can ensure that each task gets the entire node to itself,
         which is the recommended way of running Rapthor.
 
+    mem_per_node_gb
+        For ``batch_system = slurm``, the amount of memory per node in GB to request
+        (default = 0 = all).
+
     max_cores
         Maximum number of cores per task to use on each node (default = 0 =
         all).
