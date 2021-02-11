@@ -162,7 +162,7 @@ int main(int argc, char **argv) {
       idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
 
   unsigned int nr_correlations = 4;
-  idg::proxy::cpu::Reference proxy;
+  idg::proxy::cpu::Optimized proxy;
   std::shared_ptr<idg::Grid> grid(
       new idg::Grid(nullptr, 1, nr_correlations, grid_size, grid_size));
   proxy.set_grid(grid);
