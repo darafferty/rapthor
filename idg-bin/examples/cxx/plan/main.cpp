@@ -163,7 +163,8 @@ int main(int argc, char **argv) {
 
   unsigned int nr_correlations = 4;
   idg::proxy::cpu::Reference proxy;
-  auto grid = proxy.allocate_grid(1, nr_correlations, grid_size, grid_size);
+  std::shared_ptr<idg::Grid> grid(
+      new idg::Grid(nullptr, 1, nr_correlations, grid_size, grid_size));
   proxy.set_grid(grid);
   float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
