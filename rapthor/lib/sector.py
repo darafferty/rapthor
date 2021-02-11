@@ -309,7 +309,7 @@ class Sector(object):
                 dec = misc.dec2ddmmss(self.dec)
                 decsign = ('-' if dec[3] < 0 else '+')
                 sdec = decsign+str(dec[0]).zfill(2)+'.'+str(dec[1]).zfill(2)+'.'+str("%.6f" % (dec[2])).zfill(6)
-                patch = self.calibration_skymodel.getPatchNames[0]
+                patch = self.calibration_skymodel.getPatchNames()[0]
                 dummylines.append(',,{0},{1},{2}\n'.format(patch, sra, sdec))
                 dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'
                                   '[0.0,0.0],false,100000000.0,,,\n'.format(patch, sra, sdec))
