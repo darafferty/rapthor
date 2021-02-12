@@ -683,10 +683,9 @@ void UnifiedOptimized::run_wtiles_to_grid(
   int w_padded_tile_size = next_composite(
     padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
 
-  // Allocate padded tiles buffer
-  size_t free_memory = device.get_free_memory();
+  // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size * NR_CORRELATIONS * sizeof(idg::float2);
-  unsigned int nr_tiles_batch = d_padded_tiles.size() / sizeof_w_padded_tile;
+  unsigned int nr_tiles_batch = (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
   size_t sizeof_w_padded_tiles = nr_tiles_batch * sizeof_w_padded_tile;
 
