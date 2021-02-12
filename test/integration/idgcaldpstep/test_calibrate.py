@@ -22,9 +22,9 @@ the idg libraries are pieced together during installation.
 MS = os.path.join(os.environ["DATADIR"], os.environ["MSNAME"])
 IMAGENAME = os.path.join(os.environ["DATADIR"], os.environ["MODELIMAGE"])
 
-proxies = ["idg.CPU.Optimized", "idg.HybridCUDA.GenericOptimized"]
+PROXIES = ["idg.CPU.Optimized", "idg.HybridCUDA.GenericOptimized"]
 
-@pytest.fixture(params = proxies)
+@pytest.fixture(params = PROXIES)
 def set_parameters(request):
     params = {}
     params["proxy"] = request.param
