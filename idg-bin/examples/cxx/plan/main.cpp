@@ -12,8 +12,6 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
-#define PRINT_METADATA 1
-
 std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;
   const unsigned int DEFAULT_NR_CHANNELS = 16;
@@ -198,7 +196,7 @@ int main(int argc, char **argv) {
     const idg::Metadata *metadata = plan->get_metadata_ptr();
     for (unsigned i = 0; i < nr_subgrids; i++) {
       idg::Metadata &m = const_cast<idg::Metadata &>(metadata[i]);
-      std::cout << m << std::endl;
+      std::clog << m << std::endl;
     }
   }
 }
