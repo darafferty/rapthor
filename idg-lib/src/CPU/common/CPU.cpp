@@ -67,9 +67,9 @@ std::unique_ptr<Plan> CPU::make_plan(
 void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
                      const Array1D<float> &shift) {
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
-  m_wtiles = WTiles(kernel::cpu::InstanceCPU::kNrWTiles,
-                    kernel::cpu::InstanceCPU::kWTileSize);
-  kernels.init_wtiles(subgrid_size);
+  const size_t grid_size = m_grid->get_x_dim();
+  const int nr_wtiles = kernels.init_wtiles(grid_size, subgrid_size);
+  m_wtiles = WTiles(nr_wtiles, kernel::cpu::InstanceCPU::kWTileSize);
 }
 
 std::shared_ptr<Grid> CPU::get_grid() {
