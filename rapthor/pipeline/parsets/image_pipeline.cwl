@@ -245,9 +245,9 @@ inputs:
     type: float[]
 
   - id: wsclean_mem
-    label: Memory fraction
+    label: Memory percentage
     doc: |
-      The memory fraction limit for WSClean (length = n_sectors).
+      The memory limit for WSClean in percent of total (length = n_sectors).
     type: float[]
 
   - id: auto_mask
