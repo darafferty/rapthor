@@ -101,7 +101,7 @@ class Sector(object):
         self.min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
         self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
-        self.mem_fraction = self.field.parset['imaging_specific']['mem_fraction']
+        self.mem_percent = self.field.parset['imaging_specific']['mem_fraction'] * 100
         self.reweight = self.field.parset['imaging_specific']['reweight']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']
@@ -269,7 +269,6 @@ class Sector(object):
         dst_dir = os.path.join(self.field.working_dir, 'skymodels', 'predict_{}'.format(index))
         misc.create_directory(dst_dir)
         self.predict_skymodel_file = os.path.join(dst_dir, '{}_predict_skymodel.txt'.format(self.name))
-        source_skymodel = None
         if os.path.exists(self.predict_skymodel_file):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))
         else:
@@ -316,7 +315,6 @@ class Sector(object):
                 with open(self.predict_skymodel_file, 'w') as f:
                     f.writelines(dummylines)
                 skymodel = lsmtool.load(str(self.predict_skymodel_file))
-                source_skymodel = []
 
         # Save list of patches (directions) in the format written by DDECal in the h5parm
         self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
@@ -331,9 +329,13 @@ class Sector(object):
             self.central_patch = patch_names[patch_dist.index(min(patch_dist))]
 
             # Filter the field source sky model and store source sizes
-            if source_skymodel is None:
-                all_source_names = self.field.source_skymodel.getColValues('Name').tolist()
-                source_names = skymodel.getColValues('Name')
+            all_source_names = self.field.source_skymodel.getColValues('Name').tolist()
+            source_names = skymodel.getColValues('Name')
+            if len(source_names) == 1 and source_names[0] not in all_source_names:
+                # This occurs when a dummy sky model was made above, so skip the size
+                # determination below
+                source_skymodel = []
+            else:
                 in_sector = np.array([all_source_names.index(sn) for sn in source_names])
                 source_skymodel = self.field.source_skymodel.copy()
                 source_skymodel.select(in_sector)

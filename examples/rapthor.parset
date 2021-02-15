@@ -93,7 +93,7 @@ input_skymodel = /data/skymodel.txt
 # cpu or hybrid
 # idg_mode = cpu
 
-# Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
+# Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9 = 90%)
 # mem_fraction = 0.9
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
