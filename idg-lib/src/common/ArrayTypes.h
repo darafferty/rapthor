@@ -119,9 +119,9 @@ class Array1D {
    * @return 'start' and 'next' indices for use in openmp blocks.
    */
   std::pair<size_t, size_t> omp_range() const {
-    const int thread_num = omp_get_thread_num();
-    const bool last = (thread_num + 1 == omp_get_num_threads());
-    const int chunk_size = size() / omp_get_num_threads();
+    const size_t thread_num = omp_get_thread_num();
+    const bool last = (thread_num + 1 == size_t(omp_get_num_threads()));
+    const size_t chunk_size = size() / omp_get_num_threads();
     size_t start = chunk_size * thread_num;
     size_t next = last ? size() : start + chunk_size;
     return std::make_pair(start, next);
