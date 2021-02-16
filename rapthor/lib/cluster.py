@@ -1,7 +1,7 @@
 """
 Module that holds all compute-cluster-related functions
 """
-import os
+import subprocess
 import logging
 import numpy as np
 
@@ -11,8 +11,17 @@ log = logging.getLogger('rapthor:cluster')
 def get_available_memory():
     """
     Returns the available memory in GB
+
+    Note: a call to 'free' is used, which is parsed for the "available" value,
+    the last entry on the second line of output.
+
+    Returns
+    -------
+    available_gb : int
+        Available memory in GB
     """
-    available_gb = list(map(int, os.popen('free -t -g').readlines()[1].split()[1:]))[0]
+    memstr = subprocess.getoutput('free -t -g').split('\n')[1]  # second line
+    available_gb = list(map(int, memstr.split()[1:]))[-1]  # last entry
 
     return available_gb
 
@@ -64,7 +73,12 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
 
     # Determine whether we need to adjust the solution interval to fit the solve in
     # memory
-    mem_gb = get_available_memory()
+    if 'mem_per_node_gb' in cluster_parset and cluster_parset['mem_per_node_gb'] != 0:
+        # If the user has specified the memory to request, use that value
+        mem_gb = cluster_parset['mem_per_node_gb']
+    else:
+        # Otherwise, get it from the machine Rapthor is running on
+        mem_gb = get_available_memory()
     gb_per_sol = get_mem_per_solution(target_timestep, ndir)
     if mem_gb / gb_per_sol < 1.0:
         solint = target_timestep * mem_gb / gb_per_sol
@@ -151,7 +165,12 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
     # Determine whether we need to adjust the solution interval in time to fit
     # the solve in memory. We adjust the time interval rather than the frequency
     # one, as it is less critical and usually has a finer sampling
-    mem_gb = get_available_memory()
+    if 'mem_per_node_gb' in cluster_parset and cluster_parset['mem_per_node_gb'] != 0:
+        # If the user has specified the memory to request, use that value
+        mem_gb = cluster_parset['mem_per_node_gb']
+    else:
+        # Otherwise, get it from the machine Rapthor is running on
+        mem_gb = get_available_memory()
     gb_per_sol = get_gb_per_solution(target_freqstep, target_timestep, ndir)
     if mem_gb / gb_per_sol < 1.0:
         solint = target_timestep * mem_gb / gb_per_sol
