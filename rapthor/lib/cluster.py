@@ -59,8 +59,8 @@ def get_fast_solve_intervals(cluster_parset, numsamples, numobs, target_timestep
             # Memory usage in GB/timeslot/dir of a typical LBA observation
             mem_usage_gb = 0.05
 
-        # Return total usage plus a 10% safety buffer
-        return mem_usage_gb * target_timestep * ndir * 1.1
+        # Return total usage plus a 20% safety buffer
+        return mem_usage_gb * target_timestep * ndir * 1.2
 
     # Determine whether we need to adjust the solution interval to fit the solve in
     # memory
@@ -144,9 +144,9 @@ def get_slow_solve_intervals(cluster_parset, numsamples, numobs, target_freqstep
                                coef[3]*ndir*target_freqstep + coef[1]*ndir +
                                coef[2]*target_freqstep + coef[0])
 
-        # Return total usage, scaled to the requested time interval, plus a 10% safety
+        # Return total usage, scaled to the requested time interval, plus a 20% safety
         # buffer
-        return gb_per_25_timeslots * target_timestep / 25 * 1.1
+        return gb_per_25_timeslots * target_timestep / 25 * 1.2
 
     # Determine whether we need to adjust the solution interval in time to fit
     # the solve in memory. We adjust the time interval rather than the frequency

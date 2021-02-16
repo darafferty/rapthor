@@ -146,9 +146,9 @@ inputs:
     inputBinding:
       prefix: -taper-gaussian
   - id: wsclean_mem
-    label: Memory fraction
+    label: Memory percentage
     doc: |
-      The memory fraction limit.
+      The memory limit in percent of total.
     type: float
     inputBinding:
       prefix: -mem
