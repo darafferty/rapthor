@@ -48,6 +48,7 @@ input_skymodel = /data/skymodel.txt
 # use_included_skymodels = False
 
 # General solver parameters (defaults shown):
+# llssolver = qr
 # maxiter = 50
 # propagatesolutions = True
 # onebeamperpatch = False

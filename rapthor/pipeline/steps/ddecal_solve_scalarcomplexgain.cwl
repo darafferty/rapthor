@@ -56,6 +56,11 @@ inputs:
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
+  - id: llssolver
+    type: string
+    inputBinding:
+      prefix: solve.llssolver=
+      separate: False
   - id: maxiter
     type: int
     inputBinding:

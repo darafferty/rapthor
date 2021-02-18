@@ -292,6 +292,8 @@ def get_calibration_options(parset):
         parset_dict['slow_smoothnessconstraint'] = 3e6
 
     # Solver parameters
+    if 'llssolver' not in parset_dict:
+        parset_dict['llssolver'] = 'qr'
     if 'propagatesolutions' in parset_dict:
         parset_dict['propagatesolutions'] = parset.getboolean('calibration', 'propagatesolutions')
     else:
@@ -325,7 +327,7 @@ def get_calibration_options(parset):
     allowed_options = ['max_selfcal_loops', 'solve_min_uv_lambda', 'fast_timestep_sec',
                        'fast_freqstep_hz', 'slow_timestep_sec', 'onebeamperpatch',
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
-                       'stepsize', 'tolerance', 'patch_target_number',
+                       'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
                        'slow_smoothnessconstraint', 'use_idg_predict', 'debug']
     for option in given_options:

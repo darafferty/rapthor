@@ -83,6 +83,15 @@ inputs:
       prefix: solve.sourcedb=
       separate: False
 
+  - id: llssolver
+    label: Linear least-squares solver
+    doc: |
+      The linear least-squares solver to use (one of 'qr', 'svd', or 'lsmr')
+    type: string
+    inputBinding:
+      prefix: solve.llssolver=
+      separate: False
+
   - id: maxiter
     label: Maximum iterations
     doc: |

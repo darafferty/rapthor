@@ -117,6 +117,12 @@ inputs:
       The maximum number of iterations in the solves (length = 1).
     type: int
 
+  - id: llssolver
+    label: Linear least-squares solver
+    doc: |
+      The linear least-squares solver to use (length = 1).
+    type: string
+
   - id: propagatesolutions
     label: Propagate solutions
     doc: |
@@ -445,6 +451,8 @@ steps:
         source: solint_slow_freqstep
       - id: sourcedb
         source: make_sourcedb/sourcedb
+      - id: llssolver
+        source: llssolver
       - id: maxiter
         source: maxiter
       - id: propagatesolutions
@@ -557,6 +565,8 @@ steps:
         source: solint_slow_freqstep2
       - id: sourcedb
         source: make_sourcedb/sourcedb
+      - id: llssolver
+        source: llssolver
       - id: maxiter
         source: maxiter
       - id: propagatesolutions
@@ -747,6 +757,8 @@ steps:
         source: solint_slow_freqstep
       - id: sourcedb
         source: make_sourcedb/sourcedb
+      - id: llssolver
+        source: llssolver
       - id: maxiter
         source: maxiter
       - id: propagatesolutions
