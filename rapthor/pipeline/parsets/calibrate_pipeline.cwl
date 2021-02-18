@@ -373,6 +373,8 @@ steps:
         source: solint_fast_freqstep
       - id: sourcedb
         source: make_sourcedb/sourcedb
+      - id: llssolver
+        source: llssolver
       - id: maxiter
         source: maxiter
       - id: propagatesolutions
