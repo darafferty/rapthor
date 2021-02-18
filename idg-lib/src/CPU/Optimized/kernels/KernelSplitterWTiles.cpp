@@ -47,7 +47,6 @@ void kernel_splitter_subgrids_from_wtiles(
 
       // position in tile
       int subgrid_x = metadata[s].coordinate.x - tile_top;
-      ;
       int subgrid_y = metadata[s].coordinate.y - tile_left;
 
       // iterate over subgrid rows, starting at a row that belongs to this
@@ -69,7 +68,7 @@ void kernel_splitter_subgrids_from_wtiles(
           // Load phasor
           idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
 
-          // Add subgrid value to tiles
+          // Split subgrid from tile
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
             long src_idx = index_grid(wtile_size + subgrid_size, tile_index,
                                       pol, y_dst, x_dst);
@@ -117,8 +116,8 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
   int max_tile_size = next_composite(
       padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
 
-  std::vector<idg::float2> tile_buffer(max_tile_size * max_tile_size *
-                                       NR_POLARIZATIONS);
+  std::vector<std::complex<float>> tile_buffer(max_tile_size * max_tile_size *
+                                               NR_POLARIZATIONS);
 
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate &coordinate = tile_coordinates[i];
@@ -146,17 +145,11 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 #pragma omp parallel for
     for (int y = y_start; y < y_end; y++) {
       for (int x = x_start; x < x_end; x++) {
-        tile_buffer[(y - y0) * w_padded_tile_size + x - x0] =
-            grid[index_grid(grid_size, 0, y, x)];
-        tile_buffer[w_padded_tile_size * w_padded_tile_size +
-                    (y - y0) * w_padded_tile_size + x - x0] =
-            grid[index_grid(grid_size, 2, y, x)];
-        tile_buffer[2 * w_padded_tile_size * w_padded_tile_size +
-                    (y - y0) * w_padded_tile_size + x - x0] =
-            grid[index_grid(grid_size, 1, y, x)];
-        tile_buffer[3 * w_padded_tile_size * w_padded_tile_size +
-                    (y - y0) * w_padded_tile_size + x - x0] =
-            grid[index_grid(grid_size, 3, y, x)];
+        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          tile_buffer[index_grid(w_padded_tile_size, pol, y - y0, x - x0)] =
+              reinterpret_cast<std::complex<float> *>(
+                  grid)[index_grid(grid_size, pol, y, x)];
+        }
       }
     }
 
@@ -172,53 +165,33 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
         // Compute phase
         const float l = (x - (w_padded_tile_size / 2)) * cell_size;
         const float m = (y - (w_padded_tile_size / 2)) * cell_size;
-        // evaluate n = 1.0f - sqrt(1.0 - (l * l) - (m * m));
-        // accurately for small values of l and m
-        // const float tmp = (l * l) + (m * m);
-        // const float n = tmp > 1.0 ? 1.0 : tmp / (1.0f + sqrtf(1.0f - tmp));
-
         const float n = compute_n(l, -m, shift);
-
         const float phase = 2 * M_PI * n * w;
 
         // Compute phasor
-        idg::float2 phasor = {std::cos(phase) / N, std::sin(phase) / N};
+        std::complex<float> phasor = {std::cos(phase) / N, std::sin(phase) / N};
 
         // Apply correction
-        tile_buffer[y * w_padded_tile_size + x] =
-            tile_buffer[y * w_padded_tile_size + x] * phasor;
-        tile_buffer[w_padded_tile_size * w_padded_tile_size +
-                    y * w_padded_tile_size + x] =
-            tile_buffer[w_padded_tile_size * w_padded_tile_size +
-                        y * w_padded_tile_size + x] *
-            phasor;
-        tile_buffer[2 * w_padded_tile_size * w_padded_tile_size +
-                    y * w_padded_tile_size + x] =
-            tile_buffer[2 * w_padded_tile_size * w_padded_tile_size +
-                        y * w_padded_tile_size + x] *
-            phasor;
-        tile_buffer[3 * w_padded_tile_size * w_padded_tile_size +
-                    y * w_padded_tile_size + x] =
-            tile_buffer[3 * w_padded_tile_size * w_padded_tile_size +
-                        y * w_padded_tile_size + x] *
-            phasor;
+        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          tile_buffer[index_grid(w_padded_tile_size, pol, y, x)] *= phasor;
+        }
       }
     }
 
     idg::fft2f(NR_POLARIZATIONS, w_padded_tile_size, w_padded_tile_size,
                (std::complex<float> *)tile_buffer.data());
 
+    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+
     for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-      for (int x = 0; x < padded_tile_size; x++) {
-        int x2 = x + w_padding2;
-        for (int y = 0; y < padded_tile_size; y++) {
-          int y2 = y + w_padding2;
-          tiles[tile_ids[i] * padded_tile_size * padded_tile_size *
-                    NR_POLARIZATIONS +
-                pol * padded_tile_size * padded_tile_size +
-                x * padded_tile_size + y] =
-              tile_buffer[pol * w_padded_tile_size * w_padded_tile_size +
-                          x2 * w_padded_tile_size + y2];
+      for (int y = 0; y < padded_tile_size; y++) {
+        int y2 = y + w_padding2;
+        for (int x = 0; x < padded_tile_size; x++) {
+          int x2 = x + w_padding2;
+          tiles[index_grid(padded_tile_size, tile_ids[i],
+                           index_pol_transposed[pol], y, x)] =
+              reinterpret_cast<idg::float2 *>(tile_buffer.data())[index_grid(
+                  w_padded_tile_size, pol, y2, x2)];
         }
       }
     }

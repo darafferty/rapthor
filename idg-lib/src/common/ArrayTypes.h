@@ -461,7 +461,7 @@ using Grid = Array4D<std::complex<float>>;
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array1D<T>& a) {
-  for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+  for (size_t x = 0; x < a.get_x_dim(); ++x) {
     os << a(x);
     if (x != a.get_x_dim() - 1) {
       os << ",";
@@ -473,8 +473,8 @@ std::ostream& operator<<(std::ostream& os, const Array1D<T>& a) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array2D<T>& a) {
-  for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
-    for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+  for (size_t y = 0; y < a.get_y_dim(); ++y) {
+    for (size_t x = 0; x < a.get_x_dim(); ++x) {
       os << a(y, x);
       if (x != a.get_x_dim() - 1) {
         os << ",";
@@ -487,10 +487,10 @@ std::ostream& operator<<(std::ostream& os, const Array2D<T>& a) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array3D<T>& a) {
-  for (unsigned int z = 0; z < a.get_z_dim(); ++z) {
+  for (size_t z = 0; z < a.get_z_dim(); ++z) {
     os << std::endl;
-    for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
-      for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+    for (size_t y = 0; y < a.get_y_dim(); ++y) {
+      for (size_t x = 0; x < a.get_x_dim(); ++x) {
         os << a(z, y, x);
         if (x != a.get_x_dim() - 1) {
           os << ",";
@@ -504,12 +504,12 @@ std::ostream& operator<<(std::ostream& os, const Array3D<T>& a) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array4D<T>& a) {
-  for (unsigned int w = 0; w < a.get_w_dim(); ++w) {
+  for (size_t w = 0; w < a.get_w_dim(); ++w) {
     os << std::endl;
-    for (unsigned int z = 0; z < a.get_z_dim(); ++z) {
+    for (size_t z = 0; z < a.get_z_dim(); ++z) {
       os << std::endl;
-      for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
-        for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+      for (size_t y = 0; y < a.get_y_dim(); ++y) {
+        for (size_t x = 0; x < a.get_x_dim(); ++x) {
           os << a(w, z, y, x);
           if (x != a.get_x_dim() - 1) {
             os << ",";

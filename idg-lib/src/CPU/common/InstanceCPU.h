@@ -148,7 +148,7 @@ class InstanceCPU : public KernelsInstance {
    * @param subgrid_size size of the subgrids
    * @return The number of wtiles
    */
-  virtual int init_wtiles(int grid_size, int subgrid_size);
+  virtual size_t init_wtiles(size_t grid_size, int subgrid_size);
 
  protected:
   void compile(Compiler compiler, Compilerflags flags);
