@@ -99,7 +99,7 @@ endif()
 
 # resolve dependencies
 if (BUILD_WITH_POWERSENSOR)
-find_package(PowerSensor QUIET)
+find_package(PowerSensor REQUIRED)
 endif ()
 if (${POWERSENSOR_FOUND})
     set(HAVE_POWERSENSOR TRUE)
@@ -112,22 +112,22 @@ endif()
 # FFT library
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" OR ${BUILD_WITH_MKL})
 # assume MKL is present when using Intel compiler
-find_package(MKL QUIET)
+find_package(MKL REQUIRED)
 set(HAVE_MKL TRUE)
 set(FFTW3_LIBRARIES ${MKL_LIBRARIES})
 set(FFTW3_INCLUDE_DIR "${MKL_INCLUDE_DIRS}/fftw")
 else()
-find_package(FFTW3 COMPONENTS single threads)
+find_package(FFTW3 REQUIRED COMPONENTS single threads)
 endif()
 
 # CUDA
 if (BUILD_LIB_CUDA)
-find_package(CUDA QUIET)
+find_package(CUDA REQUIRED)
 endif()
 
 # MPI
 if (BUILD_WITH_MPI)
-find_package(MPI QUIET)
+find_package(MPI REQUIRED)
 endif()
 
 include_directories (${CMAKE_CURRENT_BINARY_DIR}/src)
