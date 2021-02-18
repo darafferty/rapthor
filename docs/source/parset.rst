@@ -93,6 +93,9 @@ The available options are described below under their respective sections.
 
 .. glossary::
 
+    llssolver
+        The linear least-squares solver to use (one of "qr", "svd", or "lsmr")
+
     maxiter
         Maximum number of iterations to perform during calibration (default = 50).
 

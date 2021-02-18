@@ -110,6 +110,7 @@ class Calibrate(Operation):
         slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
 
         # Get various DDECal solver paramters
+        llssolver = self.field.llssolver
         maxiter = self.field.maxiter
         propagatesolutions = self.field.propagatesolutions
         onebeamperpatch = self.field.onebeamperpatch
@@ -163,6 +164,7 @@ class Calibrate(Operation):
                             'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'slow_smoothnessconstraint': slow_smoothnessconstraint,
+                            'llssolver': llssolver,
                             'maxiter': maxiter,
                             'propagatesolutions': propagatesolutions,
                             'onebeamperpatch': onebeamperpatch,
