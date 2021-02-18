@@ -109,7 +109,7 @@ class Calibrate(Operation):
         antennaconstraint_all = "'[[{}]]'".format(','.join(self.field.stations))
         slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
 
-        # Get various DDECal solver paramters
+        # Get various DDECal solver parameters
         llssolver = self.field.llssolver
         maxiter = self.field.maxiter
         propagatesolutions = self.field.propagatesolutions
