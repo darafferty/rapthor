@@ -3,73 +3,95 @@
 
 workflow:
   rules:
-    # don't create a pipeline if its a commit pipeline, on a branch and that branch has open merge requests (bc we will get a MR build instead)
+    # Don't create a pipeline if it's a commit pipeline on a branch having an open merge request
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
       when: never
     - when: always
 
+.astron_repo: &if_astron_repo
+  if: '$CI_SERVER_HOST == "git.astron.nl"'
+.not_astron_repo: &if_not_astron_repo
+  if: '$CI_SERVER_HOST != "git.astron.nl"'
+
 stages:
  - prepare
  - build
+ - linting
+ - test
  - integration_and_deploy
+ - publish
+ - pages
 
 build-base:
   stage: prepare
-  needs: []
+  image: docker:stable
   script:
-    - docker build --tag idg_base:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_base .
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base -f ./docker/ubuntu_20_04_base .
   rules:
-    - when: always
+    - <<: *if_astron_repo
+
+# On the SKA repo - which does not have a docker cache - we need to push the base image to the gitlab registry which requires docker:dind
+build-base-ska:
+  stage: prepare
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base -f ./docker/ubuntu_20_04_base .
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  rules:
+    - <<: *if_not_astron_repo
 
 build-integration:
   stage: prepare
-  needs: []
+  image: docker:stable
   script:
-    - docker build --tag idg_integration:${CI_COMMIT_SHORT_SHA} -f ./docker/ubuntu_20_04_integration .
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
   rules:
-    - when: always
+    - <<: *if_astron_repo
+
+# On the SKA repo - which does not have a docker cache - we need to push the image for the integration to the gitlab registry which requires docker:dind
+build-integration-ska:
+  stage: prepare
+  image: docker:stable
+  services:
+  - docker:dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
+  rules:
+    - <<: *if_not_astron_repo
 
 clang-format:
-  stage: build
-  needs: ["build-base"]
-  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  stage: linting
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
     - ./scripts/run-clang-format.sh
-  rules:
-    # Do not add for schedules
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-      when: never
-    - when: on_success
   allow_failure: true
 
 idg-python:
   stage: build
-  needs: ["build-base"]
-  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
     - mkdir build
     - cd build
     - cmake -DBUILD_WITH_PYTHON=ON ..
     - make install -j4
-  rules:
-    - when: on_success
 
 idg-release:
   stage: build
-  needs: ["build-base"]
-  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
     - mkdir build
     - cd build
     - cmake ..
     - make install -j4
-  rules:
-    - when: on_success
 
 idg-debug:
   stage: build
-  needs: ["build-base"]
-  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
     - mkdir build
     - cd build
@@ -79,16 +101,17 @@ idg-debug:
     - when: on_success
 
 idg-test:
-  stage: build
-  needs: ["build-base"]
-  image: idg_base:${CI_COMMIT_SHORT_SHA}
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
     - mkdir build
     - cd build
     - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
     - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest -j8 --output-on-failure -LE integration
+    - ctest -j8 --output-on-failure -LE integration -T test
+    - export XML=Testing/$(ls Testing/ -t | head -n1)/Test.xml
+    - mv $XML unittests.xml
     # Capture coverage
     - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json -o run-unit.json
     - gcovr --add-tracefile run-unit.json --xml > coverage.xml
@@ -96,17 +119,20 @@ idg-test:
   rules:
     - when: on_success
   artifacts:
+    paths:
+      - build/run-unit.json
+      - build/unittests.xml
     reports:
+      junit: build/unittests.xml
       cobertura: build/coverage.xml
 
 idg-integration-docker:
   stage: integration_and_deploy
-  image: idg_integration:${CI_COMMIT_SHORT_SHA}
-  needs: ["build-integration"]
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
   before_script:
     - export HOME_DIR=$PWD
     # Install IDG
-    - mkdir /opt/idg && mkdir build
+    - mkdir /opt/idg && mkdir -p build
     - cd build
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
@@ -186,7 +212,34 @@ idg-integration-das:
     - cd $CURRENT_SOURCE/idg-cal/unit_tests
     - pytest .
   rules:
-    - when: on_success
+    - <<: *if_astron_repo
+
+pages:
+  stage: pages
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["idg-test"]
+  before_script:
+    - apt-get update
+    - apt-get -y install curl
+  script:
+    - mkdir -p .public/build/reports
+    - cd .public
+    - gcovr -j$(($(nproc)/2 > 0 ? $(nproc)/2:1)) -r ../ -a ../build/run-unit.json --xml -o build/reports/code-coverage.xml
+    - gcovr -j$(($(nproc)/2 > 0 ? $(nproc)/2:1)) -r ../ -a ../build/run-unit.json --html --html-details -o index.html
+    - cp ../build/unittests.xml build/reports/unit-tests.xml
+    # Create and upload GitLab badges
+    - chmod -R 700 ../CI
+    - python3 ../CI/.produce-ci-metrics.py build/reports > build/reports/ci-metrics.json
+    - sh ../CI/ci-badges-func.sh
+    - cd ..
+    - mv .public public
+  artifacts:
+    paths:
+      - public
+    reports:
+      cobertura: public/build/reports/code-coverage.xml
+  rules:
+    - <<: *if_not_astron_repo
 
 check-stack:
   variables:
@@ -201,7 +254,7 @@ check-stack:
     strategy: depend
   rules:
     # Only add job for a merge request event
-    # NOTE: this creates duplicate pipelines when pushing to a branch
-    # that has an open MR, see https://gitlab.com/gitlab-org/gitlab/-/issues/201845
+    - <<: *if_not_astron_repo
+      when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - when: never
