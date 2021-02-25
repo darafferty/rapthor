@@ -196,8 +196,7 @@ int main(int argc, char **argv) {
     unsigned int nr_subgrids = plan->get_nr_subgrids();
     const idg::Metadata *metadata = plan->get_metadata_ptr();
     for (unsigned i = 0; i < nr_subgrids; i++) {
-      idg::Metadata &m = const_cast<idg::Metadata &>(metadata[i]);
-      std::cout << m << std::endl;
+      std::cout << metadata[i] << std::endl;
     }
   }
 }
