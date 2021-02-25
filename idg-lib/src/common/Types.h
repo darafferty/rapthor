@@ -125,18 +125,19 @@ inline bool isfinite(UVW<T>& uvw) {
 }
 
 /* Output */
-std::ostream& operator<<(std::ostream& os, Baseline& b);
-std::ostream& operator<<(std::ostream& os, Coordinate& c);
-std::ostream& operator<<(std::ostream& os, Metadata& m);
+std::ostream& operator<<(std::ostream& os, const Baseline& b);
+std::ostream& operator<<(std::ostream& os, const Coordinate& c);
+std::ostream& operator<<(std::ostream& os, const Metadata& m);
 
 template <class T>
-std::ostream& operator<<(std::ostream& out, Matrix2x2<std::complex<T>>& m) {
+std::ostream& operator<<(std::ostream& out,
+                         const Matrix2x2<std::complex<T>>& m) {
   out << "(" << m.xx << "," << m.xy << "," << m.yx << "," << m.yy << ")";
   return out;
 }
 
 template <class T>
-std::ostream& operator<<(std::ostream& os, UVW<T>& uvw);
+std::ostream& operator<<(std::ostream& os, const UVW<T>& uvw);
 
 std::ostream& operator<<(std::ostream& os, const float2& x);
 std::ostream& operator<<(std::ostream& os, const double2& x);
