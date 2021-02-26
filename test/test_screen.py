@@ -4,9 +4,26 @@ import requests
 from rapthor.lib.screen import KLScreen
 
 class TestScreen(unittest.TestCase):
+    def downloadms(self, filename):
+        url = 'https://www.astron.nl/citt/rapthor/' + filename
+        r = requests.get(url)
+        f = open('resources/' + filename, 'wb')
+        f.write(r.content)
+        f.close()
+
 
     @classmethod
     def setUpClass(self):
+        cwd = os.getcwd()
+        if not cwd.endswith('test'):
+            raise SystemExit('Please run this test from the test directory!')
+        testh5name = 'split_solutions_0.h5'
+        if (not os.path.exists('resources/' + testh5name)):
+            print('downloading h5 file')
+            self.downloadms(testh5name)
+        else:
+            print('h5 file found')
+
         self.screen = KLScreen('testscreen', 'resources/split_solutions_0.h5', 'resources/calibration_skymodel.txt', 0.0, 0.0, 1.0, 1.0)
     
     @classmethod
