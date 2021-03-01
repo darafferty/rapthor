@@ -302,7 +302,6 @@ void run_master() {
   // Constants
   unsigned int nr_w_layers = 1;
   unsigned int nr_correlations = 4;
-  float w_offset = 0.0;
   unsigned int nr_stations;
   unsigned int nr_channels;
   unsigned int nr_timesteps;
@@ -357,7 +356,7 @@ void run_master() {
     send_int(dst, nr_channels);
     send_int(dst, nr_correlations);
     send_int(dst, nr_w_layers);
-    send_float(dst, w_offset);
+    send_float(dst, w_step);
     send_int(dst, grid_size);
     send_int(dst, subgrid_size);
     send_int(dst, kernel_size);
@@ -419,11 +418,11 @@ void run_master() {
   // Vector of plans
   std::vector<std::unique_ptr<idg::Plan>> plans;
 
-  // Init cache
-  proxy.init_cache(subgrid_size, cell_size, w_offset, shift);
-
   // Set grid
   proxy.set_grid(grid);
+
+  // Init cache
+  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
 
   // Initialize
   unsigned int cycle;
@@ -658,11 +657,11 @@ void run_worker() {
   // Vector of plans
   std::vector<std::unique_ptr<idg::Plan>> plans;
 
-  // Init cache
-  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
-
   // Set grid
   proxy.set_grid(grid);
+
+  // Init cache
+  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
 
   // Initialize
   unsigned int cycle = 0;
