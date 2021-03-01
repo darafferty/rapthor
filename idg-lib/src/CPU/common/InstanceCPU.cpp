@@ -575,11 +575,23 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
   }
 }  // end run_splitter_wtiles
 
-void InstanceCPU::init_wtiles(int subgrid_size) {
+size_t InstanceCPU::init_wtiles(size_t grid_size, int subgrid_size) {
+  // Heuristic for choosing the number of wtiles.
+  // A number that is too small will result in excessive flushing, too large in
+  // excessive memory usage.
+  //
+  // Current heuristic is for the wtiles to cover 50% the grid.
+  // Because of padding with subgrid_size, the memory used will be more than 50%
+  // of the memory used for the grid. In the extreme case subgrid_size is
+  // equal to kWTileSize (both 128) m_wtiles_buffer will be as large as the
+  // grid. The minimum number of wtiles is 4.
+  const size_t nr_wtiles = std::max(
+      size_t(4), (grid_size * grid_size) / (kWTileSize * kWTileSize) / 2);
+  const size_t padded_wtile_size = size_t(kWTileSize) + size_t(subgrid_size);
   m_wtiles_buffer = idg::Array1D<std::complex<float>>(
-      kNrWTiles * (kWTileSize + subgrid_size) * (kWTileSize + subgrid_size) *
-      NR_CORRELATIONS);
+      nr_wtiles * padded_wtile_size * padded_wtile_size * NR_CORRELATIONS);
   m_wtiles_buffer.zero();
+  return nr_wtiles;
 }
 
 }  // namespace cpu

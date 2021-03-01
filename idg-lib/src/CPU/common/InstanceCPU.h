@@ -18,7 +18,6 @@ namespace cpu {
 
 class InstanceCPU : public KernelsInstance {
  public:
-  static constexpr int kNrWTiles = 4000;
   static constexpr int kWTileSize = 128;
 
   // Constructor
@@ -139,7 +138,17 @@ class InstanceCPU : public KernelsInstance {
            (function_splitter_subgrids_from_wtiles != nullptr);
   }
 
-  virtual void init_wtiles(int subgrid_size);
+  /**
+   * Creates the buffer to store the wtiles
+   *
+   * The size of buffer in number of wtiles is determined by a heuristic based
+   * on grid_size and wtile size kWTileSize.
+   *
+   * @param grid_size size of the grid
+   * @param subgrid_size size of the subgrids
+   * @return The number of wtiles
+   */
+  virtual size_t init_wtiles(size_t grid_size, int subgrid_size);
 
  protected:
   void compile(Compiler compiler, Compilerflags flags);

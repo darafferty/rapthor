@@ -3,21 +3,21 @@
 
 #include "Types.h"
 
-using namespace std;
+using std::ostream;
 
 namespace idg {
 
-ostream& operator<<(ostream& out, Baseline& b) {
+ostream& operator<<(ostream& out, const Baseline& b) {
   out << "(" << b.station1 << "," << b.station2 << ")";
   return out;
 }
 
-ostream& operator<<(ostream& out, Coordinate& c) {
+ostream& operator<<(ostream& out, const Coordinate& c) {
   out << "(" << c.x << "," << c.y << ")";
   return out;
 }
 
-ostream& operator<<(ostream& out, Metadata& m) {
+ostream& operator<<(ostream& out, const Metadata& m) {
   out << "["
       << "time_index = " << m.time_index << ", "
       << "nr_timesteps = " << m.nr_timesteps << ", "
@@ -32,7 +32,7 @@ ostream& operator<<(ostream& out, Metadata& m) {
 }
 
 template <class T>
-ostream& operator<<(ostream& out, UVW<T>& uvw) {
+ostream& operator<<(ostream& out, const UVW<T>& uvw) {
   out << "(" << uvw.u << "," << uvw.v << "," << uvw.w << ")";
   return out;
 }

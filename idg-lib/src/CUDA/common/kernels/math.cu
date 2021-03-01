@@ -45,16 +45,6 @@ inline __device__ void operator+=(double2 &a, double2 b) {
     a.y += b.y;
 }
 
-inline  __device__ void atomicAdd(float2 &a, float2 b) {
-    atomicAdd(&(a.x), b.x);
-    atomicAdd(&(a.y), b.y);
-}
-
-inline  __device__ void atomicAdd(double2 &a, double2 b) {
-    atomicAdd(&(a.x), b.x);
-    atomicAdd(&(a.y), b.y);
-}
-
 #if __CUDA_ARCH__ < 600
 __device__ double atomicAdd(double* address, double val)
 {
@@ -73,6 +63,16 @@ __device__ double atomicAdd(double* address, double val)
     return __longlong_as_double(old);
 }
 #endif
+
+inline  __device__ void atomicAdd(float2 &a, float2 b) {
+    atomicAdd(&(a.x), b.x);
+    atomicAdd(&(a.y), b.y);
+}
+
+inline  __device__ void atomicAdd(double2 &a, double2 b) {
+    atomicAdd(&(a.x), b.x);
+    atomicAdd(&(a.y), b.y);
+}
 
 inline __device__ float raw_sin(float a)
 {

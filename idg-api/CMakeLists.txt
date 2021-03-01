@@ -51,7 +51,7 @@ include_directories(external)
 
 # Try to use MKL libraries
 if(BUILD_WITH_MKL)
-    find_package(MKL QUIET)
+    find_package(MKL REQUIRED)
 endif()
 
 if (BUILD_WITH_MKL AND (${MKL_FOUND}))

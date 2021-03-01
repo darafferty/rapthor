@@ -119,9 +119,9 @@ class Array1D {
    * @return 'start' and 'next' indices for use in openmp blocks.
    */
   std::pair<size_t, size_t> omp_range() const {
-    const int thread_num = omp_get_thread_num();
-    const bool last = (thread_num + 1 == omp_get_num_threads());
-    const int chunk_size = size() / omp_get_num_threads();
+    const size_t thread_num = omp_get_thread_num();
+    const bool last = (thread_num + 1 == size_t(omp_get_num_threads()));
+    const size_t chunk_size = size() / omp_get_num_threads();
     size_t start = chunk_size * thread_num;
     size_t next = last ? size() : start + chunk_size;
     return std::make_pair(start, next);
@@ -461,7 +461,7 @@ using Grid = Array4D<std::complex<float>>;
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array1D<T>& a) {
-  for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+  for (size_t x = 0; x < a.get_x_dim(); ++x) {
     os << a(x);
     if (x != a.get_x_dim() - 1) {
       os << ",";
@@ -473,8 +473,8 @@ std::ostream& operator<<(std::ostream& os, const Array1D<T>& a) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array2D<T>& a) {
-  for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
-    for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+  for (size_t y = 0; y < a.get_y_dim(); ++y) {
+    for (size_t x = 0; x < a.get_x_dim(); ++x) {
       os << a(y, x);
       if (x != a.get_x_dim() - 1) {
         os << ",";
@@ -487,10 +487,10 @@ std::ostream& operator<<(std::ostream& os, const Array2D<T>& a) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array3D<T>& a) {
-  for (unsigned int z = 0; z < a.get_z_dim(); ++z) {
+  for (size_t z = 0; z < a.get_z_dim(); ++z) {
     os << std::endl;
-    for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
-      for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+    for (size_t y = 0; y < a.get_y_dim(); ++y) {
+      for (size_t x = 0; x < a.get_x_dim(); ++x) {
         os << a(z, y, x);
         if (x != a.get_x_dim() - 1) {
           os << ",";
@@ -504,12 +504,12 @@ std::ostream& operator<<(std::ostream& os, const Array3D<T>& a) {
 
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array4D<T>& a) {
-  for (unsigned int w = 0; w < a.get_w_dim(); ++w) {
+  for (size_t w = 0; w < a.get_w_dim(); ++w) {
     os << std::endl;
-    for (unsigned int z = 0; z < a.get_z_dim(); ++z) {
+    for (size_t z = 0; z < a.get_z_dim(); ++z) {
       os << std::endl;
-      for (unsigned int y = 0; y < a.get_y_dim(); ++y) {
-        for (unsigned int x = 0; x < a.get_x_dim(); ++x) {
+      for (size_t y = 0; y < a.get_y_dim(); ++y) {
+        for (size_t x = 0; x < a.get_x_dim(); ++x) {
           os << a(w, z, y, x);
           if (x != a.get_x_dim() - 1) {
             os << ",";
