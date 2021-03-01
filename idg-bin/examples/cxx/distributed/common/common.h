@@ -322,15 +322,15 @@ void run_master() {
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
 
   // Initialize Data object
-  idg::Data data =
-      idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
+                                         integration_time, nr_channels);
 
   // Print data info
   data.print_info();
 
   // Get remaining parameters
   nr_baselines = data.get_nr_baselines();
-  float image_size = data.compute_image_size(grid_size);
+  float image_size = data.compute_image_size(grid_size, nr_channels);
   float cell_size = image_size / grid_size;
   float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
@@ -638,8 +638,8 @@ void run_worker() {
   receive_array(0, frequencies);
 
   // Receive data
-  idg::Data data =
-      idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
+                                         integration_time, nr_channels);
 
   // Plan options
   idg::Plan::Options options = get_plan_options();

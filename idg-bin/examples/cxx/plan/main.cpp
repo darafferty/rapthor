@@ -12,8 +12,6 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
-#define PRINT_METADATA 1
-
 std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;
   const unsigned int DEFAULT_NR_CHANNELS = 16;
@@ -102,6 +100,18 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
   os << "-----------" << std::endl;
 }
 
+int next_composite(int n) {
+  n += (n & 1);
+  while (true) {
+    int nn = n;
+    while ((nn % 2) == 0) nn /= 2;
+    while ((nn % 3) == 0) nn /= 3;
+    while ((nn % 5) == 0) nn /= 5;
+    if (nn == 1) return n;
+    n += 2;
+  }
+}
+
 int main(int argc, char **argv) {
   // Constants
   unsigned int nr_stations;
@@ -125,15 +135,15 @@ int main(int argc, char **argv) {
 
   // Initialize Data object
   std::clog << ">>> Initialize data" << std::endl;
-  idg::Data data =
-      idg::get_example_data(nr_baselines, grid_size, integration_time);
+  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
+                                         integration_time, nr_channels);
 
   // Print data info
   data.print_info();
 
   // Get remaining parameters
   nr_baselines = data.get_nr_baselines();
-  float image_size = data.compute_image_size(grid_size);
+  float image_size = data.compute_image_size(grid_size, nr_channels);
   float cell_size = image_size / grid_size;
 
   // Print parameters
@@ -162,8 +172,9 @@ int main(int argc, char **argv) {
       idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
 
   unsigned int nr_correlations = 4;
-  idg::proxy::cpu::Reference proxy;
-  auto grid = proxy.allocate_grid(1, nr_correlations, grid_size, grid_size);
+  idg::proxy::cpu::Optimized proxy;
+  std::shared_ptr<idg::Grid> grid(
+      new idg::Grid(nullptr, 1, nr_correlations, grid_size, grid_size));
   proxy.set_grid(grid);
   float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
@@ -198,5 +209,111 @@ int main(int argc, char **argv) {
     for (unsigned i = 0; i < nr_subgrids; i++) {
       std::cout << metadata[i] << std::endl;
     }
+  }
+
+  // W-Tile info
+  if (use_wtiles) {
+    std::clog << std::endl;
+    std::clog << ">>> W-Tile information" << std::endl;
+
+    // Get a map with all the tile coordinates
+    idg::WTileMap tile_map;
+    unsigned int nr_subgrids = plan->get_nr_subgrids();
+    const idg::Metadata *metadata = plan->get_metadata_ptr();
+    for (unsigned i = 0; i < nr_subgrids; i++) {
+      idg::Metadata &m = const_cast<idg::Metadata &>(metadata[i]);
+      idg::WTileInfo tile_info;
+      tile_map[m.wtile_coordinate] = tile_info;
+    }
+
+    // Convert WTileMap to vector of tile coordinates
+    std::vector<idg::Coordinate> tile_coordinates;
+    for (const auto tile_info : tile_map) {
+      tile_coordinates.push_back(tile_info.first);
+    }
+
+    // W-Tiling parameters
+    int nr_tiles = tile_coordinates.size();
+    int wtile_size = 128;
+    float max_abs_w = 0.0;
+    for (auto &tile_coordinate : tile_coordinates) {
+      float w = (tile_coordinate.z + 0.5f) * w_step;
+      max_abs_w = std::max(max_abs_w, std::abs(w));
+    }
+    int padded_tile_size = wtile_size + subgrid_size;
+    int w_padded_tile_size = next_composite(
+        padded_tile_size + int(ceil(max_abs_w * image_size * image_size)));
+
+    // Compute the size of some data structures
+    size_t sizeof_padded_tile = 1ULL * padded_tile_size * padded_tile_size *
+                                NR_CORRELATIONS * sizeof(idg::float2);
+    size_t sizeof_padded_tiles = 1ULL * nr_tiles * sizeof_padded_tile;
+    float sizeof_padded_tiles_gb =
+        (float)sizeof_padded_tiles / (1024 * 1024 * 1024);
+    size_t sizeof_grid =
+        1ULL * grid_size * grid_size * NR_CORRELATIONS * sizeof(idg::float2);
+    float sizeof_grid_gb = (float)sizeof_grid / (1024 * 1024 * 1024);
+
+    // Print information
+    float nr_subgrids_per_tile = nr_subgrids / nr_tiles;
+    std::clog << "tile_size            : " << wtile_size << std::endl;
+    std::clog << "nr_tiles             : " << nr_tiles << std::endl;
+    std::clog << "nr_subgrids_per_tile : " << nr_subgrids_per_tile << std::endl;
+    std::clog << "padded_tile_size     : " << padded_tile_size << std::endl;
+    std::clog << "w_padded_tile_size   : " << w_padded_tile_size << std::endl;
+    std::clog << "sizeof_grid          : " << sizeof_grid_gb << " Gb"
+              << std::endl;
+    std::clog << "sizeof_padded_tiles  : " << sizeof_padded_tiles_gb << " Gb"
+              << std::endl;
+
+    // Count the number of grid pixels updated,
+    // and the total number of pixel updates.
+    size_t nr_pixels_updated = 0;
+    size_t nr_pixel_updates = 0;
+
+#pragma omp parallel for reduction(+:nr_pixels_updated) reduction(+:nr_pixel_updates)
+    for (int y = 0; y < (int)grid_size; y++) {
+      std::vector<int> row(grid_size);
+
+      for (const auto &tile_coordinate : tile_coordinates) {
+        int x0 = tile_coordinate.x * wtile_size -
+                 (padded_tile_size - wtile_size) / 2 + grid_size / 2;
+        int y0 = tile_coordinate.y * wtile_size -
+                 (padded_tile_size - wtile_size) / 2 + grid_size / 2;
+        int x_start = std::max(0, x0);
+        int y_start = std::max(0, y0);
+        int x_end = std::min(x0 + padded_tile_size, (int)grid_size);
+        int y_end = std::min(y0 + padded_tile_size, (int)grid_size);
+
+        if (y >= y_start && y < y_end) {
+          for (int x = x_start; x < x_end; x++) {
+            row[x]++;
+          }
+        }
+      }
+
+      // Count the number of pixels updates
+      for (int x = 0; x < (int)grid_size; x++) {
+        nr_pixels_updated += row[x] > 0;
+        nr_pixel_updates += row[x];
+      }
+    }
+
+    // Compute and print statistics
+    std::clog << std::fixed << std::setprecision(2);
+
+    // The number of tile pixels per grid pixel
+    float sizeof_ratio = (float)sizeof_padded_tiles / sizeof_grid;
+    std::clog << "sizeof_ratio         : " << sizeof_ratio * 100 << " %"
+              << std::endl;
+
+    // Fraction of all grid pixels updated
+    float update_ratio = ((double)nr_pixels_updated / grid_size) / grid_size;
+    std::clog << "update_ratio         : " << update_ratio * 100 << " %"
+              << std::endl;
+
+    // The average number of times that an updated pixel is touched
+    float nr_updates_per_pixel = (float)nr_pixel_updates / nr_pixels_updated;
+    std::clog << "nr_updates_per_pixel : " << nr_updates_per_pixel << std::endl;
   }
 }

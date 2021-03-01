@@ -23,9 +23,9 @@ class Data {
   /*
    * Parameters
    */
-  float compute_image_size(unsigned long grid_size);
-  float compute_max_uv(unsigned long grid_size);
-  unsigned int compute_grid_size();
+  float compute_image_size(unsigned long grid_size, unsigned int nr_channels);
+  float compute_max_uv(unsigned long grid_size, unsigned int nr_channels);
+  unsigned int compute_grid_size(unsigned int nr_channels);
 
   /*
    * Select baselines
