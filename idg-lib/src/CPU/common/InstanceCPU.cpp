@@ -585,11 +585,24 @@ size_t InstanceCPU::init_wtiles(size_t grid_size, int subgrid_size) {
   // of the memory used for the grid. In the extreme case subgrid_size is
   // equal to kWTileSize (both 128) m_wtiles_buffer will be as large as the
   // grid. The minimum number of wtiles is 4.
-  const size_t nr_wtiles = std::max(
-      size_t(4), (grid_size * grid_size) / (kWTileSize * kWTileSize) / 2);
+  size_t nr_wtiles_min = 4;
+  size_t nr_wtiles = std::max(
+      nr_wtiles_min, (grid_size * grid_size) / (kWTileSize * kWTileSize) / 2);
+
+  // Make sure that the wtiles buffer does not use an excessive amount of memory
   const size_t padded_wtile_size = size_t(kWTileSize) + size_t(subgrid_size);
+  size_t sizeof_padded_wtile = NR_CORRELATIONS * padded_wtile_size *
+                               padded_wtile_size * sizeof(std::complex<float>);
+  size_t sizeof_padded_wtiles = nr_wtiles * sizeof_padded_wtile;
+  size_t free_memory = auxiliary::get_free_memory() * 1024 * 1024;  // Bytes
+  while (sizeof_padded_wtiles > free_memory) {
+    nr_wtiles *= 0.9;
+    sizeof_padded_wtiles = nr_wtiles * sizeof_padded_wtiles;
+  }
+  assert(nr_wtiles >= nr_wtiles_min);
+
   m_wtiles_buffer = idg::Array1D<std::complex<float>>(
-      nr_wtiles * padded_wtile_size * padded_wtile_size * NR_CORRELATIONS);
+      sizeof_padded_wtiles / sizeof(std::complex<float>));
   m_wtiles_buffer.zero();
   return nr_wtiles;
 }
