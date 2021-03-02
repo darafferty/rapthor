@@ -622,8 +622,8 @@ steps:
     doc: |
       This step combines the gain solutions from the solve_slow_gains1 and
       solve_slow_gains2 steps into a single solution table (h5parm file).
-      The phases and amplitudes from solve_slow_gains1 and the amplitudes from
-      solve_slow_gains2 are used.
+      The phases and amplitudes from solve_slow_gains2 and the amplitudes from
+      solve_slow_gains1 are used.
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
