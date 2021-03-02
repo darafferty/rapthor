@@ -23,6 +23,7 @@
 #define NR_SAMPLES TWO_PI_INT
 
 // Lookup table
+#define ALIGNMENT 64
 float lookup[NR_SAMPLES] __attribute__((aligned(ALIGNMENT)));
 
 inline void initialize_lookup() {
