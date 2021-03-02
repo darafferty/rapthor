@@ -5,7 +5,7 @@ from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 
 class TestField(unittest.TestCase):
-
+    @classmethod
     def downloadms(self, filename):
         url = 'https://git.astron.nl/RD/DP3/-/raw/master/DDECal/test/integration/tDDECal.in_MS.tgz?inline=false'
 

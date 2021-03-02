@@ -4,13 +4,13 @@ import requests
 from rapthor.lib.screen import KLScreen
 
 class TestScreen(unittest.TestCase):
+    @classmethod
     def downloadms(self, filename):
         url = 'https://www.astron.nl/citt/rapthor/' + filename
         r = requests.get(url)
         f = open('resources/' + filename, 'wb')
         f.write(r.content)
         f.close()
-
 
     @classmethod
     def setUpClass(self):
