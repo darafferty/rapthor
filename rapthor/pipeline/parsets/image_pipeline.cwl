@@ -403,10 +403,17 @@ steps:
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, h5parm, central_patch_name,
-              channels_out, deconvolution_channels, wsclean_niter, wsclean_nmiter, robust,
-              min_uv_lambda, max_uv_lambda,
-              multiscale_scales_pixel, dir_local, taper_arcsec, wsclean_mem, auto_mask,
-              idg_mode, threshisl, threshpix, bright_skymodel_pb, peel_bright]
+{% if use_mpi %}
+              mpi_ntasks_per_node, mpi_nnodes,
+{% endif %}
+{% if do_multiscale_clean %}
+              multiscale_scales_pixel,
+{% endif %}
+              channels_out, deconvolution_channels, wsclean_niter,
+              wsclean_nmiter, robust, min_uv_lambda,
+              max_uv_lambda, dir_local, taper_arcsec, wsclean_mem,
+              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
+              peel_bright]
 {% endif %}
     scatterMethod: dotproduct
     out: []
