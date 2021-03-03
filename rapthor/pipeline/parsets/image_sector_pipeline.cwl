@@ -382,7 +382,11 @@ steps:
 {% endif %}
 {% endif %}
 {% else %}
+{% if do_multiscale_clean %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens_multiscale.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
+{% endif %}
 {% endif %}
 {% if max_cores is not none %}
     hints:

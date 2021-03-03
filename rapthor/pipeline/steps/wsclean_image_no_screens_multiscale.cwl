@@ -3,14 +3,16 @@ class: CommandLineTool
 baseCommand: [wsclean]
 label: Make an image
 doc: |
-  This tool makes an image using WSClean with no a-term corrections. See
-  wsclean_image.cwl for a detailed description of the inputs and outputs.
+  This tool makes an image using WSClean with no a-term corrections and
+  multiscale cleaning. See wsclean_image.cwl for a detailed description
+  of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
 
 arguments:
   - -no-update-model-required
+  - -multiscale
   - -save-source-list
   - -local-rms
   - -join-channels
@@ -26,6 +28,8 @@ arguments:
     prefix: -deconvolution-channels
   - valueFrom: '3'
     prefix: -fit-spectral-pol
+  - valueFrom: 'gaussian'
+    prefix: -multiscale-shape
   - valueFrom: '1.0'
     prefix: -auto-threshold
   - valueFrom: '50'
@@ -81,6 +85,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
+  - id: multiscale_scales_pixel
+    type: string
+    inputBinding:
+      prefix: -multiscale-scales
   - id: dir_local
     type: string
     inputBinding:
