@@ -165,6 +165,8 @@ std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
 
 void BufferSetImpl::init(size_t size, float cell_size, float max_w,
                          float shiftl, float shiftm, options_type& options) {
+  m_average_beam.clear();
+
   const float taper_kernel_size = 7.0;
   const float a_term_kernel_size = (options.count("a_term_kernel_size"))
                                        ? (float)options["a_term_kernel_size"]
@@ -317,7 +319,8 @@ void BufferSetImpl::init_buffers(size_t bufferTimesteps,
       case BufferSetType::kGridding: {
         std::unique_ptr<GridderBufferImpl> gridderbuffer(
             new GridderBufferImpl(*this, bufferTimesteps));
-        gridderbuffer->set_avg_beam(m_average_beam.data());
+        gridderbuffer->set_avg_beam(
+            m_average_beam.size() ? m_average_beam.data() : nullptr);
         buffer = gridderbuffer.get();
         m_gridderbuffers.push_back(std::move(gridderbuffer));
         break;
