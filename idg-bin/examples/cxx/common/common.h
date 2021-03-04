@@ -238,6 +238,7 @@ void run() {
   vector<double> runtimes_gridding;
   vector<double> runtimes_degridding;
   vector<double> runtimes_fft;
+  vector<double> runtimes_get_image;
   vector<double> runtimes_imaging;
   unsigned long nr_visibilities =
       nr_cycles * nr_baselines * total_nr_timesteps * nr_channels;
@@ -250,7 +251,7 @@ void run() {
   // Spectral line imaging
   bool simulate_spectral_line = getenv("SPECTRAL_LINE");
 
-  // Vectors for Plan and UVW
+  // Plan options
   idg::Plan::Options options;
   options.plan_strict = true;
   options.simulate_spectral_line = simulate_spectral_line;
@@ -259,15 +260,25 @@ void run() {
   options.w_step = w_step;
   omp_set_nested(true);
 
+  // Vector of plans
+  std::vector<std::unique_ptr<idg::Plan>> plans;
+
+  // Set grid
+  proxy.set_grid(grid);
+
+  // Init cache
+  proxy.init_cache(subgrid_size, cell_size, w_step, shift);
+
   // Iterate all cycles
   for (unsigned cycle = 0; cycle < nr_cycles; cycle++) {
-    // Set grid
-    proxy.set_grid(grid);
-    proxy.init_cache(subgrid_size, cell_size, w_step, shift);
+    // Start imaging
+    double runtime_imaging = -omp_get_wtime();
 
     // Iterate all time blocks
-    for (unsigned time_offset = 0; time_offset < total_nr_timesteps;
-         time_offset += nr_timesteps) {
+    unsigned int nr_time_blocks =
+        std::ceil((float)total_nr_timesteps / nr_timesteps);
+    for (unsigned int t = 0; t < nr_time_blocks; t++) {
+      int time_offset = t * nr_timesteps;
       int current_nr_timesteps = total_nr_timesteps - time_offset < nr_timesteps
                                      ? total_nr_timesteps - time_offset
                                      : nr_timesteps;
@@ -306,17 +317,18 @@ void run() {
             nr_channels_);
 
         // Create plan
-        auto plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines,
-                                    aterms_offsets, options);
-
-        // Start imaging
-        double runtime_imaging = -omp_get_wtime();
+        if (plans.size() == 0 || cycle == 0) {
+          plans.emplace_back(proxy.make_plan(kernel_size, frequencies, uvw,
+                                             baselines, aterms_offsets,
+                                             options));
+        }
+        idg::Plan &plan = *plans[t];
 
         // Run gridding
         clog << ">>> Run gridding" << endl;
         double runtime_gridding = -omp_get_wtime();
         if (!disable_gridding)
-          proxy.gridding(*plan, frequencies, visibilities, uvw, baselines,
+          proxy.gridding(plan, frequencies, visibilities, uvw, baselines,
                          aterms, aterms_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
@@ -325,13 +337,10 @@ void run() {
         clog << ">>> Run degridding" << endl;
         double runtime_degridding = -omp_get_wtime();
         if (!disable_degridding)
-          proxy.degridding(*plan, frequencies, visibilities, uvw, baselines,
+          proxy.degridding(plan, frequencies, visibilities, uvw, baselines,
                            aterms, aterms_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
-
-        // End imaging
-        runtimes_imaging.push_back(runtime_imaging + omp_get_wtime());
       }  // end for channel_offset
     }    // end for time_offset
 
@@ -347,7 +356,12 @@ void run() {
 
     // Only after a call to get_grid(), the grid can be used outside of the
     // proxy
+    double runtime_get_image = -omp_get_wtime();
     proxy.get_grid();
+    runtimes_get_image.push_back(runtime_get_image + omp_get_wtime());
+
+    // End imaging
+    runtimes_imaging.push_back(runtime_imaging + omp_get_wtime());
   }  // end for i (nr_cycles)
 
   // Compute total runtime
@@ -357,6 +371,8 @@ void run() {
       accumulate(runtimes_degridding.begin(), runtimes_degridding.end(), 0.0);
   double runtime_fft =
       accumulate(runtimes_fft.begin(), runtimes_fft.end(), 0.0);
+  double runtime_get_image =
+      accumulate(runtimes_get_image.begin(), runtimes_get_image.end(), 0.0);
   double runtime_imaging =
       accumulate(runtimes_imaging.begin(), runtimes_imaging.end(), 0.0);
 
@@ -366,6 +382,7 @@ void run() {
   if (!disable_gridding) idg::report("gridding", runtime_gridding);
   if (!disable_degridding) idg::report("degridding", runtime_degridding);
   if (!disable_fft) idg::report("fft", runtime_fft);
+  idg::report("get_image", runtime_get_image);
   idg::report("imaging", runtime_imaging);
 
   // Report throughput
