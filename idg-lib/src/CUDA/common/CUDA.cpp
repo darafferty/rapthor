@@ -663,7 +663,7 @@ void CUDA::do_compute_avg_beam(
     unsigned int x = i % subgrid_size;
     for (int ii = 0; ii < 4; ii++) {
       for (int jj = 0; jj < 4; jj++) {
-        average_beam(y, x, ii, jj) = average_beam_double(y, x, ii, jj);
+        average_beam(y, x, ii, jj) += average_beam_double(y, x, ii, jj);
       }
     }
   }
