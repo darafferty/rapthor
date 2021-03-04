@@ -144,7 +144,10 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
             beam_ind = 0
         try:
             s = lsmtool.load(input_skymodel_pb, beamMS=beamMS[beam_ind])
-            if peel_bright:
+        except astropy.io.ascii.InconsistentTableError:
+            emptysky = True
+        if peel_bright:
+            try:
                 # If bright sources were peeled before imaging, add them back
                 s_bright = lsmtool.load(input_bright_skymodel_pb)
 
@@ -153,7 +156,14 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
                 # eventually making for very long source names)
                 new_names = [name.split('_sector')[0] for name in s_bright.getColValues('Name')]
                 s_bright.setColValues('Name', new_names)
-                s.concatenate(s_bright)
+                if not emptysky:
+                    s.concatenate(s_bright)
+                else:
+                    s = s_bright
+                    emptysky = False
+            except astropy.io.ascii.InconsistentTableError:
+                pass
+        if not emptysky:
             s.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
             if len(s) == 0:
                 emptysky = True
@@ -163,8 +173,6 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
                 s.group(maskfile)  # group the sky model by mask islands
                 s.write(output_root+'.true_sky', clobber=True)
                 s.write(output_root+'.apparent_sky', clobber=True, applyBeam=True)
-        except astropy.io.ascii.InconsistentTableError:
-            emptysky = True
     else:
         emptysky = True
 
