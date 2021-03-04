@@ -377,10 +377,10 @@ class Report {
       average_beam_updated = false;
     }
     if ((total && wtiling_enabled) || wtiling_updated) {
-      report(prefix + auxiliary::name_wtiling,
-             total ? state_wtiling.total_seconds
-                   : state_wtiling.current_seconds,
-             0, 0, 0, ignore_short);
+      report(
+          prefix + auxiliary::name_wtiling,
+          total ? state_wtiling.total_seconds : state_wtiling.current_seconds,
+          0, 0, 0, ignore_short);
       wtiling_updated = false;
     }
     if ((total && host_enabled) || host_updated) {

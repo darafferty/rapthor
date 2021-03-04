@@ -17,7 +17,7 @@ class Error : public std::exception {
  public:
   Error(cufftResult result) : _result(result) {}
 
-  virtual const char *what() const throw();
+  virtual const char* what() const throw();
 
   operator cufftResult() const { return _result; }
 
@@ -28,11 +28,11 @@ class Error : public std::exception {
 class C2C_1D {
  public:
   C2C_1D(const cu::Context& context, unsigned n, unsigned count);
-  C2C_1D(const cu::Context& context, unsigned n,
-         unsigned stride, unsigned dist, unsigned count);
+  C2C_1D(const cu::Context& context, unsigned n, unsigned stride, unsigned dist,
+         unsigned count);
   ~C2C_1D();
   void setStream(CUstream stream);
-  void execute(cufftComplex *in, cufftComplex *out,
+  void execute(cufftComplex* in, cufftComplex* out,
                int direction = CUFFT_FORWARD);
 
  private:
@@ -43,11 +43,11 @@ class C2C_1D {
 class C2C_2D {
  public:
   C2C_2D(const cu::Context& context, unsigned nx, unsigned ny);
-  C2C_2D(const cu::Context& context, unsigned nx, unsigned ny,
-         unsigned stride, unsigned dist, unsigned count);
+  C2C_2D(const cu::Context& context, unsigned nx, unsigned ny, unsigned stride,
+         unsigned dist, unsigned count);
   ~C2C_2D();
   void setStream(CUstream stream);
-  void execute(cufftComplex *in, cufftComplex *out,
+  void execute(cufftComplex* in, cufftComplex* out,
                int direction = CUFFT_FORWARD);
 
  private:

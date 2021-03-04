@@ -20,9 +20,9 @@ using namespace idg::kernel::cuda;
 namespace idg {
 namespace proxy {
 namespace cuda {
-CUDA::CUDA(ProxyInfo info) :
-  hostPowerSensor(powersensor::get_power_sensor(powersensor::sensor_host)),
-  mInfo(info) {
+CUDA::CUDA(ProxyInfo info)
+    : hostPowerSensor(powersensor::get_power_sensor(powersensor::sensor_host)),
+      mInfo(info) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif

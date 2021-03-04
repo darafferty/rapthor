@@ -16,15 +16,14 @@ class UnifiedOptimized : public cuda::CUDA {
   UnifiedOptimized();
   ~UnifiedOptimized();
 
-  virtual bool do_supports_wtiles() override {
-    return true;
-  }
+  virtual bool do_supports_wtiles() override { return true; }
 
   virtual bool supports_avg_aterm_correction() { return true; }
 
   virtual std::shared_ptr<Grid> allocate_grid(size_t nr_w_layers,
                                               size_t nr_correlations,
-                                              size_t height, size_t width) override;
+                                              size_t height,
+                                              size_t width) override;
 
   virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
@@ -79,21 +78,14 @@ class UnifiedOptimized : public cuda::CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
 
-  void run_wtiles_to_grid(
-      unsigned int subgrid_size,
-      float image_size,
-      float w_step,
-      const Array1D<float>& shift,
-      WTileUpdateInfo& wtile_flush_info);
+  void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
+                          float w_step, const Array1D<float>& shift,
+                          WTileUpdateInfo& wtile_flush_info);
 
-  void run_subgrids_to_wtiles(
-      unsigned int local_id,
-      unsigned int nr_subgrids,
-      unsigned int subgrid_size,
-      float image_size,
-      float w_step,
-      const Array1D<float>& shift,
-      WTileUpdateSet &wtile_flush_set);
+  void run_subgrids_to_wtiles(unsigned int local_id, unsigned int nr_subgrids,
+                              unsigned int subgrid_size, float image_size,
+                              float w_step, const Array1D<float>& shift,
+                              WTileUpdateSet& wtile_flush_set);
 
   void flush_wtiles();
 
@@ -102,7 +94,7 @@ class UnifiedOptimized : public cuda::CUDA {
 
   // W-Tiling
   WTiles m_wtiles;
-  unsigned int m_nr_tiles = 0; // configured in init_cache
+  unsigned int m_nr_tiles = 0;  // configured in init_cache
   const unsigned int m_tile_size = 128;
 
 };  // class UnifiedOptimized

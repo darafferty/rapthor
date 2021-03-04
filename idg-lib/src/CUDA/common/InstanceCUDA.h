@@ -117,27 +117,21 @@ class InstanceCUDA : public KernelsInstance {
                                cu::DeviceMemory& d_src_tiles,
                                cu::DeviceMemory& d_dst_tiles);
 
-  void launch_adder_apply_phasor(unsigned int nr_tiles,
-                                 float image_size,
-                                 float w_step,
-                                 unsigned int w_padded_tile_size,
+  void launch_adder_apply_phasor(unsigned int nr_tiles, float image_size,
+                                 float w_step, unsigned int w_padded_tile_size,
                                  cu::DeviceMemory& d_w_padded_tiles,
                                  cu::DeviceMemory& d_shift,
                                  cu::DeviceMemory& d_tile_coordinates);
 
-  void launch_adder_subgrids_to_wtiles(int nr_subgrids,
-                                      long grid_size,
-                                      int subgrid_size,
-                                      int wtile_size,
-                                      int subgrid_offset,
-                                      cu::DeviceMemory& d_metadata,
-                                      cu::DeviceMemory& d_subgrid,
-                                      cu::DeviceMemory& d_padded_tiles);
+  void launch_adder_subgrids_to_wtiles(int nr_subgrids, long grid_size,
+                                       int subgrid_size, int wtile_size,
+                                       int subgrid_offset,
+                                       cu::DeviceMemory& d_metadata,
+                                       cu::DeviceMemory& d_subgrid,
+                                       cu::DeviceMemory& d_padded_tiles);
 
-  void launch_adder_wtiles_to_grid(int nr_tiles,
-                                   int tile_size,
-                                   int padded_tile_size,
-                                   long grid_size,
+  void launch_adder_wtiles_to_grid(int nr_tiles, int tile_size,
+                                   int padded_tile_size, long grid_size,
                                    cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
                                    cu::DeviceMemory& d_padded_tiles,
@@ -184,12 +178,8 @@ class InstanceCUDA : public KernelsInstance {
   cu::DeviceMemory& retrieve_device_avg_aterm_correction() {
     return *d_avg_aterm_correction;
   }
-  cu::DeviceMemory& retrieve_device_tiles() {
-    return *d_tiles;
-  }
-  cu::DeviceMemory& retrieve_device_padded_tiles() {
-    return *d_padded_tiles;
-  }
+  cu::DeviceMemory& retrieve_device_tiles() { return *d_tiles; }
+  cu::DeviceMemory& retrieve_device_padded_tiles() { return *d_padded_tiles; }
 
   // Retrieve pre-allocated buffers (per stream)
   cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) {
@@ -378,7 +368,8 @@ static const std::string name_average_beam = "kernel_average_beam";
 static const std::string name_fft_shift = "kernel_fft_shift";
 static const std::string name_adder_copy_tiles = "kernel_copy_tiles";
 static const std::string name_adder_apply_phasor = "kernel_apply_phasor";
-static const std::string name_adder_subgrids_to_wtiles = "kernel_subgrids_to_wtiles";
+static const std::string name_adder_subgrids_to_wtiles =
+    "kernel_subgrids_to_wtiles";
 static const std::string name_adder_wtiles_to_grid = "kernel_wtiles_to_grid";
 
 }  // end namespace cuda

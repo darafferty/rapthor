@@ -67,14 +67,14 @@ const char *Error::what() const throw() {
 /*
     C2C_1D
 */
-C2C_1D::C2C_1D(const cu::Context& context, unsigned n, unsigned count)
+C2C_1D::C2C_1D(const cu::Context &context, unsigned n, unsigned count)
     : context(context) {
   cu::ScopedContext scc(context);
   checkCuFFTcall(cufftPlan1d(&plan, n, CUFFT_C2C, count));
 }
 
-C2C_1D::C2C_1D(const cu::Context& context, unsigned n,
-               unsigned stride, unsigned dist, unsigned count)
+C2C_1D::C2C_1D(const cu::Context &context, unsigned n, unsigned stride,
+               unsigned dist, unsigned count)
     : context(context) {
   cu::ScopedContext scc(context);
   checkCuFFTcall(cufftPlanMany(&plan, 1, (int *)&n, (int *)&n, stride, dist,
@@ -99,13 +99,13 @@ void C2C_1D::execute(cufftComplex *in, cufftComplex *out, int direction) {
 /*
     C2C_2D
 */
-C2C_2D::C2C_2D(const cu::Context& context, unsigned nx, unsigned ny)
+C2C_2D::C2C_2D(const cu::Context &context, unsigned nx, unsigned ny)
     : context(context) {
   cu::ScopedContext scc(context);
   checkCuFFTcall(cufftPlan2d(&plan, nx, ny, CUFFT_C2C));
 }
 
-C2C_2D::C2C_2D(const cu::Context& context, unsigned nx, unsigned ny,
+C2C_2D::C2C_2D(const cu::Context &context, unsigned nx, unsigned ny,
                unsigned stride, unsigned dist, unsigned count)
     : context(context) {
   cu::ScopedContext scc(context);
