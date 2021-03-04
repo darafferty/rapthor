@@ -149,7 +149,7 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         if peel_bright:
             try:
                 # If bright sources were peeled before imaging, add them back
-                s_bright = lsmtool.load(input_bright_skymodel_pb)
+                s_bright = lsmtool.load(input_bright_skymodel_pb, beamMS=beamMS[beam_ind])
 
                 # Rename the bright sources, removing the '_sector_*' added previously
                 # (otherwise the '_sector_*' text will be added every iteration,
