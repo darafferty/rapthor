@@ -53,12 +53,11 @@ void kernel_gridder(
         const float m_offset = compute_m(y, subgridsize, imagesize);
         const float l_index = l_offset + shift[0];  // l: Positive direction
         const float m_index = m_offset - shift[1];  // m: Negative direction
-        const float n_index = compute_n(l_index, m_index);
-        const float n_offset = n_index;
+        const float n = compute_n(l_index, m_index);
 
         // Compute phase offset
         const float phase_offset =
-            u_offset * l_offset + v_offset * m_offset + w_offset * n_offset;
+            u_offset * l_offset + v_offset * m_offset + w_offset * n;
 
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
@@ -73,7 +72,7 @@ void kernel_gridder(
           const float w = uvw[time_offset + time].w;
 
           // Compute phase index, including phase shift.
-          const float phase_index = u * l_index + v * m_index + w * n_index;
+          const float phase_index = u * l_index + v * m_index + w * n;
 
           // Update pixel for every channel
           for (int chan = channel_begin; chan < channel_end; chan++) {

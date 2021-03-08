@@ -79,14 +79,6 @@ void Generic::run_gridding(
         new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
   }
 
-  // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_wavenumbers();
-  cu::DeviceMemory& d_spheroidal = device.retrieve_device_spheroidal();
-  cu::DeviceMemory& d_aterms = device.retrieve_device_aterms();
-  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_aterms_indices();
-  cu::DeviceMemory& d_avg_aterm_correction =
-      device.retrieve_device_avg_aterm_correction();
-
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
@@ -176,9 +168,8 @@ void Generic::run_gridding(
     // Launch gridder kernel
     device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
                           subgrid_size, image_size, w_step, nr_channels,
-                          nr_stations, d_uvw, d_wavenumbers, d_visibilities,
-                          d_spheroidal, d_aterms, d_aterms_indices,
-                          d_avg_aterm_correction, d_metadata, d_subgrids);
+                          nr_stations, d_uvw, d_visibilities, d_metadata,
+                          d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -302,12 +293,6 @@ void Generic::run_degridding(
         new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
   }
 
-  // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_wavenumbers();
-  cu::DeviceMemory& d_spheroidal = device.retrieve_device_spheroidal();
-  cu::DeviceMemory& d_aterms = device.retrieve_device_aterms();
-  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_aterms_indices();
-
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
@@ -401,9 +386,8 @@ void Generic::run_degridding(
     // Launch degridder kernel
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
                             subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, d_uvw, d_wavenumbers, d_visibilities,
-                            d_spheroidal, d_aterms, d_aterms_indices,
-                            d_metadata, d_subgrids);
+                            nr_stations, d_uvw, d_visibilities, d_metadata,
+                            d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Copy visibilities to host
@@ -470,8 +454,7 @@ void Generic::do_degridding(
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
-  device.allocate_device_grid(grid->bytes());
-  cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+  cu::DeviceMemory& d_grid = device.allocate_device_grid(grid->bytes());
   cu::Stream& htodstream = device.get_htod_stream();
   device.copy_htod(htodstream, d_grid, grid->data(), grid->bytes());
   htodstream.synchronize();

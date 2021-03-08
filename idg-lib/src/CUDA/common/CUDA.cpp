@@ -306,15 +306,6 @@ void CUDA::initialize(
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
-  auto& shift = m_cache_state.shift;
-  if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
-    throw std::invalid_argument(
-        "CUDA proxies do not support phase shifting for l,m-shifted images. "
-        "Shift parameter should be all zeros."
-        "shift is now " +
-        std::to_string(shift(0)) + ", " + std::to_string(shift(1)));
-  }
-
   cu::Marker marker("initialize");
   marker.start();
 
@@ -340,6 +331,8 @@ void CUDA::initialize(
       auto jobsize = m_gridding_state.jobsize[d];
       auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
       cu::Stream& htodstream = device.get_htod_stream();
+
+      device.set_shift(m_cache_state.shift(0), m_cache_state.shift(1));
 
       // Wavenumbers
       cu::DeviceMemory& d_wavenumbers =

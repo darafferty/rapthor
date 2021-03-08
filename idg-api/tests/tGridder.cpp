@@ -97,7 +97,8 @@ std::vector<double> GridImage(idg::api::Type arch, const WMode wmode,
 }
 
 void CompareImages(const std::vector<double>& ref,
-                   const std::vector<double>& test, const size_t border = 0) {
+                   const std::vector<double>& test,
+                   const double pixel_tolerance, const size_t border = 0) {
   double total_diff = 0.0;
   double allowed_diff = 0.0;
 
@@ -111,7 +112,7 @@ void CompareImages(const std::vector<double>& ref,
         BOOST_CHECK_CLOSE(ref_pixel - test_pixel, 0.0f, 1e-3);
       } else {
         // Check both individual and average pixel differences.
-        BOOST_CHECK_CLOSE(ref_pixel, test_pixel, 3.0);
+        BOOST_CHECK_CLOSE(ref_pixel, test_pixel, pixel_tolerance);
         total_diff +=
             std::max(ref_pixel / test_pixel, test_pixel / ref_pixel) - 1.0;
         allowed_diff += 0.01;
@@ -184,36 +185,37 @@ BOOST_AUTO_TEST_CASE(reference) {
 
 // Test that all architectures produce similar results.
 BOOST_AUTO_TEST_CASE(architectures, *utf::depends_on("gridder/reference")) {
-  // TODO: Add Hybrid/CUDA/OpenCL architectures if available.
-  const std::vector<idg::api::Type> kArchitectures{
-      idg::api::Type::CPU_OPTIMIZED};
+  std::set<idg::api::Type> architectures = GetArchitectures();
+  architectures.erase(idg::api::Type::CPU_REFERENCE);
 
-  for (idg::api::Type architecture : kArchitectures) {
+  for (idg::api::Type architecture : architectures) {
     std::vector<double> image_arch = GridImage(architecture, WMode::kNeither);
-    CompareImages(image_ref, image_arch);
+    double pixel_tolerance = 3.0;
+    // CUDA images require higher tolerance values.
+    if (architecture == idg::api::Type::CUDA_GENERIC ||
+        architecture == idg::api::Type::HYBRID_CUDA_CPU_OPTIMIZED) {
+      pixel_tolerance = 8.0;
+    }
+    CompareImages(image_ref, image_arch, pixel_tolerance);
   }
 }
 
-// Test that all wmodes produce similar results.
+// Test that all wmodes produce the same results.
 BOOST_AUTO_TEST_CASE(wmodes, *utf::depends_on("gridder/reference")) {
   const std::vector<WMode> kWModes{WMode::kWStacking, WMode::kWTiling};
 
   for (WMode wmode : kWModes) {
     std::vector<double> image_wmode =
         GridImage(idg::api::Type::CPU_REFERENCE, wmode);
-    CompareImages(image_ref, image_wmode);
+    CompareImages(image_ref, image_wmode, 1.2);
   }
 }
 
 // Test that using a shift produces a shifted image.
 BOOST_AUTO_TEST_CASE(shift, *utf::depends_on("gridder/reference")) {
-  // TODO: Add Hybrid/CUDA/OpenCL architectures when they support shifts.
-  const std::vector<idg::api::Type> kArchitectures{
-      idg::api::Type::CPU_REFERENCE, idg::api::Type::CPU_OPTIMIZED};
-
   const std::array<int, 2> kShift{10, 20};
 
-  for (idg::api::Type architecture : kArchitectures) {
+  for (idg::api::Type architecture : GetArchitectures()) {
     std::vector<double> image_shift =
         GridImage(architecture, WMode::kNeither, kShift);
     // This test has to use a very large border: Outside the center, the
@@ -222,7 +224,7 @@ BOOST_AUTO_TEST_CASE(shift, *utf::depends_on("gridder/reference")) {
     // A manual test with wsclean using the 1052736496-averaged MS
     // showed that the gridder works fine.
     // TODO: Analyze the origin of the inaccuracy in this test.
-    CompareImages(image_ref, image_shift, 108);
+    CompareImages(image_ref, image_shift, 1.3, 108);
   }
 }
 
