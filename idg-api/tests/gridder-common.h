@@ -4,7 +4,10 @@
 // This file contains common helper code for tDegridder and tGridder.
 
 #include <idg-api.h>
+#include <set>
 
 enum class WMode { kNeither, kWStacking, kWTiling };
 
 void AddWModeToOptions(WMode wmode, idg::api::options_type& options);
+
+std::set<idg::api::Type> GetArchitectures();

@@ -18,7 +18,6 @@ const std::size_t kNrBaselines = (kNrStations + 1) * kNrStations / 2;
 const std::size_t kNrRows = kNrTimesteps * kNrBaselines;
 const std::size_t kRowSize = kBands.front().size() * kNrCorrelations;
 const std::complex<float> kDummyData{42.0, -42.0};
-const float kTolerance = 3e-3;  // Maximum difference % between visibilities.
 const float kCellSize = 0.001;  // Pixel size in radians.
 
 std::unique_ptr<idg::api::BufferSet> CreateBufferset(
@@ -97,7 +96,8 @@ std::pair<std::vector<std::size_t>, std::vector<std::size_t>> CreateAntennas() {
 }
 
 void CompareResults(std::vector<std::complex<float>*>& result1,
-                    std::vector<std::complex<float>*>& result2) {
+                    std::vector<std::complex<float>*>& result2,
+                    const float tolerance) {
   BOOST_REQUIRE_EQUAL(result1.size(), kNrRows);
   BOOST_REQUIRE_EQUAL(result2.size(), kNrRows);
 
@@ -107,8 +107,8 @@ void CompareResults(std::vector<std::complex<float>*>& result1,
     BOOST_REQUIRE(data1);
     BOOST_REQUIRE(data2);
     while (data1 != result1[row] + kRowSize) {
-      BOOST_CHECK_CLOSE(std::abs(*data1), std::abs(*data2), kTolerance);
-      BOOST_CHECK_SMALL(std::arg(*data1) - std::arg(*data2), kTolerance);
+      BOOST_CHECK_CLOSE(std::abs(*data1), std::abs(*data2), tolerance);
+      BOOST_CHECK_SMALL(std::arg(*data1) - std::arg(*data2), tolerance);
       ++data1;
       ++data2;
     }
@@ -116,7 +116,7 @@ void CompareResults(std::vector<std::complex<float>*>& result1,
 }
 
 void CompareResults(const std::complex<float>* ref,
-                    const std::complex<float>* custom,
+                    const std::complex<float>* custom, const float tolerance,
                     const std::size_t time_steps = kNrTimesteps,
                     const std::complex<float> aterm = {1.0}) {
   // IDG applies the aterm for two stations, and uses the complex conjugate
@@ -135,9 +135,8 @@ void CompareResults(const std::complex<float>* ref,
       for (std::size_t st2 = st1 + 1; st2 < kNrStations; ++st2) {
         for (std::size_t i = 0; i < kRowSize; ++i, ++ref, ++custom) {
           std::complex<float> ref_value = *ref * aterm_factor;
-          BOOST_CHECK_CLOSE(std::abs(ref_value), std::abs(*custom), kTolerance);
-          BOOST_CHECK_SMALL(std::arg(ref_value) - std::arg(*custom),
-                            kTolerance);
+          BOOST_CHECK_CLOSE(std::abs(ref_value), std::abs(*custom), tolerance);
+          BOOST_CHECK_SMALL(std::arg(ref_value) - std::arg(*custom), tolerance);
         }
       }
     }
@@ -254,8 +253,8 @@ BOOST_AUTO_TEST_CASE(strategies) {
                                 comp_data_ptrs);
 
   // Finally, compare the predictions.
-  CompareResults(result_req, result_multi);
-  CompareResults(result_multi, result_comp);
+  CompareResults(result_req, result_multi, 1e-10);
+  CompareResults(result_multi, result_comp, 1e-10);
 
   dg_req->finished_reading();
   dg_multi->finished_reading();
@@ -326,21 +325,18 @@ BOOST_AUTO_TEST_CASE(custom_factors) {
                                  ptrs_aterm, nullptr, aterms.data(),
                                  aterm_offsets);
 
-  CompareResults(data_ref.data(), data_uvw.data());
+  CompareResults(data_ref.data(), data_uvw.data(), 1e-10);
 
   const std::size_t timestep_size = kNrBaselines * kRowSize;
-  CompareResults(data_ref.data(), data_aterm.data(), 3, aterm_012);
+  CompareResults(data_ref.data(), data_aterm.data(), 1e-10, 3, aterm_012);
   CompareResults(data_ref.data() + timestep_size * 3,
-                 data_aterm.data() + timestep_size * 3, 2, aterm_34);
+                 data_aterm.data() + timestep_size * 3, 2e-5, 2, aterm_34);
   CompareResults(data_ref.data() + timestep_size * 5,
-                 data_aterm.data() + timestep_size * 5, 4, aterm_5678);
+                 data_aterm.data() + timestep_size * 5, 3e-5, 4, aterm_5678);
 }
 
 BOOST_AUTO_TEST_CASE(shift) {
   // This test tests all combinations of architecture and wmode.
-  // TODO: Add Hybrid/CUDA/OpenCL architectures when they support shifts.
-  const std::vector<idg::api::Type> kArchitectures{
-      idg::api::Type::CPU_REFERENCE, idg::api::Type::CPU_OPTIMIZED};
   const std::vector<WMode> kWModes{WMode::kNeither, WMode::kWStacking,
                                    WMode::kWTiling};
 
@@ -359,14 +355,15 @@ BOOST_AUTO_TEST_CASE(shift) {
     ptrs_shift.push_back(data_shift.data() + t * kNrBaselines * kRowSize);
   }
 
-  // Create reference output data.
-  std::unique_ptr<idg::api::BufferSet> bs_ref =
-      CreateBufferset(idg::api::BufferSetType::kBulkDegridding);
-  const idg::api::BulkDegridder* dg_ref = bs_ref->get_bulk_degridder(0);
-  dg_ref->compute_visibilities(antennas.first, antennas.second, uvws, ptrs_ref);
-  bs_ref.reset();
+  for (idg::api::Type architecture : GetArchitectures()) {
+    // Create reference output data.
+    std::unique_ptr<idg::api::BufferSet> bs_ref =
+        CreateBufferset(idg::api::BufferSetType::kBulkDegridding, architecture);
+    const idg::api::BulkDegridder* dg_ref = bs_ref->get_bulk_degridder(0);
+    dg_ref->compute_visibilities(antennas.first, antennas.second, uvws,
+                                 ptrs_ref);
+    bs_ref.reset();
 
-  for (idg::api::Type architecture : kArchitectures) {
     for (WMode wmode : kWModes) {
       std::unique_ptr<idg::api::BufferSet> bs_shift =
           CreateBufferset(idg::api::BufferSetType::kBulkDegridding,
@@ -376,7 +373,15 @@ BOOST_AUTO_TEST_CASE(shift) {
       std::fill(data_shift.begin(), data_shift.end(), kDummyData);
       dg_shift->compute_visibilities(antennas.first, antennas.second, uvws,
                                      ptrs_shift);
-      CompareResults(data_ref.data(), data_shift.data());
+
+      float tolerance = 3e-3;
+      if (architecture == idg::api::Type::CUDA_GENERIC) {
+        tolerance = 1e-10;
+      } else if (architecture == idg::api::Type::HYBRID_CUDA_CPU_OPTIMIZED) {
+        tolerance = 3.0;
+      }
+
+      CompareResults(data_ref.data(), data_shift.data(), tolerance);
     }
   }
 }

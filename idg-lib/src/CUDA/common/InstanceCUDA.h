@@ -38,21 +38,17 @@ class InstanceCUDA : public KernelsInstance {
   void launch_gridder(int time_offset, int nr_subgrids, int grid_size,
                       int subgrid_size, float image_size, float w_step,
                       int nr_channels, int nr_stations, cu::DeviceMemory& d_uvw,
-                      cu::DeviceMemory& d_wavenumbers,
                       cu::DeviceMemory& d_visibilities,
-                      cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterm,
-                      cu::DeviceMemory& d_aterm_indices,
-                      cu::DeviceMemory& d_avg_aterm_correction,
                       cu::DeviceMemory& d_metadata,
                       cu::DeviceMemory& d_subgrid);
 
-  void launch_degridder(
-      int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
-      float image_size, float w_step, int nr_channels, int nr_stations,
-      cu::DeviceMemory& d_uvw, cu::DeviceMemory& d_wavenumbers,
-      cu::DeviceMemory& d_visibilities, cu::DeviceMemory& d_spheroidal,
-      cu::DeviceMemory& d_aterm, cu::DeviceMemory& d_aterm_indices,
-      cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid);
+  void launch_degridder(int time_offset, int nr_subgrids, int grid_size,
+                        int subgrid_size, float image_size, float w_step,
+                        int nr_channels, int nr_stations,
+                        cu::DeviceMemory& d_uvw,
+                        cu::DeviceMemory& d_visibilities,
+                        cu::DeviceMemory& d_metadata,
+                        cu::DeviceMemory& d_subgrid);
 
   void launch_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
                            int nr_channels, int nr_aterms, int subgrid_size,
@@ -136,7 +132,7 @@ class InstanceCUDA : public KernelsInstance {
   void register_host_memory(void* ptr, size_t bytes);
 
   // Retrieve pre-allocated buffers (per device)
-  cu::DeviceMemory& retrieve_device_grid() { return *d_grid.get(); }
+  cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
   cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
   cu::DeviceMemory& retrieve_device_aterms_indices() {
     return *d_aterms_indices;
@@ -175,6 +171,10 @@ class InstanceCUDA : public KernelsInstance {
   void unmap_host_memory() { h_registered_.clear(); };
 
   // Misc
+  void set_shift(float shift_l, float shift_m) {
+    shift_l_ = shift_l;
+    shift_m_ = shift_m;
+  }
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
   void free_device_memory();
@@ -256,6 +256,10 @@ class InstanceCUDA : public KernelsInstance {
 
   // All CUDA modules private to this InstanceCUDA
   std::vector<std::unique_ptr<cu::Module>> mModules;
+
+  // Pass the two shift values as arguments instead of allocating device memory.
+  float shift_l_;
+  float shift_m_;
 
  protected:
   dim3 block_gridder;

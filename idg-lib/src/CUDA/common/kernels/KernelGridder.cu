@@ -117,6 +117,8 @@ __device__ void
     const int                           subgrid_size,
     const float                         image_size,
     const float                         w_step,
+    const float                         shift_l,
+    const float                         shift_m,
     const int                           nr_channels,
     const int                           channel_offset,
     const int                           nr_stations,
@@ -172,8 +174,8 @@ __device__ void
         int aterm_idx_previous = aterms_indices[time_offset_global];
 
         // Compute l,m,n, phase_offset
-        float l[UNROLL_PIXELS];
-        float m[UNROLL_PIXELS];
+        float l_index[UNROLL_PIXELS];
+        float m_index[UNROLL_PIXELS];
         float n[UNROLL_PIXELS];
         float phase_offset[UNROLL_PIXELS];
 
@@ -181,10 +183,12 @@ __device__ void
             int i_ = i + j * nr_threads;
             int y = i_ / subgrid_size;
             int x = i_ % subgrid_size;
-            l[j] = compute_l(x, subgrid_size, image_size);
-            m[j] = compute_m(y, subgrid_size, image_size);
-            n[j] = compute_n(l[j], m[j]);
-            phase_offset[j] = u_offset*l[j] + v_offset*m[j] + w_offset*n[j];
+            float l_offset = compute_l(x, subgrid_size, image_size);
+            float m_offset = compute_m(y, subgrid_size, image_size);
+            l_index[j] = l_offset + shift_l;
+            m_index[j] = m_offset - shift_m;
+            n[j] = compute_n(l_index[j], m_index[j]);
+            phase_offset[j] = u_offset*l_offset + v_offset*m_offset + w_offset*n[j];
         }
 
         // Iterate timesteps
@@ -259,7 +263,7 @@ __device__ void
                 float phase_index[UNROLL_PIXELS];
 
                 for (int j = 0; j < UNROLL_PIXELS; j++) {
-                    phase_index[j]  = u*l[j] + v*m[j] + w*n[j];
+                    phase_index[j]  = u*l_index[j] + v*m_index[j] + w*n[j];
                 }
 
                 #pragma unroll
@@ -316,7 +320,8 @@ __device__ void
 #define KERNEL_GRIDDER(current_nr_channels) \
     for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
         kernel_gridder_<current_nr_channels>( \
-            time_offset, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+            time_offset, grid_size, subgrid_size, image_size, w_step, \
+            shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
             uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
     }
 
@@ -331,6 +336,8 @@ __device__ void
     const int                         subgrid_size, \
     const float                       image_size,   \
     const float                       w_step,       \
+    const float                       shift_l,      \
+    const float                       shift_m,      \
     const int                         nr_channels,  \
     const int                         nr_stations,  \
     const UVW<float>*    __restrict__ uvw,          \

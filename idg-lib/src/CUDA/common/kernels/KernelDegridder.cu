@@ -18,6 +18,8 @@ __device__ void kernel_degridder_(
     const int                         subgrid_size,
     const float                       image_size,
     const float                       w_step,
+    const float                       shift_l,
+    const float                       shift_m,
     const int                         nr_channels,
     const int                         channel_offset,
     const int                         nr_stations,
@@ -133,42 +135,37 @@ __device__ void kernel_degridder_(
                     shared[0][j] = *((float4 *) &pixel[0]);
                     shared[1][j] = *((float4 *) &pixel[2]);;
 
-                    // Compute l,m,n and phase offset
-                    const float l = compute_l(x, subgrid_size, image_size);
-                    const float m = compute_m(y, subgrid_size, image_size);
-                    const float n = compute_n(l, m);
-                    float phase_offset = u_offset*l + v_offset*m + w_offset*n;
+                    // Compute l,m,n for phase offset and phase index
+                    const float l_offset = compute_l(x, subgrid_size, image_size);
+                    const float m_offset = compute_m(y, subgrid_size, image_size);
+                    const float l_index = l_offset + shift_l;
+                    const float m_index = m_offset - shift_m;
+                    const float n = compute_n(l_index, m_index);
+                    const float phase_offset = u_offset*l_offset + v_offset*m_offset + w_offset*n;
 
-                    // Store l,m,n and phase offset in shared memory
-                    shared[2][j] = make_float4(l, m, n, phase_offset);
+                    // Store l_index,m_index,n and phase offset in shared memory
+                    shared[2][j] = make_float4(l_index, m_index, n, phase_offset);
                 } // end for j (pixels)
 
                 __syncthreads();
 
                 // Iterate current batch of pixels
                 for (int k = 0; k < current_nr_pixels; k++) {
-                    // Load pixels from shared memory
                     float2 apXX = make_float2(shared[0][k].x, shared[0][k].y);
                     float2 apXY = make_float2(shared[0][k].z, shared[0][k].w);
                     float2 apYX = make_float2(shared[1][k].x, shared[1][k].y);
                     float2 apYY = make_float2(shared[1][k].z, shared[1][k].w);
 
-                    // Load l,m,n
-                    float l = shared[2][k].x;
-                    float m = shared[2][k].y;
-                    float n = shared[2][k].z;
+                    const float l_index = shared[2][k].x;
+                    const float m_index = shared[2][k].y;
+                    const float n = shared[2][k].z;
+                    const float phase_offset = shared[2][k].w;
 
-                    // Load phase offset
-                    float phase_offset = shared[2][k].w;
-
-                    // Compute phase index
-                    float phase_index = u * l + v * m + w * n;
+                    const float phase_index = u * l_index + v * m_index + w * n;
 
                     for (int chan = 0; chan < unroll_channels; chan++) {
-                        // Load wavenumber
                         float wavenumber = wavenumbers[channel_offset + channel_offset_local + chan];
 
-                        // Compute phasor
                         float  phase  = (phase_index * wavenumber) - phase_offset;
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
@@ -211,13 +208,15 @@ __device__ void kernel_degridder_(
     if (nr_timesteps / nr_aterms < (2*warpSize)) { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, 1>( \
-                time_offset, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+                time_offset, grid_size, subgrid_size, image_size, w_step, \
+                shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     } else { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, current_nr_channels>( \
-                time_offset, grid_size, subgrid_size, image_size, w_step, nr_channels, channel_offset, nr_stations, \
+                time_offset, grid_size, subgrid_size, image_size, w_step, \
+                shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     }
@@ -228,6 +227,8 @@ __device__ void kernel_degridder_(
     const int                         subgrid_size, \
     const float                       image_size,   \
     const float                       w_step,       \
+    const float                       shift_l,      \
+    const float                       shift_m,      \
     const int                         nr_channels,  \
     const int                         nr_stations,  \
     const UVW<float>*    __restrict__ uvw,          \
