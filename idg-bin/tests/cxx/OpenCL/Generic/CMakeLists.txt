@@ -5,6 +5,7 @@ project(test-opencl-generic.x)
 
 set (${PROJECT_NAME}_sources
   main.cpp
+  ../../common/common.cpp
 )
 
 # Set build target

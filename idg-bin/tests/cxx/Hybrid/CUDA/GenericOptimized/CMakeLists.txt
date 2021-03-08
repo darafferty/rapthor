@@ -7,6 +7,7 @@ project(test-hybrid-cuda-generic-optimized.x)
 set (
     ${PROJECT_NAME}_sources
     main.cpp
+    ../../../common/common.cpp
 )
 
 # Set build target

@@ -3,18 +3,19 @@
 
 project(test-cpu-reference.x)
 
-set (${PROJECT_NAME}_sources 
+set (${PROJECT_NAME}_sources
   main.cpp
+  ../../common/common.cpp
 )
 
 # Set build target
 add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
-link_directories (${LIBRARY_OUTPUT_PATH}) 
+link_directories (${LIBRARY_OUTPUT_PATH})
 
 target_link_libraries (
-  ${PROJECT_NAME} 
+  ${PROJECT_NAME}
   ${LINK_LIBRARIES}
 )
 

@@ -3,10 +3,9 @@
 
 #include "idg-cpu.h"
 
-using namespace std;
-
-using ProxyType = idg::proxy::cpu::Optimized;
-
 #include "../common/common.h"
 
-int main(int argc, char *argv[]) { return compare_to_reference(); }
+int main(int argc, char *argv[]) {
+  idg::proxy::cpu::Optimized proxy;
+  return compare_to_reference(proxy);
+}
