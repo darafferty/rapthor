@@ -1,9 +1,8 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#include "idg-cpu.h"  // Reference proxy
-
-using ProxyType = idg::proxy::cpu::Reference;
+#include "idg-cpu.h"   // Reference proxy
+#include "idg-util.h"  // Data init routines
 
 #include "common.h"
 
