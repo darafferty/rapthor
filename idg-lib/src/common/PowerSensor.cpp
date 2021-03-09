@@ -11,11 +11,7 @@
 #include "auxiliary.h"
 
 #if defined(HAVE_POWERSENSOR)
-#include "powersensor/LikwidPowerSensor.h"
-#include "powersensor/RaplPowerSensor.h"
-#include "powersensor/NVMLPowerSensor.h"
-#include "powersensor/ArduinoPowerSensor.h"
-#include "powersensor/AMDGPUPowerSensor.h"
+#include <powersensor.h>
 #define POWERSENSOR_DEFINED
 #endif
 
@@ -29,11 +25,22 @@ static std::string name_nvml("nvml");
 static std::string name_arduino("tty");
 static std::string name_amdgpu("amdgpu");
 
+#if not defined(HAVE_POWERSENSOR)
 class DummyPowerSensor : public PowerSensor {
  public:
-  DummyPowerSensor();
-  virtual State read();
+  DummyPowerSensor(){};
+
+  virtual State read() override {
+    State state;
+    state.timeAtRead = omp_get_wtime();
+    return state;
+  }
+
+  static DummyPowerSensor *create() { return new DummyPowerSensor(); };
 };
+
+PowerSensor::~PowerSensor(){};
+#endif
 
 PowerSensor *get_power_sensor(const std::string name, const unsigned i) {
   // Determine which environment variable to read
@@ -60,13 +67,20 @@ PowerSensor *get_power_sensor(const std::string name, const unsigned i) {
 #if defined(HAVE_POWERSENSOR)
   if (power_sensors.size() > 0 && i < power_sensors.size()) {
     std::string power_sensor_str = power_sensors[i];
+#if defined(HAVE_LIKWID)
     if (power_sensor_str.compare(name_likwid) == 0) {
       return likwid::LikwidPowerSensor::create();
-    } else if (power_sensor_str.compare(name_rapl) == 0) {
+    }
+#endif
+    if (power_sensor_str.compare(name_rapl) == 0) {
       return rapl::RaplPowerSensor::create(NULL);
-    } else if (power_sensor_str.compare(name_nvml) == 0) {
+    }
+#if defined(HAVE_NVML)
+    if (power_sensor_str.compare(name_nvml) == 0) {
       return nvml::NVMLPowerSensor::create(i, NULL);
-    } else if (power_sensor_str.find(name_arduino) != std::string::npos) {
+    }
+#endif
+    if (power_sensor_str.find(name_arduino) != std::string::npos) {
       return arduino::ArduinoPowerSensor::create(power_sensor_str.c_str(),
                                                  NULL);
     } else if (power_sensor_str.compare(name_amdgpu) == 0) {
@@ -76,17 +90,7 @@ PowerSensor *get_power_sensor(const std::string name, const unsigned i) {
 #endif
 
   // Use the DummyPowerSensor as backup
-  return new DummyPowerSensor();
-}
-
-PowerSensor::~PowerSensor(){};
-
-DummyPowerSensor::DummyPowerSensor() {}
-
-State DummyPowerSensor::read() {
-  State state;
-  state.timeAtRead = omp_get_wtime();
-  return state;
+  return DummyPowerSensor::create();
 }
 
 double PowerSensor::seconds(const State &firstState, const State &secondState) {
