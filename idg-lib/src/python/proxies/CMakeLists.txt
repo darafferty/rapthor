@@ -5,5 +5,6 @@ install(
     FILES
     Python.py
     PythonReference.py
+    COMPONENT python
     DESTINATION
     ${PYTHON_INSTALL_DIR})

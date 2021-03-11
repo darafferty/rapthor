@@ -7,6 +7,7 @@ project(idg)
 option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
 option(BUILD_STATIC_LIBS "Build static libraries" OFF)
 option(BUILD_WITH_DEMOS "Build with demos" OFF)
+option(BUILD_PACKAGES "Build package(s)" OFF)
 option(BUILD_TESTING "" OFF)
 include(CTest)
 
@@ -23,7 +24,11 @@ set (BUILD_SHARED_LIBS TRUE)
 endif()
 
 # Set rpath to install directory
-SET(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
+set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 set(IDG_FOUND True)
 set(IDG_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/idg-lib/src
@@ -56,7 +61,11 @@ if (BUILD_WITH_PYTHON)
   if(${PYTHON_VERSION} VERSION_LESS "3.6")
     message(FATAL_ERROR "IDG requires python version >= 3.6, but found ${PYTHON_VERSION}. Using cmake >= 3.12 might fix this error" )
   endif()
-  set(PYTHON_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/idg)
+  if(BUILD_PACKAGES)
+    set(PYTHON_INSTALL_DIR lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/dist-packages/idg)
+  else()
+    set(PYTHON_INSTALL_DIR lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/idg)
+  endif()
 endif()
 
 if (BUILD_TESTING)
@@ -82,8 +91,13 @@ install(
     FILES
     ${PROJECT_BINARY_DIR}/idg.env
     DESTINATION
-    ${CMAKE_INSTALL_PREFIX}/share/
+    share
 )
 
 # Add integration tests
 add_subdirectory(test/integration)
+
+# Packaging
+if (BUILD_PACKAGES)
+  add_subdirectory(cpack)
+endif()

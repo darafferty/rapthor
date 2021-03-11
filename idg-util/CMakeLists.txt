@@ -3,12 +3,6 @@
 
 cmake_minimum_required(VERSION 2.8.0)
 
-# Installation
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR} CACHE PATH
-    "IDG install prefix" FORCE)
-endif()
-
 # Compiler settings:
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Default build type." FORCE)
@@ -81,7 +75,7 @@ install(
     FILES
     "${CMAKE_CURRENT_BINARY_DIR}/src/idg-util-config.h"
     DESTINATION
-    "${CMAKE_INSTALL_PREFIX}/include"
+    "include"
 )
 
 # add subfolders
@@ -106,4 +100,4 @@ configure_file(
 
 install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/idg-util-config.cmake
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/share)
+    DESTINATION share)

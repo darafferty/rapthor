@@ -4,5 +4,6 @@
 install(FILES
         util.py
         data.py
+        COMPONENT util
         DESTINATION
         ${PYTHON_INSTALL_DIR})

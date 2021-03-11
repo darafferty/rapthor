@@ -97,7 +97,7 @@ set (${PROJECT_NAME}_sources
 )
 
 # enable rpath
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib" ${CUDA_LIB_DIR})
+list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib ${CUDA_LIB_DIR})
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(
@@ -116,6 +116,7 @@ target_link_libraries (
 install(
     FILES
     ${${PROJECT_NAME}_headers}
+    COMPONENT api
     DESTINATION
     include/idg-api
 )
@@ -123,11 +124,13 @@ install(
 install(
     FILES
     idg-api.h
+    COMPONENT api
     DESTINATION
     include
 )
 
 install(TARGETS ${PROJECT_NAME}
+  COMPONENT api
   EXPORT IDGAPITargets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
@@ -149,4 +152,5 @@ configure_file(
 install(FILES
     "${PROJECT_BINARY_DIR}/CMakeFiles/idgapi-config.cmake"
     "${PROJECT_BINARY_DIR}/CMakeFiles/idgapi-config-version.cmake"
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/share/idgapi/cmake)
+    COMPONENT api
+    DESTINATION share/idgapi/cmake)

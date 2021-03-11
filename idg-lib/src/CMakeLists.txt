@@ -32,7 +32,7 @@ endif()
 #########################################################
 # enable rpath for all of the libidg-*.so files         #
 #########################################################
-set(CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
+list(APPEND CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 
@@ -52,6 +52,7 @@ set_target_properties(
 
 install(
     TARGETS idg-external
+    COMPONENT base
     EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -96,6 +97,7 @@ set_target_properties(
 
 install(
     TARGETS idg-common
+    COMPONENT base
     EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -131,6 +133,7 @@ set_target_properties(
 
 install(
     TARGETS idg-fft
+    COMPONENT base
     EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -166,6 +169,7 @@ set_target_properties(idg-cpu PROPERTIES
 
 install(
   TARGETS idg-cpu
+  COMPONENT cpu
   EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib
@@ -208,6 +212,7 @@ set_target_properties(
 
 install(
     TARGETS idg-cuda
+    COMPONENT gpu
     EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -248,6 +253,7 @@ set_target_properties (
 
 install(
     TARGETS idg-hybrid-cuda
+    COMPONENT hybrid
     EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -289,6 +295,7 @@ set_target_properties(
 
 install(
     TARGETS idg-opencl
+    COMPONENT gpu
     EXPORT idg-targets
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib
@@ -313,7 +320,10 @@ if (BUILD_LIB_CPU)
   set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cpu)
 endif()
 if (BUILD_LIB_CUDA)
-  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cuda idg-hybrid-cuda)
+  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cuda)
+endif()
+if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
+  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-hybrid-cuda)
 endif()
 if (BUILD_LIB_OPENCL)
   set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-opencl)
@@ -330,7 +340,7 @@ set_target_properties(idg PROPERTIES
                       )
 
 install(
-    TARGETS idg
+  TARGETS idg
   EXPORT idg-targets
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION lib

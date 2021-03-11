@@ -25,13 +25,16 @@ add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 # link
 link_directories(${LIBRARY_OUTPUT_PATH})
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../)
+include_directories(
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+    ${CMAKE_CURRENT_SOURCE_DIR}/../..
+    ${Boost_INCLUDE_DIRS}
+)
 
 set(${PROJECT_NAME}_link_libraries
-    ${IDG_LIBRARY}
-    idg-api
-    ${LAPACKE_LIB}
+    idg-api 
+    idg-common
+    idg-external
     ${Boost_LIBRARIES}
 )
 
