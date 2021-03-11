@@ -54,6 +54,7 @@ install(
     kernels/KernelFFTShift.cu
     kernels/math.cu
     kernels/Types.h
+    COMPONENT gpu
     DESTINATION
     lib/idg-cuda
 )

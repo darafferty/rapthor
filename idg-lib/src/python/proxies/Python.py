@@ -3,11 +3,10 @@
 
 import numpy as np
 
-import idg
-import idgtypes
+import idg.idgtypes
 
-from Proxy import *
-from Plan import *
+from idg.Proxy import *
+from idg.Plan import *
 
 
-from PythonReference import *
+from .PythonReference import *

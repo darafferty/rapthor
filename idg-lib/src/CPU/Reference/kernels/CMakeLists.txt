@@ -57,6 +57,7 @@ install(
     ${PROJECT_NAME}-splitter
     ${PROJECT_NAME}-fft
     ${PROJECT_NAME}-average-beam
+    COMPONENT cpu
     DESTINATION
     lib/idg-cpu/Reference
 )

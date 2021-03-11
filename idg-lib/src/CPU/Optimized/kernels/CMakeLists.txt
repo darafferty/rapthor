@@ -84,6 +84,7 @@ install(
     ${PROJECT_NAME}-splitter-wstack
     ${PROJECT_NAME}-adder-wtiles
     ${PROJECT_NAME}-splitter-wtiles
+    COMPONENT cpu
     DESTINATION
     lib/idg-cpu/Optimized
 )

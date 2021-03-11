@@ -28,12 +28,6 @@ option (USE_LOOKUP_TABLE "Use sine/cosine lookup table" OFF)
 option (USE_PHASOR_EXTRAPOLATION "Use phasor extrapolation" OFF)
 option (CUDA_KERNEL_DEBUG "Enable debug mode for CUDA kernels" OFF)
 
-# Installation
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR} CACHE PATH
-    "IDG install prefix" FORCE)
-endif()
-
 
 # Compiler settings:
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -148,7 +142,7 @@ install(
     FILES
     ${PROJECT_BINARY_DIR}/src/idg-config.h
     DESTINATION
-    ${CMAKE_INSTALL_PREFIX}/include
+    include
 )
 
 # Create idg-targets.cmake
@@ -186,7 +180,7 @@ configure_file(
 
 install(
     FILES ${PROJECT_BINARY_DIR}/CMakeFiles/idg-config.cmake
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/share
+    DESTINATION share
 )
 
 if (BUILD_TESTING)

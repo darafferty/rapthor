@@ -15,12 +15,6 @@ option (BUILD_LIB_CUDA "Build CUDA libraries" OFF)
 #option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
 option (USE_DUMMY_VISIBILITIES "Run C++ examples using dummy visibilities" ON)
 
-# Installation
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_BINARY_DIR} CACHE PATH
-    "IDG install prefix" FORCE)
-endif()
-
 # Compiler settings:
 if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE Release CACHE STRING "Default build type." FORCE)
