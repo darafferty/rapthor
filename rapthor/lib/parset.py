@@ -310,6 +310,14 @@ def get_calibration_options(parset):
         parset_dict['tolerance'] = parset.getfloat('calibration', 'tolerance')
     else:
         parset_dict['tolerance'] = 1e-3
+    if 'llsstarttolerance' in parset_dict:
+        parset_dict['llsstarttolerance'] = parset.getfloat('calibration', 'llsstarttolerance')
+    else:
+        parset_dict['llsstarttolerance'] = 1e-2
+    if 'llstolerance' in parset_dict:
+        parset_dict['llstolerance'] = parset.getfloat('calibration', 'llstolerance')
+    else:
+        parset_dict['llstolerance'] = 1e-7
 
     # Use the IDG for predict during calibration (default = False)?
     if 'use_idg_predict' in parset_dict:
@@ -329,7 +337,8 @@ def get_calibration_options(parset):
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug']
+                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug',
+                       'llsstarttolerance', 'llstolerance']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '

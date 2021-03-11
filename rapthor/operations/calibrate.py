@@ -116,6 +116,8 @@ class Calibrate(Operation):
         onebeamperpatch = self.field.onebeamperpatch
         stepsize = self.field.stepsize
         tolerance = self.field.tolerance
+        llsstarttolerance = self.field.llsstarttolerance
+        llstolerance = self.field.llstolerance
         uvlambdamin = self.field.solve_min_uv_lambda
 
         # Get the size of the imaging area (for use in making the a-term images)
@@ -170,6 +172,8 @@ class Calibrate(Operation):
                             'onebeamperpatch': onebeamperpatch,
                             'stepsize': stepsize,
                             'tolerance': tolerance,
+                            'llsstarttolerance': llsstarttolerance,
+                            'llstolerance': llstolerance,
                             'uvlambdamin': uvlambdamin,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,

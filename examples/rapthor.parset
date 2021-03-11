@@ -54,6 +54,9 @@ input_skymodel = /data/skymodel.txt
 # onebeamperpatch = False
 # stepsize = 0.02
 # tolerance = 1e-3
+# llsstarttolerance = 1e-2
+# llstolerance = 1e-7
+# tolerance = 1e-3
 # solve_min_uv_lambda = 80.0
 
 # Fast solve parameters (defaults shown):
