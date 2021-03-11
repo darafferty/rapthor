@@ -115,6 +115,14 @@ The available options are described below under their respective sections.
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
 
+    llsstarttolerance
+        The linear least-squares solver starting tolerance used to define
+        convergence (default = 1e-2).
+
+    llstolerance
+        The linear least-squares solver tolerance used to define convergence
+        (default = 1e-7).
+
     solve_min_uv_lambda
         Minimum uv distance in lambda used during calibration (default = 80).
 
