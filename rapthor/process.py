@@ -6,9 +6,9 @@ from rapthor import _logging
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
 from rapthor.operations.calibrate import Calibrate
-from rapthor.operations.image import Image
-from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import Predict
+from rapthor.operations.image import Image, ImageCal
+from rapthor.operations.mosaic import Mosaic, MosaicCal
+from rapthor.operations.predict import Predict, PredictCal
 from rapthor.lib.field import Field
 
 log = logging.getLogger('rapthor')
@@ -49,6 +49,21 @@ def run(parset_file, logging_level='info'):
         # Calibrate
         if field.do_calibrate:
             op = Calibrate(field, index+1)
+            op.run()
+
+        # Predict and subtract the cal sector models
+        if field.do_predict:
+            op = PredictCal(field, index+1)
+            op.run()
+
+        # Image the cal sectors
+        if field.do_image:
+            op = ImageCal(field, index+1)
+            op.run()
+
+            # Mosaic the sectors, for now just Stokes I
+            # TODO: run mosaic ops for IQUV+residuals
+            op = MosaicCal(field, index+1)
             op.run()
 
         # Predict and subtract the sector models

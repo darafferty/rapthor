@@ -576,6 +576,13 @@ class Field(object):
                         sector_skymodels_true_sky.append(sector.image_skymodel_file_true_sky)
                 sector_names = [sector.name for sector in self.sectors]
 
+            # Get new models from the imaged cal sectors
+            cal_sector_skymodels_apparent_sky = [sector.image_skymodel_file_apparent_sky for
+                                                 sector in self.cal_sectors]
+            cal_sector_skymodels_true_sky = [sector.image_skymodel_file_true_sky for
+                                             sector in self.cal_sectors]
+            cal_sector_names = [sector.name for sector in self.cal_sectors]
+
             # Concatenate the sky models from all sectors, being careful not to duplicate
             # source and patch names
             for i, (sm, sn) in enumerate(zip(sector_skymodels_true_sky, sector_names)):
@@ -627,6 +634,64 @@ class Field(object):
             else:
                 skymodel_apparent_sky = None
 
+            # Concatenate the sky models from cal sectors, being careful not to duplicate
+            # source and patch names
+            for i, (sm, sn) in enumerate(zip(cal_sector_skymodels_true_sky, cal_sector_names)):
+                if i == 0:
+                    cal_skymodel_true_sky = lsmtool.load(str(sm), beamMS=self.beam_ms_filename)
+                    patchNames = cal_skymodel_true_sky.getColValues('Patch')
+                    new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                    cal_skymodel_true_sky.setColValues('Patch', new_patchNames)
+                    sourceNames = cal_skymodel_true_sky.getColValues('Name')
+                    new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                    cal_skymodel_true_sky.setColValues('Name', new_sourceNames)
+                else:
+                    skymodel2 = lsmtool.load(str(sm))
+                    patchNames = skymodel2.getColValues('Patch')
+                    new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                    skymodel2.setColValues('Patch', new_patchNames)
+                    sourceNames = skymodel2.getColValues('Name')
+                    new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                    skymodel2.setColValues('Name', new_sourceNames)
+                    table1 = cal_skymodel_true_sky.table.filled()
+                    table2 = skymodel2.table.filled()
+                    cal_skymodel_true_sky.table = vstack([table1, table2], metadata_conflicts='silent')
+            cal_skymodel_true_sky._updateGroups()
+            cal_skymodel_true_sky.setPatchPositions(method='wmean')
+
+            if cal_sector_skymodels_apparent_sky is not None:
+                for i, (sm, sn) in enumerate(zip(cal_sector_skymodels_apparent_sky, cal_sector_names)):
+                    if i == 0:
+                        cal_skymodel_apparent_sky = lsmtool.load(str(sm))
+                        patchNames = cal_skymodel_apparent_sky.getColValues('Patch')
+                        new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                        cal_skymodel_apparent_sky.setColValues('Patch', new_patchNames)
+                        sourceNames = cal_skymodel_apparent_sky.getColValues('Name')
+                        new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                        cal_skymodel_apparent_sky.setColValues('Name', new_sourceNames)
+                    else:
+                        skymodel2 = lsmtool.load(str(sm))
+                        patchNames = skymodel2.getColValues('Patch')
+                        new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                        skymodel2.setColValues('Patch', new_patchNames)
+                        sourceNames = skymodel2.getColValues('Name')
+                        new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                        skymodel2.setColValues('Name', new_sourceNames)
+                        table1 = cal_skymodel_apparent_sky.table.filled()
+                        table2 = skymodel2.table.filled()
+                        cal_skymodel_apparent_sky.table = vstack([table1, table2], metadata_conflicts='silent')
+                cal_skymodel_apparent_sky._updateGroups()
+                cal_skymodel_apparent_sky.setPatchPositions(method='wmean')
+            else:
+                cal_skymodel_apparent_sky = None
+
+            # Replace screen components with the cal ones
+            skymodel_true_sky.concatenate(cal_skymodel_true_sky, matchBy='position', radius=0.01,
+                                          keep='from2')
+            if skymodel_apparent_sky is not None:
+                skymodel_apparent_sky.concatenate(cal_skymodel_apparent_sky, matchBy='position',
+                                                  radius=0.01, keep='from2')
+
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image pipeline by PyBDSF)
             self.make_skymodels(skymodel_true_sky, skymodel_apparent_sky=skymodel_apparent_sky,
@@ -644,14 +709,16 @@ class Field(object):
         # subtracted before imaging. These sectors, like the outlier sectors above, are not
         # imaged
         self.define_bright_source_sectors(index)
+        self.define_cal_sectors(index)
 
         # Make outlier sectors containing any remaining calibration sources (not
         # included in any imaging or bright-source sector sky model). These sectors are
         # not imaged; they are only used in prediction and subtraction
         self.define_outlier_sectors(index)
+        self.define_cal_outlier_sectors(index)
 
         # Finally, make a list containing all sectors
-        self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
+        self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors + self.cal_sectors + self.cal_outlier_sectors
         self.nsectors = len(self.sectors)
 
         # Clean up to minimize memory usage
@@ -846,6 +913,35 @@ class Field(object):
                     outlier_sector.make_skymodel(index)
                     self.outlier_sectors.append(outlier_sector)
 
+    def define_cal_outlier_sectors(self, index):
+        """
+        Defines the cal outlier sectors
+
+        Parameters
+        ----------
+        index : int
+            Iteration index
+        """
+        self.cal_outlier_sectors = []
+        outlier_skymodel = self.make_cal_outlier_skymodel()
+        nsources = len(outlier_skymodel)
+        if nsources > 0:
+            # Choose number of sectors to be the no more than ten, but don't allow
+            # fewer than 100 sources per sector if possible
+            nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+            for i in range(nnodes):
+                outlier_sector = Sector('outlier_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                outlier_sector.is_outlier = True
+                outlier_sector.predict_skymodel = outlier_skymodel.copy()
+                startind = i * int(nsources/nnodes)
+                if i == nnodes-1:
+                    endind = nsources
+                else:
+                    endind = startind + int(nsources/nnodes)
+                outlier_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                outlier_sector.make_skymodel(index)
+                self.cal_outlier_sectors.append(outlier_sector)
+
     def define_bright_source_sectors(self, index):
         """
         Defines the bright source sectors
@@ -874,6 +970,27 @@ class Field(object):
                     bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
                     bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
+
+    def define_cal_sectors(self, index):
+        """
+        Defines the calibrator sectors
+
+        Parameters
+        ----------
+        index : int
+            Iteration index
+        """
+        self.cal_sectors = []
+        names = self.bright_source_skymodel.getPatchNames()
+        sizes = self.bright_source_skymodel.getPatchSizes(units='degree')
+        minsize = 100  # minimum allowed image size in pixels
+        sizes_pix = [max(minsize, s/self.wcs_pixel_scale) for s in sizes]  # width in pixels
+        for size, name in zip(sizes_pix, names):
+            cal_sector = Sector(name, self.ra, self.dec, 1.0, 1.0, self)
+            cal_sector.calibration_skymodel = self.bright_source_skymodel.copy()
+            cal_sector.make_skymodel(index)
+            cal_sector.imsize = [size, size]  # override imsize, since IDG not used
+            self.cal_sectors.append(cal_sector)
 
     def find_intersecting_sources(self):
         """
@@ -967,6 +1084,23 @@ class Field(object):
             # The bright sources were removed from the sector predict sky models, so
             # add them to the list
             sector_source_names.extend(self.bright_source_skymodel.getColValues('Name').tolist())
+
+        outlier_ind = np.array([all_source_names.index(sn) for sn in all_source_names
+                                if sn not in sector_source_names])
+        outlier_skymodel = self.calibration_skymodel.copy()
+        outlier_skymodel.select(outlier_ind, force=True)
+        return outlier_skymodel
+
+    def make_cal_outlier_skymodel(self):
+        """
+        Make a sky model of any outlier calibration sources, not included in any
+        imaging sector
+        """
+        all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
+        sector_source_names = []
+        for sector in self.cal_sectors:
+            skymodel = lsmtool.load(str(sector.predict_skymodel_file))
+            sector_source_names.extend(skymodel.getColValues('Name').tolist())
 
         outlier_ind = np.array([all_source_names.index(sn) for sn in all_source_names
                                 if sn not in sector_source_names])
