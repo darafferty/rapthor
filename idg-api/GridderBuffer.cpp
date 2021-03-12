@@ -197,9 +197,8 @@ void GridderBufferImpl::reset_aterm() {
   const size_t subgridsize = m_bufferset.get_subgridsize();
   size_t atermBlockSize = m_nrStations * subgridsize * subgridsize;
   m_aterms.resize(atermBlockSize);
-  std::copy(m_aterms2.data() + (n_old_aterms - 1) * atermBlockSize,
-            m_aterms2.data() + (n_old_aterms)*atermBlockSize,
-            (Matrix2x2<std::complex<float>> *)m_aterms.data());
+  std::copy_n(m_aterms2.data() + (n_old_aterms - 1) * atermBlockSize,
+              atermBlockSize, m_aterms.data());
 }
 
 void GridderBufferImpl::finished() {

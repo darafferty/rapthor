@@ -38,11 +38,12 @@ Generic::Generic() {
 Generic::~Generic() { delete hostPowerSensor; }
 
 /* High level routines */
-void Generic::do_transform(DomainAtoDomainB direction,
-                           Array3D<std::complex<float>>& grid) {
+void Generic::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
+
+  Grid& grid = *get_grid();
 
   // Constants
   auto grid_size = grid.get_x_dim();
@@ -64,37 +65,41 @@ void Generic::do_transform(DomainAtoDomainB direction,
   // Device memory
   cl::Buffer& d_grid = device.get_device_grid(grid_size);
 
-  // Perform fft shift
-  device.shift(grid);
+  for (unsigned int w = 0; w < grid.get_w_dim(); ++w) {
+    idg::Array3D<std::complex<float>> w_grid(
+        grid.data(w), grid.get_z_dim(), grid.get_y_dim(), grid.get_x_dim());
 
-  // Copy grid to device
-  device.measure(powerRecords[0], queue);
-  writeBuffer(queue, d_grid, CL_FALSE, grid.data());
-  device.measure(powerRecords[1], queue);
+    // Perform fft shift
+    device.shift(w_grid);
+
+    // Copy grid to device
+    device.measure(powerRecords[0], queue);
+    writeBuffer(queue, d_grid, CL_FALSE, w_grid.data());
+    device.measure(powerRecords[1], queue);
 
 // Create FFT plan
 #if ENABLE_FFT
-  device.plan_fft(grid_size, 1);
+    device.plan_fft(grid_size, 1);
 #endif
 
-  // Launch FFT
+    // Launch FFT
 #if ENABLE_FFT
-  device.launch_fft(d_grid, direction);
+    device.launch_fft(d_grid, direction);
 #endif
 
-  // Copy grid to host
-  device.measure(powerRecords[2], queue);
-  readBuffer(queue, d_grid, CL_FALSE, grid.data());
-  device.measure(powerRecords[3], queue);
-  queue.finish();
+    // Copy grid to host
+    device.measure(powerRecords[2], queue);
+    readBuffer(queue, d_grid, CL_FALSE, w_grid.data());
+    device.measure(powerRecords[3], queue);
+    queue.finish();
 
-  // Perform fft shift
-  device.shift(grid);
+    // Perform fft shift
+    device.shift(w_grid);
 
-  // Perform fft scaling
-  complex<float> scale = complex<float>(2, 0);
-  if (direction == FourierDomainToImageDomain) {
-    device.scale(grid, scale);
+    // Perform fft scaling
+    if (direction == FourierDomainToImageDomain) {
+      device.scale(w_grid, {2, 0});
+    }
   }
 
   // End measurements
@@ -110,14 +115,10 @@ void Generic::do_transform(DomainAtoDomainB direction,
 }  // end transform
 
 void Generic::do_gridding(
-    const Plan& plan,
-    const float w_step,  // in lambda
-    const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size,  // full width in pixels
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
@@ -125,13 +126,11 @@ void Generic::do_gridding(
   cout << __func__ << endl;
 #endif
 
+  Grid& grid = *m_grid;
+
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-  // Checks arguments
-  if (kernel_size <= 0 || kernel_size >= subgrid_size - 1) {
-    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
-  }
-
+  const Array1D<float>& shift = m_cache_state.shift;
   if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
     throw std::invalid_argument(
         "OpenCL proxy does not support phase shifting for l,m-shifted images. "
@@ -144,9 +143,11 @@ void Generic::do_gridding(
   auto nr_channels = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
   auto nr_timeslots = aterms.get_w_dim();
-  auto nr_correlations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
+  auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
+  auto subgrid_size = plan.get_subgrid_size();
+  auto w_step = plan.get_w_step();
 
   // Configuration
   const int nr_devices = get_num_devices();
@@ -177,7 +178,7 @@ void Generic::do_gridding(
     writeBufferBatched(htodqueue, d_wavenumbers, CL_FALSE, wavenumbers.data());
     writeBufferBatched(htodqueue, d_spheroidal, CL_FALSE, spheroidal.data());
     writeBufferBatched(htodqueue, d_aterms, CL_FALSE, aterms.data());
-    writeBufferBatched(htodqueue, d_grid, CL_FALSE, grid.data());
+    zeroBuffer(htodqueue, d_grid);
   }
 
   // Performance measurements
@@ -258,6 +259,7 @@ void Generic::do_gridding(
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
+      const int current_time_offset = first_bl * nr_timesteps;
       auto uvw_offset = first_bl * auxiliary::sizeof_uvw(1, nr_timesteps);
       auto visibilities_offset = first_bl * auxiliary::sizeof_visibilities(
                                                 1, nr_timesteps, nr_channels);
@@ -282,7 +284,7 @@ void Generic::do_gridding(
         // Launch gridder kernel
         executequeue.enqueueBarrierWithWaitList(&inputReady, NULL);
         device.launch_gridder(
-            current_nr_timesteps, current_nr_subgrids, grid_size, subgrid_size,
+            current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
             image_size, w_step, nr_channels, nr_stations, d_uvw, d_wavenumbers,
             d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
 
@@ -322,9 +324,10 @@ void Generic::do_gridding(
     cl::Buffer& d_grid = device.get_device_grid(grid_size);
     float2* grid_dst = (float2*)grid.data();
     float2* grid_src = (float2*)mapBuffer(queue, d_grid, CL_TRUE, CL_MAP_READ);
+    assert(grid.size() * sizeof(*grid.data()) == d_grid.getInfo<CL_MEM_SIZE>());
 
 #pragma omp parallel for
-    for (unsigned i = 0; i < grid_size * grid_size * nr_correlations; i++) {
+    for (size_t i = 0; i < grid.size(); i++) {
       grid_dst[i] += grid_src[i];
     }
 
@@ -343,28 +346,22 @@ void Generic::do_gridding(
 }  // end gridding
 
 void Generic::do_degridding(
-    const Plan& plan,
-    const float w_step,  // in lambda
-    const Array1D<float>& shift, const float cell_size,
-    const unsigned int kernel_size,  // full width in pixels
-    const unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan& plan, const Array1D<float>& frequencies,
     Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
 
+  Grid& grid = *m_grid;
+
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
-  // Checks arguments
-  if (kernel_size <= 0 || kernel_size >= subgrid_size - 1) {
-    throw std::invalid_argument("0 < kernel_size < subgrid_size-1 not true");
-  }
-
+  const Array1D<float>& shift = m_cache_state.shift;
   if (shift.size() >= 2 && (shift(0) != 0.0f || shift(1) != 0.0f)) {
     throw std::invalid_argument(
         "OpenCL proxy does not support phase shifting for l,m-shifted images. "
@@ -378,7 +375,10 @@ void Generic::do_degridding(
   auto nr_stations = aterms.get_z_dim();
   auto nr_timeslots = aterms.get_w_dim();
   auto grid_size = grid.get_x_dim();
+  auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
+  auto subgrid_size = plan.get_subgrid_size();
+  auto w_step = plan.get_w_step();
 
   // Configuration
   const int nr_devices = get_num_devices();
@@ -491,6 +491,7 @@ void Generic::do_degridding(
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
+      const int current_time_offset = first_bl * nr_timesteps;
       auto uvw_offset = first_bl * auxiliary::sizeof_uvw(1, nr_timesteps);
       auto visibilities_offset = first_bl * auxiliary::sizeof_visibilities(
                                                 1, nr_timesteps, nr_channels);
@@ -523,7 +524,7 @@ void Generic::do_degridding(
 
         // Launch degridder kernel
         device.launch_degridder(
-            current_nr_timesteps, current_nr_subgrids, grid_size, subgrid_size,
+            current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
             image_size, w_step, nr_channels, nr_stations, d_uvw, d_wavenumbers,
             d_visibilities, d_spheroidal, d_aterms, d_metadata, d_subgrids);
         executequeue.enqueueMarkerWithWaitList(NULL, &outputReady[0]);

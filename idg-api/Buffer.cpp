@@ -152,6 +152,12 @@ void BufferImpl::init_default_aterm() {
 // Set the a-term that starts validity at timeIndex
 void BufferImpl::set_aterm(size_t timeIndex,
                            const std::complex<float>* aterms) {
+#if defined(BUILD_LIB_OPENCL)
+  if (dynamic_cast<proxy::opencl::Generic*>(&m_bufferset.get_proxy())) {
+    throw std::runtime_error("OpenCL kernels do not support Aterms");
+  }
+#endif
+
   const auto* const local_aterms =
       reinterpret_cast<decltype(m_aterms)::const_pointer>(aterms);
   const int local_time = timeIndex - m_timeStartThisBatch;

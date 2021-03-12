@@ -11,6 +11,7 @@
 __kernel
 __attribute__((work_group_size_hint(BLOCK_SIZE, 1, 1)))
 void kernel_degridder(
+    const int                time_offset_job,
     const int                grid_size,
     const int                subgrid_size,
     const float              image_size,
@@ -35,9 +36,8 @@ void kernel_degridder(
 
     // Load metadata for current subgrid
     const Metadata m = metadata[s];
-    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const int time_offset_global = m.time_index - time_offset_job;
     const int nr_timesteps = m.nr_timesteps;
-    const int aterm_index = m.aterm_index;
     const int station1 = m.baseline.station1;
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
@@ -57,6 +57,10 @@ void kernel_degridder(
         int y = i / subgrid_size;
         int x = i % subgrid_size;
 
+        // TODO: Re-enable aterm support.
+        // station1_idx and station2_idx are currently incorrect.
+
+        /*
         // Load aterm for station1
         int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
         float2 aXX1 = aterm[station1_idx + 0];
@@ -74,6 +78,7 @@ void kernel_degridder(
         float2 aYY2 = conj(aterm[station2_idx + 3]);
         float8 aterm3 = (float8) (aXX2, aXX2, aYY2, aYY2);
         float8 aterm4 = (float8) (aYX2, aYX2, aXY2, aXY2);
+        */
 
         // Compute shifted position in subgrid
         int x_src = (x + (subgrid_size/2)) % subgrid_size;
@@ -91,6 +96,7 @@ void kernel_degridder(
         // Apply spheroidal
         pixels *= spheroidal[y * subgrid_size + x];
 
+        /*
         float8 pixels_aterm = (float8) 0;
 
         // Apply aterm to pixels: P*A1
@@ -106,6 +112,7 @@ void kernel_degridder(
         pixels_aterm = (float8) (0);
         pixels_aterm += cmul8(pixels, aterm3);
         pixels_aterm += cmul8(pixels, aterm4);
+        */
 
         // Store pixels
         subgrid[idx_xx] = pixels.S01;

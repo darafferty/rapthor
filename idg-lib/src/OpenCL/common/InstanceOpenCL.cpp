@@ -210,6 +210,7 @@ cl::Kernel *InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
   std::vector<std::string> helper_files;
   helper_files.push_back("types.cl");
   helper_files.push_back("math.cl");
+  helper_files.push_back("KernelTypes.h");
 
   // Store helper files in string
   std::stringstream source_helper_;
@@ -259,10 +260,12 @@ cl::Kernel *InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
     // Build the program
     mPrograms[kernel_id]->build(devices, flags.c_str());
   } catch (cl::Error &error) {
-    std::cerr << "Compilation failed: " << error.what() << std::endl;
-    std::string msg;
-    mPrograms[kernel_id]->getBuildInfo(*device, CL_PROGRAM_BUILD_LOG, &msg);
-    std::cout << msg << std::endl;
+    const std::string name = device->getInfo<CL_DEVICE_NAME>();
+    const std::string msg =
+        mPrograms[kernel_id]->getBuildInfo<CL_PROGRAM_BUILD_LOG>(*device);
+    std::cerr << "OpenCL compilation failed for '" << name
+              << "' : " << error.what() << std::endl
+              << msg << std::endl;
     exit(EXIT_FAILURE);
   }
 
@@ -417,7 +420,7 @@ void InstanceOpenCL::compile_kernel_degridder(unsigned nr_channels) {
     Kernels
 */
 void InstanceOpenCL::launch_gridder(
-    int nr_timesteps, int nr_subgrids, int grid_size, int subgrid_size,
+    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
     float image_size, float w_step, int nr_channels, int nr_stations,
     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers, cl::Buffer &d_visibilities,
     cl::Buffer &d_spheroidal, cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -429,18 +432,19 @@ void InstanceOpenCL::launch_gridder(
   int local_size_x = block_gridder[0];
   int local_size_y = block_gridder[1];
   cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-  kernel_gridder->setArg(0, grid_size);
-  kernel_gridder->setArg(1, subgrid_size);
-  kernel_gridder->setArg(2, image_size);
-  kernel_gridder->setArg(3, w_step);
-  kernel_gridder->setArg(4, nr_stations);
-  kernel_gridder->setArg(5, d_uvw);
-  kernel_gridder->setArg(6, d_wavenumbers);
-  kernel_gridder->setArg(7, d_visibilities);
-  kernel_gridder->setArg(8, d_spheroidal);
-  kernel_gridder->setArg(9, d_aterm);
-  kernel_gridder->setArg(10, d_metadata);
-  kernel_gridder->setArg(11, d_subgrid);
+  kernel_gridder->setArg(0, time_offset);
+  kernel_gridder->setArg(1, grid_size);
+  kernel_gridder->setArg(2, subgrid_size);
+  kernel_gridder->setArg(3, image_size);
+  kernel_gridder->setArg(4, w_step);
+  kernel_gridder->setArg(5, nr_stations);
+  kernel_gridder->setArg(6, d_uvw);
+  kernel_gridder->setArg(7, d_wavenumbers);
+  kernel_gridder->setArg(8, d_visibilities);
+  kernel_gridder->setArg(9, d_spheroidal);
+  kernel_gridder->setArg(10, d_aterm);
+  kernel_gridder->setArg(11, d_metadata);
+  kernel_gridder->setArg(12, d_subgrid);
   try {
     UpdateData *data =
         get_update_data(powerSensor, report, &Report::update_gridder);
@@ -455,7 +459,7 @@ void InstanceOpenCL::launch_gridder(
 }
 
 void InstanceOpenCL::launch_degridder(
-    int nr_timesteps, int nr_subgrids, int grid_size, int subgrid_size,
+    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
     float image_size, float w_step, int nr_channels, int nr_stations,
     cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers, cl::Buffer &d_visibilities,
     cl::Buffer &d_spheroidal, cl::Buffer &d_aterm, cl::Buffer &d_metadata,
@@ -467,18 +471,19 @@ void InstanceOpenCL::launch_degridder(
   int local_size_x = block_degridder[0];
   int local_size_y = block_degridder[1];
   cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
-  kernel_degridder->setArg(0, grid_size);
-  kernel_degridder->setArg(1, subgrid_size);
-  kernel_degridder->setArg(2, image_size);
-  kernel_degridder->setArg(3, w_step);
-  kernel_degridder->setArg(4, nr_stations);
-  kernel_degridder->setArg(5, d_uvw);
-  kernel_degridder->setArg(6, d_wavenumbers);
-  kernel_degridder->setArg(7, d_visibilities);
-  kernel_degridder->setArg(8, d_spheroidal);
-  kernel_degridder->setArg(9, d_aterm);
-  kernel_degridder->setArg(10, d_metadata);
-  kernel_degridder->setArg(11, d_subgrid);
+  kernel_degridder->setArg(0, time_offset);
+  kernel_degridder->setArg(1, grid_size);
+  kernel_degridder->setArg(2, subgrid_size);
+  kernel_degridder->setArg(3, image_size);
+  kernel_degridder->setArg(4, w_step);
+  kernel_degridder->setArg(5, nr_stations);
+  kernel_degridder->setArg(6, d_uvw);
+  kernel_degridder->setArg(7, d_wavenumbers);
+  kernel_degridder->setArg(8, d_visibilities);
+  kernel_degridder->setArg(9, d_spheroidal);
+  kernel_degridder->setArg(10, d_aterm);
+  kernel_degridder->setArg(11, d_metadata);
+  kernel_degridder->setArg(12, d_subgrid);
   try {
     UpdateData *data =
         get_update_data(powerSensor, report, &Report::update_degridder);
@@ -680,9 +685,13 @@ cl::Buffer &InstanceOpenCL::get_host_visibilities(unsigned int nr_baselines,
   if (nr_baselines > 0 && nr_timesteps > 0 && nr_channels > 0) {
     auto size =
         auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
-    cl_mem_flags mem_flags =
-        (ptr != NULL) ? CL_MEM_USE_HOST_PTR : CL_MEM_ALLOC_HOST_PTR;
-    h_visibilities = reuse_memory(size, h_visibilities, mem_flags, ptr);
+    if (ptr) {
+      delete h_visibilities;
+      h_visibilities = new cl::Buffer(mContext, CL_MEM_USE_HOST_PTR, size, ptr);
+    } else {
+      h_visibilities =
+          reuse_memory(size, h_visibilities, CL_MEM_ALLOC_HOST_PTR, ptr);
+    }
   }
   return *h_visibilities;
 }
@@ -691,9 +700,12 @@ cl::Buffer &InstanceOpenCL::get_host_uvw(unsigned int nr_baselines,
                                          unsigned int nr_timesteps, void *ptr) {
   if (nr_baselines > 0 && nr_timesteps > 0) {
     auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
-    cl_mem_flags mem_flags =
-        (ptr != NULL) ? CL_MEM_USE_HOST_PTR : CL_MEM_ALLOC_HOST_PTR;
-    h_uvw = reuse_memory(size, h_uvw, mem_flags, ptr);
+    if (ptr) {
+      delete h_uvw;
+      h_uvw = new cl::Buffer(mContext, CL_MEM_USE_HOST_PTR, size, ptr);
+    } else {
+      h_uvw = reuse_memory(size, h_uvw, CL_MEM_ALLOC_HOST_PTR, ptr);
+    }
   }
   return *h_uvw;
 }

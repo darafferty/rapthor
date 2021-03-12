@@ -11,6 +11,7 @@
 __kernel
 __attribute__((work_group_size_hint(BLOCK_SIZE, 1, 1)))
 void kernel_gridder(
+    const int                time_offset_job,
     const int                grid_size,
     const int                subgrid_size,
     const float              image_size,
@@ -40,9 +41,8 @@ void kernel_gridder(
 
     // Load metadata for current subgrid
     const Metadata m = metadata[s];
-    const int time_offset_global = (m.baseline_offset - m_0.baseline_offset) + m.time_offset;
+    const int time_offset_global = m.time_index - time_offset_job;
     const int nr_timesteps = m.nr_timesteps;
-    const int aterm_index = m.aterm_index;
     const int station1 = m.baseline.station1;
     const int station2 = m.baseline.station2;
     const int x_coordinate = m.coordinate.x;
@@ -99,6 +99,7 @@ void kernel_gridder(
                 uvw_[time].x = uvw[idx_time].u;
                 uvw_[time].y = uvw[idx_time].v;
                 uvw_[time].z = uvw[idx_time].w;
+                uvw_[time].w = 0.0;
             }
 
             // Load visibilities
@@ -117,8 +118,7 @@ void kernel_gridder(
 
             // Iterate current batch of timesteps
             for (int time = 0; time < current_nr_timesteps; time++) {
-                // Load UVW coordinates
-                float4 t = uvw_[time];
+                const float4 t = uvw_[time];
 
                 // Compute phase index and phase offset
                 float phase_index[UNROLL_PIXELS];
@@ -128,17 +128,14 @@ void kernel_gridder(
                 }
 
                 for (int chan = 0; chan < NR_CHANNELS; chan++) {
-                    float wavenumber = wavenumbers_[chan];
-
-                    // Load visibilities from shared memory
-                    float8 vis = visibilities_[time][chan];
+                    const float wavenumber = wavenumbers_[chan];
+                    const float8 vis = visibilities_[time][chan];
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
-                        // Compute phasor
                         float phase   = phase_offset[j] - (phase_index[j] * wavenumber);
                         float2 phasor = (float2) (native_cos(phase), native_sin(phase));
 
-                        // Update pixel
+                        // Add phase-corrected visibility to pixel.
                         pixels[j].even += phasor.x * vis.even;
                         pixels[j].odd  += phasor.x * vis.odd;
                         pixels[j].even -= phasor.y * vis.odd;
@@ -148,13 +145,19 @@ void kernel_gridder(
             } // end for time
         } // end for time_offset_local
 
+
+
         for (int j = 0; j < UNROLL_PIXELS; j++) {
             int i_ = i + j * nr_threads;
             if (i_ < subgrid_size * subgrid_size) {
                 int y = i_ / subgrid_size;
                 int x = i_ % subgrid_size;
 
-                // Get aterm for station1
+                // TODO: Re-enable aterm support.
+                // station1_idx and station2_idx are currently incorrect.
+
+                /*
+                // Get aterm for station1.
                 int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x);
                 float2 aXX1 = aterm[station1_idx + 0];
                 float2 aXY1 = aterm[station1_idx + 1];
@@ -163,7 +166,7 @@ void kernel_gridder(
                 float8 aterm1 = (float8) (aXX1, aYY1, aXX1, aYY1);
                 float8 aterm2 = (float8) (aYX1, aXY1, aYX1, aXY1);
 
-                // Get aterm for station2
+                // Get aterm for station2. TODO: Fix
                 int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x);
                 float2 aXX2 = conj(aterm[station2_idx + 0]);
                 float2 aXY2 = conj(aterm[station2_idx + 1]);
@@ -188,6 +191,9 @@ void kernel_gridder(
                 pixels_aterm = (float8) (0);
                 pixels_aterm += cmul8(pixels[j], aterm3);
                 pixels_aterm += cmul8(pixels[j], aterm4);
+
+                */
+                float8 pixels_aterm = pixels[j];
 
                 // Load spheroidal
                 pixels_aterm *= spheroidal[y * subgrid_size + x];
