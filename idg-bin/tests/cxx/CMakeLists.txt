@@ -1,25 +1,47 @@
-# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 project(cxx)
 
-# set utility include directory
-include_directories(${IDG_BIN_UTILITY_INCLUDE_DIR})
+# Set common include directories for all subdirectories.
+include_directories(${IDG_BIN_UTILITY_INCLUDE_DIR} common)
 
-# set common include directory
-include_directories(common)
+# Set the path to the common dir, for use in idg_bin_cxx_test.
+# (When invoking idg_bin_cxx_test, CMAKE_CURRENT_SOURCE_DIR will differ.)
+set(IDG_BIN_TEST_CXX_COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/common)
 
-# add subfolders
+# All subdirectories use this function for defining the test.
+function(idg_bin_cxx_test)
+  set(${PROJECT_NAME}_sources
+    main.cpp
+    ${IDG_BIN_TEST_CXX_COMMON_DIR}/common.cpp
+  )
+
+  add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_sources})
+
+  target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARIES})
+
+  install (
+    TARGETS ${PROJECT_NAME}
+    RUNTIME DESTINATION bin/tests/cxx
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib/static
+  )
+
+  add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+endfunction()
+
 if (BUILD_LIB_CPU)
-    # set common link libraries
-    set(LINK_LIBRARIES idg-util idg-cpu)
-    add_subdirectory(CPU)
-    # CUDA tests need to compare against CPU reference
-    if (BUILD_LIB_CUDA)
-        add_subdirectory(CUDA)
-    endif()
+  # set common link libraries
+  set(LINK_LIBRARIES idg-util idg-cpu)
+  add_subdirectory(CPU)
+  # CUDA tests need to compare against CPU reference
+  if (BUILD_LIB_CUDA)
+    add_subdirectory(CUDA)
+  endif()
+  # OpenCL tests need to compare against CPU reference
+  if (BUILD_LIB_OPENCL)
+    add_subdirectory(OpenCL)
+  endif()
 endif()
 add_subdirectory(Hybrid)
-if (BUILD_LIB_OPENCL)
-    add_subdirectory(OpenCL)
-endif()
