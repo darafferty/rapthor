@@ -235,9 +235,9 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
 
   unsigned int grid_nr_w_layers = 1;  // TODO: make this a parameter
 
-  auto grid = std::shared_ptr<Grid>(new Grid(grid_ptr, grid_nr_w_layers,
-                                             grid_nr_correlations, grid_height,
-                                             grid_width));
+  auto grid =
+      std::make_shared<Grid>(grid_ptr, grid_nr_w_layers, grid_nr_correlations,
+                             grid_height, grid_width);
 
   set_grid(grid);
 
@@ -340,8 +340,7 @@ Array1D<float> Proxy::compute_wavenumbers(
 std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
                                            size_t nr_correlations,
                                            size_t height, size_t width) {
-  return std::shared_ptr<Grid>(
-      new Grid(nr_w_layers, nr_correlations, height, width));
+  return std::make_shared<Grid>(nr_w_layers, nr_correlations, height, width);
 }
 
 void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {

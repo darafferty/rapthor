@@ -9,6 +9,9 @@
 
 #include "idg-common.h"
 
+#include <memory>
+#include <vector>
+
 namespace cl {
 class Context;
 }
@@ -33,7 +36,7 @@ class OpenCL : public Proxy {
 
   void print_devices();
 
-  cl::Context& get_context() { return *context; }
+  cl::Context& get_context() { return *context_; }
 
   unsigned int get_num_devices() const;
   idg::kernel::opencl::InstanceOpenCL& get_device(unsigned int i) const;
@@ -49,8 +52,8 @@ class OpenCL : public Proxy {
   void free_devices();
 
  private:
-  cl::Context* context;
-  std::vector<idg::kernel::opencl::InstanceOpenCL*> devices;
+  std::unique_ptr<cl::Context> context_;
+  std::vector<std::unique_ptr<idg::kernel::opencl::InstanceOpenCL>> devices_;
 };
 }  // namespace opencl
 }  // end namespace proxy

@@ -40,6 +40,7 @@ install(
     kernels/KernelScaler.cl
     kernels/math.cl
     kernels/types.cl
+    ../../common/KernelTypes.h
     COMPONENT gpu
     DESTINATION
     lib/idg-opencl

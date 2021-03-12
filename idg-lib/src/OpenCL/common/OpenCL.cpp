@@ -34,13 +34,12 @@ OpenCL::~OpenCL() {
 
   free_devices();
   clfftTeardown();
-  delete context;
 }
 
-unsigned int OpenCL::get_num_devices() const { return devices.size(); }
+unsigned int OpenCL::get_num_devices() const { return devices_.size(); }
 
 InstanceOpenCL &OpenCL::get_device(unsigned int i) const {
-  return *(devices[i]);
+  return *(devices_[i]);
 }
 
 std::vector<int> OpenCL::compute_jobsize(const Plan &plan,
@@ -65,10 +64,10 @@ std::vector<int> OpenCL::compute_jobsize(const Plan &plan,
   bytes_required *= nr_streams;
 
   // Adjust jobsize to amount of available device memory
-  int nr_devices = devices.size();
+  int nr_devices = devices_.size();
   std::vector<int> jobsize(nr_devices);
   for (int i = 0; i < nr_devices; i++) {
-    InstanceOpenCL *di = devices[i];
+    InstanceOpenCL *di = devices_[i].get();
     cl::Device &d = di->get_device();
     auto bytes_total = d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
     jobsize[i] = (bytes_total * 0.9) / bytes_required;
@@ -85,7 +84,7 @@ std::vector<int> OpenCL::compute_jobsize(const Plan &plan,
 
 void OpenCL::init_devices() {
   // Create context
-  context = new cl::Context(CL_DEVICE_TYPE_ALL);
+  context_.reset(new cl::Context(CL_DEVICE_TYPE_ALL));
 
   // Get list of all device numbers
   char *char_opencl_device = getenv("OPENCL_DEVICE");
@@ -99,20 +98,15 @@ void OpenCL::init_devices() {
 
   // Create a device instance for every device
   for (unsigned i = 0; i < device_numbers.size(); i++) {
-    InstanceOpenCL *device = new InstanceOpenCL(*context, i, device_numbers[i]);
-    devices.push_back(device);
+    devices_.emplace_back(new InstanceOpenCL(*context_, i, device_numbers[i]));
   }
 }
 
-void OpenCL::free_devices() {
-  for (InstanceOpenCL *device : devices) {
-    device->~InstanceOpenCL();
-  }
-}
+void OpenCL::free_devices() { devices_.clear(); }
 
 void OpenCL::print_devices() {
   std::cout << "Devices: " << std::endl;
-  for (InstanceOpenCL *device : devices) {
+  for (const auto &device : devices_) {
     std::cout << *device;
   }
   std::cout << std::endl;
@@ -120,7 +114,7 @@ void OpenCL::print_devices() {
 
 void OpenCL::print_compiler_flags() {
   std::cout << "Compiler flags: " << std::endl;
-  for (InstanceOpenCL *device : devices) {
+  for (const auto &device : devices_) {
     std::cout << device->get_compiler_flags() << std::endl;
   }
   std::cout << std::endl;

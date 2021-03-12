@@ -6,15 +6,16 @@ import ctypes
 import numpy.ctypeslib
 from .Proxy import *
 
-lib = idg.load_library('libidg-opencl.so')
+class OpenCL(Proxy):
+    lib = idg.load_library('libidg-opencl.so')
 
-class Generic(Proxy):
+class Generic(OpenCL):
 
     def __init__(self):
         """Generic OpenCL implementation"""
         try:
             self.lib.OpenCL_Generic_create.restype = ctypes.c_void_p
             self.lib.OpenCL_Generic_create.argtypes = []
-            self.obj = lib.OpenCL_Generic_create()
+            self.obj = self.lib.OpenCL_Generic_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")

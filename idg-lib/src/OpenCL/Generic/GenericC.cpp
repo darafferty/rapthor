@@ -4,7 +4,7 @@
 #include "Generic.h"
 
 extern "C" {
-struct Proxy* OpenCL_Generic_create() {
+idg::proxy::Proxy* OpenCL_Generic_create() {
   return new idg::proxy::opencl::Generic();
 }
 }
