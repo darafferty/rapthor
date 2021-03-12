@@ -138,7 +138,7 @@ def main(proxyname):
     print("maximum grid size: %d" % (grid_size_max))
 
     # Determine the max baseline length for given grid_size
-    max_uv = data.compute_max_uv(grid_size) # m
+    max_uv = data.compute_max_uv(grid_size, nr_channels) # m
     print("longest baseline required: %.2f km" % (max_uv * 1e-3))
 
     # Select only baselines up to max_uv meters long
@@ -152,7 +152,7 @@ def main(proxyname):
     data.print_info()
 
     # Get remaining parameters
-    image_size = round(data.compute_image_size(grid_size), 4)
+    image_size = round(data.compute_image_size(grid_size, nr_channels), 4)
     cell_size  = image_size / grid_size
 
 

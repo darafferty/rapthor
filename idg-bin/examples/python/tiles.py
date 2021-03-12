@@ -40,10 +40,10 @@ for _nr_timesteps in [1*60*60, 6*60*60, 12*60*60]:
             # initialize data
             ######################################################################
             data = Data(layout_file)
-            max_uv = data.compute_max_uv(grid_size) # m
+            max_uv = data.compute_max_uv(grid_size, nr_channels) # m
             data.limit_max_baseline_length(max_uv)
             data.limit_nr_baselines(nr_baselines)
-            image_size = round(data.compute_image_size(grid_size), 4)
+            image_size = round(data.compute_image_size(grid_size, nr_channels), 4)
             cell_size  = image_size / grid_size
 
             channel_offset  = 0

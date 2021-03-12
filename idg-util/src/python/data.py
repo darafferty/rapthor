@@ -22,21 +22,25 @@ class Data():
 
     def compute_image_size(
         self,
-        grid_size):
+        grid_size,
+        nr_channels):
         lib.DATA_compute_image_size.argtypes = [
             ctypes.c_void_p,
+            ctypes.c_ulong,
             ctypes.c_uint]
         lib.DATA_compute_image_size.restype = ctypes.c_float
-        return lib.DATA_compute_image_size(self.obj, grid_size)
+        return lib.DATA_compute_image_size(self.obj, grid_size, nr_channels)
 
     def compute_max_uv(
         self,
-        grid_size):
+        grid_size,
+        nr_channels):
         lib.DATA_compute_max_uv.argtypes = [
             ctypes.c_void_p,
-            ctypes.c_ulong]
+            ctypes.c_ulong,
+            ctypes.c_uint]
         lib.DATA_compute_max_uv.restype = ctypes.c_float
-        return lib.DATA_compute_max_uv(self.obj, grid_size)
+        return lib.DATA_compute_max_uv(self.obj, grid_size, nr_channels)
 
     def compute_grid_size(
         self):
