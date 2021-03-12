@@ -105,7 +105,6 @@ void DegridderBufferImpl::flush() {
 
   // Set Plan options
   Plan::Options options;
-  options.w_step = m_bufferset.get_w_step();
   options.nr_w_layers = m_bufferset.get_grid()->get_w_dim();
   options.plan_strict = false;
 
