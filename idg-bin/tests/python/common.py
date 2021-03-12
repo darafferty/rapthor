@@ -135,12 +135,12 @@ def main(proxyname):
     data                  = Data(layout_file)
 
     # Limit baselines in length and number
-    max_uv = data.compute_max_uv(int(grid_size)) # m
+    max_uv = data.compute_max_uv(grid_size, nr_channels) # m
     data.limit_max_baseline_length(max_uv)
     data.limit_nr_baselines(nr_baselines)
 
     # Get remaining parameters
-    image_size = data.compute_image_size(grid_size)
+    image_size = data.compute_image_size(grid_size, nr_channels)
     cell_size  = image_size / grid_size
 
     ######################################################################

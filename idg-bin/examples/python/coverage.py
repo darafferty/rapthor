@@ -36,7 +36,7 @@ data = Data(nr_stations_limit, baseline_length_limit, layout_file)
 # option 2, choose grid_size and compute image_size
 #           such that all baselines fit in the grid
 grid_size       = 2048
-image_size      = round(data.compute_image_size(grid_size), 3)
+image_size      = round(data.compute_image_size(grid_size, nr_channels), 3)
 
 # option 3, choose both grid_size and image_size
 #           filter baselines to match parameters
