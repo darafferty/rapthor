@@ -150,7 +150,7 @@ class PredictCal(Operation):
     Operation to predict model data
     """
     def __init__(self, field, index):
-        super(Predict, self).__init__(field, name='predict_cal', index=index)
+        super(PredictCal, self).__init__(field, name='predict_cal', index=index)
 
     def set_parset_parameters(self):
         """

@@ -224,7 +224,7 @@ class ImageCal(Operation):
     Operation to image a calibrator field sector
     """
     def __init__(self, field, index):
-        super(Image, self).__init__(field, name='image_cal', index=index)
+        super(ImageCal, self).__init__(field, name='image_cal', index=index)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)

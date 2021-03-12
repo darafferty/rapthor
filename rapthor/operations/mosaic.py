@@ -84,7 +84,7 @@ class MosaicCal(Operation):
     Operation to mosaic sector images
     """
     def __init__(self, field, index):
-        super(Mosaic, self).__init__(field, name='mosaic_cal', index=index)
+        super(MosaicCal, self).__init__(field, name='mosaic_cal', index=index)
 
     def set_parset_parameters(self):
         """
