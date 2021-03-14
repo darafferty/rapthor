@@ -85,6 +85,7 @@ class MosaicCal(Operation):
     """
     def __init__(self, field, index):
         super(MosaicCal, self).__init__(field, name='mosaic_cal', index=index)
+        self.pipeline_parset_template = 'mosaic_pipeline.cwl'
 
     def set_parset_parameters(self):
         """

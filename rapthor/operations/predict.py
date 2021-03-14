@@ -151,6 +151,7 @@ class PredictCal(Operation):
     """
     def __init__(self, field, index):
         super(PredictCal, self).__init__(field, name='predict_cal', index=index)
+        self.pipeline_parset_template = 'predict_pipeline.cwl'
 
     def set_parset_parameters(self):
         """
