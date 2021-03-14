@@ -990,6 +990,7 @@ class Field(object):
             cal_sector.calibration_skymodel = self.bright_source_skymodel.copy()
             cal_sector.make_skymodel(index)
             cal_sector.imsize = [size, size]  # override imsize, since IDG not used
+            cal_sector.max_nmiter = self.imaging_sectors[0].max_nmiter
             self.cal_sectors.append(cal_sector)
 
     def find_intersecting_sources(self):
@@ -1253,8 +1254,6 @@ class Field(object):
         """
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
-            sector.__dict__.update(step_dict)
-        for sector in self.cal_sectors:
             sector.__dict__.update(step_dict)
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=step_dict['target_flux'])
