@@ -1254,6 +1254,8 @@ class Field(object):
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
+        for sector in self.cal_sectors:
+            sector.__dict__.update(step_dict)
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=step_dict['target_flux'])
 
