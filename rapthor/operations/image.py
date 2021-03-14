@@ -228,7 +228,7 @@ class ImageCal(Operation):
         self.pipeline_parset_template = 'image_pipeline.cwl'
 
         # For imaging we use a subworkflow, so we set the template filename for that here
-        self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
+        self.subpipeline_parset_template = 'image_sector_pipeline.cwl'
 
     def set_parset_parameters(self):
         """
