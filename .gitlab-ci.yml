@@ -110,7 +110,8 @@ idg-test:
     - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
     - ctest -j8 --output-on-failure -LE integration -T test
-    - export XML=Testing/$(ls Testing/ -t | head -n1)/Test.xml
+    # Use the most recent Test.xml output file in a subdirectory of Testing/
+    - export XML=$(ls -t Testing/*/Test.xml | head -n1)
     - mv $XML unittests.xml
     # Capture coverage
     - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json -o run-unit.json
