@@ -795,8 +795,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Copy tile for tile to host
       executestream.record(*job.gpuFinished);
       dtohstream.waitEvent(*job.gpuFinished);
-      for (int tile_index = tile_offset; tile_index < current_nr_tiles;
-           tile_index++) {
+      for (int tile_index = tile_offset;
+           tile_index < (tile_offset + current_nr_tiles); tile_index++) {
         CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_tiles);
         size_t sizeof_padded_tile = padded_tile_size * padded_tile_size *
                                     NR_CORRELATIONS * sizeof(idg::float2);
@@ -821,8 +821,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         job.outputCopied->synchronize();
 
         // Add tiles to grid on host
-        for (int tile_index = tile_offset; tile_index < current_nr_tiles;
-             tile_index++) {
+        for (int tile_index = tile_offset;
+             tile_index < (tile_offset + current_nr_tiles); tile_index++) {
           idg::Coordinate& coordinate = tile_coordinates[tile_index];
 
           int x0 = coordinate.x * tile_size -
