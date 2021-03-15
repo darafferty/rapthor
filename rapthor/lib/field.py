@@ -989,6 +989,7 @@ class Field(object):
         ras, decs = self.bright_source_skymodel.getPatchPositions(method='wmean', asArray=True)
         for size_deg, name, ra, dec in zip(sizes, names, ras, decs):
             cal_sector = Sector(name, ra, dec, size_deg, size_deg, self)
+            cal_sector.is_cal = True
             cal_sector.calibration_skymodel = self.bright_source_skymodel.copy()
             cal_sector.make_skymodel(index)
             cal_sector.max_nmiter = self.imaging_sectors[0].max_nmiter

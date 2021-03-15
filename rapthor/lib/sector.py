@@ -56,6 +56,7 @@ class Sector(object):
         self.image_skymodel_file_true_sky = None  # set by the Image operation
         self.is_outlier = False
         self.is_bright_source = False
+        self.is_cal = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
 
@@ -282,7 +283,7 @@ class Sector(object):
 
             # Remove the bright sources from the sky model if they will be predicted and
             # subtracted separately (so that they aren't subtracted twice)
-            if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
+            if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source and not self.is_cal:
                 source_names = skymodel.getColValues('Name')
                 bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
                 matching_ind = []
