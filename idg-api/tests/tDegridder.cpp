@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE(custom_factors) {
   CompareResults(data_ref.data() + timestep_size * 3,
                  data_aterm.data() + timestep_size * 3, 2e-5, 2, aterm_34);
   CompareResults(data_ref.data() + timestep_size * 5,
-                 data_aterm.data() + timestep_size * 5, 3e-5, 4, aterm_5678);
+                 data_aterm.data() + timestep_size * 5, 5e-5, 4, aterm_5678);
 }
 
 BOOST_AUTO_TEST_CASE(shift) {
