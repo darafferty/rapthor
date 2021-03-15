@@ -842,7 +842,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                 unsigned long src_idx = index_grid(padded_tile_size, tile_index,
                                                    pol, (y - y0), (x - x0));
                 std::complex<float>* tile_ptr =
-                    (std::complex<float>*)h_padded_tiles.ptr();
+                    static_cast<std::complex<float>*>(h_padded_tiles.ptr());
                 std::complex<float>* grid_ptr = m_grid->data();
                 grid_ptr[dst_idx] += tile_ptr[src_idx];
               }  // end for pol
