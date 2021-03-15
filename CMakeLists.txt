@@ -7,6 +7,7 @@ project(idg)
 option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
 option(BUILD_STATIC_LIBS "Build static libraries" OFF)
 option(BUILD_WITH_DEMOS "Build with demos" OFF)
+option (BUILD_WITH_MPI "Build with MPI" OFF)
 option(BUILD_PACKAGES "Build package(s)" OFF)
 option(BUILD_TESTING "" OFF)
 include(CTest)
@@ -43,6 +44,11 @@ set(IDG_LIBRARY idg)
 set(GIT_VERSION_HEADER "idg-version.h")
 include(cmake/version.cmake)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
+
+# MPI
+if (BUILD_WITH_MPI)
+  find_package(MPI REQUIRED)
+endif()
 
 # Python
 option (BUILD_WITH_PYTHON "Build Python bindings" OFF)
