@@ -6,6 +6,7 @@
 #include "../common/common.h"
 
 int main(int argc, char *argv[]) {
-  idg::proxy::hybrid::UnifiedOptimized proxy;
-  return compare_to_reference(proxy);
+  idg::proxy::hybrid::GenericOptimized proxy1;
+  idg::proxy::hybrid::UnifiedOptimized proxy2;
+  return compare(proxy1, proxy2);
 }
