@@ -984,14 +984,13 @@ class Field(object):
         self.cal_sectors = []
         names = self.bright_source_skymodel.getPatchNames()
         sizes = self.bright_source_skymodel.getPatchSizes(units='degree')
-        minsize = 100  # minimum allowed image size in pixels
-        sizes_pix = [max(minsize, s/self.wcs_pixel_scale) for s in sizes]  # width in pixels
+        minsize = 0.035  # minimum allowed image size in deg
+        sizes = [max(minsize, s*1.5) for s in sizes]  # width in deg
         ras, decs = self.bright_source_skymodel.getPatchPositions(method='wmean', asArray=True)
-        for size, name, ra, dec in zip(sizes_pix, names, ras, decs):
-            cal_sector = Sector(name, ra, dec, 1.0, 1.0, self)
+        for size_deg, name, ra, dec in zip(sizes, names, ras, decs):
+            cal_sector = Sector(name, ra, dec, size_deg, size_deg, self)
             cal_sector.calibration_skymodel = self.bright_source_skymodel.copy()
             cal_sector.make_skymodel(index)
-            cal_sector.imsize = [size, size]  # override imsize, since IDG not used
             cal_sector.max_nmiter = self.imaging_sectors[0].max_nmiter
             cal_sector.auto_mask = self.imaging_sectors[0].auto_mask
             cal_sector.threshisl = self.imaging_sectors[0].threshisl
