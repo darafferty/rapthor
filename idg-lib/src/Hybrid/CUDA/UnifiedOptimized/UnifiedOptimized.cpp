@@ -306,6 +306,12 @@ void UnifiedOptimized::run_degridding(
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
+  // TODO: GPU w-tiling is not yet implemented for degridding, initialize
+  // the cache and set the grid in the CPU proxy to make degridding with
+  // w-tiling on the CPU work.
+  cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);
+  cpuProxy->set_grid(get_grid());
+
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
