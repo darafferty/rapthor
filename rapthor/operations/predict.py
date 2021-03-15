@@ -220,7 +220,10 @@ class PredictCal(Operation):
 
         # Set other parameters
         nr_outliers = len(self.field.cal_outlier_sectors)
-        peel_outliers = True
+        if nr_outliers > 0:
+            peel_outliers = True
+        else:
+            peel_outliers = False
         nr_bright = 0
         peel_bright = False
         reweight = self.field.reweight

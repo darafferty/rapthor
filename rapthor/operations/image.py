@@ -370,7 +370,7 @@ class ImageCal(Operation):
                             'threshisl': [sector.threshisl for sector in self.field.cal_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.cal_sectors],
                             'bright_skymodel_pb': [self.field.bright_source_skymodel_file] * nsectors,
-                            'peel_bright': [self.field.peel_bright_sources] * nsectors}
+                            'peel_bright': [False] * nsectors}
         self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
         self.input_parms.update({'central_patch_name': central_patch_name})
         self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
