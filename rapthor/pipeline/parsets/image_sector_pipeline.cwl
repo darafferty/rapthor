@@ -156,6 +156,12 @@ inputs:
       The name of the central-most patch of the sector (length = 1).
     type: string
 
+  - id: baseline_averaging
+    label: Averaging value in wavelengths
+    doc: |
+      The baseline-dependent averaging value (length = 1).
+    type: float
+
 {% endif %}
   - id: channels_out
     label: Number of channels
@@ -410,6 +416,9 @@ steps:
       - id: nnodes
         source: mpi_nnodes
 {% endif %}
+{% else %}
+      - id: baseline_averaging
+        source: baseline_averaging
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize

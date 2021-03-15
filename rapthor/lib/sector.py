@@ -222,14 +222,11 @@ class Sector(object):
                                        self.use_screens, self.imaging_dir)
 
         # Set BL-dependent averaging parameters
-        do_bl_averaging = False  # does not yet work with IDG
-        if do_bl_averaging:
-            timestep_sec = (self.observations[0].timepersample *
-                            self.observations[0].parameters['image_timestep'])
-            self.wsclean_nwavelengths = self.get_nwavelengths(self.cellsize_deg,
-                                                              timestep_sec)
-        else:
-            self.wsclean_nwavelengths = 0
+        # Note: does not yet work with IDG
+        timestep_sec = (self.observations[0].timepersample *
+                        self.observations[0].parameters['image_timestep'])
+        self.wsclean_nwavelengths = self.get_nwavelengths(self.cellsize_deg,
+                                                          timestep_sec)
 
     def get_nwavelengths(self, cellsize_deg, timestep_sec):
         """

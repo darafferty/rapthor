@@ -271,6 +271,7 @@ class ImageCal(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
+        baseline_averaging = []
         for i, sector in enumerate(self.field.cal_sectors):
             # Each image job must have its own directory, so we create it here
             image_dir = os.path.join(self.pipeline_working_dir, sector.name)
@@ -334,6 +335,9 @@ class ImageCal(Operation):
             # The following attribute was set by the preceding calibrate operation
             aterm_image_filenames.append("'[{}]'".format(','.join(self.field.aterm_image_filenames)))
 
+            # Set baseline averaging
+            baseline_averaging.append(sector.wsclean_nwavelengths)
+
         self.input_parms = {'obs_filename': obs_filename,
                             'prepare_filename': prepare_filename,
                             'previous_mask_filename': previous_mask_filename,
@@ -370,6 +374,7 @@ class ImageCal(Operation):
         self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
         self.input_parms.update({'central_patch_name': central_patch_name})
         self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
+        self.input_parms.update({'baseline_averaging': baseline_averaging})
 
     def finalize(self):
         """

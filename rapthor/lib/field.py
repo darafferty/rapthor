@@ -710,6 +710,7 @@ class Field(object):
         # imaged
         self.define_bright_source_sectors(index)
         self.define_cal_sectors(index)
+        self.adjust_cal_sector_boundaries()
 
         # Make outlier sectors containing any remaining calibration sources (not
         # included in any imaging or bright-source sector sky model). These sectors are
@@ -991,6 +992,9 @@ class Field(object):
             cal_sector.make_skymodel(index)
             cal_sector.imsize = [size, size]  # override imsize, since IDG not used
             cal_sector.max_nmiter = self.imaging_sectors[0].max_nmiter
+            cal_sector.auto_mask = self.imaging_sectors[0].auto_mask
+            cal_sector.threshisl = self.imaging_sectors[0].threshisl
+            cal_sector.threshpix = self.imaging_sectors[0].threshpix
             self.cal_sectors.append(cal_sector)
 
     def find_intersecting_sources(self):
@@ -1042,6 +1046,55 @@ class Field(object):
             intersecting_source_polys = []
         return intersecting_source_polys
 
+    def find_intersecting_sources_cal(self):
+        """
+        Finds sources that intersect with the intial sector boundaries
+
+        Returns
+        -------
+        intersecting_source_polys: list of Polygons
+            List of source polygons that intersect one or more sector boundaries
+        """
+        idx = rtree.index.Index()
+        skymodel = self.source_skymodel
+        RA, Dec = skymodel.getPatchPositions(asArray=True)
+        x, y = self.radec2xy(RA, Dec)
+        sizes = skymodel.getPatchSizes(units='degree')
+        minsize = 1  # minimum allowed source size in pixels
+        sizes = [max(minsize, s/2.0/self.wcs_pixel_scale) for s in sizes]  # radii in pixels
+
+        for i, (xs, ys, ss) in enumerate(zip(x, y, sizes)):
+            xmin = xs - ss
+            xmax = xs + ss
+            ymin = ys - ss
+            ymax = ys + ss
+            idx.insert(i, (xmin, ymin, xmax, ymax))
+
+        # For each sector side, query the index to find any intersections
+        intersecting_ind = []
+        buffer = 2  # how many pixels away from each side to check
+        for sector in self.cal_sectors:
+            xmin, ymin, xmax, ymax = sector.initial_poly.bounds
+            side1 = (xmin-buffer, ymin, xmin+buffer, ymax)
+            intersecting_ind.extend(list(idx.intersection(side1)))
+            side2 = (xmax-buffer, ymin, xmax+buffer, ymax)
+            intersecting_ind.extend(list(idx.intersection(side2)))
+            side3 = (xmin, ymin-buffer, xmax, ymin+buffer)
+            intersecting_ind.extend(list(idx.intersection(side3)))
+            side4 = (xmin, ymax-buffer, xmax, ymax+buffer)
+            intersecting_ind.extend(list(idx.intersection(side4)))
+
+        # Make polygons for intersecting sources, with a size = 1.5 * radius of source
+        if len(intersecting_ind) > 0:
+            xfilt = np.array(x)[(np.array(intersecting_ind),)]
+            yfilt = np.array(y)[(np.array(intersecting_ind),)]
+            sfilt = np.array(sizes)[(np.array(intersecting_ind),)]
+            intersecting_source_polys = [Point(xp, yp).buffer(sp*1.5) for
+                                         xp, yp, sp in zip(xfilt, yfilt, sfilt)]
+        else:
+            intersecting_source_polys = []
+        return intersecting_source_polys
+
     def adjust_sector_boundaries(self):
         """
         Adjusts the imaging sector boundaries for overlaping sources
@@ -1052,6 +1105,35 @@ class Field(object):
             # Make sure all sectors start from their initial polygons
             sector.poly = sector.initial_poly
         for sector in self.imaging_sectors:
+            # Adjust boundaries for intersection with sources
+            for p2 in intersecting_source_polys:
+                poly_bkup = sector.poly
+                if sector.poly.contains(p2.centroid):
+                    # If point is inside, union the sector poly with the source one
+                    sector.poly = sector.poly.union(p2)
+                else:
+                    # If centroid of point is outside, difference the sector poly with
+                    # the source one
+                    sector.poly = sector.poly.difference(p2)
+                if type(sector.poly) is not Polygon:
+                    # use backup
+                    sector.poly = poly_bkup
+
+            # Make sector region and vertices files
+            sector.make_vertices_file()
+            sector.make_region_file(os.path.join(self.working_dir, 'regions',
+                                                 '{}_region_ds9.reg'.format(sector.name)))
+
+    def adjust_cal_sector_boundaries(self):
+        """
+        Adjusts the imaging sector boundaries for overlaping sources
+        """
+        self.log.info('Adusting sector boundaries to avoid sources...')
+        intersecting_source_polys = self.find_intersecting_sources_cal()
+        for sector in self.cal_sectors:
+            # Make sure all sectors start from their initial polygons
+            sector.poly = sector.initial_poly
+        for sector in self.cal_sectors:
             # Adjust boundaries for intersection with sources
             for p2 in intersecting_source_polys:
                 poly_bkup = sector.poly
