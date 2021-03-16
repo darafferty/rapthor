@@ -15,6 +15,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
 import glob
+from astropy.io import fits as pyfits
 
 
 class Field(object):
@@ -634,6 +635,18 @@ class Field(object):
             else:
                 skymodel_apparent_sky = None
 
+            # Filter the sky model, keeping only those sources outside of the cal sectors
+            # Use cal mosaic to filter: load mosaic, invert, save, then filter with lsmtool
+            self.field_cal_image_filename
+            hdu = pyfits.open(self.field_cal_image_filename, memmap=False)
+            data = np.array(np.isnan(hdu[0].data), dtype=float)
+            hdu[0].data = data.reshape((1, 1, data.shape[0], data.shape[1]))
+            output_image = os.path.join(self.working_dir, 'scratch', 'source_mask.fits')
+            hdu.writeto(output_image, overwrite=True)
+            skymodel_true_sky.select('{} == True'.format(output_image))
+            if skymodel_apparent_sky is not None:
+                skymodel_apparent_sky.select('{} == True'.format(output_image))
+
             # Concatenate the sky models from cal sectors, being careful not to duplicate
             # source and patch names
             for i, (sm, sn) in enumerate(zip(cal_sector_skymodels_true_sky, cal_sector_names)):
@@ -686,11 +699,10 @@ class Field(object):
                 cal_skymodel_apparent_sky = None
 
             # Replace screen components with the cal ones
-            skymodel_true_sky.concatenate(cal_skymodel_true_sky, matchBy='position', radius=0.01,
-                                          keep='from2')
+            skymodel_true_sky.concatenate(cal_skymodel_true_sky, matchBy='name', keep='from2')
             if skymodel_apparent_sky is not None:
-                skymodel_apparent_sky.concatenate(cal_skymodel_apparent_sky, matchBy='position',
-                                                  radius=0.01, keep='from2')
+                skymodel_apparent_sky.concatenate(cal_skymodel_apparent_sky, matchBy='name',
+                                                  keep='from2')
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image pipeline by PyBDSF)
