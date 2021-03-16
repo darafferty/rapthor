@@ -873,7 +873,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
   // Load buffers
   cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
   cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
-  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_tiles();
+  cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
 
   // Performance measurement
   State startState, endState;
@@ -912,7 +912,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_adder_subgrids_to_wtiles(
         nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_padded_tiles);
+        subgrid_index, d_metadata, d_subgrids, d_tiles);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
