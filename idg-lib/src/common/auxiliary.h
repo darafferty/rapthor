@@ -108,6 +108,7 @@ uint64_t sizeof_weights(unsigned int nr_baselines, unsigned int nr_timesteps,
 std::vector<int> split_int(const char *string, const char *delimiter);
 std::vector<std::string> split_string(char *string, const char *delimiter);
 
+std::string get_inc_dir();
 std::string get_lib_dir();
 
 size_t get_nr_threads();

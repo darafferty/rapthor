@@ -60,16 +60,12 @@ add_library(${PROJECT_NAME}-splitter-wtiles  KernelSplitterWTiles.cpp)
 target_link_libraries(${PROJECT_NAME}-adder-wtiles idg-fft)
 target_link_libraries(${PROJECT_NAME}-splitter-wtiles idg-fft)
 
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-gridder PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-degridder PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-fft PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-calibrate PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wstack PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wstack PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder-wtiles PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter-wtiles PROPERTIES SOVERSION 0)
+foreach(tgt gridder degridder adder splitter fft calibrate 
+	adder-wstack splitter-wstack adder-wtiles splitter-wtiles)
+    set_target_properties(${PROJECT_NAME}-${tgt} PROPERTIES
+        SOVERSION 0
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/idg-cpu/Optimized)
+endforeach()
 
 # Copy kernel libraries
 install(

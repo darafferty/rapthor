@@ -4,6 +4,7 @@
 #include <iostream>
 #include <iomanip>
 #include <cstdint>
+#include <cstdlib>
 #include <omp.h>
 #include <sys/resource.h>
 #include <unistd.h>
@@ -295,7 +296,21 @@ std::vector<std::string> split_string(char *string, const char *delimiter) {
   return splits;
 }
 
-std::string get_lib_dir() { return std::string(IDG_INSTALL_DIR) + "/lib"; }
+std::string get_inc_dir() {
+  const char *inc_dir = std::getenv("IDG_INC_DIR");
+  if (inc_dir)
+    return std::string(inc_dir);
+  else
+    return std::string(IDG_INSTALL_DIR) + "/include";
+}
+
+std::string get_lib_dir() {
+  const char *lib_dir = std::getenv("IDG_LIB_DIR");
+  if (lib_dir)
+    return std::string(lib_dir);
+  else
+    return std::string(IDG_INSTALL_DIR) + "/lib";
+}
 
 size_t get_total_memory() {
   auto pages = sysconf(_SC_PHYS_PAGES);
