@@ -13,7 +13,7 @@ add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # Set include directories
 target_include_directories(
-    ${PROJECT_NAME} PRIVATE ${MPI_C_COMPILER_INCLUDE_DIRS}
+    ${PROJECT_NAME} PRIVATE ${MPI_CXX_INCLUDE_DIRS}
     ${PROJECT_NAME} PRIVATE ${FTI_INCLUDE_DIR}
 )
 
