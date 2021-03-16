@@ -59,6 +59,15 @@ install(
     lib/idg-cuda
 )
 
+# Make kernel findable in build tree
+execute_process(COMMAND ${CMAKE_COMMAND} -E 
+    make_directory ${CMAKE_BINARY_DIR}/lib
+)
+execute_process(COMMAND ${CMAKE_COMMAND} -E 
+    create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/kernels 
+                   ${CMAKE_BINARY_DIR}/lib/idg-cuda
+)
+
 install(
    FILES
    ${${PROJECT_NAME}_headers}

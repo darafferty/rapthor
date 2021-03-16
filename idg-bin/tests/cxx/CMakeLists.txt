@@ -29,6 +29,14 @@ function(idg_bin_cxx_test)
   )
 
   add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
+
+  set_property(
+    TEST ${PROJECT_NAME}
+    APPEND PROPERTY ENVIRONMENT
+        IDG_DATA_DIR=${CMAKE_SOURCE_DIR}/idg-util/data
+        IDG_INC_DIR=${CMAKE_BINARY_DIR}/include
+        IDG_LIB_DIR=${CMAKE_BINARY_DIR}/lib)
+
 endfunction()
 
 if (BUILD_LIB_CPU)

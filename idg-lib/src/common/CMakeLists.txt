@@ -52,3 +52,13 @@ install(
 	DESTINATION
 	include/common
 )
+
+# ensure include directory can also be found by tests in the build tree
+execute_process(COMMAND ${CMAKE_COMMAND} -E
+    make_directory ${CMAKE_BINARY_DIR}/include
+)
+execute_process(COMMAND ${CMAKE_COMMAND} -E 
+    create_symlink ${CMAKE_CURRENT_SOURCE_DIR}
+                   ${CMAKE_BINARY_DIR}/include/common
+)
+

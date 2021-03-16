@@ -62,4 +62,5 @@ cd $WORKDIR
 printpreparetestname prepare-testset-1
 # pytest -s captures the print() statments
 # TODO: check/add more fine grained log levels
-pytest --exitfirst ${DIR}/singlepointsource/test_pointsource.py
+PYTEST=$(which pytest-3 || echo "pytest")
+${PYTEST} --exitfirst ${DIR}/singlepointsource/test_pointsource.py

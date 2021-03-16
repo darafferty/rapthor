@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <algorithm>
+#include <cstdlib>
 #include <random>
 
 #include "uvwsim.h"
@@ -23,7 +24,9 @@ Data::Data(std::string layout_file) {
 
 void Data::set_station_coordinates(std::string layout_file = "SKA1_low_ecef") {
   // Check whether layout file exists
-  std::string filename = std::string(IDG_DATA_DIR) + "/" + layout_file;
+  const char* data_dir = std::getenv("IDG_DATA_DIR");
+  data_dir = data_dir ? data_dir : IDG_DATA_DIR;
+  std::string filename = std::string(data_dir) + "/" + layout_file;
   if (!uvwsim_file_exists(filename.c_str())) {
     std::cerr << "Failed to find specified layout file: " << filename
               << std::endl;

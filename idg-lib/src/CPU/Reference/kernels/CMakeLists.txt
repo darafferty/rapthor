@@ -41,12 +41,11 @@ add_library(${PROJECT_NAME}-splitter     KernelSplitter.cpp)
 add_library(${PROJECT_NAME}-fft          KernelFFT.cpp)
 add_library(${PROJECT_NAME}-average-beam KernelAverageBeam.cpp)
 
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-gridder PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-degridder PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-adder PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-splitter PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-fft PROPERTIES SOVERSION 0)
-SET_TARGET_PROPERTIES(${PROJECT_NAME}-average-beam PROPERTIES SOVERSION 0)
+foreach(tgt gridder degridder adder splitter fft average-beam)
+    set_target_properties(${PROJECT_NAME}-${tgt} PROPERTIES
+        SOVERSION 0
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib/idg-cpu/Reference)
+endforeach()
 
 # Copy kernel libraries
 install(

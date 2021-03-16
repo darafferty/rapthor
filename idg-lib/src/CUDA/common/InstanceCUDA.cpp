@@ -101,7 +101,7 @@ std::string InstanceCUDA::get_compiler_flags() {
 
   // Include flags
   std::stringstream flags_includes;
-  flags_includes << "-I" << IDG_INSTALL_DIR << "/include";
+  flags_includes << "-I" << auxiliary::get_inc_dir();
 
   // Combine flags
   std::string flags = " " + flags_cuda.str() + " " + flags_device.str() + " " +

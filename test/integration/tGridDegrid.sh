@@ -25,4 +25,5 @@ cd $WORKDIR
 
 # pytest -s captures the print() statements
 # TODO: check/add more fine grained log levels
-pytest --exitfirst ${DIR}/gridding/test_gridding.py
+PYTEST=$(which pytest-3 || echo "pytest")
+${PYTEST} --exitfirst ${DIR}/gridding/test_gridding.py

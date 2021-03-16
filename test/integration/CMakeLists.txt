@@ -15,5 +15,8 @@ set(INTEGRATION_TESTS
 # "ctest -L integration"
 foreach(TEST ${INTEGRATION_TESTS})
   add_test(${TEST} ${CMAKE_CURRENT_SOURCE_DIR}/${TEST}.sh)
-  set_tests_properties(${TEST} PROPERTIES LABELS "integration")
+  set_tests_properties(${TEST} PROPERTIES 
+    LABELS "integration"
+    ENVIRONMENT "IDG_INC_DIR=${CMAKE_BINARY_DIR}/include;IDG_LIB_DIR=${CMAKE_BINARY_DIR}/lib"
+  )
 endforeach()
