@@ -320,7 +320,7 @@ void BufferSetImpl::init_buffers(size_t bufferTimesteps,
         std::unique_ptr<GridderBufferImpl> gridderbuffer(
             new GridderBufferImpl(*this, bufferTimesteps));
         gridderbuffer->set_avg_beam(
-            m_average_beam.size() ? m_average_beam.data() : nullptr);
+            m_average_beam.empty() ? nullptr : m_average_beam.data());
         buffer = gridderbuffer.get();
         m_gridderbuffers.push_back(std::move(gridderbuffer));
         break;
