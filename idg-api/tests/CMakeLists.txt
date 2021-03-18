@@ -32,7 +32,7 @@ include_directories(
 )
 
 set(${PROJECT_NAME}_link_libraries
-    idg-api 
+    idg-api
     idg-common
     idg-external
     ${Boost_LIBRARIES}
@@ -49,9 +49,4 @@ install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION lib/static
 )
 
-add_test(NAME ${PROJECT_NAME} COMMAND ${PROJECT_NAME})
-  set_property(
-    TEST ${PROJECT_NAME}
-    APPEND PROPERTY ENVIRONMENT
-        IDG_INC_DIR=${CMAKE_BINARY_DIR}/include
-        IDG_LIB_DIR=${CMAKE_BINARY_DIR}/lib)
+add_built_test(${PROJECT_NAME} LABEL unit)

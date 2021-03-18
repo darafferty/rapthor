@@ -37,14 +37,10 @@ target_link_libraries (
     ${${PROJECT_NAME}_link_libraries}
 )
 
-# install
 install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION bin/tests/cxx
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib/static
 )
 
-# test
-add_test(
-    NAME ${PROJECT_NAME}
-    COMMAND ${PROJECT_NAME})
+add_built_test(${PROJECT_NAME} LABEL unit)
