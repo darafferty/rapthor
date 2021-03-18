@@ -1,7 +1,7 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.7)
 project(idg)
 
 option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
@@ -76,6 +76,29 @@ endif()
 
 if (BUILD_TESTING)
   find_package(Boost COMPONENTS unit_test_framework REQUIRED)
+
+  # Add a test and let ctest automatically (re)build the test if needed.
+  function(add_built_test TEST_NAME)
+    cmake_parse_arguments(ARG "" "LABEL" "" ${ARGN})
+
+    add_test(NAME build-${TEST_NAME}
+      COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target ${TEST_NAME}
+    )
+    set_tests_properties(build-${TEST_NAME} PROPERTIES FIXTURES_SETUP ${TEST_NAME})
+
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    set_tests_properties(${TEST_NAME} PROPERTIES FIXTURES_REQUIRED ${TEST_NAME})
+    if (ARG_LABEL)
+      set_tests_properties(${TEST_NAME} PROPERTIES LABELS ${ARG_LABEL})
+    endif()
+    set_property(
+      TEST ${TEST_NAME}
+      APPEND PROPERTY ENVIRONMENT
+        IDG_DATA_DIR=${CMAKE_SOURCE_DIR}/idg-util/data
+        IDG_INC_DIR=${CMAKE_BINARY_DIR}/include
+        IDG_LIB_DIR=${CMAKE_BINARY_DIR}/lib
+    )
+  endfunction()
 endif()
 
 add_subdirectory("idg-util")
