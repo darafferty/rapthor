@@ -4,7 +4,7 @@
 #include "math.cu"
 #include "Types.h"
 
-#define MAX_NR_ATERMS 64
+#define BATCH_SIZE 64
 
 inline __device__ size_t index_weight(
     unsigned int nr_time,
@@ -59,10 +59,10 @@ __global__ void kernel_average_beam(
     return;
   }
 
-  int nr_aterm_blocks = (nr_aterms+MAX_NR_ATERMS-1)/MAX_NR_ATERMS;
+  int nr_aterm_blocks = (nr_aterms+BATCH_SIZE-1)/BATCH_SIZE;
   for(int aterm_block_idx = 0; aterm_block_idx < nr_aterm_blocks; ++aterm_block_idx) {
-    float sum_of_weights[MAX_NR_ATERMS][NR_CORRELATIONS];
-    memset(sum_of_weights, 0, MAX_NR_ATERMS * NR_CORRELATIONS * sizeof(float));
+    float sum_of_weights[BATCH_SIZE][NR_CORRELATIONS];
+    memset(sum_of_weights, 0, BATCH_SIZE * NR_CORRELATIONS * sizeof(float));
 
     // Compute average beam for all pixels
     for (unsigned int i = tid; i < (subgrid_size * subgrid_size); i += num_threads) {
@@ -73,13 +73,13 @@ __global__ void kernel_average_beam(
       memset(sum, 0, NR_CORRELATIONS * NR_CORRELATIONS * sizeof(double2));
 
       // Loop over aterms
-      int nr_aterms_current_block = min(MAX_NR_ATERMS, nr_aterms - aterm_block_idx*MAX_NR_ATERMS);
+      int nr_aterms_current_block = min(BATCH_SIZE, nr_aterms - aterm_block_idx*BATCH_SIZE);
       for (unsigned int n = 0; n < nr_aterms_current_block; n++) {
 
         // Compute sum of weights
         if (i == tid) {
-          unsigned int time_start = aterms_offsets[n + aterm_block_idx*MAX_NR_ATERMS];
-          unsigned int time_end = aterms_offsets[n + 1 + aterm_block_idx*MAX_NR_ATERMS];
+          unsigned int time_start = aterms_offsets[n + aterm_block_idx*BATCH_SIZE];
+          unsigned int time_end = aterms_offsets[n + 1 + aterm_block_idx*BATCH_SIZE];
 
           for (unsigned int t = time_start; t < time_end; t++) {
             float u = uvw[bl * nr_timesteps + t].u;
@@ -94,8 +94,8 @@ __global__ void kernel_average_beam(
           } // end for time
         }
 
-        int station1_idx = index_aterm(subgrid_size, nr_antennas, n + aterm_block_idx*MAX_NR_ATERMS, antenna1, y, x, 0);
-        int station2_idx = index_aterm(subgrid_size, nr_antennas, n + aterm_block_idx*MAX_NR_ATERMS, antenna2, y, x, 0);
+        int station1_idx = index_aterm(subgrid_size, nr_antennas, n + aterm_block_idx*BATCH_SIZE, antenna1, y, x, 0);
+        int station2_idx = index_aterm(subgrid_size, nr_antennas, n + aterm_block_idx*BATCH_SIZE, antenna2, y, x, 0);
 
         float2 aXX1 = aterms[station1_idx + 0];
         float2 aXY1 = aterms[station1_idx + 1];
