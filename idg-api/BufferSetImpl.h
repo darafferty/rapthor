@@ -78,7 +78,6 @@ class BufferSetImpl : public virtual BufferSet {
   const idg::Array1D<float>& get_shift() const { return m_shift; }
   float get_kernel_size() const { return m_kernel_size; }
   const Array2D<float>& get_spheroidal() const { return m_spheroidal; }
-  const std::shared_ptr<Grid>& get_grid() const { return m_grid; }
 
   Stopwatch& get_watch(Watch watch) const;
 
@@ -110,7 +109,6 @@ class BufferSetImpl : public virtual BufferSet {
   std::shared_ptr<std::vector<std::complex<float>>> m_matrix_inverse_beam;
   Array4D<std::complex<float>> m_default_aterm_correction;
   Array4D<std::complex<float>> m_avg_aterm_correction;
-  std::shared_ptr<Grid> m_grid;
   size_t m_subgridsize;
   float m_image_size;
   float m_cell_size;

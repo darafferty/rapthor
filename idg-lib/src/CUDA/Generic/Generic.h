@@ -64,7 +64,7 @@ class Generic : public CUDA {
  public:
   void set_grid(std::shared_ptr<Grid> grid) override;
 
-  std::shared_ptr<Grid> get_grid() override;
+  std::shared_ptr<Grid> get_final_grid() override;
 
 };  // class Generic
 

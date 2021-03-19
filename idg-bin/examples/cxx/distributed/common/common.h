@@ -514,7 +514,7 @@ void run_master() {
     // Reduce grids
     if (world_size > 1) {
       // Get grid
-      grid = proxy.get_grid();
+      grid = proxy.get_final_grid();
 
       double runtime_reduce = -omp_get_wtime();
       reduce_grids(grid, 0, world_size);
@@ -717,7 +717,7 @@ void run_worker() {
     }
 
     // Get grid
-    grid = proxy.get_grid();
+    grid = proxy.get_final_grid();
 
     // Run FFT
     proxy.transform(idg::FourierDomainToImageDomain);

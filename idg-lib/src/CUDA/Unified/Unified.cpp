@@ -131,7 +131,7 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
   }
 }
 
-std::shared_ptr<Grid> Unified::get_grid() {
+std::shared_ptr<Grid> Unified::get_final_grid() {
   if (m_enable_tiling) {
     InstanceCUDA& device = get_device(0);
     auto grid_size = m_grid->get_x_dim();

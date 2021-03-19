@@ -46,7 +46,7 @@ class Unified : public Generic {
 
   void set_grid(std::shared_ptr<Grid> grid) override;
 
-  std::shared_ptr<Grid> get_grid() override;
+  std::shared_ptr<Grid> get_final_grid() override;
 
  private:
   // The m_grid member defined in Proxy

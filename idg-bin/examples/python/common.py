@@ -84,10 +84,10 @@ def gridding(
     p.gridding(
         kernel_size, frequencies, visibilities, uvw, baselines,
         aterms, aterms_offsets, spheroidal)
-    p.get_grid(grid)
+    p.get_final_grid(grid)
     util.plot_grid(grid, scaling='log')
     p.transform(idg.FourierDomainToImageDomain)
-    p.get_grid(grid)
+    p.get_final_grid(grid)
     util.plot_grid(grid)
     #util.plot_grid(grid, pol=0)
 

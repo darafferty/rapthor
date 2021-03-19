@@ -103,13 +103,13 @@ void DegridderBufferImpl::flush() {
       m_aterms.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
       subgridsize, subgridsize);
 
+  proxy::Proxy& proxy = m_bufferset.get_proxy();
+
   // Set Plan options
   Plan::Options options;
   options.w_step = m_bufferset.get_w_step();
-  options.nr_w_layers = m_bufferset.get_grid()->get_w_dim();
+  options.nr_w_layers = proxy.get_grid().get_w_dim();
   options.plan_strict = false;
-
-  proxy::Proxy& proxy = m_bufferset.get_proxy();
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();

@@ -1,6 +1,6 @@
 # Changes to the Proxy interface to enable caching strategies
 
-The interface of the Proxy has been changed to allow proxies to implement caching strategies. 
+The interface of the Proxy has been changed to allow proxies to implement caching strategies.
 In the previous interface in a series of subsequent calls to the `gridding(...)` method
 each call was independent from the other. Independent in the sense that for each call all parameters describing the job were passed as arguments. The same applied to a series of `degridding(...)` calls.
 
@@ -13,7 +13,7 @@ The interface has been changed to support these strategies. The old gridding and
 
 Caching strategies may require additional information to be put in the Plan, depending on what strategy the Proxy uses. How the Plan needs to be made is known only to the Proxy. Therefore plans can now only be created by a call to the `make_plan(...)` method of the Proxy.
 
-Caching strategies may postpone updates to the grid. To get the final grid after a (series of) `gridding(...)` call(s), the `get_grid()` methods need to be called.
+Caching strategies may postpone updates to the grid. To get the final grid after a (series of) `gridding(...)` call(s), the `get_final_grid()` method need to be called.
 
 ### Gridding
 In the old interface there were multiple varieties of the `gridding(...)` method. The shortest form was:
@@ -32,7 +32,7 @@ proxy.get_grid();
 where the `make_plan(...); gridding(...);` calls can be repeated as many times as there blocks of data to be gridded.
 
 ### Degridding
-Degridding is similar to gridding, except that there is no final call to the `get_grid()` method.
+Degridding is similar to gridding, except that there is no final call to the `get_final_grid()` method.
 The equivalent of the old
 ```
 proxy.degridding(w_step, shift, float cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);

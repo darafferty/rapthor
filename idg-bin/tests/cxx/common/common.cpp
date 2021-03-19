@@ -191,21 +191,21 @@ int compare_to_reference(idg::proxy::Proxy &optimized, float tol) {
   std::clog << ">>> Run gridding" << std::endl;
   optimized.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
                      aterms_offsets, spheroidal);
-  optimized.get_grid();
+  optimized.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
   reference.set_grid(grid_ref);
   reference.init_cache(subgrid_size, cell_size, w_step, shift);
   reference.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
                      aterms_offsets, spheroidal);
-  reference.get_grid();
+  reference.get_final_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
                                   grid->data(), grid_ref->data());
 #endif
 
   // Use the same grid for both degridding calls
-  reference.set_grid(optimized.get_grid());
+  reference.set_grid(optimized.get_final_grid());
 
 #if TEST_DEGRIDDING
   // Run degridder

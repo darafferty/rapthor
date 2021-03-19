@@ -71,7 +71,6 @@ int nextcomposite(int n) {
 BufferSetImpl::BufferSetImpl(Type architecture)
     : m_default_aterm_correction(0, 0, 0, 0),
       m_avg_aterm_correction(0, 0, 0, 0),
-      m_grid(new Grid(0, 0, 0, 0)),
       m_proxy(create_proxy(architecture)),
       m_shift(2),
       m_get_image_watch(Stopwatch::create()),
@@ -90,7 +89,6 @@ BufferSetImpl::~BufferSetImpl() {
   m_gridderbuffers.clear();
   m_degridderbuffers.clear();
   m_bulkdegridders.clear();
-  m_grid.reset();
   m_spheroidal.free();
   m_proxy.reset();
   report_runtime();
@@ -265,9 +263,10 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     }
   }
 
-  m_grid.reset(new Grid(nr_w_layers, 4, m_padded_size, m_padded_size));
-  m_grid->zero();
-  m_proxy->set_grid(m_grid);
+  std::shared_ptr<Grid> grid =
+      m_proxy->allocate_grid(nr_w_layers, 4, m_padded_size, m_padded_size);
+  grid->zero();
+  m_proxy->set_grid(std::move(grid));
   m_proxy->init_cache(m_subgridsize, m_cell_size, m_w_step, m_shift);
 
   m_taper_subgrid.resize(m_subgridsize);
@@ -373,7 +372,9 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   std::cout << std::setprecision(3);
 #endif
 
-  const int nr_w_layers = m_grid->get_w_dim();
+  Grid& grid = *m_proxy->get_final_grid();
+
+  const int nr_w_layers = grid.get_w_dim();
   const size_t y0 = (m_padded_size - m_size) / 2;
   const size_t x0 = (m_padded_size - m_size) / 2;
 
@@ -382,7 +383,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   std::cout << "set grid from image" << std::endl;
 #endif
   double runtime_stacking = -omp_get_wtime();
-  m_grid->zero();
+  grid.zero();
 #pragma omp parallel
   {
     typedef float arr_float_1D_t[m_size];
@@ -504,7 +505,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
           for (int x = 0; x < m_size; x++) {
             float value_real = w_row_real[pol][x];
             float value_imag = w_row_imag[pol][x];
-            (*m_grid)(w, pol, y + y0, x + x0) = {value_real, value_imag};
+            grid(w, pol, y + y0, x + x0) = {value_real, value_imag};
           }  // end for x
         }    // end for pol
       }      // end for w
@@ -530,7 +531,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 #endif
   int batch = nr_w_layers * 4;
   double runtime_fft = -omp_get_wtime();
-  fft2f(batch, m_padded_size, m_padded_size, m_grid->data(0, 0, 0, 0));
+  fft2f(batch, m_padded_size, m_padded_size, grid.data(0, 0, 0, 0));
   runtime_fft += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -580,14 +581,14 @@ void BufferSetImpl::get_image(double* image) {
   m_get_image_watch->Start();
 
   // Flush all pending operations on the grid
-  m_proxy->get_grid();
+  const Grid& grid = *m_proxy->get_final_grid();
 
   double runtime = -omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << std::setprecision(3);
 #endif
 
-  const int nr_w_layers = m_grid->get_w_dim();
+  const int nr_w_layers = grid.get_w_dim();
   const size_t y0 = (m_padded_size - m_size) / 2;
   const size_t x0 = (m_padded_size - m_size) / 2;
 
@@ -597,7 +598,7 @@ void BufferSetImpl::get_image(double* image) {
 #endif
   int batch = nr_w_layers * 4;
   double runtime_fft = -omp_get_wtime();
-  idg::ifft2f(batch, m_padded_size, m_padded_size, m_grid->data(0, 0, 0, 0));
+  idg::ifft2f(batch, m_padded_size, m_padded_size, grid.data(0, 0, 0, 0));
   runtime_fft += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -650,7 +651,7 @@ void BufferSetImpl::get_image(double* image) {
         // Compute current row of w-plane
         for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
           for (int x = 0; x < m_size; x++) {
-            auto value = (*m_grid)(0, pol, y + y0, x + x0);
+            auto value = grid(0, pol, y + y0, x + x0);
             w0_row_real[pol][x] = value.real() * inv_tapers[x];
             w0_row_imag[pol][x] = value.imag() * inv_tapers[x];
           }  // end for x
@@ -665,7 +666,7 @@ void BufferSetImpl::get_image(double* image) {
           // Copy current row of w-plane
           for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             for (int x = 0; x < m_size; x++) {
-              auto value = (*m_grid)(w, pol, y + y0, x + x0);
+              auto value = grid(w, pol, y + y0, x + x0);
               w_row_real[pol][x] = value.real();
               w_row_imag[pol][x] = value.imag();
             }  // end for pol

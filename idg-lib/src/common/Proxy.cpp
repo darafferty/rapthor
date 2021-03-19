@@ -243,7 +243,7 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
 
   do_transform(direction);
 
-  get_grid();
+  get_final_grid();
 }
 
 void Proxy::compute_avg_beam(
@@ -351,7 +351,7 @@ void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {
   }
 }
 
-std::shared_ptr<Grid> Proxy::get_grid() { return m_grid; }
+std::shared_ptr<Grid> Proxy::get_final_grid() { return m_grid; }
 
 std::unique_ptr<auxiliary::Memory> Proxy::allocate_memory(size_t bytes) {
   return std::unique_ptr<auxiliary::Memory>(

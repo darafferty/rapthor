@@ -354,10 +354,10 @@ void run() {
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;
 
-    // Only after a call to get_grid(), the grid can be used outside of the
-    // proxy
+    // Only after a call to get_final_grid(), the grid can be used outside of
+    // the proxy
     double runtime_get_image = -omp_get_wtime();
-    proxy.get_grid();
+    proxy.get_final_grid();
     runtimes_get_image.push_back(runtime_get_image + omp_get_wtime());
 
     // End imaging
