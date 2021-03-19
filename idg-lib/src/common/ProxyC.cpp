@@ -194,11 +194,12 @@ void Proxy_set_grid(struct Proxy* p, std::complex<float>* grid_ptr,
   reinterpret_cast<idg::proxy::Proxy*>(p)->set_grid(grid);
 }
 
-void Proxy_get_grid(struct Proxy* p, std::complex<float>* grid_ptr,
-                    unsigned int nr_w_layers, unsigned int nr_correlations,
-                    unsigned int height, unsigned int width) {
+void Proxy_get_final_grid(struct Proxy* p, std::complex<float>* grid_ptr,
+                          unsigned int nr_w_layers,
+                          unsigned int nr_correlations, unsigned int height,
+                          unsigned int width) {
   std::shared_ptr<idg::Grid> grid =
-      reinterpret_cast<idg::proxy::Proxy*>(p)->get_grid();
+      reinterpret_cast<idg::proxy::Proxy*>(p)->get_final_grid();
   assert(grid->get_w_dim() == nr_w_layers);
   assert(grid->get_z_dim() == nr_correlations);
   assert(grid->get_y_dim() == height);

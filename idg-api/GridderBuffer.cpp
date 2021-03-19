@@ -124,13 +124,13 @@ void GridderBufferImpl::flush_thread_worker() {
         m_nrStations, subgridsize, subgridsize);
   }
 
+  proxy::Proxy &proxy = m_bufferset.get_proxy();
+
   // Set Plan options
   Plan::Options options;
   options.w_step = m_bufferset.get_w_step();
-  options.nr_w_layers = m_bufferset.get_grid()->get_w_dim();
+  options.nr_w_layers = proxy.get_grid().get_w_dim();
   options.plan_strict = false;
-
-  proxy::Proxy &proxy = m_bufferset.get_proxy();
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
@@ -212,7 +212,7 @@ void GridderBufferImpl::finished() {
   // (e.g.) w-tiling, is finished and the grid passed in ::flush() can
   // be used again by the caller.
   proxy::Proxy &proxy = m_bufferset.get_proxy();
-  proxy.get_grid();
+  proxy.get_final_grid();
 }
 
 void GridderBufferImpl::malloc_buffers() {

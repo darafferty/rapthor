@@ -31,14 +31,14 @@ class GenericOptimized : public cuda::CUDA {
 
   virtual bool supports_avg_aterm_correction() { return true; }
 
-  virtual void set_grid(std::shared_ptr<Grid> grid) override;
+  void set_grid(std::shared_ptr<Grid> grid) override;
 
-  virtual std::shared_ptr<Grid> get_grid() override;
+  std::shared_ptr<Grid> get_final_grid() override;
 
   void init_cache(int subgrid_size, float cell_size, float w_step,
                   const Array1D<float>& shift) override;
 
-  virtual std::unique_ptr<Plan> make_plan(
+  std::unique_ptr<Plan> make_plan(
       const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -99,17 +99,17 @@ class GenericOptimized : public cuda::CUDA {
       Array3D<double>& hessian, Array2D<double>& gradient,
       double& residual) override;
 
-  virtual void do_calibrate_finish() override;
+  void do_calibrate_finish() override;
 
-  virtual void do_calibrate_init_hessian_vector_product() override;
+  void do_calibrate_init_hessian_vector_product() override;
 
-  virtual void do_calibrate_update_hessian_vector_product1(
+  void do_calibrate_update_hessian_vector_product1(
       const int station_nr,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       const Array2D<float>& parameter_vector) override;
 
-  virtual void do_calibrate_update_hessian_vector_product2(
+  void do_calibrate_update_hessian_vector_product2(
       const int station_nr,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,

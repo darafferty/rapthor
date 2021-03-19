@@ -165,7 +165,16 @@ class Proxy {
 
   virtual void set_grid(std::shared_ptr<Grid> grid);
 
-  virtual std::shared_ptr<Grid> get_grid();
+  /**
+   * Flush all pending operations and return the current grid.
+   */
+  virtual std::shared_ptr<Grid> get_final_grid();
+
+  /**
+   * Get the current grid without flushing pending operations.
+   * Use this function for reading the grid dimensions, and not the grid data.
+   */
+  const Grid& get_grid() const { return *m_grid; }
 
   //! Methods for cache management
   virtual void init_cache(int subgrid_size, float cell_size, float w_step,

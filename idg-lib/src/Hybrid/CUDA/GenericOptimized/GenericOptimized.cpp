@@ -1038,9 +1038,9 @@ void GenericOptimized::set_grid(std::shared_ptr<Grid> grid) {
   CUDA::set_grid(grid);
 }
 
-std::shared_ptr<Grid> GenericOptimized::get_grid() {
+std::shared_ptr<Grid> GenericOptimized::get_final_grid() {
   // Defer call to cpuProxy
-  return cpuProxy->get_grid();
+  return cpuProxy->get_final_grid();
 }
 
 void GenericOptimized::init_cache(int subgrid_size, float cell_size,
