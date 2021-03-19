@@ -59,8 +59,10 @@ __global__ void kernel_average_beam(
     return;
   }
 
-  int nr_aterm_blocks = (nr_aterms+BATCH_SIZE-1)/BATCH_SIZE;
-  for(int aterm_block_idx = 0; aterm_block_idx < nr_aterm_blocks; ++aterm_block_idx) {
+  // Iterate aterms
+  for (int aterms_offset = 0; aterms_offset < nr_aterms; aterms_offset += BATCH_SIZE) {
+    int current_nr_aterms = min(int(nr_aterms - aterms_offset), BATCH_SIZE);
+
     float sum_of_weights[BATCH_SIZE][NR_CORRELATIONS];
     memset(sum_of_weights, 0, BATCH_SIZE * NR_CORRELATIONS * sizeof(float));
 
@@ -73,13 +75,13 @@ __global__ void kernel_average_beam(
       memset(sum, 0, NR_CORRELATIONS * NR_CORRELATIONS * sizeof(double2));
 
       // Loop over aterms
-      int nr_aterms_current_block = min(BATCH_SIZE, nr_aterms - aterm_block_idx*BATCH_SIZE);
-      for (unsigned int n = 0; n < nr_aterms_current_block; n++) {
+      for (unsigned int n = 0; n < current_nr_aterms; n++) {
+        unsigned int aterms_idx = aterms_offset + n;
 
         // Compute sum of weights
         if (i == tid) {
-          unsigned int time_start = aterms_offsets[n + aterm_block_idx*BATCH_SIZE];
-          unsigned int time_end = aterms_offsets[n + 1 + aterm_block_idx*BATCH_SIZE];
+          unsigned int time_start = aterms_offsets[aterms_idx];
+          unsigned int time_end   = aterms_offsets[aterms_idx + 1];
 
           for (unsigned int t = time_start; t < time_end; t++) {
             float u = uvw[bl * nr_timesteps + t].u;
@@ -94,8 +96,8 @@ __global__ void kernel_average_beam(
           } // end for time
         }
 
-        int station1_idx = index_aterm(subgrid_size, nr_antennas, n + aterm_block_idx*BATCH_SIZE, antenna1, y, x, 0);
-        int station2_idx = index_aterm(subgrid_size, nr_antennas, n + aterm_block_idx*BATCH_SIZE, antenna2, y, x, 0);
+        int station1_idx = index_aterm(subgrid_size, nr_antennas, aterms_idx, antenna1, y, x, 0);
+        int station2_idx = index_aterm(subgrid_size, nr_antennas, aterms_idx, antenna2, y, x, 0);
 
         float2 aXX1 = aterms[station1_idx + 0];
         float2 aXY1 = aterms[station1_idx + 1];
