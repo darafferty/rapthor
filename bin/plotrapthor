@@ -1,14 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 """
 Script to plot solutions
 """
 from losoto.h5parm import h5parm
-from losoto.operations import plot
+from losoto.operations import plot, plotscreen
 import argparse
 from argparse import RawTextHelpFormatter
+from rapthor.lib import miscellaneous as misc
+import sys
 
 
-def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
+def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=None,
+         freq=None, pol='XX'):
     """
     Plot solutions vs. time
 
@@ -17,7 +20,7 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
     h5file : str
         Name of solution h5parm file
     soltype : str
-        Type of solution to plot: tec, tecerror, scalarphase, phase, or amplitude
+        Type of solution to plot: scalarphase, phase, amplitude, phasescreen, or ampscreen
     root : str, optional
         Root name for output plots. If None, the soltype is used
     refstat : str, optional
@@ -27,68 +30,125 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None):
     dir : str, optional
         Name of direction to use. If None, all directions are used
     """
-    h = h5parm(h5file)
-    ss = h.getSolset('sol000')
+    if 'screen' in soltype:
+        h = h5parm(h5file, readonly=False)
+        ss = h.getSolset('sol000')
+        if soltype == 'phasescreen':
+            if soltab is None:
+                st = ss.getSoltab('phase_screen000')
+                st_resid = ss.getSoltab('phase_screen000resid')
+            else:
+                st = ss.getSoltab(soltab)
+                st_resid = ss.getSoltab(soltab+'resid')
 
-    if soltype == 'tec':
-        if soltab is None:
-            st = ss.getSoltab('screentec000')
+        elif soltype == 'ampscreen':
+            if soltab is None:
+                st = ss.getSoltab('amplitude_screen000')
+                st_resid = ss.getSoltab('amplitude_screen000resid')
+            else:
+                st = ss.getSoltab(soltab)
+                st_resid = ss.getSoltab(soltab+'resid')
         else:
-            st = ss.getSoltab(soltab)
-        ref = st.ant[0]
-        ncol = 1
-        color = ''
-        minmax = [-0.3, 0.3]
-    elif soltype == 'tecerror':
-        if soltab is None:
-            st = ss.getSoltab('error000')
+            print('ERROR: solution type "{}" not understood. Must be one of scalarphase, '
+                  'phase, amplitude, phasescreen, or ampscreen'.format(soltype))
+            sys.exit(1)
+
+        if root is None:
+            root = soltype + '_'
+        print('Plotting {} solutions...'.format(soltype))
+        if freq is None:
+            freq = st.freq[0]
+            print('Frequency not specified, using {} MHz...'.format(freq/1e6))
+        if ant is None:
+            ant = ['RS210HBA']
+            print('Antenna not specified, using {}...'.format(ant[0]))
         else:
-            st = ss.getSoltab(soltab)
-        ref = ''
-        ncol = 1
-        color = ''
-        minmax = [0, 0]
-    elif soltype == 'scalarphase':
-        if soltab is None:
-            st = ss.getSoltab('screenphase000')
+            ant = misc.string2list(ant)
+        if soltype == 'phasescreen':
+            st.setSelection(freq=freq, ant=ant)
+            st_resid.setSelection(freq=freq, ant=ant)
+            remove_soltabs(ss, 'phase_screen000resid_filt')
+            tr_st = ss.makeSoltab('phase_screen', 'phase_screen000resid_filt',
+                                  axesNames=['time', 'freq', 'ant', 'dir'],
+                                  axesVals=[st_resid.time, st_resid.freq, st_resid.ant,
+                                            st_resid.dir],
+                                  vals=st_resid.val, weights=st_resid.weight)
+            plotscreen.run(st, prefix='phase', resSoltab='phase_screen000resid_filt',
+                           minZ=-3.1, maxZ=3.1)
+            remove_soltabs(ss, 'phase_screen000resid_filt')
         else:
-            st = ss.getSoltab(soltab)
-        ref = st.ant[0]
-        ncol = 0
-        color = ''
-        minmax = [-3.2, 3.2]
-    elif soltype == 'amplitude':
-        if soltab is None:
-            st = ss.getSoltab('screenamplitude000')
-        else:
-            st = ss.getSoltab(soltab)
-        ref = ''
-        ncol = 0
-        color = 'pol'
-        minmax = [0, 0]
-    elif soltype == 'phase':
-        if soltab is None:
-            st = ss.getSoltab('screenphase000')
-        else:
-            st = ss.getSoltab(soltab)
-        ref = st.ant[0]
-        ncol = 0
-        color = 'pol'
-        minmax = [-3.2, 3.2]
+            if pol is None:
+                pol = 'XX'
+                print('Polarization not specified, using {}...'.format(pol))
+            st.setSelection(freq=freq, ant=ant, pol=pol)
+            st_resid.setSelection(freq=freq, ant=ant, pol=pol)
+            remove_soltabs(ss, 'amplitude_screen000resid_filt')
+            tr_st = ss.makeSoltab('amplitude_screen', 'amplitude_screen000resid_filt',
+                                  axesNames=['time', 'freq', 'ant', 'dir', 'pol'],
+                                  axesVals=[st_resid.time, st_resid.freq, st_resid.ant,
+                                            st_resid.dir, st_resid.pol],
+                                  vals=st_resid.val, weights=st_resid.weight)
+            plotscreen.run(st, prefix='amplitude', resSoltab='amplitude_screen000resid_filt',
+                           minZ=0.0, maxZ=2.0)
+            remove_soltabs(ss, 'amplitude_screen000resid_filt')
+        h.close()
     else:
-        print('ERROR: solution type "{}" not understood. Must be one of tec, tecerror, scalarphase, '
-              'phase, or amplitude'.format(soltype))
+        h = h5parm(h5file)
+        ss = h.getSolset('sol000')
+        if soltype == 'scalarphase':
+            if soltab is None:
+                st = ss.getSoltab('phase000')
+            else:
+                st = ss.getSoltab(soltab)
+            ref = st.ant[0]
+            ncol = 0
+            color = ''
+            minmax = [-3.2, 3.2]
+        elif soltype == 'amplitude':
+            if soltab is None:
+                st = ss.getSoltab('amplitude000')
+            else:
+                st = ss.getSoltab(soltab)
+            ref = ''
+            ncol = 0
+            color = 'pol'
+            minmax = [0, 0]
+        elif soltype == 'phase':
+            if soltab is None:
+                st = ss.getSoltab('phase000')
+            else:
+                st = ss.getSoltab(soltab)
+            ref = st.ant[0]
+            ncol = 0
+            color = 'pol'
+            minmax = [-3.2, 3.2]
+        else:
+            print('ERROR: solution type "{}" not understood. Must be one of scalarphase, '
+                  'phase, amplitude, phasescreen, or ampscreen'.format(soltype))
+            sys.exit(1)
 
-    if root is None:
-        root = soltype + '_'
-    if refstat is not None:
-        ref = refstat
-    print('Plotting {} solutions...'.format(soltype))
-    if dir is not None:
-        st.setSelection(dir=dir)
-    plot.run(st, ['time', 'freq'], axisInTable='ant', axisInCol=color, NColFig=ncol, refAnt=ref,
-             prefix=root, minmax=minmax, plotFlag=True, markerSize=4)
-    h.close()
+        if root is None:
+            root = soltype + '_'
+        if refstat is not None:
+            ref = refstat
+        print('Plotting {} solutions...'.format(soltype))
+        if dir is not None:
+            st.setSelection(dir=dir)
+        plot.run(st, ['time', 'freq'], axisInTable='ant', axisInCol=color, NColFig=ncol, refAnt=ref,
+                 prefix=root, minmax=minmax, plotFlag=True, markerSize=4)
+        h.close()
+
+
+def remove_soltabs(solset, soltabnames):
+    """
+    Remove soltab
+    """
+    for soltabname in soltabnames:
+        try:
+            soltab = solset.getSoltab(soltabname)
+            soltab.delete()
+        except:
+            pass
 
 
 if __name__ == "__main__":
@@ -99,7 +159,11 @@ if __name__ == "__main__":
     parser.add_argument('--root', help="Root name for output plots (default: 'soltype_')", default=None)
     parser.add_argument('--refstat', help="Name of referance station (default: first)", default=None)
     parser.add_argument('--soltab', help="Name of solution table (default: default for soltype)", default=None)
-    parser.add_argument('--dir', help="Name of direction (default: all)", default=None)
+    parser.add_argument('--dir', help="Name of direction (default: all)", type=str, default=None)
+    parser.add_argument('--ant', help="Name of direction (default: all)", type=str, default=None)
+    parser.add_argument('--freq', help="Name of direction (default: all)", type=float, default=None)
+    parser.add_argument('--pol', help="Name of direction (default: all)", type=str, default=None)
 
     args = parser.parse_args()
-    main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir)
+    main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir, args.ant,
+         args.freq, args.pol)
