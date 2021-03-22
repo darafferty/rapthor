@@ -63,10 +63,11 @@ class CUDA : public Proxy {
 
   void cleanup();
 
+  static ProxyInfo default_info();
+
  protected:
   void init_devices();
   void free_devices();
-  static ProxyInfo default_info();
 
   std::unique_ptr<powersensor::PowerSensor> hostPowerSensor;
 
