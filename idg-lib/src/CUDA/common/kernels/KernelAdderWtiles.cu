@@ -115,8 +115,10 @@ __global__ void kernel_apply_phasor(
 
         if (y < w_padded_tile_size) {
             // Compute phase
-            const float l = (x - (w_padded_tile_size / 2)) * cell_size;
-            const float m = (y - (w_padded_tile_size / 2)) * cell_size;
+            const int x_ = (x + (w_padded_tile_size / 2)) % w_padded_tile_size;
+            const int y_ = (y + (w_padded_tile_size / 2)) % w_padded_tile_size;
+            const float l = (x_ - (w_padded_tile_size / 2)) * cell_size;
+            const float m = (y_ - (w_padded_tile_size / 2)) * cell_size;
             const float n = compute_n(l, -m, shift);
             const float pi = (float) M_PI;
             const float phase = -2 * pi * n * w;
