@@ -18,7 +18,5 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
                       float image_size, unsigned int grid_size,
                       unsigned int subgrid_size, unsigned int kernel_size);
 
-int compare(
-    idg::proxy::Proxy& proxy1,
-    idg::proxy::Proxy& proxy2,
-    float tol = 1000 * std::numeric_limits<float>::epsilon());
+int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2,
+            float tol = 1000 * std::numeric_limits<float>::epsilon());
