@@ -26,8 +26,8 @@ class Proxy;
 namespace cpu {
 class CPU;
 }
-namespace cpu {
-class CPU;
+namespace hybrid {
+class UnifiedOptimized;
 }
 }  // namespace proxy
 
@@ -61,7 +61,6 @@ class Plan {
 
   Plan(Plan&&) = default;
 
- private:
   Plan(const int kernel_size, const int subgrid_size, const int grid_size,
        const float cell_size, const Array1D<float>& shift,
        const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
@@ -76,12 +75,6 @@ class Plan {
        const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
        Options options = Options());
 
-  // The constructors are private
-  // only these classes can instantiate a Plan
-  friend proxy::Proxy;
-  friend proxy::cpu::CPU;
-
- public:
   // Destructor
   virtual ~Plan() = default;
 

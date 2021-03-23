@@ -79,6 +79,9 @@ void Generic::run_gridding(
         new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
   }
 
+  // Load memory objects
+  cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
+
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
@@ -178,7 +181,7 @@ void Generic::run_gridding(
     // Launch adder kernel
     if (m_use_unified_memory) {
       device.launch_adder_unified(current_nr_subgrids, grid_size, subgrid_size,
-                                  d_metadata, d_subgrids, grid.data());
+                                  d_metadata, d_subgrids, u_grid);
     } else {
       cu::DeviceMemory& d_grid = device.retrieve_device_grid();
       device.launch_adder(current_nr_subgrids, grid_size, subgrid_size,
@@ -293,6 +296,9 @@ void Generic::run_degridding(
         new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
   }
 
+  // Load memory objects
+  cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
+
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
@@ -369,7 +375,7 @@ void Generic::run_degridding(
     if (m_use_unified_memory) {
       device.launch_splitter_unified(current_nr_subgrids, grid_size,
                                      subgrid_size, d_metadata, d_subgrids,
-                                     grid.data());
+                                     u_grid);
     } else {
       cu::DeviceMemory& d_grid = device.retrieve_device_grid();
       device.launch_splitter(current_nr_subgrids, grid_size, subgrid_size,

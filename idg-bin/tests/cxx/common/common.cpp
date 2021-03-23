@@ -3,7 +3,6 @@
 
 #include "common.h"
 
-#include "idg-cpu.h"   // Reference Proxy
 #include "idg-util.h"  // Data init routines
 
 #include <iostream>
@@ -96,9 +95,8 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
   os << "-----------" << std::endl;
 }
 
-// Run gridding and degridding for the 'optimized' proxy and the reference CPU
-// proxy and compare the outcome.
-int compare_to_reference(idg::proxy::Proxy &optimized, float tol) {
+// Run gridding and degridding and compare the outcome.
+int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   int info = 0;
 
   // Parameters
@@ -123,35 +121,32 @@ int compare_to_reference(idg::proxy::Proxy &optimized, float tol) {
   print_parameters(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
                    image_size, grid_size, subgrid_size, kernel_size);
 
-  idg::proxy::cpu::Reference reference;
-
   std::clog << ">>> Initialize data structures" << std::endl;
-  idg::Array1D<float> frequencies =
-      optimized.allocate_array1d<float>(nr_channels);
+  idg::Array1D<float> frequencies = proxy2.allocate_array1d<float>(nr_channels);
 
   data.get_frequencies(frequencies, image_size);
   idg::Array2D<idg::UVW<float>> uvw =
-      optimized.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
+      proxy2.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
   data.get_uvw(uvw);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(optimized, nr_baselines, nr_timesteps,
+      idg::get_dummy_visibilities(proxy2, nr_baselines, nr_timesteps,
                                   nr_channels);
   idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
-      idg::get_dummy_visibilities(reference, nr_baselines, nr_timesteps,
+      idg::get_dummy_visibilities(proxy1, nr_baselines, nr_timesteps,
                                   nr_channels);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
-      idg::get_example_baselines(optimized, nr_stations, nr_baselines);
+      idg::get_example_baselines(proxy2, nr_stations, nr_baselines);
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-      idg::get_example_aterms(optimized, nr_timeslots, nr_stations,
-                              subgrid_size, subgrid_size);
+      idg::get_example_aterms(proxy2, nr_timeslots, nr_stations, subgrid_size,
+                              subgrid_size);
   idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(optimized, nr_timeslots, nr_timesteps);
+      idg::get_example_aterms_offsets(proxy2, nr_timeslots, nr_timesteps);
   idg::Array2D<float> spheroidal =
-      idg::get_example_spheroidal(optimized, subgrid_size, subgrid_size);
+      idg::get_example_spheroidal(proxy2, subgrid_size, subgrid_size);
   idg::Array1D<float> shift = idg::get_zero_shift();
-  auto grid = optimized.allocate_grid(1, nr_correlations, grid_size, grid_size);
+  auto grid = proxy2.allocate_grid(1, nr_correlations, grid_size, grid_size);
   auto grid_ref =
-      reference.allocate_grid(1, nr_correlations, grid_size, grid_size);
+      proxy1.allocate_grid(1, nr_correlations, grid_size, grid_size);
   std::clog << std::endl;
 
   // Flag the first visibilities by setting UVW coordinate to infinity
@@ -163,8 +158,8 @@ int compare_to_reference(idg::proxy::Proxy &optimized, float tol) {
   }
 
   // Bind the grids to the respective proxies
-  optimized.set_grid(grid);
-  reference.set_grid(grid_ref);
+  proxy2.set_grid(grid);
+  proxy1.set_grid(grid_ref);
 
   // Set w-terms to zero
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
@@ -173,60 +168,50 @@ int compare_to_reference(idg::proxy::Proxy &optimized, float tol) {
     }
   }
 
-  optimized.set_grid(grid);
-  float w_step =
-      optimized.supports_wtiling() ? 4.0 / (image_size * image_size) : 0.0;
-  optimized.init_cache(subgrid_size, cell_size, w_step, shift);
+  // Init cache, with valid w_steps if both proxies support it
+  float w_step = proxy1.supports_wtiling() && proxy2.supports_wtiling()
+                     ? 4.0 / (image_size * image_size)
+                     : 0.0;
+  proxy1.init_cache(subgrid_size, cell_size, w_step, shift);
+  proxy2.init_cache(subgrid_size, cell_size, w_step, shift);
 
   // Create plan
   std::clog << ">>> Create plan" << std::endl;
   idg::Plan::Options options;
   options.plan_strict = true;
-  std::unique_ptr<idg::Plan> plan = optimized.make_plan(
+  std::unique_ptr<idg::Plan> plan1 = proxy1.make_plan(
+      kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
+  std::unique_ptr<idg::Plan> plan2 = proxy2.make_plan(
       kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
   std::clog << std::endl;
 
 #if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
-  optimized.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-                     aterms_offsets, spheroidal);
-  optimized.get_final_grid();
+  proxy2.gridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
+                  aterms_offsets, spheroidal);
+  proxy2.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
-  reference.set_grid(grid_ref);
-  reference.init_cache(subgrid_size, cell_size, w_step, shift);
-  reference.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-                     aterms_offsets, spheroidal);
-  reference.get_final_grid();
+  proxy1.set_grid(grid_ref);
+  proxy1.init_cache(subgrid_size, cell_size, w_step, shift);
+  proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
+                  aterms_offsets, spheroidal);
+  proxy1.get_final_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
                                   grid->data(), grid_ref->data());
 #endif
 
   // Use the same grid for both degridding calls
-  reference.set_grid(optimized.get_final_grid());
+  proxy1.set_grid(proxy2.get_final_grid());
 
 #if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
   visibilities_ref.zero();
-  optimized.set_grid(grid);
-  optimized.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-                       aterms_offsets, spheroidal);
-
-  std::clog << ">>> Run reference degridding" << std::endl;
-  reference.set_grid(grid);
-  reference.degridding(*plan, frequencies, visibilities_ref, uvw, baselines,
-                       aterms, aterms_offsets, spheroidal);
-
-  std::clog << std::endl;
-
-  // Ignore visibilities that are not included in the plan
-  plan->mask_visibilities(visibilities);
-  plan->mask_visibilities(visibilities_ref);
-
+  plan2->mask_visibilities(visibilities_ref);
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
                    (std::complex<float> *)visibilities.data(),
@@ -243,10 +228,10 @@ int compare_to_reference(idg::proxy::Proxy &optimized, float tol) {
   weights.init(1.0f);
   average_beam.init(0.0f);
   average_beam_ref.init(0.0f);
-  reference.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
-                             aterms_offsets, weights, average_beam);
-  optimized.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
-                             aterms_offsets, weights, average_beam_ref);
+  proxy1.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                          aterms_offsets, weights, average_beam);
+  proxy2.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                          aterms_offsets, weights, average_beam_ref);
   float average_beam_error =
       get_accuracy(subgrid_size * subgrid_size * 4 * 4,
                    (std::complex<float> *)average_beam.data(),

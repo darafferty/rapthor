@@ -63,12 +63,13 @@ class CUDA : public Proxy {
 
   void cleanup();
 
+  static ProxyInfo default_info();
+
  protected:
   void init_devices();
   void free_devices();
-  static ProxyInfo default_info();
 
-  powersensor::PowerSensor* hostPowerSensor;
+  std::unique_ptr<powersensor::PowerSensor> hostPowerSensor;
 
   struct {
     unsigned int nr_stations = 0;
@@ -108,6 +109,7 @@ class CUDA : public Proxy {
 
  protected:
   struct JobData {
+    unsigned first_bl;
     unsigned current_time_offset;
     unsigned current_nr_baselines;
     unsigned current_nr_subgrids;

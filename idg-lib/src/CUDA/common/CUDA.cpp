@@ -20,7 +20,9 @@ using namespace idg::kernel::cuda;
 namespace idg {
 namespace proxy {
 namespace cuda {
-CUDA::CUDA(ProxyInfo info) : mInfo(info) {
+CUDA::CUDA(ProxyInfo info)
+    : hostPowerSensor(powersensor::get_power_sensor(powersensor::sensor_host)),
+      mInfo(info) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
@@ -30,15 +32,11 @@ CUDA::CUDA(ProxyInfo info) : mInfo(info) {
   print_devices();
   print_compiler_flags();
   cuProfilerStart();
-
-  // Initialize host PowerSensor
-  hostPowerSensor = powersensor::get_power_sensor(powersensor::sensor_host);
 };
 
 CUDA::~CUDA() {
   cuProfilerStop();
   free_devices();
-  delete hostPowerSensor;
 }
 
 void CUDA::init_devices() {
@@ -402,6 +400,7 @@ void CUDA::initialize(
                             &current_nr_baselines);
         if (current_nr_baselines == 0) continue;
         JobData job;
+        job.first_bl = first_bl;
         job.current_time_offset = first_bl * nr_timesteps;
         job.current_nr_baselines = current_nr_baselines;
         job.current_nr_subgrids =

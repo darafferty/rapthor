@@ -26,10 +26,11 @@ void Proxy::gridding(
   check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
                    baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
-  if ((plan.get_w_step() != 0.0) && (!do_supports_wstack_gridding())) {
+  if ((plan.get_w_step() != 0.0) &&
+      (!do_supports_wstack_gridding() && !do_supports_wtiles())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support gridding with "
-        "W-stacking.");
+        "W-stacking or W-tiling.");
   }
 
   do_gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
@@ -47,7 +48,8 @@ void Proxy::degridding(
   check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
                    baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
-  if ((plan.get_w_step() != 0.0) && (!do_supports_wstack_degridding())) {
+  if ((plan.get_w_step() != 0.0) &&
+      (!do_supports_wstack_degridding() && !do_supports_wtiles())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support degridding with "
         "W-stacking.");

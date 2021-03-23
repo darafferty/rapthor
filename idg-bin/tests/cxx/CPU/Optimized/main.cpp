@@ -6,6 +6,7 @@
 #include "../common/common.h"
 
 int main(int argc, char *argv[]) {
-  idg::proxy::cpu::Optimized proxy;
-  return compare_to_reference(proxy);
+  idg::proxy::cpu::Reference proxy1;
+  idg::proxy::cpu::Optimized proxy2;
+  return compare(proxy1, proxy2);
 }

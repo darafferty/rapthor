@@ -96,6 +96,18 @@ inline FUNCTION_ATTRIBUTES void conjugate(const T *a, T *b) {
   }
 }
 
+FUNCTION_ATTRIBUTES int next_composite(int n) {
+  n += (n & 1);
+  while (true) {
+    int nn = n;
+    while ((nn % 2) == 0) nn /= 2;
+    while ((nn % 3) == 0) nn /= 3;
+    while ((nn % 5) == 0) nn /= 5;
+    if (nn == 1) return n;
+    n += 2;
+  }
+}
+
 template <typename T>
 inline FUNCTION_ATTRIBUTES void transpose(const T *a, T *b) {
   b[0] = a[0];

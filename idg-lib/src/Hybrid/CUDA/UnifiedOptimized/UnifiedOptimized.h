@@ -4,23 +4,98 @@
 #ifndef IDG_HYBRID_UNIFIED_OPTIMIZED_H_
 #define IDG_HYBRID_UNIFIED_OPTIMIZED_H_
 
-#include "CUDA/Unified/Unified.h"
-#include "CPU/Optimized/Optimized.h"
+#include "idg-cpu.h"
+#include "CUDA/common/CUDA.h"
 
 namespace idg {
 namespace proxy {
 namespace hybrid {
 
-class UnifiedOptimized : public cuda::Unified {
+class UnifiedOptimized : public cuda::CUDA {
  public:
-  UnifiedOptimized(ProxyInfo info = default_info());
-
+  UnifiedOptimized();
   ~UnifiedOptimized();
 
-  virtual void do_transform(DomainAtoDomainB direction);
+  virtual bool do_supports_wtiles() override { return true; }
+
+  virtual bool supports_avg_aterm_correction() { return true; }
+
+  virtual std::shared_ptr<Grid> allocate_grid(size_t nr_w_layers,
+                                              size_t nr_correlations,
+                                              size_t height,
+                                              size_t width) override;
+
+  virtual void set_grid(std::shared_ptr<Grid> grid) override;
+
+  virtual std::shared_ptr<Grid> get_final_grid() override;
+
+  virtual std::unique_ptr<Plan> make_plan(
+      const int kernel_size, const Array1D<float>& frequencies,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array1D<unsigned int>& aterms_offsets,
+      Plan::Options options) override;
+
+  void init_cache(int subgrid_size, float cell_size, float w_step,
+                  const Array1D<float>& shift) override;
 
  private:
-  idg::proxy::cpu::CPU* cpuProxy;
+  virtual void do_gridding(
+      const Plan& plan, const Array1D<float>& frequencies,
+      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array2D<float>& spheroidal) override;
+
+  virtual void do_degridding(
+      const Plan& plan, const Array1D<float>& frequencies,
+      Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array2D<float>& spheroidal) override;
+
+  virtual void do_transform(DomainAtoDomainB direction) override;
+
+  void run_gridding(
+      const Plan& plan, const Array1D<float>& frequencies,
+      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array2D<float>& spheroidal);
+
+  void run_degridding(
+      const Plan& plan, const Array1D<float>& frequencies,
+      Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array2D<float>& spheroidal);
+
+  void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
+                          float w_step, const Array1D<float>& shift,
+                          WTileUpdateInfo& wtile_flush_info);
+
+  void run_subgrids_to_wtiles(unsigned int local_id, unsigned int nr_subgrids,
+                              unsigned int subgrid_size, float image_size,
+                              float w_step, const Array1D<float>& shift,
+                              WTileUpdateSet& wtile_flush_set);
+
+  void flush_wtiles();
+
+ protected:
+  std::unique_ptr<idg::proxy::cpu::CPU> cpuProxy;
+
+  // W-Tiling
+  WTiles m_wtiles;
+  unsigned int m_nr_tiles = 0;  // configured in init_cache
+  const unsigned int m_tile_size = 128;
 
 };  // class UnifiedOptimized
 

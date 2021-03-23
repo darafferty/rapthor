@@ -175,6 +175,8 @@ class UnifiedMemory : public Memory {
                 unsigned flags = CU_MEM_ATTACH_GLOBAL);
   ~UnifiedMemory() override;
 
+  operator CUdeviceptr() { return reinterpret_cast<CUdeviceptr>(get()); }
+
   void resize(size_t size) override;
 
   void set_advice(CUmem_advise advise);

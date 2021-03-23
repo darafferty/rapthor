@@ -20,3 +20,14 @@ class GenericOptimized(HybridCUDA):
             self.obj = self.lib.HybridCUDA_GenericOptimized_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")
+
+
+class UnifiedOptimized(HybridCUDA):
+    def __init__(self):
+        """UnifiedOptimized CUDA implementation"""
+        try:
+            self.lib.HybridCUDA_UnifiedOptimized_create.restype = ctypes.c_void_p
+            self.lib.HybridCUDA_UnifiedOptimized_create.argtypes = []
+            self.obj = self.lib.HybridCUDA_UnifiedOptimized_create()
+        except AttributeError:
+            print("The chosen proxy was not built into the library")
