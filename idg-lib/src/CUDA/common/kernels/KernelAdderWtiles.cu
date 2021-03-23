@@ -233,6 +233,11 @@ __global__ void kernel_wtiles_to_grid(
     int x_start = max(0, x0);
     int y_start = max(0, y0);
 
+    // Tranpose the polarizations
+    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+    unsigned int pol_src = index_pol_transposed[pol];
+    unsigned int pol_dst = pol;
+
     // Add tile to grid
     for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
     {
@@ -247,8 +252,8 @@ __global__ void kernel_wtiles_to_grid(
 
         if (y < padded_tile_size)
         {
-            unsigned long dst_idx = index_grid(grid_size, pol, y_dst, x_dst);
-            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol, y_src, x_src);
+            unsigned long dst_idx = index_grid(grid_size, pol_dst, y_dst, x_dst);
+            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol_src, y_src, x_src);
             atomicAdd(grid[dst_idx], padded_tiles[src_idx]);
         }
     }
