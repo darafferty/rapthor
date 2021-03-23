@@ -73,7 +73,7 @@ void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
   m_wtiles = WTiles(nr_wtiles, kernel::cpu::InstanceCPU::kWTileSize);
 }
 
-std::shared_ptr<Grid> CPU::get_grid() {
+std::shared_ptr<Grid> CPU::get_final_grid() {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
@@ -636,7 +636,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
 #endif
 
   try {
-    const auto &grid = get_grid();
+    const auto &grid = get_final_grid();
 
     // Constants
     unsigned int nr_w_layers = grid->get_w_dim();

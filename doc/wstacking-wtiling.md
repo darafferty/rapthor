@@ -5,7 +5,7 @@ The amount of work that needs to be done per visibility depends on the size of s
 Per visibility, all pixels of a subgrid need to be computed. The work of the FFT of the subgrid is shared over all visibilities in a subgrid.
 
 The subgrid pixel budget is divided over the following terms
-* Taper 
+* Taper
 * W-term
 * A-term
 * uv-coverage, or time-freqency coverage
@@ -57,6 +57,6 @@ When a w-tiling enabled Plan is executed, the way the gridding to/degridding fro
 
 W-tiling is designed as an implementation detail of the Proxy. That means that its details are hidden behind the Proxy interface. A few changes to the interface were needed to support algorithms like w-tiling.
 
-The gridding and degridding functions of the Proxy are stateless. When the call returns the result is ready and the next call could be for a different grid, although in practice it is often for the same grid. With w-tiling we would like to keep the cache of w-tiles alive between gridding/degridding calls, as long as they are for the same grid. On the other hand we would not like to expose the w-tile cache to the outside world. It needs to be stored internally. Two member functions have been added to the Proxy to announce the begin and end of a series of gridding/degridding calls om the same grid: `set_grid(Grid &grid)` and `get_grid()`. 
+The gridding and degridding functions of the Proxy are stateless. When the call returns the result is ready and the next call could be for a different grid, although in practice it is often for the same grid. With w-tiling we would like to keep the cache of w-tiles alive between gridding/degridding calls, as long as they are for the same grid. On the other hand we would not like to expose the w-tile cache to the outside world. It needs to be stored internally. Two member functions have been added to the Proxy to announce the begin and end of a series of gridding/degridding calls om the same grid: `set_grid(Grid &grid)` and `get_final_grid()`.
 
 The Plan is a class separate from the Proxy. It needs information on the state of the w-tile cache to assign subgrids to w-tiles and to create the list of update events. To make this possible without exposing the w-tile cache, a `make_plan(...)` function has been added to the Proxy that creates a Plan by calling its constructor, passing along the arguments and adding one extra argument, the w-tile information.

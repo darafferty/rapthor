@@ -190,40 +190,28 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   std::clog << ">>> Run gridding" << std::endl;
   proxy2.gridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
                   aterms_offsets, spheroidal);
-  proxy2.get_grid();
+  proxy2.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
+  proxy1.set_grid(grid_ref);
+  proxy1.init_cache(subgrid_size, cell_size, w_step, shift);
   proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
                   aterms_offsets, spheroidal);
-  proxy1.get_grid();
+  proxy1.get_final_grid();
 
   float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
                                   grid->data(), grid_ref->data());
 #endif
 
   // Use the same grid for both degridding calls
-  proxy1.set_grid(proxy2.get_grid());
+  proxy1.set_grid(proxy2.get_final_grid());
 
 #if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
   visibilities_ref.zero();
-  proxy2.set_grid(grid);
-  proxy2.degridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
-                    aterms_offsets, spheroidal);
-
-  std::clog << ">>> Run reference degridding" << std::endl;
-  proxy1.set_grid(grid);
-  proxy1.degridding(*plan1, frequencies, visibilities_ref, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal);
-
-  std::clog << std::endl;
-
-  // Ignore visibilities that are not included in the plan
-  plan1->mask_visibilities(visibilities);
   plan2->mask_visibilities(visibilities_ref);
-
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
                    (std::complex<float> *)visibilities.data(),

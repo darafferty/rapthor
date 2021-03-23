@@ -65,8 +65,8 @@ class Proxy(object):
             ctypes.c_int,    # subgrid_size
             ctypes.c_int,    # nr_channels
             ctypes.c_int,    # nr_baselines
-            ctypes.c_int,    # nr_timesteps, 
-            ctypes.c_int,    # nr_correlations, 
+            ctypes.c_int,    # nr_timesteps,
+            ctypes.c_int,    # nr_correlations,
             ctypes.c_int,    # nr_timeslots
             ctypes.c_int,    # int nr_stations
             np.ctypeslib.ndpointer(
@@ -100,11 +100,11 @@ class Proxy(object):
         # call C function to do the work
         self.lib.Proxy_gridding(
             self.obj,
-            kernel_size, 
-            subgrid_size, 
+            kernel_size,
+            subgrid_size,
             nr_channels,
             nr_baselines,
-            nr_timesteps, 
+            nr_timesteps,
             nr_correlations,
             nr_timeslots,
             nr_stations,
@@ -167,8 +167,8 @@ class Proxy(object):
             ctypes.c_int,    # subgrid_size
             ctypes.c_int,    # nr_channels
             ctypes.c_int,    # nr_baselines
-            ctypes.c_int,    # nr_timesteps, 
-            ctypes.c_int,    # nr_correlations, 
+            ctypes.c_int,    # nr_timesteps,
+            ctypes.c_int,    # nr_correlations,
             ctypes.c_int,    # nr_timeslots
             ctypes.c_int,    # int nr_stations
             np.ctypeslib.ndpointer(
@@ -203,11 +203,11 @@ class Proxy(object):
         print("aterms.shape = ", aterms.shape)
         self.lib.Proxy_degridding(
             self.obj,
-            kernel_size, 
-            subgrid_size, 
+            kernel_size,
+            subgrid_size,
             nr_channels,
             nr_baselines,
-            nr_timesteps, 
+            nr_timesteps,
             nr_correlations,
             nr_timeslots,
             nr_stations,
@@ -565,7 +565,7 @@ class Proxy(object):
             ctypes.c_int(height),
             ctypes.c_int(width))
 
-    def get_grid(
+    def get_final_grid(
         self,
         grid):
 
@@ -586,7 +586,7 @@ class Proxy(object):
         width = grid_size
 
         # Set argument types
-        self.lib.Proxy_get_grid.argtypes = [
+        self.lib.Proxy_get_final_grid.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_int,
@@ -595,7 +595,7 @@ class Proxy(object):
                 ctypes.c_int]
 
         # Call the C function
-        self.lib.Proxy_get_grid(
+        self.lib.Proxy_get_final_grid(
             ctypes.c_void_p(self.obj),
             grid.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_int(nr_w_layers),

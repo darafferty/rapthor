@@ -27,7 +27,7 @@ class UnifiedOptimized : public cuda::CUDA {
 
   virtual void set_grid(std::shared_ptr<Grid> grid) override;
 
-  virtual std::shared_ptr<Grid> get_grid() override;
+  virtual std::shared_ptr<Grid> get_final_grid() override;
 
   virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const Array1D<float>& frequencies,

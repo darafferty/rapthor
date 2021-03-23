@@ -43,8 +43,8 @@ BufferImpl::BufferImpl(const BufferSetImpl& bufferset, size_t bufferTimesteps)
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
-  assert(bufferset.get_grid()->get_x_dim() ==
-         bufferset.get_grid()->get_y_dim());
+  assert(bufferset.get_proxy().get_grid().get_x_dim() ==
+         bufferset.get_proxy().get_grid().get_y_dim());
 
   assert(bufferset.get_shift().size() == 2);
   std::copy_n(bufferset.get_shift().data(), m_shift.size(), m_shift.data());
@@ -70,7 +70,8 @@ void BufferImpl::set_stations(const size_t nrStations) {
 size_t BufferImpl::get_stations() const { return m_nrStations; }
 
 double BufferImpl::get_image_size() const {
-  return m_bufferset.get_cell_size() * m_bufferset.get_grid()->get_y_dim();
+  return m_bufferset.get_cell_size() *
+         m_bufferset.get_proxy().get_grid().get_y_dim();
 }
 
 void BufferImpl::set_frequencies(size_t nr_channels,

@@ -466,7 +466,7 @@ void Generic::set_grid(std::shared_ptr<Grid> grid) {
   htodstream.synchronize();
 }
 
-std::shared_ptr<Grid> Generic::get_grid() {
+std::shared_ptr<Grid> Generic::get_final_grid() {
   InstanceCUDA& device = get_device(0);
   cu::DeviceMemory& d_grid = device.retrieve_device_grid();
   cu::Stream& dtohstream = device.get_dtoh_stream();

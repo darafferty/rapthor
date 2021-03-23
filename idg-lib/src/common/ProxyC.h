@@ -68,6 +68,7 @@ void Proxy_set_grid(struct Proxy* p, float complex* grid_ptr,
                     unsigned int nr_w_layers, unsigned int nr_correlations,
                     unsigned int height, unsigned int width);
 
-void Proxy_get_grid(struct Proxy* p, std::complex<float>* grid_ptr,
-                    unsigned int nr_w_layers, unsigned int nr_correlations,
-                    unsigned int height, unsigned int width);
+void Proxy_get_final_grid(struct Proxy* p, std::complex<float>* grid_ptr,
+                          unsigned int nr_w_layers,
+                          unsigned int nr_correlations, unsigned int height,
+                          unsigned int width);

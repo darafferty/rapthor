@@ -43,7 +43,7 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   cout << __func__ << endl;
 #endif
 
-  Grid& grid = *get_grid();
+  Grid& grid = *get_final_grid();
 
   // Constants
   auto grid_size = grid.get_x_dim();
