@@ -128,7 +128,8 @@ class InstanceCUDA : public KernelsInstance {
                                        int subgrid_offset,
                                        cu::DeviceMemory& d_metadata,
                                        cu::DeviceMemory& d_subgrid,
-                                       cu::DeviceMemory& d_padded_tiles);
+                                       cu::DeviceMemory& d_padded_tiles,
+                                       std::complex<float> scale = {1.0, 1.0});
 
   void launch_adder_wtiles_to_grid(int nr_tiles, int tile_size,
                                    int padded_tile_size, long grid_size,

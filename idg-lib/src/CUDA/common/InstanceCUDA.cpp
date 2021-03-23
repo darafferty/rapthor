@@ -1080,10 +1080,11 @@ void InstanceCUDA::launch_adder_apply_phasor(
 void InstanceCUDA::launch_adder_subgrids_to_wtiles(
     int nr_subgrids, long grid_size, int subgrid_size, int tile_size,
     int subgrid_offset, cu::DeviceMemory& d_metadata,
-    cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_padded_tiles) {
+    cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_padded_tiles,
+    std::complex<float> scale) {
   const void* parameters[] = {&grid_size,      &subgrid_size, &tile_size,
                               &subgrid_offset, d_metadata,    d_subgrid,
-                              d_padded_tiles};
+                              d_padded_tiles,  &scale};
   dim3 grid(nr_subgrids);
   executestream->launchKernel(*functions_adder_wtiles[2], grid, block_adder, 0,
                               parameters);

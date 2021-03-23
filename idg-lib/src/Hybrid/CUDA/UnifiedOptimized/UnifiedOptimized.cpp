@@ -910,9 +910,11 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
 
     // Add all subgrids to the wtiles
     unsigned int grid_size = m_grid->get_x_dim();
+    int N = subgrid_size * subgrid_size;
+    std::complex<float> scale(1.0f / N, 1.0f / N);
     device.launch_adder_subgrids_to_wtiles(
         nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles);
+        subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids

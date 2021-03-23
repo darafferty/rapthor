@@ -140,7 +140,8 @@ __global__ void kernel_subgrids_to_wtiles(
     const int                    subgrid_offset,
     const Metadata* __restrict__ metadata,
     const float2*   __restrict__ subgrid,
-          float2*   __restrict__ padded_tiles)
+          float2*   __restrict__ padded_tiles,
+          float2                 scale)
 {
     // Map blockIdx.x to subgrids
     int s = blockIdx.x + subgrid_offset;
@@ -152,9 +153,6 @@ __global__ void kernel_subgrids_to_wtiles(
 
     // Compute the number of threads working on one subgrid
     int nr_threads = blockDim.x * blockDim.y;
-
-    // Compute scaling factor
-    float scale = 1 / (float(subgrid_size)*float(subgrid_size));
 
     // Load tile coordinates
     const Metadata &m = metadata[s];
@@ -174,7 +172,8 @@ __global__ void kernel_subgrids_to_wtiles(
         int x = i % subgrid_size;
         float pi = (float) M_PI;
         float phase = pi * (x+y-subgrid_size)/subgrid_size;
-        float2 phasor = make_float2(cosf(phase), sinf(phase)) * scale;
+        float2 phasor = make_float2(cosf(phase) * scale.x,
+                                    sinf(phase) * scale.y);
 
         if (y < subgrid_size)
         {
