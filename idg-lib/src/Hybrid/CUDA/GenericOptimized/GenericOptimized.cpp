@@ -277,8 +277,8 @@ void GenericOptimized::run_gridding(
     // Launch gridder kernel
     device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
                           subgrid_size, image_size, w_step, nr_channels,
-                          nr_stations, d_uvw, d_visibilities, d_metadata,
-                          d_subgrids);
+                          nr_stations, shift(0), shift(1), d_uvw,
+                          d_visibilities, d_metadata, d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -555,8 +555,8 @@ void GenericOptimized::run_degridding(
     // Launch degridder kernel
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
                             subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, d_uvw, d_visibilities, d_metadata,
-                            d_subgrids);
+                            nr_stations, shift(0), shift(1), d_uvw,
+                            d_visibilities, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Signal that the input buffer is free

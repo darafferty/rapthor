@@ -32,7 +32,7 @@ namespace cuda {
 
 // Constructor
 InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_nr, int device_id)
-    : KernelsInstance(), mInfo(info), shift_l_(0.0f), shift_m_(0.0f) {
+    : KernelsInstance(), mInfo(info) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
@@ -541,11 +541,12 @@ void InstanceCUDA::end_measurement(void* ptr) {
 void InstanceCUDA::launch_gridder(
     int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
     float image_size, float w_step, int nr_channels, int nr_stations,
-    cu::DeviceMemory& d_uvw, cu::DeviceMemory& d_visibilities,
-    cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid) {
+    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+    cu::DeviceMemory& d_visibilities, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {
       &time_offset,  &grid_size, &subgrid_size,     &image_size,
-      &w_step,       &shift_l_,  &shift_m_,         &nr_channels,
+      &w_step,       &shift_l,   &shift_m,          &nr_channels,
       &nr_stations,  d_uvw,      *d_wavenumbers,    d_visibilities,
       *d_spheroidal, *d_aterms,  *d_aterms_indices, *d_avg_aterm_correction,
       d_metadata,    d_subgrid};
@@ -565,11 +566,12 @@ void InstanceCUDA::launch_gridder(
 void InstanceCUDA::launch_degridder(
     int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
     float image_size, float w_step, int nr_channels, int nr_stations,
-    cu::DeviceMemory& d_uvw, cu::DeviceMemory& d_visibilities,
-    cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid) {
+    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+    cu::DeviceMemory& d_visibilities, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {&time_offset,  &grid_size,     &subgrid_size,
-                              &image_size,   &w_step,        &shift_l_,
-                              &shift_m_,     &nr_channels,   &nr_stations,
+                              &image_size,   &w_step,        &shift_l,
+                              &shift_m,      &nr_channels,   &nr_stations,
                               d_uvw,         *d_wavenumbers, d_visibilities,
                               *d_spheroidal, *d_aterms,      *d_aterms_indices,
                               d_metadata,    d_subgrid};

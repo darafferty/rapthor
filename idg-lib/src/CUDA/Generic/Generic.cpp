@@ -53,6 +53,7 @@ void Generic::run_gridding(
   auto image_size = cell_size * grid_size;
   auto subgrid_size = plan.get_subgrid_size();
   auto w_step = plan.get_w_step();
+  auto& shift = plan.get_shift();
 
   // Configuration
   const unsigned nr_devices = get_num_devices();
@@ -171,8 +172,8 @@ void Generic::run_gridding(
     // Launch gridder kernel
     device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
                           subgrid_size, image_size, w_step, nr_channels,
-                          nr_stations, d_uvw, d_visibilities, d_metadata,
-                          d_subgrids);
+                          nr_stations, shift(0), shift(1), d_uvw,
+                          d_visibilities, d_metadata, d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -267,6 +268,7 @@ void Generic::run_degridding(
   auto image_size = cell_size * grid_size;
   auto subgrid_size = plan.get_subgrid_size();
   auto w_step = plan.get_w_step();
+  auto& shift = plan.get_shift();
 
   // Configuration
   const unsigned nr_devices = get_num_devices();
@@ -392,8 +394,8 @@ void Generic::run_degridding(
     // Launch degridder kernel
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
                             subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, d_uvw, d_visibilities, d_metadata,
-                            d_subgrids);
+                            nr_stations, shift(0), shift(1), d_uvw,
+                            d_visibilities, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Copy visibilities to host

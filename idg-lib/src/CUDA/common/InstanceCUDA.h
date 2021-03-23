@@ -37,15 +37,16 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_gridder(int time_offset, int nr_subgrids, int grid_size,
                       int subgrid_size, float image_size, float w_step,
-                      int nr_channels, int nr_stations, cu::DeviceMemory& d_uvw,
+                      int nr_channels, int nr_stations, float shift_l,
+                      float shift_m, cu::DeviceMemory& d_uvw,
                       cu::DeviceMemory& d_visibilities,
                       cu::DeviceMemory& d_metadata,
                       cu::DeviceMemory& d_subgrid);
 
   void launch_degridder(int time_offset, int nr_subgrids, int grid_size,
                         int subgrid_size, float image_size, float w_step,
-                        int nr_channels, int nr_stations,
-                        cu::DeviceMemory& d_uvw,
+                        int nr_channels, int nr_stations, float shift_l,
+                        float shift_m, cu::DeviceMemory& d_uvw,
                         cu::DeviceMemory& d_visibilities,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
@@ -207,10 +208,6 @@ class InstanceCUDA : public KernelsInstance {
   void unmap_host_memory() { h_registered_.clear(); };
 
   // Misc
-  void set_shift(float shift_l, float shift_m) {
-    shift_l_ = shift_l;
-    shift_m_ = shift_m;
-  }
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
   void free_device_memory();
@@ -296,10 +293,6 @@ class InstanceCUDA : public KernelsInstance {
 
   // All CUDA modules private to this InstanceCUDA
   std::vector<std::unique_ptr<cu::Module>> mModules;
-
-  // Pass the two shift values as arguments instead of allocating device memory.
-  float shift_l_;
-  float shift_m_;
 
  protected:
   dim3 block_gridder;

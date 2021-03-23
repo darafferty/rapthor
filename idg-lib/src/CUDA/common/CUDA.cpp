@@ -330,8 +330,6 @@ void CUDA::initialize(
       auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
       cu::Stream& htodstream = device.get_htod_stream();
 
-      device.set_shift(m_cache_state.shift(0), m_cache_state.shift(1));
-
       // Wavenumbers
       cu::DeviceMemory& d_wavenumbers =
           device.allocate_device_wavenumbers(wavenumbers.bytes());
