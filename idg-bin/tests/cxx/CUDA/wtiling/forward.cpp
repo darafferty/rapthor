@@ -25,7 +25,7 @@ void init_data(std::complex<float>* data, int* ids, unsigned int n,
                unsigned int size) {
   size_t sizeof_tiles =
       n * NR_CORRELATIONS * size * size * sizeof(std::complex<float>);
-  memset(data, 0, sizeof_tiles);
+  memset((void*)data, 0, sizeof_tiles);
   for (unsigned int tile = 0; tile < n; tile++) {
     float scale = (float)(tile + 1) / n;
 
@@ -79,8 +79,7 @@ int compare_tiles(std::complex<float>* tiles, std::complex<float>* padded_tiles,
   return nr_errors;
 }
 
-double compare_arrays(unsigned int n, std::complex<float>* a,
-                      std::complex<float>* b) {
+double compare_arrays(int n, std::complex<float>* a, std::complex<float>* b) {
   double r_error = 0.0;
   double i_error = 0.0;
   int nnz = 0;
@@ -146,7 +145,6 @@ void apply_phasor(std::complex<float>* tiles, idg::Coordinate* tile_coordinates,
           std::complex<float> phasor = {std::cos(phase) / N,
                                         std::sin(phase) / N};
           unsigned int idx = index_grid(tile_size, tile_index, pol, y, x);
-          auto value = tiles[idx];
 
           // Apply phasor
           tiles[idx] *= phasor;
@@ -335,13 +333,13 @@ int main(int argc, char* argv[]) {
   options.w_step = w_step;
   idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
                  frequencies, uvw, baselines, aterms_offsets, wtiles, options);
-  unsigned int nr_subgrids = plan.get_nr_subgrids();
+  int nr_subgrids = plan.get_nr_subgrids();
 
   // Get W-Tiling paramters
   auto wtile_info = wtiles.clear();
   auto& tile_ids = wtile_info.wtile_ids;
   auto& tile_coordinates = wtile_info.wtile_coordinates;
-  unsigned int nr_tiles = tile_coordinates.size();
+  int nr_tiles = tile_coordinates.size();
 
   // Set padded tile size
   const float image_size_shift =

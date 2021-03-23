@@ -7,7 +7,6 @@ project(test-cuda-wtiling-forward.x)
 set (
     ${PROJECT_NAME}_sources
     forward.cpp
-    #../../common/common.cpp
 )
 
 # Set build target
