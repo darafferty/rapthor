@@ -36,6 +36,8 @@ UnifiedOptimized::UnifiedOptimized()
   // Increase the fraction of reserved memory
   set_fraction_reserved(0.4);
 
+  init_buffers();
+
   cuProfilerStart();
 }
 
@@ -52,6 +54,13 @@ UnifiedOptimized::~UnifiedOptimized() {
   }
 
   cuProfilerStop();
+}
+
+void UnifiedOptimized::init_buffers()
+{
+  const cu::Context& context = get_device(0).get_context();
+  m_buffers_wtiling.d_tiles.reset(new cu::DeviceMemory(context, 0));
+  m_buffers_wtiling.d_padded_tiles.reset(new cu::DeviceMemory(context, 0));
 }
 
 /*
@@ -655,8 +664,8 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   // tiles will always need to be processed in batches.
   m_nr_tiles = (free_memory * 0.30) / sizeof_tile;
   size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
-  device.allocate_device_tiles(sizeof_tiles);
-  device.allocate_device_padded_tiles(sizeof_tiles);
+  m_buffers_wtiling.d_tiles->resize(sizeof_tiles);
+  m_buffers_wtiling.d_padded_tiles->resize(sizeof_tiles);
   device.allocate_host_padded_tiles(sizeof_tiles);
 
   // Initialize wtiles metadata
@@ -680,8 +689,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load buffers
-  cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
-  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_padded_tiles();
+  cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
+  cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
   cu::HostMemory& h_padded_tiles =
       device.allocate_host_padded_tiles(d_padded_tiles.size());
 
@@ -890,7 +899,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
   // Load buffers
   cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
   cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
-  cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
+  cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
 
   // Performance measurement
   State startState, endState;

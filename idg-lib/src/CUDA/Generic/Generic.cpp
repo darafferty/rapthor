@@ -191,7 +191,7 @@ void Generic::run_gridding(
       device.launch_adder_unified(current_nr_subgrids, grid_size, subgrid_size,
                                   d_metadata, d_subgrids, u_grid);
     } else {
-      cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+      cu::DeviceMemory& d_grid = *m_buffers.d_grid;
       device.launch_adder(current_nr_subgrids, grid_size, subgrid_size,
                           d_metadata, d_subgrids, d_grid);
     }
@@ -390,7 +390,7 @@ void Generic::run_degridding(
                                      subgrid_size, d_metadata, d_subgrids,
                                      u_grid);
     } else {
-      cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+      cu::DeviceMemory& d_grid = *m_buffers.d_grid;
       device.launch_splitter(current_nr_subgrids, grid_size, subgrid_size,
                              d_metadata, d_subgrids, d_grid);
     }
@@ -475,17 +475,16 @@ void Generic::do_degridding(
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
-  cu::DeviceMemory& d_grid = device.allocate_device_grid(grid->bytes());
+  m_buffers.d_grid->resize(grid->bytes());
   cu::Stream& htodstream = device.get_htod_stream();
-  device.copy_htod(htodstream, d_grid, grid->data(), grid->bytes());
+  device.copy_htod(htodstream, *m_buffers.d_grid, grid->data(), grid->bytes());
   htodstream.synchronize();
 }
 
 std::shared_ptr<Grid> Generic::get_final_grid() {
   InstanceCUDA& device = get_device(0);
-  cu::DeviceMemory& d_grid = device.retrieve_device_grid();
   cu::Stream& dtohstream = device.get_dtoh_stream();
-  device.copy_dtoh(dtohstream, m_grid->data(), d_grid, m_grid->bytes());
+  device.copy_dtoh(dtohstream, m_grid->data(), *m_buffers.d_grid, m_grid->bytes());
   dtohstream.synchronize();
   return m_grid;
 }

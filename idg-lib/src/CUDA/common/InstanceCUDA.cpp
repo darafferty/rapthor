@@ -1218,10 +1218,6 @@ T* InstanceCUDA::reuse_memory(uint64_t size, std::unique_ptr<T>& memory) {
   return memory.get();
 }
 
-cu::DeviceMemory& InstanceCUDA::allocate_device_grid(size_t bytes) {
-  return *reuse_memory(bytes, d_grid);
-}
-
 cu::HostMemory& InstanceCUDA::allocate_host_visibilities(size_t bytes) {
   return *reuse_memory(bytes, h_visibilities);
 }
@@ -1236,14 +1232,6 @@ cu::HostMemory& InstanceCUDA::allocate_host_uvw(size_t bytes) {
 
 cu::HostMemory& InstanceCUDA::allocate_host_padded_tiles(size_t bytes) {
   return *reuse_memory(bytes, h_padded_tiles);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_tiles(size_t bytes) {
-  return *reuse_memory(bytes, d_tiles);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_padded_tiles(size_t bytes) {
-  return *reuse_memory(bytes, d_padded_tiles);
 }
 
 /*
@@ -1354,9 +1342,6 @@ void InstanceCUDA::free_device_memory() {
   d_metadata_.clear();
   d_subgrids_.clear();
   d_misc_.clear();
-  d_grid.reset();
-  d_tiles.reset();
-  d_padded_tiles.reset();
 }
 
 /*

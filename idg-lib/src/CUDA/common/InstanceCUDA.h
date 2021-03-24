@@ -150,11 +150,6 @@ class InstanceCUDA : public KernelsInstance {
                                    cu::DeviceMemory& d_padded_tiles,
                                    cu::UnifiedMemory& u_grid);
 
-  // Memory management per device
-  cu::DeviceMemory& allocate_device_grid(size_t bytes);
-  cu::DeviceMemory& allocate_device_tiles(size_t bytes);
-  cu::DeviceMemory& allocate_device_padded_tiles(size_t bytes);
-
   // Memory management per stream
   cu::HostMemory& allocate_host_subgrids(size_t bytes);
   cu::HostMemory& allocate_host_visibilities(size_t bytes);
@@ -172,11 +167,6 @@ class InstanceCUDA : public KernelsInstance {
 
   // Memory management for misc page-locked host buffers
   void register_host_memory(void* ptr, size_t bytes);
-
-  // Retrieve pre-allocated buffers (per device)
-  cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
-  cu::DeviceMemory& retrieve_device_tiles() { return *d_tiles; }
-  cu::DeviceMemory& retrieve_device_padded_tiles() { return *d_padded_tiles; }
 
   // Retrieve pre-allocated buffers (per stream)
   cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) {
@@ -255,9 +245,6 @@ class InstanceCUDA : public KernelsInstance {
   std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
 
   // One instance per device
-  std::unique_ptr<cu::DeviceMemory> d_grid;
-  std::unique_ptr<cu::DeviceMemory> d_tiles;
-  std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
   std::unique_ptr<cu::HostMemory> h_visibilities;
   std::unique_ptr<cu::HostMemory> h_uvw;
   std::unique_ptr<cu::HostMemory> h_subgrids;

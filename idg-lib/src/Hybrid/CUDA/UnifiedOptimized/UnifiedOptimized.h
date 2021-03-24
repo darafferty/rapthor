@@ -96,6 +96,12 @@ class UnifiedOptimized : public cuda::CUDA {
   WTiles m_wtiles;
   unsigned int m_nr_tiles = 0;  // configured in init_cache
   const unsigned int m_tile_size = 128;
+  struct {
+      std::unique_ptr<cu::DeviceMemory> d_tiles;
+      std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
+  } m_buffers_wtiling;
+
+  void init_buffers();
 
 };  // class UnifiedOptimized
 

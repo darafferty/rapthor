@@ -118,6 +118,7 @@ void CUDA::init_buffers()
   m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_aterms_indices.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_grid.reset(new cu::DeviceMemory(context, 0));
 }
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
@@ -465,7 +466,7 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   cu::Stream& stream = device.get_execute_stream();
 
   // Device memory
-  cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+  cu::DeviceMemory& d_grid = *m_buffers.d_grid;
 
   // Performance measurements
   report.initialize(0, 0, grid_size);
