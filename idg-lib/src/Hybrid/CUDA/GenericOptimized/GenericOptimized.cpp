@@ -218,11 +218,11 @@ void GenericOptimized::run_gridding(
     cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
     cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
     cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
-    cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
-    cu::DeviceMemory& d_spheroidal = device.retrieve_device_memory(m_gridding_state.d_spheroidal_id);
-    cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
-    cu::DeviceMemory& d_aterms_indices = device.retrieve_device_memory(m_gridding_state.d_aterms_indices_id);
-    cu::DeviceMemory& d_avg_aterm = device.retrieve_device_memory(m_gridding_state.d_avg_aterm_id);
+    cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+    cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+    cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+    cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
+    cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -414,10 +414,10 @@ void GenericOptimized::run_degridding(
   }
 
   // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
-  cu::DeviceMemory& d_spheroidal = device.retrieve_device_memory(m_gridding_state.d_spheroidal_id);
-  cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
-  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_memory(m_gridding_state.d_aterms_indices_id);
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -799,8 +799,8 @@ void GenericOptimized::do_calibrate_init(
   m_calibrate_state.nr_channels = nr_channels;
 
   // Initialize wavenumbers
-  cu::DeviceMemory& d_wavenumbers =
-      device.allocate_device_memory(m_gridding_state.d_wavenumbers_id, wavenumbers.bytes());
+  m_buffers.d_wavenumbers->resize(wavenumbers.bytes());
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
                              wavenumbers.bytes());
 
@@ -866,8 +866,9 @@ void GenericOptimized::do_calibrate_update(
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
-  cu::DeviceMemory& d_aterms = device.allocate_device_memory(m_gridding_state.d_aterms_id, aterms.bytes());
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  m_buffers.d_aterms->resize(aterms.bytes());
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
   unsigned int d_metadata_id = m_calibrate_state.d_metadata_ids[antenna_nr];
   unsigned int d_subgrids_id = m_calibrate_state.d_subgrids_ids[antenna_nr];
   unsigned int d_visibilities_id =

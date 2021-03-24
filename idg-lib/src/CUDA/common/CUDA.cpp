@@ -31,6 +31,7 @@ CUDA::CUDA(ProxyInfo info)
   init_devices();
   print_devices();
   print_compiler_flags();
+  init_buffers();
   cuProfilerStart();
 };
 
@@ -108,6 +109,16 @@ ProxyInfo CUDA::default_info() {
 
   return p;
 }  // end default_info
+
+void CUDA::init_buffers()
+{
+  const cu::Context& context = get_device(0).get_context();
+  m_buffers.d_wavenumbers.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_spheroidal.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_aterms_indices.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
+}
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
   const cu::Context& context = get_device(0).get_context();
@@ -331,28 +342,28 @@ void CUDA::initialize(
       cu::Stream& htodstream = device.get_htod_stream();
 
       // Wavenumbers
-      cu::DeviceMemory& d_wavenumbers = device.allocate_device_memory(m_gridding_state.d_wavenumbers_id, wavenumbers.bytes());
-      htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
+      m_buffers.d_wavenumbers->resize(wavenumbers.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
 
       // Spheroidal
-      cu::DeviceMemory& d_spheroidal = device.allocate_device_memory(m_gridding_state.d_spheroidal_id, spheroidal.bytes());
-      htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(), spheroidal.bytes());
+      m_buffers.d_spheroidal->resize((spheroidal.bytes()));
+      htodstream.memcpyHtoDAsync(*m_buffers.d_spheroidal, spheroidal.data(), spheroidal.bytes());
 
       // Aterms
-      cu::DeviceMemory& d_aterms = device.allocate_device_memory(m_gridding_state.d_aterms_id, aterms.bytes());
-      htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+      m_buffers.d_aterms->resize(aterms.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms, aterms.data(), aterms.bytes());
 
       // Aterms indices
       size_t sizeof_aterms_indices =
           auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-      cu::DeviceMemory& d_aterms_indices = device.allocate_device_memory(m_gridding_state.d_aterms_indices_id, sizeof_aterms_indices);
-      htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterms_indices);
+      m_buffers.d_aterms_indices->resize(sizeof_aterms_indices);
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterms_indices);
 
       // Average aterm correction
       size_t sizeof_avg_aterm_correction = m_avg_aterm_correction.size() > 0 ?
           auxiliary::sizeof_avg_aterm_correction(subgrid_size) : 0;
-      cu::DeviceMemory& d_avg_aterm_correction = device.allocate_device_memory(m_gridding_state.d_avg_aterm_id, sizeof_avg_aterm_correction);
-      htodstream.memcpyHtoDAsync(d_avg_aterm_correction,
+      m_buffers.d_avg_aterm->resize(sizeof_avg_aterm_correction);
+      htodstream.memcpyHtoDAsync(*m_buffers.d_avg_aterm,
                                  m_avg_aterm_correction.data(),
                                  sizeof_avg_aterm_correction);
 
@@ -511,7 +522,7 @@ void CUDA::do_compute_avg_beam(
   device.set_report(report);
 
   // Allocate static device memory
-  cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
   cu::DeviceMemory d_baselines(context, baselines.bytes());
   cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
   cu::DeviceMemory d_average_beam(

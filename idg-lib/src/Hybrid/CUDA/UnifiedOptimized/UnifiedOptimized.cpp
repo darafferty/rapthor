@@ -132,11 +132,11 @@ void UnifiedOptimized::run_gridding(
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
-  cu::DeviceMemory& d_spheroidal = device.retrieve_device_memory(m_gridding_state.d_spheroidal_id);
-  cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
-  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_memory(m_gridding_state.d_aterms_indices_id);
-  cu::DeviceMemory& d_avg_aterm = device.retrieve_device_memory(m_gridding_state.d_avg_aterm_id);
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
+  cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
   // Start performance measurement
   startStates[device_id] = device.measure();
@@ -352,10 +352,10 @@ void UnifiedOptimized::run_degridding(
   }
 
   // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
-  cu::DeviceMemory& d_spheroidal = device.retrieve_device_memory(m_gridding_state.d_spheroidal_id);
-  cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
-  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_memory(m_gridding_state.d_aterms_indices_id);
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
