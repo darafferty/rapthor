@@ -131,6 +131,13 @@ void UnifiedOptimized::run_gridding(
   cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
+  // Load memory objects
+  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
+  cu::DeviceMemory& d_spheroidal = device.retrieve_device_memory(m_gridding_state.d_spheroidal_id);
+  cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
+  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_memory(m_gridding_state.d_aterms_indices_id);
+  cu::DeviceMemory& d_avg_aterm = device.retrieve_device_memory(m_gridding_state.d_avg_aterm_id);
+
   // Start performance measurement
   startStates[device_id] = device.measure();
   startStates[nr_devices] = hostPowerSensor->read();
@@ -211,7 +218,9 @@ void UnifiedOptimized::run_gridding(
     device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
                           subgrid_size, image_size, w_step, nr_channels,
                           nr_stations, shift(0), shift(1), d_uvw,
-                          d_visibilities, d_metadata, d_subgrids);
+                          d_wavenumbers, d_visibilities, d_spheroidal,
+                          d_aterms, d_aterms_indices, d_avg_aterm,
+                          d_metadata, d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -341,6 +350,12 @@ void UnifiedOptimized::run_degridding(
     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
     outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
   }
+
+  // Load memory objects
+  cu::DeviceMemory& d_wavenumbers = device.retrieve_device_memory(m_gridding_state.d_wavenumbers_id);
+  cu::DeviceMemory& d_spheroidal = device.retrieve_device_memory(m_gridding_state.d_spheroidal_id);
+  cu::DeviceMemory& d_aterms = device.retrieve_device_memory(m_gridding_state.d_aterms_id);
+  cu::DeviceMemory& d_aterms_indices = device.retrieve_device_memory(m_gridding_state.d_aterms_indices_id);
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -492,7 +507,9 @@ void UnifiedOptimized::run_degridding(
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
                             subgrid_size, image_size, w_step, nr_channels,
                             nr_stations, shift(0), shift(1), d_uvw,
-                            d_visibilities, d_metadata, d_subgrids);
+                            d_wavenumbers, d_visibilities, d_spheroidal,
+                            d_aterms, d_aterms_indices,
+                            d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Signal that the input buffer is free

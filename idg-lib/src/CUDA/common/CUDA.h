@@ -80,7 +80,21 @@ class CUDA : public Proxy {
     unsigned int nr_baselines = 0;
     std::vector<int> jobsize;
     std::vector<int> max_nr_subgrids;
+
+    int d_wavenumbers_id = -1;
+    int d_spheroidal_id = -1;
+    int d_aterms_id = -1;
+    int d_aterms_indices_id = -1;
+    int d_avg_aterm_id = -1;
   } m_gridding_state;
+
+  struct {
+    std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
+    std::unique_ptr<cu::DeviceMemory> d_spheroidal;
+    std::unique_ptr<cu::DeviceMemory> d_aterms;
+    std::unique_ptr<cu::DeviceMemory> d_aterms_indices;
+    std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
+  } m_buffers;
 
   /*
    * Options used internally by the CUDA proxies

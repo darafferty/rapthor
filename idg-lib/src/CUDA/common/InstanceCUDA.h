@@ -37,17 +37,28 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_gridder(int time_offset, int nr_subgrids, int grid_size,
                       int subgrid_size, float image_size, float w_step,
-                      int nr_channels, int nr_stations, float shift_l,
-                      float shift_m, cu::DeviceMemory& d_uvw,
+                      int nr_channels, int nr_stations,
+                      float shift_l, float shift_m,
+                      cu::DeviceMemory& d_uvw,
+                      cu::DeviceMemory& d_wavenumbers,
                       cu::DeviceMemory& d_visibilities,
+                      cu::DeviceMemory& d_spheroidal,
+                      cu::DeviceMemory& d_aterms,
+                      cu::DeviceMemory& d_aterm_indices,
+                      cu::DeviceMemory& d_avg_aterm_correction,
                       cu::DeviceMemory& d_metadata,
                       cu::DeviceMemory& d_subgrid);
 
   void launch_degridder(int time_offset, int nr_subgrids, int grid_size,
                         int subgrid_size, float image_size, float w_step,
-                        int nr_channels, int nr_stations, float shift_l,
-                        float shift_m, cu::DeviceMemory& d_uvw,
+                        int nr_channels, int nr_stations,
+                        float shift_l, float shift_m,
+                        cu::DeviceMemory& d_uvw,
+                        cu::DeviceMemory& d_wavenumbers,
                         cu::DeviceMemory& d_visibilities,
+                        cu::DeviceMemory& d_spheroidal,
+                        cu::DeviceMemory& d_aterms,
+                        cu::DeviceMemory& d_aterms_indices,
                         cu::DeviceMemory& d_metadata,
                         cu::DeviceMemory& d_subgrid);
 
@@ -141,11 +152,6 @@ class InstanceCUDA : public KernelsInstance {
 
   // Memory management per device
   cu::DeviceMemory& allocate_device_grid(size_t bytes);
-  cu::DeviceMemory& allocate_device_wavenumbers(size_t bytes);
-  cu::DeviceMemory& allocate_device_aterms(size_t bytes);
-  cu::DeviceMemory& allocate_device_aterms_indices(size_t bytes);
-  cu::DeviceMemory& allocate_device_spheroidal(size_t bytes);
-  cu::DeviceMemory& allocate_device_avg_aterm_correction(size_t bytes);
   cu::DeviceMemory& allocate_device_tiles(size_t bytes);
   cu::DeviceMemory& allocate_device_padded_tiles(size_t bytes);
 
@@ -160,26 +166,15 @@ class InstanceCUDA : public KernelsInstance {
   cu::DeviceMemory& allocate_device_metadata(unsigned int id, size_t bytes);
 
   // Memory management for misc device buffers
+  cu::DeviceMemory& allocate_device_memory(int& id, size_t bytes);
   unsigned int allocate_device_memory(size_t bytes);
-  cu::DeviceMemory& retrieve_device_memory(unsigned int id);
+  cu::DeviceMemory& retrieve_device_memory(int id);
 
   // Memory management for misc page-locked host buffers
   void register_host_memory(void* ptr, size_t bytes);
 
   // Retrieve pre-allocated buffers (per device)
   cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
-  cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
-  cu::DeviceMemory& retrieve_device_aterms_indices() {
-    return *d_aterms_indices;
-  }
-  cu::DeviceMemory& retrieve_device_aterms_derivatives() {
-    return *d_aterms_derivatives;
-  }
-  cu::DeviceMemory& retrieve_device_wavenumbers() { return *d_wavenumbers; }
-  cu::DeviceMemory& retrieve_device_spheroidal() { return *d_spheroidal; }
-  cu::DeviceMemory& retrieve_device_avg_aterm_correction() {
-    return *d_avg_aterm_correction;
-  }
   cu::DeviceMemory& retrieve_device_tiles() { return *d_tiles; }
   cu::DeviceMemory& retrieve_device_padded_tiles() { return *d_padded_tiles; }
 
@@ -196,11 +191,6 @@ class InstanceCUDA : public KernelsInstance {
   }
 
   // Free buffers
-  void free_device_wavenumbers() { d_wavenumbers.reset(); };
-  void free_device_spheroidal() { d_spheroidal.reset(); };
-  void free_device_aterms() { d_aterms.reset(); };
-  void free_device_aterms_indices() { d_aterms_indices.reset(); };
-  void free_device_avg_aterm_correction() { d_avg_aterm_correction.reset(); };
   void free_device_visibilities() { d_visibilities_.clear(); };
   void free_device_uvw() { d_uvw_.clear(); };
   void free_device_subgrids() { d_subgrids_.clear(); };
@@ -265,12 +255,6 @@ class InstanceCUDA : public KernelsInstance {
   std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
 
   // One instance per device
-  std::unique_ptr<cu::DeviceMemory> d_aterms;
-  std::unique_ptr<cu::DeviceMemory> d_aterms_indices;
-  std::unique_ptr<cu::DeviceMemory> d_aterms_derivatives;
-  std::unique_ptr<cu::DeviceMemory> d_avg_aterm_correction;
-  std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
-  std::unique_ptr<cu::DeviceMemory> d_spheroidal;
   std::unique_ptr<cu::DeviceMemory> d_grid;
   std::unique_ptr<cu::DeviceMemory> d_tiles;
   std::unique_ptr<cu::DeviceMemory> d_padded_tiles;

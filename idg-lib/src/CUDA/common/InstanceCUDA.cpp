@@ -538,17 +538,25 @@ void InstanceCUDA::end_measurement(void* ptr) {
   executestream->addCallback((CUstreamCallback)&update_report_callback, data);
 }
 
-void InstanceCUDA::launch_gridder(
-    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
-    float image_size, float w_step, int nr_channels, int nr_stations,
-    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
-    cu::DeviceMemory& d_visibilities, cu::DeviceMemory& d_metadata,
-    cu::DeviceMemory& d_subgrid) {
+void InstanceCUDA::launch_gridder(int time_offset, int nr_subgrids, int grid_size,
+                                  int subgrid_size, float image_size, float w_step,
+                                  int nr_channels, int nr_stations,
+                                  float shift_l, float shift_m,
+                                  cu::DeviceMemory& d_uvw,
+                                  cu::DeviceMemory& d_wavenumbers,
+                                  cu::DeviceMemory& d_visibilities,
+                                  cu::DeviceMemory& d_spheroidal,
+                                  cu::DeviceMemory& d_aterms,
+                                  cu::DeviceMemory& d_aterms_indices,
+                                  cu::DeviceMemory& d_avg_aterm_correction,
+                                  cu::DeviceMemory& d_metadata,
+                                  cu::DeviceMemory& d_subgrid)
+{
   const void* parameters[] = {
       &time_offset,  &grid_size, &subgrid_size,     &image_size,
       &w_step,       &shift_l,   &shift_m,          &nr_channels,
-      &nr_stations,  d_uvw,      *d_wavenumbers,    d_visibilities,
-      *d_spheroidal, *d_aterms,  *d_aterms_indices, *d_avg_aterm_correction,
+      &nr_stations,  d_uvw,      d_wavenumbers,     d_visibilities,
+      d_spheroidal,  d_aterms,   d_aterms_indices,  d_avg_aterm_correction,
       d_metadata,    d_subgrid};
 
   dim3 grid(nr_subgrids);
@@ -564,16 +572,23 @@ void InstanceCUDA::launch_gridder(
 }
 
 void InstanceCUDA::launch_degridder(
-    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
-    float image_size, float w_step, int nr_channels, int nr_stations,
-    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
-    cu::DeviceMemory& d_visibilities, cu::DeviceMemory& d_metadata,
-    cu::DeviceMemory& d_subgrid) {
-  const void* parameters[] = {&time_offset,  &grid_size,     &subgrid_size,
-                              &image_size,   &w_step,        &shift_l,
-                              &shift_m,      &nr_channels,   &nr_stations,
-                              d_uvw,         *d_wavenumbers, d_visibilities,
-                              *d_spheroidal, *d_aterms,      *d_aterms_indices,
+int time_offset, int nr_subgrids, int grid_size,
+                      int subgrid_size, float image_size, float w_step,
+                      int nr_channels, int nr_stations,
+                      float shift_l, float shift_m,
+                      cu::DeviceMemory& d_uvw,
+                      cu::DeviceMemory& d_wavenumbers,
+                      cu::DeviceMemory& d_visibilities,
+                      cu::DeviceMemory& d_spheroidal,
+                      cu::DeviceMemory& d_aterms,
+                      cu::DeviceMemory& d_aterms_indices,
+                      cu::DeviceMemory& d_metadata,
+                      cu::DeviceMemory& d_subgrid) {
+  const void* parameters[] = {&time_offset,  &grid_size,    &subgrid_size,
+                              &image_size,   &w_step,       &shift_l,
+                              &shift_m,      &nr_channels,  &nr_stations,
+                              d_uvw,         d_wavenumbers, d_visibilities,
+                              d_spheroidal,  d_aterms,      d_aterms_indices,
                               d_metadata,    d_subgrid};
 
   dim3 grid(nr_subgrids);
@@ -1223,27 +1238,6 @@ cu::HostMemory& InstanceCUDA::allocate_host_padded_tiles(size_t bytes) {
   return *reuse_memory(bytes, h_padded_tiles);
 }
 
-cu::DeviceMemory& InstanceCUDA::allocate_device_aterms(size_t bytes) {
-  return *reuse_memory(bytes, d_aterms);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_aterms_indices(size_t bytes) {
-  return *reuse_memory(bytes, d_aterms_indices);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_wavenumbers(size_t bytes) {
-  return *reuse_memory(bytes, d_wavenumbers);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_spheroidal(size_t bytes) {
-  return *reuse_memory(bytes, d_spheroidal);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_avg_aterm_correction(
-    size_t bytes) {
-  return *reuse_memory(bytes, d_avg_aterm_correction);
-}
-
 cu::DeviceMemory& InstanceCUDA::allocate_device_tiles(size_t bytes) {
   return *reuse_memory(bytes, d_tiles);
 }
@@ -1301,12 +1295,25 @@ cu::DeviceMemory& InstanceCUDA::allocate_device_metadata(unsigned int id,
  *      the caller gets an id that is also used to retrieve
  *      the memory from the d_misc_ vector
  */
+cu::DeviceMemory& InstanceCUDA::allocate_device_memory(int& id,
+                                                      size_t bytes) {
+  assert(id < (int) d_misc_.size());
+
+  if (id == -1) {
+    d_misc_.emplace_back(new cu::DeviceMemory(*context, bytes));
+    id = d_misc_.size() - 1;
+    return *d_misc_[id];
+  } else {
+    return *reuse_memory(bytes, d_misc_[id]);
+  }
+}
+
 unsigned int InstanceCUDA::allocate_device_memory(size_t bytes) {
   d_misc_.emplace_back(new cu::DeviceMemory(*context, bytes));
   return d_misc_.size() - 1;
 }
 
-cu::DeviceMemory& InstanceCUDA::retrieve_device_memory(unsigned int id) {
+cu::DeviceMemory& InstanceCUDA::retrieve_device_memory(int id) {
   return *d_misc_[id];
 }
 
@@ -1347,12 +1354,6 @@ void InstanceCUDA::free_device_memory() {
   d_metadata_.clear();
   d_subgrids_.clear();
   d_misc_.clear();
-  d_aterms.reset();
-  d_aterms_indices.reset();
-  d_aterms_derivatives.reset();
-  d_avg_aterm_correction.reset();
-  d_wavenumbers.reset();
-  d_spheroidal.reset();
   d_grid.reset();
   d_tiles.reset();
   d_padded_tiles.reset();
