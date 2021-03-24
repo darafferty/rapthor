@@ -29,14 +29,16 @@ CUDA::CUDA(ProxyInfo info)
 
   cu::init();
   init_devices();
+  initialize_buffers();
   print_devices();
   print_compiler_flags();
-  init_buffers();
   cuProfilerStart();
 };
 
 CUDA::~CUDA() {
   cuProfilerStop();
+  free_buffers();
+  m_buffers.d_grid.reset();
   free_devices();
 }
 
@@ -110,28 +112,48 @@ ProxyInfo CUDA::default_info() {
   return p;
 }  // end default_info
 
-void CUDA::init_buffers()
+void CUDA::initialize_buffers()
 {
+#if defined(DEBUG)
+  std::cout << "CUDA::" << __func__ << std::endl;
+#endif
+
+  free_buffers();
+
   const cu::Context& context = get_device(0).get_context();
   m_buffers.d_wavenumbers.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_spheroidal.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_aterms_indices.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
-  m_buffers.d_grid.reset(new cu::DeviceMemory(context, 0));
-
-  m_buffers.d_visibilities_.resize(m_max_nr_streams);
-  m_buffers.d_uvw_.resize(m_max_nr_streams);
-  m_buffers.d_subgrids_.resize(m_max_nr_streams);
-  m_buffers.d_metadata_.resize(m_max_nr_streams);
+  // d_grid is handled seperately
 
   for (unsigned t = 0; t < m_max_nr_streams; t++)
   {
-    m_buffers.d_visibilities_[t].reset(new cu::DeviceMemory(context, 0));
-    m_buffers.d_uvw_[t].reset(new cu::DeviceMemory(context, 0));
-    m_buffers.d_subgrids_[t].reset(new cu::DeviceMemory(context, 0));
-    m_buffers.d_metadata_[t].reset(new cu::DeviceMemory(context, 0));
+    m_buffers.d_visibilities_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_subgrids_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_metadata_.emplace_back(new cu::DeviceMemory(context, 0));
   }
+}
+
+void CUDA::free_buffers()
+{
+#if defined(DEBUG)
+  std::cout << "CUDA::" << __func__ << std::endl;
+#endif
+
+  m_buffers.d_wavenumbers.reset();
+  m_buffers.d_spheroidal.reset();
+  m_buffers.d_aterms.reset();
+  m_buffers.d_aterms_indices.reset();
+  m_buffers.d_avg_aterm.reset();
+  // d_grid is handled seperately
+
+  m_buffers.d_visibilities_.resize(0);
+  m_buffers.d_uvw_.resize(0);
+  m_buffers.d_subgrids_.resize(0);
+  m_buffers.d_metadata_.resize(0);
 }
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
@@ -686,6 +708,8 @@ void CUDA::cleanup() {
 
   cu::Marker marker("cleanup");
   marker.start();
+
+  initialize_buffers();
 
   for (unsigned d = 0; d < get_num_devices(); d++) {
     InstanceCUDA& device = get_device(d);

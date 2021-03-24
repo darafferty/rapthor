@@ -470,8 +470,9 @@ void Generic::do_degridding(
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
-  m_buffers.d_grid->resize(grid->bytes());
   cu::Stream& htodstream = device.get_htod_stream();
+  cu::Context& context = get_device(0).get_context();
+  m_buffers.d_grid.reset(new cu::DeviceMemory(context, grid->bytes()));
   device.copy_htod(htodstream, *m_buffers.d_grid, grid->data(), grid->bytes());
   htodstream.synchronize();
 }

@@ -99,7 +99,8 @@ class CUDA : public Proxy {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
   } m_buffers;
 
-  void init_buffers();
+  void initialize_buffers();
+  void free_buffers();
 
   /*
    * Options used internally by the CUDA proxies
