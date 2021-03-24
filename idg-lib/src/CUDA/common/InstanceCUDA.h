@@ -155,10 +155,6 @@ class InstanceCUDA : public KernelsInstance {
   cu::HostMemory& allocate_host_visibilities(size_t bytes);
   cu::HostMemory& allocate_host_uvw(size_t bytes);
   cu::HostMemory& allocate_host_padded_tiles(size_t bytes);
-  cu::DeviceMemory& allocate_device_visibilities(unsigned int id, size_t bytes);
-  cu::DeviceMemory& allocate_device_uvw(unsigned int id, size_t bytes);
-  cu::DeviceMemory& allocate_device_subgrids(unsigned int id, size_t bytes);
-  cu::DeviceMemory& allocate_device_metadata(unsigned int id, size_t bytes);
 
   // Memory management for misc device buffers
   cu::DeviceMemory& allocate_device_memory(int& id, size_t bytes);
@@ -168,23 +164,7 @@ class InstanceCUDA : public KernelsInstance {
   // Memory management for misc page-locked host buffers
   void register_host_memory(void* ptr, size_t bytes);
 
-  // Retrieve pre-allocated buffers (per stream)
-  cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) {
-    return *d_visibilities_[id];
-  }
-  cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
-  cu::DeviceMemory& retrieve_device_subgrids(unsigned int id) {
-    return *d_subgrids_[id];
-  }
-  cu::DeviceMemory& retrieve_device_metadata(unsigned int id) {
-    return *d_metadata_[id];
-  }
-
   // Free buffers
-  void free_device_visibilities() { d_visibilities_.clear(); };
-  void free_device_uvw() { d_uvw_.clear(); };
-  void free_device_subgrids() { d_subgrids_.clear(); };
-  void free_device_metadata() { d_metadata_.clear(); };
   void unmap_host_memory() { h_registered_.clear(); };
 
   // Misc
@@ -249,12 +229,6 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::HostMemory> h_uvw;
   std::unique_ptr<cu::HostMemory> h_subgrids;
   std::unique_ptr<cu::HostMemory> h_padded_tiles;
-
-  // One instance per stream
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
 
   // Registered host memory
   std::vector<std::unique_ptr<cu::RegisteredMemory>> h_registered_;

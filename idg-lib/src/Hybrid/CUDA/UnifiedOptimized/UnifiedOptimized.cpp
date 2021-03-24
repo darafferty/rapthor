@@ -167,11 +167,10 @@ void UnifiedOptimized::run_gridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -190,11 +189,9 @@ void UnifiedOptimized::run_gridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_visibilities_next =
-          device.retrieve_device_visibilities(local_id_next);
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+      cu::DeviceMemory& d_visibilities_next = *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -398,7 +395,7 @@ void UnifiedOptimized::run_degridding(
       unsigned local_id = job_id % 2;
 
       // Load memory objects
-      cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
+      cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
 
       // Wait for input buffer to be free
       if (job_id > 0) {
@@ -455,11 +452,10 @@ void UnifiedOptimized::run_degridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Wait for subgrids to be computed
     locks_gpu[job_id].lock();
@@ -477,9 +473,8 @@ void UnifiedOptimized::run_degridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -897,8 +892,8 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
   cu::Stream& stream = device.get_execute_stream();
 
   // Load buffers
-  cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-  cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+  cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+  cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
 
   // Performance measurement

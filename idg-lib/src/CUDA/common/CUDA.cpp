@@ -119,6 +119,19 @@ void CUDA::init_buffers()
   m_buffers.d_aterms_indices.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_grid.reset(new cu::DeviceMemory(context, 0));
+
+  m_buffers.d_visibilities_.resize(m_max_nr_streams);
+  m_buffers.d_uvw_.resize(m_max_nr_streams);
+  m_buffers.d_subgrids_.resize(m_max_nr_streams);
+  m_buffers.d_metadata_.resize(m_max_nr_streams);
+
+  for (unsigned t = 0; t < m_max_nr_streams; t++)
+  {
+    m_buffers.d_visibilities_[t].reset(new cu::DeviceMemory(context, 0));
+    m_buffers.d_uvw_[t].reset(new cu::DeviceMemory(context, 0));
+    m_buffers.d_subgrids_[t].reset(new cu::DeviceMemory(context, 0));
+    m_buffers.d_metadata_[t].reset(new cu::DeviceMemory(context, 0));
+  }
 }
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
@@ -373,20 +386,20 @@ void CUDA::initialize(
         // Visibilities
         size_t sizeof_visibilities =
             auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
-        device.allocate_device_visibilities(t, sizeof_visibilities);
+        m_buffers.d_visibilities_[t]->resize(sizeof_visibilities);
 
         // UVW coordinates
         size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-        device.allocate_device_uvw(t, sizeof_uvw);
+        m_buffers.d_uvw_[t]->resize(sizeof_uvw);
 
         // Subgrids
         size_t sizeof_subgrids =
             auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-        device.allocate_device_subgrids(t, sizeof_subgrids);
+        m_buffers.d_subgrids_[t]->resize(sizeof_subgrids);
 
         // Metadata
         size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
-        device.allocate_device_metadata(t, sizeof_metadata);
+        m_buffers.d_metadata_[t]->resize(sizeof_metadata);
       }
 
       // Initialize job data
@@ -541,9 +554,8 @@ void CUDA::do_compute_avg_beam(
     // Try to allocate memory
     if (bytes_free > bytes_required) {
       for (unsigned int i = 0; i < 2; i++) {
-        device.allocate_device_uvw(i, sizeof_uvw);
-        device.allocate_device_visibilities(
-            i, sizeof_weights);  // visibilities buffer!
+        m_buffers.d_uvw_[i]->resize(sizeof_uvw);
+        m_buffers.d_visibilities_[i]->resize(sizeof_weights); // visibilities buffer!
       }
       break;
     } else {
@@ -603,8 +615,8 @@ void CUDA::do_compute_avg_beam(
     unsigned local_id_next = (local_id + 1) % 2;
 
     auto& job = jobs[job_id];
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_weights = device.retrieve_device_visibilities(local_id);
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_weights = *m_buffers.d_visibilities_[local_id];
 
     // Copy input for first job
     if (job_id == 0) {
@@ -620,9 +632,8 @@ void CUDA::do_compute_avg_beam(
     // Copy input for next job (if any)
     if (job_id_next < jobs.size()) {
       auto& job_next = jobs[job_id_next];
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_weights_next =
-          device.retrieve_device_visibilities(local_id_next);
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_weights_next = *m_buffers.d_visibilities_[local_id_next];
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(job_next.current_nr_baselines, nr_timesteps);
       auto sizeof_weights = auxiliary::sizeof_weights(
@@ -678,10 +689,6 @@ void CUDA::cleanup() {
 
   for (unsigned d = 0; d < get_num_devices(); d++) {
     InstanceCUDA& device = get_device(d);
-    device.free_device_visibilities();
-    device.free_device_uvw();
-    device.free_device_subgrids();
-    device.free_device_metadata();
     device.unmap_host_memory();
     device.free_fft_plans();
   }

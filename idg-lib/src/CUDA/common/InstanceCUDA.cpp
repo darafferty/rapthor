@@ -1257,26 +1257,6 @@ T* InstanceCUDA::reuse_memory(std::vector<std::unique_ptr<T>>& memories,
   return ptr;
 }
 
-cu::DeviceMemory& InstanceCUDA::allocate_device_visibilities(unsigned int id,
-                                                             size_t bytes) {
-  return *reuse_memory(d_visibilities_, id, bytes);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_uvw(unsigned int id,
-                                                    size_t bytes) {
-  return *reuse_memory(d_uvw_, id, bytes);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_subgrids(unsigned int id,
-                                                         size_t bytes) {
-  return *reuse_memory(d_subgrids_, id, bytes);
-}
-
-cu::DeviceMemory& InstanceCUDA::allocate_device_metadata(unsigned int id,
-                                                         size_t bytes) {
-  return *reuse_memory(d_metadata_, id, bytes);
-}
-
 /*
  * Memory management for misc device buffers
  *      Rather than storing these buffers by name,
@@ -1337,10 +1317,6 @@ void InstanceCUDA::free_host_memory() {
  * Device memory destructor
  */
 void InstanceCUDA::free_device_memory() {
-  d_visibilities_.clear();
-  d_uvw_.clear();
-  d_metadata_.clear();
-  d_subgrids_.clear();
   d_misc_.clear();
 }
 

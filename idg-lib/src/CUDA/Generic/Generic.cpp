@@ -113,11 +113,10 @@ void Generic::run_gridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -136,11 +135,9 @@ void Generic::run_gridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_visibilities_next =
-          device.retrieve_device_visibilities(local_id_next);
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+      cu::DeviceMemory& d_visibilities_next = *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -337,11 +334,10 @@ void Generic::run_degridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -356,9 +352,8 @@ void Generic::run_degridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;

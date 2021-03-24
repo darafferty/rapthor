@@ -92,6 +92,11 @@ class CUDA : public Proxy {
     std::unique_ptr<cu::DeviceMemory> d_aterms_indices;
     std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
     std::unique_ptr<cu::DeviceMemory> d_grid;
+
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
   } m_buffers;
 
   void init_buffers();
