@@ -241,7 +241,8 @@ void GenericOptimized::run_gridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_visibilities_next = *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_visibilities_next =
+          *m_buffers.d_visibilities_[local_id_next];
       cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
       cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
@@ -278,12 +279,11 @@ void GenericOptimized::run_gridding(
     executestream.waitEvent(*inputCopied[job_id]);
 
     // Launch gridder kernel
-    device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
-                          subgrid_size, image_size, w_step, nr_channels,
-                          nr_stations, shift(0), shift(1), d_uvw,
-                          d_wavenumbers, d_visibilities, d_spheroidal,
-                          d_aterms, d_aterms_indices, d_avg_aterm,
-                          d_metadata, d_subgrids);
+    device.launch_gridder(
+        current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
+        image_size, w_step, nr_channels, nr_stations, shift(0), shift(1), d_uvw,
+        d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_aterms_indices,
+        d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -308,7 +308,8 @@ void GenericOptimized::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices],
+                   endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -564,11 +565,10 @@ void GenericOptimized::run_degridding(
 
     // Launch degridder kernel
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
-                        subgrid_size, image_size, w_step, nr_channels,
-                        nr_stations, shift(0), shift(1), d_uvw,
-                        d_wavenumbers, d_visibilities, d_spheroidal,
-                        d_aterms, d_aterms_indices,
-                        d_metadata, d_subgrids);
+                            subgrid_size, image_size, w_step, nr_channels,
+                            nr_stations, shift(0), shift(1), d_uvw,
+                            d_wavenumbers, d_visibilities, d_spheroidal,
+                            d_aterms, d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Signal that the input buffer is free
@@ -602,14 +602,16 @@ void GenericOptimized::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices],
+                   endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
   m_report->print_total(total_nr_timesteps, total_nr_subgrids);
-  m_report->print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
+  m_report->print_visibilities(auxiliary::name_degridding,
+                               total_nr_visibilities);
 }  // end run_degridding
 
 void GenericOptimized::do_degridding(
@@ -768,7 +770,8 @@ void GenericOptimized::do_calibrate_init(
     cu::DeviceMemory& d_aterm_idx = *m_buffers.d_aterms_indices_[antenna_nr];
     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
-    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
+    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
+                               sizeof_visibilities);
     htodstream.memcpyHtoDAsync(d_weights, weights_ptr, sizeof_weights);
     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
     htodstream.memcpyHtoDAsync(d_aterm_idx, aterm_idx_ptr, sizeof_aterm_idx);
@@ -951,7 +954,6 @@ void GenericOptimized::do_calibrate_update_hessian_vector_product1(
     const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
     const Array2D<float>& parameter_vector) {
-
   // TODO for now call the cpu instance
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
   cpuKernels.run_calibrate_hessian_vector_product1(

@@ -9,9 +9,9 @@
 
 #include "idg-common.h"
 namespace cu {
-  class DeviceMemory;
-  class HostMemory;
-}; // namespace cu
+class DeviceMemory;
+class HostMemory;
+};  // namespace cu
 
 namespace idg {
 namespace kernel {

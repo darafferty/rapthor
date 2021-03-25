@@ -97,9 +97,9 @@ class UnifiedOptimized : public cuda::CUDA {
   unsigned int m_nr_tiles = 0;  // configured in init_cache
   const unsigned int m_tile_size = 128;
   struct {
-      std::unique_ptr<cu::DeviceMemory> d_tiles;
-      std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
-      std::unique_ptr<cu::HostMemory> h_tiles;
+    std::unique_ptr<cu::DeviceMemory> d_tiles;
+    std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
+    std::unique_ptr<cu::HostMemory> h_tiles;
   } m_buffers_wtiling;
 
   void initialize_buffers();

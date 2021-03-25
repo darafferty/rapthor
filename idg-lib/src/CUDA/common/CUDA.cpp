@@ -112,8 +112,7 @@ ProxyInfo CUDA::default_info() {
   return p;
 }  // end default_info
 
-void CUDA::initialize_buffers()
-{
+void CUDA::initialize_buffers() {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
@@ -128,8 +127,7 @@ void CUDA::initialize_buffers()
   // d_grid is handled seperately
   m_buffers.d_lmnp.reset(new cu::DeviceMemory(context, 0));
 
-  for (unsigned t = 0; t < m_max_nr_streams; t++)
-  {
+  for (unsigned t = 0; t < m_max_nr_streams; t++) {
     m_buffers.d_visibilities_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_subgrids_.emplace_back(new cu::DeviceMemory(context, 0));
@@ -143,16 +141,14 @@ void CUDA::initialize_buffers()
 
   // Not used for gridding and degridding,
   // two buffers are used for calibration.
-  for (unsigned i = 0; i < 2; i++)
-  {
+  for (unsigned i = 0; i < 2; i++) {
     m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, 0));
   }
 
   m_buffers.h_subgrids.reset(new cu::HostMemory(context, 0));
 }
 
-void CUDA::free_buffers()
-{
+void CUDA::free_buffers() {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
@@ -398,25 +394,32 @@ void CUDA::initialize(
 
       // Wavenumbers
       m_buffers.d_wavenumbers->resize(wavenumbers.bytes());
-      htodstream.memcpyHtoDAsync(*m_buffers.d_wavenumbers, wavenumbers.data(), wavenumbers.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_wavenumbers, wavenumbers.data(),
+                                 wavenumbers.bytes());
 
       // Spheroidal
       m_buffers.d_spheroidal->resize((spheroidal.bytes()));
-      htodstream.memcpyHtoDAsync(*m_buffers.d_spheroidal, spheroidal.data(), spheroidal.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_spheroidal, spheroidal.data(),
+                                 spheroidal.bytes());
 
       // Aterms
       m_buffers.d_aterms->resize(aterms.bytes());
-      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms, aterms.data(), aterms.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms, aterms.data(),
+                                 aterms.bytes());
 
       // Aterms indices
       size_t sizeof_aterms_indices =
           auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
       m_buffers.d_aterms_indices_[0]->resize(sizeof_aterms_indices);
-      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms_indices_[0], plan.get_aterm_indices_ptr(), sizeof_aterms_indices);
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms_indices_[0],
+                                 plan.get_aterm_indices_ptr(),
+                                 sizeof_aterms_indices);
 
       // Average aterm correction
-      size_t sizeof_avg_aterm_correction = m_avg_aterm_correction.size() > 0 ?
-          auxiliary::sizeof_avg_aterm_correction(subgrid_size) : 0;
+      size_t sizeof_avg_aterm_correction =
+          m_avg_aterm_correction.size() > 0
+              ? auxiliary::sizeof_avg_aterm_correction(subgrid_size)
+              : 0;
       m_buffers.d_avg_aterm->resize(sizeof_avg_aterm_correction);
       htodstream.memcpyHtoDAsync(*m_buffers.d_avg_aterm,
                                  m_avg_aterm_correction.data(),
@@ -596,7 +599,8 @@ void CUDA::do_compute_avg_beam(
     if (bytes_free > bytes_required) {
       for (unsigned int i = 0; i < 2; i++) {
         m_buffers.d_uvw_[i]->resize(sizeof_uvw);
-        m_buffers.d_visibilities_[i]->resize(sizeof_weights); // visibilities buffer!
+        m_buffers.d_visibilities_[i]->resize(
+            sizeof_weights);  // visibilities buffer!
       }
       break;
     } else {
@@ -674,7 +678,8 @@ void CUDA::do_compute_avg_beam(
     if (job_id_next < jobs.size()) {
       auto& job_next = jobs[job_id_next];
       cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
-      cu::DeviceMemory& d_weights_next = *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_weights_next =
+          *m_buffers.d_visibilities_[local_id_next];
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(job_next.current_nr_baselines, nr_timesteps);
       auto sizeof_weights = auxiliary::sizeof_weights(

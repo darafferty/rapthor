@@ -161,17 +161,15 @@ void HostMemory::zero() { memset(get(), 0, m_bytes); }
 /*
     RegisteredMemory
 */
-RegisteredMemory::RegisteredMemory(const Context &context,
-                                   const void *ptr,
-                                   size_t size,
-                                   int flags)
+RegisteredMemory::RegisteredMemory(const Context &context, const void *ptr,
+                                   size_t size, int flags)
     : _context(context) {
   ScopedContext scc(context);
 
   m_bytes = size;
   _flags = flags;
   assert(ptr != nullptr);
-  set(const_cast<void*>(ptr));
+  set(const_cast<void *>(ptr));
   checkCudaCall(cuMemHostRegister(get(), size, _flags));
 }
 

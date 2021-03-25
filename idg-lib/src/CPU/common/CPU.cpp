@@ -242,7 +242,8 @@ void CPU::do_gridding(
     auto total_nr_timesteps = plan.get_nr_timesteps();
     m_report->print_total(total_nr_timesteps, total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
-    m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+    m_report->print_visibilities(auxiliary::name_gridding,
+                                 total_nr_visibilities);
 
   } catch (const std::invalid_argument &e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
@@ -360,7 +361,7 @@ void CPU::do_degridding(
     m_report->print_total(total_nr_timesteps, total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
     m_report->print_visibilities(auxiliary::name_degridding,
-                              total_nr_visibilities);
+                                 total_nr_visibilities);
 
   } catch (const std::invalid_argument &e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
@@ -553,7 +554,7 @@ void CPU::do_calibrate_update(
       m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
   auto current_nr_visibilities = current_nr_timesteps * nr_channels;
   m_report->update_total(current_nr_subgrids, current_nr_timesteps,
-                      current_nr_visibilities);
+                         current_nr_visibilities);
 }
 
 void CPU::do_calibrate_finish() {

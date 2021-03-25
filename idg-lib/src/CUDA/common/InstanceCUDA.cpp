@@ -43,7 +43,8 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_id)
   executestream.reset(new cu::Stream(*context));
   htodstream.reset(new cu::Stream(*context));
   dtohstream.reset(new cu::Stream(*context));
-  m_powersensor.reset(powersensor::get_power_sensor(powersensor::sensor_device, device_id));
+  m_powersensor.reset(
+      powersensor::get_power_sensor(powersensor::sensor_device, device_id));
 
   // Set kernel parameters
   set_parameters();
@@ -281,8 +282,8 @@ void InstanceCUDA::load_kernels() {
   }
 
   // Load average beam function
-  if (cuModuleGetFunction(&function, *m_modules[6], name_average_beam.c_str()) ==
-      CUDA_SUCCESS) {
+  if (cuModuleGetFunction(&function, *m_modules[6],
+                          name_average_beam.c_str()) == CUDA_SUCCESS) {
     function_average_beam.reset(new cu::Function(*context, function));
     found++;
   }
@@ -495,10 +496,8 @@ typedef struct {
   void (Report::*update_report)(State&, State&);
 } UpdateData;
 
-UpdateData* get_update_data(cu::Event& event,
-                            PowerSensor& sensor,
-                            std::shared_ptr<Report> report,
-                            Report::ID id) {
+UpdateData* get_update_data(cu::Event& event, PowerSensor& sensor,
+                            std::shared_ptr<Report> report, Report::ID id) {
   UpdateData* data = new UpdateData();
   data->start = new PowerRecord(event, sensor);
   data->end = new PowerRecord(event, sensor);
@@ -534,30 +533,26 @@ void InstanceCUDA::end_measurement(void* ptr) {
   executestream->addCallback((CUstreamCallback)&update_report_callback, data);
 }
 
-void InstanceCUDA::launch_gridder(int time_offset, int nr_subgrids, int grid_size,
-                                  int subgrid_size, float image_size, float w_step,
-                                  int nr_channels, int nr_stations,
-                                  float shift_l, float shift_m,
-                                  cu::DeviceMemory& d_uvw,
-                                  cu::DeviceMemory& d_wavenumbers,
-                                  cu::DeviceMemory& d_visibilities,
-                                  cu::DeviceMemory& d_spheroidal,
-                                  cu::DeviceMemory& d_aterms,
-                                  cu::DeviceMemory& d_aterms_indices,
-                                  cu::DeviceMemory& d_avg_aterm_correction,
-                                  cu::DeviceMemory& d_metadata,
-                                  cu::DeviceMemory& d_subgrid)
-{
+void InstanceCUDA::launch_gridder(
+    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
+    float image_size, float w_step, int nr_channels, int nr_stations,
+    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+    cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
+    cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
+    cu::DeviceMemory& d_aterms_indices,
+    cu::DeviceMemory& d_avg_aterm_correction, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {
-      &time_offset,  &grid_size, &subgrid_size,     &image_size,
-      &w_step,       &shift_l,   &shift_m,          &nr_channels,
-      &nr_stations,  d_uvw,      d_wavenumbers,     d_visibilities,
-      d_spheroidal,  d_aterms,   d_aterms_indices,  d_avg_aterm_correction,
-      d_metadata,    d_subgrid};
+      &time_offset, &grid_size, &subgrid_size,    &image_size,
+      &w_step,      &shift_l,   &shift_m,         &nr_channels,
+      &nr_stations, d_uvw,      d_wavenumbers,    d_visibilities,
+      d_spheroidal, d_aterms,   d_aterms_indices, d_avg_aterm_correction,
+      d_metadata,   d_subgrid};
 
   dim3 grid(nr_subgrids);
   dim3 block(block_gridder);
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
@@ -567,28 +562,24 @@ void InstanceCUDA::launch_gridder(int time_offset, int nr_subgrids, int grid_siz
 }
 
 void InstanceCUDA::launch_degridder(
-int time_offset, int nr_subgrids, int grid_size,
-                      int subgrid_size, float image_size, float w_step,
-                      int nr_channels, int nr_stations,
-                      float shift_l, float shift_m,
-                      cu::DeviceMemory& d_uvw,
-                      cu::DeviceMemory& d_wavenumbers,
-                      cu::DeviceMemory& d_visibilities,
-                      cu::DeviceMemory& d_spheroidal,
-                      cu::DeviceMemory& d_aterms,
-                      cu::DeviceMemory& d_aterms_indices,
-                      cu::DeviceMemory& d_metadata,
-                      cu::DeviceMemory& d_subgrid) {
-  const void* parameters[] = {&time_offset,  &grid_size,    &subgrid_size,
-                              &image_size,   &w_step,       &shift_l,
-                              &shift_m,      &nr_channels,  &nr_stations,
-                              d_uvw,         d_wavenumbers, d_visibilities,
-                              d_spheroidal,  d_aterms,      d_aterms_indices,
-                              d_metadata,    d_subgrid};
+    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
+    float image_size, float w_step, int nr_channels, int nr_stations,
+    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+    cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
+    cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
+    cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_subgrid) {
+  const void* parameters[] = {&time_offset, &grid_size,    &subgrid_size,
+                              &image_size,  &w_step,       &shift_l,
+                              &shift_m,     &nr_channels,  &nr_stations,
+                              d_uvw,        d_wavenumbers, d_visibilities,
+                              d_spheroidal, d_aterms,      d_aterms_indices,
+                              d_metadata,   d_subgrid};
 
   dim3 grid(nr_subgrids);
   dim3 block(block_degridder);
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::degridder);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::degridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
@@ -612,7 +603,8 @@ void InstanceCUDA::launch_average_beam(
   dim3 grid(nr_baselines);
   dim3 block(128);
 
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::average_beam);
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report,
+                                     Report::average_beam);
   start_measurement(data);
   executestream->launchKernel(*function_average_beam, grid, block, 0,
                               parameters);
@@ -632,7 +624,8 @@ void InstanceCUDA::launch_calibrate(
     cu::DeviceMemory& d_residual) {
   dim3 grid(nr_subgrids);
   dim3 block(block_calibrate);
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::calibrate);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::calibrate);
   start_measurement(data);
 
   // Get functions
@@ -811,7 +804,8 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
   }
 
   // Enqueue start of measurement
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::grid_fft);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::grid_fft);
   start_measurement(data);
 
 #if ENABLE_REPEAT_KERNELS
@@ -897,7 +891,8 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   cu::ScopedContext scc(*context);
 
   // Enqueue start of measurement
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::subgrid_fft);
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report,
+                                     Report::subgrid_fft);
   start_measurement(data);
 
   // Execute bulk subgrid fft
@@ -963,7 +958,8 @@ void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
   dim3 grid(batch, ceil(size / 2.0));
   dim3 block(128);
 
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::fft_shift);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::fft_shift);
   start_measurement(data);
   executestream->launchKernel(*function_fft_shift, grid, block, 0, parameters);
   end_measurement(data);
@@ -1015,7 +1011,8 @@ void InstanceCUDA::launch_splitter(int nr_subgrids, long grid_size,
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
                               d_subgrid,  d_grid,        &enable_tiling};
   dim3 grid(nr_subgrids);
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
@@ -1035,7 +1032,8 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
                               d_subgrid,  &grid_ptr,     &enable_tiling};
   dim3 grid(nr_subgrids);
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
+  UpdateData* data =
+      get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
   start_measurement(data);
   executestream->launchKernel(*function_splitter, grid, block_splitter, 0,
                               parameters);
@@ -1122,7 +1120,8 @@ void report_job(CUstream, CUresult, void* userData) {
   delete data;
 }
 
-ReportData* get_report_data(int nr_timesteps, int nr_subgrids, std::shared_ptr<Report> report) {
+ReportData* get_report_data(int nr_timesteps, int nr_subgrids,
+                            std::shared_ptr<Report> report) {
   ReportData* data = new ReportData();
   data->nr_timesteps = nr_timesteps;
   data->nr_subgrids = nr_subgrids;
