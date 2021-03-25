@@ -63,7 +63,7 @@ InstanceCUDA::~InstanceCUDA() {
 
   free_fft_plans();
   free_events();
-  mModules.clear();
+  m_modules.clear();
   executestream.reset();
   htodstream.reset();
   dtohstream.reset();
@@ -214,11 +214,11 @@ void InstanceCUDA::compile_kernels() {
 
   // Compile all kernels
   for (unsigned i = 0; i < src.size(); i++) {
-    mModules.push_back(std::unique_ptr<cu::Module>());
+    m_modules.push_back(std::unique_ptr<cu::Module>());
   }
 #pragma omp parallel for
   for (unsigned i = 0; i < src.size(); i++) {
-    mModules[i].reset(compile_kernel(flags[i], src[i], cubin[i]));
+    m_modules[i].reset(compile_kernel(flags[i], src[i], cubin[i]));
   }
 }
 
@@ -227,89 +227,89 @@ void InstanceCUDA::load_kernels() {
   unsigned found = 0;
 
   // Load gridder function
-  if (cuModuleGetFunction(&function, *mModules[0], name_gridder.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[0], name_gridder.c_str()) ==
       CUDA_SUCCESS) {
     function_gridder.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load degridder function
-  if (cuModuleGetFunction(&function, *mModules[1], name_degridder.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[1], name_degridder.c_str()) ==
       CUDA_SUCCESS) {
     function_degridder.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load scalar function
-  if (cuModuleGetFunction(&function, *mModules[2], name_scaler.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[2], name_scaler.c_str()) ==
       CUDA_SUCCESS) {
     function_scaler.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load adder function
-  if (cuModuleGetFunction(&function, *mModules[3], name_adder.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[3], name_adder.c_str()) ==
       CUDA_SUCCESS) {
     function_adder.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load splitter function
-  if (cuModuleGetFunction(&function, *mModules[4], name_splitter.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[4], name_splitter.c_str()) ==
       CUDA_SUCCESS) {
     function_splitter.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load calibration functions
-  if (cuModuleGetFunction(&function, *mModules[5],
+  if (cuModuleGetFunction(&function, *m_modules[5],
                           name_calibrate_lmnp.c_str()) == CUDA_SUCCESS) {
     functions_calibrate.emplace_back(new cu::Function(*context, function));
     found++;
   }
-  if (cuModuleGetFunction(&function, *mModules[5],
+  if (cuModuleGetFunction(&function, *m_modules[5],
                           name_calibrate_sums.c_str()) == CUDA_SUCCESS) {
     functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
-  if (cuModuleGetFunction(&function, *mModules[5],
+  if (cuModuleGetFunction(&function, *m_modules[5],
                           name_calibrate_gradient.c_str()) == CUDA_SUCCESS) {
     functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
-  if (cuModuleGetFunction(&function, *mModules[5],
+  if (cuModuleGetFunction(&function, *m_modules[5],
                           name_calibrate_hessian.c_str()) == CUDA_SUCCESS) {
     functions_calibrate.emplace_back(new cu::Function(*context, function));
   }
 
   // Load average beam function
-  if (cuModuleGetFunction(&function, *mModules[6], name_average_beam.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[6], name_average_beam.c_str()) ==
       CUDA_SUCCESS) {
     function_average_beam.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load FFT shift function
-  if (cuModuleGetFunction(&function, *mModules[7], name_fft_shift.c_str()) ==
+  if (cuModuleGetFunction(&function, *m_modules[7], name_fft_shift.c_str()) ==
       CUDA_SUCCESS) {
     function_fft_shift.reset(new cu::Function(*context, function));
     found++;
   }
 
   // Load adder_wtiles functions
-  if (cuModuleGetFunction(&function, *mModules[8],
+  if (cuModuleGetFunction(&function, *m_modules[8],
                           name_adder_copy_tiles.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
     found++;
   }
-  if (cuModuleGetFunction(&function, *mModules[8],
+  if (cuModuleGetFunction(&function, *m_modules[8],
                           name_adder_apply_phasor.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
-  if (cuModuleGetFunction(&function, *mModules[8],
+  if (cuModuleGetFunction(&function, *m_modules[8],
                           name_adder_subgrids_to_wtiles.c_str()) ==
       CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
-  if (cuModuleGetFunction(&function, *mModules[8],
+  if (cuModuleGetFunction(&function, *m_modules[8],
                           name_adder_wtiles_to_grid.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
@@ -324,9 +324,9 @@ void InstanceCUDA::load_kernels() {
 #endif
 
   // Verify that all functions are found
-  if (found != mModules.size()) {
+  if (found != m_modules.size()) {
     std::cerr << "Incorrect number of functions found: " << found
-              << " != " << mModules.size() << std::endl;
+              << " != " << m_modules.size() << std::endl;
     exit(EXIT_FAILURE);
   }
 }

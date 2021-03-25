@@ -206,7 +206,7 @@ class InstanceCUDA : public KernelsInstance {
   std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
 
   // All CUDA modules private to this InstanceCUDA
-  std::vector<std::unique_ptr<cu::Module>> mModules;
+  std::vector<std::unique_ptr<cu::Module>> m_modules;
 
  protected:
   dim3 block_gridder;
