@@ -103,7 +103,8 @@ void GenericOptimized::run_gridding(
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-  cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
+  cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
+  h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
   report.initialize(nr_channels, subgrid_size, grid_size);
@@ -391,7 +392,8 @@ void GenericOptimized::run_degridding(
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-  cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
+  cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
+  h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
   report.initialize(nr_channels, subgrid_size, grid_size);

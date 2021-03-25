@@ -99,9 +99,11 @@ class UnifiedOptimized : public cuda::CUDA {
   struct {
       std::unique_ptr<cu::DeviceMemory> d_tiles;
       std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
+      std::unique_ptr<cu::HostMemory> h_tiles;
   } m_buffers_wtiling;
 
-  void init_buffers();
+  void initialize_buffers();
+  void free_buffers();
 
 };  // class UnifiedOptimized
 

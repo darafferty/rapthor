@@ -10,6 +10,7 @@
 #include "idg-common.h"
 namespace cu {
   class DeviceMemory;
+  class HostMemory;
 }; // namespace cu
 
 namespace idg {
@@ -100,6 +101,8 @@ class CUDA : public Proxy {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices_;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_sums_;
+
+    std::unique_ptr<cu::HostMemory> h_subgrids;
   } m_buffers;
 
   void initialize_buffers();

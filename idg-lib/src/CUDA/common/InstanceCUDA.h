@@ -150,12 +150,6 @@ class InstanceCUDA : public KernelsInstance {
                                    cu::DeviceMemory& d_padded_tiles,
                                    cu::UnifiedMemory& u_grid);
 
-  // Memory management per stream
-  cu::HostMemory& allocate_host_subgrids(size_t bytes);
-  cu::HostMemory& allocate_host_visibilities(size_t bytes);
-  cu::HostMemory& allocate_host_uvw(size_t bytes);
-  cu::HostMemory& allocate_host_padded_tiles(size_t bytes);
-
   // Misc
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
@@ -169,7 +163,6 @@ class InstanceCUDA : public KernelsInstance {
   int get_attribute() const;
 
  private:
-  void free_host_memory();
   void reset();
 
   // Since no CUDA calls are allowed from a callback, we have to
@@ -212,15 +205,6 @@ class InstanceCUDA : public KernelsInstance {
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
   std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
 
-  // One instance per device
-  std::unique_ptr<cu::HostMemory> h_visibilities;
-  std::unique_ptr<cu::HostMemory> h_uvw;
-  std::unique_ptr<cu::HostMemory> h_subgrids;
-  std::unique_ptr<cu::HostMemory> h_padded_tiles;
-
-  // Registered host memory
-  std::vector<std::unique_ptr<cu::RegisteredMemory>> h_registered_;
-
   // All CUDA modules private to this InstanceCUDA
   std::vector<std::unique_ptr<cu::Module>> mModules;
 
@@ -246,19 +230,6 @@ class InstanceCUDA : public KernelsInstance {
   unsigned m_fft_subgrid_size = 0;
   std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid;
   std::unique_ptr<cu::DeviceMemory> d_fft_subgrid;
-
- private:
-  // Memory allocation/reuse methods
-  template <typename T>
-  T* reuse_memory(uint64_t size, std::unique_ptr<T>& memory);
-
-  template <typename T>
-  T* reuse_memory(std::vector<std::unique_ptr<T>>& memories, unsigned int id,
-                  uint64_t size);
-
-  template <typename T>
-  T* reuse_memory(std::vector<std::unique_ptr<T>>& memories, uint64_t size,
-                  void* ptr);
 
  public:
   void enqueue_report(cu::Stream& stream, int nr_timesteps, int nr_subgrids);

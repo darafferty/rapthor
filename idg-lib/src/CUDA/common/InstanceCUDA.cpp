@@ -63,7 +63,6 @@ InstanceCUDA::~InstanceCUDA() {
   std::cout << __func__ << std::endl;
 #endif
 
-  free_host_memory();
   free_fft_plans();
   free_events();
   mModules.clear();
@@ -1201,70 +1200,6 @@ void InstanceCUDA::copy_htod(cu::Stream& stream, cu::DeviceMemory& dst,
     stream.synchronize();
   }
   marker.end();
-}
-
-/*
- *  Memory management per device
- *      Maintain one memory object per data structure
- */
-template <typename T>
-T* InstanceCUDA::reuse_memory(uint64_t size, std::unique_ptr<T>& memory) {
-  if (!memory) {
-    memory.reset(new T(*context, size));
-  } else {
-    memory->resize(size);
-  }
-  return memory.get();
-}
-
-cu::HostMemory& InstanceCUDA::allocate_host_visibilities(size_t bytes) {
-  return *reuse_memory(bytes, h_visibilities);
-}
-
-cu::HostMemory& InstanceCUDA::allocate_host_subgrids(size_t bytes) {
-  return *reuse_memory(bytes, h_subgrids);
-}
-
-cu::HostMemory& InstanceCUDA::allocate_host_uvw(size_t bytes) {
-  return *reuse_memory(bytes, h_uvw);
-}
-
-cu::HostMemory& InstanceCUDA::allocate_host_padded_tiles(size_t bytes) {
-  return *reuse_memory(bytes, h_padded_tiles);
-}
-
-/*
- *  Memory management per stream
- *      Maintain multiple memory objects per structure
- *      Automatically increases the internal vectors for these objects
- */
-template <typename T>
-T* InstanceCUDA::reuse_memory(std::vector<std::unique_ptr<T>>& memories,
-                              unsigned int id, uint64_t size) {
-  T* ptr = NULL;
-
-  if (memories.size() <= id) {
-    ptr = new T(*context, size);
-
-    memories.emplace_back(ptr);
-  } else {
-    ptr = memories[id].get();
-  }
-
-  ptr->resize(size);
-
-  return ptr;
-}
-
-/*
- * Host memory destructor
- */
-void InstanceCUDA::free_host_memory() {
-  h_visibilities.reset();
-  h_uvw.reset();
-  h_subgrids.reset();
-  h_padded_tiles.reset();
-  h_registered_.clear();
 }
 
 /*

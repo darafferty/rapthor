@@ -147,6 +147,8 @@ void CUDA::initialize_buffers()
   {
     m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, 0));
   }
+
+  m_buffers.h_subgrids.reset(new cu::HostMemory(context, 0));
 }
 
 void CUDA::free_buffers()
@@ -169,6 +171,8 @@ void CUDA::free_buffers()
   m_buffers.d_weights_.resize(0);
   m_buffers.d_aterms_indices_.resize(0);
   m_buffers.d_sums_.resize(0);
+
+  m_buffers.h_subgrids.reset();
 }
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {

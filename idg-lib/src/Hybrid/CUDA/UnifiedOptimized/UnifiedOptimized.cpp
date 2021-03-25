@@ -36,7 +36,7 @@ UnifiedOptimized::UnifiedOptimized()
   // Increase the fraction of reserved memory
   set_fraction_reserved(0.4);
 
-  init_buffers();
+  initialize_buffers();
 
   cuProfilerStart();
 }
@@ -53,14 +53,24 @@ UnifiedOptimized::~UnifiedOptimized() {
     m_grid.reset();
   }
 
+  free_buffers();
+
   cuProfilerStop();
 }
 
-void UnifiedOptimized::init_buffers()
+void UnifiedOptimized::initialize_buffers()
 {
   const cu::Context& context = get_device(0).get_context();
   m_buffers_wtiling.d_tiles.reset(new cu::DeviceMemory(context, 0));
   m_buffers_wtiling.d_padded_tiles.reset(new cu::DeviceMemory(context, 0));
+  m_buffers_wtiling.h_tiles.reset(new cu::HostMemory(context, 0));
+}
+
+void UnifiedOptimized::free_buffers()
+{
+  m_buffers_wtiling.d_tiles.reset();
+  m_buffers_wtiling.d_padded_tiles.reset();
+  m_buffers_wtiling.h_tiles.reset();
 }
 
 /*
@@ -338,7 +348,8 @@ void UnifiedOptimized::run_degridding(
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-  cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
+  cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
+  h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
   report.initialize(nr_channels, subgrid_size, grid_size);
@@ -661,7 +672,7 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
   m_buffers_wtiling.d_tiles->resize(sizeof_tiles);
   m_buffers_wtiling.d_padded_tiles->resize(sizeof_tiles);
-  device.allocate_host_padded_tiles(sizeof_tiles);
+  m_buffers_wtiling.h_tiles->resize(sizeof_tiles);
 
   // Initialize wtiles metadata
   m_wtiles = WTiles(m_nr_tiles, m_tile_size);
@@ -686,8 +697,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   // Load buffers
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
   cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
-  cu::HostMemory& h_padded_tiles =
-      device.allocate_host_padded_tiles(d_padded_tiles.size());
+  cu::HostMemory& h_padded_tiles = *m_buffers_wtiling.h_tiles;
 
   // Get information on what wtiles to flush
   const int tile_size = m_tile_size;
