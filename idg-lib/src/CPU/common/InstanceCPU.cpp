@@ -39,7 +39,7 @@ InstanceCPU::InstanceCPU(std::vector<std::string> libraries)
   cout << __func__ << endl;
 #endif
 
-  m_powersensor = powersensor::get_power_sensor(powersensor::sensor_host);
+  m_powersensor.reset(powersensor::get_power_sensor(powersensor::sensor_host));
 
   load_shared_objects(libraries);
   load_kernel_funcions();
@@ -55,9 +55,6 @@ InstanceCPU::~InstanceCPU() {
   for (unsigned int i = 0; i < modules.size(); i++) {
     delete modules[i];
   }
-
-  // Delete power sensor
-  delete m_powersensor;
 }
 
 void InstanceCPU::load_shared_objects(std::vector<std::string> libraries) {

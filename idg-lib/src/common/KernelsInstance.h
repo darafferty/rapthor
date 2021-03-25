@@ -52,11 +52,10 @@ class KernelsInstance {
   */
  public:
   void set_report(Report& report_) { report = &report_; }
-  void set_powersensor(powersensor::PowerSensor* sensor ) { m_powersensor = sensor; }
 
  protected:
   Report* report = NULL;
-  powersensor::PowerSensor* m_powersensor;
+  std::shared_ptr<powersensor::PowerSensor> m_powersensor;
 
 };  // end class KernelsInstance
 

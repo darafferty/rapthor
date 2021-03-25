@@ -43,6 +43,7 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_id)
   executestream.reset(new cu::Stream(*context));
   htodstream.reset(new cu::Stream(*context));
   dtohstream.reset(new cu::Stream(*context));
+  m_powersensor.reset(powersensor::get_power_sensor(powersensor::sensor_device, device_id));
 
   // Set kernel parameters
   set_parameters();
@@ -68,7 +69,6 @@ InstanceCUDA::~InstanceCUDA() {
   dtohstream.reset();
   context.reset();
   device.reset();
-  delete m_powersensor;
 }
 
 /*
@@ -470,7 +470,7 @@ std::ostream& operator<<(std::ostream& os, InstanceCUDA& d) {
 State InstanceCUDA::measure() { return m_powersensor->read(); }
 
 void InstanceCUDA::measure(PowerRecord& record, cu::Stream& stream) {
-  record.sensor = m_powersensor;
+  record.sensor = *m_powersensor;
   record.enqueue(stream);
 }
 
@@ -494,7 +494,8 @@ typedef struct {
   void (Report::*update_report)(State&, State&);
 } UpdateData;
 
-UpdateData* get_update_data(cu::Event& event, PowerSensor* sensor,
+UpdateData* get_update_data(cu::Event& event,
+                            PowerSensor& sensor,
                             Report* report,
                             void (Report::*update_report)(State&, State&)) {
   UpdateData* data = new UpdateData();
@@ -556,7 +557,7 @@ void InstanceCUDA::launch_gridder(int time_offset, int nr_subgrids, int grid_siz
 
   dim3 grid(nr_subgrids);
   dim3 block(block_gridder);
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_gridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
@@ -588,7 +589,7 @@ int time_offset, int nr_subgrids, int grid_size,
 
   dim3 grid(nr_subgrids);
   dim3 block(block_degridder);
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_degridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
@@ -613,7 +614,7 @@ void InstanceCUDA::launch_average_beam(
   dim3 grid(nr_baselines);
   dim3 block(128);
 
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_average_beam);
   start_measurement(data);
   executestream->launchKernel(*function_average_beam, grid, block, 0,
@@ -634,7 +635,7 @@ void InstanceCUDA::launch_calibrate(
     cu::DeviceMemory& d_residual) {
   dim3 grid(nr_subgrids);
   dim3 block(block_calibrate);
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_calibrate);
   start_measurement(data);
 
@@ -814,7 +815,7 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
   }
 
   // Enqueue start of measurement
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_grid_fft);
   start_measurement(data);
 
@@ -901,7 +902,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   cu::ScopedContext scc(*context);
 
   // Enqueue start of measurement
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_subgrid_fft);
   start_measurement(data);
 
@@ -968,7 +969,7 @@ void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
   dim3 grid(batch, ceil(size / 2.0));
   dim3 block(128);
 
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_fft_shift);
   start_measurement(data);
   executestream->launchKernel(*function_fft_shift, grid, block, 0, parameters);
@@ -984,7 +985,7 @@ void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
                               d_subgrid,  d_grid,        &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
-      get_update_data(get_event(), m_powersensor, report, &Report::update_adder);
+      get_update_data(get_event(), *m_powersensor, report, &Report::update_adder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
@@ -1005,7 +1006,7 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
                               d_subgrid,  &grid_ptr,     &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
-      get_update_data(get_event(), m_powersensor, report, &Report::update_adder);
+      get_update_data(get_event(), *m_powersensor, report, &Report::update_adder);
   start_measurement(data);
   executestream->launchKernel(*function_adder, grid, block_adder, 0,
                               parameters);
@@ -1021,7 +1022,7 @@ void InstanceCUDA::launch_splitter(int nr_subgrids, long grid_size,
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
                               d_subgrid,  d_grid,        &enable_tiling};
   dim3 grid(nr_subgrids);
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_splitter);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
@@ -1042,7 +1043,7 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
   const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
                               d_subgrid,  &grid_ptr,     &enable_tiling};
   dim3 grid(nr_subgrids);
-  UpdateData* data = get_update_data(get_event(), m_powersensor, report,
+  UpdateData* data = get_update_data(get_event(), *m_powersensor, report,
                                      &Report::update_splitter);
   start_measurement(data);
   executestream->launchKernel(*function_splitter, grid, block_splitter, 0,
@@ -1055,7 +1056,7 @@ void InstanceCUDA::launch_scaler(int nr_subgrids, int subgrid_size,
   const void* parameters[] = {&subgrid_size, d_subgrid};
   dim3 grid(nr_subgrids);
   UpdateData* data =
-      get_update_data(get_event(), m_powersensor, report, &Report::update_scaler);
+      get_update_data(get_event(), *m_powersensor, report, &Report::update_scaler);
   start_measurement(data);
   executestream->launchKernel(*function_scaler, grid, block_scaler, 0,
                               parameters);
