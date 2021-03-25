@@ -156,11 +156,6 @@ class InstanceCUDA : public KernelsInstance {
   cu::HostMemory& allocate_host_uvw(size_t bytes);
   cu::HostMemory& allocate_host_padded_tiles(size_t bytes);
 
-  // Memory management for misc device buffers
-  cu::DeviceMemory& allocate_device_memory(int& id, size_t bytes);
-  unsigned int allocate_device_memory(size_t bytes);
-  cu::DeviceMemory& retrieve_device_memory(int id);
-
   // Memory management for misc page-locked host buffers
   void register_host_memory(void* ptr, size_t bytes);
 
@@ -170,7 +165,6 @@ class InstanceCUDA : public KernelsInstance {
   // Misc
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
-  void free_device_memory();
   void free_events();
 
   // Device interface
@@ -232,9 +226,6 @@ class InstanceCUDA : public KernelsInstance {
 
   // Registered host memory
   std::vector<std::unique_ptr<cu::RegisteredMemory>> h_registered_;
-
-  // Misc device memory
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
 
   // All CUDA modules private to this InstanceCUDA
   std::vector<std::unique_ptr<cu::Module>> mModules;

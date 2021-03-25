@@ -85,7 +85,7 @@ void Generic::run_gridding(
   cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
   cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
   cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
   // Load streams
@@ -307,7 +307,7 @@ void Generic::run_degridding(
   cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
   cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();

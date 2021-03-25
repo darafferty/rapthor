@@ -64,7 +64,6 @@ InstanceCUDA::~InstanceCUDA() {
 #endif
 
   free_host_memory();
-  free_device_memory();
   free_fft_plans();
   free_events();
   mModules.clear();
@@ -1258,34 +1257,6 @@ T* InstanceCUDA::reuse_memory(std::vector<std::unique_ptr<T>>& memories,
 }
 
 /*
- * Memory management for misc device buffers
- *      Rather than storing these buffers by name,
- *      the caller gets an id that is also used to retrieve
- *      the memory from the d_misc_ vector
- */
-cu::DeviceMemory& InstanceCUDA::allocate_device_memory(int& id,
-                                                      size_t bytes) {
-  assert(id < (int) d_misc_.size());
-
-  if (id == -1) {
-    d_misc_.emplace_back(new cu::DeviceMemory(*context, bytes));
-    id = d_misc_.size() - 1;
-    return *d_misc_[id];
-  } else {
-    return *reuse_memory(bytes, d_misc_[id]);
-  }
-}
-
-unsigned int InstanceCUDA::allocate_device_memory(size_t bytes) {
-  d_misc_.emplace_back(new cu::DeviceMemory(*context, bytes));
-  return d_misc_.size() - 1;
-}
-
-cu::DeviceMemory& InstanceCUDA::retrieve_device_memory(int id) {
-  return *d_misc_[id];
-}
-
-/*
  * Memory management for misc page-locked host buffers
  *      Page-locking arbitrary buffers is potentially very dangerous
  *      as buffers may (partially) overlap, which will result in CUDA
@@ -1311,13 +1282,6 @@ void InstanceCUDA::free_host_memory() {
   h_subgrids.reset();
   h_padded_tiles.reset();
   h_registered_.clear();
-}
-
-/*
- * Device memory destructor
- */
-void InstanceCUDA::free_device_memory() {
-  d_misc_.clear();
 }
 
 /*

@@ -220,7 +220,7 @@ void GenericOptimized::run_gridding(
     cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
     cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
     cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-    cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
+    cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
     cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
     // Copy input data for first job to device
@@ -414,7 +414,7 @@ void GenericOptimized::run_degridding(
   cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
   cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -677,16 +677,16 @@ void GenericOptimized::do_calibrate_init(
   // Load stream
   cu::Stream& htodstream = device.get_htod_stream();
 
-  // Reset vectors in calibration state
-  m_calibrate_state.d_metadata_ids.clear();
-  m_calibrate_state.d_subgrids_ids.clear();
-  m_calibrate_state.d_visibilities_ids.clear();
-  m_calibrate_state.d_weights_ids.clear();
-  m_calibrate_state.d_uvw_ids.clear();
-  m_calibrate_state.d_aterm_idx_ids.clear();
-
   // Find max number of subgrids
   unsigned int max_nr_subgrids = 0;
+
+  // Initialize buffers
+  m_buffers.d_metadata_.resize(0);
+  m_buffers.d_subgrids_.resize(0);
+  m_buffers.d_visibilities_.resize(0);
+  m_buffers.d_weights_.resize(0);
+  m_buffers.d_uvw_.resize(0);
+  m_buffers.d_aterms_indices_.resize(0);
 
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
@@ -752,30 +752,21 @@ void GenericOptimized::do_calibrate_init(
     auto sizeof_uvw = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
     auto sizeof_aterm_idx =
         auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-    auto d_metadata_id = device.allocate_device_memory(sizeof_metadata);
-    auto d_subgrids_id = device.allocate_device_memory(sizeof_subgrids);
-    auto d_visibilities_id = device.allocate_device_memory(sizeof_visibilities);
-    auto d_weights_id = device.allocate_device_memory(sizeof_weights);
-    auto d_uvw_id = device.allocate_device_memory(sizeof_uvw);
-    auto d_aterm_idx_id = device.allocate_device_memory(sizeof_aterm_idx);
-    m_calibrate_state.d_metadata_ids.push_back(d_metadata_id);
-    m_calibrate_state.d_subgrids_ids.push_back(d_subgrids_id);
-    m_calibrate_state.d_visibilities_ids.push_back(d_visibilities_id);
-    m_calibrate_state.d_weights_ids.push_back(d_weights_id);
-    m_calibrate_state.d_uvw_ids.push_back(d_uvw_id);
-    m_calibrate_state.d_aterm_idx_ids.push_back(d_aterm_idx_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_memory(d_metadata_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_memory(d_subgrids_id);
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_memory(d_visibilities_id);
-    cu::DeviceMemory& d_weights = device.retrieve_device_memory(d_weights_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_memory(d_uvw_id);
-    cu::DeviceMemory& d_aterm_idx =
-        device.retrieve_device_memory(d_aterm_idx_id);
+    m_buffers.d_metadata_[antenna_nr]->resize(sizeof_metadata);
+    m_buffers.d_subgrids_[antenna_nr]->resize(sizeof_subgrids);
+    m_buffers.d_visibilities_[antenna_nr]->resize(sizeof_visibilities);
+    m_buffers.d_weights_[antenna_nr]->resize(sizeof_weights);
+    m_buffers.d_uvw_[antenna_nr]->resize(sizeof_uvw);
+    m_buffers.d_aterms_indices_[antenna_nr]->resize(sizeof_aterm_idx);
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[antenna_nr];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[antenna_nr];
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[antenna_nr];
+    cu::DeviceMemory& d_weights = *m_buffers.d_weights_[antenna_nr];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[antenna_nr];
+    cu::DeviceMemory& d_aterm_idx = *m_buffers.d_aterms_indices_[antenna_nr];
     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
-    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
-                               sizeof_visibilities);
+    htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr, sizeof_visibilities);
     htodstream.memcpyHtoDAsync(d_weights, weights_ptr, sizeof_weights);
     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
     htodstream.memcpyHtoDAsync(d_aterm_idx, aterm_idx_ptr, sizeof_aterm_idx);
@@ -802,15 +793,14 @@ void GenericOptimized::do_calibrate_init(
   // Allocate device memory for l,m,n and phase offset
   auto sizeof_lmnp =
       max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
-  m_calibrate_state.d_lmnp_id = device.allocate_device_memory(sizeof_lmnp);
+  m_buffers.d_lmnp->resize(sizeof_lmnp);
 
   // Allocate memory for sums (horizontal and vertical)
   auto total_nr_timesteps = nr_baselines * nr_timesteps;
   auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps *
                      nr_channels * sizeof(std::complex<float>);
   for (unsigned int i = 0; i < 2; i++) {
-    m_calibrate_state.d_sums_ids.push_back(
-        device.allocate_device_memory(sizeof_sums));
+    m_buffers.d_sums_[i]->resize(sizeof_sums);
   }
 }
 
@@ -864,27 +854,15 @@ void GenericOptimized::do_calibrate_update(
   cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   m_buffers.d_aterms->resize(aterms.bytes());
   cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  unsigned int d_metadata_id = m_calibrate_state.d_metadata_ids[antenna_nr];
-  unsigned int d_subgrids_id = m_calibrate_state.d_subgrids_ids[antenna_nr];
-  unsigned int d_visibilities_id =
-      m_calibrate_state.d_visibilities_ids[antenna_nr];
-  unsigned int d_weights_id = m_calibrate_state.d_weights_ids[antenna_nr];
-  unsigned int d_uvw_id = m_calibrate_state.d_uvw_ids[antenna_nr];
-  unsigned int d_sums_id1 = m_calibrate_state.d_sums_ids[0];
-  unsigned int d_sums_id2 = m_calibrate_state.d_sums_ids[1];
-  unsigned int d_lmnp_id = m_calibrate_state.d_lmnp_id;
-  unsigned int d_aterm_idx_id = m_calibrate_state.d_aterm_idx_ids[antenna_nr];
-  cu::DeviceMemory& d_metadata = device.retrieve_device_memory(d_metadata_id);
-  cu::DeviceMemory& d_subgrids = device.retrieve_device_memory(d_subgrids_id);
-  cu::DeviceMemory& d_visibilities =
-      device.retrieve_device_memory(d_visibilities_id);
-  cu::DeviceMemory& d_weights = device.retrieve_device_memory(d_weights_id);
-  cu::DeviceMemory& d_uvw = device.retrieve_device_memory(d_uvw_id);
-  cu::DeviceMemory& d_sums1 = device.retrieve_device_memory(d_sums_id1);
-  cu::DeviceMemory& d_sums2 = device.retrieve_device_memory(d_sums_id2);
-  cu::DeviceMemory& d_lmnp = device.retrieve_device_memory(d_lmnp_id);
-  cu::DeviceMemory& d_aterms_idx =
-      device.retrieve_device_memory(d_aterm_idx_id);
+  cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[antenna_nr];
+  cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[antenna_nr];
+  cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[antenna_nr];
+  cu::DeviceMemory& d_weights = *m_buffers.d_weights_[antenna_nr];
+  cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[antenna_nr];
+  cu::DeviceMemory& d_sums1 = *m_buffers.d_sums_[0];
+  cu::DeviceMemory& d_sums2 = *m_buffers.d_sums_[1];
+  cu::DeviceMemory& d_lmnp = *m_buffers.d_lmnp;
+  cu::DeviceMemory& d_aterms_idx = *m_buffers.d_aterms_indices_[antenna_nr];
 
   // Allocate additional data structures
   cu::DeviceMemory d_aterms_deriv(context, aterm_derivatives.bytes());
@@ -894,7 +872,6 @@ void GenericOptimized::do_calibrate_update(
   cu::HostMemory h_hessian(context, hessian.bytes());
   cu::HostMemory h_gradient(context, gradient.bytes());
   cu::HostMemory h_residual(context, sizeof(double));
-  // d_hessian.zero();
 
   // Events
   cu::Event inputCopied(context), executeFinished(context),

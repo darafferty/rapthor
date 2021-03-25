@@ -124,9 +124,9 @@ void CUDA::initialize_buffers()
   m_buffers.d_wavenumbers.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_spheroidal.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
-  m_buffers.d_aterms_indices.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
   // d_grid is handled seperately
+  m_buffers.d_lmnp.reset(new cu::DeviceMemory(context, 0));
 
   for (unsigned t = 0; t < m_max_nr_streams; t++)
   {
@@ -134,6 +134,18 @@ void CUDA::initialize_buffers()
     m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_subgrids_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_metadata_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_weights_.emplace_back(new cu::DeviceMemory(context, 0));
+  }
+
+  // Only one aterms_indices buffer is used for gridding and degridding,
+  // multiple buffers are only used for calibration in GenericOptimized.
+  m_buffers.d_aterms_indices_.emplace_back(new cu::DeviceMemory(context, 0));
+
+  // Not used for gridding and degridding,
+  // two buffers are used for calibration.
+  for (unsigned i = 0; i < 2; i++)
+  {
+    m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, 0));
   }
 }
 
@@ -146,14 +158,17 @@ void CUDA::free_buffers()
   m_buffers.d_wavenumbers.reset();
   m_buffers.d_spheroidal.reset();
   m_buffers.d_aterms.reset();
-  m_buffers.d_aterms_indices.reset();
   m_buffers.d_avg_aterm.reset();
   // d_grid is handled seperately
+  m_buffers.d_lmnp.reset();
 
   m_buffers.d_visibilities_.resize(0);
   m_buffers.d_uvw_.resize(0);
   m_buffers.d_subgrids_.resize(0);
   m_buffers.d_metadata_.resize(0);
+  m_buffers.d_weights_.resize(0);
+  m_buffers.d_aterms_indices_.resize(0);
+  m_buffers.d_sums_.resize(0);
 }
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
@@ -392,8 +407,8 @@ void CUDA::initialize(
       // Aterms indices
       size_t sizeof_aterms_indices =
           auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-      m_buffers.d_aterms_indices->resize(sizeof_aterms_indices);
-      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms_indices, plan.get_aterm_indices_ptr(), sizeof_aterms_indices);
+      m_buffers.d_aterms_indices_[0]->resize(sizeof_aterms_indices);
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms_indices_[0], plan.get_aterm_indices_ptr(), sizeof_aterms_indices);
 
       // Average aterm correction
       size_t sizeof_avg_aterm_correction = m_avg_aterm_correction.size() > 0 ?
@@ -467,7 +482,7 @@ void CUDA::initialize(
       // Free all device memory
       for (unsigned d = 0; d < get_num_devices(); d++) {
         InstanceCUDA& device = get_device(d);
-        device.free_device_memory();
+        initialize_buffers();
         device.free_fft_plans();
       }
 
