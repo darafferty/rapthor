@@ -548,9 +548,9 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   powerStates[3] = device.measure();
 
   // Report performance
-  m_report->update_host(powerStates[0], powerStates[1]);
+  m_report->update<Report::host>(powerStates[0], powerStates[1]);
+  m_report->update<Report::device>(powerStates[2], powerStates[3]);
   m_report->print_total();
-  m_report->print_device(powerStates[2], powerStates[3]);
 }
 
 void CUDA::do_compute_avg_beam(

@@ -308,7 +308,7 @@ void GenericOptimized::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -602,7 +602,7 @@ void GenericOptimized::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -777,7 +777,7 @@ void GenericOptimized::do_calibrate_init(
 
   // End performance measurement
   states[1] = hostPowerSensor->read();
-  m_report->update_host(states[0], states[1]);
+  m_report->update(Report::host, states[0], states[1]);
   m_report->print_total(0, 0);
 
   // Set calibration state member variables

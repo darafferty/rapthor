@@ -207,7 +207,8 @@ void Generic::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::device, startStates[device_id], endStates[device_id]);
+  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -426,7 +427,8 @@ void Generic::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::device, startStates[device_id], endStates[device_id]);
+  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();

@@ -128,8 +128,6 @@ uint64_t flops_calibrate(uint64_t nr_terms, uint64_t nr_channels,
   return flops_total;
 }
 
-uint64_t bytes_calibrate() { return 0; }
-
 uint64_t flops_fft(uint64_t size, uint64_t batch, uint64_t nr_correlations) {
   // Pseudo number of flops:
   // return 1ULL * 5 * batch * nr_correlations * size * size * log2(size *

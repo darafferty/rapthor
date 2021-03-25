@@ -235,7 +235,7 @@ void CPU::do_gridding(
     }  // end for bl
 
     states[1] = m_powersensor->read();
-    m_report->update_host(states[0], states[1]);
+    m_report->update(Report::host, states[0], states[1]);
 
     // Performance report
     auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -352,7 +352,7 @@ void CPU::do_degridding(
     }  // end for bl
 
     states[1] = m_powersensor->read();
-    m_report->update_host(states[0], states[1]);
+    m_report->update(Report::host, states[0], states[1]);
 
     // Report performance
     auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -485,7 +485,7 @@ void CPU::do_calibrate_init(
 
   // End performance measurement
   states[1] = m_powersensor->read();
-  m_report->update_host(states[0], states[1]);
+  m_report->update<Report::ID::host>(states[0], states[1]);
   m_report->print_total(0, 0);
 
   // Set calibration state member variables
@@ -675,7 +675,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
 
       // End measurement
       states[1] = m_powersensor->read();
-      m_report->update_host(states[0], states[1]);
+      m_report->update(Report::host, states[0], states[1]);
     }
 
     // Report performance

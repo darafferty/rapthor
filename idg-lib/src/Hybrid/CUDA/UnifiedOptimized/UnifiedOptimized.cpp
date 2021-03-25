@@ -258,7 +258,7 @@ void UnifiedOptimized::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -558,7 +558,7 @@ void UnifiedOptimized::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
@@ -954,7 +954,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
 
   // End performance measurement
   endState = device.measure();
-  m_report->update_wtiling(startState, endState);
+  m_report->update(Report::wtiling, startState, endState);
 }
 
 void UnifiedOptimized::flush_wtiles() {
@@ -978,7 +978,7 @@ void UnifiedOptimized::flush_wtiles() {
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift,
                        wtile_flush_info);
     endState = device.measure();
-    m_report->update_wtiling(startState, endState);
+    m_report->update(Report::wtiling, startState, endState);
     m_report->print_total();
   }
 }
