@@ -230,8 +230,8 @@ void InstanceCPU::run_gridder(int nr_subgrids, int grid_size, int subgrid_size,
       nr_channels, nr_stations, uvw, wavenumbers, visibilities, spheroidal,
       aterm, aterm_idx, avg_aterm, metadata, subgrid);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_gridder(states[0], states[1]);
+  if (m_report) {
+    m_report->update_gridder(states[0], states[1]);
   }
 }
 
@@ -249,8 +249,8 @@ void InstanceCPU::run_degridder(int nr_subgrids, int grid_size,
       nr_channels, nr_stations, uvw, wavenumbers, visibilities, spheroidal,
       aterm, aterm_idx, metadata, subgrid);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_degridder(states[0], states[1]);
+  if (m_report) {
+    m_report->update_degridder(states[0], states[1]);
   }
 }
 
@@ -267,8 +267,8 @@ void InstanceCPU::run_average_beam(int nr_baselines, int nr_antennas,
       subgrid_size, uvw, baselines, aterms, aterms_offsets, weights,
       average_beam);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_average_beam(states[0], states[1]);
+  if (m_report) {
+    m_report->update_average_beam(states[0], states[1]);
   }
 }
 
@@ -290,11 +290,11 @@ void InstanceCPU::run_calibrate(
       wavenumbers, visibilities, weights, aterm, aterm_derivative,
       aterms_indices, metadata, subgrid, phasors, hessian, gradient, residual);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_calibrate(states[0], states[1]);
+  if (m_report) {
+    m_report->update_calibrate(states[0], states[1]);
   }
-  if (report) {
-    report->update_host(states[0], states[1]);
+  if (m_report) {
+    m_report->update_host(states[0], states[1]);
   }
 }
 
@@ -307,11 +307,11 @@ void InstanceCPU::run_calibrate_hessian_vector_product1(
   //                 (sig_calibrate_hessian_vector_product1 (void *)
   //                 *function_calibrate_hessian_vector_product1)();
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_calibrate(states[0], states[1]);
+  if (m_report) {
+    m_report->update_calibrate(states[0], states[1]);
   }
-  if (report) {
-    report->update_host(states[0], states[1]);
+  if (m_report) {
+    m_report->update_host(states[0], states[1]);
   }
 }
 
@@ -324,11 +324,11 @@ void InstanceCPU::run_calibrate_hessian_vector_product2(
   (sig_calibrate_hessian_vector_product2(void *) *
    function_calibrate_hessian_vector_product2)();
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_calibrate(states[0], states[1]);
+  if (m_report) {
+    m_report->update_calibrate(states[0], states[1]);
   }
-  if (report) {
-    report->update_host(states[0], states[1]);
+  if (m_report) {
+    m_report->update_host(states[0], states[1]);
   }
 }
 
@@ -347,8 +347,8 @@ void InstanceCPU::run_fft(int grid_size, int size, int batch, void *data,
   states[0] = m_powersensor->read();
   (sig_fft(void *) * function_fft)(grid_size, size, batch, data, direction);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_grid_fft(states[0], states[1]);
+  if (m_report) {
+    m_report->update_grid_fft(states[0], states[1]);
   }
 }
 
@@ -358,8 +358,8 @@ void InstanceCPU::run_subgrid_fft(int grid_size, int size, int batch,
   states[0] = m_powersensor->read();
   (sig_fft(void *) * function_fft)(grid_size, size, batch, data, direction);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_subgrid_fft(states[0], states[1]);
+  if (m_report) {
+    m_report->update_subgrid_fft(states[0], states[1]);
   }
 }
 
@@ -370,8 +370,8 @@ void InstanceCPU::run_adder(int nr_subgrids, int grid_size, int subgrid_size,
   (sig_adder(void *) * function_adder)(nr_subgrids, grid_size, subgrid_size,
                                        metadata, subgrid, grid);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
+  if (m_report) {
+    m_report->update_adder(states[0], states[1]);
   }
 }
 
@@ -382,8 +382,8 @@ void InstanceCPU::run_splitter(int nr_subgrids, int grid_size, int subgrid_size,
   (sig_splitter(void *) * function_splitter)(
       nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_splitter(states[0], states[1]);
+  if (m_report) {
+    m_report->update_splitter(states[0], states[1]);
   }
 }
 
@@ -395,8 +395,8 @@ void InstanceCPU::run_adder_wstack(int nr_subgrids, int grid_size,
   (sig_adder_wstack(void *) * function_adder_wstack)(
       nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
+  if (m_report) {
+    m_report->update_adder(states[0], states[1]);
   }
 }
 
@@ -408,8 +408,8 @@ void InstanceCPU::run_splitter_wstack(int nr_subgrids, int grid_size,
   (sig_splitter_wstack(void *) * function_splitter_wstack)(
       nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_splitter(states[0], states[1]);
+  if (m_report) {
+    m_report->update_splitter(states[0], states[1]);
   }
 }
 
@@ -507,8 +507,8 @@ void InstanceCPU::run_adder_wtiles(
   }
 
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
+  if (m_report) {
+    m_report->update_adder(states[0], states[1]);
   }
 }
 
@@ -567,8 +567,8 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
   }  // end for subgrid_index
 
   states[1] = m_powersensor->read();
-  if (report) {
-    report->update_splitter(states[0], states[1]);
+  if (m_report) {
+    m_report->update_splitter(states[0], states[1]);
   }
 }  // end run_splitter_wtiles
 

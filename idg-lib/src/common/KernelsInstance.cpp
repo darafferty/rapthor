@@ -42,7 +42,7 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
   }
 
   states[1] = m_powersensor->read();
-  report->update_fft_shift(states[0], states[1]);
+  m_report->update_fft_shift(states[0], states[1]);
 }
 
 void KernelsInstance::scale(Array3D<std::complex<float>>& data,
@@ -66,7 +66,7 @@ void KernelsInstance::scale(Array3D<std::complex<float>>& data,
   }
 
   states[1] = m_powersensor->read();
-  report->update_fft_scale(states[0], states[1]);
+  m_report->update_fft_scale(states[0], states[1]);
 }
 
 void KernelsInstance::tile_backward(

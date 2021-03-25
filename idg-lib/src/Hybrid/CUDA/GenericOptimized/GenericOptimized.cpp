@@ -107,9 +107,9 @@ void GenericOptimized::run_gridding(
   h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
-  cpuKernels.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
+  cpuKernels.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -308,14 +308,14 @@ void GenericOptimized::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void GenericOptimized::do_gridding(
@@ -396,9 +396,9 @@ void GenericOptimized::run_degridding(
   h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
-  cpuKernels.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
+  cpuKernels.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -602,14 +602,14 @@ void GenericOptimized::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
 }  // end run_degridding
 
 void GenericOptimized::do_degridding(
@@ -646,7 +646,7 @@ void GenericOptimized::do_calibrate_init(
     Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
     const Array2D<float>& spheroidal) {
   InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-  cpuKernels.set_report(report);
+  cpuKernels.set_report(m_report);
 
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -668,13 +668,13 @@ void GenericOptimized::do_calibrate_init(
   subgrids.reserve(nr_antennas);
 
   // Start performance measurement
-  report.initialize();
+  m_report->initialize();
   powersensor::State states[2];
   states[0] = hostPowerSensor->read();
 
   // Load device
   InstanceCUDA& device = get_device(0);
-  device.set_report(report);
+  device.set_report(m_report);
 
   // Load stream
   cu::Stream& htodstream = device.get_htod_stream();
@@ -777,8 +777,8 @@ void GenericOptimized::do_calibrate_init(
 
   // End performance measurement
   states[1] = hostPowerSensor->read();
-  report.update_host(states[0], states[1]);
-  report.print_total(0, 0);
+  m_report->update_host(states[0], states[1]);
+  m_report->print_total(0, 0);
 
   // Set calibration state member variables
   m_calibrate_state.plans = std::move(plans);
@@ -826,7 +826,7 @@ void GenericOptimized::do_calibrate_update(
 
   // Performance measurement
   if (antenna_nr == 0) {
-    report.initialize(nr_channels, subgrid_size, 0, nr_terms);
+    m_report->initialize(nr_channels, subgrid_size, 0, nr_terms);
   }
 
   // Start marker
@@ -921,7 +921,7 @@ void GenericOptimized::do_calibrate_update(
 
   // Performance reporting
   auto nr_visibilities = nr_timesteps * nr_channels;
-  report.update_total(nr_subgrids, nr_timesteps, nr_visibilities);
+  m_report->update_total(nr_subgrids, nr_timesteps, nr_visibilities);
 }
 
 void GenericOptimized::do_calibrate_finish() {
@@ -934,8 +934,8 @@ void GenericOptimized::do_calibrate_finish() {
         m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
     total_nr_subgrids += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   }
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_calibrate);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_calibrate);
 }
 
 void GenericOptimized::do_calibrate_init_hessian_vector_product() {

@@ -64,8 +64,8 @@ void Generic::run_gridding(
   cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -207,14 +207,14 @@ void Generic::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void Generic::do_gridding(
@@ -282,8 +282,8 @@ void Generic::run_degridding(
   cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -426,14 +426,14 @@ void Generic::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
 }  // end run_degridding
 
 void Generic::do_degridding(

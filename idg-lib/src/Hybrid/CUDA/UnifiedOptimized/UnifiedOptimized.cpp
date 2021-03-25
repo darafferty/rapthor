@@ -129,9 +129,9 @@ void UnifiedOptimized::run_gridding(
                                   plan.get_sizeof_metadata());
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
-  cpuKernels.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
+  cpuKernels.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -258,14 +258,14 @@ void UnifiedOptimized::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void UnifiedOptimized::do_gridding(
@@ -352,9 +352,9 @@ void UnifiedOptimized::run_degridding(
   h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
-  cpuKernels.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
+  cpuKernels.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -558,14 +558,14 @@ void UnifiedOptimized::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update_host(startStates[nr_devices], endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
 }  // end run_degridding
 
 void UnifiedOptimized::do_degridding(
@@ -954,7 +954,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
 
   // End performance measurement
   endState = device.measure();
-  report.update_wtiling(startState, endState);
+  m_report->update_wtiling(startState, endState);
 }
 
 void UnifiedOptimized::flush_wtiles() {
@@ -971,15 +971,15 @@ void UnifiedOptimized::flush_wtiles() {
 
   // Project wtiles to master grid
   if (wtile_flush_info.wtile_ids.size()) {
-    report.initialize();
+    m_report->initialize();
     InstanceCUDA& device = get_device(0);
     State startState, endState;
     startState = device.measure();
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift,
                        wtile_flush_info);
     endState = device.measure();
-    report.update_wtiling(startState, endState);
-    report.print_total();
+    m_report->update_wtiling(startState, endState);
+    m_report->print_total();
   }
 }
 

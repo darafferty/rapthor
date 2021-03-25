@@ -523,8 +523,8 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   cu::DeviceMemory& d_grid = *m_buffers.d_grid;
 
   // Performance measurements
-  report.initialize(0, 0, grid_size);
-  device.set_report(report);
+  m_report->initialize(0, 0, grid_size);
+  device.set_report(m_report);
   powersensor::State powerStates[4];
   powerStates[0] = hostPowerSensor->read();
   powerStates[2] = device.measure();
@@ -548,9 +548,9 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   powerStates[3] = device.measure();
 
   // Report performance
-  report.update_host(powerStates[0], powerStates[1]);
-  report.print_total();
-  report.print_device(powerStates[2], powerStates[3]);
+  m_report->update_host(powerStates[0], powerStates[1]);
+  m_report->print_total();
+  m_report->print_device(powerStates[2], powerStates[3]);
 }
 
 void CUDA::do_compute_avg_beam(
@@ -573,8 +573,8 @@ void CUDA::do_compute_avg_beam(
   cu::Context& context = device.get_context();
 
   // Performance reporting
-  report.initialize();
-  device.set_report(report);
+  m_report->initialize();
+  device.set_report(m_report);
 
   // Allocate static device memory
   cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
@@ -717,7 +717,7 @@ void CUDA::do_compute_avg_beam(
   }
 
   // Performance reporting
-  report.print_total();
+  m_report->print_total();
 }
 
 void CUDA::cleanup() {
