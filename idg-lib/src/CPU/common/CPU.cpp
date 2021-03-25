@@ -24,7 +24,7 @@ CPU::CPU(std::vector<std::string> libraries) : kernels(libraries) {
   std::cout << "CPU::" << __func__ << std::endl;
 #endif
 
-  powerSensor = get_power_sensor(sensor_host);
+  m_powersensor.reset(get_power_sensor(sensor_host));
   kernels.set_report(report);
 }
 
@@ -33,9 +33,6 @@ CPU::~CPU() {
 #if defined(DEBUG)
   std::cout << "CPU::" << __func__ << std::endl;
 #endif
-
-  // Delete power sensor
-  delete powerSensor;
 
   // Deallocate FFTWs internally allocated memory
   fftwf_cleanup();
@@ -179,7 +176,7 @@ void CPU::do_gridding(
     // Performance measurement
     report.initialize(nr_channels, subgrid_size, grid_size);
     State states[2];
-    states[0] = powerSensor->read();
+    states[0] = m_powersensor->read();
 
     // Start gridder
     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -237,7 +234,7 @@ void CPU::do_gridding(
       report.print(current_nr_timesteps, current_nr_subgrids);
     }  // end for bl
 
-    states[1] = powerSensor->read();
+    states[1] = m_powersensor->read();
     report.update_host(states[0], states[1]);
 
     // Performance report
@@ -298,7 +295,7 @@ void CPU::do_degridding(
     // Performance measurement
     report.initialize(nr_channels, subgrid_size, grid_size);
     State states[2];
-    states[0] = powerSensor->read();
+    states[0] = m_powersensor->read();
 
     // Run subroutines
     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -354,7 +351,7 @@ void CPU::do_degridding(
       report.print(current_nr_timesteps, current_nr_subgrids);
     }  // end for bl
 
-    states[1] = powerSensor->read();
+    states[1] = m_powersensor->read();
     report.update_host(states[0], states[1]);
 
     // Report performance
@@ -410,7 +407,7 @@ void CPU::do_calibrate_init(
   // Start performance measurement
   report.initialize();
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
 
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
@@ -487,7 +484,7 @@ void CPU::do_calibrate_init(
   }  // end for antennas
 
   // End performance measurement
-  states[1] = powerSensor->read();
+  states[1] = m_powersensor->read();
   report.update_host(states[0], states[1]);
   report.print_total(0, 0);
 
@@ -658,7 +655,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
       auto grid_size = grid->get_x_dim();
 
       State states[2];
-      states[0] = powerSensor->read();
+      states[0] = m_powersensor->read();
 
       // FFT shift
       if (direction == FourierDomainToImageDomain) {
@@ -677,7 +674,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
         kernels.shift(grid_ptr);  // TODO: integrate into splitter?
 
       // End measurement
-      states[1] = powerSensor->read();
+      states[1] = m_powersensor->read();
       report.update_host(states[0], states[1]);
     }
 
