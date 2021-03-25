@@ -156,12 +156,6 @@ class InstanceCUDA : public KernelsInstance {
   cu::HostMemory& allocate_host_uvw(size_t bytes);
   cu::HostMemory& allocate_host_padded_tiles(size_t bytes);
 
-  // Memory management for misc page-locked host buffers
-  void register_host_memory(void* ptr, size_t bytes);
-
-  // Free buffers
-  void unmap_host_memory() { h_registered_.clear(); };
-
   // Misc
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };

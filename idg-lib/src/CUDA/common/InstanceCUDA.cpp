@@ -1257,23 +1257,6 @@ T* InstanceCUDA::reuse_memory(std::vector<std::unique_ptr<T>>& memories,
 }
 
 /*
- * Memory management for misc page-locked host buffers
- *      Page-locking arbitrary buffers is potentially very dangerous
- *      as buffers may (partially) overlap, which will result in CUDA
- *      errors. This mechanism should only be used to register buffers
- *      that are guaranteed to be distinct and have a lifetime longer
- *      than the current InstanceCUDA object.
- */
-void InstanceCUDA::register_host_memory(void* ptr, size_t bytes) {
-  for (auto& memory : h_registered_) {
-    if (memory->ptr() == ptr && memory->size() == bytes) {
-      return;
-    }
-  }
-  h_registered_.emplace_back(new cu::RegisteredMemory(*context, ptr, bytes));
-}
-
-/*
  * Host memory destructor
  */
 void InstanceCUDA::free_host_memory() {

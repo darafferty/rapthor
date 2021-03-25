@@ -728,7 +728,6 @@ void CUDA::cleanup() {
 
   for (unsigned d = 0; d < get_num_devices(); d++) {
     InstanceCUDA& device = get_device(d);
-    device.unmap_host_memory();
     device.free_fft_plans();
   }
 

@@ -118,7 +118,7 @@ class HostMemory : public Memory {
 
 class RegisteredMemory : public Memory {
  public:
-  RegisteredMemory(const Context &context, void *ptr, size_t size,
+  RegisteredMemory(const Context &context, const void *ptr, size_t size,
                    int flags = CU_MEMHOSTREGISTER_PORTABLE);
   ~RegisteredMemory() override;
 

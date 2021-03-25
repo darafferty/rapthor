@@ -61,8 +61,7 @@ void Generic::run_gridding(
   int jobsize = m_gridding_state.jobsize[device_id];
 
   // Page-locked host memory
-  device.register_host_memory((void*)plan.get_metadata_ptr(),
-                              plan.get_sizeof_metadata());
+  cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
   // Performance measurements
   report.initialize(nr_channels, subgrid_size, grid_size);
@@ -280,8 +279,7 @@ void Generic::run_degridding(
   int jobsize = m_gridding_state.jobsize[device_id];
 
   // Page-locked host memory
-  device.register_host_memory((void*)plan.get_metadata_ptr(),
-                              plan.get_sizeof_metadata());
+  cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(), plan.get_sizeof_metadata());
 
   // Performance measurements
   report.initialize(nr_channels, subgrid_size, grid_size);
