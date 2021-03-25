@@ -55,7 +55,9 @@ void CUDA::init_devices() {
 
   // Create a device instance for every device
   for (unsigned i = 0; i < device_numbers.size(); i++) {
-    InstanceCUDA* device = new InstanceCUDA(mInfo, i, device_numbers[i]);
+    powersensor::PowerSensor* devicePowerSensor = powersensor::get_power_sensor(powersensor::sensor_device, i);
+    InstanceCUDA* device = new InstanceCUDA(mInfo, device_numbers[i]);
+    device->set_powersensor(devicePowerSensor);
     devices.push_back(device);
   }
 }

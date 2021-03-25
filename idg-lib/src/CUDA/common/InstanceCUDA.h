@@ -19,7 +19,7 @@ namespace cuda {
 class InstanceCUDA : public KernelsInstance {
  public:
   // Constructor
-  InstanceCUDA(ProxyInfo& info, int device_nr = 0, int device_id = 0);
+  InstanceCUDA(ProxyInfo& info, int device_id = 0);
 
   // Destructor
   ~InstanceCUDA();

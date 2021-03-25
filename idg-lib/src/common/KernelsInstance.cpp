@@ -17,7 +17,7 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
   ASSERT(height == width);
 
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
 
   std::complex<float> tmp13, tmp24;
 
@@ -41,7 +41,7 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
     }
   }
 
-  states[1] = powerSensor->read();
+  states[1] = m_powersensor->read();
   report->update_fft_shift(states[0], states[1]);
 }
 
@@ -52,7 +52,7 @@ void KernelsInstance::scale(Array3D<std::complex<float>>& data,
   int width = data.get_x_dim();
 
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
 
 #pragma omp parallel for collapse(3)
   for (int pol = 0; pol < nr_polarizations; pol++) {
@@ -65,7 +65,7 @@ void KernelsInstance::scale(Array3D<std::complex<float>>& data,
     }
   }
 
-  states[1] = powerSensor->read();
+  states[1] = m_powersensor->read();
   report->update_fft_scale(states[0], states[1]);
 }
 
