@@ -126,8 +126,8 @@ class Screen(object):
         aterm_type : str, optional
             Type of a-term solutions
         """
-        ximsize = int(self.width_ra / cellsize_deg)  # pix
-        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        ximsize = int(np.ceil(self.width_ra / cellsize_deg))  # pix
+        yimsize = int(np.ceil(self.width_dec / cellsize_deg))  # pix
         misc.make_template_image(outfile, self.ra, self.dec, ximsize=ximsize,
                                  yimsize=yimsize, cellsize_deg=cellsize_deg, freqs=self.freqs_ph,
                                  times=self.times_ph[t_start_index:t_stop_index],
@@ -398,7 +398,7 @@ class KLScreen(Screen):
         yimsize = int(self.width_dec / cellsize_deg)  # pix
         test_array = np.zeros([1, len(self.freqs_ph), len(self.station_names), 4,
                                yimsize, ximsize])
-        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 10  # include factor of 10 overhead
+        mem_per_timeslot_gb = test_array.nbytes/1024**3 / 10  # include factor of 10 overhead
 
         # Multiply by the number of CPUs, since each gets a copy
         mem_per_timeslot_gb *= ncpu
@@ -435,8 +435,8 @@ class KLScreen(Screen):
         # Make arrays of pixel coordinates for screen
         # We need to convert the FITS cube pixel coords to screen pixel coords. The FITS cube
         # has self.ra, self.dec at (xsize/2, ysize/2)
-        ximsize = int(self.width_ra / cellsize_deg)  # pix
-        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        ximsize = int(np.ceil(self.width_ra / cellsize_deg))  # pix
+        yimsize = int(np.ceil(self.width_dec / cellsize_deg))  # pix
         w = wcs.WCS(naxis=2)
         w.wcs.crpix = [ximsize/2.0, yimsize/2.0]
         w.wcs.cdelt = np.array([-cellsize_deg, cellsize_deg])

@@ -221,6 +221,10 @@ class Field(object):
             # to reach at least minnobs in total. For simplicity, we try to divide each existing
             # observation into minnobs number of new observations (since there is no
             # drawback to having more than minnobs observations in total)
+            #
+            # Note: Sue to a limitation in Dysco, we make sure to have at least
+            # 2 time slots per observation, otherwise the output MS cannot be
+            # written with compression
             mintime = self.parset['calibration_specific']['slow_timestep_sec']
             prev_observations = self.observations[:]
             self.observations = []
@@ -230,6 +234,9 @@ class Field(object):
                 if nchunks > 1:
                     steptime = tottime / nchunks
                     steptime -= steptime % mintime
+                    numsamples = int(np.ceil(steptime / obs.timepersample))
+                    if numsamples < 2:
+                        steptime += mintime
                     starttimes = np.arange(obs.starttime, obs.endtime, steptime)
                     endtimes = [st+steptime for st in starttimes]
                     for nc, (starttime, endtime) in enumerate(zip(starttimes, endtimes)):
@@ -337,7 +344,7 @@ class Field(object):
                 else:
                     all_skymodels_loaded = False
             else:
-                self.bright_source_skymodel = []
+                self.bright_source_skymodel = calibrators_skymodel
                 all_skymodels_loaded = True
         except IOError:
             all_skymodels_loaded = False
