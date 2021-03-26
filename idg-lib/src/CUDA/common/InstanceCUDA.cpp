@@ -201,9 +201,9 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("KernelFFTShift.cubin");
   flags.push_back(flags_common);
 
-  // Adder wtiles
-  src.push_back("KernelAdderWtiles.cu");
-  cubin.push_back("KernelAdderWtiles.cubin");
+  // W-Tiling
+  src.push_back("KernelWtiling.cu");
+  cubin.push_back("KernelWtiling.cubin");
   flags.push_back(flags_common);
 
 // FFT
@@ -295,23 +295,23 @@ void InstanceCUDA::load_kernels() {
     found++;
   }
 
-  // Load adder_wtiles functions
+  // Load W-Tiling functions
   if (cuModuleGetFunction(&function, *m_modules[8],
-                          name_adder_copy_tiles.c_str()) == CUDA_SUCCESS) {
+                          name_copy_tiles.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
     found++;
   }
   if (cuModuleGetFunction(&function, *m_modules[8],
-                          name_adder_apply_phasor.c_str()) == CUDA_SUCCESS) {
+                          name_apply_phasor.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *m_modules[8],
-                          name_adder_subgrids_to_wtiles.c_str()) ==
+                          name_subgrids_to_wtiles.c_str()) ==
       CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *m_modules[8],
-                          name_adder_wtiles_to_grid.c_str()) == CUDA_SUCCESS) {
+                          name_wtiles_to_grid.c_str()) == CUDA_SUCCESS) {
     functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
   }
 

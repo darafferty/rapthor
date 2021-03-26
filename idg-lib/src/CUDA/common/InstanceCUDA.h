@@ -253,11 +253,11 @@ static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
 static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
 static const std::string name_average_beam = "kernel_average_beam";
 static const std::string name_fft_shift = "kernel_fft_shift";
-static const std::string name_adder_copy_tiles = "kernel_copy_tiles";
-static const std::string name_adder_apply_phasor = "kernel_apply_phasor";
-static const std::string name_adder_subgrids_to_wtiles =
+static const std::string name_copy_tiles = "kernel_copy_tiles";
+static const std::string name_apply_phasor = "kernel_apply_phasor";
+static const std::string name_subgrids_to_wtiles =
     "kernel_subgrids_to_wtiles";
-static const std::string name_adder_wtiles_to_grid = "kernel_wtiles_to_grid";
+static const std::string name_wtiles_to_grid = "kernel_wtiles_to_grid";
 
 }  // end namespace cuda
 }  // end namespace kernel
