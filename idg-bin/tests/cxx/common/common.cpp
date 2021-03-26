@@ -204,7 +204,8 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
 #endif
 
   // Use the same grid for both degridding calls
-  proxy1.set_grid(proxy2.get_final_grid());
+  proxy2.set_grid(grid);
+  proxy1.set_grid(grid);
 
 #if TEST_DEGRIDDING
   // Run degridder
