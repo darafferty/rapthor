@@ -122,8 +122,8 @@ class InstanceCUDA : public KernelsInstance {
                                cu::DeviceMemory& d_dst_tiles);
 
   void launch_adder_apply_phasor(unsigned int nr_tiles, float image_size,
-                                 float w_step, unsigned int w_padded_tile_size,
-                                 cu::DeviceMemory& d_w_padded_tiles,
+                                 float w_step, unsigned int tile_size,
+                                 cu::DeviceMemory& d_tiles,
                                  cu::DeviceMemory& d_shift,
                                  cu::DeviceMemory& d_tile_coordinates);
 
@@ -132,14 +132,14 @@ class InstanceCUDA : public KernelsInstance {
                                        int subgrid_offset,
                                        cu::DeviceMemory& d_metadata,
                                        cu::DeviceMemory& d_subgrid,
-                                       cu::DeviceMemory& d_padded_tiles,
+                                       cu::DeviceMemory& d_tiles,
                                        std::complex<float> scale = {1.0, 1.0});
 
-  void launch_adder_wtiles_to_grid(int nr_tiles, int tile_size,
-                                   int padded_tile_size, long grid_size,
+  void launch_adder_wtiles_to_grid(int nr_tiles, int dst_tile_size,
+                                   int src_tile_size, long grid_size,
                                    cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
-                                   cu::DeviceMemory& d_padded_tiles,
+                                   cu::DeviceMemory& d_tiles,
                                    cu::UnifiedMemory& u_grid);
 
   void launch_splitter_subgrids_from_wtiles(int nr_subgrids, long grid_size,

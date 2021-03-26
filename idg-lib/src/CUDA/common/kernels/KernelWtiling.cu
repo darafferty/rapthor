@@ -80,8 +80,8 @@ __global__ void kernel_copy_tiles(
 __global__ void kernel_apply_phasor(
     const float                    image_size,
     const float                    w_step,
-    const int                      w_padded_tile_size,
-          float2*     __restrict__ w_padded_tiles,
+    const int                      tile_size,
+          float2*     __restrict__ tiles,
     const float*      __restrict__ shift,
     const Coordinate* __restrict__ tile_coordinates)
 {
@@ -99,28 +99,28 @@ __global__ void kernel_apply_phasor(
     unsigned int nr_threads = blockDim.x;
 
     // Compute cell_size
-    float cell_size = image_size / w_padded_tile_size;
+    float cell_size = image_size / tile_size;
 
     // Compute scale
-    float scale = 1.0f / (w_padded_tile_size * w_padded_tile_size);
+    float scale = 1.0f / (tile_size * tile_size);
 
     // Compute W
     const Coordinate& coordinate = tile_coordinates[tile_index];
     float w = (coordinate.z + 0.5f) * w_step;
 
-    for (int i = tid; i < (w_padded_tile_size * w_padded_tile_size); i += nr_threads)
+    for (int i = tid; i < (tile_size * tile_size); i += nr_threads)
     {
-        int y = i / w_padded_tile_size;
-        int x = i % w_padded_tile_size;
+        int y = i / tile_size;
+        int x = i % tile_size;
 
-        if (y < w_padded_tile_size) {
+        if (y < tile_size) {
             // Compute phase
-            const int x_ = (x + (w_padded_tile_size / 2)) % w_padded_tile_size;
-            const int y_ = (y + (w_padded_tile_size / 2)) % w_padded_tile_size;
+            const int x_ = (x + (tile_size / 2)) % tile_size;
+            const int y_ = (y + (tile_size / 2)) % tile_size;
 
             // Use alternative computation of n to work around accuracy issues
-            const float l = (x_ - (w_padded_tile_size / 2)) * cell_size - shift[0];
-            const float m = (y_ - (w_padded_tile_size / 2)) * cell_size - shift[1];
+            const float l = (x_ - (tile_size / 2)) * cell_size - shift[0];
+            const float m = (y_ - (tile_size / 2)) * cell_size - shift[1];
             const float n = 1.0f - sqrtf(1.0 - (l * l) - (m * m));
 
             const float pi = (float) M_PI;
@@ -130,8 +130,8 @@ __global__ void kernel_apply_phasor(
             float2 phasor = make_float2(cosf(phase), sinf(phase)) * scale;
 
             // Apply correction
-            size_t idx = index_grid(w_padded_tile_size, tile_index, pol, y, x);
-            w_padded_tiles[idx] = (w_padded_tiles[idx] * phasor);
+            size_t idx = index_grid(tile_size, tile_index, pol, y, x);
+            tiles[idx] = tiles[idx] * phasor;
         }
     }
 } // end kernel_apply_phasor
@@ -139,11 +139,11 @@ __global__ void kernel_apply_phasor(
 __global__ void kernel_subgrids_to_wtiles(
     const long                   grid_size,
     const int                    subgrid_size,
-    const int                    wtile_size,
+    const int                    tile_size,
     const int                    subgrid_offset,
     const Metadata* __restrict__ metadata,
     const float2*   __restrict__ subgrid,
-          float2*   __restrict__ padded_tiles,
+          float2*   __restrict__ tiles,
           float2                 scale)
 {
     // Map blockIdx.x to subgrids
@@ -160,9 +160,9 @@ __global__ void kernel_subgrids_to_wtiles(
     // Load tile coordinates
     const Metadata &m = metadata[s];
     int tile_index = m.wtile_index;
-    int tile_top = m.wtile_coordinate.x * wtile_size -
+    int tile_top = m.wtile_coordinate.x * tile_size -
                     subgrid_size / 2 + grid_size / 2;
-    int tile_left = m.wtile_coordinate.y * wtile_size -
+    int tile_left = m.wtile_coordinate.y * tile_size -
                     subgrid_size / 2 + grid_size / 2;
 
     // Compute position in tile
@@ -191,22 +191,22 @@ __global__ void kernel_subgrids_to_wtiles(
             // Add subgrid value to grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                long dst_idx = index_grid(wtile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
+                long dst_idx = index_grid(tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
                 long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
-                atomicAdd(padded_tiles[dst_idx], value);
+                atomicAdd(tiles[dst_idx], value);
             }
         }
     }
 }
 
 __global__ void kernel_wtiles_to_grid(
-    const unsigned int             tile_size,
-    const unsigned int             padded_tile_size,
+    const unsigned int             dst_tile_size,
+    const unsigned int             src_tile_size,
     const unsigned int             grid_size,
     const int*        __restrict__ tile_ids,
     const Coordinate* __restrict__ tile_coordinates,
-    const float2*   __restrict__   padded_tiles,
+    const float2*   __restrict__   tiles,
           float2*   __restrict__   grid)
 {
     // Map blockIdx.x to polarizations
@@ -226,9 +226,9 @@ __global__ void kernel_wtiles_to_grid(
     const Coordinate& coordinate = tile_coordinates[blockIdx.y];
 
     // Compute position of tile in grid
-    int x0 = coordinate.x * tile_size - (padded_tile_size - tile_size) / 2 +
+    int x0 = coordinate.x * dst_tile_size - (src_tile_size - dst_tile_size) / 2 +
              grid_size / 2;
-    int y0 = coordinate.y * tile_size - (padded_tile_size - tile_size) / 2 +
+    int y0 = coordinate.y * dst_tile_size - (src_tile_size - dst_tile_size) / 2 +
              grid_size / 2;
     int x_start = max(0, x0);
     int y_start = max(0, y0);
@@ -239,10 +239,10 @@ __global__ void kernel_wtiles_to_grid(
     unsigned int pol_dst = pol;
 
     // Add tile to grid
-    for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
+    for (unsigned int i = tid; i < (src_tile_size * src_tile_size); i += nr_threads)
     {
-        unsigned int y = i / padded_tile_size;
-        unsigned int x = i % padded_tile_size;
+        unsigned int y = i / src_tile_size;
+        unsigned int x = i % src_tile_size;
 
         unsigned int y_dst = y_start + y;
         unsigned int x_dst = x_start + x;
@@ -250,11 +250,11 @@ __global__ void kernel_wtiles_to_grid(
         unsigned int y_src = y_dst - y0;
         unsigned int x_src = x_dst - x0;
 
-        if (y < padded_tile_size)
+        if (y < src_tile_size)
         {
             unsigned long dst_idx = index_grid(grid_size, pol_dst, y_dst, x_dst);
-            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol_src, y_src, x_src);
-            atomicAdd(grid[dst_idx], padded_tiles[src_idx]);
+            unsigned long src_idx = index_grid(src_tile_size, tile_index, pol_src, y_src, x_src);
+            atomicAdd(grid[dst_idx], tiles[src_idx]);
         }
     }
 }
@@ -262,24 +262,24 @@ __global__ void kernel_wtiles_to_grid(
 __global__ void kernel_subgrids_from_wtiles(
     const long                   grid_size,
     const int                    subgrid_size,
-    const int                    wtile_size,
+    const int                    tile_size,
     const int                    subgrid_offset,
     const Metadata* __restrict__ metadata,
           float2*   __restrict__ subgrid,
-    const float2*   __restrict__ padded_tiles,
+    const float2*   __restrict__ tiles,
           float2                 scale)
 {
 
 }
 
 __global__ void kernel_wtiles_from_grid(
-    const unsigned int             tile_size,
-    const unsigned int             padded_tile_size,
+    const unsigned int             dst_tile_size,
+    const unsigned int             src_tile_size,
     const unsigned int             grid_size,
     const int*        __restrict__ tile_ids,
     const Coordinate* __restrict__ tile_coordinates,
-          float2*   __restrict__   padded_tiles,
-    const float2*   __restrict__   grid)
+          float2*     __restrict__ tiles,
+    const float2*     __restrict__ grid)
 {
 
 }
