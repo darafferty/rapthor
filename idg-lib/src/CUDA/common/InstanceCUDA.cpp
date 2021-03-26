@@ -298,21 +298,28 @@ void InstanceCUDA::load_kernels() {
   // Load W-Tiling functions
   if (cuModuleGetFunction(&function, *m_modules[8],
                           name_copy_tiles.c_str()) == CUDA_SUCCESS) {
-    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+    functions_wtiling.emplace_back(new cu::Function(*context, function));
     found++;
   }
   if (cuModuleGetFunction(&function, *m_modules[8],
                           name_apply_phasor.c_str()) == CUDA_SUCCESS) {
-    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+    functions_wtiling.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *m_modules[8],
-                          name_subgrids_to_wtiles.c_str()) ==
-      CUDA_SUCCESS) {
-    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+                          name_subgrids_to_wtiles.c_str()) == CUDA_SUCCESS) {
+    functions_wtiling.emplace_back(new cu::Function(*context, function));
   }
   if (cuModuleGetFunction(&function, *m_modules[8],
                           name_wtiles_to_grid.c_str()) == CUDA_SUCCESS) {
-    functions_adder_wtiles.emplace_back(new cu::Function(*context, function));
+    functions_wtiling.emplace_back(new cu::Function(*context, function));
+  }
+  if (cuModuleGetFunction(&function, *m_modules[8],
+                          name_subgrids_from_wtiles.c_str()) == CUDA_SUCCESS) {
+    functions_wtiling.emplace_back(new cu::Function(*context, function));
+  }
+  if (cuModuleGetFunction(&function, *m_modules[8],
+                          name_wtiles_from_grid.c_str()) == CUDA_SUCCESS) {
+    functions_wtiling.emplace_back(new cu::Function(*context, function));
   }
 
 // Load FFT function
@@ -1063,7 +1070,7 @@ void InstanceCUDA::launch_adder_copy_tiles(unsigned int nr_tiles,
                               d_dst_tile_ids, d_src_tiles,    d_dst_tiles};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
-  executestream->launchKernel(*functions_adder_wtiles[0], grid, block, 0,
+  executestream->launchKernel(*functions_wtiling[0], grid, block, 0,
                               parameters);
 }
 
@@ -1075,7 +1082,7 @@ void InstanceCUDA::launch_adder_apply_phasor(
                               d_w_padded_tiles, d_shift, d_tile_coordinates};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
-  executestream->launchKernel(*functions_adder_wtiles[1], grid, block, 0,
+  executestream->launchKernel(*functions_wtiling[1], grid, block, 0,
                               parameters);
 }
 
@@ -1088,7 +1095,7 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(
                               &subgrid_offset, d_metadata,    d_subgrid,
                               d_padded_tiles,  &scale};
   dim3 grid(nr_subgrids);
-  executestream->launchKernel(*functions_adder_wtiles[2], grid, block_adder, 0,
+  executestream->launchKernel(*functions_wtiling[2], grid, block_adder, 0,
                               parameters);
 }
 
@@ -1102,7 +1109,42 @@ void InstanceCUDA::launch_adder_wtiles_to_grid(
                               &grid_ptr};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
-  executestream->launchKernel(*functions_adder_wtiles[3], grid, block, 0,
+  executestream->launchKernel(*functions_wtiling[3], grid, block, 0,
+                              parameters);
+}
+
+void InstanceCUDA::launch_splitter_subgrids_from_wtiles(
+    int nr_subgrids, long grid_size,
+    int subgrid_size, int tile_size,
+    int subgrid_offset,
+    cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_subgrid,
+    cu::DeviceMemory& d_tiles,
+    std::complex<float> scale)
+{
+  const void* parameters[] = {&grid_size,      &subgrid_size, &tile_size,
+                              &subgrid_offset, d_metadata,    d_subgrid,
+                              d_tiles,  &scale};
+  dim3 grid(nr_subgrids);
+  executestream->launchKernel(*functions_wtiling[4], grid, block_adder, 0,
+                              parameters);
+}
+
+void InstanceCUDA::launch_splitter_wtiles_from_grid(
+    int nr_tiles, int tile_size,
+    int padded_tile_size, long grid_size,
+    cu::DeviceMemory& d_tile_ids,
+    cu::DeviceMemory& d_tile_coordinates,
+    cu::DeviceMemory& d_tiles,
+    cu::UnifiedMemory& u_grid)
+{
+  CUdeviceptr grid_ptr = u_grid;
+  const void* parameters[] = {&tile_size, &padded_tile_size,  &grid_size,
+                              d_tile_ids, d_tile_coordinates, d_tiles,
+                              &grid_ptr};
+  dim3 grid(NR_CORRELATIONS, nr_tiles);
+  dim3 block(128);
+  executestream->launchKernel(*functions_wtiling[5], grid, block, 0,
                               parameters);
 }
 

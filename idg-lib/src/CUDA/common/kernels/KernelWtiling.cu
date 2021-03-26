@@ -259,4 +259,29 @@ __global__ void kernel_wtiles_to_grid(
     }
 }
 
+__global__ void kernel_subgrids_from_wtiles(
+    const long                   grid_size,
+    const int                    subgrid_size,
+    const int                    wtile_size,
+    const int                    subgrid_offset,
+    const Metadata* __restrict__ metadata,
+          float2*   __restrict__ subgrid,
+    const float2*   __restrict__ padded_tiles,
+          float2                 scale)
+{
+
+}
+
+__global__ void kernel_wtiles_from_grid(
+    const unsigned int             tile_size,
+    const unsigned int             padded_tile_size,
+    const unsigned int             grid_size,
+    const int*        __restrict__ tile_ids,
+    const Coordinate* __restrict__ tile_coordinates,
+          float2*   __restrict__   padded_tiles,
+    const float2*   __restrict__   grid)
+{
+
+}
+
 } // end extern "C"
