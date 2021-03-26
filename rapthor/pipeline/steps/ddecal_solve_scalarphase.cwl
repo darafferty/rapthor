@@ -132,10 +132,28 @@ inputs:
   - id: tolerance
     label: Solver tolerance
     doc: |
-      The solver tolerance used to define convergance.
+      The solver tolerance used to define convergence.
     type: float
     inputBinding:
       prefix: solve.tolerance=
+      separate: False
+
+  - id: llsstarttolerance
+    label: LLS solver starting tolerance
+    doc: |
+      The linear least-squares solver starting tolerance used to define convergence.
+    type: float
+    inputBinding:
+      prefix: solve.llsstarttolerance=
+      separate: False
+
+  - id: llstolerance
+    label: LLS solver tolerance
+    doc: |
+      The linear least-squares solver tolerance used to define convergence.
+    type: float
+    inputBinding:
+      prefix: solve.llstolerance=
       separate: False
 
   - id: uvlambdamin

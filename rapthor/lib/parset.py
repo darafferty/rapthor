@@ -337,7 +337,8 @@ def get_calibration_options(parset):
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug']
+                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug',
+                       'llsstarttolerance', 'llstolerance']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '

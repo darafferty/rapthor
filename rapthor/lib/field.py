@@ -54,6 +54,8 @@ class Field(object):
         self.maxiter = self.parset['calibration_specific']['maxiter']
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
+        self.llsstarttolerance = self.parset['calibration_specific']['llsstarttolerance']
+        self.llstolerance = self.parset['calibration_specific']['llstolerance']
         self.use_screens = self.parset['imaging_specific']['use_screens']
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
