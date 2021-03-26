@@ -204,14 +204,21 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
 #endif
 
   // Use the same grid for both degridding calls
-  proxy1.set_grid(proxy2.get_final_grid());
+  proxy2.set_grid(grid);
+  proxy1.set_grid(grid);
 
 #if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
+  proxy2.degridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
+                    aterms_offsets, spheroidal);
+
+  std::clog << ">>> Run reference degridding" << std::endl;
   visibilities_ref.zero();
-  plan2->mask_visibilities(visibilities_ref);
+  proxy1.degridding(*plan1, frequencies, visibilities_ref, uvw, baselines,
+                    aterms, aterms_offsets, spheroidal);
+
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
                    (std::complex<float> *)visibilities.data(),
