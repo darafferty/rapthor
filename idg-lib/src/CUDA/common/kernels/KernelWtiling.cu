@@ -198,7 +198,7 @@ __global__ void kernel_subgrids_to_wtiles(
             }
         }
     }
-}
+} // kernel_subgrids_to_wtiles
 
 __global__ void kernel_wtiles_to_grid(
     const unsigned int             dst_tile_size,
@@ -257,7 +257,7 @@ __global__ void kernel_wtiles_to_grid(
             atomicAdd(grid[dst_idx], tiles[src_idx]);
         }
     }
-}
+} // kernel_wtiles_to_grid
 
 __global__ void kernel_subgrids_from_wtiles(
     const long                   grid_size,
@@ -320,7 +320,7 @@ __global__ void kernel_subgrids_from_wtiles(
             }
         }
     }
-}
+} // kernel_subgrids_from_grid
 
 __global__ void kernel_wtiles_from_grid(
     const unsigned int             dst_tile_size,
@@ -379,6 +379,6 @@ __global__ void kernel_wtiles_from_grid(
             tiles[dst_idx] = grid[src_idx];
         }
     }
-}
+} // kernel_wtiles_from_grid
 
 } // end extern "C"
