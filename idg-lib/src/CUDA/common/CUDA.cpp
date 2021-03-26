@@ -29,6 +29,7 @@ CUDA::CUDA(ProxyInfo info)
 
   cu::init();
   init_devices();
+  initialize_buffers();
   print_devices();
   print_compiler_flags();
   cuProfilerStart();
@@ -36,6 +37,8 @@ CUDA::CUDA(ProxyInfo info)
 
 CUDA::~CUDA() {
   cuProfilerStop();
+  free_buffers();
+  m_buffers.d_grid.reset();
   free_devices();
 }
 
@@ -52,7 +55,7 @@ void CUDA::init_devices() {
 
   // Create a device instance for every device
   for (unsigned i = 0; i < device_numbers.size(); i++) {
-    InstanceCUDA* device = new InstanceCUDA(mInfo, i, device_numbers[i]);
+    InstanceCUDA* device = new InstanceCUDA(mInfo, device_numbers[i]);
     devices.push_back(device);
   }
 }
@@ -108,6 +111,65 @@ ProxyInfo CUDA::default_info() {
 
   return p;
 }  // end default_info
+
+void CUDA::initialize_buffers() {
+#if defined(DEBUG)
+  std::cout << "CUDA::" << __func__ << std::endl;
+#endif
+
+  free_buffers();
+
+  const cu::Context& context = get_device(0).get_context();
+  m_buffers.d_wavenumbers.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_spheroidal.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
+  m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
+  // d_grid is handled seperately
+  m_buffers.d_lmnp.reset(new cu::DeviceMemory(context, 0));
+
+  for (unsigned t = 0; t < m_max_nr_streams; t++) {
+    m_buffers.d_visibilities_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_subgrids_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_metadata_.emplace_back(new cu::DeviceMemory(context, 0));
+    m_buffers.d_weights_.emplace_back(new cu::DeviceMemory(context, 0));
+  }
+
+  // Only one aterms_indices buffer is used for gridding and degridding,
+  // multiple buffers are only used for calibration in GenericOptimized.
+  m_buffers.d_aterms_indices_.emplace_back(new cu::DeviceMemory(context, 0));
+
+  // Not used for gridding and degridding,
+  // two buffers are used for calibration.
+  for (unsigned i = 0; i < 2; i++) {
+    m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, 0));
+  }
+
+  m_buffers.h_subgrids.reset(new cu::HostMemory(context, 0));
+}
+
+void CUDA::free_buffers() {
+#if defined(DEBUG)
+  std::cout << "CUDA::" << __func__ << std::endl;
+#endif
+
+  m_buffers.d_wavenumbers.reset();
+  m_buffers.d_spheroidal.reset();
+  m_buffers.d_aterms.reset();
+  m_buffers.d_avg_aterm.reset();
+  // d_grid is handled seperately
+  m_buffers.d_lmnp.reset();
+
+  m_buffers.d_visibilities_.resize(0);
+  m_buffers.d_uvw_.resize(0);
+  m_buffers.d_subgrids_.resize(0);
+  m_buffers.d_metadata_.resize(0);
+  m_buffers.d_weights_.resize(0);
+  m_buffers.d_aterms_indices_.resize(0);
+  m_buffers.d_sums_.resize(0);
+
+  m_buffers.h_subgrids.reset();
+}
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
   const cu::Context& context = get_device(0).get_context();
@@ -330,66 +392,58 @@ void CUDA::initialize(
       auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
       cu::Stream& htodstream = device.get_htod_stream();
 
-      device.set_shift(m_cache_state.shift(0), m_cache_state.shift(1));
-
       // Wavenumbers
-      cu::DeviceMemory& d_wavenumbers =
-          device.allocate_device_wavenumbers(wavenumbers.bytes());
-      htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
+      m_buffers.d_wavenumbers->resize(wavenumbers.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_wavenumbers, wavenumbers.data(),
                                  wavenumbers.bytes());
 
       // Spheroidal
-      cu::DeviceMemory& d_spheroidal =
-          device.allocate_device_spheroidal(spheroidal.bytes());
-      htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(),
+      m_buffers.d_spheroidal->resize((spheroidal.bytes()));
+      htodstream.memcpyHtoDAsync(*m_buffers.d_spheroidal, spheroidal.data(),
                                  spheroidal.bytes());
 
       // Aterms
-      cu::DeviceMemory& d_aterms =
-          device.allocate_device_aterms(aterms.bytes());
-      htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+      m_buffers.d_aterms->resize(aterms.bytes());
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms, aterms.data(),
+                                 aterms.bytes());
 
-      // Aterms indicies
-      size_t sizeof_aterm_indices =
+      // Aterms indices
+      size_t sizeof_aterms_indices =
           auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-      cu::DeviceMemory& d_aterms_indices =
-          device.allocate_device_aterms_indices(sizeof_aterm_indices);
-      htodstream.memcpyHtoDAsync(d_aterms_indices, plan.get_aterm_indices_ptr(),
-                                 sizeof_aterm_indices);
+      m_buffers.d_aterms_indices_[0]->resize(sizeof_aterms_indices);
+      htodstream.memcpyHtoDAsync(*m_buffers.d_aterms_indices_[0],
+                                 plan.get_aterm_indices_ptr(),
+                                 sizeof_aterms_indices);
 
       // Average aterm correction
-      if (m_avg_aterm_correction.size()) {
-        size_t sizeof_avg_aterm_correction =
-            auxiliary::sizeof_avg_aterm_correction(subgrid_size);
-        cu::DeviceMemory& d_avg_aterm_correction =
-            device.allocate_device_avg_aterm_correction(
-                sizeof_avg_aterm_correction);
-        htodstream.memcpyHtoDAsync(d_avg_aterm_correction,
-                                   m_avg_aterm_correction.data(),
-                                   sizeof_avg_aterm_correction);
-      } else {
-        device.allocate_device_avg_aterm_correction(0);
-      }
+      size_t sizeof_avg_aterm_correction =
+          m_avg_aterm_correction.size() > 0
+              ? auxiliary::sizeof_avg_aterm_correction(subgrid_size)
+              : 0;
+      m_buffers.d_avg_aterm->resize(sizeof_avg_aterm_correction);
+      htodstream.memcpyHtoDAsync(*m_buffers.d_avg_aterm,
+                                 m_avg_aterm_correction.data(),
+                                 sizeof_avg_aterm_correction);
 
       // Dynamic memory (per thread)
       for (unsigned t = 0; t < m_max_nr_streams; t++) {
         // Visibilities
         size_t sizeof_visibilities =
             auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
-        device.allocate_device_visibilities(t, sizeof_visibilities);
+        m_buffers.d_visibilities_[t]->resize(sizeof_visibilities);
 
         // UVW coordinates
         size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-        device.allocate_device_uvw(t, sizeof_uvw);
+        m_buffers.d_uvw_[t]->resize(sizeof_uvw);
 
         // Subgrids
         size_t sizeof_subgrids =
             auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-        device.allocate_device_subgrids(t, sizeof_subgrids);
+        m_buffers.d_subgrids_[t]->resize(sizeof_subgrids);
 
         // Metadata
         size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
-        device.allocate_device_metadata(t, sizeof_metadata);
+        m_buffers.d_metadata_[t]->resize(sizeof_metadata);
       }
 
       // Initialize job data
@@ -435,7 +489,7 @@ void CUDA::initialize(
       // Free all device memory
       for (unsigned d = 0; d < get_num_devices(); d++) {
         InstanceCUDA& device = get_device(d);
-        device.free_device_memory();
+        initialize_buffers();
         device.free_fft_plans();
       }
 
@@ -469,11 +523,11 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   cu::Stream& stream = device.get_execute_stream();
 
   // Device memory
-  cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+  cu::DeviceMemory& d_grid = *m_buffers.d_grid;
 
   // Performance measurements
-  report.initialize(0, 0, grid_size);
-  device.set_report(report);
+  m_report->initialize(0, 0, grid_size);
+  device.set_report(m_report);
   powersensor::State powerStates[4];
   powerStates[0] = hostPowerSensor->read();
   powerStates[2] = device.measure();
@@ -497,9 +551,9 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   powerStates[3] = device.measure();
 
   // Report performance
-  report.update_host(powerStates[0], powerStates[1]);
-  report.print_total();
-  report.print_device(powerStates[2], powerStates[3]);
+  m_report->update<Report::host>(powerStates[0], powerStates[1]);
+  m_report->update<Report::device>(powerStates[2], powerStates[3]);
+  m_report->print_total();
 }
 
 void CUDA::do_compute_avg_beam(
@@ -522,11 +576,11 @@ void CUDA::do_compute_avg_beam(
   cu::Context& context = device.get_context();
 
   // Performance reporting
-  report.initialize();
-  device.set_report(report);
+  m_report->initialize();
+  device.set_report(m_report);
 
   // Allocate static device memory
-  cu::DeviceMemory& d_aterms = device.allocate_device_aterms(aterms.bytes());
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
   cu::DeviceMemory d_baselines(context, baselines.bytes());
   cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
   cu::DeviceMemory d_average_beam(
@@ -544,9 +598,9 @@ void CUDA::do_compute_avg_beam(
     // Try to allocate memory
     if (bytes_free > bytes_required) {
       for (unsigned int i = 0; i < 2; i++) {
-        device.allocate_device_uvw(i, sizeof_uvw);
-        device.allocate_device_visibilities(
-            i, sizeof_weights);  // visibilities buffer!
+        m_buffers.d_uvw_[i]->resize(sizeof_uvw);
+        m_buffers.d_visibilities_[i]->resize(
+            sizeof_weights);  // visibilities buffer!
       }
       break;
     } else {
@@ -606,8 +660,8 @@ void CUDA::do_compute_avg_beam(
     unsigned local_id_next = (local_id + 1) % 2;
 
     auto& job = jobs[job_id];
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_weights = device.retrieve_device_visibilities(local_id);
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_weights = *m_buffers.d_visibilities_[local_id];
 
     // Copy input for first job
     if (job_id == 0) {
@@ -623,9 +677,9 @@ void CUDA::do_compute_avg_beam(
     // Copy input for next job (if any)
     if (job_id_next < jobs.size()) {
       auto& job_next = jobs[job_id_next];
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
       cu::DeviceMemory& d_weights_next =
-          device.retrieve_device_visibilities(local_id_next);
+          *m_buffers.d_visibilities_[local_id_next];
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(job_next.current_nr_baselines, nr_timesteps);
       auto sizeof_weights = auxiliary::sizeof_weights(
@@ -668,7 +722,7 @@ void CUDA::do_compute_avg_beam(
   }
 
   // Performance reporting
-  report.print_total();
+  m_report->print_total();
 }
 
 void CUDA::cleanup() {
@@ -679,18 +733,10 @@ void CUDA::cleanup() {
   cu::Marker marker("cleanup");
   marker.start();
 
+  initialize_buffers();
+
   for (unsigned d = 0; d < get_num_devices(); d++) {
     InstanceCUDA& device = get_device(d);
-    device.free_device_wavenumbers();
-    device.free_device_spheroidal();
-    device.free_device_aterms();
-    device.free_device_aterms_indices();
-    device.free_device_avg_aterm_correction();
-    device.free_device_visibilities();
-    device.free_device_uvw();
-    device.free_device_subgrids();
-    device.free_device_metadata();
-    device.unmap_host_memory();
     device.free_fft_plans();
   }
 

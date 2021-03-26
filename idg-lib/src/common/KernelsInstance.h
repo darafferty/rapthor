@@ -51,11 +51,11 @@ class KernelsInstance {
       Performance reporting
   */
  public:
-  void set_report(Report& report_) { report = &report_; }
+  void set_report(std::shared_ptr<Report> report) { m_report = report; }
 
  protected:
-  Report* report = NULL;
-  powersensor::PowerSensor* powerSensor;
+  std::shared_ptr<Report> m_report;
+  std::shared_ptr<powersensor::PowerSensor> m_powersensor;
 
 };  // end class KernelsInstance
 

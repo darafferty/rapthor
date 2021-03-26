@@ -303,7 +303,7 @@ class Proxy {
 
   std::shared_ptr<Grid> m_grid = nullptr;
 
-  Report report;
+  std::shared_ptr<Report> m_report;
 
   bool m_disable_wstacking = false;
   bool m_disable_wtiling = false;

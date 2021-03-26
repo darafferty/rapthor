@@ -9,7 +9,7 @@
 
 namespace idg {
 namespace proxy {
-Proxy::Proxy() {}
+Proxy::Proxy() { m_report.reset(new Report()); }
 
 Proxy::~Proxy() {}
 

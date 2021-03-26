@@ -39,7 +39,7 @@ InstanceCPU::InstanceCPU(std::vector<std::string> libraries)
   cout << __func__ << endl;
 #endif
 
-  powerSensor = powersensor::get_power_sensor(powersensor::sensor_host);
+  m_powersensor.reset(powersensor::get_power_sensor(powersensor::sensor_host));
 
   load_shared_objects(libraries);
   load_kernel_funcions();
@@ -55,9 +55,6 @@ InstanceCPU::~InstanceCPU() {
   for (unsigned int i = 0; i < modules.size(); i++) {
     delete modules[i];
   }
-
-  // Delete power sensor
-  delete powerSensor;
 }
 
 void InstanceCPU::load_shared_objects(std::vector<std::string> libraries) {
@@ -227,14 +224,14 @@ void InstanceCPU::run_gridder(int nr_subgrids, int grid_size, int subgrid_size,
                               void *aterm_idx, void *avg_aterm, void *metadata,
                               void *subgrid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_gridder(void *) * function_gridder)(
       nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift,
       nr_channels, nr_stations, uvw, wavenumbers, visibilities, spheroidal,
       aterm, aterm_idx, avg_aterm, metadata, subgrid);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_gridder(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::gridder, states[0], states[1]);
   }
 }
 
@@ -246,14 +243,14 @@ void InstanceCPU::run_degridder(int nr_subgrids, int grid_size,
                                 void *spheroidal, void *aterm, void *aterm_idx,
                                 void *metadata, void *subgrid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_degridder(void *) * function_degridder)(
       nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift,
       nr_channels, nr_stations, uvw, wavenumbers, visibilities, spheroidal,
       aterm, aterm_idx, metadata, subgrid);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_degridder(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::degridder, states[0], states[1]);
   }
 }
 
@@ -264,14 +261,14 @@ void InstanceCPU::run_average_beam(int nr_baselines, int nr_antennas,
                                    void *aterms_offsets, void *weights,
                                    void *average_beam) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_average_beam(void *) * function_average_beam)(
       nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
       subgrid_size, uvw, baselines, aterms, aterms_offsets, weights,
       average_beam);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_average_beam(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::average_beam, states[0], states[1]);
   }
 }
 
@@ -286,18 +283,15 @@ void InstanceCPU::run_calibrate(
     const idg::float2 *phasors, double *hessian, double *gradient,
     double *residual) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_calibrate(void *) * function_calibrate)(
       nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift,
       max_nr_timesteps, nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
       wavenumbers, visibilities, weights, aterm, aterm_derivative,
       aterms_indices, metadata, subgrid, phasors, hessian, gradient, residual);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_calibrate(states[0], states[1]);
-  }
-  if (report) {
-    report->update_host(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update<Report::calibrate>(states[0], states[1]);
   }
 }
 
@@ -306,15 +300,12 @@ void InstanceCPU::run_calibrate_hessian_vector_product1(
     const Array4D<Matrix2x2<std::complex<float>>> &derivative_aterms,
     const Array2D<float> &parameter_vector) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   //                 (sig_calibrate_hessian_vector_product1 (void *)
   //                 *function_calibrate_hessian_vector_product1)();
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_calibrate(states[0], states[1]);
-  }
-  if (report) {
-    report->update_host(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::calibrate, states[0], states[1]);
   }
 }
 
@@ -323,15 +314,12 @@ void InstanceCPU::run_calibrate_hessian_vector_product2(
     const Array4D<Matrix2x2<std::complex<float>>> &derivative_aterms,
     Array2D<float> &parameter_vector) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_calibrate_hessian_vector_product2(void *) *
    function_calibrate_hessian_vector_product2)();
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_calibrate(states[0], states[1]);
-  }
-  if (report) {
-    report->update_host(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::calibrate, states[0], states[1]);
   }
 }
 
@@ -347,46 +335,46 @@ void InstanceCPU::run_phasor(int nr_subgrids, int grid_size, int subgrid_size,
 void InstanceCPU::run_fft(int grid_size, int size, int batch, void *data,
                           int direction) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_fft(void *) * function_fft)(grid_size, size, batch, data, direction);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_grid_fft(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::grid_fft, states[0], states[1]);
   }
 }
 
 void InstanceCPU::run_subgrid_fft(int grid_size, int size, int batch,
                                   void *data, int direction) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_fft(void *) * function_fft)(grid_size, size, batch, data, direction);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_subgrid_fft(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::subgrid_fft, states[0], states[1]);
   }
 }
 
 void InstanceCPU::run_adder(int nr_subgrids, int grid_size, int subgrid_size,
                             void *metadata, void *subgrid, void *grid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_adder(void *) * function_adder)(nr_subgrids, grid_size, subgrid_size,
                                        metadata, subgrid, grid);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::adder, states[0], states[1]);
   }
 }
 
 void InstanceCPU::run_splitter(int nr_subgrids, int grid_size, int subgrid_size,
                                void *metadata, void *subgrid, void *grid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_splitter(void *) * function_splitter)(
       nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_splitter(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::splitter, states[0], states[1]);
   }
 }
 
@@ -394,12 +382,12 @@ void InstanceCPU::run_adder_wstack(int nr_subgrids, int grid_size,
                                    int subgrid_size, void *metadata,
                                    void *subgrid, void *grid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_adder_wstack(void *) * function_adder_wstack)(
       nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::adder, states[0], states[1]);
   }
 }
 
@@ -407,12 +395,12 @@ void InstanceCPU::run_splitter_wstack(int nr_subgrids, int grid_size,
                                       int subgrid_size, void *metadata,
                                       void *subgrid, void *grid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
   (sig_splitter_wstack(void *) * function_splitter_wstack)(
       nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_splitter(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::splitter, states[0], states[1]);
   }
 }
 
@@ -467,7 +455,7 @@ void InstanceCPU::run_adder_wtiles(
     WTileUpdateSet &wtile_flush_set, void *metadata, void *subgrid,
     std::complex<float> *grid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
 
   for (int subgrid_index = 0; subgrid_index < (int)nr_subgrids;) {
     // Is a flush needed right now?
@@ -509,9 +497,9 @@ void InstanceCPU::run_adder_wtiles(
     subgrid_index += nr_subgrids_to_process;
   }
 
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_adder(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::adder, states[0], states[1]);
   }
 }
 
@@ -523,7 +511,7 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
                                       void *metadata, void *subgrid,
                                       std::complex<float> *grid) {
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
 
   for (int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Check whether initialize is needed right now
@@ -569,9 +557,9 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
     subgrid_index += nr_subgrids_to_process;
   }  // end for subgrid_index
 
-  states[1] = powerSensor->read();
-  if (report) {
-    report->update_splitter(states[0], states[1]);
+  states[1] = m_powersensor->read();
+  if (m_report) {
+    m_report->update(Report::splitter, states[0], states[1]);
   }
 }  // end run_splitter_wtiles
 

@@ -24,8 +24,8 @@ CPU::CPU(std::vector<std::string> libraries) : kernels(libraries) {
   std::cout << "CPU::" << __func__ << std::endl;
 #endif
 
-  powerSensor = get_power_sensor(sensor_host);
-  kernels.set_report(report);
+  m_powersensor.reset(get_power_sensor(sensor_host));
+  kernels.set_report(m_report);
 }
 
 // Destructor
@@ -33,9 +33,6 @@ CPU::~CPU() {
 #if defined(DEBUG)
   std::cout << "CPU::" << __func__ << std::endl;
 #endif
-
-  // Delete power sensor
-  delete powerSensor;
 
   // Deallocate FFTWs internally allocated memory
   fftwf_cleanup();
@@ -177,9 +174,9 @@ void CPU::do_gridding(
                                           subgrid_size, subgrid_size);
 
     // Performance measurement
-    report.initialize(nr_channels, subgrid_size, grid_size);
+    m_report->initialize(nr_channels, subgrid_size, grid_size);
     State states[2];
-    states[0] = powerSensor->read();
+    states[0] = m_powersensor->read();
 
     // Start gridder
     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -234,18 +231,19 @@ void CPU::do_gridding(
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      report.print(current_nr_timesteps, current_nr_subgrids);
+      m_report->print(current_nr_timesteps, current_nr_subgrids);
     }  // end for bl
 
-    states[1] = powerSensor->read();
-    report.update_host(states[0], states[1]);
+    states[1] = m_powersensor->read();
+    m_report->update(Report::host, states[0], states[1]);
 
     // Performance report
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    report.print_total(total_nr_timesteps, total_nr_subgrids);
+    m_report->print_total(total_nr_timesteps, total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
-    report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+    m_report->print_visibilities(auxiliary::name_gridding,
+                                 total_nr_visibilities);
 
   } catch (const std::invalid_argument &e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
@@ -296,9 +294,9 @@ void CPU::do_degridding(
                                           subgrid_size, subgrid_size);
 
     // Performance measurement
-    report.initialize(nr_channels, subgrid_size, grid_size);
+    m_report->initialize(nr_channels, subgrid_size, grid_size);
     State states[2];
-    states[0] = powerSensor->read();
+    states[0] = m_powersensor->read();
 
     // Run subroutines
     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -351,19 +349,19 @@ void CPU::do_degridding(
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      report.print(current_nr_timesteps, current_nr_subgrids);
+      m_report->print(current_nr_timesteps, current_nr_subgrids);
     }  // end for bl
 
-    states[1] = powerSensor->read();
-    report.update_host(states[0], states[1]);
+    states[1] = m_powersensor->read();
+    m_report->update(Report::host, states[0], states[1]);
 
     // Report performance
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    report.print_total(total_nr_timesteps, total_nr_subgrids);
+    m_report->print_total(total_nr_timesteps, total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
-    report.print_visibilities(auxiliary::name_degridding,
-                              total_nr_visibilities);
+    m_report->print_visibilities(auxiliary::name_degridding,
+                                 total_nr_visibilities);
 
   } catch (const std::invalid_argument &e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
@@ -408,9 +406,9 @@ void CPU::do_calibrate_init(
   max_nr_timesteps.reserve(nr_antennas);
 
   // Start performance measurement
-  report.initialize();
+  m_report->initialize();
   powersensor::State states[2];
-  states[0] = powerSensor->read();
+  states[0] = m_powersensor->read();
 
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
@@ -487,9 +485,9 @@ void CPU::do_calibrate_init(
   }  // end for antennas
 
   // End performance measurement
-  states[1] = powerSensor->read();
-  report.update_host(states[0], states[1]);
-  report.print_total(0, 0);
+  states[1] = m_powersensor->read();
+  m_report->update<Report::ID::host>(states[0], states[1]);
+  m_report->print_total(0, 0);
 
   // Set calibration state member variables
   m_calibrate_state = {std::move(plans),           (unsigned int)nr_baselines,
@@ -517,7 +515,7 @@ void CPU::do_calibrate_update(
 
   // Performance measurement
   if (antenna_nr == 0) {
-    report.initialize(nr_channels, subgrid_size, 0, nr_terms);
+    m_report->initialize(nr_channels, subgrid_size, 0, nr_terms);
   }
 
   // Data pointers
@@ -555,8 +553,8 @@ void CPU::do_calibrate_update(
   auto current_nr_timesteps =
       m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
   auto current_nr_visibilities = current_nr_timesteps * nr_channels;
-  report.update_total(current_nr_subgrids, current_nr_timesteps,
-                      current_nr_visibilities);
+  m_report->update_total(current_nr_subgrids, current_nr_timesteps,
+                         current_nr_visibilities);
 }
 
 void CPU::do_calibrate_finish() {
@@ -569,8 +567,8 @@ void CPU::do_calibrate_finish() {
         m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
     total_nr_subgrids += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   }
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_calibrate);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_calibrate);
 }
 
 void CPU::do_calibrate_init_hessian_vector_product() {
@@ -644,8 +642,8 @@ void CPU::do_transform(DomainAtoDomainB direction) {
     unsigned int grid_size = grid->get_y_dim();
 
     // Performance measurement
-    report.initialize(0, 0, grid_size);
-    kernels.set_report(report);
+    m_report->initialize(0, 0, grid_size);
+    kernels.set_report(m_report);
 
     for (unsigned int w = 0; w < nr_w_layers; w++) {
       int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
@@ -658,7 +656,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
       auto grid_size = grid->get_x_dim();
 
       State states[2];
-      states[0] = powerSensor->read();
+      states[0] = m_powersensor->read();
 
       // FFT shift
       if (direction == FourierDomainToImageDomain) {
@@ -677,12 +675,12 @@ void CPU::do_transform(DomainAtoDomainB direction) {
         kernels.shift(grid_ptr);  // TODO: integrate into splitter?
 
       // End measurement
-      states[1] = powerSensor->read();
-      report.update_host(states[0], states[1]);
+      states[1] = m_powersensor->read();
+      m_report->update(Report::host, states[0], states[1]);
     }
 
     // Report performance
-    report.print_total();
+    m_report->print_total();
     std::clog << std::endl;
 
   } catch (const std::exception &e) {
@@ -708,15 +706,15 @@ void CPU::do_compute_avg_beam(
   const unsigned int nr_timesteps = uvw.get_x_dim();
   const unsigned int subgrid_size = average_beam.get_w_dim();
 
-  report.initialize();
-  kernels.set_report(report);
+  m_report->initialize();
+  kernels.set_report(m_report);
 
   kernels.run_average_beam(
       nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
       subgrid_size, uvw.data(), baselines.data(), aterms.data(),
       aterms_offsets.data(), weights.data(), average_beam.data());
 
-  report.print_total();
+  m_report->print_total();
 }  // end compute_avg_beam
 
 }  // namespace cpu

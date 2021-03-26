@@ -19,7 +19,7 @@ namespace cuda {
 class InstanceCUDA : public KernelsInstance {
  public:
   // Constructor
-  InstanceCUDA(ProxyInfo& info, int device_nr = 0, int device_id = 0);
+  InstanceCUDA(ProxyInfo& info, int device_id = 0);
 
   // Destructor
   ~InstanceCUDA();
@@ -35,20 +35,24 @@ class InstanceCUDA : public KernelsInstance {
   powersensor::State measure();
   void measure(PowerRecord& record, cu::Stream& stream);
 
-  void launch_gridder(int time_offset, int nr_subgrids, int grid_size,
-                      int subgrid_size, float image_size, float w_step,
-                      int nr_channels, int nr_stations, cu::DeviceMemory& d_uvw,
-                      cu::DeviceMemory& d_visibilities,
-                      cu::DeviceMemory& d_metadata,
-                      cu::DeviceMemory& d_subgrid);
+  void launch_gridder(
+      int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
+      float image_size, float w_step, int nr_channels, int nr_stations,
+      float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+      cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
+      cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
+      cu::DeviceMemory& d_aterm_indices,
+      cu::DeviceMemory& d_avg_aterm_correction, cu::DeviceMemory& d_metadata,
+      cu::DeviceMemory& d_subgrid);
 
-  void launch_degridder(int time_offset, int nr_subgrids, int grid_size,
-                        int subgrid_size, float image_size, float w_step,
-                        int nr_channels, int nr_stations,
-                        cu::DeviceMemory& d_uvw,
-                        cu::DeviceMemory& d_visibilities,
-                        cu::DeviceMemory& d_metadata,
-                        cu::DeviceMemory& d_subgrid);
+  void launch_degridder(
+      int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
+      float image_size, float w_step, int nr_channels, int nr_stations,
+      float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+      cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
+      cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
+      cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
+      cu::DeviceMemory& d_subgrid);
 
   void launch_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
                            int nr_channels, int nr_aterms, int subgrid_size,
@@ -138,82 +142,9 @@ class InstanceCUDA : public KernelsInstance {
                                    cu::DeviceMemory& d_padded_tiles,
                                    cu::UnifiedMemory& u_grid);
 
-  // Memory management per device
-  cu::DeviceMemory& allocate_device_grid(size_t bytes);
-  cu::DeviceMemory& allocate_device_wavenumbers(size_t bytes);
-  cu::DeviceMemory& allocate_device_aterms(size_t bytes);
-  cu::DeviceMemory& allocate_device_aterms_indices(size_t bytes);
-  cu::DeviceMemory& allocate_device_spheroidal(size_t bytes);
-  cu::DeviceMemory& allocate_device_avg_aterm_correction(size_t bytes);
-  cu::DeviceMemory& allocate_device_tiles(size_t bytes);
-  cu::DeviceMemory& allocate_device_padded_tiles(size_t bytes);
-
-  // Memory management per stream
-  cu::HostMemory& allocate_host_subgrids(size_t bytes);
-  cu::HostMemory& allocate_host_visibilities(size_t bytes);
-  cu::HostMemory& allocate_host_uvw(size_t bytes);
-  cu::HostMemory& allocate_host_padded_tiles(size_t bytes);
-  cu::DeviceMemory& allocate_device_visibilities(unsigned int id, size_t bytes);
-  cu::DeviceMemory& allocate_device_uvw(unsigned int id, size_t bytes);
-  cu::DeviceMemory& allocate_device_subgrids(unsigned int id, size_t bytes);
-  cu::DeviceMemory& allocate_device_metadata(unsigned int id, size_t bytes);
-
-  // Memory management for misc device buffers
-  unsigned int allocate_device_memory(size_t bytes);
-  cu::DeviceMemory& retrieve_device_memory(unsigned int id);
-
-  // Memory management for misc page-locked host buffers
-  void register_host_memory(void* ptr, size_t bytes);
-
-  // Retrieve pre-allocated buffers (per device)
-  cu::DeviceMemory& retrieve_device_grid() { return *d_grid; }
-  cu::DeviceMemory& retrieve_device_aterms() { return *d_aterms; }
-  cu::DeviceMemory& retrieve_device_aterms_indices() {
-    return *d_aterms_indices;
-  }
-  cu::DeviceMemory& retrieve_device_aterms_derivatives() {
-    return *d_aterms_derivatives;
-  }
-  cu::DeviceMemory& retrieve_device_wavenumbers() { return *d_wavenumbers; }
-  cu::DeviceMemory& retrieve_device_spheroidal() { return *d_spheroidal; }
-  cu::DeviceMemory& retrieve_device_avg_aterm_correction() {
-    return *d_avg_aterm_correction;
-  }
-  cu::DeviceMemory& retrieve_device_tiles() { return *d_tiles; }
-  cu::DeviceMemory& retrieve_device_padded_tiles() { return *d_padded_tiles; }
-
-  // Retrieve pre-allocated buffers (per stream)
-  cu::DeviceMemory& retrieve_device_visibilities(unsigned int id) {
-    return *d_visibilities_[id];
-  }
-  cu::DeviceMemory& retrieve_device_uvw(unsigned int id) { return *d_uvw_[id]; }
-  cu::DeviceMemory& retrieve_device_subgrids(unsigned int id) {
-    return *d_subgrids_[id];
-  }
-  cu::DeviceMemory& retrieve_device_metadata(unsigned int id) {
-    return *d_metadata_[id];
-  }
-
-  // Free buffers
-  void free_device_wavenumbers() { d_wavenumbers.reset(); };
-  void free_device_spheroidal() { d_spheroidal.reset(); };
-  void free_device_aterms() { d_aterms.reset(); };
-  void free_device_aterms_indices() { d_aterms_indices.reset(); };
-  void free_device_avg_aterm_correction() { d_avg_aterm_correction.reset(); };
-  void free_device_visibilities() { d_visibilities_.clear(); };
-  void free_device_uvw() { d_uvw_.clear(); };
-  void free_device_subgrids() { d_subgrids_.clear(); };
-  void free_device_metadata() { d_metadata_.clear(); };
-  void unmap_host_memory() { h_registered_.clear(); };
-
   // Misc
-  void set_shift(float shift_l, float shift_m) {
-    shift_l_ = shift_l;
-    shift_m_ = shift_m;
-  }
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
-  void free_device_memory();
   void free_events();
 
   // Device interface
@@ -224,7 +155,6 @@ class InstanceCUDA : public KernelsInstance {
   int get_attribute() const;
 
  private:
-  void free_host_memory();
   void reset();
 
   // Since no CUDA calls are allowed from a callback, we have to
@@ -267,39 +197,8 @@ class InstanceCUDA : public KernelsInstance {
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
   std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
 
-  // One instance per device
-  std::unique_ptr<cu::DeviceMemory> d_aterms;
-  std::unique_ptr<cu::DeviceMemory> d_aterms_indices;
-  std::unique_ptr<cu::DeviceMemory> d_aterms_derivatives;
-  std::unique_ptr<cu::DeviceMemory> d_avg_aterm_correction;
-  std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
-  std::unique_ptr<cu::DeviceMemory> d_spheroidal;
-  std::unique_ptr<cu::DeviceMemory> d_grid;
-  std::unique_ptr<cu::DeviceMemory> d_tiles;
-  std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
-  std::unique_ptr<cu::HostMemory> h_visibilities;
-  std::unique_ptr<cu::HostMemory> h_uvw;
-  std::unique_ptr<cu::HostMemory> h_subgrids;
-  std::unique_ptr<cu::HostMemory> h_padded_tiles;
-
-  // One instance per stream
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
-
-  // Registered host memory
-  std::vector<std::unique_ptr<cu::RegisteredMemory>> h_registered_;
-
-  // Misc device memory
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_misc_;
-
   // All CUDA modules private to this InstanceCUDA
-  std::vector<std::unique_ptr<cu::Module>> mModules;
-
-  // Pass the two shift values as arguments instead of allocating device memory.
-  float shift_l_;
-  float shift_m_;
+  std::vector<std::unique_ptr<cu::Module>> m_modules;
 
  protected:
   dim3 block_gridder;
@@ -323,19 +222,6 @@ class InstanceCUDA : public KernelsInstance {
   unsigned m_fft_subgrid_size = 0;
   std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid;
   std::unique_ptr<cu::DeviceMemory> d_fft_subgrid;
-
- private:
-  // Memory allocation/reuse methods
-  template <typename T>
-  T* reuse_memory(uint64_t size, std::unique_ptr<T>& memory);
-
-  template <typename T>
-  T* reuse_memory(std::vector<std::unique_ptr<T>>& memories, unsigned int id,
-                  uint64_t size);
-
-  template <typename T>
-  T* reuse_memory(std::vector<std::unique_ptr<T>>& memories, uint64_t size,
-                  void* ptr);
 
  public:
   void enqueue_report(cu::Stream& stream, int nr_timesteps, int nr_subgrids);

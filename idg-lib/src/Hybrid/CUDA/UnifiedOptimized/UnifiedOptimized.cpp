@@ -36,6 +36,8 @@ UnifiedOptimized::UnifiedOptimized()
   // Increase the fraction of reserved memory
   set_fraction_reserved(0.4);
 
+  initialize_buffers();
+
   cuProfilerStart();
 }
 
@@ -51,7 +53,22 @@ UnifiedOptimized::~UnifiedOptimized() {
     m_grid.reset();
   }
 
+  free_buffers();
+
   cuProfilerStop();
+}
+
+void UnifiedOptimized::initialize_buffers() {
+  const cu::Context& context = get_device(0).get_context();
+  m_buffers_wtiling.d_tiles.reset(new cu::DeviceMemory(context, 0));
+  m_buffers_wtiling.d_padded_tiles.reset(new cu::DeviceMemory(context, 0));
+  m_buffers_wtiling.h_tiles.reset(new cu::HostMemory(context, 0));
+}
+
+void UnifiedOptimized::free_buffers() {
+  m_buffers_wtiling.d_tiles.reset();
+  m_buffers_wtiling.d_padded_tiles.reset();
+  m_buffers_wtiling.h_tiles.reset();
 }
 
 /*
@@ -110,9 +127,9 @@ void UnifiedOptimized::run_gridding(
                                   plan.get_sizeof_metadata());
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
-  cpuKernels.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
+  cpuKernels.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -130,6 +147,13 @@ void UnifiedOptimized::run_gridding(
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
+
+  // Load memory objects
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
+  cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
   // Start performance measurement
   startStates[device_id] = device.measure();
@@ -151,11 +175,10 @@ void UnifiedOptimized::run_gridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -175,10 +198,9 @@ void UnifiedOptimized::run_gridding(
     if (job_id_next < jobs.size()) {
       // Load memory objects
       cu::DeviceMemory& d_visibilities_next =
-          device.retrieve_device_visibilities(local_id_next);
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+          *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -208,10 +230,11 @@ void UnifiedOptimized::run_gridding(
     executestream.waitEvent(*inputCopied[job_id]);
 
     // Launch gridder kernel
-    device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
-                          subgrid_size, image_size, w_step, nr_channels,
-                          nr_stations, d_uvw, d_visibilities, d_metadata,
-                          d_subgrids);
+    device.launch_gridder(
+        current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
+        image_size, w_step, nr_channels, nr_stations, shift(0), shift(1), d_uvw,
+        d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_aterms_indices,
+        d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -233,14 +256,15 @@ void UnifiedOptimized::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices],
+                   endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void UnifiedOptimized::do_gridding(
@@ -323,12 +347,13 @@ void UnifiedOptimized::run_degridding(
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
-  cu::HostMemory& h_subgrids = device.allocate_host_subgrids(sizeof_subgrids);
+  cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
+  h_subgrids.resize(sizeof_subgrids);
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
-  cpuKernels.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
+  cpuKernels.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -341,6 +366,12 @@ void UnifiedOptimized::run_degridding(
     gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
     outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
   }
+
+  // Load memory objects
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -374,7 +405,7 @@ void UnifiedOptimized::run_degridding(
       unsigned local_id = job_id % 2;
 
       // Load memory objects
-      cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
+      cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
 
       // Wait for input buffer to be free
       if (job_id > 0) {
@@ -431,11 +462,10 @@ void UnifiedOptimized::run_degridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Wait for subgrids to be computed
     locks_gpu[job_id].lock();
@@ -453,9 +483,8 @@ void UnifiedOptimized::run_degridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -491,8 +520,9 @@ void UnifiedOptimized::run_degridding(
     // Launch degridder kernel
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
                             subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, d_uvw, d_visibilities, d_metadata,
-                            d_subgrids);
+                            nr_stations, shift(0), shift(1), d_uvw,
+                            d_wavenumbers, d_visibilities, d_spheroidal,
+                            d_aterms, d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Signal that the input buffer is free
@@ -526,14 +556,16 @@ void UnifiedOptimized::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::host, startStates[nr_devices],
+                   endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_degridding,
+                               total_nr_visibilities);
 }  // end run_degridding
 
 void UnifiedOptimized::do_degridding(
@@ -638,9 +670,9 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   // tiles will always need to be processed in batches.
   m_nr_tiles = (free_memory * 0.30) / sizeof_tile;
   size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
-  device.allocate_device_tiles(sizeof_tiles);
-  device.allocate_device_padded_tiles(sizeof_tiles);
-  device.allocate_host_padded_tiles(sizeof_tiles);
+  m_buffers_wtiling.d_tiles->resize(sizeof_tiles);
+  m_buffers_wtiling.d_padded_tiles->resize(sizeof_tiles);
+  m_buffers_wtiling.h_tiles->resize(sizeof_tiles);
 
   // Initialize wtiles metadata
   m_wtiles = WTiles(m_nr_tiles, m_tile_size);
@@ -663,10 +695,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load buffers
-  cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
-  cu::DeviceMemory& d_padded_tiles = device.retrieve_device_padded_tiles();
-  cu::HostMemory& h_padded_tiles =
-      device.allocate_host_padded_tiles(d_padded_tiles.size());
+  cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
+  cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
+  cu::HostMemory& h_padded_tiles = *m_buffers_wtiling.h_tiles;
 
   // Get information on what wtiles to flush
   const int tile_size = m_tile_size;
@@ -871,9 +902,9 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
   cu::Stream& stream = device.get_execute_stream();
 
   // Load buffers
-  cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-  cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
-  cu::DeviceMemory& d_tiles = device.retrieve_device_tiles();
+  cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+  cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
+  cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
 
   // Performance measurement
   State startState, endState;
@@ -923,7 +954,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
 
   // End performance measurement
   endState = device.measure();
-  report.update_wtiling(startState, endState);
+  m_report->update(Report::wtiling, startState, endState);
 }
 
 void UnifiedOptimized::flush_wtiles() {
@@ -940,15 +971,15 @@ void UnifiedOptimized::flush_wtiles() {
 
   // Project wtiles to master grid
   if (wtile_flush_info.wtile_ids.size()) {
-    report.initialize();
+    m_report->initialize();
     InstanceCUDA& device = get_device(0);
     State startState, endState;
     startState = device.measure();
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift,
                        wtile_flush_info);
     endState = device.measure();
-    report.update_wtiling(startState, endState);
-    report.print_total();
+    m_report->update(Report::wtiling, startState, endState);
+    m_report->print_total();
   }
 }
 

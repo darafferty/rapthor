@@ -127,14 +127,6 @@ class GenericOptimized : public cuda::CUDA {
     unsigned int nr_timesteps;
     unsigned int nr_channels;
     Array3D<UVW<float>> uvw;
-    std::vector<unsigned int> d_sums_ids;
-    unsigned int d_lmnp_id;
-    std::vector<unsigned int> d_metadata_ids;
-    std::vector<unsigned int> d_subgrids_ids;
-    std::vector<unsigned int> d_visibilities_ids;
-    std::vector<unsigned int> d_weights_ids;
-    std::vector<unsigned int> d_uvw_ids;
-    std::vector<unsigned int> d_aterm_idx_ids;
     Array3D<Visibility<std::complex<float>>>
         hessian_vector_product_visibilities;
   } m_calibrate_state;

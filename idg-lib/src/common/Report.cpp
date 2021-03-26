@@ -85,42 +85,4 @@ void report_visibilities(string name, double runtime,
 #endif
 }
 
-void Report::update(Report::State& reportState, powersensor::State& startState,
-                    powersensor::State& endState) {
-  reportState.current_seconds =
-      powersensor::PowerSensor::seconds(startState, endState);
-  reportState.current_joules =
-      powersensor::PowerSensor::Joules(startState, endState);
-  reportState.total_seconds += reportState.current_seconds;
-  reportState.total_joules += reportState.current_joules;
-}
-
-void Report::update_devices(std::vector<powersensor::State> start,
-                            std::vector<powersensor::State> end) {
-  assert(start.size() == end.size());
-  for (unsigned d = 0; d < start.size(); d++) {
-    update_device(start[d], end[d], d);
-  }
-}
-
-void Report::print_device(powersensor::State& startState,
-                          powersensor::State& endState, int i) {
-  std::stringstream name;
-  name << prefix << auxiliary::name_device;
-  if (i > 0) {
-    name << i;
-  }
-  double seconds = powersensor::PowerSensor::seconds(startState, endState);
-  double joules = powersensor::PowerSensor::Joules(startState, endState);
-  report(name.str().c_str(), seconds, joules, 0, 0, false);
-}
-
-void Report::print_devices(std::vector<powersensor::State> start,
-                           std::vector<powersensor::State> end) {
-  assert(start.size() == end.size());
-  for (unsigned i = 0; i < start.size(); i++) {
-    print_device(start[i], end[i], i);
-  }
-}
-
 }  // end namespace idg

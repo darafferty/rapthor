@@ -53,6 +53,7 @@ void Generic::run_gridding(
   auto image_size = cell_size * grid_size;
   auto subgrid_size = plan.get_subgrid_size();
   auto w_step = plan.get_w_step();
+  auto& shift = plan.get_shift();
 
   // Configuration
   const unsigned nr_devices = get_num_devices();
@@ -60,12 +61,12 @@ void Generic::run_gridding(
   int jobsize = m_gridding_state.jobsize[device_id];
 
   // Page-locked host memory
-  device.register_host_memory((void*)plan.get_metadata_ptr(),
-                              plan.get_sizeof_metadata());
+  cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(),
+                                  plan.get_sizeof_metadata());
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -81,6 +82,11 @@ void Generic::run_gridding(
 
   // Load memory objects
   cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
+  cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -107,11 +113,10 @@ void Generic::run_gridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -131,10 +136,9 @@ void Generic::run_gridding(
     if (job_id_next < jobs.size()) {
       // Load memory objects
       cu::DeviceMemory& d_visibilities_next =
-          device.retrieve_device_visibilities(local_id_next);
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+          *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -169,10 +173,11 @@ void Generic::run_gridding(
     executestream.waitEvent(*inputCopied[job_id]);
 
     // Launch gridder kernel
-    device.launch_gridder(current_time_offset, current_nr_subgrids, grid_size,
-                          subgrid_size, image_size, w_step, nr_channels,
-                          nr_stations, d_uvw, d_visibilities, d_metadata,
-                          d_subgrids);
+    device.launch_gridder(
+        current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
+        image_size, w_step, nr_channels, nr_stations, shift(0), shift(1), d_uvw,
+        d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_aterms_indices,
+        d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
@@ -183,7 +188,7 @@ void Generic::run_gridding(
       device.launch_adder_unified(current_nr_subgrids, grid_size, subgrid_size,
                                   d_metadata, d_subgrids, u_grid);
     } else {
-      cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+      cu::DeviceMemory& d_grid = *m_buffers.d_grid;
       device.launch_adder(current_nr_subgrids, grid_size, subgrid_size,
                           d_metadata, d_subgrids, d_grid);
     }
@@ -203,14 +208,17 @@ void Generic::run_gridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::device, startStates[device_id],
+                   endStates[device_id]);
+  m_report->update(Report::host, startStates[nr_devices],
+                   endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void Generic::do_gridding(
@@ -267,6 +275,7 @@ void Generic::run_degridding(
   auto image_size = cell_size * grid_size;
   auto subgrid_size = plan.get_subgrid_size();
   auto w_step = plan.get_w_step();
+  auto& shift = plan.get_shift();
 
   // Configuration
   const unsigned nr_devices = get_num_devices();
@@ -274,12 +283,12 @@ void Generic::run_degridding(
   int jobsize = m_gridding_state.jobsize[device_id];
 
   // Page-locked host memory
-  device.register_host_memory((void*)plan.get_metadata_ptr(),
-                              plan.get_sizeof_metadata());
+  cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(),
+                                  plan.get_sizeof_metadata());
 
   // Performance measurements
-  report.initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(report);
+  m_report->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -298,6 +307,10 @@ void Generic::run_degridding(
 
   // Load memory objects
   cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
+  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
+  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
+  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -324,11 +337,10 @@ void Generic::run_degridding(
     void* visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities =
-        device.retrieve_device_visibilities(local_id);
-    cu::DeviceMemory& d_uvw = device.retrieve_device_uvw(local_id);
-    cu::DeviceMemory& d_subgrids = device.retrieve_device_subgrids(local_id);
-    cu::DeviceMemory& d_metadata = device.retrieve_device_metadata(local_id);
+    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -343,9 +355,8 @@ void Generic::run_degridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_uvw_next = device.retrieve_device_uvw(local_id_next);
-      cu::DeviceMemory& d_metadata_next =
-          device.retrieve_device_metadata(local_id_next);
+      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -377,7 +388,7 @@ void Generic::run_degridding(
                                      subgrid_size, d_metadata, d_subgrids,
                                      u_grid);
     } else {
-      cu::DeviceMemory& d_grid = device.retrieve_device_grid();
+      cu::DeviceMemory& d_grid = *m_buffers.d_grid;
       device.launch_splitter(current_nr_subgrids, grid_size, subgrid_size,
                              d_metadata, d_subgrids, d_grid);
     }
@@ -392,8 +403,9 @@ void Generic::run_degridding(
     // Launch degridder kernel
     device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
                             subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, d_uvw, d_visibilities, d_metadata,
-                            d_subgrids);
+                            nr_stations, shift(0), shift(1), d_uvw,
+                            d_wavenumbers, d_visibilities, d_spheroidal,
+                            d_aterms, d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Copy visibilities to host
@@ -418,14 +430,18 @@ void Generic::run_degridding(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  report.update_host(startStates[nr_devices], endStates[nr_devices]);
+  m_report->update(Report::device, startStates[device_id],
+                   endStates[device_id]);
+  m_report->update(Report::host, startStates[nr_devices],
+                   endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
-  report.print_visibilities(auxiliary::name_degridding, total_nr_visibilities);
+  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_visibilities(auxiliary::name_degridding,
+                               total_nr_visibilities);
 }  // end run_degridding
 
 void Generic::do_degridding(
@@ -460,17 +476,18 @@ void Generic::do_degridding(
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;
   InstanceCUDA& device = get_device(0);
-  cu::DeviceMemory& d_grid = device.allocate_device_grid(grid->bytes());
   cu::Stream& htodstream = device.get_htod_stream();
-  device.copy_htod(htodstream, d_grid, grid->data(), grid->bytes());
+  cu::Context& context = get_device(0).get_context();
+  m_buffers.d_grid.reset(new cu::DeviceMemory(context, grid->bytes()));
+  device.copy_htod(htodstream, *m_buffers.d_grid, grid->data(), grid->bytes());
   htodstream.synchronize();
 }
 
 std::shared_ptr<Grid> Generic::get_final_grid() {
   InstanceCUDA& device = get_device(0);
-  cu::DeviceMemory& d_grid = device.retrieve_device_grid();
   cu::Stream& dtohstream = device.get_dtoh_stream();
-  device.copy_dtoh(dtohstream, m_grid->data(), d_grid, m_grid->bytes());
+  device.copy_dtoh(dtohstream, m_grid->data(), *m_buffers.d_grid,
+                   m_grid->bytes());
   dtohstream.synchronize();
   return m_grid;
 }

@@ -8,6 +8,10 @@
 #include <complex>
 
 #include "idg-common.h"
+namespace cu {
+class DeviceMemory;
+class HostMemory;
+};  // namespace cu
 
 namespace idg {
 namespace kernel {
@@ -81,6 +85,28 @@ class CUDA : public Proxy {
     std::vector<int> jobsize;
     std::vector<int> max_nr_subgrids;
   } m_gridding_state;
+
+  struct {
+    std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
+    std::unique_ptr<cu::DeviceMemory> d_spheroidal;
+    std::unique_ptr<cu::DeviceMemory> d_aterms;
+    std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
+    std::unique_ptr<cu::DeviceMemory> d_grid;
+    std::unique_ptr<cu::DeviceMemory> d_lmnp;
+
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices_;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_sums_;
+
+    std::unique_ptr<cu::HostMemory> h_subgrids;
+  } m_buffers;
+
+  void initialize_buffers();
+  void free_buffers();
 
   /*
    * Options used internally by the CUDA proxies

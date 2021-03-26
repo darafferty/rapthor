@@ -123,7 +123,7 @@ class CPU : public Proxy {
                    float w_step);
 
   kernel::cpu::InstanceCPU kernels;
-  powersensor::PowerSensor* powerSensor;
+  std::shared_ptr<powersensor::PowerSensor> m_powersensor;
 
   /*
    * Options used internally by the CPU proxy
