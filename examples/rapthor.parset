@@ -51,6 +51,7 @@ input_skymodel = /data/skymodel.txt
 # llssolver = qr
 # maxiter = 50
 # propagatesolutions = True
+# iteratedirections = False
 # onebeamperpatch = False
 # stepsize = 0.02
 # tolerance = 1e-3
