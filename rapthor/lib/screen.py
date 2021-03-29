@@ -19,6 +19,8 @@ from scipy.spatial import Voronoi
 import shapely.geometry
 import shapely.ops
 import multiprocessing
+from multiprocessing import Pool, RawArray
+import itertools
 
 
 class Screen(object):
@@ -427,10 +429,14 @@ class KLScreen(Screen):
         ncpu : int, optional
             Number of CPUs to use (0 means all)
         """
+        global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
+        print('Making data matrices...')
         # Define various parameters
         N_sources = len(self.source_names)
         N_times = t_stop_index - t_start_index
         N_piercepoints = N_sources
+        beta_val = self.beta_val
+        r_0 = self.r_0
 
         # Make arrays of pixel coordinates for screen
         # We need to convert the FITS cube pixel coords to screen pixel coords. The FITS cube
@@ -472,36 +478,37 @@ class KLScreen(Screen):
             screen_amp_yy = screen_amp_yy.transpose([dir_axis, time_axis])
 
         # Process phase screens
-        val_phase = np.zeros((Nx, Ny, N_times))
-        mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
-        for k in range(N_times):
-            mpm.put([screen_ph[:, k], self.pp, N_piercepoints, k,
-                     x, y, self.beta_val, self.r_0])
-        mpm.wait()
-        for (k, scr) in mpm.get():
-            val_phase[:, :, k] = scr
+        pp = self.pp
+        val_shape = (Nx, Ny, N_times)
+        var_dict = {}
+        shared_val = RawArray('d', int(val_shape[0]*val_shape[1]*val_shape[2]))
+        screen_type = 'ph'
+        with Pool(processes=ncpu, initializer=init_worker, initargs=(shared_val, val_shape)) as pool:
+            result = pool.map(calculate_kl_screen_star,
+                              zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
+                                  itertools.repeat(beta_val), itertools.repeat(r_0),
+                                  itertools.repeat(screen_type)))
+        val_phase = np.frombuffer(shared_val).reshape(val_shape).copy()
 
         # Process amplitude screens
         if not self.phase_only:
             # XX amplitudes
-            val_amp_xx = np.zeros((Nx, Ny, N_times))
-            mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
-            for k in range(N_times):
-                mpm.put([np.log10(screen_amp_xx[:, k]), self.pp, N_piercepoints, k,
-                         x, y, self.beta_val, self.r_0])
-            mpm.wait()
-            for (k, scr) in mpm.get():
-                val_amp_xx[:, :, k] = scr
+            screen_type = 'xx'
+            with Pool(processes=ncpu, initializer=init_worker, initargs=(shared_val, val_shape)) as pool:
+                result = pool.map(calculate_kl_screen_star,
+                                  zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
+                                      itertools.repeat(beta_val), itertools.repeat(r_0),
+                                      itertools.repeat(screen_type)))
+            val_amp_xx = np.frombuffer(shared_val).reshape(val_shape).copy()
 
             # YY amplitudes
-            val_amp_yy = np.zeros((Nx, Ny, N_times))
-            mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
-            for k in range(N_times):
-                mpm.put([np.log10(screen_amp_yy[:, k]), self.pp, N_piercepoints, k,
-                         x, y, self.beta_val, self.r_0])
-            mpm.wait()
-            for (k, scr) in mpm.get():
-                val_amp_yy[:, :, k] = scr
+            screen_type = 'yy'
+            with Pool(processes=ncpu, initializer=init_worker, initargs=(shared_val, val_shape)) as pool:
+                result = pool.map(calculate_kl_screen_star,
+                                  zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
+                                      itertools.repeat(beta_val), itertools.repeat(r_0),
+                                      itertools.repeat(screen_type)))
+            val_amp_yy = np.frombuffer(shared_val).reshape(val_shape).copy()
 
         # Output data are [RA, DEC, MATRIX, ANTENNA, FREQ, TIME].T
         data = np.zeros((N_times, 4, Ny, Nx))
@@ -741,7 +748,23 @@ class VoronoiScreen(Screen):
         self.polygons = polygons
 
 
-def calculate_kl_screen(inscreen, pp, N_piercepoints, k, x, y, beta_val, r_0, outQueue):
+def init_worker(shared_val, val_shape):
+    # Using a dictionary is not strictly necessary. You can also
+    # use global variables.
+    global var_dict
+
+    var_dict['shared_val'] = shared_val
+    var_dict['val_shape'] = val_shape
+
+
+def calculate_kl_screen_star(inputs):
+    """
+    Simple helper function for pool.map
+    """
+    return calculate_kl_screen(*inputs)
+
+
+def calculate_kl_screen(k, N_piercepoints, beta_val, r_0, screen_type):
     """
     Calculates screen images
 
@@ -767,15 +790,19 @@ def calculate_kl_screen(inscreen, pp, N_piercepoints, k, x, y, beta_val, r_0, ou
     outQueue : queue
         Queue to add results to
     """
-    Nx = len(x)
-    Ny = len(y)
-    screen = np.zeros((Nx, Ny))
+    global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
+
+    tmp = np.frombuffer(var_dict['shared_val']).reshape(var_dict['val_shape'])
+    if screen_type == 'ph':
+        inscreen = screen_ph[:, k]
+    if screen_type == 'xx':
+        inscreen = screen_amp_xx[:, k]
+    if screen_type == 'yy':
+        inscreen = screen_amp_yy[:, k]
     f = inscreen.reshape(N_piercepoints)
     for i, xi in enumerate(x):
         for j, yi in enumerate(y):
             p = np.array([xi, yi, 0.0])
             d2 = np.sum(np.square(pp - p), axis=1)
             c = -(d2 / ( r_0**2 ))**(beta_val / 2.0) / 2.0
-            screen[i, j] = np.dot(c, f)
-
-    outQueue.put([k, screen])
+            tmp[i, j, k] = np.dot(c, f)
