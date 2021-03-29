@@ -241,8 +241,10 @@ void UnifiedOptimized::run_gridding(
                               FourierDomainToImageDomain);
 
     // Run W-tiling
-    run_subgrids_to_wtiles(local_id, current_nr_subgrids, subgrid_size,
-                           image_size, w_step, shift, wtile_flush_set);
+    auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+    run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
+                           image_size, w_step, shift, wtile_flush_set,
+                           d_subgrids, d_metadata);
 
     // Report performance
     device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
@@ -890,19 +892,17 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   }              // end if !m_use_unified_memory
 }
 
-void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
+void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int subgrid_offset,
                                               unsigned int nr_subgrids,
                                               unsigned int subgrid_size,
                                               float image_size, float w_step,
                                               const idg::Array1D<float>& shift,
-                                              WTileUpdateSet& wtile_flush_set) {
+                                              WTileUpdateSet& wtile_flush_set,
+                                              cu::DeviceMemory& d_subgrids,
+                                              cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
-
-  // Load buffers
-  cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
-  cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
 
   // Performance measurement
@@ -911,8 +911,8 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
 
   for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Is a flush needed right now?
-    if (!wtile_flush_set.empty() &&
-        wtile_flush_set.front().subgrid_index == (int)(subgrid_index)) {
+    if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index ==
+                                    (int) (subgrid_index + subgrid_offset)) {
       // Get information on what wtiles to flush
       WTileUpdateInfo& wtile_flush_info = wtile_flush_set.front();
 
@@ -929,13 +929,12 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int local_id,
     int nr_subgrids_to_process = nr_subgrids - subgrid_index;
 
     // Check whether a flush needs to happen before the end of the job
-    if (!wtile_flush_set.empty() &&
-        wtile_flush_set.front().subgrid_index - (int)subgrid_index <
-            nr_subgrids_to_process) {
+    if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index - (int)
+                                    (subgrid_index + subgrid_offset) < nr_subgrids_to_process) {
       // Reduce the number of subgrids to process to just before the next flush
       // event
-      nr_subgrids_to_process =
-          wtile_flush_set.front().subgrid_index - subgrid_index;
+      nr_subgrids_to_process = wtile_flush_set.front().subgrid_index -
+                               (subgrid_index + subgrid_offset);
     }
 
     // Add all subgrids to the wtiles

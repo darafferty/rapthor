@@ -86,11 +86,12 @@ class UnifiedOptimized : public cuda::CUDA {
                           float w_step, const Array1D<float>& shift,
                           WTileUpdateInfo& wtile_flush_info);
 
-  void run_subgrids_to_wtiles(unsigned int local_id, unsigned int nr_subgrids,
+  void run_subgrids_to_wtiles(unsigned int subgrid_offset, unsigned int nr_subgrids,
                               unsigned int subgrid_size, float image_size,
                               float w_step, const Array1D<float>& shift,
-                              WTileUpdateSet& wtile_flush_set);
-
+                              WTileUpdateSet& wtile_flush_set,
+                              cu::DeviceMemory& d_subgrids,
+                              cu::DeviceMemory& d_metadata);
   void flush_wtiles();
 
  protected:
