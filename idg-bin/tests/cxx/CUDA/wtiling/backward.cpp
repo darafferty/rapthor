@@ -255,7 +255,6 @@ int main(int argc, char* argv[]) {
   idg::WTiles wtiles(max_nr_tiles, tile_size - subgrid_size);
   idg::Plan::Options options;
   options.plan_strict = true;
-  options.w_step = w_step;
   idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
                  frequencies, uvw, baselines, aterms_offsets, wtiles, options);
   int nr_subgrids = plan.get_nr_subgrids();
