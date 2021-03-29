@@ -111,6 +111,16 @@ inputs:
       prefix: solve.propagatesolutions=
       separate: False
 
+  - id: iteratedirections
+    label: Iterate directions
+    doc: |
+      Flag that determines whether the direction iterating algorithm for solving
+      is used.
+    type: string
+    inputBinding:
+      prefix: solve.iteratedirections=
+      separate: False
+
   - id: onebeamperpatch
     label: One beam per patch
     doc: |

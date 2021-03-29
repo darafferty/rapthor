@@ -113,6 +113,7 @@ class Calibrate(Operation):
         llssolver = self.field.llssolver
         maxiter = self.field.maxiter
         propagatesolutions = self.field.propagatesolutions
+        iteratedirections = self.field.iteratedirections
         onebeamperpatch = self.field.onebeamperpatch
         stepsize = self.field.stepsize
         tolerance = self.field.tolerance
@@ -169,6 +170,7 @@ class Calibrate(Operation):
                             'llssolver': llssolver,
                             'maxiter': maxiter,
                             'propagatesolutions': propagatesolutions,
+                            'iteratedirections': iteratedirections,
                             'onebeamperpatch': onebeamperpatch,
                             'stepsize': stepsize,
                             'tolerance': tolerance,
