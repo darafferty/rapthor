@@ -102,6 +102,9 @@ The available options are described below under their respective sections.
     propagatesolutions
         Propagate solutions to next time slot as initial guess (default = ``True``)?
 
+    iteratedirections
+        Use the direction iterating algorithm for solving (default = ``False``)?
+
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =
         ``False``)? If ``False``, the beam correction is calculated separately

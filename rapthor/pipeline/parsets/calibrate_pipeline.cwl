@@ -130,6 +130,13 @@ inputs:
       for the next solution interval (length = 1).
     type: string
 
+  - id: iteratedirections
+    label: Iterate directions
+    doc: |
+      Flag that determines whether the direction iterating algorithm for solving
+      is used (length = 1).
+    type: string
+
   - id: onebeamperpatch
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
@@ -391,6 +398,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: iteratedirections
+        source: iteratedirections
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize
@@ -475,6 +484,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: iteratedirections
+        source: iteratedirections
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize
@@ -593,6 +604,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: iteratedirections
+        source: iteratedirections
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize
@@ -789,6 +802,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
+      - id: iteratedirections
+        source: iteratedirections
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize

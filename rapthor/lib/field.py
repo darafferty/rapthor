@@ -49,6 +49,7 @@ class Field(object):
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
+        self.iteratedirections = self.parset['calibration_specific']['iteratedirections']
         self.onebeamperpatch = self.parset['calibration_specific']['onebeamperpatch']
         self.llssolver = self.parset['calibration_specific']['llssolver']
         self.maxiter = self.parset['calibration_specific']['maxiter']
