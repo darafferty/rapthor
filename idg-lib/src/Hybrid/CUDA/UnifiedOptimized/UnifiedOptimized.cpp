@@ -815,11 +815,6 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     // Launch forward FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
-    // Call kernel_copy_tiles
-    device.launch_adder_copy_tiles(current_nr_tiles, w_padded_tile_size,
-                                   padded_tile_size, d_padded_tile_ids,
-                                   d_tile_ids, d_padded_tiles, d_tiles);
-
     if (m_use_unified_memory) {
       // Call kernel_wtiles_to_grid
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
@@ -833,15 +828,14 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Copy tile for tile to host
       executestream.record(*job.gpuFinished);
       dtohstream.waitEvent(*job.gpuFinished);
-      for (int tile_index = tile_offset;
-           tile_index < (tile_offset + current_nr_tiles); tile_index++) {
-        CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_tiles);
-        size_t sizeof_padded_tile = padded_tile_size * padded_tile_size *
-                                    NR_CORRELATIONS * sizeof(idg::float2);
-        d_tile_ptr += tile_ids[tile_index] * sizeof_padded_tile;
+      for (int i = 0; i < current_nr_tiles; i++) {
+        CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_padded_tiles);
+        size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
+                                      NR_CORRELATIONS * sizeof(idg::float2);
+        d_tile_ptr += i * sizeof_w_padded_tile;
         char* h_tile_ptr = static_cast<char*>(h_padded_tiles);
-        h_tile_ptr += tile_index * sizeof_padded_tile;
-        dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr, sizeof_padded_tile);
+        h_tile_ptr += i * sizeof_w_padded_tile;
+        dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr, sizeof_w_padded_tile);
       }
       dtohstream.record(*job.outputCopied);
     }  // end if m_use_unified_memory
@@ -859,26 +853,30 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         job.outputCopied->synchronize();
 
         // Add tiles to grid on host
-        for (int tile_index = tile_offset;
-             tile_index < (tile_offset + current_nr_tiles); tile_index++) {
-          idg::Coordinate& coordinate = tile_coordinates[tile_index];
+        for (int i = 0; i < current_nr_tiles; i++) {
+          idg::Coordinate& coordinate = tile_coordinates[tile_offset + i];
 
           int x0 = coordinate.x * tile_size -
-                   (padded_tile_size - tile_size) / 2 + grid_size / 2;
+                   (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
           int y0 = coordinate.y * tile_size -
-                   (padded_tile_size - tile_size) / 2 + grid_size / 2;
+                   (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
           int x_start = std::max(0, x0);
           int y_start = std::max(0, y0);
-          int x_end = std::min(x0 + padded_tile_size, (int)grid_size);
-          int y_end = std::min(y0 + padded_tile_size, (int)grid_size);
+          int x_end = std::min(x0 + w_padded_tile_size, (int)grid_size);
+          int y_end = std::min(y0 + w_padded_tile_size, (int)grid_size);
 
 #pragma omp for
           for (int y = y_start; y < y_end; y++) {
             for (int x = x_start; x < x_end; x++) {
               for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
-                unsigned long dst_idx = index_grid(grid_size, pol, y, x);
-                unsigned long src_idx = index_grid(padded_tile_size, tile_index,
-                                                   pol, (y - y0), (x - x0));
+                // Tranpose the polarizations
+                const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+                unsigned int pol_src = pol;
+                unsigned int pol_dst = index_pol_transposed[pol];
+
+                unsigned long dst_idx = index_grid(grid_size, pol_src, y, x);
+                unsigned long src_idx = index_grid(w_padded_tile_size, i,
+                                                   pol_dst, (y - y0), (x - x0));
                 std::complex<float>* tile_ptr =
                     static_cast<std::complex<float>*>(h_padded_tiles.ptr());
                 std::complex<float>* grid_ptr = m_grid->data();
