@@ -210,78 +210,36 @@ void subgrids_to_wtiles(const long nr_subgrids, const int grid_size,
   }          // end parallel
 }  // subgrids_to_wtiles
 
-void wtiles_to_grid(int grid_size, int subgrid_size, int wtile_size,
-                    float image_size, float w_step, const float* shift,
-                    int nr_tiles, int* tile_ids,
-                    idg::Coordinate* tile_coordinates,
+void wtiles_to_grid(int nr_tiles, int grid_size, int tile_size, int padded_tile_size,
+                    int* tile_ids, idg::Coordinate* tile_coordinates,
                     std::complex<float>* tiles, std::complex<float>* grid) {
-  const float image_size_shift =
-      image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
-
-  float max_abs_w = 0.0;
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate& coordinate = tile_coordinates[i];
-    float w = (coordinate.z + 0.5f) * w_step;
-    max_abs_w = std::max(max_abs_w, std::abs(w));
-  }
 
-  int padded_tile_size = wtile_size + subgrid_size;
-
-  int max_tile_size = next_composite(
-      padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
-
-  std::vector<std::complex<float>> tile_buffer(max_tile_size * max_tile_size *
-                                               NR_CORRELATIONS);
-
-  for (int i = 0; i < nr_tiles; i++) {
-    idg::Coordinate& coordinate = tile_coordinates[i];
-    float w = (coordinate.z + 0.5f) * w_step;
-    int w_padded_tile_size =
-        next_composite(padded_tile_size +
-                       int(ceil(std::abs(w) * image_size_shift * image_size)));
-    int w_padding = w_padded_tile_size - padded_tile_size;
-    int w_padding2 = w_padding / 2;
-    size_t current_buffer_size =
-        w_padded_tile_size * w_padded_tile_size * NR_CORRELATIONS;
-    tile_buffer.assign(current_buffer_size, {0.0, 0.0});
-
-    const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
-
-    for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-      for (int y = 0; y < padded_tile_size; y++) {
-        int y2 = y + w_padding2;
-        for (int x = 0; x < padded_tile_size; x++) {
-          int x2 = x + w_padding2;
-          tile_buffer[index_grid(w_padded_tile_size, index_pol_transposed[pol],
-                                 y2, x2)] =
-              reinterpret_cast<std::complex<float>*>(
-                  tiles)[index_grid(padded_tile_size, tile_ids[i], pol, y, x)];
-        }
-      }
-    }
-
-    int x0 = coordinate.x * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
-             grid_size / 2;
-    int y0 = coordinate.y * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
-             grid_size / 2;
+    int x0 = coordinate.x * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int y0 = coordinate.y * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
     int x_start = std::max(0, x0);
     int y_start = std::max(0, y0);
-    int x_end = std::min(x0 + w_padded_tile_size, grid_size);
-    int y_end = std::min(y0 + w_padded_tile_size, grid_size);
+    int x_end = std::min(x0 + padded_tile_size, (int)grid_size);
+    int y_end = std::min(y0 + padded_tile_size, (int)grid_size);
 
-// add to tile to grid
-#pragma omp parallel for
     for (int y = y_start; y < y_end; y++) {
       for (int x = x_start; x < x_end; x++) {
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-          grid[index_grid(grid_size, pol, y, x)] +=
-              tile_buffer
-                  .data()[index_grid(w_padded_tile_size, pol, y - y0, x - x0)];
-        }
-      }
-    }
-  }
-}  // end kernel_adder_wtiles_to_grid
+        for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+          unsigned int pol_src  = pol;
+          unsigned int pol_dst  = index_pol_transposed[pol];
+          unsigned long dst_idx = index_grid(grid_size, pol_src, y, x);
+          unsigned long src_idx = index_grid(padded_tile_size, i,
+                                             pol_dst, (y - y0), (x - x0));
+          grid[dst_idx] += tiles[src_idx];
+        }  // end for pol
+      }    // end for x
+    }      // end for y
+  }        // end for tile_index
+}  // end wtiles_to_grid
 
 int main(int argc, char* argv[]) {
   // Parameters
@@ -293,6 +251,7 @@ int main(int argc, char* argv[]) {
   unsigned int subgrid_size = 32;
   unsigned int max_nr_tiles = 16;
   unsigned int tile_size = 128;
+  unsigned int padded_tile_size = 160;
   unsigned int kernel_size = 9;
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
   float integration_time = 1.0f;
@@ -350,11 +309,6 @@ int main(int argc, char* argv[]) {
     float w = (coordinate.z + 0.5f) * w_step;
     max_abs_w = std::max(max_abs_w, std::abs(w));
   }
-
-  unsigned int padded_tile_size = next_composite(
-      tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
-  std::cout << "       tile_size : " << tile_size << std::endl;
-  std::cout << "padded_tile_size : " << padded_tile_size << std::endl;
 
   // Initialize GPU
   std::cout << ">> Initialize GPU" << std::endl;
@@ -558,20 +512,20 @@ int main(int argc, char* argv[]) {
   std::cout << ">> Testing wtiles_to_grid" << std::endl;
 
   // Initialize tiles
-  init_data(h_tiles, tile_ids.data(), nr_tiles, tile_size);
-  stream.memcpyHtoDAsync(d_tiles, h_tiles, h_tiles.size());
+  init_data(h_padded_tiles, h_padded_tile_ids, nr_tiles, padded_tile_size);
+  stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
 
   // Run adder_wtiles_to_grid on GPU
-  cuda.launch_adder_wtiles_to_grid(nr_tiles, tile_size - subgrid_size,
-                                   tile_size, grid_size, d_tile_ids,
-                                   d_tile_coordinates, d_tiles, u_grid);
+  cuda.launch_adder_wtiles_to_grid(nr_tiles, grid_size, tile_size-subgrid_size,
+                                   padded_tile_size, d_padded_tile_ids,
+                                   d_tile_coordinates, d_padded_tiles, u_grid);
 
   // Run adder_wtiles_to_grid on host
   idg::Array3D<std::complex<float>> grid(NR_CORRELATIONS, grid_size, grid_size);
   grid.zero();
-  wtiles_to_grid(grid_size, subgrid_size, tile_size - subgrid_size, image_size,
-                 w_step, shift.data(), nr_tiles, tile_ids.data(),
-                 tile_coordinates.data(), h_tiles, grid.data());
+  wtiles_to_grid(nr_tiles, grid_size, tile_size-subgrid_size, padded_tile_size,
+                 h_padded_tile_ids, tile_coordinates.data(),
+                 h_padded_tiles, grid.data());
 
   n = NR_CORRELATIONS * grid_size * grid_size;
   accuracy = compare_arrays(n, u_grid, grid.data());
