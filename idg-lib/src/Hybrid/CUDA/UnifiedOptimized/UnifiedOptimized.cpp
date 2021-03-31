@@ -824,8 +824,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Call kernel_wtiles_to_grid
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_adder_wtiles_to_grid(
-          current_nr_tiles, tile_size, padded_tile_size, grid_size, d_tile_ids,
-          d_tile_coordinates, d_tiles, u_grid);
+          current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
+          d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
 
       // Wait for GPU to finish
       executestream.synchronize();

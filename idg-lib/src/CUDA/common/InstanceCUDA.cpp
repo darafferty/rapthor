@@ -1100,12 +1100,12 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(
 }
 
 void InstanceCUDA::launch_adder_wtiles_to_grid(
-    int nr_tiles, int dst_tile_size, int src_tile_size, long grid_size,
+    int nr_tiles, long grid_size, int tile_size, int padded_tile_size,
     cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
     cu::DeviceMemory& d_tiles, cu::UnifiedMemory& u_grid) {
   CUdeviceptr grid_ptr = u_grid;
-  const void* parameters[] = {&dst_tile_size, &src_tile_size,  &grid_size,
-                              d_tile_ids,     d_tile_coordinates, d_tiles,
+  const void* parameters[] = {&grid_size,  &tile_size,         &padded_tile_size,
+                              d_tile_ids,  d_tile_coordinates, d_tiles,
                               &grid_ptr};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
