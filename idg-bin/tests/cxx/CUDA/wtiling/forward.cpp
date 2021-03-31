@@ -210,16 +210,17 @@ void subgrids_to_wtiles(const long nr_subgrids, const int grid_size,
   }          // end parallel
 }  // subgrids_to_wtiles
 
-void wtiles_to_grid(int nr_tiles, int grid_size, int tile_size, int padded_tile_size,
-                    int* tile_ids, idg::Coordinate* tile_coordinates,
+void wtiles_to_grid(int nr_tiles, int grid_size, int tile_size,
+                    int padded_tile_size, int* tile_ids,
+                    idg::Coordinate* tile_coordinates,
                     std::complex<float>* tiles, std::complex<float>* grid) {
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate& coordinate = tile_coordinates[i];
 
-    int x0 = coordinate.x * tile_size -
-             (padded_tile_size - tile_size) / 2 + grid_size / 2;
-    int y0 = coordinate.y * tile_size -
-             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int x0 = coordinate.x * tile_size - (padded_tile_size - tile_size) / 2 +
+             grid_size / 2;
+    int y0 = coordinate.y * tile_size - (padded_tile_size - tile_size) / 2 +
+             grid_size / 2;
     int x_start = std::max(0, x0);
     int y_start = std::max(0, y0);
     int x_end = std::min(x0 + padded_tile_size, (int)grid_size);
@@ -232,8 +233,8 @@ void wtiles_to_grid(int nr_tiles, int grid_size, int tile_size, int padded_tile_
           unsigned int pol_src  = pol;
           unsigned int pol_dst  = index_pol_transposed[pol];
           unsigned long dst_idx = index_grid(grid_size, pol_src, y, x);
-          unsigned long src_idx = index_grid(padded_tile_size, i,
-                                             pol_dst, (y - y0), (x - x0));
+          unsigned long src_idx =
+              index_grid(padded_tile_size, i, pol_dst, (y - y0), (x - x0));
           grid[dst_idx] += tiles[src_idx];
         }  // end for pol
       }    // end for x
@@ -516,15 +517,15 @@ int main(int argc, char* argv[]) {
   stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
 
   // Run adder_wtiles_to_grid on GPU
-  cuda.launch_adder_wtiles_to_grid(nr_tiles, grid_size, tile_size-subgrid_size,
-                                   padded_tile_size, d_padded_tile_ids,
-                                   d_tile_coordinates, d_padded_tiles, u_grid);
+  cuda.launch_adder_wtiles_to_grid(
+      nr_tiles, grid_size, tile_size - subgrid_size, padded_tile_size,
+      d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
 
   // Run adder_wtiles_to_grid on host
   idg::Array3D<std::complex<float>> grid(NR_CORRELATIONS, grid_size, grid_size);
   grid.zero();
-  wtiles_to_grid(nr_tiles, grid_size, tile_size-subgrid_size, padded_tile_size,
-                 h_padded_tile_ids, tile_coordinates.data(),
+  wtiles_to_grid(nr_tiles, grid_size, tile_size - subgrid_size,
+                 padded_tile_size, h_padded_tile_ids, tile_coordinates.data(),
                  h_padded_tiles, grid.data());
 
   n = NR_CORRELATIONS * grid_size * grid_size;

@@ -771,7 +771,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         d_tile_ptr += i * sizeof_w_padded_tile;
         char* h_tile_ptr = static_cast<char*>(h_padded_tiles);
         h_tile_ptr += i * sizeof_w_padded_tile;
-        dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr, sizeof_w_padded_tile);
+        dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr,
+                                   sizeof_w_padded_tile);
       }
       dtohstream.record(*job.outputCopied);
     }  // end if m_use_unified_memory
@@ -826,14 +827,11 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   }              // end if !m_use_unified_memory
 }
 
-void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int subgrid_offset,
-                                              unsigned int nr_subgrids,
-                                              unsigned int subgrid_size,
-                                              float image_size, float w_step,
-                                              const idg::Array1D<float>& shift,
-                                              WTileUpdateSet& wtile_flush_set,
-                                              cu::DeviceMemory& d_subgrids,
-                                              cu::DeviceMemory& d_metadata) {
+void UnifiedOptimized::run_subgrids_to_wtiles(
+    unsigned int subgrid_offset, unsigned int nr_subgrids,
+    unsigned int subgrid_size, float image_size, float w_step,
+    const idg::Array1D<float>& shift, WTileUpdateSet& wtile_flush_set,
+    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -846,7 +844,7 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int subgrid_offset,
   for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Is a flush needed right now?
     if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index ==
-                                    (int) (subgrid_index + subgrid_offset)) {
+                                        (int)(subgrid_index + subgrid_offset)) {
       // Get information on what wtiles to flush
       WTileUpdateInfo& wtile_flush_info = wtile_flush_set.front();
 
@@ -863,8 +861,10 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int subgrid_offset,
     int nr_subgrids_to_process = nr_subgrids - subgrid_index;
 
     // Check whether a flush needs to happen before the end of the job
-    if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index - (int)
-                                    (subgrid_index + subgrid_offset) < nr_subgrids_to_process) {
+    if (!wtile_flush_set.empty() &&
+        wtile_flush_set.front().subgrid_index -
+                (int)(subgrid_index + subgrid_offset) <
+            nr_subgrids_to_process) {
       // Reduce the number of subgrids to process to just before the next flush
       // event
       nr_subgrids_to_process = wtile_flush_set.front().subgrid_index -
@@ -888,11 +888,9 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int subgrid_offset,
   endState = device.measure();
   m_report->update(Report::wtiling, startState, endState);
 }
-void UnifiedOptimized::run_wtiles_from_grid(unsigned int subgrid_size,
-                                          float image_size, float w_step,
-                                          const Array1D<float>& shift,
-                                          WTileUpdateInfo& wtile_initialize_info) {
-
+void UnifiedOptimized::run_wtiles_from_grid(
+    unsigned int subgrid_size, float image_size, float w_step,
+    const Array1D<float>& shift, WTileUpdateInfo& wtile_initialize_info) {
   // Load grid
   unsigned int grid_size = m_grid->get_x_dim();
 
@@ -1013,8 +1011,8 @@ void UnifiedOptimized::run_wtiles_from_grid(unsigned int subgrid_size,
     if (m_use_unified_memory) {
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_splitter_wtiles_from_grid(
-        current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
-        d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
+          current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
+          d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
     } else {
       // TODO
     }
@@ -1034,16 +1032,14 @@ void UnifiedOptimized::run_wtiles_from_grid(unsigned int subgrid_size,
     device.launch_adder_copy_tiles(current_nr_tiles, w_padded_tile_size,
                                    padded_tile_size, d_padded_tile_ids,
                                    d_tile_ids, d_padded_tiles, d_tiles);
-  }    // end for tile_offset
+  }  // end for tile_offset
 }
 
-void UnifiedOptimized::run_subgrids_from_wtiles(unsigned int subgrid_offset, unsigned int nr_subgrids,
-                                                unsigned int subgrid_size, float image_size,
-                                                float w_step, const Array1D<float>& shift,
-                                                WTileUpdateSet& wtile_initialize_set,
-                                                cu::DeviceMemory& d_subgrids,
-                                                cu::DeviceMemory& d_metadata)
-{
+void UnifiedOptimized::run_subgrids_from_wtiles(
+    unsigned int subgrid_offset, unsigned int nr_subgrids,
+    unsigned int subgrid_size, float image_size, float w_step,
+    const Array1D<float>& shift, WTileUpdateSet& wtile_initialize_set,
+    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -1057,13 +1053,15 @@ void UnifiedOptimized::run_subgrids_from_wtiles(unsigned int subgrid_offset, uns
 
   for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Check whether initialize is needed right now
-    if (!wtile_initialize_set.empty() && wtile_initialize_set.front().subgrid_index ==
-                                         (int)(subgrid_index + subgrid_offset)) {
+    if (!wtile_initialize_set.empty() &&
+        wtile_initialize_set.front().subgrid_index ==
+            (int)(subgrid_index + subgrid_offset)) {
       // Get information on what wtiles to initialize
       WTileUpdateInfo& wtile_initialize_info = wtile_initialize_set.front();
 
       // Initialize the wtiles from the grid
-      run_wtiles_from_grid(subgrid_size, image_size, w_step, shift, wtile_initialize_info);
+      run_wtiles_from_grid(subgrid_size, image_size, w_step, shift,
+                           wtile_initialize_info);
 
       // Remove the initialize event from the queue
       wtile_initialize_set.pop_front();
@@ -1075,8 +1073,9 @@ void UnifiedOptimized::run_subgrids_from_wtiles(unsigned int subgrid_offset, uns
 
     // Check whether initialization needs to happen before the end of the job
     if (!wtile_initialize_set.empty() &&
-        wtile_initialize_set.front().subgrid_index - (int)
-        (subgrid_index - subgrid_offset) < nr_subgrids_to_process) {
+        wtile_initialize_set.front().subgrid_index -
+                (int)(subgrid_index - subgrid_offset) <
+            nr_subgrids_to_process) {
       // Reduce the number of subgrids to process to just before the next
       // initialization event
       nr_subgrids_to_process = wtile_initialize_set.front().subgrid_index -
@@ -1087,8 +1086,8 @@ void UnifiedOptimized::run_subgrids_from_wtiles(unsigned int subgrid_offset, uns
     std::complex<float> scale(1.0f, 1.0f);
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_splitter_subgrids_from_wtiles(
-      nr_subgrids_to_process, grid_size, subgrid_size,
-      m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles, scale); // scale?
+        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
+        subgrid_index, d_metadata, d_subgrids, d_tiles, scale);  // scale?
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids

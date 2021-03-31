@@ -125,8 +125,8 @@ void subgrids_from_wtiles(const long nr_subgrids, const int grid_size,
 
           // Add subgrid value to tiles
           for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-            long src_idx = index_grid(tile_size + subgrid_size, tile_index,
-                                      pol, y_dst, x_dst);
+            long src_idx = index_grid(tile_size + subgrid_size, tile_index, pol,
+                                      y_dst, x_dst);
             long dst_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
 
             subgrid[dst_idx] = phasor * tiles[src_idx];
@@ -199,7 +199,8 @@ void wtiles_from_grid(int grid_size, int subgrid_size, int wtile_size,
         int y2 = y + w_padding2;
         for (int x = 0; x < padded_tile_size; x++) {
           int x2 = x + w_padding2;
-          tiles[index_grid(padded_tile_size, tile_ids[i], index_pol_transposed[pol], y, x)] =
+          tiles[index_grid(padded_tile_size, tile_ids[i],
+                           index_pol_transposed[pol], y, x)] =
               tile_buffer[index_grid(w_padded_tile_size, pol, y2, x2)];
         }
       }
@@ -365,9 +366,9 @@ int main(int argc, char* argv[]) {
 
   // Run subgrids_from_wtiles on GPU
   d_subgrids.zero();
-  cuda.launch_splitter_subgrids_from_wtiles(nr_subgrids, grid_size, subgrid_size,
-                                            tile_size - subgrid_size, 0, d_metadata,
-                                            d_subgrids, d_tiles);
+  cuda.launch_splitter_subgrids_from_wtiles(
+      nr_subgrids, grid_size, subgrid_size, tile_size - subgrid_size, 0,
+      d_metadata, d_subgrids, d_tiles);
   stream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
   stream.synchronize();
 
@@ -406,10 +407,11 @@ int main(int argc, char* argv[]) {
   stream.synchronize();
 
   // Run splitter_wtiles_from_grid on host
-  idg::Array4D<std::complex<float>> tiles(max_nr_tiles, NR_CORRELATIONS, tile_size, tile_size);
+  idg::Array4D<std::complex<float>> tiles(max_nr_tiles, NR_CORRELATIONS,
+                                          tile_size, tile_size);
   tiles.zero();
-  wtiles_from_grid(grid_size, subgrid_size, tile_size - subgrid_size, image_size,
-                   w_step, shift.data(), nr_tiles, tile_ids.data(),
+  wtiles_from_grid(grid_size, subgrid_size, tile_size - subgrid_size,
+                   image_size, w_step, shift.data(), nr_tiles, tile_ids.data(),
                    tile_coordinates.data(), tiles.data(), u_grid);
 
   n = max_nr_tiles * NR_CORRELATIONS * tile_size * tile_size;

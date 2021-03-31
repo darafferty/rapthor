@@ -135,20 +135,18 @@ class InstanceCUDA : public KernelsInstance {
                                        cu::DeviceMemory& d_tiles,
                                        std::complex<float> scale = {1.0, 1.0});
 
-  void launch_adder_wtiles_to_grid(int nr_tiles, long grid_size,
-                                   int tile_size, int padded_tile_size,
+  void launch_adder_wtiles_to_grid(int nr_tiles, long grid_size, int tile_size,
+                                   int padded_tile_size,
                                    cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
                                    cu::DeviceMemory& d_tiles,
                                    cu::UnifiedMemory& u_grid);
 
-  void launch_splitter_subgrids_from_wtiles(int nr_subgrids, long grid_size,
-                                            int subgrid_size, int tile_size,
-                                            int subgrid_offset,
-                                            cu::DeviceMemory& d_metadata,
-                                            cu::DeviceMemory& d_subgrid,
-                                            cu::DeviceMemory& d_tiles,
-                                            std::complex<float> scale = {1.0, 1.0});
+  void launch_splitter_subgrids_from_wtiles(
+      int nr_subgrids, long grid_size, int subgrid_size, int tile_size,
+      int subgrid_offset, cu::DeviceMemory& d_metadata,
+      cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
+      std::complex<float> scale = {1.0, 1.0});
 
   void launch_splitter_wtiles_from_grid(int nr_tiles, long grid_size,
                                         int tile_size, int padded_tile_size,
@@ -270,8 +268,7 @@ static const std::string name_average_beam = "kernel_average_beam";
 static const std::string name_fft_shift = "kernel_fft_shift";
 static const std::string name_copy_tiles = "kernel_copy_tiles";
 static const std::string name_apply_phasor = "kernel_apply_phasor";
-static const std::string name_subgrids_to_wtiles =
-    "kernel_subgrids_to_wtiles";
+static const std::string name_subgrids_to_wtiles = "kernel_subgrids_to_wtiles";
 static const std::string name_wtiles_to_grid = "kernel_wtiles_to_grid";
 static const std::string name_subgrids_from_wtiles =
     "kernel_subgrids_from_wtiles";
