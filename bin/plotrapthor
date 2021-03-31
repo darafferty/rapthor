@@ -70,7 +70,7 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
         if soltype == 'phasescreen':
             st.setSelection(freq=freq, ant=ant)
             st_resid.setSelection(freq=freq, ant=ant)
-            remove_soltabs(ss, 'phase_screen000resid_filt')
+            misc.remove_soltabs(ss, 'phase_screen000resid_filt')
             tr_st = ss.makeSoltab('phase_screen', 'phase_screen000resid_filt',
                                   axesNames=['time', 'freq', 'ant', 'dir'],
                                   axesVals=[st_resid.time, st_resid.freq, st_resid.ant,
@@ -78,14 +78,14 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                                   vals=st_resid.val, weights=st_resid.weight)
             runplots(st, prefix='phase', resSoltab='phase_screen000resid_filt',
                            minZ=-3.1, maxZ=3.1)
-            remove_soltabs(ss, 'phase_screen000resid_filt')
+            misc.remove_soltabs(ss, 'phase_screen000resid_filt')
         else:
             if pol is None:
                 pol = 'XX'
                 print('Polarization not specified, using {}...'.format(pol))
             st.setSelection(freq=freq, ant=ant, pol=pol)
             st_resid.setSelection(freq=freq, ant=ant, pol=pol)
-            remove_soltabs(ss, 'amplitude_screen000resid_filt')
+            misc.remove_soltabs(ss, 'amplitude_screen000resid_filt')
             tr_st = ss.makeSoltab('amplitude_screen', 'amplitude_screen000resid_filt',
                                   axesNames=['time', 'freq', 'ant', 'dir', 'pol'],
                                   axesVals=[st_resid.time, st_resid.freq, st_resid.ant,
@@ -93,7 +93,7 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                                   vals=st_resid.val, weights=st_resid.weight)
             runplots(st, prefix='amplitude', resSoltab='amplitude_screen000resid_filt',
                            minZ=0.0, maxZ=2.0)
-            remove_soltabs(ss, 'amplitude_screen000resid_filt')
+            misc.remove_soltabs(ss, 'amplitude_screen000resid_filt')
         h.close()
     else:
         h = h5parm(h5file)
@@ -140,18 +140,6 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
         plot.run(st, ['time', 'freq'], axisInTable='ant', axisInCol=color, NColFig=ncol, refAnt=ref,
                  prefix=root, minmax=minmax, plotFlag=True, markerSize=4)
         h.close()
-
-
-def remove_soltabs(solset, soltabnames):
-    """
-    Remove soltab
-    """
-    for soltabname in soltabnames:
-        try:
-            soltab = solset.getSoltab(soltabname)
-            soltab.delete()
-        except:
-            pass
 
 
 def _phase_cm():
@@ -490,9 +478,12 @@ def _calculate_screen(inscreen, residuals, pp, N_piercepoints, k, east, north, u
     D2 = np.sum(D**2, axis=2)
     C = -(D2 / r_0**2)**(beta_val / 2.0) / 2.0
     f = inscreen.reshape(N_piercepoints)
-    fitted_tec = np.dot(C, f) + residuals
     if is_phase:
-        fitted_tec = normalize_phase(fitted_tec)
+        fitted_vals = np.dot(C, f) + residuals
+    else:
+        fitted_vals = 10**(np.dot(C, f)) + residuals
+    if is_phase:
+        fitted_vals = normalize_phase(fitted_vals)
     for i, xi in enumerate(xr[0: Nx]):
         for j, yi in enumerate(yr[0: Ny]):
             if height == 0.0:
@@ -501,7 +492,10 @@ def _calculate_screen(inscreen, residuals, pp, N_piercepoints, k, east, north, u
                 p, airmass = _calc_piercepoint(np.dot(np.array([xi, yi]), np.array([east, north])), up, height)
             d2 = np.sum(np.square(pp - p), axis=1)
             c = -(d2 / ( r_0**2 ))**(beta_val / 2.0) / 2.0
-            screen[i, j] = np.dot(c, f)
+            if is_phase:
+                screen[i, j] = np.dot(c, f)
+            else:
+                screen[i, j] = 10**(np.dot(c, f))
 
     # Calculate the piercepoint coords, normalized to 1
     if height == 0.0:
@@ -511,7 +505,7 @@ def _calculate_screen(inscreen, residuals, pp, N_piercepoints, k, east, north, u
         x = (pp1[:, 0] / 1000.0 - min_xy[0] / 1000.0) / extent[0] # km
         y = (pp1[:, 1] / 1000.0 - min_xy[1] / 1000.0) / extent[1] # km
 
-    outQueue.put([k, fitted_tec, screen, x, y])
+    outQueue.put([k, fitted_vals, screen, x, y])
 
 
 def _plot_frame(screen, fitted_phase1, residuals, weights, x, y, k, lower,

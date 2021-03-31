@@ -72,6 +72,7 @@ class Screen(object):
         width = max(width_ra, width_dec)  # force square image until rectangular ones are supported by IDG
         self.width_ra = width
         self.width_dec = width
+        self.log_amps = False  # sets whether amplitudes are log10 values or not
 
     def fit(self):
         """
@@ -101,14 +102,20 @@ class Screen(object):
             self.vals_amp = np.resize(self.vals_amp, new_shape)
         else:
             # Interpolate amplitudes (in log space)
-            logvals = np.log10(self.vals_amp)
+            if not self.log_amps:
+                logvals = np.log10(self.vals_amp)
+            else:
+                logvals = self.vals_amp
             if self.vals_amp.shape[0] != self.vals_ph.shape[0]:
                 f = si.interp1d(self.times_amp, logvals, axis=0, kind=interp_kind, fill_value='extrapolate')
                 logvals = f(self.times_ph)
             if self.vals_amp.shape[1] != self.vals_ph.shape[1]:
                 f = si.interp1d(self.freqs_amp, logvals, axis=1, kind=interp_kind, fill_value='extrapolate')
                 logvals = f(self.freqs_ph)
-            self.vals_amp = 10**(logvals)
+            if not self.log_amps:
+                self.vals_amp = 10**(logvals)
+            else:
+                self.vals_amp = logvals
 
     def make_fits_file(self, outfile, cellsize_deg, t_start_index,
                        t_stop_index, aterm_type='gain'):
@@ -345,10 +352,14 @@ class KLScreen(Screen):
         screen_order_amp = min(12, max(3, int(np.round(len(source_positions) / 2))))
         adjust_order_ph = True
         screen_order = min(20, len(source_positions)-1)
+        misc.remove_soltabs(solset, 'phase_screen000')
+        misc.remove_soltabs(solset, 'phase_screen000resid')
         stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order, refAnt=ref_ind,
                           scale_order=True, adjust_order=adjust_order_ph, ncpu=self.ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
+            misc.remove_soltabs(solset, 'amplitude_screen000')
+            misc.remove_soltabs(solset, 'amplitude_screen000resid')
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=screen_order_amp,
                               niter=3, scale_order=False, adjust_order=adjust_order_amp,
                               ncpu=self.ncpu)
@@ -361,7 +372,8 @@ class KLScreen(Screen):
         self.times_ph = soltab_ph_screen.time
         self.freqs_ph = soltab_ph_screen.freq
         if not self.phase_only:
-            self.vals_amp = 10**(soltab_amp_screen.val)
+            self.log_amps = True
+            self.vals_amp = soltab_amp_screen.val
             self.times_amp = soltab_amp_screen.time
             self.freqs_amp = soltab_amp_screen.freq
         self.source_names = soltab_ph_screen.dir
@@ -430,7 +442,7 @@ class KLScreen(Screen):
             Number of CPUs to use (0 means all)
         """
         global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
-        print('Making data matrices...')
+
         # Define various parameters
         N_sources = len(self.source_names)
         N_times = t_stop_index - t_start_index
@@ -488,7 +500,7 @@ class KLScreen(Screen):
                               zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
                                   itertools.repeat(beta_val), itertools.repeat(r_0),
                                   itertools.repeat(screen_type)))
-        val_phase = np.frombuffer(shared_val).reshape(val_shape).copy()
+        val_phase = np.frombuffer(shared_val, dtype=np.float64).reshape(val_shape).copy()
 
         # Process amplitude screens
         if not self.phase_only:
@@ -499,7 +511,7 @@ class KLScreen(Screen):
                                   zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
                                       itertools.repeat(beta_val), itertools.repeat(r_0),
                                       itertools.repeat(screen_type)))
-            val_amp_xx = np.frombuffer(shared_val).reshape(val_shape).copy()
+            val_amp_xx = 10**(np.frombuffer(shared_val, dtype=np.float64).reshape(val_shape).copy())
 
             # YY amplitudes
             screen_type = 'yy'
@@ -508,7 +520,7 @@ class KLScreen(Screen):
                                   zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
                                       itertools.repeat(beta_val), itertools.repeat(r_0),
                                       itertools.repeat(screen_type)))
-            val_amp_yy = np.frombuffer(shared_val).reshape(val_shape).copy()
+            val_amp_yy = 10**(np.frombuffer(shared_val, dtype=np.float64).reshape(val_shape).copy())
 
         # Output data are [RA, DEC, MATRIX, ANTENNA, FREQ, TIME].T
         data = np.zeros((N_times, 4, Ny, Nx))
@@ -561,6 +573,7 @@ class VoronoiScreen(Screen):
         self.times_ph = soltab_ph.time
         self.freqs_ph = soltab_ph.freq
         if not self.phase_only:
+            self.log_amps = False
             self.vals_amp = soltab_amp.val
             self.times_amp = soltab_amp.time
             self.freqs_amp = soltab_amp.freq
@@ -770,29 +783,21 @@ def calculate_kl_screen(k, N_piercepoints, beta_val, r_0, screen_type):
 
     Parameters
     ----------
-    inscreen : array
-        Array of screen values at the piercepoints
-    pp : array
-        Array of piercepoint locations
-    N_piercepoints : int
-        Number of pierce points
     k : int
         Time index
-    x : int
-        X coordinate for pixels in screen
-    y : int
-        Y coordinate for pixels in screen
+    N_piercepoints : int
+        Number of pierce points
     beta_val : float
-        power-law index for phase structure function (5/3 =>
+        Power-law index for phase structure function (5/3 =>
         pure Kolmogorov turbulence)
     r_0 : float
-        scale size of phase fluctuations
-    outQueue : queue
-        Queue to add results to
+        Scale size of phase fluctuations
+    screen_type : string
+        Type of screen: 'ph' (phase), 'xx' (XX amplitude) or 'yy' (YY amplitude)
     """
     global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
 
-    tmp = np.frombuffer(var_dict['shared_val']).reshape(var_dict['val_shape'])
+    tmp = np.frombuffer(var_dict['shared_val'], dtype=np.float64).reshape(var_dict['val_shape'])
     if screen_type == 'ph':
         inscreen = screen_ph[:, k]
     if screen_type == 'xx':
