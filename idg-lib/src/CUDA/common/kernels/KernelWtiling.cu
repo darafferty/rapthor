@@ -323,9 +323,9 @@ __global__ void kernel_subgrids_from_wtiles(
 } // kernel_subgrids_from_grid
 
 __global__ void kernel_wtiles_from_grid(
-    const unsigned int             dst_tile_size,
-    const unsigned int             src_tile_size,
     const unsigned int             grid_size,
+    const unsigned int             tile_size,
+    const unsigned int             padded_tile_size,
     const int*        __restrict__ tile_ids,
     const Coordinate* __restrict__ tile_coordinates,
           float2*     __restrict__ tiles,
@@ -348,34 +348,34 @@ __global__ void kernel_wtiles_from_grid(
     const Coordinate& coordinate = tile_coordinates[blockIdx.y];
 
     // Compute position of tile in grid
-    int x0 = coordinate.x * dst_tile_size - (src_tile_size - dst_tile_size) / 2 +
-             grid_size / 2;
-    int y0 = coordinate.y * dst_tile_size - (src_tile_size - dst_tile_size) / 2 +
-             grid_size / 2;
+    int x0 = coordinate.x * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int y0 = coordinate.y * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
     int x_start = max(0, x0);
     int y_start = max(0, y0);
 
     // Tranpose the polarizations
     const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-    unsigned int pol_src = pol;
-    unsigned int pol_dst = index_pol_transposed[pol];
+    unsigned int pol_src = index_pol_transposed[pol];
+    unsigned int pol_dst = pol;
 
     // Add tile to grid
-    for (unsigned int i = tid; i < (src_tile_size * src_tile_size); i += nr_threads)
+    for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
     {
-        unsigned int y = i / src_tile_size;
-        unsigned int x = i % src_tile_size;
+        unsigned int y = i / padded_tile_size;
+        unsigned int x = i % padded_tile_size;
 
         unsigned int y_src = y_start + y;
         unsigned int x_src = x_start + x;
 
-        unsigned int y_dst = y_src - y0;
-        unsigned int x_dst = x_src - x0;
+        int y_dst = y_src - y0;
+        int x_dst = x_src - x0;
 
-        if (y < src_tile_size)
+        if (y < padded_tile_size)
         {
             unsigned long src_idx = index_grid(grid_size, pol_src, y_src, x_src);
-            unsigned long dst_idx = index_grid(src_tile_size, tile_index, pol_dst, y_dst, x_dst);
+            unsigned long dst_idx = index_grid(padded_tile_size, tile_index, pol_dst, y_dst, x_dst);
             tiles[dst_idx] = grid[src_idx];
         }
     }

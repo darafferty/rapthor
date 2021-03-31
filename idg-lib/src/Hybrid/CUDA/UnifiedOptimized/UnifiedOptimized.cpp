@@ -38,6 +38,12 @@ UnifiedOptimized::UnifiedOptimized()
 
   initialize_buffers();
 
+  // Backwards W-Tiling only supports Unified Memory,
+  // not the hybrid version with splitter on the host
+  // and HtoD copy of W-tiles. Therefore this setting
+  // should be enabled by default.
+  enable_unified_memory();
+
   cuProfilerStart();
 }
 
@@ -332,12 +338,6 @@ void UnifiedOptimized::run_degridding(
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
-  // TODO: GPU w-tiling is not yet implemented for degridding, initialize
-  // the cache and set the grid in the CPU proxy to make degridding with
-  // w-tiling on the CPU work.
-  cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);
-  cpuProxy->set_grid(get_final_grid());
-
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
@@ -384,70 +384,6 @@ void UnifiedOptimized::run_degridding(
   startStates[device_id] = device.measure();
   startStates[nr_devices] = hostPowerSensor->read();
 
-  // Locks to make the GPU wait
-  std::vector<std::mutex> locks_gpu(jobs.size());
-  for (auto& lock : locks_gpu) {
-    lock.lock();
-  }
-
-  // Locks to make the CPU wait
-  std::vector<std::mutex> locks_cpu(jobs.size());
-  for (auto& lock : locks_cpu) {
-    lock.lock();
-  }
-
-  // Start host thread to create subgrids
-  std::thread host_thread = std::thread([&] {
-    int subgrid_offset = 0;
-    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-      // Get parameters for current job
-      auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-      void* metadata_ptr = jobs[job_id].metadata_ptr;
-      std::complex<float>* grid_ptr = grid.data();
-      unsigned local_id = job_id % 2;
-
-      // Load memory objects
-      cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
-
-      // Wait for input buffer to be free
-      if (job_id > 0) {
-        locks_cpu[job_id - 1].lock();
-      }
-
-      // Run splitter kernel
-      cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
-      marker_splitter.start();
-
-      if (w_step == 0.0) {
-        cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                                metadata_ptr, h_subgrids, grid_ptr);
-      } else if (plan.get_use_wtiles()) {
-        cpuKernels.run_splitter_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
-            h_subgrids, grid_ptr);
-        subgrid_offset += current_nr_subgrids;
-      } else {
-        cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
-                                       subgrid_size, metadata_ptr, h_subgrids,
-                                       grid_ptr);
-      }
-
-      marker_splitter.end();
-
-      // Copy subgrids to device
-      auto sizeof_subgrids =
-          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-      htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
-
-      // Wait for subgrids to be copied
-      htodstream.synchronize();
-
-      // Unlock this job
-      locks_gpu[job_id].unlock();
-    }
-  });  // end host thread
-
   // Iterate all jobs
   for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
     // Id for double-buffering
@@ -468,9 +404,6 @@ void UnifiedOptimized::run_degridding(
     cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
     cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
     cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
-
-    // Wait for subgrids to be computed
-    locks_gpu[job_id].lock();
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -515,6 +448,15 @@ void UnifiedOptimized::run_degridding(
     // Initialize visibilities to zero
     d_visibilities.zero(executestream);
 
+    // Debug: prevent the use of any pre-existent subgrids on the device
+    d_subgrids.zero(executestream);
+
+    // Run W-tiling
+    auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+    run_subgrids_from_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
+                             image_size, w_step, shift, wtile_initialize_set,
+                             d_subgrids, d_metadata);
+
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
                               ImageDomainToFourierDomain);
@@ -526,10 +468,6 @@ void UnifiedOptimized::run_degridding(
                             d_wavenumbers, d_visibilities, d_spheroidal,
                             d_aterms, d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
-
-    // Signal that the input buffer is free
-    inputCopied[job_id]->synchronize();
-    locks_cpu[job_id].unlock();
 
     // Wait for degridder to finish
     gpuFinished[job_id]->synchronize();
@@ -546,11 +484,6 @@ void UnifiedOptimized::run_degridding(
     device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
-
-  // Wait for host thread
-  if (host_thread.joinable()) {
-    host_thread.join();
-  }
 
   // Wait for all visibilities to be copied
   dtohstream.synchronize();
@@ -721,6 +654,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
   int w_padded_tile_size = next_composite(
       padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
+  std::cout << "tile_size: " << tile_size << std::endl;
+  std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
+  std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
@@ -942,6 +878,217 @@ void UnifiedOptimized::run_subgrids_to_wtiles(unsigned int subgrid_offset,
     device.launch_adder_subgrids_to_wtiles(
         nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
         subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
+    stream.synchronize();
+
+    // Increment the subgrid index by the actual number of processed subgrids
+    subgrid_index += nr_subgrids_to_process;
+  }
+
+  // End performance measurement
+  endState = device.measure();
+  m_report->update(Report::wtiling, startState, endState);
+}
+void UnifiedOptimized::run_wtiles_from_grid(unsigned int subgrid_size,
+                                          float image_size, float w_step,
+                                          const Array1D<float>& shift,
+                                          WTileUpdateInfo& wtile_initialize_info) {
+
+  // Load grid
+  unsigned int grid_size = m_grid->get_x_dim();
+
+  // Load CUDA objects
+  InstanceCUDA& device = get_device(0);
+  cu::Context& context = device.get_context();
+  cu::Stream& executestream = device.get_execute_stream();
+  cu::Stream& dtohstream = device.get_dtoh_stream();
+
+  // Load buffers
+  cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
+  cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
+  cu::HostMemory& h_padded_tiles = *m_buffers_wtiling.h_tiles;
+
+  // Get information on what wtiles to flush
+  const int tile_size = m_tile_size;
+  const unsigned int nr_tiles = wtile_initialize_info.wtile_ids.size();
+  std::vector<idg::Coordinate>& tile_coordinates =
+      wtile_initialize_info.wtile_coordinates;
+  std::vector<int>& tile_ids = wtile_initialize_info.wtile_ids;
+  const int padded_tile_size = tile_size + subgrid_size;
+
+  // Compute the maximum w value for all tiles
+  float max_abs_w = 0.0;
+  for (unsigned int i = 0; i < nr_tiles; i++) {
+    idg::Coordinate& coordinate = tile_coordinates[i];
+    float w = (coordinate.z + 0.5f) * w_step;
+    max_abs_w = std::max(max_abs_w, std::abs(w));
+  }
+
+  // Compute the maximum tile size for all padded tiles
+  const float image_size_shift =
+      image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
+  int w_padded_tile_size = next_composite(
+      padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
+  std::cout << "tile_size: " << tile_size << std::endl;
+  std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
+  std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
+
+  // Compute the number of padded tiles
+  size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
+                                NR_CORRELATIONS * sizeof(idg::float2);
+  unsigned int nr_tiles_batch =
+      (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
+  nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
+
+  // Allocate coordinates buffer
+  size_t sizeof_tile_coordinates = nr_tiles_batch * sizeof(idg::Coordinate);
+  cu::DeviceMemory d_tile_coordinates(context, sizeof_tile_coordinates);
+
+  // Allocate ids buffer
+  size_t sizeof_tile_ids = nr_tiles_batch * sizeof(int);
+  cu::DeviceMemory d_tile_ids(context, sizeof_tile_ids);
+  cu::DeviceMemory d_padded_tile_ids(context, sizeof_tile_ids);
+
+  // Initialize d_padded_tile_ids
+  std::vector<int> padded_tile_ids(nr_tiles_batch);
+  for (unsigned int i = 0; i < nr_tiles_batch; i++) {
+    padded_tile_ids[i] = i;
+  }
+  executestream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(),
+                                sizeof_tile_ids);
+
+  // Copy shift to device
+  cu::DeviceMemory d_shift(context, shift.bytes());
+  executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
+
+  // Initialize FFT for w_padded_tiles
+  unsigned stride = 1;
+  unsigned dist = w_padded_tile_size * w_padded_tile_size;
+  unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+  cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size, stride,
+                    dist, batch);
+  fft.setStream(executestream);
+  cufftComplex* tile_ptr =
+      reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
+
+  // Create jobs
+  struct JobData {
+    int tile_offset;
+    int current_nr_tiles;
+    std::unique_ptr<cu::Event> gpuFinished;
+    std::unique_ptr<cu::Event> outputCopied;
+  };
+
+  std::vector<JobData> jobs;
+
+  unsigned int current_nr_tiles = nr_tiles_batch;
+  for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
+       tile_offset += current_nr_tiles) {
+    current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
+                           ? current_nr_tiles
+                           : nr_tiles - tile_offset;
+
+    JobData job;
+    job.current_nr_tiles = current_nr_tiles;
+    job.tile_offset = tile_offset;
+    job.gpuFinished.reset(new cu::Event(context));
+    job.outputCopied.reset(new cu::Event(context));
+    jobs.push_back(std::move(job));
+  }
+
+  // Iterate all jobs
+  for (auto& job : jobs) {
+    int tile_offset = job.tile_offset;
+    int current_nr_tiles = job.current_nr_tiles;
+
+    // Copy tile metadata to GPU
+    sizeof_tile_ids = current_nr_tiles * sizeof(int);
+    executestream.memcpyHtoDAsync(d_tile_ids, &tile_ids[tile_offset],
+                                  sizeof_tile_ids);
+    sizeof_tile_coordinates = current_nr_tiles * sizeof(idg::Coordinate);
+    executestream.memcpyHtoDAsync(d_tile_coordinates,
+                                  &tile_coordinates[tile_offset],
+                                  sizeof_tile_coordinates);
+
+    // Split tile from grid
+    if (m_use_unified_memory) {
+      cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
+      device.launch_splitter_wtiles_from_grid(
+        current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
+        d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
+    } else {
+      // TODO
+    }
+
+    // Launch inverse FFT
+    fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
+
+    // Call kernel_apply_phasor
+    device.launch_adder_apply_phasor(current_nr_tiles, image_size, w_step,
+                                     w_padded_tile_size, d_padded_tiles,
+                                     d_shift, d_tile_coordinates);
+
+    // Launch forward FFT
+    fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
+
+    // Call kernel_copy_tiles
+    device.launch_adder_copy_tiles(current_nr_tiles, w_padded_tile_size,
+                                   padded_tile_size, d_padded_tile_ids,
+                                   d_tile_ids, d_padded_tiles, d_tiles);
+  }    // end for tile_offset
+}
+
+void UnifiedOptimized::run_subgrids_from_wtiles(unsigned int subgrid_offset, unsigned int nr_subgrids,
+                                                unsigned int subgrid_size, float image_size,
+                                                float w_step, const Array1D<float>& shift,
+                                                WTileUpdateSet& wtile_initialize_set,
+                                                cu::DeviceMemory& d_subgrids,
+                                                cu::DeviceMemory& d_metadata)
+{
+  // Load CUDA objects
+  InstanceCUDA& device = get_device(0);
+  cu::Stream& stream = device.get_execute_stream();
+
+  // Load buffers
+  cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
+
+  // Performance measurement
+  State startState, endState;
+  startState = device.measure();
+
+  for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;) {
+    // Check whether initialize is needed right now
+    if (!wtile_initialize_set.empty() && wtile_initialize_set.front().subgrid_index ==
+                                         (int)(subgrid_index + subgrid_offset)) {
+      // Get information on what wtiles to initialize
+      WTileUpdateInfo& wtile_initialize_info = wtile_initialize_set.front();
+
+      // Initialize the wtiles from the grid
+      run_wtiles_from_grid(subgrid_size, image_size, w_step, shift, wtile_initialize_info);
+
+      // Remove the initialize event from the queue
+      wtile_initialize_set.pop_front();
+    }
+
+    // Initialize number of subgrids to process next to all remaining subgrids
+    // in job
+    int nr_subgrids_to_process = nr_subgrids - subgrid_index;
+
+    // Check whether initialization needs to happen before the end of the job
+    if (!wtile_initialize_set.empty() &&
+        wtile_initialize_set.front().subgrid_index - (int)
+        (subgrid_index - subgrid_offset) < nr_subgrids_to_process) {
+      // Reduce the number of subgrids to process to just before the next
+      // initialization event
+      nr_subgrids_to_process = wtile_initialize_set.front().subgrid_index -
+                               (subgrid_offset + subgrid_index);
+    }
+
+    // Process all subgrids that can be processed now
+    std::complex<float> scale(1.0f, 1.0f);
+    unsigned int grid_size = m_grid->get_x_dim();
+    device.launch_splitter_subgrids_from_wtiles(
+      nr_subgrids_to_process, grid_size, subgrid_size,
+      m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles, scale); // scale?
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
