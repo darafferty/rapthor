@@ -45,6 +45,9 @@ exec 3<> wsclean_mpi_$infix.slurm
     echo $mpi_command >&3
 exec 3>&-
 
+# unset SLURM environment variables
+unset "${!SLURM@}"
+
 # run sbatch
 job=$(sbatch wsclean_mpi_$infix.slurm)
 exit_status=$?
