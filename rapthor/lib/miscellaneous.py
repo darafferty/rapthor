@@ -448,7 +448,7 @@ def remove_soltabs(solset, soltabnames):
     soltabnames : list
         Names of soltabs to remove
     """
-    soltabnames = list(soltabnames)
+    soltabnames = string2list(soltabnames)
     for soltabname in soltabnames:
         try:
             soltab = solset.getSoltab(soltabname)
