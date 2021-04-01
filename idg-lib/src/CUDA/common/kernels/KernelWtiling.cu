@@ -360,7 +360,7 @@ __global__ void kernel_wtiles_from_grid(
     unsigned int pol_src = index_pol_transposed[pol];
     unsigned int pol_dst = pol;
 
-    // Add tile to grid
+    // Extract tile from grid
     for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
     {
         unsigned int y = i / padded_tile_size;
