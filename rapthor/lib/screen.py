@@ -441,6 +441,7 @@ class KLScreen(Screen):
         ncpu : int, optional
             Number of CPUs to use (0 means all)
         """
+        # Use global variables to avoid serializing the arrays in the multiprocessing calls
         global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
 
         # Define various parameters
@@ -762,8 +763,19 @@ class VoronoiScreen(Screen):
 
 
 def init_worker(shared_val, val_shape):
-    # Using a dictionary is not strictly necessary. You can also
-    # use global variables.
+    """
+    Initializer called when a child process is initialized, responsible
+    for storing store shared_val and val_shape in var_dict (a global variable).
+
+    See https://research.wmz.ninja/articles/2018/03/on-sharing-large-arrays-when-using-pythons-multiprocessing.html
+
+    Parameters
+    ----------
+    shared_val : array
+        RawArray to be shared
+    val_shape : tuple
+        Shape of shared_val array
+    """
     global var_dict
 
     var_dict['shared_val'] = shared_val
@@ -795,6 +807,7 @@ def calculate_kl_screen(k, N_piercepoints, beta_val, r_0, screen_type):
     screen_type : string
         Type of screen: 'ph' (phase), 'xx' (XX amplitude) or 'yy' (YY amplitude)
     """
+    # Use global variables to avoid serializing the arrays in the multiprocessing calls
     global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
 
     tmp = np.frombuffer(var_dict['shared_val'], dtype=np.float64).reshape(var_dict['val_shape'])

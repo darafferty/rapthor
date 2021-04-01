@@ -439,7 +439,7 @@ def remove_soltabs(solset, soltabnames):
     """
     Remove H5parm soltabs from a solset
 
-    Note: the H5pram must be opened with readonly = False
+    Note: the H5parm must be opened with readonly = False
 
     Parameters
     ----------

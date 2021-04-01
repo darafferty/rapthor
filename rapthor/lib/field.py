@@ -225,7 +225,7 @@ class Field(object):
             # observation into minnobs number of new observations (since there is no
             # drawback to having more than minnobs observations in total)
             #
-            # Note: Sue to a limitation in Dysco, we make sure to have at least
+            # Note: Due to a limitation in Dysco, we make sure to have at least
             # 2 time slots per observation, otherwise the output MS cannot be
             # written with compression
             mintime = self.parset['calibration_specific']['slow_timestep_sec']
