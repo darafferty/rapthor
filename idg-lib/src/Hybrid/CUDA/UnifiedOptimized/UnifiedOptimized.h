@@ -7,6 +7,10 @@
 #include "idg-cpu.h"
 #include "CUDA/common/CUDA.h"
 
+namespace cu {
+class UnifiedMemory;
+};  // namespace cu
+
 namespace idg {
 namespace proxy {
 namespace hybrid {
@@ -91,6 +95,7 @@ class UnifiedOptimized : public cuda::CUDA {
 
  protected:
   std::unique_ptr<idg::proxy::cpu::CPU> cpuProxy;
+  std::unique_ptr<cu::UnifiedMemory> u_grid;
 
   // W-Tiling
   WTiles m_wtiles;

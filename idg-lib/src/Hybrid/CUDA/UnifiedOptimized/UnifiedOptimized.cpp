@@ -624,10 +624,10 @@ std::shared_ptr<Grid> UnifiedOptimized::allocate_grid(size_t nr_w_layers,
         nr_w_layers * auxiliary::sizeof_grid(grid_size, nr_correlations);
     InstanceCUDA& device = get_device(0);
     cu::Context& context = device.get_context();
-    std::unique_ptr<cu::UnifiedMemory> u_grid(
-        new cu::UnifiedMemory(context, sizeof_grid));
-    return std::shared_ptr<Grid>(new Grid(std::move(u_grid), nr_w_layers,
-                                          nr_correlations, height, width));
+    u_grid.reset(new cu::UnifiedMemory(context, sizeof_grid));
+    m_grid.reset(
+        new Grid(*u_grid, nr_w_layers, nr_correlations, grid_size, grid_size));
+    return m_grid;
   } else {
     // Defer call to cpuProxy
     return cpuProxy->allocate_grid(nr_w_layers, nr_correlations, height, width);
