@@ -1,7 +1,7 @@
 # Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-import dppp
+import dp3
 import numpy as np
 import idg
 from idg.h5parmwriter import H5ParmWriter
@@ -13,7 +13,7 @@ import time
 import logging
 
 
-class IDGCalDPStep(dppp.DPStep):
+class IDGCalDPStep(dp3.Step):
     def __init__(self, parset, prefix):
         super().__init__()
         self.read_parset(parset, prefix)
@@ -60,7 +60,7 @@ class IDGCalDPStep(dppp.DPStep):
 
         Parameters
         ----------
-        parset : dppp.ParameterSet
+        parset : dp3.ParameterSet
             ParameterSet object provided by DP3
         prefix : str
             Prefix to be used when reading the parset.
@@ -297,7 +297,7 @@ class IDGCalDPStep(dppp.DPStep):
     def process_buffers(self):
         """
         Processing the buffers. This is the central method within any class that
-        derives from dppp.DPStep
+        derives from dp3.Step
         """
 
         if not self.is_initialized:

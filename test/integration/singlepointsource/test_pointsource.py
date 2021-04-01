@@ -122,7 +122,7 @@ def test_singlepointsource(stokes):
     check_call(
         [
             "DPPP",
-            os.path.join(COMMONDIR, "dppp-predict.parset"),
+            os.path.join(COMMONDIR, "dp3-predict.parset"),
             f"msin={MS}",
             f"msin.starttime={starttimestr}",
             f"msin.endtime={endtimestr}",
