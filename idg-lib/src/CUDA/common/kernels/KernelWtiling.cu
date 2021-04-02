@@ -297,7 +297,7 @@ __global__ void kernel_subgrids_from_wtiles(
         int y = i / subgrid_size;
         int x = i % subgrid_size;
         float pi = (float) M_PI;
-        float phase = pi * (x+y-subgrid_size)/subgrid_size;
+        float phase = -pi * (x+y-subgrid_size)/subgrid_size;
         float2 phasor = make_float2(cosf(phase) * scale.x,
                                     sinf(phase) * scale.y);
 

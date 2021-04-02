@@ -120,7 +120,7 @@ void subgrids_from_wtiles(const long nr_subgrids, const int grid_size,
           int y_dst = subgrid_y + y;
 
           // Load phasor
-          float phase = M_PI * (x + y - subgrid_size) / subgrid_size;
+          float phase = -M_PI * (x + y - subgrid_size) / subgrid_size;
           std::complex<float> phasor(cosf(phase), sinf(phase));
 
           // Add subgrid value to tiles
