@@ -390,9 +390,8 @@ int main(int argc, char* argv[]) {
    * Test copying tiles forwards and backwards
    ********************************************************************************/
   std::cout << ">> Testing copy_tiles: tiles -> padded tiles" << std::endl;
-  cuda.launch_adder_copy_tiles(nr_tiles, tile_size, padded_tile_size,
-                               d_tile_ids, d_padded_tile_ids, d_tiles,
-                               d_padded_tiles);
+  cuda.launch_copy_tiles(nr_tiles, tile_size, padded_tile_size, d_tile_ids,
+                         d_padded_tile_ids, d_tiles, d_padded_tiles);
   stream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_padded_tiles);
   stream.synchronize();
   nr_errors = compare_tiles(static_cast<std::complex<float>*>(h_tiles),
@@ -410,9 +409,9 @@ int main(int argc, char* argv[]) {
   std::cout << ">> Testing copy_tiles: padded tiles -> tiles" << std::endl;
   h_tiles.zero();
   d_tiles.zero();
-  cuda.launch_adder_copy_tiles(nr_tiles, padded_tile_size, tile_size,
-                               d_padded_tile_ids, d_tile_ids, d_padded_tiles,
-                               d_tiles);
+  cuda.launch_copy_tiles(nr_tiles, padded_tile_size, tile_size,
+                         d_padded_tile_ids, d_tile_ids, d_padded_tiles,
+                         d_tiles);
   stream.memcpyDtoHAsync(h_tiles, d_tiles, sizeof_tiles);
   stream.synchronize();
   nr_errors = compare_tiles(static_cast<std::complex<float>*>(h_tiles),

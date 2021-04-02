@@ -113,13 +113,12 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_scaler(int nr_subgrids, int subgrid_size, void* u_subgrid);
 
-  void launch_adder_copy_tiles(unsigned int nr_tiles,
-                               unsigned int src_tile_size,
-                               unsigned int dst_tile_size,
-                               cu::DeviceMemory& d_src_tile_ids,
-                               cu::DeviceMemory& d_dst_tile_ids,
-                               cu::DeviceMemory& d_src_tiles,
-                               cu::DeviceMemory& d_dst_tiles);
+  void launch_copy_tiles(unsigned int nr_tiles, unsigned int src_tile_size,
+                         unsigned int dst_tile_size,
+                         cu::DeviceMemory& d_src_tile_ids,
+                         cu::DeviceMemory& d_dst_tile_ids,
+                         cu::DeviceMemory& d_src_tiles,
+                         cu::DeviceMemory& d_dst_tiles);
 
   void launch_adder_apply_phasor(unsigned int nr_tiles, float image_size,
                                  float w_step, unsigned int tile_size,
