@@ -1074,7 +1074,7 @@ void InstanceCUDA::launch_copy_tiles(unsigned int nr_tiles,
                               parameters);
 }
 
-void InstanceCUDA::launch_adder_apply_phasor(
+void InstanceCUDA::launch_apply_phasor_to_wtiles(
     unsigned int nr_tiles, float image_size, float w_step,
     unsigned int tile_size, cu::DeviceMemory& d_tiles,
     cu::DeviceMemory& d_shift, cu::DeviceMemory& d_tile_coordinates) {

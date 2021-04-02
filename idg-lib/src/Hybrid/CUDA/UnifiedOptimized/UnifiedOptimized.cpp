@@ -744,9 +744,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
-    device.launch_adder_apply_phasor(current_nr_tiles, image_size, w_step,
-                                     w_padded_tile_size, d_padded_tiles,
-                                     d_shift, d_tile_coordinates);
+    device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
+                                         w_padded_tile_size, d_padded_tiles,
+                                         d_shift, d_tile_coordinates);
 
     // Launch forward FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
@@ -1021,9 +1021,9 @@ void UnifiedOptimized::run_wtiles_from_grid(
     fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
-    device.launch_adder_apply_phasor(current_nr_tiles, image_size, w_step,
-                                     w_padded_tile_size, d_padded_tiles,
-                                     d_shift, d_tile_coordinates);
+    device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
+                                         w_padded_tile_size, d_padded_tiles,
+                                         d_shift, d_tile_coordinates);
 
     // Launch forward FFT
     fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);

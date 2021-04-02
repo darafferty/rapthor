@@ -120,11 +120,11 @@ class InstanceCUDA : public KernelsInstance {
                          cu::DeviceMemory& d_src_tiles,
                          cu::DeviceMemory& d_dst_tiles);
 
-  void launch_adder_apply_phasor(unsigned int nr_tiles, float image_size,
-                                 float w_step, unsigned int tile_size,
-                                 cu::DeviceMemory& d_tiles,
-                                 cu::DeviceMemory& d_shift,
-                                 cu::DeviceMemory& d_tile_coordinates);
+  void launch_apply_phasor_to_wtiles(unsigned int nr_tiles, float image_size,
+                                     float w_step, unsigned int tile_size,
+                                     cu::DeviceMemory& d_tiles,
+                                     cu::DeviceMemory& d_shift,
+                                     cu::DeviceMemory& d_tile_coordinates);
 
   void launch_adder_subgrids_to_wtiles(int nr_subgrids, long grid_size,
                                        int subgrid_size, int tile_size,
