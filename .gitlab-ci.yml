@@ -188,6 +188,7 @@ idg-integration-docker:
 
 idg-integration-das:
   stage: integration_and_deploy
+  allow_failure: true
   tags:
     - ci_gpu
   needs: []
