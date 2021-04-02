@@ -38,12 +38,6 @@ UnifiedOptimized::UnifiedOptimized()
 
   initialize_buffers();
 
-  // Backwards W-Tiling only supports Unified Memory,
-  // not the hybrid version with splitter on the host
-  // and HtoD copy of W-tiles. Therefore this setting
-  // should be enabled by default.
-  enable_unified_memory();
-
   cuProfilerStart();
 }
 
@@ -898,7 +892,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
   InstanceCUDA& device = get_device(0);
   cu::Context& context = device.get_context();
   cu::Stream& executestream = device.get_execute_stream();
-  cu::Stream& dtohstream = device.get_dtoh_stream();
+  cu::Stream& htodstream = device.get_htod_stream();
 
   // Load buffers
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
@@ -1014,7 +1008,53 @@ void UnifiedOptimized::run_wtiles_from_grid(
           current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
           d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
     } else {
-      // TODO
+// Extract tiles from grid
+#pragma omp parallel for
+      for (int i = 0; i < current_nr_tiles; i++) {
+        idg::Coordinate& coordinate = tile_coordinates[i];
+
+        int x0 = coordinate.x * tile_size - (padded_tile_size - tile_size) / 2 +
+                 grid_size / 2;
+        int y0 = coordinate.y * tile_size - (padded_tile_size - tile_size) / 2 +
+                 grid_size / 2;
+
+        int x_start = std::max(0, x0);
+        int y_start = std::max(0, y0);
+        int x_end = std::min(x0 + padded_tile_size, (int)grid_size);
+        int y_end = std::min(y0 + padded_tile_size, (int)grid_size);
+
+        for (int y = y_start; y < y_end; y++) {
+          for (int x = x_start; x < x_end; x++) {
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+              const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+              unsigned int pol_src = index_pol_transposed[pol];
+              unsigned int pol_dst = pol;
+              unsigned long src_idx = index_grid(grid_size, pol_src, y, x);
+              unsigned long dst_idx =
+                  index_grid(padded_tile_size, i, pol_dst, (y - y0), (x - x0));
+              std::complex<float>* tile_ptr =
+                  static_cast<std::complex<float>*>(h_padded_tiles.ptr());
+              std::complex<float>* grid_ptr = m_grid->data();
+              tile_ptr[dst_idx] = grid_ptr[src_idx];
+            }
+          }
+        }
+
+        // Copy tile to the device
+        CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_padded_tiles);
+        size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
+                                      NR_CORRELATIONS * sizeof(idg::float2);
+        d_tile_ptr += i * sizeof_w_padded_tile;
+        char* h_tile_ptr = static_cast<char*>(h_padded_tiles);
+        h_tile_ptr += i * sizeof_w_padded_tile;
+        htodstream.memcpyHtoDAsync(d_tile_ptr, h_tile_ptr,
+                                   sizeof_w_padded_tile);
+      }
+    }
+
+    if (!m_use_unified_memory) {
+      // Wait for all tiles to be copied
+      htodstream.synchronize();
     }
 
     // Launch inverse FFT
