@@ -230,8 +230,8 @@ void wtiles_to_grid(int nr_tiles, int grid_size, int tile_size,
       for (int x = x_start; x < x_end; x++) {
         for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
           const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-          unsigned int pol_src  = pol;
-          unsigned int pol_dst  = index_pol_transposed[pol];
+          unsigned int pol_src = pol;
+          unsigned int pol_dst = index_pol_transposed[pol];
           unsigned long dst_idx = index_grid(grid_size, pol_src, y, x);
           unsigned long src_idx =
               index_grid(padded_tile_size, i, pol_dst, (y - y0), (x - x0));
