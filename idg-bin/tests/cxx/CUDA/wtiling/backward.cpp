@@ -194,7 +194,6 @@ int main(int argc, char* argv[]) {
   // Get remaining parameters
   float image_size = data.compute_image_size(grid_size, nr_channels);
   float cell_size = image_size / grid_size;
-  float w_step = 4.0 / (image_size * image_size);
 
   // Initialize data
   idg::Array1D<float> frequencies(nr_channels);
@@ -229,17 +228,6 @@ int main(int argc, char* argv[]) {
   auto& tile_ids = wtile_info.wtile_ids;
   auto& tile_coordinates = wtile_info.wtile_coordinates;
   int nr_tiles = tile_coordinates.size();
-
-  // Set padded tile size
-  const float image_size_shift =
-      image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
-
-  float max_abs_w = 0.0;
-  for (int i = 0; i < nr_tiles; i++) {
-    idg::Coordinate& coordinate = tile_coordinates[i];
-    float w = (coordinate.z + 0.5f) * w_step;
-    max_abs_w = std::max(max_abs_w, std::abs(w));
-  }
 
   // Initialize GPU
   std::cout << ">> Initialize GPU" << std::endl;
