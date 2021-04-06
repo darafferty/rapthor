@@ -15,6 +15,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
 import glob
+from astropy.io import fits as pyfits
 
 
 class Field(object):
@@ -584,6 +585,13 @@ class Field(object):
                         sector_skymodels_true_sky.append(sector.image_skymodel_file_true_sky)
                 sector_names = [sector.name for sector in self.sectors]
 
+            # Get new models from the imaged cal sectors
+            cal_sector_skymodels_apparent_sky = [sector.image_skymodel_file_apparent_sky for
+                                                 sector in self.cal_sectors]
+            cal_sector_skymodels_true_sky = [sector.image_skymodel_file_true_sky for
+                                             sector in self.cal_sectors]
+            cal_sector_names = [sector.name for sector in self.cal_sectors]
+
             # Concatenate the sky models from all sectors, being careful not to duplicate
             # source and patch names
             for i, (sm, sn) in enumerate(zip(sector_skymodels_true_sky, sector_names)):
@@ -634,6 +642,75 @@ class Field(object):
                 skymodel_apparent_sky.setPatchPositions(method='wmean')
             else:
                 skymodel_apparent_sky = None
+
+            # Filter the sky model, keeping only those sources outside of the cal sectors
+            # Use cal mosaic to filter: load mosaic, invert, save, then filter with lsmtool
+            self.field_cal_image_filename
+            hdu = pyfits.open(self.field_cal_image_filename, memmap=False)
+            data = np.array(np.isnan(hdu[0].data), dtype=float)
+            hdu[0].data = data.reshape((1, 1, data.shape[0], data.shape[1]))
+            output_image = os.path.join(self.working_dir, 'scratch', 'source_mask.fits')
+            hdu.writeto(output_image, overwrite=True)
+            skymodel_true_sky.select('{} == True'.format(output_image))
+            if skymodel_apparent_sky is not None:
+                skymodel_apparent_sky.select('{} == True'.format(output_image))
+
+            # Concatenate the sky models from cal sectors, being careful not to duplicate
+            # source and patch names
+            for i, (sm, sn) in enumerate(zip(cal_sector_skymodels_true_sky, cal_sector_names)):
+                if i == 0:
+                    cal_skymodel_true_sky = lsmtool.load(str(sm), beamMS=self.beam_ms_filename)
+                    patchNames = cal_skymodel_true_sky.getColValues('Patch')
+                    new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                    cal_skymodel_true_sky.setColValues('Patch', new_patchNames)
+                    sourceNames = cal_skymodel_true_sky.getColValues('Name')
+                    new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                    cal_skymodel_true_sky.setColValues('Name', new_sourceNames)
+                else:
+                    skymodel2 = lsmtool.load(str(sm))
+                    patchNames = skymodel2.getColValues('Patch')
+                    new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                    skymodel2.setColValues('Patch', new_patchNames)
+                    sourceNames = skymodel2.getColValues('Name')
+                    new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                    skymodel2.setColValues('Name', new_sourceNames)
+                    table1 = cal_skymodel_true_sky.table.filled()
+                    table2 = skymodel2.table.filled()
+                    cal_skymodel_true_sky.table = vstack([table1, table2], metadata_conflicts='silent')
+            cal_skymodel_true_sky._updateGroups()
+            cal_skymodel_true_sky.setPatchPositions(method='wmean')
+
+            if cal_sector_skymodels_apparent_sky is not None:
+                for i, (sm, sn) in enumerate(zip(cal_sector_skymodels_apparent_sky, cal_sector_names)):
+                    if i == 0:
+                        cal_skymodel_apparent_sky = lsmtool.load(str(sm))
+                        patchNames = cal_skymodel_apparent_sky.getColValues('Patch')
+                        new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                        cal_skymodel_apparent_sky.setColValues('Patch', new_patchNames)
+                        sourceNames = cal_skymodel_apparent_sky.getColValues('Name')
+                        new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                        cal_skymodel_apparent_sky.setColValues('Name', new_sourceNames)
+                    else:
+                        skymodel2 = lsmtool.load(str(sm))
+                        patchNames = skymodel2.getColValues('Patch')
+                        new_patchNames = np.array(['{0}_{1}_cal'.format(p, sn) for p in patchNames], dtype='U100')
+                        skymodel2.setColValues('Patch', new_patchNames)
+                        sourceNames = skymodel2.getColValues('Name')
+                        new_sourceNames = np.array(['{0}_{1}_cal'.format(s, sn) for s in sourceNames], dtype='U100')
+                        skymodel2.setColValues('Name', new_sourceNames)
+                        table1 = cal_skymodel_apparent_sky.table.filled()
+                        table2 = skymodel2.table.filled()
+                        cal_skymodel_apparent_sky.table = vstack([table1, table2], metadata_conflicts='silent')
+                cal_skymodel_apparent_sky._updateGroups()
+                cal_skymodel_apparent_sky.setPatchPositions(method='wmean')
+            else:
+                cal_skymodel_apparent_sky = None
+
+            # Replace screen components with the cal ones
+            skymodel_true_sky.concatenate(cal_skymodel_true_sky, matchBy='name', keep='from2')
+            if skymodel_apparent_sky is not None:
+                skymodel_apparent_sky.concatenate(cal_skymodel_apparent_sky, matchBy='name',
+                                                  keep='from2')
 
             # Use concatenated sky models to make new calibration model (we set find_sources
             # to False to preserve the source patches defined in the image pipeline by PyBDSF)
@@ -882,6 +959,31 @@ class Field(object):
                     bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
                     bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
+
+    def define_cal_sectors(self, index):
+        """
+        Defines the calibrator sectors, replacing the imaging sectors
+
+        Parameters
+        ----------
+        index : int
+            Iteration index
+        """
+        self.imaging_sectors = []
+        names = self.bright_source_skymodel.getPatchNames()
+        sizes = self.bright_source_skymodel.getPatchSizes(units='degree')
+        minsize = 0.035  # minimum allowed image size in deg
+        sizes = [max(minsize, s*1.5) for s in sizes]  # width in deg
+        ras, decs = self.bright_source_skymodel.getPatchPositions(method='wmean', asArray=True)
+        for size_deg, name, ra, dec in zip(sizes, names, ras, decs):
+            cal_sector = Sector(name, ra, dec, size_deg, size_deg, self)
+            cal_sector.calibration_skymodel = self.bright_source_skymodel.copy()
+            cal_sector.make_skymodel(index)
+            self.imaging_sectors.append(cal_sector)
+        self.bright_source_sectors = []
+        self.define_outlier_sectors(index)
+        self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
+        self.nsectors = len(self.sectors)
 
     def find_intersecting_sources(self):
         """

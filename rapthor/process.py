@@ -10,6 +10,7 @@ from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 from rapthor.lib.field import Field
+import os
 
 log = logging.getLogger('rapthor')
 
@@ -35,8 +36,12 @@ def run(parset_file, logging_level='info'):
     parset['logging_level'] = logging_level
     _logging.set_level(logging_level)
 
-    # Initialize field object
+    # Initialize field and cal_field objects
     field = Field(parset)
+    cal_parset = parset.copy()
+    cal_parset['dir_working'] = os.path.join(parset['dir_working'], 'calibrators')
+    cal_parset['imaging_specific']['use_screens'] = False
+    cal_field = Field(cal_parset)
 
     # Set the processing strategy
     strategy_steps = set_strategy(field)
@@ -79,5 +84,33 @@ def run(parset_file, logging_level='info'):
                                 "to previous value is > {})".format(field.divergence_ratio))
                 log.info("Stopping at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
+
+        # Update the calibrator field object
+        cal_field.h5parm_filename = field.h5parm_filename
+        cal_field.define_cal_sectors()
+        cal_field.__dict__.update(step)
+        for sector in cal_field.imaging_sectors:
+            sector.__dict__.update(step)
+        cal_field.peel_bright_sources = False
+        cal_field.peel_outliers = True
+        cal_field.do_predict = True
+        cal_field.do_image = True
+
+        # Predict and subtract the calibrator sector models
+        if cal_field.do_predict:
+            op = Predict(cal_field, index+1)
+            op.run()
+
+        # Image the calibrator sectors
+        if cal_field.do_image:
+            op = Image(cal_field, index+1)
+            op.run()
+
+            # Mosaic the sectors, for now just Stokes I
+            # TODO: run mosaic ops for IQUV+residuals
+            op = Mosaic(cal_field, index+1)
+            op.run()
+
+            field.cal_sectors = cal_field.imaging_sectors
 
     log.info("Rapthor has finished :)")
