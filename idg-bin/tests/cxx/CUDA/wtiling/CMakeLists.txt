@@ -37,18 +37,6 @@ target_include_directories(
     ${CUDA_INCLUDE_DIR}
 )
 
-# Set install
-install (
-    TARGETS ${FORWARD} ${BACKWARD}
-    RUNTIME DESTINATION bin/tests/cxx
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib/static
-)
-
 # Set tests
-add_test(
-    NAME ${FORWARD}
-    COMMAND ${CMAKE_INSTALL_PREFIX}/bin/tests/cxx/${PROJECT_NAME})
-add_test(
-    NAME ${BACKWARD}
-    COMMAND ${CMAKE_INSTALL_PREFIX}/bin/tests/cxx/${PROJECT_NAME})
+add_built_test(${FORWARD} LABEL bin_cxx)
+add_built_test(${BACKWARD} LABEL bin_cxx)
