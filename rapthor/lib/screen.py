@@ -19,6 +19,8 @@ from scipy.spatial import Voronoi
 import shapely.geometry
 import shapely.ops
 import multiprocessing
+from multiprocessing import Pool, RawArray
+import itertools
 
 
 class Screen(object):
@@ -70,6 +72,7 @@ class Screen(object):
         width = max(width_ra, width_dec)  # force square image until rectangular ones are supported by IDG
         self.width_ra = width
         self.width_dec = width
+        self.log_amps = False  # sets whether amplitudes are log10 values or not
 
     def fit(self):
         """
@@ -99,14 +102,20 @@ class Screen(object):
             self.vals_amp = np.resize(self.vals_amp, new_shape)
         else:
             # Interpolate amplitudes (in log space)
-            logvals = np.log10(self.vals_amp)
+            if not self.log_amps:
+                logvals = np.log10(self.vals_amp)
+            else:
+                logvals = self.vals_amp
             if self.vals_amp.shape[0] != self.vals_ph.shape[0]:
                 f = si.interp1d(self.times_amp, logvals, axis=0, kind=interp_kind, fill_value='extrapolate')
                 logvals = f(self.times_ph)
             if self.vals_amp.shape[1] != self.vals_ph.shape[1]:
                 f = si.interp1d(self.freqs_amp, logvals, axis=1, kind=interp_kind, fill_value='extrapolate')
                 logvals = f(self.freqs_ph)
-            self.vals_amp = 10**(logvals)
+            if not self.log_amps:
+                self.vals_amp = 10**(logvals)
+            else:
+                self.vals_amp = logvals
 
     def make_fits_file(self, outfile, cellsize_deg, t_start_index,
                        t_stop_index, aterm_type='gain'):
@@ -126,8 +135,8 @@ class Screen(object):
         aterm_type : str, optional
             Type of a-term solutions
         """
-        ximsize = int(self.width_ra / cellsize_deg)  # pix
-        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        ximsize = int(np.ceil(self.width_ra / cellsize_deg))  # pix
+        yimsize = int(np.ceil(self.width_dec / cellsize_deg))  # pix
         misc.make_template_image(outfile, self.ra, self.dec, ximsize=ximsize,
                                  yimsize=yimsize, cellsize_deg=cellsize_deg, freqs=self.freqs_ph,
                                  times=self.times_ph[t_start_index:t_stop_index],
@@ -343,12 +352,17 @@ class KLScreen(Screen):
         screen_order_amp = min(12, max(3, int(np.round(len(source_positions) / 2))))
         adjust_order_ph = True
         screen_order = min(20, len(source_positions)-1)
+        misc.remove_soltabs(solset, 'phase_screen000')
+        misc.remove_soltabs(solset, 'phase_screen000resid')
         stationscreen.run(soltab_ph, 'phase_screen000', order=screen_order, refAnt=ref_ind,
-                          scale_order=True, adjust_order=adjust_order_ph)
+                          scale_order=True, adjust_order=adjust_order_ph, ncpu=self.ncpu)
         soltab_ph_screen = solset.getSoltab('phase_screen000')
         if not self.phase_only:
+            misc.remove_soltabs(solset, 'amplitude_screen000')
+            misc.remove_soltabs(solset, 'amplitude_screen000resid')
             stationscreen.run(soltab_amp, 'amplitude_screen000', order=screen_order_amp,
-                              niter=3, scale_order=False, adjust_order=adjust_order_amp)
+                              niter=3, scale_order=False, adjust_order=adjust_order_amp,
+                              ncpu=self.ncpu)
             soltab_amp_screen = solset.getSoltab('amplitude_screen000')
         else:
             soltab_amp_screen = None
@@ -358,7 +372,8 @@ class KLScreen(Screen):
         self.times_ph = soltab_ph_screen.time
         self.freqs_ph = soltab_ph_screen.freq
         if not self.phase_only:
-            self.vals_amp = 10**(soltab_amp_screen.val)
+            self.log_amps = True
+            self.vals_amp = soltab_amp_screen.val
             self.times_amp = soltab_amp_screen.time
             self.freqs_amp = soltab_amp_screen.freq
         self.source_names = soltab_ph_screen.dir
@@ -397,7 +412,7 @@ class KLScreen(Screen):
         yimsize = int(self.width_dec / cellsize_deg)  # pix
         test_array = np.zeros([1, len(self.freqs_ph), len(self.station_names), 4,
                                yimsize, ximsize])
-        mem_per_timeslot_gb = test_array.nbytes/1024**3 * 10  # include factor of 10 overhead
+        mem_per_timeslot_gb = test_array.nbytes/1024**3 / 10  # include factor of 10 overhead
 
         # Multiply by the number of CPUs, since each gets a copy
         mem_per_timeslot_gb *= ncpu
@@ -426,16 +441,21 @@ class KLScreen(Screen):
         ncpu : int, optional
             Number of CPUs to use (0 means all)
         """
+        # Use global variables to avoid serializing the arrays in the multiprocessing calls
+        global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
+
         # Define various parameters
         N_sources = len(self.source_names)
         N_times = t_stop_index - t_start_index
         N_piercepoints = N_sources
+        beta_val = self.beta_val
+        r_0 = self.r_0
 
         # Make arrays of pixel coordinates for screen
         # We need to convert the FITS cube pixel coords to screen pixel coords. The FITS cube
         # has self.ra, self.dec at (xsize/2, ysize/2)
-        ximsize = int(self.width_ra / cellsize_deg)  # pix
-        yimsize = int(self.width_dec / cellsize_deg)  # pix
+        ximsize = int(np.ceil(self.width_ra / cellsize_deg))  # pix
+        yimsize = int(np.ceil(self.width_dec / cellsize_deg))  # pix
         w = wcs.WCS(naxis=2)
         w.wcs.crpix = [ximsize/2.0, yimsize/2.0]
         w.wcs.cdelt = np.array([-cellsize_deg, cellsize_deg])
@@ -471,36 +491,37 @@ class KLScreen(Screen):
             screen_amp_yy = screen_amp_yy.transpose([dir_axis, time_axis])
 
         # Process phase screens
-        val_phase = np.zeros((Nx, Ny, N_times))
-        mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
-        for k in range(N_times):
-            mpm.put([screen_ph[:, k], self.pp, N_piercepoints, k,
-                     x, y, self.beta_val, self.r_0])
-        mpm.wait()
-        for (k, scr) in mpm.get():
-            val_phase[:, :, k] = scr
+        pp = self.pp
+        val_shape = (Nx, Ny, N_times)
+        var_dict = {}
+        shared_val = RawArray('d', int(val_shape[0]*val_shape[1]*val_shape[2]))
+        screen_type = 'ph'
+        with Pool(processes=ncpu, initializer=init_worker, initargs=(shared_val, val_shape)) as pool:
+            result = pool.map(calculate_kl_screen_star,
+                              zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
+                                  itertools.repeat(beta_val), itertools.repeat(r_0),
+                                  itertools.repeat(screen_type)))
+        val_phase = np.frombuffer(shared_val, dtype=np.float64).reshape(val_shape).copy()
 
         # Process amplitude screens
         if not self.phase_only:
             # XX amplitudes
-            val_amp_xx = np.zeros((Nx, Ny, N_times))
-            mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
-            for k in range(N_times):
-                mpm.put([np.log10(screen_amp_xx[:, k]), self.pp, N_piercepoints, k,
-                         x, y, self.beta_val, self.r_0])
-            mpm.wait()
-            for (k, scr) in mpm.get():
-                val_amp_xx[:, :, k] = scr
+            screen_type = 'xx'
+            with Pool(processes=ncpu, initializer=init_worker, initargs=(shared_val, val_shape)) as pool:
+                result = pool.map(calculate_kl_screen_star,
+                                  zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
+                                      itertools.repeat(beta_val), itertools.repeat(r_0),
+                                      itertools.repeat(screen_type)))
+            val_amp_xx = 10**(np.frombuffer(shared_val, dtype=np.float64).reshape(val_shape).copy())
 
             # YY amplitudes
-            val_amp_yy = np.zeros((Nx, Ny, N_times))
-            mpm = misc.multiprocManager(ncpu, calculate_kl_screen)
-            for k in range(N_times):
-                mpm.put([np.log10(screen_amp_yy[:, k]), self.pp, N_piercepoints, k,
-                         x, y, self.beta_val, self.r_0])
-            mpm.wait()
-            for (k, scr) in mpm.get():
-                val_amp_yy[:, :, k] = scr
+            screen_type = 'yy'
+            with Pool(processes=ncpu, initializer=init_worker, initargs=(shared_val, val_shape)) as pool:
+                result = pool.map(calculate_kl_screen_star,
+                                  zip(range(val_shape[2]), itertools.repeat(N_piercepoints),
+                                      itertools.repeat(beta_val), itertools.repeat(r_0),
+                                      itertools.repeat(screen_type)))
+            val_amp_yy = 10**(np.frombuffer(shared_val, dtype=np.float64).reshape(val_shape).copy())
 
         # Output data are [RA, DEC, MATRIX, ANTENNA, FREQ, TIME].T
         data = np.zeros((N_times, 4, Ny, Nx))
@@ -553,6 +574,7 @@ class VoronoiScreen(Screen):
         self.times_ph = soltab_ph.time
         self.freqs_ph = soltab_ph.freq
         if not self.phase_only:
+            self.log_amps = False
             self.vals_amp = soltab_amp.val
             self.times_amp = soltab_amp.time
             self.freqs_amp = soltab_amp.freq
@@ -740,41 +762,65 @@ class VoronoiScreen(Screen):
         self.polygons = polygons
 
 
-def calculate_kl_screen(inscreen, pp, N_piercepoints, k, x, y, beta_val, r_0, outQueue):
+def init_worker(shared_val, val_shape):
+    """
+    Initializer called when a child process is initialized, responsible
+    for storing store shared_val and val_shape in var_dict (a global variable).
+
+    See https://research.wmz.ninja/articles/2018/03/on-sharing-large-arrays-when-using-pythons-multiprocessing.html
+
+    Parameters
+    ----------
+    shared_val : array
+        RawArray to be shared
+    val_shape : tuple
+        Shape of shared_val array
+    """
+    global var_dict
+
+    var_dict['shared_val'] = shared_val
+    var_dict['val_shape'] = val_shape
+
+
+def calculate_kl_screen_star(inputs):
+    """
+    Simple helper function for pool.map
+    """
+    return calculate_kl_screen(*inputs)
+
+
+def calculate_kl_screen(k, N_piercepoints, beta_val, r_0, screen_type):
     """
     Calculates screen images
 
     Parameters
     ----------
-    inscreen : array
-        Array of screen values at the piercepoints
-    pp : array
-        Array of piercepoint locations
-    N_piercepoints : int
-        Number of pierce points
     k : int
         Time index
-    x : int
-        X coordinate for pixels in screen
-    y : int
-        Y coordinate for pixels in screen
+    N_piercepoints : int
+        Number of pierce points
     beta_val : float
-        power-law index for phase structure function (5/3 =>
+        Power-law index for phase structure function (5/3 =>
         pure Kolmogorov turbulence)
     r_0 : float
-        scale size of phase fluctuations
-    outQueue : queue
-        Queue to add results to
+        Scale size of phase fluctuations
+    screen_type : string
+        Type of screen: 'ph' (phase), 'xx' (XX amplitude) or 'yy' (YY amplitude)
     """
-    Nx = len(x)
-    Ny = len(y)
-    screen = np.zeros((Nx, Ny))
+    # Use global variables to avoid serializing the arrays in the multiprocessing calls
+    global screen_ph, screen_amp_xx, screen_amp_yy, pp, x, y, var_dict
+
+    tmp = np.frombuffer(var_dict['shared_val'], dtype=np.float64).reshape(var_dict['val_shape'])
+    if screen_type == 'ph':
+        inscreen = screen_ph[:, k]
+    if screen_type == 'xx':
+        inscreen = screen_amp_xx[:, k]
+    if screen_type == 'yy':
+        inscreen = screen_amp_yy[:, k]
     f = inscreen.reshape(N_piercepoints)
     for i, xi in enumerate(x):
         for j, yi in enumerate(y):
             p = np.array([xi, yi, 0.0])
             d2 = np.sum(np.square(pp - p), axis=1)
             c = -(d2 / ( r_0**2 ))**(beta_val / 2.0) / 2.0
-            screen[i, j] = np.dot(c, f)
-
-    outQueue.put([k, screen])
+            tmp[i, j, k] = np.dot(c, f)

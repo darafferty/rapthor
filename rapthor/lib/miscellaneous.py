@@ -435,6 +435,28 @@ def get_reference_station(soltab, max_ind=None):
     return ref_ind
 
 
+def remove_soltabs(solset, soltabnames):
+    """
+    Remove H5parm soltabs from a solset
+
+    Note: the H5parm must be opened with readonly = False
+
+    Parameters
+    ----------
+    solset : losoto solution set object
+        The solution set from which to remove soltabs
+    soltabnames : list
+        Names of soltabs to remove
+    """
+    soltabnames = string2list(soltabnames)
+    for soltabname in soltabnames:
+        try:
+            soltab = solset.getSoltab(soltabname)
+            soltab.delete()
+        except Exception:
+            print('Error: soltab "{}" could not be removed'.format(soltabname))
+
+
 class multiprocManager(object):
 
     class multiThread(multiprocessing.Process):

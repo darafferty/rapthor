@@ -423,18 +423,6 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
     return parms, weights
 
 
-def remove_soltabs(solset, soltabnames):
-    """
-    Remove soltab
-    """
-    for soltabname in soltabnames:
-        try:
-            soltab = solset.getSoltab(soltabname)
-            soltab.delete()
-        except:
-            pass
-
-
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
          phasesoltabname='phase000', ref_id=0, smooth=False, normalize=True):
     """

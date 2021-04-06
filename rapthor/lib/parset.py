@@ -305,7 +305,7 @@ def get_calibration_options(parset):
     if 'maxiter' in parset_dict:
         parset_dict['maxiter'] = parset.getint('calibration', 'maxiter')
     else:
-        parset_dict['maxiter'] = 50
+        parset_dict['maxiter'] = 150
     if 'stepsize' in parset_dict:
         parset_dict['stepsize'] = parset.getfloat('calibration', 'stepsize')
     else:
@@ -313,7 +313,7 @@ def get_calibration_options(parset):
     if 'tolerance' in parset_dict:
         parset_dict['tolerance'] = parset.getfloat('calibration', 'tolerance')
     else:
-        parset_dict['tolerance'] = 1e-3
+        parset_dict['tolerance'] = 5e-3
     if 'llsstarttolerance' in parset_dict:
         parset_dict['llsstarttolerance'] = parset.getfloat('calibration', 'llsstarttolerance')
     else:
