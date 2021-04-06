@@ -173,19 +173,19 @@ void GenericOptimized::run_gridding(
       // Run adder on host
       cu::Marker marker_adder("run_adder", cu::Marker::blue);
       marker_adder.start();
-      if (w_step == 0.0) {
-        cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
-                             metadata_ptr, h_subgrids, grid_ptr);
-      } else if (plan.get_use_wtiles()) {
+      if (plan.get_use_wtiles()) {
         cpuKernels.run_adder_wtiles(
             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
             shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
             h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
-      } else {
+      } else if (w_step != 0.0) {
         cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size,
                                     subgrid_size, metadata_ptr, h_subgrids,
                                     grid_ptr);
+      } else {
+        cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
+                             metadata_ptr, h_subgrids, grid_ptr);
       }
       marker_adder.end();
 
@@ -462,19 +462,19 @@ void GenericOptimized::run_degridding(
       cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
       marker_splitter.start();
 
-      if (w_step == 0.0) {
-        cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                                metadata_ptr, h_subgrids, grid_ptr);
-      } else if (plan.get_use_wtiles()) {
+      if (plan.get_use_wtiles()) {
         cpuKernels.run_splitter_wtiles(
             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
             shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
             h_subgrids, grid_ptr);
         subgrid_offset += current_nr_subgrids;
-      } else {
+      } else if (w_step != 0.0) {
         cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
                                        subgrid_size, metadata_ptr, h_subgrids,
                                        grid_ptr);
+      } else {
+        cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
+                                metadata_ptr, h_subgrids, grid_ptr);
       }
 
       marker_splitter.end();
@@ -998,7 +998,6 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
   // Defer call to cpuProxy
   // cpuProxy manages the wtiles state
   cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);
-  cuda::CUDA::init_cache(subgrid_size, cell_size, w_step, shift);
 }
 
 }  // namespace hybrid

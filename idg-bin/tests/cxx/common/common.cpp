@@ -194,7 +194,6 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
 
   std::clog << ">>> Run reference gridding" << std::endl;
   proxy1.set_grid(grid_ref);
-  proxy1.init_cache(subgrid_size, cell_size, w_step, shift);
   proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
                   aterms_offsets, spheroidal);
   proxy1.get_final_grid();

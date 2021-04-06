@@ -113,34 +113,46 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_scaler(int nr_subgrids, int subgrid_size, void* u_subgrid);
 
-  void launch_adder_copy_tiles(unsigned int nr_tiles,
-                               unsigned int src_tile_size,
-                               unsigned int dst_tile_size,
-                               cu::DeviceMemory& d_src_tile_ids,
-                               cu::DeviceMemory& d_dst_tile_ids,
-                               cu::DeviceMemory& d_src_tiles,
-                               cu::DeviceMemory& d_dst_tiles);
+  void launch_copy_tiles(unsigned int nr_tiles, unsigned int src_tile_size,
+                         unsigned int dst_tile_size,
+                         cu::DeviceMemory& d_src_tile_ids,
+                         cu::DeviceMemory& d_dst_tile_ids,
+                         cu::DeviceMemory& d_src_tiles,
+                         cu::DeviceMemory& d_dst_tiles);
 
-  void launch_adder_apply_phasor(unsigned int nr_tiles, float image_size,
-                                 float w_step, unsigned int w_padded_tile_size,
-                                 cu::DeviceMemory& d_w_padded_tiles,
-                                 cu::DeviceMemory& d_shift,
-                                 cu::DeviceMemory& d_tile_coordinates);
+  void launch_apply_phasor_to_wtiles(unsigned int nr_tiles, float image_size,
+                                     float w_step, unsigned int tile_size,
+                                     cu::DeviceMemory& d_tiles,
+                                     cu::DeviceMemory& d_shift,
+                                     cu::DeviceMemory& d_tile_coordinates);
 
   void launch_adder_subgrids_to_wtiles(int nr_subgrids, long grid_size,
-                                       int subgrid_size, int wtile_size,
+                                       int subgrid_size, int tile_size,
                                        int subgrid_offset,
                                        cu::DeviceMemory& d_metadata,
                                        cu::DeviceMemory& d_subgrid,
-                                       cu::DeviceMemory& d_padded_tiles,
+                                       cu::DeviceMemory& d_tiles,
                                        std::complex<float> scale = {1.0, 1.0});
 
-  void launch_adder_wtiles_to_grid(int nr_tiles, int tile_size,
-                                   int padded_tile_size, long grid_size,
+  void launch_adder_wtiles_to_grid(int nr_tiles, long grid_size, int tile_size,
+                                   int padded_tile_size,
                                    cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
-                                   cu::DeviceMemory& d_padded_tiles,
+                                   cu::DeviceMemory& d_tiles,
                                    cu::UnifiedMemory& u_grid);
+
+  void launch_splitter_subgrids_from_wtiles(
+      int nr_subgrids, long grid_size, int subgrid_size, int tile_size,
+      int subgrid_offset, cu::DeviceMemory& d_metadata,
+      cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
+      std::complex<float> scale = {1.0, 1.0});
+
+  void launch_splitter_wtiles_from_grid(int nr_tiles, long grid_size,
+                                        int tile_size, int padded_tile_size,
+                                        cu::DeviceMemory& d_tile_ids,
+                                        cu::DeviceMemory& d_tile_coordinates,
+                                        cu::DeviceMemory& d_tiles,
+                                        cu::UnifiedMemory& u_grid);
 
   // Misc
   void free_fft_plans();
@@ -195,7 +207,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::Function> function_average_beam;
   std::unique_ptr<cu::Function> function_fft_shift;
   std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
-  std::vector<std::unique_ptr<cu::Function>> functions_adder_wtiles;
+  std::vector<std::unique_ptr<cu::Function>> functions_wtiling;
 
   // All CUDA modules private to this InstanceCUDA
   std::vector<std::unique_ptr<cu::Module>> m_modules;
@@ -253,11 +265,13 @@ static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
 static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
 static const std::string name_average_beam = "kernel_average_beam";
 static const std::string name_fft_shift = "kernel_fft_shift";
-static const std::string name_adder_copy_tiles = "kernel_copy_tiles";
-static const std::string name_adder_apply_phasor = "kernel_apply_phasor";
-static const std::string name_adder_subgrids_to_wtiles =
-    "kernel_subgrids_to_wtiles";
-static const std::string name_adder_wtiles_to_grid = "kernel_wtiles_to_grid";
+static const std::string name_copy_tiles = "kernel_copy_tiles";
+static const std::string name_apply_phasor = "kernel_apply_phasor";
+static const std::string name_subgrids_to_wtiles = "kernel_subgrids_to_wtiles";
+static const std::string name_wtiles_to_grid = "kernel_wtiles_to_grid";
+static const std::string name_subgrids_from_wtiles =
+    "kernel_subgrids_from_wtiles";
+static const std::string name_wtiles_from_grid = "kernel_wtiles_from_grid";
 
 }  // end namespace cuda
 }  // end namespace kernel

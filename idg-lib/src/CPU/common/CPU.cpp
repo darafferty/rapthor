@@ -213,18 +213,18 @@ void CPU::do_gridding(
                               subgrids_ptr, FFTW_BACKWARD);
 
       // Adder kernel
-      if (w_step == 0.0) {
-        kernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
-                          metadata_ptr, subgrids_ptr, grid_ptr);
-      } else if (plan.get_use_wtiles()) {
+      if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
         kernels.run_adder_wtiles(current_nr_subgrids, grid_size, subgrid_size,
                                  image_size, w_step, shift_ptr, subgrid_offset,
                                  wtile_flush_set, metadata_ptr, subgrids_ptr,
                                  grid_ptr);
-      } else {
+      } else if (w_step != 0.0) {
         kernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size,
                                  metadata_ptr, subgrids_ptr, grid_ptr);
+      } else {
+        kernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
+                          metadata_ptr, subgrids_ptr, grid_ptr);
       }
 
       // Performance reporting
@@ -319,19 +319,19 @@ void CPU::do_degridding(
       std::complex<float> *grid_ptr = m_grid->data();
 
       // Splitter kernel
-      if (w_step == 0.0) {
-        kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                             metadata_ptr, subgrids_ptr, grid_ptr);
-      } else if (plan.get_use_wtiles()) {
+      if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
         kernels.run_splitter_wtiles(current_nr_subgrids, grid_size,
                                     subgrid_size, image_size, w_step, shift_ptr,
                                     subgrid_offset, wtile_initialize_set,
                                     metadata_ptr, subgrids_ptr, grid_ptr);
-      } else {
+      } else if (w_step != 0.0) {
         kernels.run_splitter_wstack(current_nr_subgrids, grid_size,
                                     subgrid_size, metadata_ptr, subgrids_ptr,
                                     grid_ptr);
+      } else {
+        kernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
+                             metadata_ptr, subgrids_ptr, grid_ptr);
       }
 
       // FFT kernel
