@@ -1,6 +1,6 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [DPPP]
+baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for complex gains in multiple directions simultaneously for
