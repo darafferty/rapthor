@@ -40,6 +40,12 @@ def run(parset_file, logging_level='info'):
     field = Field(parset)
     cal_parset = parset.copy()
     cal_parset['dir_working'] = os.path.join(parset['dir_working'], 'calibrators')
+    os.mkdir(cal_parset['dir_working'])
+    for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
+                   'solutions', 'scratch']:
+        subdir_path = os.path.join(cal_parset['dir_working'], subdir)
+        if not os.path.isdir(subdir_path):
+            os.mkdir(subdir_path)
     cal_parset['imaging_specific']['use_screens'] = False
     cal_field = Field(cal_parset)
 
@@ -87,7 +93,14 @@ def run(parset_file, logging_level='info'):
 
         # Update the calibrator field object
         cal_field.h5parm_filename = field.h5parm_filename
-        cal_field.define_cal_sectors()
+        cal_field.bright_source_skymodel = field.bright_source_skymodel
+        cal_field.bright_source_skymodel_file = field.bright_source_skymodel_file
+        cal_field.source_skymodel = field.source_skymodel
+        cal_field.calibration_skymodel = field.calibration_skymodel
+        cal_field.aterm_image_filenames = field.aterm_image_filenames
+        cal_field.peel_bright_sources = False
+        cal_field.peel_outliers = True
+        cal_field.define_cal_sectors(index+1)
         cal_field.__dict__.update(step)
         for sector in cal_field.imaging_sectors:
             sector.__dict__.update(step)
@@ -95,6 +108,8 @@ def run(parset_file, logging_level='info'):
         cal_field.peel_outliers = True
         cal_field.do_predict = True
         cal_field.do_image = True
+        cal_field.num_patches = field.num_patches
+        cal_field.set_obs_parameters()
 
         # Predict and subtract the calibrator sector models
         if cal_field.do_predict:
@@ -112,5 +127,6 @@ def run(parset_file, logging_level='info'):
             op.run()
 
             field.cal_sectors = cal_field.imaging_sectors
+            field.field_cal_image_filename = cal_field.field_image_filename
 
     log.info("Rapthor has finished :)")

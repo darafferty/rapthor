@@ -643,18 +643,6 @@ class Field(object):
             else:
                 skymodel_apparent_sky = None
 
-            # Filter the sky model, keeping only those sources outside of the cal sectors
-            # Use cal mosaic to filter: load mosaic, invert, save, then filter with lsmtool
-            self.field_cal_image_filename
-            hdu = pyfits.open(self.field_cal_image_filename, memmap=False)
-            data = np.array(np.isnan(hdu[0].data), dtype=float)
-            hdu[0].data = data.reshape((1, 1, data.shape[0], data.shape[1]))
-            output_image = os.path.join(self.working_dir, 'scratch', 'source_mask.fits')
-            hdu.writeto(output_image, overwrite=True)
-            skymodel_true_sky.select('{} == True'.format(output_image))
-            if skymodel_apparent_sky is not None:
-                skymodel_apparent_sky.select('{} == True'.format(output_image))
-
             # Concatenate the sky models from cal sectors, being careful not to duplicate
             # source and patch names
             for i, (sm, sn) in enumerate(zip(cal_sector_skymodels_true_sky, cal_sector_names)):
@@ -706,6 +694,24 @@ class Field(object):
             else:
                 cal_skymodel_apparent_sky = None
 
+            # Filter the sky model, keeping only those sources outside of the cal sectors
+            # Use cal mosaic to filter: load mosaic, invert, save, then filter with lsmtool
+            self.field_cal_image_filename
+            hdu = pyfits.open(self.field_cal_image_filename, memmap=False)
+            data = np.array(~np.isnan(hdu[0].data), dtype=float)
+            hdu[0].data = data #  data.reshape((1, 1, data.shape[2], data.shape[3]))
+            output_image = os.path.join(self.working_dir, 'scratch', 'source_mask.fits')
+            hdu.writeto(output_image, overwrite=True)
+            skymodel_true_sky_to_remove = skymodel_true_sky.copy()
+            skymodel_true_sky_to_remove.select('{} == True'.format(output_image))
+            for src_name in skymodel_true_sky_to_remove.getColValues('Name'):
+                skymodel_true_sky.remove('Name == {}'.format(src_name))
+            if skymodel_apparent_sky is not None:
+                skymodel_apparent_sky_to_remove = skymodel_apparent_sky.copy()
+                skymodel_apparent_sky_to_remove.select('{} == True'.format(output_image))
+                for src_name in skymodel_apparent_sky_to_remove.getColValues('Name'):
+                    skymodel_apparent_sky.remove('Name == {}'.format(src_name))
+
             # Replace screen components with the cal ones
             skymodel_true_sky.concatenate(cal_skymodel_true_sky, matchBy='name', keep='from2')
             if skymodel_apparent_sky is not None:
@@ -740,12 +746,12 @@ class Field(object):
         self.nsectors = len(self.sectors)
 
         # Clean up to minimize memory usage
-        self.calibration_skymodel = None
-        self.source_skymodel = None
-        for sector in self.sectors:
-            sector.calibration_skymodel = None
-            sector.predict_skymodel = None
-            sector.field.source_skymodel = None
+        #self.calibration_skymodel = None
+        # self.source_skymodel = None
+#        for sector in self.sectors:
+#            sector.calibration_skymodel = None
+#            sector.predict_skymodel = None
+#            sector.field.source_skymodel = None
 
     def transfer_patches(self, from_skymodel, to_skymodel, patch_dict=None):
         """
@@ -981,6 +987,7 @@ class Field(object):
             cal_sector.make_skymodel(index)
             self.imaging_sectors.append(cal_sector)
         self.bright_source_sectors = []
+        self.adjust_sector_boundaries()
         self.define_outlier_sectors(index)
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
         self.nsectors = len(self.sectors)
