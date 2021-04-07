@@ -1,6 +1,6 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [DPPP]
+baseCommand: [DP3]
 label: Predicts model visibilities
 doc: |
   This tool predicts and corrupts model visibilities for the given MS file,

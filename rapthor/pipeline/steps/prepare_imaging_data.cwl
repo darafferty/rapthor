@@ -1,6 +1,6 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [DPPP]
+baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
   This tool prepares the input data for imaging with screens, including applying
