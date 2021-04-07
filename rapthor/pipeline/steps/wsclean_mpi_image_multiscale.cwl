@@ -1,6 +1,6 @@
 cwlVersion: v1.0
 class: CommandLineTool
-baseCommand: [run_wsclean_multiscale_mpi.sh]
+baseCommand: [run_wsclean_mpi.sh]
 label: Make an image
 doc: |
   This tool makes an image using WSClean with a-term corrections and
