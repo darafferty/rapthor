@@ -9,8 +9,6 @@ import os
 import sys
 
 log = logging.getLogger('rapthor:state')
-logging.getLogger('rapthor:parset').setLevel(logging.CRITICAL)
-logging.getLogger('rapthor:strategy').setLevel(logging.CRITICAL)
 
 
 def check_operation(operation):
@@ -39,6 +37,10 @@ def run(parset_file):
     parset_file : str
         Filename of parset containing processing parameters
     """
+    # Set logging level to suppress unnecessary messages
+    logging.getLogger('rapthor:parset').setLevel(logging.ERROR)
+    logging.getLogger('rapthor:strategy').setLevel(logging.ERROR)
+
     # Read parset
     log.info('Reading parset and checking state...')
     parset = parset_read(parset_file, use_log_file=False, skip_cluster=True)
