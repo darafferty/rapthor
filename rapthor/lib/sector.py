@@ -58,6 +58,7 @@ class Sector(object):
         self.is_bright_source = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
+        self.central_patch = None
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -280,6 +281,15 @@ class Sector(object):
                 skymodel = self.calibration_skymodel.copy()
                 skymodel = self.filter_skymodel(skymodel)
 
+            # Find nearest patch to flux-weighted center of the sector sky model
+            if not self.is_outlier and not self.is_bright_source:
+                tmp_skymodel = skymodel.copy()
+                tmp_skymodel.group('single')
+                ra, dec = tmp_skymodel.getPatchPositions(method='wmean', asArray=True)
+                patch_dist = skymodel.getDistance(ra[0], dec[0], byPatch=True).tolist()
+                patch_names = skymodel.getPatchNames()
+                self.central_patch = patch_names[patch_dist.index(min(patch_dist))]
+
             # Remove the bright sources from the sky model if they will be predicted and
             # subtracted separately (so that they aren't subtracted twice)
             if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
@@ -305,7 +315,10 @@ class Sector(object):
                 dec = misc.dec2ddmmss(self.dec)
                 decsign = ('-' if dec[3] < 0 else '+')
                 sdec = decsign+str(dec[0]).zfill(2)+'.'+str(dec[1]).zfill(2)+'.'+str("%.6f" % (dec[2])).zfill(6)
-                patch = self.calibration_skymodel.getPatchNames()[0]
+                if self.central_patch is not None:
+                    patch = self.central_patch
+                else:
+                    patch = self.calibration_skymodel.getPatchNames()[0]
                 dummylines.append(',,{0},{1},{2}\n'.format(patch, sra, sdec))
                 dummylines.append('s0c0,POINT,{0},{1},{2},0.00000001,'
                                   '[0.0,0.0],false,100000000.0,,,\n'.format(patch, sra, sdec))
@@ -318,12 +331,13 @@ class Sector(object):
 
         # Find nearest patch to flux-weighted center of the sector sky model
         if not self.is_outlier and not self.is_bright_source:
-            tmp_skymodel = skymodel.copy()
-            tmp_skymodel.group('single')
-            ra, dec = tmp_skymodel.getPatchPositions(method='wmean', asArray=True)
-            patch_dist = skymodel.getDistance(ra[0], dec[0], byPatch=True).tolist()
-            patch_names = skymodel.getPatchNames()
-            self.central_patch = patch_names[patch_dist.index(min(patch_dist))]
+            if self.central_patch is None:
+                tmp_skymodel = skymodel.copy()
+                tmp_skymodel.group('single')
+                ra, dec = tmp_skymodel.getPatchPositions(method='wmean', asArray=True)
+                patch_dist = skymodel.getDistance(ra[0], dec[0], byPatch=True).tolist()
+                patch_names = skymodel.getPatchNames()
+                self.central_patch = patch_names[patch_dist.index(min(patch_dist))]
 
             # Filter the field source sky model and store source sizes
             all_source_names = self.field.source_skymodel.getColValues('Name').tolist()
