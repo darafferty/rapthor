@@ -4,7 +4,7 @@ baseCommand: [DPPP]
 label: Prepares a dataset for imaging
 doc: |
   This tool prepares the input data for imaging without screens, including
-  applying the beam model, phase shifting, averaging, and applying phase-only
+  phase shifting, averaging, and applying phase-only
   solutions. See prepare_imaging_data.cwl for a detailed description of the
   inputs and outputs
 
@@ -16,7 +16,7 @@ arguments:
   - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
-  - steps=[applybeam,shift,applycal,avg]
+  - steps=[shift,applycal,avg]
   - shift.type=phaseshifter
   - avg.type=squash
   - applycal.type=applycal

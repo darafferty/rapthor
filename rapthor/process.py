@@ -40,7 +40,8 @@ def run(parset_file, logging_level='info'):
     field = Field(parset)
     cal_parset = parset.copy()
     cal_parset['dir_working'] = os.path.join(parset['dir_working'], 'calibrators')
-    os.mkdir(cal_parset['dir_working'])
+    if not os.path.isdir(cal_parset['dir_working']):
+        os.mkdir(cal_parset['dir_working'])
     for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
                    'solutions', 'scratch']:
         subdir_path = os.path.join(cal_parset['dir_working'], subdir)
@@ -59,8 +60,44 @@ def run(parset_file, logging_level='info'):
 
         # Calibrate
         if field.do_calibrate:
+#             if field.do_subtract:
+#                 op = Subtract(field, index+1)
+#                 op.run()
             op = Calibrate(field, index+1)
             op.run()
+
+        # Update the calibrator field object
+        cal_field.h5parm_filename = field.h5parm_filename
+        cal_field.bright_source_skymodel = field.bright_source_skymodel
+        cal_field.bright_source_skymodel_file = field.bright_source_skymodel_file
+        cal_field.source_skymodel = field.source_skymodel
+        cal_field.calibration_skymodel = field.calibration_skymodel
+        cal_field.aterm_image_filenames = field.aterm_image_filenames
+        cal_field.peel_bright_sources = False
+        cal_field.peel_outliers = True
+        cal_field.define_cal_sectors(index+1)
+        cal_field.__dict__.update(step)
+        for sector in cal_field.imaging_sectors:
+            sector.__dict__.update(step)
+        cal_field.peel_bright_sources = False
+        cal_field.peel_outliers = True
+        cal_field.do_predict = True
+        cal_field.do_image = True
+        cal_field.num_patches = field.num_patches
+        for obs in cal_field.observations:
+            for field_obs in field.observations:
+                if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+                    obs.ms_filename = field_obs.ms_filename
+                    obs.infix = field_obs.infix
+        for sector in cal_field.sectors:
+            for obs in sector.observations:
+                for field_obs in field.sectors[0].observations:
+                    if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+                        obs.ms_filename = field_obs.ms_filename
+                        obs.infix = field_obs.infix
+        cal_field.set_obs_parameters()
+        os.system('rm -rf {}'.format(os.path.join(cal_field.working_dir, 'scratch')))
+        os.mkdir(os.path.join(cal_field.working_dir, 'scratch'))
 
         # Predict and subtract the sector models
         if field.do_predict:
@@ -90,26 +127,6 @@ def run(parset_file, logging_level='info'):
                                 "to previous value is > {})".format(field.divergence_ratio))
                 log.info("Stopping at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
-
-        # Update the calibrator field object
-        cal_field.h5parm_filename = field.h5parm_filename
-        cal_field.bright_source_skymodel = field.bright_source_skymodel
-        cal_field.bright_source_skymodel_file = field.bright_source_skymodel_file
-        cal_field.source_skymodel = field.source_skymodel
-        cal_field.calibration_skymodel = field.calibration_skymodel
-        cal_field.aterm_image_filenames = field.aterm_image_filenames
-        cal_field.peel_bright_sources = False
-        cal_field.peel_outliers = True
-        cal_field.define_cal_sectors(index+1)
-        cal_field.__dict__.update(step)
-        for sector in cal_field.imaging_sectors:
-            sector.__dict__.update(step)
-        cal_field.peel_bright_sources = False
-        cal_field.peel_outliers = True
-        cal_field.do_predict = True
-        cal_field.do_image = True
-        cal_field.num_patches = field.num_patches
-        cal_field.set_obs_parameters()
 
         # Predict and subtract the calibrator sector models
         if cal_field.do_predict:

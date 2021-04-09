@@ -699,7 +699,10 @@ class Field(object):
             self.field_cal_image_filename
             hdu = pyfits.open(self.field_cal_image_filename, memmap=False)
             data = np.array(~np.isnan(hdu[0].data), dtype=float)
-            hdu[0].data = data #  data.reshape((1, 1, data.shape[2], data.shape[3]))
+            if len(data.shape) == 2:
+                hdu[0].data = data.reshape((1, 1, data.shape[0], data.shape[1]))
+            else:
+                hdu[0].data = data
             output_image = os.path.join(self.working_dir, 'scratch', 'source_mask.fits')
             hdu.writeto(output_image, overwrite=True)
             skymodel_true_sky_to_remove = skymodel_true_sky.copy()

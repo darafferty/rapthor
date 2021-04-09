@@ -16,10 +16,9 @@ arguments:
   - -save-source-list
   - -local-rms
   - -join-channels
-  - -use-idg
-  - -grid-with-beam
-  - -use-differential-lofar-beam
   - -log-time
+  - -apply-primary-beam
+  - -use-differential-lofar-beam
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
@@ -121,6 +120,10 @@ inputs:
     type: string
     inputBinding:
       prefix: -deconvolution-threads
+  - id: baseline_averaging
+    type: float
+    inputBinding:
+      prefix: -baseline-averaging
 
 outputs:
   - id: image_nonpb_name

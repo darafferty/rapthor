@@ -181,6 +181,12 @@ inputs:
       The name of the central patch of the sector (length = n_sectors).
     type: string[]
 
+  - id: baseline_averaging
+    label: Averaging value in wavelengths
+    doc: |
+      The baseline-dependent averaging value (length = n_sectors).
+    type: float[]
+
 {% endif %}
   - id: channels_out
     label: Number of channels
@@ -345,6 +351,8 @@ steps:
         source: h5parm
       - id: central_patch_name
         source: central_patch_name
+      - id: baseline_averaging
+        source: baseline_averaging
 {% endif %}
       - id: channels_out
         source: channels_out
@@ -402,7 +410,7 @@ steps:
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, h5parm, central_patch_name,
+              vertices_file, region_file, h5parm, central_patch_name, baseline_averaging,
 {% if use_mpi %}
               mpi_ntasks_per_node, mpi_nnodes,
 {% endif %}

@@ -3,8 +3,8 @@ class: CommandLineTool
 baseCommand: [DPPP]
 label: Prepares a dataset for imaging
 doc: |
-  This tool prepares the input data for imaging with screens, including applying
-  the beam model, phase shifting, and averaging.
+  This tool prepares the input data for imaging with screens, including phase shifting
+  and averaging.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -14,7 +14,7 @@ arguments:
   - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
-  - steps=[applybeam,shift,avg]
+  - steps=[shift,avg]
   - shift.type=phaseshifter
   - avg.type=squash
   - msout.storagemanager=Dysco
