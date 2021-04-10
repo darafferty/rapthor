@@ -73,17 +73,18 @@ def run(parset_file, logging_level='info'):
         cal_field.source_skymodel = field.source_skymodel
         cal_field.calibration_skymodel = field.calibration_skymodel
         cal_field.aterm_image_filenames = field.aterm_image_filenames
-        cal_field.peel_bright_sources = False
+        cal_field.peel_bright_sources = True
         cal_field.peel_outliers = True
         cal_field.define_cal_sectors(index+1)
         cal_field.__dict__.update(step)
         for sector in cal_field.imaging_sectors:
             sector.__dict__.update(step)
-        cal_field.peel_bright_sources = False
+        cal_field.peel_bright_sources = True
         cal_field.peel_outliers = True
         cal_field.do_predict = True
         cal_field.do_image = True
         cal_field.num_patches = field.num_patches
+        cal_field.parset['imaging_specific']['robust'] = field.parset['imaging_specific']['robust'] * 1.5
         for obs in cal_field.observations:
             for field_obs in field.observations:
                 if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):

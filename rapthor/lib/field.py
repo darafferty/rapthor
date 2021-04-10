@@ -981,7 +981,7 @@ class Field(object):
         self.imaging_sectors = []
         names = self.bright_source_skymodel.getPatchNames()
         sizes = self.bright_source_skymodel.getPatchSizes(units='degree')
-        minsize = 0.035  # minimum allowed image size in deg
+        minsize = 0.075  # minimum allowed image size in deg
         sizes = [max(minsize, s*1.5) for s in sizes]  # width in deg
         ras, decs = self.bright_source_skymodel.getPatchPositions(method='wmean', asArray=True)
         for size_deg, name, ra, dec in zip(sizes, names, ras, decs):
@@ -989,8 +989,9 @@ class Field(object):
             cal_sector.calibration_skymodel = self.bright_source_skymodel.copy()
             cal_sector.make_skymodel(index)
             self.imaging_sectors.append(cal_sector)
-        self.bright_source_sectors = []
+#        self.bright_source_sectors = []
         self.adjust_sector_boundaries()
+        self.define_bright_source_sectors(index)
         self.define_outlier_sectors(index)
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
         self.nsectors = len(self.sectors)
