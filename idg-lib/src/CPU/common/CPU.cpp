@@ -79,10 +79,16 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
     auto subgrid_size = m_cache_state.subgrid_size;
     auto w_step = m_cache_state.w_step;
     auto &shift = m_cache_state.shift;
+    State states[2];
+    m_report->initialize(0, subgrid_size, grid_size);
+    states[0] = m_powersensor->read();
     kernels.run_adder_wtiles_to_grid(
         grid_size, subgrid_size, image_size, w_step, shift.data(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
+    states[1] = m_powersensor->read();
+    m_report->update(Report::wtiling_forward, states[0], states[1]);
+    m_report->print_total();
   }
   return m_grid;
 }
