@@ -343,6 +343,14 @@ void run() {
       }  // end for channel_offset
     }    // end for time_offset
 
+    // Only after a call to get_final_grid(), the grid can be used outside of
+    // the proxy
+    clog << ">>> Get final grid" << endl;
+    double runtime_get_image = -omp_get_wtime();
+    proxy.get_final_grid();
+    runtimes_get_image.push_back(runtime_get_image + omp_get_wtime());
+    clog << endl;
+
     // Run fft
     clog << ">>> Run fft" << endl;
     double runtime_fft = -omp_get_wtime();
@@ -352,12 +360,6 @@ void run() {
     }
     runtimes_fft.push_back(runtime_fft + omp_get_wtime());
     clog << endl;
-
-    // Only after a call to get_final_grid(), the grid can be used outside of
-    // the proxy
-    double runtime_get_image = -omp_get_wtime();
-    proxy.get_final_grid();
-    runtimes_get_image.push_back(runtime_get_image + omp_get_wtime());
 
     // End imaging
     runtimes_imaging.push_back(runtime_imaging + omp_get_wtime());
@@ -375,16 +377,17 @@ void run() {
   double runtime_imaging =
       accumulate(runtimes_imaging.begin(), runtimes_imaging.end(), 0.0);
 
-  std::cout << std::endl;
-
   // Report runtime
+  clog << ">>> Total runtime" << endl;
   if (!disable_gridding) idg::report("gridding", runtime_gridding);
   if (!disable_degridding) idg::report("degridding", runtime_degridding);
   if (!disable_fft) idg::report("fft", runtime_fft);
   idg::report("get_image", runtime_get_image);
   idg::report("imaging", runtime_imaging);
+  clog << endl;
 
   // Report throughput
+  clog << ">>> Total throughput" << endl;
   if (!disable_gridding)
     idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
   if (!disable_degridding)
