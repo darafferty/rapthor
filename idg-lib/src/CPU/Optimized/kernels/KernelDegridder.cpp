@@ -200,6 +200,7 @@ void kernel_degridder(const int nr_subgrids, const int grid_size,
     free(pixels_yy_imag);
     free(phase);
     free(phase_offset);
+    free(phase_index);
     free(phasor_real);
     free(phasor_imag);
   }  // end s
