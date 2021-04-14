@@ -158,6 +158,14 @@ class Field(object):
                                self.diam) * 180. / np.pi * sec_el
         self.fwhm_ra_deg = self.fwhm_deg / sec_el
         self.fwhm_dec_deg = self.fwhm_deg
+        
+        # Warning if parset pointing is different from observation pointing
+        parra = self.parset['imaging_specific']['grid_center_ra']
+        pardec = self.parset['imaging_specific']['grid_center_dec']
+        if (parra != None and np.abs(parra - self.ra) > self.fwhm_ra_deg / 2.0):
+            self.log.warning('Grid_center_ra requested in parset is different from the value in the observation.')
+        if (pardec != None and np.abs(pardec - self.dec) > self.fwhm_dec_deg / 2.0):
+            self.log.warning('Grid_center_dec requested in parset is different from the value in the observation.')
 
         # Set the MS file to use for beam model in sky model correction.
         # This should be the observation that best matches the weighted average
