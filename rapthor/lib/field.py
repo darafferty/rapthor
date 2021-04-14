@@ -333,6 +333,7 @@ class Field(object):
             self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
             self.num_patches = len(self.calibration_skymodel.getPatchNames())
             calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
+            self.calibrators_only_skymodel = calibrators_skymodel.copy()
             self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
             self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
             self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
@@ -504,6 +505,7 @@ class Field(object):
         # Save the bright-source (i.e., calibrator) flux densities (in Jy) for use
         # in the calibration pipeline for weighting of the directions during screen
         # fitting
+        self.calibrators_only_skymodel = bright_source_skymodel.copy()
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrator_patch_names = bright_source_skymodel.getPatchNames().tolist()
         self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum').tolist()

@@ -61,6 +61,7 @@ def run(parset_file, logging_level='info'):
         if not os.path.isdir(subdir_path):
             os.mkdir(subdir_path)
     sub_field = Field(sub_parset)
+    sub_field.do_subtract = True
 
     # Set the processing strategy
     strategy_steps = set_strategy(field)
@@ -73,18 +74,24 @@ def run(parset_file, logging_level='info'):
         # Calibrate
         if field.do_calibrate:
             if sub_field.do_subtract:
-                if index == 0:
+                log.info('Subtracting field...')
+#                if index == 0:
                     # Calibrate once to allow subtraction
-                    op = Calibrate(field, index+1)
-                    op.run()
+#                    sub_field.update(step, index+1)
+                op = Calibrate(field, index+1)
+                op.run()
                 # Update the subtract field object and peel non-cal sources
                 sub_field.h5parm_filename = field.h5parm_filename
-                sub_field.bright_source_skymodel = field.bright_source_skymodel
-                sub_field.bright_source_skymodel_file = field.bright_source_skymodel_file
+                sub_field.bright_source_skymodel = field.calibrators_only_skymodel  # used by define_cal_sectors()
+                sub_field.bright_source_skymodel_file = field.calibrators_only_skymodel_file
                 sub_field.source_skymodel = field.source_skymodel
                 sub_field.calibration_skymodel = field.calibration_skymodel
+                sub_field.calibrator_patch_names = field.calibrator_patch_names
+                sub_field.calibrator_fluxes = field.calibrator_fluxes
+                sub_field.sector_bounds_deg = field.sector_bounds_deg
+                sub_field.sector_bounds_mid_deg = field.sector_bounds_mid_deg
                 sub_field.aterm_image_filenames = field.aterm_image_filenames
-                sub_field.peel_bright_sources = True
+                sub_field.peel_bright_sources = False
                 sub_field.peel_outliers = True
                 sub_field.define_cal_sectors(index+1)
                 sub_field.__dict__.update(step)
@@ -99,38 +106,46 @@ def run(parset_file, logging_level='info'):
                     for field_obs in field.observations:
                         if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
                             obs.ms_filename = field_obs.ms_filename
-                            obs.infix = field_obs.infix
+#                            obs.infix = field_obs.infix
                 for sector in sub_field.sectors:
                     for obs in sector.observations:
                         for field_obs in field.sectors[0].observations:
                             if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
                                 obs.ms_filename = field_obs.ms_filename
-                                obs.infix = field_obs.infix
+#                                obs.infix = field_obs.infix
                 sub_field.set_obs_parameters()
-                os.system('rm -rf {}'.format(os.path.join(sub_field.working_dir, 'scratch')))
-                os.mkdir(os.path.join(sub_field.working_dir, 'scratch'))
+#                os.system('rm -rf {}'.format(os.path.join(sub_field.working_dir, 'scratch')))
+#                os.mkdir(os.path.join(sub_field.working_dir, 'scratch'))
                 op = Predict(sub_field, index+1)
                 op.run()
                 # Update the field object
-                full_calibration_skymodel = field.calibration_skymodel.copy()
-                field.calibration_skymodel = field.bright_source_skymodel
-                for obs in field.observations:
-                    for field_obs in sub_field.observations:
-                        if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
-                            obs.ms_filename = field_obs.ms_filename
-                            obs.infix = field_obs.infix
-                for sector in field.sectors:
-                    for obs in sector.observations:
-                        for field_obs in sub_field.sectors[0].observations:
-                            if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
-                                obs.ms_filename = field_obs.ms_filename
-                                obs.infix = field_obs.infix
-                field.set_obs_parameters()
-            op = Calibrate(field, index+1)
-            op.run()
+#                calibration_skymodel_file_orig = field.calibration_skymodel_file
+                sub_field.calibration_skymodel_file = field.calibrators_only_skymodel_file
+#                os.system('cp -f {0} {1}'.format(os.path.join(sub_field.working_dir, 'skymodels', 'calibrate_{}'.format(index+1), 'calibrators_only_skymodel.txt'), os.path.join(sub_field.working_dir, 'skymodels', 'calibrate_{}'.format(index+1), 'calibration_skymodel.txt')))
+#                for obs in field.observations:
+#                    for field_obs in sub_field.observations:
+#                        if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+#                            obs.ms_filename = field_obs.ms_filename
+#                            obs.infix = field_obs.infix
+#                for sector in field.sectors:
+#                    for obs in sector.observations:
+#                        for field_obs in sub_field.sectors[0].observations:
+#                            if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+#                                obs.ms_filename = field_obs.ms_filename
+#                                obs.infix = field_obs.infix
+#                field.set_obs_parameters()
+                op = Calibrate(sub_field, index+1)
+                op.run()
+
+#            os.system('rm -rf {}'.format(os.path.join(field.working_dir, 'pipelines', 'calibrate_{}'.format(index+1))))
+#            os.mkdir(os.path.join(field.working_dir, 'pipelines', 'calibrate_{}'.format(index+1)))
+            else:
+                op = Calibrate(field, index+1)
+                op.run()
             if sub_field.do_subtract:
                 # Update the field object
-                field.calibration_skymodel = full_calibration_skymodel
+                field.h5parm_filename = sub_field.h5parm_filename
+                field.aterm_image_filenames = sub_field.aterm_image_filenames
 
         # Update the calibrator field object
         cal_field.h5parm_filename = field.h5parm_filename
@@ -150,7 +165,7 @@ def run(parset_file, logging_level='info'):
         cal_field.do_predict = True
         cal_field.do_image = True
         cal_field.num_patches = field.num_patches
-        cal_field.parset['imaging_specific']['robust'] = field.parset['imaging_specific']['robust'] * 1.5
+        cal_field.parset['imaging_specific']['robust'] = field.parset['imaging_specific']['robust']
         for obs in cal_field.observations:
             for field_obs in field.observations:
                 if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):

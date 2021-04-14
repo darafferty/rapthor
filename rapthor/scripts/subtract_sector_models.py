@@ -146,6 +146,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     uvcut_max = float(uvcut_max)
     uvcut = [uvcut_min, uvcut_max]
     phaseonly = misc.string2bool(phaseonly)
+    reweight = misc.string2bool(reweight)
     model_list = misc.string2list(msmod_list)
 
     # Get the model data filenames, filtering any that do not have the right start time

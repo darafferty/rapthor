@@ -223,14 +223,26 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
                                 xv1 = yv[nanind].flatten()
                             else:
                                 xv1 = xv[nanind].flatten()
-                            xs, zs, w = loess_1d.loess_1d(xv1, z[nanind].flatten(),
-                                                          frac=frac, degree=1)
+                            try:
+                                xs, zs, w = loess_1d.loess_1d(xv1, z[nanind].flatten(),
+                                                              frac=frac, degree=1)
+                            except ValueError:
+                                # If degree=1 fails, use degree=0 instead
+                                xs, zs, w = loess_1d.loess_1d(xv1, z[nanind].flatten(),
+                                                              frac=frac, degree=0)
                         else:
                             # The data are 2-D
-                            zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
-                                                      yv[nanind].flatten(),
-                                                      z[nanind].flatten(),
-                                                      rescale=True, frac=frac, degree=1)
+                            try:
+                                zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                          yv[nanind].flatten(),
+                                                          z[nanind].flatten(),
+                                                          rescale=True, frac=frac, degree=1)
+                            except ValueError:
+                                # If degree=1 fails, use degree=0 instead
+                                zs, w = loess_2d.loess_2d(xv[nanind].flatten(),
+                                                          yv[nanind].flatten(),
+                                                          z[nanind].flatten(),
+                                                          rescale=True, frac=frac, degree=0)
                         if debug:
                             from plotbin.plot_velfield import plot_velfield
                             import matplotlib.pyplot as plt
