@@ -28,12 +28,12 @@ AMPLINTERVAL=150
 PHASEINTERVAL=75
 TOLERANCE = 1e-2
 
-def run_dppp():
+def run_dp3():
     # Run a IDGCalDPStep with DPPP
     check_call(
         [
             "DPPP",
-            os.path.join(COMMONDIR, "dppp-idg-cal.parset"),
+            os.path.join(COMMONDIR, "dp3-idg-cal.parset"),
             f"msin={MS}",
             f"idgcal.polynomialdegamplitude={AMPLORDER}",
             f"idgcal.polynomialdegphase={PHASEORDER}",
@@ -212,5 +212,5 @@ def test_idgcalstep():
     create_input_h5parm("idgcal_in.h5parm")
     create_model_image()
     run_wsclean_predict()
-    run_dppp()
+    run_dp3()
     run_compare_h5parm("idgcal_in.h5parm","idgcal_out.h5parm")

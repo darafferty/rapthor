@@ -240,9 +240,9 @@ def preparetestset(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
             os.path.join(
                 COMMONDIR,
                 (
-                    "dppp-predict-correct.parset"
+                    "dp3-predict-correct.parset"
                     if (grid_with_beam and differential_beam)
-                    else "dppp-predict.parset"
+                    else "dp3-predict.parset"
                 ),
             ),
             f"msin={ms}",
