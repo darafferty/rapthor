@@ -26,9 +26,11 @@
 #define ALIGNMENT 64
 float lookup[NR_SAMPLES] __attribute__((aligned(ALIGNMENT)));
 
+inline float lookup_scale_factor() { return (float)(TWO_PI_INT / TWO_PI); }
+
 inline void initialize_lookup() {
   for (unsigned i = 0; i < NR_SAMPLES; i++) {
-    lookup[i] = sinf(i * (TWO_PI / TWO_PI_INT));
+    lookup[i] = sinf(i / lookup_scale_factor());
   }
 }
 
@@ -83,13 +85,11 @@ inline void compute_sincos_avx(unsigned* offset, const unsigned n,
 
   for (unsigned i = *offset; i < (n / vector_length) * vector_length;
        i += vector_length) {
-    __m256 f0 = _mm256_load_ps(&x[i]);                // input
-    __m256 f1 = _mm256_set1_ps(TWO_PI_INT / TWO_PI);  // compute scale
-    __m256 f2 = _mm256_mul_ps(f0, f1);                // apply scale
-    __m256i u0 = _mm256_set1_epi32(HLF_PI_INT);       // constant 0.5 * pi
-    __m256i u1 = _mm256_set1_epi32(TWO_PI_INT - 1);   // mask 2 * pi
-    __m256i u2 = _mm256_cvtps_epi32(f2);              // round float to int
-    __m256i u3 = _mm256_add_epi32(u2, u0);            // add 0.5 * pi
+    __m256 f0 = _mm256_load_ps(&x[i]);               // input
+    __m256i u0 = _mm256_set1_epi32(HLF_PI_INT);      // constant 0.5 * pi
+    __m256i u1 = _mm256_set1_epi32(TWO_PI_INT - 1);  // mask 2 * pi
+    __m256i u2 = _mm256_cvtps_epi32(f0);             // round float to int
+    __m256i u3 = _mm256_add_epi32(u2, u0);           // add 0.5 * pi
     __m256i u4 =
         _mm256_and_si256(u1, u3);  // apply mask of 2 * pi, second index
     __m256i u5 = _mm256_and_si256(u1, u2);  // apply mask of 2 * pi, first index
@@ -117,13 +117,11 @@ inline void compute_sincos_altivec(unsigned* offset, const unsigned n,
 
   for (unsigned i = *offset; i < (n / vector_length) * vector_length;
        i += vector_length) {
-    __m128 f0 = vec_load4sp(&x[i]);                 // input
-    __m128 f1 = vec_splat4sp(TWO_PI_INT / TWO_PI);  // compute scale
-    __m128 f2 = vec_multiply4sp(f0, f1);            // apply scale
-    __m128i u0 = vec_splat4sw(HLF_PI_INT);          // constant 0.5 * pi
-    __m128i u1 = vec_splat4sw(TWO_PI_INT - 1);      // mask 2 * pi
-    __m128i u2 = vec_convert4spto4sw(f2);           // round float to int
-    __m128i u3 = vec_add(u2, u0);                   // add 0.5 * pi
+    __m128 f0 = vec_load4sp(&x[i]);             // input
+    __m128i u0 = vec_splat4sw(HLF_PI_INT);      // constant 0.5 * pi
+    __m128i u1 = vec_splat4sw(TWO_PI_INT - 1);  // mask 2 * pi
+    __m128i u2 = vec_convert4spto4sw(f0);       // round float to int
+    __m128i u3 = vec_add(u2, u0);               // add 0.5 * pi
     __m128i u4 = vec_bitand1q(u1, u3);  // apply mask of 2 * pi, second index
     __m128i u5 = vec_bitand1q(u1, u2);  // apply mask of 2 * pi, first index
     __m128 f3 = vec_gather4sp(lookup, u4);  // perform lookup of real
@@ -141,7 +139,7 @@ inline void compute_sincos_scalar(unsigned* offset, const unsigned n,
                                   float* __restrict__ sin,
                                   float* __restrict__ cos) {
   for (unsigned i = *offset; i < n; i++) {
-    unsigned index = round(x[i] * (TWO_PI_INT / TWO_PI));
+    unsigned index = round(x[i]);
     index &= (TWO_PI_INT - 1);
     cos[i] = lookup[(index + HLF_PI_INT) & (TWO_PI_INT - 1)];
     sin[i] = lookup[index];
