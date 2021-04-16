@@ -56,7 +56,7 @@ add_library(${PROJECT_NAME}-splitter-wstack KernelSplitterWStack.cpp)
 add_library(${PROJECT_NAME}-adder-wtiles KernelAdderWTiles.cpp)
 add_library(${PROJECT_NAME}-splitter-wtiles KernelSplitterWTiles.cpp)
 
-target_link_libraries(${PROJECT_NAME}-adder-wtiles idg-fft)
+target_link_libraries(${PROJECT_NAME}-adder-wtiles idg-common)
 target_link_libraries(${PROJECT_NAME}-splitter-wtiles idg-fft)
 
 foreach(
