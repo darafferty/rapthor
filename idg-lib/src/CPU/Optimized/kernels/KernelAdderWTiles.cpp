@@ -10,6 +10,7 @@
 #include <omp.h>
 #include <fftw3.h>
 
+#include "common/memory.h"
 #include "common/Types.h"
 #include "common/Index.h"
 #include "Math.h"
@@ -20,17 +21,20 @@ void kernel_adder_subgrids_to_wtiles(
     const int wtile_size, const idg::Metadata *metadata,
     const idg::float2 *subgrid, idg::float2 *tiles) {
   // Precompute phasor
-  float phasor_real[subgrid_size][subgrid_size];
-  float phasor_imag[subgrid_size][subgrid_size];
+  int nr_pixels = subgrid_size * subgrid_size;
+  float *phasor_real = allocate_memory<float>(nr_pixels);
+  float *phasor_imag = allocate_memory<float>(nr_pixels);
+  float *phase = allocate_memory<float>(nr_pixels);
 
 #pragma omp parallel for collapse(2)
   for (int y = 0; y < subgrid_size; y++) {
     for (int x = 0; x < subgrid_size; x++) {
-      float phase = M_PI * (x + y - subgrid_size) / subgrid_size;
-      phasor_real[y][x] = cosf(phase);
-      phasor_imag[y][x] = sinf(phase);
+      phase[y * subgrid_size + x] =
+          M_PI * (x + y - subgrid_size) / subgrid_size;
     }
   }
+
+  compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
 
 #pragma omp parallel
   {
@@ -67,7 +71,8 @@ void kernel_adder_subgrids_to_wtiles(
           int y_dst = subgrid_y + y;
 
           // Load phasor
-          idg::float2 phasor = {phasor_real[y][x], phasor_imag[y][x]};
+          int idx = y * subgrid_size + x;
+          idg::float2 phasor = {phasor_real[idx], phasor_imag[idx]};
 
           // Add subgrid value to tiles
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
@@ -83,6 +88,10 @@ void kernel_adder_subgrids_to_wtiles(
       }      // end for y
     }        // end for s
   }          // end parallel
+
+  free(phase);
+  free(phasor_real);
+  free(phasor_imag);
 }  // end kernel_adder_subgrids_to_wtiles
 
 void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
