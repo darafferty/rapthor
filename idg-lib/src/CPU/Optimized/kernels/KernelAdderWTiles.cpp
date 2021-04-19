@@ -13,6 +13,7 @@
 #include "common/memory.h"
 #include "common/Types.h"
 #include "common/Index.h"
+#include "common/ArrayTypes.h"
 #include "Math.h"
 
 extern "C" {
@@ -117,15 +118,17 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
 
     // Compute w_padded_tile_size
     const float image_size_shift =
-      image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
+        image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
     const int padded_tile_size = wtile_size + subgrid_size;
-    const int w_padded_tile_size = next_composite(
-        padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
-    size_t current_buffer_size =
-        w_padded_tile_size * w_padded_tile_size * NR_POLARIZATIONS;
+    const int w_padded_tile_size =
+        next_composite(padded_tile_size +
+                       int(ceil(max_abs_w * image_size_shift * image_size)));
 
     // Allocate tile buffers for all threads
-    std::vector<std::complex<float>> tile_buffers(current_nr_tiles * current_buffer_size);
+    idg::Array4D<idg::float2> tile_buffers(current_nr_tiles, NR_POLARIZATIONS,
+                                           w_padded_tile_size,
+                                           w_padded_tile_size);
+    tile_buffers.zero();
 
     // Initialize FFT plans
     int rank = 2;
@@ -136,17 +139,16 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
     int odist = idist;
     int flags = FFTW_ESTIMATE;
     fftwf_plan_with_nthreads(1);
-    fftwf_complex* tile_ptr = reinterpret_cast<fftwf_complex*>(tile_buffers.data());
-    fftwf_plan plan_forward = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, tile_ptr, n, istride,
-                                                  idist, tile_ptr, n, ostride, odist, FFTW_FORWARD, flags);
-    fftwf_plan plan_backward = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, tile_ptr, n, istride,
-                                                  idist, tile_ptr, n, ostride, odist, FFTW_BACKWARD, flags);
+    fftwf_plan plan_forward = fftwf_plan_many_dft(
+        rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
+        ostride, odist, FFTW_FORWARD, flags);
+    fftwf_plan plan_backward = fftwf_plan_many_dft(
+        rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
+        ostride, odist, FFTW_BACKWARD, flags);
 
     // Process the current batch of tiles
 #pragma omp parallel for
-    for (int i = 0; i < current_nr_tiles; i++)
-    {
-      std::complex<float>* tile_buffer = &tile_buffers[i * current_buffer_size];
+    for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
 
       // Copy tile to tile buffer
@@ -161,21 +163,22 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
           int y2 = y + w_padding2;
           for (int x = 0; x < padded_tile_size; x++) {
             int x2 = x + w_padding2;
-            tile_buffer[index_grid(w_padded_tile_size, index_pol_transposed[pol],
-                                   y2, x2)] =
-                reinterpret_cast<std::complex<float> *>(
-                    tiles)[index_grid(padded_tile_size, tile_ids[tile_idx], pol, y, x)];
+            size_t idx =
+                index_grid(padded_tile_size, tile_ids[tile_idx], pol, y, x);
+            tile_buffers(i, index_pol_transposed[pol], y2, x2) = tiles[idx];
           }
         }
       }
 
-     // Reset tile to zero
-     std::fill(&tiles[index_grid(padded_tile_size, tile_ids[tile_idx], 0, 0, 0)],
-               &tiles[index_grid(padded_tile_size, tile_ids[tile_idx] + 1, 0, 0, 0)],
-               idg::float2({0.0, 0.0}));
+      // Reset tile to zero
+      std::fill(
+          &tiles[index_grid(padded_tile_size, tile_ids[tile_idx], 0, 0, 0)],
+          &tiles[index_grid(padded_tile_size, tile_ids[tile_idx] + 1, 0, 0, 0)],
+          idg::float2({0.0, 0.0}));
 
       // Forward FFT
-      fftwf_complex* tile_ptr = reinterpret_cast<fftwf_complex*>(tile_buffer);
+      fftwf_complex *tile_ptr =
+          reinterpret_cast<fftwf_complex *>(tile_buffers.data(i, 0, 0, 0));
       fftwf_execute_dft(plan_forward, tile_ptr, tile_ptr);
 
       // Multiply w term
@@ -195,11 +198,11 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
           const float phase = -2 * M_PI * n * w;
 
           // Compute phasor
-          std::complex<float> phasor = {std::cos(phase) / N, std::sin(phase) / N};
+          idg::float2 phasor = {std::cos(phase) / N, std::sin(phase) / N};
 
           // Apply correction
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            tile_buffer[index_grid(w_padded_tile_size, pol, y, x)] *= phasor;
+            tile_buffers(i, pol, y, x) *= phasor;
           }
         }
       }
@@ -213,34 +216,31 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
     fftwf_destroy_plan(plan_backward);
 
     // Add current batch of tiles to grid
-    for (int i = 0; i < current_nr_tiles; i++)
-    {
-      std::complex<float>* tile_buffer = &tile_buffers[i * current_buffer_size];
+    for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
 
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      int x0 = coordinate.x * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
-               grid_size / 2;
-      int y0 = coordinate.y * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
-               grid_size / 2;
+      int x0 = coordinate.x * wtile_size -
+               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+      int y0 = coordinate.y * wtile_size -
+               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
       int x_start = std::max(0, x0);
       int y_start = std::max(0, y0);
       int x_end = std::min(x0 + w_padded_tile_size, grid_size);
       int y_end = std::min(y0 + w_padded_tile_size, grid_size);
 
-    // Add tile to grid
-  #pragma omp parallel for collapse(2)
+      // Add tile to grid
+#pragma omp parallel for collapse(2)
       for (int y = y_start; y < y_end; y++) {
         for (int x = x_start; x < x_end; x++) {
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
             grid[index_grid(grid_size, pol, y, x)] +=
-                reinterpret_cast<idg::float2 *>(tile_buffer)[index_grid(
-                    w_padded_tile_size, pol, y - y0, x - x0)];
+                tile_buffers(i, pol, y - y0, x - x0);
           }
         }
       }
     }
-  } // end for tile_offset
+  }  // end for tile_offset
 }  // end kernel_adder_wtiles_to_grid
 
 }  // end extern "C"
