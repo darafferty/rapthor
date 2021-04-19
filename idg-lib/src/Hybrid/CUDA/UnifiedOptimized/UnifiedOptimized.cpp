@@ -756,19 +756,13 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Wait for GPU to finish
       executestream.synchronize();
     } else {
-      // Copy tile for tile to host
+      // Copy tiles to the host
       executestream.record(*job.gpuFinished);
       dtohstream.waitEvent(*job.gpuFinished);
-      for (int i = 0; i < current_nr_tiles; i++) {
-        CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_padded_tiles);
-        size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                      NR_CORRELATIONS * sizeof(idg::float2);
-        d_tile_ptr += i * sizeof_w_padded_tile;
-        char* h_tile_ptr = static_cast<char*>(h_padded_tiles);
-        h_tile_ptr += i * sizeof_w_padded_tile;
-        dtohstream.memcpyDtoHAsync(h_tile_ptr, d_tile_ptr,
-                                   sizeof_w_padded_tile);
-      }
+      size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
+                                    NR_CORRELATIONS * sizeof(idg::float2);
+      size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
+      dtohstream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_copy);
       dtohstream.record(*job.outputCopied);
     }  // end if m_use_unified_memory
   }    // end for tile_offset
