@@ -216,26 +216,29 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
     fftwf_destroy_plan(plan_backward);
 
     // Add current batch of tiles to grid
-    for (int i = 0; i < current_nr_tiles; i++) {
-      unsigned int tile_idx = tile_offset + i;
+#pragma omp parallel
+    {
+      for (int i = 0; i < current_nr_tiles; i++) {
+        unsigned int tile_idx = tile_offset + i;
 
-      idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      int x0 = coordinate.x * wtile_size -
-               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-      int y0 = coordinate.y * wtile_size -
-               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-      int x_start = std::max(0, x0);
-      int y_start = std::max(0, y0);
-      int x_end = std::min(x0 + w_padded_tile_size, grid_size);
-      int y_end = std::min(y0 + w_padded_tile_size, grid_size);
+        idg::Coordinate &coordinate = tile_coordinates[tile_idx];
+        int x0 = coordinate.x * wtile_size -
+                 (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+        int y0 = coordinate.y * wtile_size -
+                 (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+        int x_start = std::max(0, x0);
+        int y_start = std::max(0, y0);
+        int x_end = std::min(x0 + w_padded_tile_size, grid_size);
+        int y_end = std::min(y0 + w_padded_tile_size, grid_size);
 
-      // Add tile to grid
-#pragma omp parallel for collapse(2)
-      for (int y = y_start; y < y_end; y++) {
-        for (int x = x_start; x < x_end; x++) {
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            grid[index_grid(grid_size, pol, y, x)] +=
-                tile_buffers(i, pol, y - y0, x - x0);
+        // Add tile to grid
+#pragma omp for collapse(2)
+        for (int y = y_start; y < y_end; y++) {
+          for (int x = x_start; x < x_end; x++) {
+            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+              grid[index_grid(grid_size, pol, y, x)] +=
+                  tile_buffers(i, pol, y - y0, x - x0);
+            }
           }
         }
       }
