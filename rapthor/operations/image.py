@@ -86,7 +86,11 @@ class Image(Operation):
             # Set input MS filenames
             if self.field.do_predict:
                 # If predict was done, use the model-subtracted/reweighted data
+                # Note: if a single sector was used, these files won't exist, so fall
+                # back to 'ms_filename' in this case
                 sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
+                if not os.path.exists(sector_obs_filename[0]):
+                    sector_obs_filename = sector.get_obs_parameters('ms_filename')
             else:
                 sector_obs_filename = sector.get_obs_parameters('ms_filename')
             obs_filename.append(sector_obs_filename)
