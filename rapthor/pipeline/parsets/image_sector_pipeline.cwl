@@ -405,8 +405,6 @@ steps:
       - id: config
         source: make_aterm_config/aterms_config
 {% if use_mpi %}
-      - id: ntasks
-        source: mpi_ntasks_per_node
       - id: nnodes
         source: mpi_nnodes
 {% endif %}

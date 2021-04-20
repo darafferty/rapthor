@@ -88,6 +88,10 @@ class Operation(object):
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
                                                  'pipeline_inputs.yml')
 
+        # MPI configuration file
+        self.mpi_config_file = os.path.join(self.pipeline_working_dir,
+                                            'mpi_config.yml')
+
         # Toil's jobstore path
         self.jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
 
@@ -210,12 +214,26 @@ class Operation(object):
         # This would avoid passing unwanted variables (e.g., SLURM ones), but we have to
         # be sure we get all the ones we need, of course
         if self.scratch_dir is not None:
-            args.extend(['--tmpdir-prefix', self.scratch_dir])
-            args.extend(['--tmp-outdir-prefix', self.scratch_dir])
+            # Note: the trailing '/' is expected by Toil v5.3+
+            args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
+            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
         args.extend(['--clean', 'never'])
         args.extend(['--cleanWorkDir', 'never'])
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
+        if self.field.use_mpi:
+            # Create the config file for MPI jobs and add the required args
+            if self.batch_system == 'slurm':
+                # Use salloc to request the SLRUM allocation and run the MPI job
+                config_lines = ["runner: 'salloc'", "nproc_flag: '-N'",
+                                "extra_flags: ['mpirun', '--pernode']"]
+            else:
+                config_lines = ["runner: 'mpirun'", "nproc_flag: '-np'",
+                                "extra_flags: ['--pernode']"]
+            with open(self.mpi_config_file, 'w') as f:
+                f.write('\n'.join(config_lines))
+            args.extend(['--mpi-config-file', self.mpi_config_file])
+            args.extend(['--enable-ext'])
         args.append(self.pipeline_parset_file)
         args.append(self.pipeline_inputs_file)
 
