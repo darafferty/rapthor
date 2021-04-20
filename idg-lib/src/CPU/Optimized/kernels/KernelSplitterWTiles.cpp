@@ -138,15 +138,16 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
         rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
         ostride, odist, FFTW_BACKWARD, flags);
 
+    // Allocate tile buffers for all threads
+    idg::Array4D<idg::float2> tile_buffers(current_nr_tiles, NR_POLARIZATIONS,
+                                           w_padded_tile_size,
+                                           w_padded_tile_size);
+    tile_buffers.zero();
+
     // Process the current batch of tiles
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
-
-      // Allocate tile buffer
-      idg::Array3D<idg::float2> tile_buffer(
-          NR_POLARIZATIONS, w_padded_tile_size, w_padded_tile_size);
-      tile_buffer.zero();
 
       // Split tile from grid
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
@@ -167,14 +168,14 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
         for (int x = x_start; x < x_end; x++) {
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
             size_t idx = index_grid(grid_size, pol, y, x);
-            tile_buffer(pol, y - y0, x - x0) = grid[idx];
+            tile_buffers(i, pol, y - y0, x - x0) = grid[idx];
           }
         }
       }
 
       // Backwards FFT
       fftwf_complex *tile_ptr =
-          reinterpret_cast<fftwf_complex *>(tile_buffer.data());
+          reinterpret_cast<fftwf_complex *>(tile_buffers.data(i, 0, 0, 0));
       fftwf_execute_dft(plan_backward, tile_ptr, tile_ptr);
 
       float cell_size = image_size / w_padded_tile_size;
@@ -197,7 +198,7 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 
           // Apply correction
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            tile_buffer(pol, y, x) *= phasor;
+            tile_buffers(i, pol, y, x) *= phasor;
           }
         }
       }
@@ -215,7 +216,7 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
             int x2 = x + w_padding2;
             size_t idx = index_grid(padded_tile_size, tile_ids[tile_idx],
                                     index_pol_transposed[pol], y, x);
-            tiles[idx] = tile_buffer(pol, y2, x2);
+            tiles[idx] = tile_buffers(i, pol, y2, x2);
           }
         }
       }
