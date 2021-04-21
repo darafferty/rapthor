@@ -329,8 +329,6 @@ steps:
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
-      - id: mpi_ntasks_per_node
-        source: mpi_ntasks_per_node
       - id: mpi_nnodes
         source: mpi_nnodes
 {% endif %}
