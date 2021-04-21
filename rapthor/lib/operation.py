@@ -206,7 +206,6 @@ class Operation(object):
         args.extend(['--outdir', self.scratch_dir])
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--logLevel', 'DEBUG'])
-        args.extend(['--preserve-entire-environment'])
         args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         if self.scratch_dir is not None:
             # Note: the trailing '/' is expected by Toil v5.3+
