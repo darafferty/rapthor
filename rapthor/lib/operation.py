@@ -207,12 +207,7 @@ class Operation(object):
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--logLevel', 'DEBUG'])
         args.extend(['--preserve-entire-environment'])
-        # Note: instead of using '--preserve-entire-environment', we can pass a limited
-        # number of env variables with something like:
-        # args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH',
-        #              'MPI_PREFIX', 'LOFARROOT'])
-        # This would avoid passing unwanted variables (e.g., SLURM ones), but we have to
-        # be sure we get all the ones we need, of course
+        args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         if self.scratch_dir is not None:
             # Note: the trailing '/' is expected by Toil v5.3+
             args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
