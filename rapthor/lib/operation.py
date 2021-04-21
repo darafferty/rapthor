@@ -206,7 +206,11 @@ class Operation(object):
         args.extend(['--outdir', self.scratch_dir])
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--logLevel', 'DEBUG'])
-        args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
+        for k, v in os.environ.items():
+            if 'slurm' in k.lower():
+                os.environ[k] = ''
+        args.extend(['--preserve-entire-environment'])
+#         args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         if self.scratch_dir is not None:
             # Note: the trailing '/' is expected by Toil v5.3+
             args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
