@@ -206,9 +206,6 @@ class Operation(object):
         args.extend(['--outdir', self.scratch_dir])
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--logLevel', 'DEBUG'])
-        for k, v in os.environ.items():
-            if 'slurm' in k.lower():
-                os.environ[k] = ''
         args.extend(['--preserve-entire-environment'])
 #         args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         if self.scratch_dir is not None:
@@ -223,7 +220,7 @@ class Operation(object):
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
                 # Use salloc to request the SLRUM allocation and run the MPI job
-                config_lines = ["runner: 'salloc'", "nproc_flag: '-N'",
+                config_lines = ["runner: 'mpi_runner.sh'", "nproc_flag: '-N'",
                                 "extra_flags: ['mpirun', '--pernode']"]
             else:
                 config_lines = ["runner: 'mpirun'", "nproc_flag: '-np'",
