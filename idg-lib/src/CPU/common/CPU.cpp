@@ -50,6 +50,7 @@ std::unique_ptr<Plan> CPU::make_plan(
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
   if (supports_wtiling() && m_cache_state.w_step != 0.0 &&
       m_wtiles.get_wtile_buffer_size()) {
+    options.w_step = m_cache_state.w_step;
     options.nr_w_layers = INT_MAX;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
