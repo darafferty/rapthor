@@ -67,10 +67,14 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         beamMS = misc.string2list(beamMS)
     peel_bright = misc.string2bool(peel_bright)
 
-    # Set the TMPDIR evn var to /tmp, to ensure we do not hit the length limits
-    # for socket paths (used by the mulitprocessing module)
+    # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
+    # limits for socket paths (used by the mulitprocessing module). We try a number of
+    # standard paths (the same ones used in the tempfile Python library)
     old_tmpdir = os.environ["TMPDIR"]
-    os.environ["TMPDIR"] = '/tmp'
+    for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
+        if os.path.exists(tmpdir):
+            os.environ["TMPDIR"] = tmpdir
+            break
 
     # Run PyBDSF to make a mask for grouping
     if use_adaptive_threshold:
