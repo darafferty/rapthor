@@ -130,11 +130,10 @@ inputs:
       for the next solution interval (length = 1).
     type: string
 
-  - id: iteratedirections
-    label: Iterate directions
+  - id: solveralgorithm
+    label: Solver algorithm
     doc: |
-      Flag that determines whether the direction iterating algorithm for solving
-      is used (length = 1).
+      The algorithm used for solving (length = 1).
     type: string
 
   - id: onebeamperpatch
@@ -398,8 +397,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
-      - id: iteratedirections
-        source: iteratedirections
+      - id: solveralgorithm
+        source: solveralgorithm
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize
@@ -484,8 +483,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
-      - id: iteratedirections
-        source: iteratedirections
+      - id: solveralgorithm
+        source: solveralgorithm
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize
@@ -604,8 +603,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
-      - id: iteratedirections
-        source: iteratedirections
+      - id: solveralgorithm
+        source: solveralgorithm
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize
@@ -802,8 +801,8 @@ steps:
         source: maxiter
       - id: propagatesolutions
         source: propagatesolutions
-      - id: iteratedirections
-        source: iteratedirections
+      - id: solveralgorithm
+        source: solveralgorithm
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: stepsize

@@ -111,14 +111,13 @@ inputs:
       prefix: solve.propagatesolutions=
       separate: False
 
-  - id: iteratedirections
-    label: Iterate directions
+  - id: solveralgorithm
+    label: Solver algorithm
     doc: |
-      Flag that determines whether the direction iterating algorithm for solving
-      is used.
+      The algorithm used for solving.
     type: string
     inputBinding:
-      prefix: solve.iteratedirections=
+      prefix: solve.solveralgorithm=
       separate: False
 
   - id: onebeamperpatch
