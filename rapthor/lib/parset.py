@@ -298,10 +298,8 @@ def get_calibration_options(parset):
         parset_dict['propagatesolutions'] = parset.getboolean('calibration', 'propagatesolutions')
     else:
         parset_dict['propagatesolutions'] = True
-    if 'iteratedirections' in parset_dict:
-        parset_dict['iteratedirections'] = parset.getboolean('calibration', 'iteratedirections')
-    else:
-        parset_dict['iteratedirections'] = False
+    if 'solveralgorithm' not in parset_dict:
+        parset_dict['solveralgorithm'] = 'directionsolve'
     if 'maxiter' in parset_dict:
         parset_dict['maxiter'] = parset.getint('calibration', 'maxiter')
     else:
@@ -342,7 +340,7 @@ def get_calibration_options(parset):
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
                        'slow_smoothnessconstraint', 'use_idg_predict', 'debug',
-                       'llsstarttolerance', 'llstolerance', 'iteratedirections']
+                       'llsstarttolerance', 'llstolerance', 'solveralgorithm']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '

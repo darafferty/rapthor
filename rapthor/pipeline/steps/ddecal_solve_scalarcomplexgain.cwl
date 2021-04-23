@@ -71,10 +71,10 @@ inputs:
     inputBinding:
       prefix: solve.propagatesolutions=
       separate: False
-  - id: iteratedirections
+  - id: solveralgorithm
     type: string
     inputBinding:
-      prefix: solve.iteratedirections=
+      prefix: solve.solveralgorithm=
       separate: False
   - id: onebeamperpatch
     type: string
