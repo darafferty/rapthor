@@ -221,10 +221,10 @@ class Operation(object):
             if self.batch_system == 'slurm':
                 # Use salloc to request the SLRUM allocation and run the MPI job
                 config_lines = ["runner: 'mpi_runner.sh'", "nproc_flag: '-N'",
-                                "extra_flags: ['mpirun', '--pernode']"]
+                                "extra_flags: ['mpirun', '--map-by node']"]
             else:
                 config_lines = ["runner: 'mpirun'", "nproc_flag: '-np'",
-                                "extra_flags: ['--pernode']"]
+                                "extra_flags: ['--map-by node']"]
             with open(self.mpi_config_file, 'w') as f:
                 f.write('\n'.join(config_lines))
             args.extend(['--mpi-config-file', self.mpi_config_file])
