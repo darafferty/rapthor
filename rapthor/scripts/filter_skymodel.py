@@ -12,6 +12,7 @@ import casacore.tables as pt
 import astropy.io.ascii
 from astropy.io import fits as pyfits
 from astropy import wcs
+import os
 
 
 def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
@@ -65,6 +66,15 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
     if isinstance(beamMS, str):
         beamMS = misc.string2list(beamMS)
     peel_bright = misc.string2bool(peel_bright)
+
+    # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
+    # limits for socket paths (used by the mulitprocessing module). We try a number of
+    # standard paths (the same ones used in the tempfile Python library)
+    old_tmpdir = os.environ["TMPDIR"]
+    for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
+        if os.path.exists(tmpdir):
+            os.environ["TMPDIR"] = tmpdir
+            break
 
     # Run PyBDSF to make a mask for grouping
     if use_adaptive_threshold:
@@ -196,6 +206,9 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
             f.writelines(dummylines)
         with open(output_root+'.true_sky', 'w') as f:
             f.writelines(dummylines)
+
+    # Set the TMPDIR env var back to its original value
+    os.environ["TMPDIR"] = old_tmpdir
 
 
 if __name__ == '__main__':

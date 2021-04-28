@@ -129,12 +129,6 @@ inputs:
       The filenames of the a-term images (length = 1).
     type: string
 {% if use_mpi %}
-  - id: mpi_ntasks_per_node
-    label: Number of tasks
-    doc: |
-      The number of tasks per node for MPI jobs (length = 1).
-    type: int
-
   - id: mpi_nnodes
     label: Number of nodes
     doc: |
@@ -405,8 +399,6 @@ steps:
       - id: config
         source: make_aterm_config/aterms_config
 {% if use_mpi %}
-      - id: ntasks
-        source: mpi_ntasks_per_node
       - id: nnodes
         source: mpi_nnodes
 {% endif %}

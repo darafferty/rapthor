@@ -628,13 +628,13 @@ def get_cluster_options(parset):
     else:
         parset_dict['mem_per_node_gb'] = 0
 
-    # Cluster type (default = singleMachine). Use batch_system = slurm to use SLURM
+    # Cluster type (default = single_machine). Use batch_system = slurm to use SLURM
     if 'batch_system' not in parset_dict:
-        parset_dict['batch_system'] = 'singleMachine'
+        parset_dict['batch_system'] = 'single_machine'
     if 'max_nodes' in parset_dict:
         parset_dict['max_nodes'] = parset.getint('cluster', 'max_nodes')
     else:
-        if parset_dict['batch_system'] == 'singleMachine':
+        if parset_dict['batch_system'] == 'single_machine':
             parset_dict['max_nodes'] = 1
         else:
             parset_dict['max_nodes'] = 12

@@ -270,7 +270,7 @@ The available options are described below under their respective sections.
 .. glossary::
 
     batch_system
-        Cluster batch system (default = ``singleMachine``). Use ``batch_system =
+        Cluster batch system (default = ``single_machine``). Use ``batch_system =
         slurm`` to use a SLURM-based cluster.
 
     max_nodes
