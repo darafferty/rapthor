@@ -99,7 +99,7 @@ class Operation(object):
         self.batch_system = self.parset['cluster_specific']['batch_system']
 
         # Get the maximum number of nodes to use
-        if self.force_serial_jobs or self.batch_system == 'singleMachine':
+        if self.force_serial_jobs or self.batch_system == 'single_machine':
             self.max_nodes = 1
         else:
             self.max_nodes = self.parset['cluster_specific']['max_nodes']
@@ -225,6 +225,8 @@ class Operation(object):
             else:
                 config_lines = ["runner: 'mpirun'", "nproc_flag: '-np'",
                                 "extra_flags: ['--map-by node']"]
+                self.log.warning('MPI support for non-Slurm clusters is experimental. '
+                                 'Please report any issues encountered.')
             with open(self.mpi_config_file, 'w') as f:
                 f.write('\n'.join(config_lines))
             args.extend(['--mpi-config-file', self.mpi_config_file])
