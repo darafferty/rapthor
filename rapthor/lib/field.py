@@ -49,7 +49,7 @@ class Field(object):
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.slow_smoothnessconstraint = self.parset['calibration_specific']['slow_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
-        self.iteratedirections = self.parset['calibration_specific']['iteratedirections']
+        self.solveralgorithm = self.parset['calibration_specific']['solveralgorithm']
         self.onebeamperpatch = self.parset['calibration_specific']['onebeamperpatch']
         self.llssolver = self.parset['calibration_specific']['llssolver']
         self.maxiter = self.parset['calibration_specific']['maxiter']
@@ -158,7 +158,7 @@ class Field(object):
                                self.diam) * 180. / np.pi * sec_el
         self.fwhm_ra_deg = self.fwhm_deg / sec_el
         self.fwhm_dec_deg = self.fwhm_deg
-        
+
         # Warning if parset pointing is different from observation pointing
         parra = self.parset['imaging_specific']['grid_center_ra']
         pardec = self.parset['imaging_specific']['grid_center_dec']

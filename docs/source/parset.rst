@@ -94,7 +94,8 @@ The available options are described below under their respective sections.
 .. glossary::
 
     llssolver
-        The linear least-squares solver to use (one of "qr", "svd", or "lsmr")
+        The linear least-squares solver to use (one of "qr", "svd", or "lsmr";
+        default = "qr")
 
     maxiter
         Maximum number of iterations to perform during calibration (default = 50).
@@ -102,8 +103,9 @@ The available options are described below under their respective sections.
     propagatesolutions
         Propagate solutions to next time slot as initial guess (default = ``True``)?
 
-    iteratedirections
-        Use the direction iterating algorithm for solving (default = ``False``)?
+    solveralgorithm
+        The algorithm used for solving (one of "directionsolve", "directioniterative",
+        or "hybrid"; default = "directionsolve")?
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =
