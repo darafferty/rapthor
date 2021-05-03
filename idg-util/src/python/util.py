@@ -821,13 +821,12 @@ def init_example_aterms_offset(aterms_offset, nr_time):
                                          ctypes.c_int(nr_time))
 
 
-def init_example_baselines(baselines):
+def init_example_baselines(baselines, nr_stations):
     """Initialize baselines
     Input:
     baselines - numpy.ndarray(shape=(nr_baselines), dtype = idg.baselinetype)
     """
     nr_baselines = baselines.shape[0]
-    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
     lib.utils_init_example_baselines.argtypes = [ctypes.c_void_p,
                                                  ctypes.c_int,
                                                  ctypes.c_int]
@@ -860,12 +859,12 @@ def get_example_frequencies(nr_channels,
     return frequencies.astype(dtype=dtype)
 
 
-def get_example_baselines(nr_baselines,
+def get_example_baselines(nr_stations, nr_baselines,
                           dtype=baselinetype, info=False):
     """Initialize and return example baselines array"""
     baselines = numpy.zeros(nr_baselines,
                             dtype = baselinetype)
-    init_example_baselines(baselines)
+    init_example_baselines(baselines, nr_stations)
     if info==True:
         print("baselines: numpy.ndarray(shape = (nr_channels), " + \
                                         "dtype = " + str(dtype) + ")")

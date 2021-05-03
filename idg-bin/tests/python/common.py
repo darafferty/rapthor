@@ -169,7 +169,7 @@ def main(proxyname):
     data.get_frequencies(frequencies, nr_channels, image_size, channel_offset)
     data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
 
-    baselines      = util.get_example_baselines(nr_baselines)
+    baselines      = util.get_example_baselines(nr_stations, nr_baselines)
     aterms         = util.get_example_aterms(
                         nr_timeslots, nr_stations, subgrid_size, nr_correlations)
     aterms_offsets = util.get_example_aterms_offset(
