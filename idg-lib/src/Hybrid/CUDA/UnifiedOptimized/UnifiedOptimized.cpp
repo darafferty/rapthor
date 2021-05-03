@@ -1001,30 +1001,36 @@ void UnifiedOptimized::run_wtiles_from_grid(
           current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
           d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
     } else {
-// Extract tiles from grid
 #pragma omp parallel for
       for (int i = 0; i < current_nr_tiles; i++) {
-        idg::Coordinate& coordinate = tile_coordinates[i];
+        unsigned int tile_idx = tile_offset + i;
 
-        int x0 = coordinate.x * tile_size - (padded_tile_size - tile_size) / 2 +
-                 grid_size / 2;
-        int y0 = coordinate.y * tile_size - (padded_tile_size - tile_size) / 2 +
-                 grid_size / 2;
-
+        // Split tile from grid
+        idg::Coordinate& coordinate = tile_coordinates[tile_idx];
+        float w = (coordinate.z + 0.5f) * w_step;
+        int w_padding = w_padded_tile_size - padded_tile_size;
+        int w_padding2 = w_padding / 2;
+        int x0 = coordinate.x * tile_size -
+                 (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
+        int y0 = coordinate.y * tile_size -
+                 (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
         int x_start = std::max(0, x0);
         int y_start = std::max(0, y0);
-        int x_end = std::min(x0 + padded_tile_size, (int)grid_size);
-        int y_end = std::min(y0 + padded_tile_size, (int)grid_size);
+        int x_end = std::min(x0 + w_padded_tile_size, (int)grid_size);
+        int y_end = std::min(y0 + w_padded_tile_size, (int)grid_size);
 
-        for (int y = y_start; y < y_end; y++) {
-          for (int x = x_start; x < x_end; x++) {
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-              const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-              unsigned int pol_src = index_pol_transposed[pol];
-              unsigned int pol_dst = pol;
-              unsigned long src_idx = index_grid(grid_size, pol_src, y, x);
-              unsigned long dst_idx =
-                  index_grid(padded_tile_size, i, pol_dst, (y - y0), (x - x0));
+        const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+
+        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          unsigned int pol_src = index_pol_transposed[pol];
+          unsigned int pol_dst = pol;
+
+          for (int y = y_start; y < y_end; y++) {
+            for (int x = x_start; x < x_end; x++) {
+              size_t src_idx = index_grid(grid_size, pol, y, x);
+              size_t dst_idx = index_grid(w_padded_tile_size, i, pol_dst,
+                                          (y - y0), (x - x0));
+
               std::complex<float>* tile_ptr =
                   static_cast<std::complex<float>*>(h_padded_tiles.ptr());
               std::complex<float>* grid_ptr = m_grid->data();
