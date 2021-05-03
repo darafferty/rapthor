@@ -1077,9 +1077,10 @@ void InstanceCUDA::launch_copy_tiles(unsigned int nr_tiles,
 void InstanceCUDA::launch_apply_phasor_to_wtiles(
     unsigned int nr_tiles, float image_size, float w_step,
     unsigned int tile_size, cu::DeviceMemory& d_tiles,
-    cu::DeviceMemory& d_shift, cu::DeviceMemory& d_tile_coordinates) {
+    cu::DeviceMemory& d_shift, cu::DeviceMemory& d_tile_coordinates, int sign) {
   const void* parameters[] = {&image_size, &w_step, &tile_size,
-                              d_tiles,     d_shift, d_tile_coordinates};
+                              d_tiles,     d_shift, d_tile_coordinates,
+                              &sign};
   dim3 grid(NR_CORRELATIONS, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[1], grid, block, 0,

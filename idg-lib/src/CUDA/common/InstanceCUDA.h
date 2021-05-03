@@ -124,7 +124,8 @@ class InstanceCUDA : public KernelsInstance {
                                      float w_step, unsigned int tile_size,
                                      cu::DeviceMemory& d_tiles,
                                      cu::DeviceMemory& d_shift,
-                                     cu::DeviceMemory& d_tile_coordinates);
+                                     cu::DeviceMemory& d_tile_coordinates,
+                                     int sign = -1);
 
   void launch_adder_subgrids_to_wtiles(int nr_subgrids, long grid_size,
                                        int subgrid_size, int tile_size,

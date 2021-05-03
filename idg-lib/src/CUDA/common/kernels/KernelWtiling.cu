@@ -83,7 +83,8 @@ __global__ void kernel_apply_phasor(
     const int                      tile_size,
           float2*     __restrict__ tiles,
     const float*      __restrict__ shift,
-    const Coordinate* __restrict__ tile_coordinates)
+    const Coordinate* __restrict__ tile_coordinates,
+    const int                      sign)
 {
     // Map blockIdx.x to polarizations
     assert(gridDim.x == NR_POLARIZATIONS);
@@ -114,9 +115,14 @@ __global__ void kernel_apply_phasor(
         int x = i % tile_size;
 
         if (y < tile_size) {
-            // Compute phase
-            const int x_ = (x + (tile_size / 2)) % tile_size;
-            const int y_ = (y + (tile_size / 2)) % tile_size;
+            // Inline FFT shift
+            int x_ = x;
+            int y_ = y;
+            if (sign == -1)
+            {
+                x_ = (x + (tile_size / 2)) % tile_size;
+                y_ = (y + (tile_size / 2)) % tile_size;
+            }
 
             // Use alternative computation of n to work around accuracy issues
             const float l = (x_ - (tile_size / 2)) * cell_size - shift[0];
@@ -124,7 +130,7 @@ __global__ void kernel_apply_phasor(
             const float n = 1.0f - sqrtf(1.0 - (l * l) - (m * m));
 
             const float pi = (float) M_PI;
-            const float phase = -2 * pi * n * w;
+            const float phase = sign * 2 * pi * n * w;
 
             // Compute phasor
             float2 phasor = make_float2(cosf(phase), sinf(phase)) * scale;
