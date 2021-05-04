@@ -945,8 +945,6 @@ void UnifiedOptimized::run_wtiles_from_grid(
   struct JobData {
     int tile_offset;
     int current_nr_tiles;
-    std::unique_ptr<cu::Event> gpuFinished;
-    std::unique_ptr<cu::Event> outputCopied;
   };
 
   std::vector<JobData> jobs;
@@ -961,8 +959,6 @@ void UnifiedOptimized::run_wtiles_from_grid(
     JobData job;
     job.current_nr_tiles = current_nr_tiles;
     job.tile_offset = tile_offset;
-    job.gpuFinished.reset(new cu::Event(context));
-    job.outputCopied.reset(new cu::Event(context));
     jobs.push_back(std::move(job));
   }
 
@@ -1024,20 +1020,12 @@ void UnifiedOptimized::run_wtiles_from_grid(
             }
           }
         }
-
-        // Copy tile to the device
-        CUdeviceptr d_tile_ptr = static_cast<CUdeviceptr>(d_padded_tiles);
-        size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                      NR_CORRELATIONS * sizeof(idg::float2);
-        d_tile_ptr += i * sizeof_w_padded_tile;
-        char* h_tile_ptr = static_cast<char*>(h_padded_tiles);
-        h_tile_ptr += i * sizeof_w_padded_tile;
-        htodstream.memcpyHtoDAsync(d_tile_ptr, h_tile_ptr,
-                                   sizeof_w_padded_tile);
       }
-    }
 
-    if (!m_use_unified_memory) {
+      // Copy tiles to GPU
+      size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
+      htodstream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, sizeof_copy);
+
       // Wait for all tiles to be copied
       htodstream.synchronize();
     }
