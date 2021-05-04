@@ -17,6 +17,38 @@
 #include "Math.h"
 
 extern "C" {
+
+void kernel_apply_phasor(int w_padded_tile_size, float image_size, float w_step,
+                         const float *shift, idg::Coordinate &coordinate,
+                         idg::float2 *tile, int sign) {
+  float cell_size = image_size / w_padded_tile_size;
+  int N = w_padded_tile_size * w_padded_tile_size;
+  float w = (coordinate.z + 0.5f) * w_step;
+
+  for (int y = 0; y < w_padded_tile_size; y++) {
+    for (int x = 0; x < w_padded_tile_size; x++) {
+      // Inline FFT shift
+      int x_ = (x + (w_padded_tile_size / 2)) % w_padded_tile_size;
+      int y_ = (y + (w_padded_tile_size / 2)) % w_padded_tile_size;
+
+      // Compute phase
+      const float l = (x_ - (w_padded_tile_size / 2)) * cell_size;
+      const float m = (y_ - (w_padded_tile_size / 2)) * cell_size;
+      const float n = compute_n(l, -m, shift);
+      const float phase = sign * 2 * M_PI * n * w;
+
+      // Compute phasor
+      idg::float2 phasor = {std::cos(phase) / N, std::sin(phase) / N};
+
+      // Apply correction
+      for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        size_t idx = index_grid(w_padded_tile_size, pol, y, x);
+        tile[idx] *= phasor;
+      }
+    }
+  }
+}  // end kernel_apply_phasor
+
 void kernel_adder_subgrids_to_wtiles(
     const long nr_subgrids, const int grid_size, const int subgrid_size,
     const int wtile_size, const idg::Metadata *metadata,
@@ -152,7 +184,6 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
 
       // Copy tile to tile buffer
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      float w = (coordinate.z + 0.5f) * w_step;
       int w_padding = w_padded_tile_size - padded_tile_size;
       int w_padding2 = w_padding / 2;
       const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
@@ -181,30 +212,8 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
       fftwf_execute_dft(plan_forward, tile_ptr, tile_ptr);
 
       // Multiply w term
-      float cell_size = image_size / w_padded_tile_size;
-      int N = w_padded_tile_size * w_padded_tile_size;
-
-      for (int y = 0; y < w_padded_tile_size; y++) {
-        for (int x = 0; x < w_padded_tile_size; x++) {
-          // Inline FFT shift
-          const int x_ = (x + (w_padded_tile_size / 2)) % w_padded_tile_size;
-          const int y_ = (y + (w_padded_tile_size / 2)) % w_padded_tile_size;
-
-          // Compute phase
-          const float l = (x_ - (w_padded_tile_size / 2)) * cell_size;
-          const float m = (y_ - (w_padded_tile_size / 2)) * cell_size;
-          const float n = compute_n(l, -m, shift);
-          const float phase = -2 * M_PI * n * w;
-
-          // Compute phasor
-          idg::float2 phasor = {std::cos(phase) / N, std::sin(phase) / N};
-
-          // Apply correction
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            tile_buffers(i, pol, y, x) *= phasor;
-          }
-        }
-      }
+      kernel_apply_phasor(w_padded_tile_size, image_size, w_step, shift,
+                          coordinate, tile_buffers.data(i, 0, 0, 0), -1);
 
       // Backwards FFT
       fftwf_execute_dft(plan_backward, tile_ptr, tile_ptr);
@@ -379,7 +388,6 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 
       // Split tile from grid
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      float w = (coordinate.z + 0.5f) * w_step;
       int w_padding = w_padded_tile_size - padded_tile_size;
       int w_padding2 = w_padding / 2;
 
@@ -406,30 +414,9 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
           reinterpret_cast<fftwf_complex *>(tile_buffers.data(i, 0, 0, 0));
       fftwf_execute_dft(plan_backward, tile_ptr, tile_ptr);
 
-      float cell_size = image_size / w_padded_tile_size;
-
-      int N = w_padded_tile_size * w_padded_tile_size;
-      for (int y = 0; y < w_padded_tile_size; y++) {
-        for (int x = 0; x < w_padded_tile_size; x++) {
-          // Inline FFT shift
-          int x_ = (x + (w_padded_tile_size / 2)) % w_padded_tile_size;
-          int y_ = (y + (w_padded_tile_size / 2)) % w_padded_tile_size;
-
-          // Compute phase
-          const float l = (x_ - (w_padded_tile_size / 2)) * cell_size;
-          const float m = (y_ - (w_padded_tile_size / 2)) * cell_size;
-          const float n = compute_n(l, -m, shift);
-          const float phase = 2 * M_PI * n * w;
-
-          // Compute phasor
-          idg::float2 phasor = {std::cos(phase) / N, std::sin(phase) / N};
-
-          // Apply correction
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            tile_buffers(i, pol, y, x) *= phasor;
-          }
-        }
-      }
+      // Multiply w term
+      kernel_apply_phasor(w_padded_tile_size, image_size, w_step, shift,
+                          coordinate, tile_buffers.data(i, 0, 0, 0), 1);
 
       // Forward FFT
       fftwf_execute_dft(plan_forward, tile_ptr, tile_ptr);
