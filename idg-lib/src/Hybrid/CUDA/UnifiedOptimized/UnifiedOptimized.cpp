@@ -695,8 +695,6 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   struct JobData {
     int tile_offset;
     int current_nr_tiles;
-    std::unique_ptr<cu::Event> gpuFinished;
-    std::unique_ptr<cu::Event> outputCopied;
   };
 
   std::vector<JobData> jobs;
@@ -711,8 +709,6 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     JobData job;
     job.current_nr_tiles = current_nr_tiles;
     job.tile_offset = tile_offset;
-    job.gpuFinished.reset(new cu::Event(context));
-    job.outputCopied.reset(new cu::Event(context));
     jobs.push_back(std::move(job));
   }
 
@@ -756,25 +752,15 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Wait for GPU to finish
       executestream.synchronize();
     } else {
+      // Wait for GPU to finish
+      executestream.synchronize();
+
       // Copy tiles to the host
-      executestream.record(*job.gpuFinished);
-      dtohstream.waitEvent(*job.gpuFinished);
-      size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                    NR_CORRELATIONS * sizeof(idg::float2);
       size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
       dtohstream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_copy);
-      dtohstream.record(*job.outputCopied);
-    }  // end if m_use_unified_memory
-  }    // end for tile_offset
 
-  if (!m_use_unified_memory) {
-    // Iterate all jobs
-    for (auto& job : jobs) {
-      int tile_offset = job.tile_offset;
-      int current_nr_tiles = job.current_nr_tiles;
-
-      // Wait for output to be copied
-      job.outputCopied->synchronize();
+      // Wait for tiles to be copied
+      dtohstream.synchronize();
 
       // Add tiles to grid on host
 #pragma omp parallel for
@@ -809,8 +795,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
           }    // end for pol
         }      // end for i
       }        // end for y
-    }          // end for tile_offset
-  }            // end if !m_use_unified_memory
+    }          // end if m_use_unified_memory
+  }            // end for jobs
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
