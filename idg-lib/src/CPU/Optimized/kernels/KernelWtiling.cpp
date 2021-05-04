@@ -132,6 +132,38 @@ void kernel_tiles_to_grid(int nr_tiles,
   }
 }
 
+inline void kernel_copy_tile(int src_tile_size, int dst_tile_size,
+                             idg::float2 *src_tile, idg::float2 *dst_tile) {
+  const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+  int padding = dst_tile_size - src_tile_size;
+  int padding2 = padding / 2;
+  int copy_tile_size = min(src_tile_size, dst_tile_size);
+
+  for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+    for (int y = 0; y < copy_tile_size; y++) {
+      for (int x = 0; x < copy_tile_size; x++) {
+        int src_y = y;
+        int dst_y = y;
+        int src_x = x;
+        int dst_x = x;
+
+        if (padding > 0) {
+          dst_y += padding2;
+          dst_x += padding2;
+        } else if (padding < 0) {
+          src_y -= padding2;
+          src_x -= padding2;
+        }
+
+        size_t src_idx = index_grid(src_tile_size, pol, src_y, src_x);
+        size_t dst_idx =
+            index_grid(dst_tile_size, index_pol_transposed[pol], dst_y, dst_x);
+        dst_tile[dst_idx] = src_tile[src_idx];
+      }
+    }
+  }
+}
+
 void kernel_adder_subgrids_to_wtiles(
     const long nr_subgrids, const int grid_size, const int subgrid_size,
     const int wtile_size, const idg::Metadata *metadata,
@@ -264,24 +296,13 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
-
-      // Copy tile to tile buffer
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      int w_padding = w_padded_tile_size - padded_tile_size;
-      int w_padding2 = w_padding / 2;
-      const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
 
-      for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-        for (int y = 0; y < padded_tile_size; y++) {
-          int y2 = y + w_padding2;
-          for (int x = 0; x < padded_tile_size; x++) {
-            int x2 = x + w_padding2;
-            size_t idx =
-                index_grid(padded_tile_size, tile_ids[tile_idx], pol, y, x);
-            tile_buffers(i, index_pol_transposed[pol], y2, x2) = tiles[idx];
-          }
-        }
-      }
+      // Copy tile
+      size_t src_idx =
+          index_grid(padded_tile_size, tile_ids[tile_idx], 0, 0, 0);
+      kernel_copy_tile(padded_tile_size, w_padded_tile_size, &tiles[src_idx],
+                       tile_buffers.data(i, 0, 0, 0));
 
       // Reset tile to zero
       std::fill(
@@ -463,21 +484,10 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
       fftwf_execute_dft(plan_forward, tile_ptr, tile_ptr);
 
       // Copy tile
-      const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-      int w_padding = w_padded_tile_size - padded_tile_size;
-      int w_padding2 = w_padding / 2;
-
-      for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-        for (int y = 0; y < padded_tile_size; y++) {
-          int y2 = y + w_padding2;
-          for (int x = 0; x < padded_tile_size; x++) {
-            int x2 = x + w_padding2;
-            size_t idx = index_grid(padded_tile_size, tile_ids[tile_idx],
-                                    index_pol_transposed[pol], y, x);
-            tiles[idx] = tile_buffers(i, pol, y2, x2);
-          }
-        }
-      }
+      size_t dst_idx =
+          index_grid(padded_tile_size, tile_ids[tile_idx], 0, 0, 0);
+      kernel_copy_tile(w_padded_tile_size, padded_tile_size,
+                       tile_buffers.data(i, 0, 0, 0), &tiles[dst_idx]);
     }  // end for current_nr_tiles
 
     // Free FFT plans
