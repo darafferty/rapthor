@@ -95,6 +95,43 @@ void kernel_tiles_from_grid(int nr_tiles,
   }
 }
 
+void kernel_tiles_to_grid(int nr_tiles,
+                          int wtile_size,
+                          int w_padded_tile_size,
+                          int grid_size,
+                          idg::Coordinate *coordinates,
+                          const idg::float2 *tiles,
+                          idg::float2 *grid)
+{
+#pragma omp parallel
+  {
+    for (int i = 0; i < nr_tiles; i++) {
+      idg::Coordinate &coordinate = coordinates[i];
+      int x0 = coordinate.x * wtile_size -
+               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+      int y0 = coordinate.y * wtile_size -
+               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+      int x_start = std::max(0, x0);
+      int y_start = std::max(0, y0);
+      int x_end = std::min(x0 + w_padded_tile_size, grid_size);
+      int y_end = std::min(y0 + w_padded_tile_size, grid_size);
+
+      // Add tile to grid
+#pragma omp for collapse(2)
+      for (int y = y_start; y < y_end; y++) {
+        for (int x = x_start; x < x_end; x++) {
+          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            size_t src_idx =
+                index_grid(w_padded_tile_size, i, pol, y - y0, x - x0);
+            size_t dst_idx = index_grid(grid_size, pol, y, x);
+            grid[dst_idx] += tiles[src_idx];
+          }
+        }
+      }
+    }
+  }
+}
+
 void kernel_adder_subgrids_to_wtiles(
     const long nr_subgrids, const int grid_size, const int subgrid_size,
     const int wtile_size, const idg::Metadata *metadata,
@@ -270,33 +307,9 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
     fftwf_destroy_plan(plan_backward);
 
     // Add current batch of tiles to grid
-#pragma omp parallel
-    {
-      for (int i = 0; i < current_nr_tiles; i++) {
-        unsigned int tile_idx = tile_offset + i;
-
-        idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-        int x0 = coordinate.x * wtile_size -
-                 (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-        int y0 = coordinate.y * wtile_size -
-                 (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-        int x_start = std::max(0, x0);
-        int y_start = std::max(0, y0);
-        int x_end = std::min(x0 + w_padded_tile_size, grid_size);
-        int y_end = std::min(y0 + w_padded_tile_size, grid_size);
-
-        // Add tile to grid
-#pragma omp for collapse(2)
-        for (int y = y_start; y < y_end; y++) {
-          for (int x = x_start; x < x_end; x++) {
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-              grid[index_grid(grid_size, pol, y, x)] +=
-                  tile_buffers(i, pol, y - y0, x - x0);
-            }
-          }
-        }
-      }
-    }
+    kernel_tiles_to_grid(current_nr_tiles, wtile_size, w_padded_tile_size,
+                         grid_size, &tile_coordinates[tile_offset],
+                         tile_buffers.data(), grid);
   }  // end for tile_offset
 }  // end kernel_adder_wtiles_to_grid
 
