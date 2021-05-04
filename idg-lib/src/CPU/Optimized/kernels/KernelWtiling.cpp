@@ -49,6 +49,34 @@ void kernel_apply_phasor(int w_padded_tile_size, float image_size, float w_step,
   }
 }  // end kernel_apply_phasor
 
+
+void kernel_tile_from_grid(int wtile_size,
+                           int w_padded_tile_size,
+                           int grid_size,
+                           idg::Coordinate& coordinate,
+                           idg::float2 *tile,
+                           const idg::float2 *grid)
+{
+  int x0 = coordinate.x * wtile_size -
+           (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+  int y0 = coordinate.y * wtile_size -
+           (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+  int x_start = std::max(0, x0);
+  int y_start = std::max(0, y0);
+  int x_end = std::min(x0 + w_padded_tile_size, grid_size);
+  int y_end = std::min(y0 + w_padded_tile_size, grid_size);
+
+  for (int y = y_start; y < y_end; y++) {
+    for (int x = x_start; x < x_end; x++) {
+      for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        size_t src_idx = index_grid(grid_size, pol, y, x);
+        size_t dst_idx = index_grid(w_padded_tile_size, pol, y - y0, x - x0);
+        tile[dst_idx] = grid[src_idx];
+      }
+    }
+  }
+}
+
 void kernel_adder_subgrids_to_wtiles(
     const long nr_subgrids, const int grid_size, const int subgrid_size,
     const int wtile_size, const idg::Metadata *metadata,
@@ -385,29 +413,11 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
+      idg::Coordinate &coordinate = tile_coordinates[tile_idx];
 
       // Split tile from grid
-      idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      int w_padding = w_padded_tile_size - padded_tile_size;
-      int w_padding2 = w_padding / 2;
-
-      int x0 = coordinate.x * wtile_size -
-               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-      int y0 = coordinate.y * wtile_size -
-               (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-      int x_start = std::max(0, x0);
-      int y_start = std::max(0, y0);
-      int x_end = std::min(x0 + w_padded_tile_size, grid_size);
-      int y_end = std::min(y0 + w_padded_tile_size, grid_size);
-
-      for (int y = y_start; y < y_end; y++) {
-        for (int x = x_start; x < x_end; x++) {
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            size_t idx = index_grid(grid_size, pol, y, x);
-            tile_buffers(i, pol, y - y0, x - x0) = grid[idx];
-          }
-        }
-      }
+      kernel_tile_from_grid(wtile_size, w_padded_tile_size, grid_size,
+                            coordinate, tile_buffers.data(i, 0, 0, 0), grid);
 
       // Backwards FFT
       fftwf_complex *tile_ptr =
@@ -423,6 +433,8 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 
       // Copy tile
       const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+      int w_padding = w_padded_tile_size - padded_tile_size;
+      int w_padding2 = w_padding / 2;
 
       for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
         for (int y = 0; y < padded_tile_size; y++) {
