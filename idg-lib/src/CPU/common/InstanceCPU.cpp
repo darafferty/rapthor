@@ -34,6 +34,7 @@ InstanceCPU::InstanceCPU(std::vector<std::string> libraries)
       function_splitter_wtiles_from_grid(nullptr),
       function_adder_subgrids_to_wtiles(nullptr),
       function_splitter_subgrids_from_wtiles(nullptr),
+      function_tiles_to_grid(nullptr),
       function_average_beam(nullptr) {
 #if defined(DEBUG)
   cout << __func__ << endl;
@@ -144,6 +145,10 @@ void InstanceCPU::load_kernel_funcions() {
       function_splitter_subgrids_from_wtiles.reset(new runtime::Function(
           *modules[i], name_splitter_subgrids_from_wtiles.c_str()));
     }
+    if (dlsym(*modules[i], kernel::cpu::name_tiles_to_grid.c_str())) {
+      function_tiles_to_grid.reset(
+          new runtime::Function(*modules[i], name_tiles_to_grid.c_str()));
+    }
     if (dlsym(*modules[i], kernel::cpu::name_average_beam.c_str())) {
       function_average_beam.reset(
           new runtime::Function(*modules[i], name_average_beam.c_str()));
@@ -211,6 +216,7 @@ void InstanceCPU::load_kernel_funcions() {
             float w_step, const float *shift, int nr_tiles, int *tile_ids,     \
             idg::Coordinate *tile_coordinates, idg::float2 *tiles,             \
             idg::float2 *grid))
+#define sig_tiles_to_grid (void (*)(int, int, int, int, void *, void *, void *))
 
 #define sig_average_beam                                                  \
   (void (*)(int, int, int, int, int, int, void *, void *, void *, void *, \
@@ -434,6 +440,17 @@ void InstanceCPU::run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
       tile_ids, tile_coordinates,
       reinterpret_cast<idg::float2 *>(m_wtiles_buffer.data()),
       reinterpret_cast<idg::float2 *>(grid));
+}
+
+void InstanceCPU::run_adder_wtiles_to_grid(int nr_tiles, int wtile_size,
+                                           int w_padded_tile_size,
+                                           int grid_size,
+                                           idg::Coordinate *tile_coordinates,
+                                           std::complex<float> *tiles,
+                                           std::complex<float> *grid) {
+  (sig_tiles_to_grid(void *) * function_tiles_to_grid)(
+      nr_tiles, wtile_size, w_padded_tile_size, grid_size, tile_coordinates,
+      tiles, grid);
 }
 
 void InstanceCPU::run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,

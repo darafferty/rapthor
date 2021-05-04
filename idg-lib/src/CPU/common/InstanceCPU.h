@@ -105,6 +105,12 @@ class InstanceCPU : public KernelsInstance {
                                 idg::Coordinate *tile_coordinates,
                                 std::complex<float> *grid);
 
+  void run_adder_wtiles_to_grid(int nr_tiles, int wtile_size,
+                                int w_padded_tile_size, int grid_size,
+                                idg::Coordinate *tile_coordinates,
+                                std::complex<float> *tiles,
+                                std::complex<float> *grid);
+
   void run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                      float image_size, float w_step,
                                      const float *shift, int nr_tiles,
@@ -174,6 +180,7 @@ class InstanceCPU : public KernelsInstance {
   std::unique_ptr<runtime::Function> function_splitter_wtiles_from_grid;
   std::unique_ptr<runtime::Function> function_adder_subgrids_to_wtiles;
   std::unique_ptr<runtime::Function> function_splitter_subgrids_from_wtiles;
+  std::unique_ptr<runtime::Function> function_tiles_to_grid;
   std::unique_ptr<runtime::Function> function_average_beam;
 };
 
@@ -198,6 +205,7 @@ static const std::string name_splitter_subgrids_from_wtiles =
     "kernel_splitter_subgrids_from_wtiles";
 static const std::string name_splitter_wtiles_from_grid =
     "kernel_splitter_wtiles_from_grid";
+static const std::string name_tiles_to_grid = "kernel_tiles_to_grid";
 static const std::string name_fft = "kernel_fft";
 static const std::string name_scaler = "kernel_scaler";
 static const std::string name_average_beam = "kernel_average_beam";
