@@ -50,12 +50,12 @@ void kernel_apply_phasor(int w_padded_tile_size, float image_size, float w_step,
 }  // end kernel_apply_phasor
 
 
-void kernel_tile_from_grid(int wtile_size,
-                           int w_padded_tile_size,
-                           int grid_size,
-                           idg::Coordinate& coordinate,
-                           idg::float2 *tile,
-                           const idg::float2 *grid)
+inline void kernel_tile_from_grid(int wtile_size,
+                                  int w_padded_tile_size,
+                                  int grid_size,
+                                  idg::Coordinate& coordinate,
+                                  idg::float2 *tile,
+                                  const idg::float2 *grid)
 {
   int x0 = coordinate.x * wtile_size -
            (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
@@ -74,6 +74,24 @@ void kernel_tile_from_grid(int wtile_size,
         tile[dst_idx] = grid[src_idx];
       }
     }
+  }
+}
+
+void kernel_tiles_from_grid(int nr_tiles,
+                            int wtile_size,
+                            int w_padded_tile_size,
+                            int grid_size,
+                            idg::Coordinate *coordinates,
+                            idg::float2 *tiles,
+                            const idg::float2 *grid)
+{
+#pragma omp parallel for
+  for (int i = 0; i < nr_tiles; i++)
+  {
+    size_t sizeof_w_padded_tile = NR_POLARIZATIONS * w_padded_tile_size * w_padded_tile_size;
+    idg::float2 *tile = &tiles[i * sizeof_w_padded_tile];
+    kernel_tile_from_grid(wtile_size, w_padded_tile_size, grid_size,
+                          coordinates[i], tile, grid);
   }
 }
 
@@ -409,15 +427,15 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                            w_padded_tile_size);
     tile_buffers.zero();
 
-    // Process the current batch of tiles
+    // Split tile from grid
+    kernel_tiles_from_grid(current_nr_tiles, wtile_size, w_padded_tile_size,
+                           grid_size, &tile_coordinates[tile_offset],
+                           tile_buffers.data(), grid);
+
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-
-      // Split tile from grid
-      kernel_tile_from_grid(wtile_size, w_padded_tile_size, grid_size,
-                            coordinate, tile_buffers.data(i, 0, 0, 0), grid);
 
       // Backwards FFT
       fftwf_complex *tile_ptr =
