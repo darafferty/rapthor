@@ -623,6 +623,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
+  // Load CPU object
+  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+
   // Load buffers
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
   cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
@@ -763,40 +766,13 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       dtohstream.synchronize();
 
       // Add tiles to grid on host
-#pragma omp parallel for
-      for (int y = 0; y < w_padded_tile_size; y++) {
-        for (int i = 0; i < current_nr_tiles; i++) {
-          unsigned int tile_idx = tile_offset + i;
-
-          idg::Coordinate& coordinate = tile_coordinates[tile_idx];
-          int x0 = coordinate.x * tile_size -
-                   (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
-          int y0 = coordinate.y * tile_size -
-                   (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
-
-          // Add tile to grid
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            for (int x = 0; x < w_padded_tile_size; x++) {
-              // Tranpose the polarizations
-              const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-              unsigned int pol_src = pol;
-              unsigned int pol_dst = index_pol_transposed[pol];
-
-              std::complex<float>* tile_ptr =
-                  static_cast<std::complex<float>*>(h_padded_tiles.ptr());
-              std::complex<float>* grid_ptr = m_grid->data();
-
-              unsigned long dst_idx =
-                  index_grid(grid_size, pol_src, y0 + y, x0 + x);
-              unsigned long src_idx =
-                  index_grid(w_padded_tile_size, i, pol_dst, y, x);
-              grid_ptr[dst_idx] += tile_ptr[src_idx];
-            }  // end for x
-          }    // end for pol
-        }      // end for i
-      }        // end for y
-    }          // end if m_use_unified_memory
-  }            // end for jobs
+      std::complex<float>* tile_ptr =
+          static_cast<std::complex<float>*>(h_padded_tiles.ptr());
+      cpuKernels.run_adder_wtiles_to_grid(
+          current_nr_tiles, tile_size, w_padded_tile_size, grid_size,
+          &tile_coordinates[tile_offset], tile_ptr, m_grid->data());
+    }  // end if m_use_unified_memory
+  }    // end for jobs
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
