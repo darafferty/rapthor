@@ -19,6 +19,11 @@ __global__ void kernel_copy_tiles(
     assert(gridDim.x == NR_POLARIZATIONS);
     unsigned int pol = blockIdx.x;
 
+    // Tranpose the polarizations
+    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+    unsigned int src_pol = pol;
+    unsigned int dst_pol = index_pol_transposed[pol];
+
     // Map blockIdx.y to tile_id
     unsigned int src_tile_index = src_tile_ids[blockIdx.y];
     unsigned int dst_tile_index = dst_tile_ids[blockIdx.y];
@@ -69,8 +74,8 @@ __global__ void kernel_copy_tiles(
 
         if (src_y < src_tile_size && dst_y < dst_tile_size)
         {
-            size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, dst_y, dst_x);
-            size_t src_idx = index_grid(src_tile_size, src_tile_index, pol, src_y, src_x);
+            size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, dst_pol, dst_y, dst_x);
+            size_t src_idx = index_grid(src_tile_size, src_tile_index, src_pol, src_y, src_x);
             dst_tiles[dst_idx] = src_tiles[src_idx];
             src_tiles[src_idx] = make_float2(0, 0);
         }
@@ -239,11 +244,6 @@ __global__ void kernel_wtiles_to_grid(
     int x_start = max(0, x0);
     int y_start = max(0, y0);
 
-    // Tranpose the polarizations
-    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-    unsigned int pol_src = index_pol_transposed[pol];
-    unsigned int pol_dst = pol;
-
     // Add tile to grid
     for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
     {
@@ -258,8 +258,8 @@ __global__ void kernel_wtiles_to_grid(
 
         if (y < padded_tile_size)
         {
-            unsigned long dst_idx = index_grid(grid_size, pol_dst, y_dst, x_dst);
-            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol_src, y_src, x_src);
+            unsigned long dst_idx = index_grid(grid_size, pol, y_dst, x_dst);
+            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol, y_src, x_src);
             atomicAdd(grid[dst_idx], tiles[src_idx]);
         }
     }
@@ -361,11 +361,6 @@ __global__ void kernel_wtiles_from_grid(
     int x_start = max(0, x0);
     int y_start = max(0, y0);
 
-    // Tranpose the polarizations
-    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-    unsigned int pol_src = index_pol_transposed[pol];
-    unsigned int pol_dst = pol;
-
     // Extract tile from grid
     for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
     {
@@ -380,8 +375,8 @@ __global__ void kernel_wtiles_from_grid(
 
         if (y < padded_tile_size)
         {
-            unsigned long src_idx = index_grid(grid_size, pol_src, y_src, x_src);
-            unsigned long dst_idx = index_grid(padded_tile_size, tile_index, pol_dst, y_dst, x_dst);
+            unsigned long src_idx = index_grid(grid_size, pol, y_src, x_src);
+            unsigned long dst_idx = index_grid(padded_tile_size, tile_index, pol, y_dst, x_dst);
             tiles[dst_idx] = grid[src_idx];
         }
     }
