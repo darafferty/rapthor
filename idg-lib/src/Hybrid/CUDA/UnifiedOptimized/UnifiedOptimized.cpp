@@ -849,6 +849,9 @@ void UnifiedOptimized::run_wtiles_from_grid(
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
 
+  // Load CPU object
+  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+
   // Load buffers
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
   cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
@@ -959,44 +962,12 @@ void UnifiedOptimized::run_wtiles_from_grid(
           current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
           d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
     } else {
-#pragma omp parallel for
-      for (int i = 0; i < current_nr_tiles; i++) {
-        unsigned int tile_idx = tile_offset + i;
-
-        // Split tile from grid
-        idg::Coordinate& coordinate = tile_coordinates[tile_idx];
-        float w = (coordinate.z + 0.5f) * w_step;
-        int w_padding = w_padded_tile_size - padded_tile_size;
-        int w_padding2 = w_padding / 2;
-        int x0 = coordinate.x * tile_size -
-                 (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
-        int y0 = coordinate.y * tile_size -
-                 (w_padded_tile_size - tile_size) / 2 + grid_size / 2;
-        int x_start = std::max(0, x0);
-        int y_start = std::max(0, y0);
-        int x_end = std::min(x0 + w_padded_tile_size, (int)grid_size);
-        int y_end = std::min(y0 + w_padded_tile_size, (int)grid_size);
-
-        const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
-
-        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-          unsigned int pol_src = index_pol_transposed[pol];
-          unsigned int pol_dst = pol;
-
-          for (int y = y_start; y < y_end; y++) {
-            for (int x = x_start; x < x_end; x++) {
-              size_t src_idx = index_grid(grid_size, pol, y, x);
-              size_t dst_idx = index_grid(w_padded_tile_size, i, pol_dst,
-                                          (y - y0), (x - x0));
-
-              std::complex<float>* tile_ptr =
-                  static_cast<std::complex<float>*>(h_padded_tiles.ptr());
-              std::complex<float>* grid_ptr = m_grid->data();
-              tile_ptr[dst_idx] = grid_ptr[src_idx];
-            }
-          }
-        }
-      }
+      h_padded_tiles.zero();
+      std::complex<float>* tile_ptr =
+          static_cast<std::complex<float>*>(h_padded_tiles.ptr());
+      cpuKernels.run_splitter_wtiles_to_grid(
+          current_nr_tiles, tile_size, w_padded_tile_size, grid_size,
+          &tile_coordinates[tile_offset], tile_ptr, m_grid->data());
 
       // Copy tiles to GPU
       size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
