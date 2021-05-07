@@ -50,6 +50,7 @@ std::unique_ptr<Plan> CPU::make_plan(
     const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
   if (supports_wtiling() && m_cache_state.w_step != 0.0 &&
       m_wtiles.get_wtile_buffer_size()) {
+    options.w_step = m_cache_state.w_step;
     options.nr_w_layers = INT_MAX;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
@@ -78,10 +79,16 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
     auto subgrid_size = m_cache_state.subgrid_size;
     auto w_step = m_cache_state.w_step;
     auto &shift = m_cache_state.shift;
+    State states[2];
+    m_report->initialize(0, subgrid_size, grid_size);
+    states[0] = m_powersensor->read();
     kernels.run_adder_wtiles_to_grid(
         grid_size, subgrid_size, image_size, w_step, shift.data(),
         wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
+    states[1] = m_powersensor->read();
+    m_report->update(Report::wtiling_forward, states[0], states[1]);
+    m_report->print_total();
   }
   return m_grid;
 }

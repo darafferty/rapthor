@@ -530,6 +530,7 @@ std::unique_ptr<Plan> UnifiedOptimized::make_plan(
     const Array1D<unsigned int>& aterms_offsets, Plan::Options options) {
   if (supports_wtiling() && m_cache_state.w_step != 0.0 &&
       m_wtiles.get_wtile_buffer_size()) {
+    options.w_step = m_cache_state.w_step;
     options.nr_w_layers = INT_MAX;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
@@ -880,8 +881,9 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
 
   // End performance measurement
   endState = device.measure();
-  m_report->update(Report::wtiling, startState, endState);
+  m_report->update(Report::wtiling_forward, startState, endState);
 }
+
 void UnifiedOptimized::run_wtiles_from_grid(
     unsigned int subgrid_size, float image_size, float w_step,
     const Array1D<float>& shift, WTileUpdateInfo& wtile_initialize_info) {
@@ -1136,7 +1138,7 @@ void UnifiedOptimized::run_subgrids_from_wtiles(
 
   // End performance measurement
   endState = device.measure();
-  m_report->update(Report::wtiling, startState, endState);
+  m_report->update(Report::wtiling_backward, startState, endState);
 }
 
 void UnifiedOptimized::flush_wtiles() {
@@ -1160,7 +1162,7 @@ void UnifiedOptimized::flush_wtiles() {
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift,
                        wtile_flush_info);
     endState = device.measure();
-    m_report->update(Report::wtiling, startState, endState);
+    m_report->update(Report::wtiling_forward, startState, endState);
     m_report->print_total();
   }
 }

@@ -54,7 +54,7 @@ for _nr_timesteps in [1*60*60, 6*60*60, 12*60*60]:
             frequencies    = numpy.zeros((nr_channels), dtype=idg.frequenciestype)
             data.get_frequencies(frequencies, nr_channels, image_size, channel_offset)
             data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
-            baselines      = idg.util.get_example_baselines(nr_baselines)
+            baselines      = idg.util.get_example_baselines(nr_stations, nr_baselines)
             aterms_offsets = idg.util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
 
             ######################################################################

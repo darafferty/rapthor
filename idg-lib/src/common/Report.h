@@ -35,7 +35,8 @@ const std::string name_fft_shift("fft-shift");
 const std::string name_fft_scale("fft-scale");
 const std::string name_scaler("scaler");
 const std::string name_average_beam("average-beam");
-const std::string name_wtiling("wtiling");
+const std::string name_wtiling_forward("wtiling");
+const std::string name_wtiling_backward("iwtiling");
 const std::string name_host("host");
 const std::string name_device("device");
 }  // namespace auxiliary
@@ -94,7 +95,8 @@ class Report {
     fft_shift,
     fft_scale,
     average_beam,
-    wtiling,
+    wtiling_forward,
+    wtiling_backward,
     host,
     device,
     sentinel
@@ -130,8 +132,10 @@ class Report {
         return auxiliary::name_fft_scale;
       case average_beam:
         return auxiliary::name_average_beam;
-      case wtiling:
-        return auxiliary::name_wtiling;
+      case wtiling_forward:
+        return auxiliary::name_wtiling_forward;
+      case wtiling_backward:
+        return auxiliary::name_wtiling_backward;
       case host:
         return auxiliary::name_host;
       case device:

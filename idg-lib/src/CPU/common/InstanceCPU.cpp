@@ -499,7 +499,7 @@ void InstanceCPU::run_adder_wtiles(
 
   states[1] = m_powersensor->read();
   if (m_report) {
-    m_report->update(Report::adder, states[0], states[1]);
+    m_report->update(Report::wtiling_forward, states[0], states[1]);
   }
 }
 
@@ -559,7 +559,7 @@ void InstanceCPU::run_splitter_wtiles(int nr_subgrids, int grid_size,
 
   states[1] = m_powersensor->read();
   if (m_report) {
-    m_report->update(Report::splitter, states[0], states[1]);
+    m_report->update(Report::wtiling_backward, states[0], states[1]);
   }
 }  // end run_splitter_wtiles
 
