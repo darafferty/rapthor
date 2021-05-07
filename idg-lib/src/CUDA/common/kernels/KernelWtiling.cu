@@ -129,13 +129,11 @@ __global__ void kernel_apply_phasor(
                 y_ = (y + (tile_size / 2)) % tile_size;
             }
 
-            // Use alternative computation of n to work around accuracy issues
-            const float l = (x_ - (tile_size / 2)) * cell_size - shift[0];
-            const float m = (y_ - (tile_size / 2)) * cell_size - shift[1];
-            const float n = 1.0f - sqrtf(1.0 - (l * l) - (m * m));
-
-            const float pi = (float) M_PI;
-            const float phase = sign * 2 * pi * n * w;
+            // Compute phase
+            const float l = (x_ - (tile_size / 2)) * cell_size;
+            const float m = (y_ - (tile_size / 2)) * cell_size;
+            const float n = compute_n(l, -m, shift);
+            const float phase = sign * 2 * M_PI * n * w;
 
             // Compute phasor
             float2 phasor = make_float2(cosf(phase), sinf(phase)) * scale;
