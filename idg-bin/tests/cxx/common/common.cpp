@@ -11,6 +11,8 @@
 #include <complex>
 #include <limits>
 
+//#define PRINT_ERRORS
+
 // computes sqrt(A^2-B^2) / n
 float get_accuracy(const int n, const std::complex<float> *A,
                    const std::complex<float> *B) {
@@ -31,6 +33,10 @@ float get_accuracy(const int n, const std::complex<float> *A,
     }
   }
 
+#if defined(PRINT_ERRORS)
+  int nerrors = 0;
+#endif
+
   for (int i = 0; i < n; i++) {
     float r_cmp = A[i].real();
     float i_cmp = A[i].imag();
@@ -39,6 +45,13 @@ float get_accuracy(const int n, const std::complex<float> *A,
     double r_diff = r_ref - r_cmp;
     double i_diff = i_ref - i_cmp;
     if (abs(B[i]) > 0.0f) {
+#if defined(PRINT_ERRORS)
+      if ((abs(r_diff) > 0.0f || abs(i_diff) > 0.0f) && nerrors < 16) {
+        printf("(%f, %f) - (%f, %f) = (%f, %f)\n", r_cmp, i_cmp, r_ref, i_ref,
+               r_diff, i_diff);
+        nerrors++;
+      }
+#endif
       nnz++;
       r_error += (r_diff * r_diff) / r_max;
       i_error += (i_diff * i_diff) / i_max;
