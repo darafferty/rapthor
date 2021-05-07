@@ -33,7 +33,8 @@ void init_data(std::complex<float>* data, int* ids, unsigned int n,
       for (unsigned int y = 0; y < size; y++) {
         for (unsigned int x = 0; x < size; x++) {
           size_t idx = index_grid(size, ids[tile], pol, y, x);
-          data[idx] = std::complex<float>((y + 1), (x + 1)) * scale;
+          data[idx] =
+              std::complex<float>((y + 1) / size, (x + 1) / size) * scale;
         }
       }
     }
