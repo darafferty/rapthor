@@ -649,8 +649,11 @@ class Field(object):
                                 regroup=regroup, find_sources=False, target_flux=target_flux,
                                 target_number=target_number, index=index)
 
-        # Adjust sector boundaries to avoid known sources and update their sky models
-        self.adjust_sector_boundaries()
+        # Adjust sector boundaries to avoid known sources and update their sky models.
+        # Note: this adjustment only needs to be done when there are multiple sectors,
+        # where it is useful to ensure that sources don't fall in between sectors
+        if len(self.imaging_sectors) > 1:
+            self.adjust_sector_boundaries()
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
