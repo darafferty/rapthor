@@ -105,7 +105,7 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of "directionsolve", "directioniterative",
-        or "hybrid"; default = "directionsolve")?
+        or "hybrid"; default = "hybrid")?
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =

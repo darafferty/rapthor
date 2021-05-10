@@ -299,7 +299,7 @@ def get_calibration_options(parset):
     else:
         parset_dict['propagatesolutions'] = True
     if 'solveralgorithm' not in parset_dict:
-        parset_dict['solveralgorithm'] = 'directionsolve'
+        parset_dict['solveralgorithm'] = 'hybrid'
     if 'maxiter' in parset_dict:
         parset_dict['maxiter'] = parset.getint('calibration', 'maxiter')
     else:
