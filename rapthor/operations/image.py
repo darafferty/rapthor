@@ -117,10 +117,10 @@ class Image(Operation):
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
-            if self.temp_dir is None:
+            if self.scratch_dir is None:
                 dir_local.append(image_dir)
             else:
-                dir_local.append(self.temp_dir)
+                dir_local.append(self.scratch_dir)
             multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
 
