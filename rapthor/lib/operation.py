@@ -59,9 +59,6 @@ class Operation(object):
                                                  'pipelines', self.name)
         misc.create_directory(self.pipeline_working_dir)
 
-        # Temp directory (local to the nodes)
-        self.temp_dir = self.parset['cluster_specific']['dir_local']
-
         # Maximum number of nodes to use
         self.max_nodes = self.parset['cluster_specific']['max_nodes']
 
@@ -201,8 +198,7 @@ class Operation(object):
         if os.path.exists(self.jobstore):
             args.extend(['--restart'])
         args.extend(['--basedir', self.pipeline_working_dir])
-        args.extend(['--workDir', self.pipeline_working_dir])
-        args.extend(['--outdir', self.scratch_dir])
+        args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--logLevel', 'DEBUG'])
         args.extend(['--preserve-entire-environment'])
@@ -211,8 +207,9 @@ class Operation(object):
             # Note: the trailing '/' is expected by Toil v5.3+
             args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
             args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
-        args.extend(['--clean', 'never'])
-        args.extend(['--cleanWorkDir', 'never'])
+            args.extend(['--workDir', self.scratch_dir+'/'])
+        args.extend(['--clean', 'never'])  # preserves the job store for future runs
+#        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
         if self.field.use_mpi:
