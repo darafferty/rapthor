@@ -31,15 +31,21 @@ def set_level(level):
     """
     Change verbosity of console output
     """
+    if level == 'warning':
+        level = logging.WARNING
+    elif level == 'info':
+        level = logging.INFO
+    elif level == 'debug':
+        level = logging.DEBUG
+    else:
+        level = logging.NOTSET
     logging.root.setLevel(logging.DEBUG)
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+    for logger in loggers:
+        logger.setLevel(level)
     for handler in logging.root.handlers:
         if handler.name == 'console':
-            if level == 'warning':
-                handler.setLevel(logging.WARNING)
-            elif level == 'info':
-                handler.setLevel(logging.INFO)
-            elif level == 'debug':
-                handler.setLevel(logging.DEBUG)
+            handler.setLevel(level)
 
 
 class Whitelist(logging.Filter):
