@@ -162,9 +162,9 @@ class Field(object):
         # Warning if parset pointing is different from observation pointing
         parra = self.parset['imaging_specific']['grid_center_ra']
         pardec = self.parset['imaging_specific']['grid_center_dec']
-        if (parra != None and np.abs(parra - self.ra) > self.fwhm_ra_deg / 2.0):
+        if (parra is not None and np.abs(parra - self.ra) > self.fwhm_ra_deg / 2.0):
             self.log.warning('Grid_center_ra requested in parset is different from the value in the observation.')
-        if (pardec != None and np.abs(pardec - self.dec) > self.fwhm_dec_deg / 2.0):
+        if (pardec is not None and np.abs(pardec - self.dec) > self.fwhm_dec_deg / 2.0):
             self.log.warning('Grid_center_dec requested in parset is different from the value in the observation.')
 
         # Set the MS file to use for beam model in sky model correction.
@@ -650,10 +650,7 @@ class Field(object):
                                 target_number=target_number, index=index)
 
         # Adjust sector boundaries to avoid known sources and update their sky models.
-        # Note: this adjustment only needs to be done when there are multiple sectors,
-        # where it is useful to ensure that sources don't fall in between sectors
-        if len(self.imaging_sectors) > 1:
-            self.adjust_sector_boundaries()
+        self.adjust_sector_boundaries()
         self.log.info('Making sector sky models (for predicting)...')
         for sector in self.imaging_sectors:
             sector.calibration_skymodel = self.calibration_skymodel.copy()
@@ -948,26 +945,31 @@ class Field(object):
         Adjusts the imaging sector boundaries for overlaping sources
         """
         self.log.info('Adusting sector boundaries to avoid sources...')
-        intersecting_source_polys = self.find_intersecting_sources()
-        for sector in self.imaging_sectors:
-            # Make sure all sectors start from their initial polygons
-            sector.poly = sector.initial_poly
-        for sector in self.imaging_sectors:
-            # Adjust boundaries for intersection with sources
-            for p2 in intersecting_source_polys:
-                poly_bkup = sector.poly
-                if sector.poly.contains(p2.centroid):
-                    # If point is inside, union the sector poly with the source one
-                    sector.poly = sector.poly.union(p2)
-                else:
-                    # If centroid of point is outside, difference the sector poly with
-                    # the source one
-                    sector.poly = sector.poly.difference(p2)
-                if type(sector.poly) is not Polygon:
-                    # use backup
-                    sector.poly = poly_bkup
 
-            # Make sector region and vertices files
+        # Note: this adjustment only needs to be done when there are multiple sectors,
+        # since its purpose is to ensure that sources don't fall in between sectors
+        if len(self.imaging_sectors) > 1:
+            intersecting_source_polys = self.find_intersecting_sources()
+            for sector in self.imaging_sectors:
+                # Make sure all sectors start from their initial polygons
+                sector.poly = sector.initial_poly
+            for sector in self.imaging_sectors:
+                # Adjust boundaries for intersection with sources
+                for p2 in intersecting_source_polys:
+                    poly_bkup = sector.poly
+                    if sector.poly.contains(p2.centroid):
+                        # If point is inside, union the sector poly with the source one
+                        sector.poly = sector.poly.union(p2)
+                    else:
+                        # If centroid of point is outside, difference the sector poly with
+                        # the source one
+                        sector.poly = sector.poly.difference(p2)
+                    if type(sector.poly) is not Polygon:
+                        # use backup
+                        sector.poly = poly_bkup
+
+        # Make sector region and vertices files
+        for sector in self.imaging_sectors:
             sector.make_vertices_file()
             sector.make_region_file(os.path.join(self.working_dir, 'regions',
                                                  '{}_region_ds9.reg'.format(sector.name)))
