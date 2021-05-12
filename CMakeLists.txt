@@ -45,6 +45,21 @@ set(GIT_VERSION_HEADER "idg-version.h")
 include(cmake/version.cmake)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+option(PORTABLE "Build portable binaries" OFF)
+if(PORTABLE)
+  if(DEFINED TARGET_CPU)
+    message(WARNING "You have selected to build PORTABLE binaries. "
+                    "TARGET_CPU settings will be ignored.")
+    unset(TARGET_CPU CACHE)
+  endif()
+else()
+  if(DEFINED TARGET_CPU)
+    add_compile_options(-march=${TARGET_CPU})
+  else()
+    add_compile_options(-march=native)
+  endif()
+endif()
+
 # MPI
 if (BUILD_WITH_MPI)
   find_package(MPI REQUIRED)

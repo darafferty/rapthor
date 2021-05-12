@@ -73,7 +73,15 @@ if(NOT VERSION_STRING)
                   "using ${VERSION_STRING} instead.")
 endif()
 
-set(CPACK_PACKAGE_NAME "IDG")
+include(${CMAKE_CURRENT_SOURCE_DIR}/DetermineTargetCPU.cmake)
+
+# Set package name: encode target CPU, if defined, in package name.
+if(DEFINED IDENTIFIED_TARGET_CPU)
+  set(CPACK_PACKAGE_NAME "idg-${IDENTIFIED_TARGET_CPU}")
+else()
+  set(CPACK_PACKAGE_NAME "idg")
+endif()
+
 set(CPACK_PACKAGE_VENDOR "ASTRON")
 set(CPACK_PACKAGE_VERSION "${VERSION_STRING}")
 
@@ -93,6 +101,28 @@ set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "deb-packages@astron.nl")
 set(CPACK_DEBIAN_PACKAGE_SECTION "science")
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+
+# Determine list of conflicting package names
+# Iterate over all components, each component has its own package
+foreach(_component ${CPACK_COMPONENTS_ALL})
+  string(TOUPPER ${_component} _COMPONENT)
+  if(DEFINED IDENTIFIED_TARGET_CPU)
+    set(_conflicts idg-${_component})
+  else()
+    set(_conflicts)
+  endif()
+  # Packages not built for current target CPU always conflict
+  foreach(_cpu ${KNOWN_TARGET_CPUS})
+    if(NOT "${_cpu}" STREQUAL "${IDENTIFIED_TARGET_CPU}")
+      if("${_conflicts}" STREQUAL "")
+        set(_conflicts "idg-${_cpu}-${_component}")
+      else()
+        set(_conflicts "${_conflicts}, idg-${_cpu}-${_component}")
+      endif()
+    endif()
+  endforeach()
+  set(CPACK_DEBIAN_${_COMPONENT}_PACKAGE_CONFLICTS "${_conflicts}")
+endforeach()
 
 include(CPack)
 

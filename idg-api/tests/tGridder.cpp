@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(wmodes, *utf::depends_on("gridder/reference")) {
   for (WMode wmode : kWModes) {
     std::vector<double> image_wmode =
         GridImage(idg::api::Type::CPU_REFERENCE, wmode);
-    CompareImages(image_ref, image_wmode, 1.2);
+    CompareImages(image_ref, image_wmode, 1.3);
   }
 }
 
