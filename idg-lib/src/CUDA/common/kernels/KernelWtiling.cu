@@ -121,13 +121,8 @@ __global__ void kernel_apply_phasor(
 
         if (y < tile_size) {
             // Inline FFT shift
-            int x_ = x;
-            int y_ = y;
-            if (sign == -1)
-            {
-                x_ = (x + (tile_size / 2)) % tile_size;
-                y_ = (y + (tile_size / 2)) % tile_size;
-            }
+            int x_ = (x + (tile_size / 2)) % tile_size;
+            int y_ = (y + (tile_size / 2)) % tile_size;
 
             // Compute phase
             const float l = (x_ - (tile_size / 2)) * cell_size;
