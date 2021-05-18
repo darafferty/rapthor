@@ -677,6 +677,7 @@ void GenericOptimized::do_calibrate_init(
   // Load device
   InstanceCUDA& device = get_device(0);
   device.set_report(m_report);
+  const cu::Context& context = device.get_context();
 
   // Load stream
   cu::Stream& htodstream = device.get_htod_stream();
@@ -756,12 +757,17 @@ void GenericOptimized::do_calibrate_init(
     auto sizeof_uvw = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
     auto sizeof_aterm_idx =
         auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-    m_buffers.d_metadata_[antenna_nr]->resize(sizeof_metadata);
-    m_buffers.d_subgrids_[antenna_nr]->resize(sizeof_subgrids);
-    m_buffers.d_visibilities_[antenna_nr]->resize(sizeof_visibilities);
-    m_buffers.d_weights_[antenna_nr]->resize(sizeof_weights);
-    m_buffers.d_uvw_[antenna_nr]->resize(sizeof_uvw);
-    m_buffers.d_aterms_indices_[antenna_nr]->resize(sizeof_aterm_idx);
+    m_buffers.d_metadata_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_metadata));
+    m_buffers.d_subgrids_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_subgrids));
+    m_buffers.d_visibilities_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_visibilities));
+    m_buffers.d_weights_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_weights));
+    m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, sizeof_uvw));
+    m_buffers.d_aterms_indices_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_aterm_idx));
     cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[antenna_nr];
     cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[antenna_nr];
     cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[antenna_nr];
@@ -798,14 +804,14 @@ void GenericOptimized::do_calibrate_init(
   // Allocate device memory for l,m,n and phase offset
   auto sizeof_lmnp =
       max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
-  m_buffers.d_lmnp->resize(sizeof_lmnp);
+  m_buffers.d_lmnp.reset(new cu::DeviceMemory(context, sizeof_lmnp));
 
   // Allocate memory for sums (horizontal and vertical)
   auto total_nr_timesteps = nr_baselines * nr_timesteps;
   auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps *
                      nr_channels * sizeof(std::complex<float>);
   for (unsigned int i = 0; i < 2; i++) {
-    m_buffers.d_sums_[i]->resize(sizeof_sums);
+    m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, sizeof_sums));
   }
 }
 

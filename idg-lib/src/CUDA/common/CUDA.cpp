@@ -125,25 +125,20 @@ void CUDA::initialize_buffers() {
   m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
   // d_grid is handled seperately
-  m_buffers.d_lmnp.reset(new cu::DeviceMemory(context, 0));
+  // d_lmnp is handled in GenericOptimized
 
   for (unsigned t = 0; t < m_max_nr_streams; t++) {
     m_buffers.d_visibilities_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_subgrids_.emplace_back(new cu::DeviceMemory(context, 0));
     m_buffers.d_metadata_.emplace_back(new cu::DeviceMemory(context, 0));
-    m_buffers.d_weights_.emplace_back(new cu::DeviceMemory(context, 0));
   }
 
   // Only one aterms_indices buffer is used for gridding and degridding,
   // multiple buffers are only used for calibration in GenericOptimized.
   m_buffers.d_aterms_indices_.emplace_back(new cu::DeviceMemory(context, 0));
 
-  // Not used for gridding and degridding,
-  // two buffers are used for calibration.
-  for (unsigned i = 0; i < 2; i++) {
-    m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, 0));
-  }
+  // d_sums_ is handled in GenericOptimized
 
   m_buffers.h_subgrids.reset(new cu::HostMemory(context, 0));
 }
@@ -158,15 +153,15 @@ void CUDA::free_buffers() {
   m_buffers.d_aterms.reset();
   m_buffers.d_avg_aterm.reset();
   // d_grid is handled seperately
-  m_buffers.d_lmnp.reset();
+  // d_lmnp is handled in GenericOptimized
 
   m_buffers.d_visibilities_.resize(0);
   m_buffers.d_uvw_.resize(0);
   m_buffers.d_subgrids_.resize(0);
   m_buffers.d_metadata_.resize(0);
-  m_buffers.d_weights_.resize(0);
+  // d_weights is handled in GenericOptimized
   m_buffers.d_aterms_indices_.resize(0);
-  m_buffers.d_sums_.resize(0);
+  // d_sums is handled in GenericOptimized
 
   m_buffers.h_subgrids.reset();
 }
