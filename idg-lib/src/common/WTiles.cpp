@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "WTiles.h"
+#include "Math.h"
 
 namespace idg {
 
@@ -82,6 +83,32 @@ int WTiles::get_new_wtile(int subgrid_index) {
   m_free_wtiles.pop_back();
 
   return wtile_id;
+}
+
+int compute_w_padded_tile_size(const idg::Coordinate& coordinate,
+                               const float w_step, const float image_size,
+                               const float image_size_shift,
+                               const int padded_tile_size) {
+  float w = (coordinate.z + 0.5f) * w_step;
+  float abs_w = std::abs(w);
+  int w_padding = ceil(abs_w * image_size_shift * image_size);
+  return next_composite(padded_tile_size + w_padding);
+}
+
+std::vector<int> compute_w_padded_tile_sizes(const idg::Coordinate* coordinates,
+                                             const int nr_tiles,
+                                             const float w_step,
+                                             const float image_size,
+                                             const float image_size_shift,
+                                             const int padded_tile_size) {
+  std::vector<int> w_padded_tile_sizes(nr_tiles);
+
+  for (int i = 0; i < nr_tiles; i++) {
+    w_padded_tile_sizes[i] = compute_w_padded_tile_size(
+        coordinates[i], w_step, image_size, image_size_shift, padded_tile_size);
+  }
+
+  return w_padded_tile_sizes;
 }
 
 }  // namespace idg

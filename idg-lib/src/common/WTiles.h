@@ -171,6 +171,20 @@ class WTiles {
   WTileUpdateSet m_initialize_set;
 };
 
+// Helper function to compute the size of a w_padded tile
+int compute_w_padded_tile_size(const idg::Coordinate& coordinate,
+                               const float w_step, const float image_size,
+                               const float image_size_shift,
+                               const int padded_tile_size);
+
+// Helper function to compute the w_padded tile size
+// for a series of tiles
+std::vector<int> compute_w_padded_tile_sizes(const idg::Coordinate* coordinates,
+                                             const int nr_tiles,
+                                             const float w_step,
+                                             const float image_size,
+                                             const float image_size_shift,
+                                             const int padded_tile_size);
 }  // namespace idg
 
 #endif
