@@ -1,6 +1,9 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#ifndef IDG_MATH_H_
+#define IDG_MATH_H_
+
 #ifndef FUNCTION_ATTRIBUTES
 #define FUNCTION_ATTRIBUTES
 #endif
@@ -153,3 +156,5 @@ inline FUNCTION_ATTRIBUTES void apply_aterm_degridder(T *pixels,
   // Apply aterm: P = P * A2^H
   matmul(temp, aterm2_h, pixels);
 }
+
+#endif  // IDG_MATH_H_
