@@ -254,16 +254,6 @@ def test_idgcal(params):
     proxy.init_cache(
         subgrid_size, fits_settings["cell_size"], params["w_step"], params["shift"]
     )
-    proxy.calibrate_init(
-        kernel_size,
-        frequencies,
-        visibilities,
-        weights,
-        uvw,
-        baselines,
-        aterms_offsets,
-        taper,
-    )
 
     X0 = np.zeros((nr_stations, 1))
     X1 = np.ones(X0.shape)
@@ -360,6 +350,17 @@ def test_idgcal(params):
         taper,
     )
     residual_visibilities = visibilities - predicted_visibilities
+
+    proxy.calibrate_init(
+        kernel_size,
+        frequencies,
+        visibilities,
+        weights,
+        uvw,
+        baselines,
+        aterms_offsets,
+        taper,
+    )
 
     for i in range(nr_stations):
         bl_sel = [i in bl for bl in baselines]
