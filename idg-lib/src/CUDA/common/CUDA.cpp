@@ -153,15 +153,15 @@ void CUDA::free_buffers() {
   m_buffers.d_aterms.reset();
   m_buffers.d_avg_aterm.reset();
   // d_grid is handled seperately
-  // d_lmnp is handled in GenericOptimized
+  m_buffers.d_lmnp.reset();
 
   m_buffers.d_visibilities_.resize(0);
   m_buffers.d_uvw_.resize(0);
   m_buffers.d_subgrids_.resize(0);
   m_buffers.d_metadata_.resize(0);
-  // d_weights is handled in GenericOptimized
+  m_buffers.d_weights_.resize(0);
   m_buffers.d_aterms_indices_.resize(0);
-  // d_sums is handled in GenericOptimized
+  m_buffers.d_sums_.resize(0);
 
   m_buffers.h_subgrids.reset();
 }

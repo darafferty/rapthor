@@ -685,13 +685,11 @@ void GenericOptimized::do_calibrate_init(
   // Find max number of subgrids
   unsigned int max_nr_subgrids = 0;
 
-  // Initialize buffers
-  m_buffers.d_metadata_.resize(0);
-  m_buffers.d_subgrids_.resize(0);
-  m_buffers.d_visibilities_.resize(0);
-  m_buffers.d_weights_.resize(0);
-  m_buffers.d_uvw_.resize(0);
-  m_buffers.d_aterms_indices_.resize(0);
+  // Free buffers and clear the gridding state
+  free_buffers();
+  m_gridding_state.nr_stations = 0;
+
+  m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
 
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
@@ -796,7 +794,7 @@ void GenericOptimized::do_calibrate_init(
   m_calibrate_state.nr_channels = nr_channels;
 
   // Initialize wavenumbers
-  m_buffers.d_wavenumbers->resize(wavenumbers.bytes());
+  m_buffers.d_wavenumbers.reset(new cu::DeviceMemory(context, wavenumbers.bytes()));
   cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
                              wavenumbers.bytes());
@@ -819,6 +817,14 @@ void GenericOptimized::do_calibrate_update(
     const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
     Array3D<double>& hessian, Array2D<double>& gradient, double& residual) {
+
+  // Check if the proxy is still in calibrate state
+  // A calibrate_init call brings the proxy in calibrate state
+  // A (de)gridding call brings the proxy in gridding state
+  // If the proxy is gridding state here, an exception is thrown
+  if (m_gridding_state.nr_stations) {
+    throw std::runtime_error("calibrate_update() was called while the proxy is in gridding state");
+  }
   // Arguments
   auto nr_subgrids = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   auto nr_baselines = m_calibrate_state.nr_baselines;

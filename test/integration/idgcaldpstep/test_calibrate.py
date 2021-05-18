@@ -201,6 +201,9 @@ def test_idgcal(params):
     proxy.set_grid(grid)
     proxy.transform(idg.ImageDomainToFourierDomain)
 
+    proxy_ref = idg.CPU.Optimized()
+    proxy_ref.set_grid(grid)
+
     antenna1_block = ms_dict["antenna1"]
     antenna2_block = ms_dict["antenna2"]
     uvw_block = ms_dict["uvw"]
@@ -252,6 +255,9 @@ def test_idgcal(params):
     Bphase = B[:nr_parameters_phase]
 
     proxy.init_cache(
+        subgrid_size, fits_settings["cell_size"], params["w_step"], params["shift"]
+    )
+    proxy_ref.init_cache(
         subgrid_size, fits_settings["cell_size"], params["w_step"], params["shift"]
     )
 
@@ -339,7 +345,7 @@ def test_idgcal(params):
 
     predicted_visibilities = np.zeros_like(visibilities)
     print(f"Shape predicted visibilities {predicted_visibilities.shape}")
-    proxy.degridding(
+    proxy_ref.degridding(
         kernel_size,
         frequencies,
         predicted_visibilities,
@@ -429,7 +435,7 @@ def test_idgcal(params):
             if j > 0:
                 aterms_local[:, i, :, :, :] = aterm_derivatives[:, j - 1, :, :, :]
 
-            proxy.degridding(
+            proxy_ref.degridding(
                 kernel_size,
                 frequencies,
                 predicted_visibilities1[j],
