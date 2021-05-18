@@ -413,56 +413,64 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
                                       int nr_tiles, int *tile_ids,
                                       idg::Coordinate *tile_coordinates,
                                       idg::float2 *tiles, idg::float2 *grid) {
+  // Compute w_padded_tile_size for all tiles
+  const int padded_tile_size = wtile_size + subgrid_size;
+  const float image_size_shift =
+      image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
+  std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
+      tile_coordinates, nr_tiles, w_step, image_size, image_size_shift,
+      padded_tile_size);
+
+  // FFT plans
+  typedef std::pair<fftwf_plan, fftwf_plan> fft_pair;
+  std::map<int, fft_pair> fft_plans;
+
   // Iterate tiles in batches
   int current_nr_tiles = omp_get_max_threads();
   for (int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
     current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
 
-    // Determine the max w value for the current batch
-    float max_abs_w = 0.0;
-    for (int i = 0; i < current_nr_tiles; i++) {
-      unsigned int tile_idx = tile_offset + i;
-      idg::Coordinate &coordinate = tile_coordinates[tile_idx];
-      float w = (coordinate.z + 0.5f) * w_step;
-      max_abs_w = std::max(max_abs_w, std::abs(w));
-    }
+    // Find w_padded_tile_size for current batch
+    int w_padded_tile_size = *std::max_element(
+        w_padded_tile_sizes.begin() + tile_offset,
+        w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
-    // Compute w_padded_tile_size
-    const float image_size_shift =
-        image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
-    const int padded_tile_size = wtile_size + subgrid_size;
-    const int w_padded_tile_size =
-        next_composite(padded_tile_size +
-                       int(ceil(max_abs_w * image_size_shift * image_size)));
-
-    // Initialize FFT plans
-    int rank = 2;
-    int n[] = {w_padded_tile_size, w_padded_tile_size};
-    int istride = 1;
-    int ostride = istride;
-    int idist = n[0] * n[1];
-    int odist = idist;
-    int flags = FFTW_ESTIMATE;
-    fftwf_plan_with_nthreads(1);
-    fftwf_plan plan_forward = fftwf_plan_many_dft(
-        rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
-        ostride, odist, FFTW_FORWARD, flags);
-    fftwf_plan plan_backward = fftwf_plan_many_dft(
-        rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
-        ostride, odist, FFTW_BACKWARD, flags);
-
-    // Allocate tile buffers for all threads
+    // Allocate tile buffers
     idg::Array4D<idg::float2> tile_buffers(current_nr_tiles, NR_POLARIZATIONS,
                                            w_padded_tile_size,
                                            w_padded_tile_size);
     tile_buffers.zero();
+
+    // Initialize FFT plans
+    if (fft_plans.find(w_padded_tile_size) == fft_plans.end()) {
+      int rank = 2;
+      int n[] = {w_padded_tile_size, w_padded_tile_size};
+      int istride = 1;
+      int ostride = istride;
+      int idist = n[0] * n[1];
+      int odist = idist;
+      int flags = FFTW_ESTIMATE;
+      fftwf_plan_with_nthreads(1);
+      fftwf_plan plan_forward = fftwf_plan_many_dft(
+          rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
+          ostride, odist, FFTW_FORWARD, flags);
+      fftwf_plan plan_backward = fftwf_plan_many_dft(
+          rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
+          ostride, odist, FFTW_BACKWARD, flags);
+      fft_plans.insert({w_padded_tile_size, {plan_forward, plan_backward}});
+    }
+
+    fft_pair plan_pair = fft_plans.find(w_padded_tile_size)->second;
+    fftwf_plan plan_forward = plan_pair.first;
+    fftwf_plan plan_backward = plan_pair.second;
 
     // Split tile from grid
     kernel_tiles_from_grid(current_nr_tiles, wtile_size, w_padded_tile_size,
                            grid_size, &tile_coordinates[tile_offset],
                            tile_buffers.data(), grid);
 
+    // Process the current batch of tiles
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
@@ -486,11 +494,13 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
       kernel_copy_tile(w_padded_tile_size, padded_tile_size,
                        tile_buffers.data(i, 0, 0, 0), &tiles[dst_idx]);
     }  // end for current_nr_tiles
+  }    // end for tile_offset
 
-    // Free FFT plans
-    fftwf_destroy_plan(plan_forward);
-    fftwf_destroy_plan(plan_backward);
-  }  // end for tile_offset
+  // Free FFT plans
+  for (auto &entry : fft_plans) {
+    fftwf_destroy_plan(entry.second.first);
+    fftwf_destroy_plan(entry.second.second);
+  }
 }  // end kernel_splitter_wtiles_from_grid
 
 }  // end extern "C"
