@@ -1004,6 +1004,10 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
   // Defer call to cpuProxy
   // cpuProxy manages the wtiles state
   cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);
+
+  // Workaround for uninitialized m_cache_state in do_calibrate_init and
+  // do_calibrate_update
+  Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
 }
 
 }  // namespace hybrid
