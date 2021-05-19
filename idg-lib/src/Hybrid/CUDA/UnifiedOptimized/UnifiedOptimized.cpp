@@ -598,7 +598,7 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   // Assume that the first three will use the same amount of memory
   // Thus, given that padded tiles are larger than tiles, the padded
   // tiles will always need to be processed in batches.
-  m_nr_tiles = (free_memory * 0.30) / sizeof_tile;
+  m_nr_tiles = (free_memory * 0.25) / sizeof_tile;
   size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
   m_buffers_wtiling.d_tiles->resize(sizeof_tiles);
   m_buffers_wtiling.d_padded_tiles->resize(sizeof_tiles);
@@ -611,6 +611,46 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
 /*
  * W-tiling
  */
+std::vector<int> find_tiles_in_range(
+  int grid_size,
+  int tile_size,
+  int padded_tile_size,
+  int patch_size,
+  unsigned int current_nr_tiles,
+  const idg::Coordinate& patch_coordinate,
+  const idg::Coordinate* tile_coordinates)
+{
+  std::vector<int> tile_ids;
+
+  int patch_x_start = patch_coordinate.x;
+  int patch_y_start = patch_coordinate.y;
+  int patch_x_end = patch_x_start + patch_size;
+  int patch_y_end = patch_y_start + patch_size;
+
+  for (int i = 0; i < current_nr_tiles; i++)
+  {
+    // Compute position of tile in grid
+    idg::Coordinate coordinate = tile_coordinates[i];
+    int x0 = coordinate.x * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int y0 = coordinate.y * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int x_start = max(0, x0);
+    int y_start = max(0, y0);
+    int x_end = x_start + padded_tile_size;
+    int y_end = y_start + padded_tile_size;
+
+    // Check whether the tile (partially) falls in the patch
+    if (!(x_start > patch_x_end || y_start > patch_y_end ||
+          x_end < patch_x_start || y_end < patch_y_start))
+    {
+      tile_ids.push_back(i);
+    }
+  }
+
+  return tile_ids;
+}
+
 void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
@@ -622,6 +662,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   InstanceCUDA& device = get_device(0);
   cu::Context& context = device.get_context();
   cu::Stream& executestream = device.get_execute_stream();
+  cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load CPU object
@@ -670,14 +711,20 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   size_t sizeof_tile_ids = nr_tiles_batch * sizeof(int);
   cu::DeviceMemory d_tile_ids(context, sizeof_tile_ids);
   cu::DeviceMemory d_padded_tile_ids(context, sizeof_tile_ids);
+  cu::DeviceMemory d_packed_tile_ids(context, sizeof_tile_ids);
+
+  // Alloacte patch buffer
+  int patch_size = min(grid_size, 1024);
+  size_t sizeof_patch = patch_size * patch_size *
+                        NR_CORRELATIONS * sizeof(idg::float2);
+  cu::DeviceMemory d_patch(context, sizeof_patch);
+  cu::HostMemory h_patch(context, sizeof_patch);
 
   // Initialize d_padded_tile_ids
   std::vector<int> padded_tile_ids(nr_tiles_batch);
   for (unsigned int i = 0; i < nr_tiles_batch; i++) {
     padded_tile_ids[i] = i;
   }
-  executestream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(),
-                                sizeof_tile_ids);
 
   // Copy shift to device
   cu::DeviceMemory d_shift(context, shift.bytes());
@@ -721,6 +768,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
     executestream.memcpyHtoDAsync(d_tile_ids, &tile_ids[tile_offset],
                                   sizeof_tile_ids);
+    executestream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(),
+                                  sizeof_tile_ids);
     sizeof_tile_coordinates = current_nr_tiles * sizeof(idg::Coordinate);
     executestream.memcpyHtoDAsync(d_tile_coordinates,
                                   &tile_coordinates[tile_offset],
@@ -755,6 +804,61 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Wait for GPU to finish
       executestream.synchronize();
 
+#if 1
+      for (int y = 0; y < grid_size; y += patch_size)
+      {
+        for (int x = 0; x < grid_size; x += patch_size)
+        {
+          // Find all tiles that (partially) fit in the current patch
+          idg::Coordinate patch_coordinate = {x, y};
+          std::vector<int> packed_tile_ids = find_tiles_in_range(
+            grid_size, tile_size, w_padded_tile_size, patch_size,
+            current_nr_tiles, patch_coordinate, &tile_coordinates[tile_offset]);
+
+          int packed_nr_tiles = packed_tile_ids.size();
+          if (packed_nr_tiles > 0)
+          {
+            // Copy packed tile ids to GPU
+            sizeof_tile_ids = packed_nr_tiles * sizeof(int);
+            htodstream.memcpyHtoDAsync(d_packed_tile_ids, packed_tile_ids.data(), sizeof_tile_ids);
+
+            // Reset patch
+            d_patch.zero(executestream);
+
+            // Combine tiles onto patch
+            device.launch_adder_wtiles_to_patch(
+              packed_nr_tiles, grid_size, padded_tile_size - subgrid_size,
+              w_padded_tile_size, patch_size, patch_coordinate,
+              d_packed_tile_ids, d_tile_coordinates,
+              d_padded_tiles, d_patch);
+
+            // Copy patch to the host
+            executestream.synchronize();
+            htodstream.memcpyDtoHAsync(h_patch, d_patch, sizeof_patch);
+
+            // Wait for patch to be copied
+            htodstream.synchronize();
+
+            // Add patch to the grid
+#pragma omp parallel for
+            for (int y_ = 0; y_ < patch_size; y_++)
+            {
+              for (int x_ = 0; x_ < patch_size; x_++)
+              {
+                for (int pol = 0; pol < NR_CORRELATIONS; pol++)
+                {
+                  std::complex<float>* dst_ptr = m_grid->data();
+                  std::complex<float>* src_ptr = static_cast<std::complex<float>*>(h_patch);
+                  size_t dst_idx = index_grid(grid_size, pol, y+y_, x+x_);
+                  size_t src_idx = index_grid(patch_size, pol, y_, x_);
+                  dst_ptr[dst_idx] += src_ptr[src_idx];
+                }
+              }
+            }
+          }
+        } // end for x
+      } // end for y
+#else
       // Copy tiles to the host
       size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
       dtohstream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_copy);
@@ -768,6 +872,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       cpuKernels.run_adder_wtiles_to_grid(
           current_nr_tiles, tile_size, w_padded_tile_size, grid_size,
           &tile_coordinates[tile_offset], tile_ptr, m_grid->data());
+#endif
     }  // end if m_use_unified_memory
   }    // end for jobs
 }

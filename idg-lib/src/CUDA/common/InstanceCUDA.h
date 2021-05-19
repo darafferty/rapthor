@@ -155,6 +155,15 @@ class InstanceCUDA : public KernelsInstance {
                                         cu::DeviceMemory& d_tiles,
                                         cu::UnifiedMemory& u_grid);
 
+  void launch_adder_wtiles_to_patch(int nr_tiles, long grid_size,
+                                    int tile_size, int padded_tile_size,
+                                    int patch_size,
+                                    idg::Coordinate patch_coordinate,
+                                    cu::DeviceMemory& d_tile_ids,
+                                    cu::DeviceMemory& d_tile_coordinates,
+                                    cu::DeviceMemory& d_tiles,
+                                    cu::DeviceMemory& d_patch);
+
   // Misc
   void free_fft_plans();
   int get_tile_size_grid() const { return tile_size_grid; };
@@ -273,6 +282,7 @@ static const std::string name_wtiles_to_grid = "kernel_wtiles_to_grid";
 static const std::string name_subgrids_from_wtiles =
     "kernel_subgrids_from_wtiles";
 static const std::string name_wtiles_from_grid = "kernel_wtiles_from_grid";
+static const std::string name_wtiles_to_patch = "kernel_wtiles_to_patch";
 
 }  // end namespace cuda
 }  // end namespace kernel

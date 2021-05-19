@@ -375,4 +375,61 @@ __global__ void kernel_wtiles_from_grid(
     }
 } // kernel_wtiles_from_grid
 
+__global__ void kernel_wtiles_to_patch(
+    const long                     grid_size,
+    const unsigned int             tile_size,
+    const unsigned int             padded_tile_size,
+    const unsigned int             patch_size,
+    const Coordinate               patch_coordinate,
+    const int*        __restrict__ tile_ids,
+    const Coordinate* __restrict__ tile_coordinates,
+    const float2*     __restrict   tiles,
+    float2*           __restrict__ patch)
+{
+    // Map blockIdx.x to polarization
+    assert(gridDim.x == NR_POLARIZATIONS);
+    unsigned int pol = blockIdx.x;
+
+    // Map blockIdx.y to tiles
+    unsigned int tile_index = tile_ids[blockIdx.y];
+
+    // Map threadIdx.x to thread id
+    unsigned int tid = threadIdx.x;
+
+    // Compute the number of threads working on one polarization of a tile
+    unsigned int nr_threads = blockDim.x;
+
+    // Compute position of tile in grid
+    const Coordinate& coordinate = tile_coordinates[tile_index];
+    int x0 = coordinate.x * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int y0 = coordinate.y * tile_size -
+             (padded_tile_size - tile_size) / 2 + grid_size / 2;
+    int x_start = max(0, x0);
+    int y_start = max(0, y0);
+
+    // Add tile to patch
+    for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
+    {
+        unsigned int y = i / padded_tile_size;
+        unsigned int x = i % padded_tile_size;
+
+        unsigned int y_dst = y_start + y;
+        unsigned int x_dst = x_start + x;
+
+        int y_src = y_dst - y0;
+        int x_src = x_dst - x0;
+
+        if (y_dst >= patch_coordinate.y && y_dst < (patch_coordinate.y + patch_size) &&
+            x_dst >= patch_coordinate.x && x_dst < (patch_coordinate.x + patch_size))
+        {
+            y_dst -= patch_coordinate.y;
+            x_dst -= patch_coordinate.x;
+            unsigned long dst_idx = index_grid(patch_size, pol, y_dst, x_dst);
+            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol, y_src, x_src);
+            atomicAdd(patch[dst_idx], tiles[src_idx]);
+        }
+    }
+}
+
 } // end extern "C"
