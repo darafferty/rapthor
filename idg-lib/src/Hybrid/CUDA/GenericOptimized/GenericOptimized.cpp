@@ -794,7 +794,8 @@ void GenericOptimized::do_calibrate_init(
   m_calibrate_state.nr_channels = nr_channels;
 
   // Initialize wavenumbers
-  m_buffers.d_wavenumbers.reset(new cu::DeviceMemory(context, wavenumbers.bytes()));
+  m_buffers.d_wavenumbers.reset(
+      new cu::DeviceMemory(context, wavenumbers.bytes()));
   cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
                              wavenumbers.bytes());
@@ -817,13 +818,13 @@ void GenericOptimized::do_calibrate_update(
     const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
     Array3D<double>& hessian, Array2D<double>& gradient, double& residual) {
-
   // Check if the proxy is still in calibrate state
   // A calibrate_init call brings the proxy in calibrate state
   // A (de)gridding call brings the proxy in gridding state
   // If the proxy is gridding state here, an exception is thrown
   if (m_gridding_state.nr_stations) {
-    throw std::runtime_error("calibrate_update() was called while the proxy is in gridding state");
+    throw std::runtime_error(
+        "calibrate_update() was called while the proxy is in gridding state");
   }
   // Arguments
   auto nr_subgrids = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
