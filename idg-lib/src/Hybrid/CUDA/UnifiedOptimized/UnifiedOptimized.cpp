@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <csignal>
+#include <algorithm>
 
 #include <cuda.h>
 #include <cudaProfiler.h>
@@ -639,19 +640,17 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   std::vector<int>& tile_ids = wtile_flush_info.wtile_ids;
   const int padded_tile_size = tile_size + subgrid_size;
 
-  // Compute the maximum w value for all tiles
-  float max_abs_w = 0.0;
-  for (unsigned int i = 0; i < nr_tiles; i++) {
-    idg::Coordinate& coordinate = tile_coordinates[i];
-    float w = (coordinate.z + 0.5f) * w_step;
-    max_abs_w = std::max(max_abs_w, std::abs(w));
-  }
-
-  // Compute the maximum tile size for all padded tiles
+  // Compute w_padded_tile_size for all tiles
   const float image_size_shift =
       image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
-  int w_padded_tile_size = next_composite(
-      padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
+  std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
+      tile_coordinates.data(), nr_tiles, w_step, image_size, image_size_shift,
+      padded_tile_size);
+
+  // Find the maximum tile size for all padded tiles
+  int w_padded_tile_size = *std::max_element(
+      w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
+
   std::cout << "tile_size: " << tile_size << std::endl;
   std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
   std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
@@ -861,21 +860,19 @@ void UnifiedOptimized::run_wtiles_from_grid(
   std::vector<idg::Coordinate>& tile_coordinates =
       wtile_initialize_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_initialize_info.wtile_ids;
+
+  // Compute w_padded_tile_size for all tiles
   const int padded_tile_size = tile_size + subgrid_size;
-
-  // Compute the maximum w value for all tiles
-  float max_abs_w = 0.0;
-  for (unsigned int i = 0; i < nr_tiles; i++) {
-    idg::Coordinate& coordinate = tile_coordinates[i];
-    float w = (coordinate.z + 0.5f) * w_step;
-    max_abs_w = std::max(max_abs_w, std::abs(w));
-  }
-
-  // Compute the maximum tile size for all padded tiles
   const float image_size_shift =
       image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
-  int w_padded_tile_size = next_composite(
-      padded_tile_size + int(ceil(max_abs_w * image_size_shift * image_size)));
+  std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
+      tile_coordinates.data(), nr_tiles, w_step, image_size, image_size_shift,
+      padded_tile_size);
+
+  // Find the maximum tile size for all padded tiles
+  int w_padded_tile_size = *std::max_element(
+      w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
+
   std::cout << "tile_size: " << tile_size << std::endl;
   std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
   std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
