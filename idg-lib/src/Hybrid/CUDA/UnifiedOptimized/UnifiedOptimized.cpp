@@ -705,9 +705,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
-    current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
-                           ? current_nr_tiles
-                           : nr_tiles - tile_offset;
+    current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
 
     JobData job;
     job.current_nr_tiles = current_nr_tiles;
@@ -931,9 +929,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
-    current_nr_tiles = tile_offset + current_nr_tiles < nr_tiles
-                           ? current_nr_tiles
-                           : nr_tiles - tile_offset;
+    current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
 
     JobData job;
     job.current_nr_tiles = current_nr_tiles;
