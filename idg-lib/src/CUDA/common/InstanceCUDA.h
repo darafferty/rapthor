@@ -155,9 +155,8 @@ class InstanceCUDA : public KernelsInstance {
                                         cu::DeviceMemory& d_tiles,
                                         cu::UnifiedMemory& u_grid);
 
-  void launch_adder_wtiles_to_patch(int nr_tiles, long grid_size,
-                                    int tile_size, int padded_tile_size,
-                                    int patch_size,
+  void launch_adder_wtiles_to_patch(int nr_tiles, long grid_size, int tile_size,
+                                    int padded_tile_size, int patch_size,
                                     idg::Coordinate patch_coordinate,
                                     cu::DeviceMemory& d_tile_ids,
                                     cu::DeviceMemory& d_tile_coordinates,

@@ -408,11 +408,26 @@ __global__ void kernel_wtiles_to_patch(
     int x_start = max(0, x0);
     int y_start = max(0, y0);
 
+    int x_end = x_start + padded_tile_size;
+    int y_end = y_start + padded_tile_size;
+
+    // Shift start to inside patch
+    x_start = max(x_start, patch_coordinate.x);
+    y_start = max(y_start, patch_coordinate.y);
+
+    // Shift end to inside patch
+    x_end = min(x_end, patch_coordinate.x + patch_size);
+    y_end = min(y_end, patch_coordinate.y + patch_size);
+
+    // Compute number of pixels to process
+    int height = y_end - y_start;
+    int width = x_end - x_start;
+
     // Add tile to patch
-    for (unsigned int i = tid; i < (padded_tile_size * padded_tile_size); i += nr_threads)
+    for (unsigned int i = tid; i < (height * width); i += nr_threads)
     {
-        unsigned int y = i / padded_tile_size;
-        unsigned int x = i % padded_tile_size;
+        unsigned int y = i / width;
+        unsigned int x = i % width;
 
         unsigned int y_dst = y_start + y;
         unsigned int x_dst = x_start + x;
@@ -420,16 +435,12 @@ __global__ void kernel_wtiles_to_patch(
         int y_src = y_dst - y0;
         int x_src = x_dst - x0;
 
-        if (y_dst >= patch_coordinate.y && y_dst < (patch_coordinate.y + patch_size) &&
-            x_dst >= patch_coordinate.x && x_dst < (patch_coordinate.x + patch_size))
-        {
-            y_dst -= patch_coordinate.y;
-            x_dst -= patch_coordinate.x;
-            unsigned long dst_idx = index_grid(patch_size, pol, y_dst, x_dst);
-            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol, y_src, x_src);
-            atomicAdd(patch[dst_idx], tiles[src_idx]);
-        }
+        y_dst -= patch_coordinate.y;
+        x_dst -= patch_coordinate.x;
+        unsigned long dst_idx = index_grid(patch_size, pol, y_dst, x_dst);
+        unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol, y_src, x_src);
+        atomicAdd(patch[dst_idx], tiles[src_idx]);
     }
-}
+} // end kernel_wtiles_to_patch
 
 } // end extern "C"
