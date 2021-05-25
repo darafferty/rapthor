@@ -199,8 +199,6 @@ idg-integration-das:
     # Makes it easy to find the idg source location later on
     - export CURRENT_SOURCE=$PWD
     - source scripts/load_modules.sh
-    # Needed until fixed DP3 module file is installed
-    - export PYTHONPATH=${DP3_ROOT_DIR}/lib/python3.6/site-packages:${PYTHONPATH}
     - python3 -m pip install --user --upgrade pip
     # Make sure h5py is build against the hdf5 library loaded by load_modules.sh
     # This is important when h5py is imported in embedded python code
