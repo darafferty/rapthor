@@ -12,6 +12,9 @@ set(${PROJECT_NAME}_headers UnifiedOptimized.h UnifiedOptimizedC.h)
 # Set sources
 set(${PROJECT_NAME}_sources UnifiedOptimized.cpp UnifiedOptimizedC.cpp)
 
+# Compiler options
+add_compile_options("-O3")
+
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
