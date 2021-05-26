@@ -11,6 +11,7 @@
 namespace utf = boost::unit_test;
 
 namespace {
+const double kPixelTolerance = 1.0e-3;
 const std::size_t kNrTimesteps = 9;
 const std::size_t kNrStations = 3;
 const std::size_t kNrCorrelations = 4;
@@ -31,7 +32,7 @@ std::unique_ptr<idg::api::BufferSet> CreateBufferset(
 
   unsigned int kBufferSize = 4;  // Timesteps per buffer
   float max_baseline = 3000.0f;  // in meters
-  float max_w = 5.0f;
+  float max_w = 100.0f;
 
   // By convention l runs in negative direction.
   const double shiftl = shift[0] * -kCellSize;
@@ -48,41 +49,14 @@ std::vector<double> GridImage(idg::api::Type arch, const WMode wmode,
   std::unique_ptr<idg::api::BufferSet> bufferset =
       CreateBufferset(arch, wmode, shift);
 
-  const std::vector<double> uvw = {10.0, 20.0, 3.0};
+  const std::vector<double> uvw = {100.0, 200.0, 30.0};
   const std::vector<float> weights(kBands[0].size() * kNrCorrelations, 1.0f);
-
-  std::vector<std::complex<float>> phasors;
-  if (shift[0] != 0 || shift[1] != 0) {
-    // Apply phase shift to visibilities: The resulting image should then equal
-    // the image without using a shift.
-    const double shiftl = shift[0] * kCellSize;
-    const double shiftm = shift[1] * kCellSize;
-    const double shiftp = sqrt(1.0 - shiftl * shiftl - shiftm * shiftm) - 1.0;
-
-    const double phase_shift =
-        uvw[0] * shiftl + uvw[1] * shiftm + uvw[2] * shiftp;
-    const double phase_factor = -phase_shift * 2.0 * M_PI / 299792458.0;
-    for (double freq : kBands[0]) {
-      const double phase = freq * phase_factor;
-      phasors.emplace_back(std::cos(phase), std::sin(phase));
-    }
-  }
 
   for (std::size_t timestep = 0; timestep < kNrTimesteps; ++timestep) {
     for (std::size_t st1 = 0; st1 < kNrStations; ++st1) {
       for (std::size_t st2 = st1; st2 < kNrStations; ++st2) {
         const std::complex<float> value{timestep + st1 + 1.0f, st2 / 4.0f};
         std::vector<std::complex<float>> data(weights.size(), value);
-
-        if (shift[0] != 0 || shift[1] != 0) {
-          std::complex<float>* data_band = data.data();
-          for (std::size_t b = 0; b < kBands[0].size(); ++b) {
-            for (std::size_t c = 0; c < kNrCorrelations; ++c) {
-              *data_band *= phasors[b];
-              ++data_band;
-            }
-          }
-        }
 
         bufferset->get_gridder(0)->grid_visibilities(
             timestep, st1, st2, uvw.data(), data.data(), weights.data());
@@ -98,29 +72,41 @@ std::vector<double> GridImage(idg::api::Type arch, const WMode wmode,
 
 void CompareImages(const std::vector<double>& ref,
                    const std::vector<double>& test,
-                   const double pixel_tolerance, const size_t border = 0) {
+                   const double pixel_tolerance,
+                   const std::array<int, 2> shift = {0, 0}) {
   double total_diff = 0.0;
   double allowed_diff = 0.0;
 
-  for (size_t y = border; y < kImageSize - border; ++y) {
-    for (size_t x = border; x < kImageSize - border; ++x) {
-      double ref_pixel = ref[y * kImageSize + x];
-      double test_pixel = test[y * kImageSize + x];
+  size_t x_start = std::max(0, shift[0]);
+  size_t x_end = std::min(kImageSize, kImageSize + shift[0]);
+  size_t y_start = std::max(0, shift[1]);
+  size_t y_end = std::min(kImageSize, kImageSize + shift[1]);
 
-      if (boost::test_tools::check_is_small(ref_pixel, 1e-6) ||
-          boost::test_tools::check_is_small(test_pixel, 1e-6)) {
-        BOOST_CHECK_CLOSE(ref_pixel - test_pixel, 0.0f, 1e-3);
-      } else {
-        // Check both individual and average pixel differences.
-        BOOST_CHECK_CLOSE(ref_pixel, test_pixel, pixel_tolerance);
-        total_diff +=
-            std::max(ref_pixel / test_pixel, test_pixel / ref_pixel) - 1.0;
-        allowed_diff += 0.01;
-      }
+  double peak_value = 0.0;
+  for (size_t y = y_start; y < y_end; ++y) {
+    for (size_t x = x_start; x < x_end; ++x) {
+      peak_value = std::max(peak_value, ref[y * kImageSize + x]);
     }
   }
 
-  BOOST_CHECK_LT(total_diff, allowed_diff);
+  double sum_squared_difference = 0.0;
+  double max_difference = 0.0;
+  for (size_t y = y_start; y < y_end; ++y) {
+    for (size_t x = x_start; x < x_end; ++x) {
+      double ref_pixel = ref[y * kImageSize + x];
+      double test_pixel = test[(y - shift[1]) * kImageSize + (x - shift[0])];
+      double normalized_difference =
+          std::abs(ref_pixel - test_pixel) / peak_value;
+      sum_squared_difference += normalized_difference * normalized_difference;
+      max_difference = std::max(max_difference, normalized_difference);
+    }
+  }
+
+  double rms_difference =
+      std::sqrt(sum_squared_difference /
+                ((kImageSize - shift[0]) * (kImageSize - shift[1])));
+  BOOST_CHECK_SMALL(max_difference, pixel_tolerance);
+  BOOST_CHECK_SMALL(rms_difference, pixel_tolerance);
 }
 
 }  // namespace
@@ -190,13 +176,11 @@ BOOST_AUTO_TEST_CASE(architectures, *utf::depends_on("gridder/reference")) {
 
   for (idg::api::Type architecture : architectures) {
     std::vector<double> image_arch = GridImage(architecture, WMode::kNeither);
-    double pixel_tolerance = 3.0;
     // CUDA images require higher tolerance values.
     if (architecture == idg::api::Type::CUDA_GENERIC ||
         architecture == idg::api::Type::HYBRID_CUDA_CPU_OPTIMIZED) {
-      pixel_tolerance = 8.0;
     }
-    CompareImages(image_ref, image_arch, pixel_tolerance);
+    CompareImages(image_ref, image_arch, kPixelTolerance);
   }
 }
 
@@ -207,7 +191,7 @@ BOOST_AUTO_TEST_CASE(wmodes, *utf::depends_on("gridder/reference")) {
   for (WMode wmode : kWModes) {
     std::vector<double> image_wmode =
         GridImage(idg::api::Type::CPU_REFERENCE, wmode);
-    CompareImages(image_ref, image_wmode, 1.3);
+    CompareImages(image_ref, image_wmode, kPixelTolerance);
   }
 }
 
@@ -218,13 +202,7 @@ BOOST_AUTO_TEST_CASE(shift, *utf::depends_on("gridder/reference")) {
   for (idg::api::Type architecture : GetArchitectures()) {
     std::vector<double> image_shift =
         GridImage(architecture, WMode::kNeither, kShift);
-    // This test has to use a very large border: Outside the center, the
-    // pixel differences can become very large.
-    // CompareImages now only compares 40 x 40 pixels at the center.
-    // A manual test with wsclean using the 1052736496-averaged MS
-    // showed that the gridder works fine.
-    // TODO: Analyze the origin of the inaccuracy in this test.
-    CompareImages(image_ref, image_shift, 1.3, 108);
+    CompareImages(image_ref, image_shift, kPixelTolerance, kShift);
   }
 }
 

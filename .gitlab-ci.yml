@@ -166,6 +166,8 @@ idg-integration-docker:
     - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
     # Compile against wsclean
     - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
+    # Needed as long as https://jira.skatelescope.org/browse/AST-435 is not resolved
+    - cd src && git checkout f328f94 && cd ..
     - mkdir build && cd build
     - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
@@ -221,6 +223,8 @@ idg-integration-das:
     # Install wsclean (needs libgsl)
     - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
     - git clone https://gitlab.com/aroffringa/wsclean.git src
+    # Needed as long as https://jira.skatelescope.org/browse/AST-435 is not resolved
+    - cd src && git checkout f328f94 && cd ..
     - mkdir build && cd build
     - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4

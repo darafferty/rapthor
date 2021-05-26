@@ -200,7 +200,6 @@ class Proxy(object):
                 shape=(subgrid_size, subgrid_size),
                 flags='C_CONTIGUOUS')] # taper
         # call C function to do the work
-        print("aterms.shape = ", aterms.shape)
         self.lib.Proxy_degridding(
             self.obj,
             kernel_size,
