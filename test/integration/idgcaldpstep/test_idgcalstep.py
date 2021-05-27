@@ -119,15 +119,16 @@ def create_input_h5parm(h5parm_in):
         0,
     )
 
-    amplitude_coefficients = np.random.uniform(
+    rng = np.random.default_rng(1234)
+    amplitude_coefficients = rng.uniform(
         low=0.5, 
         high=2.0, size=(nr_stations, time_array_ampl.size, ampl_poly.nr_coeffs))
 
     image_size = GRIDSIZE * CELLSIZE/3600/180*np.pi
     phase_coefficients = np.zeros((nr_stations, time_array_phase.size, phase_poly.nr_coeffs))
-    phase_coefficients[:,:,0] = np.random.uniform(low=-np.pi/4, high=np.pi/4, size=phase_coefficients.shape[:2])
-    phase_coefficients[:,:,1] = np.random.uniform(low=-np.pi/4, high=np.pi/4, size=phase_coefficients.shape[:2])/image_size
-    phase_coefficients[:,:,2] = np.random.uniform(low=-np.pi/4, high=np.pi/4, size=phase_coefficients.shape[:2])/image_size
+    phase_coefficients[:,:,0] = rng.uniform(low=-np.pi/4, high=np.pi/4, size=phase_coefficients.shape[:2])
+    phase_coefficients[:,:,1] = rng.uniform(low=-np.pi/4, high=np.pi/4, size=phase_coefficients.shape[:2])/image_size
+    phase_coefficients[:,:,2] = rng.uniform(low=-np.pi/4, high=np.pi/4, size=phase_coefficients.shape[:2])/image_size
 
     h5writer.fill_solution_table("amplitude_coefficients", amplitude_coefficients)
     h5writer.fill_solution_table("phase_coefficients", phase_coefficients)
