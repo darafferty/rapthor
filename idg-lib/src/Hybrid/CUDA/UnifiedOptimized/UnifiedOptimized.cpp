@@ -668,6 +668,33 @@ std::vector<Patch> find_patches_for_tiles(
   return patches2;
 }
 
+void run_adder_patch_to_grid(
+  int                               grid_size,
+  int                               patch_size,
+  int                               nr_patches,
+  idg::Coordinate*     __restrict__ patch_coordinates,
+  std::complex<float>* __restrict__ grid,
+  std::complex<float>* __restrict__ patches_buffer)
+{
+    std::complex<float>* dst_ptr = grid;
+    std::complex<float>* src_ptr = patches_buffer;
+
+#pragma omp parallel for
+    for (int y_ = 0; y_ < patch_size; y_++) {
+      for (int i = 0; i < nr_patches; i++) {
+        int x = patch_coordinates[i].x;
+        int y = patch_coordinates[i].y;
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int x_ = 0; x_ < patch_size; x_++) {
+            size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
+            size_t src_idx = index_grid(patch_size, i, pol, y_, x_);
+            dst_ptr[dst_idx] += src_ptr[src_idx];
+          }  // end for x_
+        }    // end for pol
+      }      // end for i
+    }        // end for y_
+}
+
 void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
@@ -870,25 +897,25 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         cu::Marker marker("patch_to_grid", cu::Marker::red);
         marker.start();
 
-#pragma omp parallel for
-        for (int y_ = 0; y_ < patch_size; y_++) {
-          for (int i = 0; i < current_nr_patches; i++) {
-            int patch_id = patch_offset + i;
-            int x = patches[patch_id].coordinate.x;
-            int y = patches[patch_id].coordinate.y;
-            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-              for (int x_ = 0; x_ < patch_size; x_++) {
-                std::complex<float>* dst_ptr = m_grid->data();
-                std::complex<float>* src_ptr =
-                    static_cast<std::complex<float>*>(h_padded_tiles);
-                size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
-                size_t src_idx = index_grid(patch_size, i, pol, y_, x_);
-                dst_ptr[dst_idx] += src_ptr[src_idx];
-              }  // end for x_
-            }    // end for pol
-          }      // end for i
-        }        // end for y_
+  current_nr_patches = patches.size();
+  std::vector<idg::Coordinate> patch_coordinates(current_nr_patches);
+  for (int i = 0; i < current_nr_patches; i++)
+  {
+    patch_coordinates[i] = patches[i].coordinate;
+  }
 
+runtime = -omp_get_wtime();
+run_adder_patch_to_grid(
+  grid_size,
+  patch_size,
+  current_nr_patches,
+  patch_coordinates.data(),
+  m_grid->data(),
+  h_padded_tiles);
+  runtime += omp_get_wtime();
+  bytes = current_nr_patches * sizeof_patch;
+  bandwidth = (3*bytes) / runtime * 1e-9;
+  std::cout << "Adder: bytes = " << bytes << ", bw = " << bandwidth << " GB/s" << std::endl;
         marker.end();
       }  // end for patch_offset
 #else
