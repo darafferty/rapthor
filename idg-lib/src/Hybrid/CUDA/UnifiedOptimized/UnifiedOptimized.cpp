@@ -799,16 +799,6 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   cu::DeviceMemory d_shift(context, shift.bytes());
   executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
 
-  // Initialize FFT for w_padded_tiles
-  unsigned stride = 1;
-  unsigned dist = w_padded_tile_size * w_padded_tile_size;
-  unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
-  cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size, stride,
-                    dist, batch);
-  fft.setStream(executestream);
-  cufftComplex* tile_ptr =
-      reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
-
   // Create jobs
   struct JobData {
     int tile_offset;
@@ -832,6 +822,22 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   for (auto& job : jobs) {
     int tile_offset = job.tile_offset;
     int current_nr_tiles = job.current_nr_tiles;
+
+    // Set w_padded_tile_size for current job
+    w_padded_tile_size =
+      *std::max_element(
+        w_padded_tile_sizes.begin() + tile_offset,
+        w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
+
+    // Initialize FFT for w_padded_tiles
+    unsigned stride = 1;
+    unsigned dist = w_padded_tile_size * w_padded_tile_size;
+    unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+    cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size, stride,
+                      dist, batch);
+    fft.setStream(executestream);
+    cufftComplex* tile_ptr =
+        reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
 
     // Copy tile metadata to GPU
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
