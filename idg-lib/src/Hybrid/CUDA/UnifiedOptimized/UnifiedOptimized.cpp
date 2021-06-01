@@ -611,35 +611,43 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
 /*
  * W-tiling
  */
-struct Patch {
-  std::vector<int> tile_ids;
-  idg::Coordinate coordinate;
-};
+void find_patches_for_tiles(int grid_size, int tile_size, int padded_tile_size,
+                            int patch_size, int nr_tiles,
+                            const idg::Coordinate* tile_coordinates,
+                            std::vector<idg::Coordinate>& patch_coordinates,
+                            std::vector<int>& patch_nr_tiles,
+                            std::vector<int>& patch_tile_ids,
+                            std::vector<int>& patch_tile_id_offsets) {
+  // Initialize patch_tile_ids and patch_coordinates
+  // for all patches in the grid.
+  std::vector<std::vector<int>> patch_tile_ids_;
+  std::vector<idg::Coordinate> patch_coordinates_;
+  patch_coordinates_.resize(0);
 
-std::vector<Patch> find_patches_for_tiles(
-    int grid_size, int tile_size, int padded_tile_size, int patch_size,
-    int nr_tiles, const idg::Coordinate* tile_coordinates) {
-  std::vector<struct Patch> patches(0);
-
+  // Determine the number of patches
+  // needed to cover the entire grid.
+  int nr_patches = 0;
   for (int y = 0; y < grid_size; y += patch_size) {
     for (int x = 0; x < grid_size; x += patch_size) {
-      Patch patch;
-      patch.coordinate = {x, y};
-      patch.tile_ids.resize(0);
-      patches.push_back(patch);
+      nr_patches++;
+      patch_coordinates_.push_back({x, y});
     }
   }
+  patch_tile_ids_.resize(nr_patches);
 
+  // Iterate all patches to find the tiles that (partially) overlap
 #pragma omp parallel for
-  for (Patch& patch : patches) {
-    int patch_x_start = patch.coordinate.x;
-    int patch_y_start = patch.coordinate.y;
+  for (int i = 0; i < nr_patches; i++) {
+    patch_tile_ids_[i].resize(0);
+
+    int patch_x_start = patch_coordinates_[i].x;
+    int patch_y_start = patch_coordinates_[i].y;
     int patch_x_end = patch_x_start + patch_size;
     int patch_y_end = patch_y_start + patch_size;
 
-    for (int i = 0; i < nr_tiles; i++) {
+    for (int j = 0; j < nr_tiles; j++) {
       // Compute position of tile in grid
-      idg::Coordinate coordinate = tile_coordinates[i];
+      idg::Coordinate coordinate = tile_coordinates[j];
       int x0 = coordinate.x * tile_size - (padded_tile_size - tile_size) / 2 +
                grid_size / 2;
       int y0 = coordinate.y * tile_size - (padded_tile_size - tile_size) / 2 +
@@ -652,47 +660,61 @@ std::vector<Patch> find_patches_for_tiles(
       // Check whether the tile (partially) falls in the patch
       if (!(x_start > patch_x_end || y_start > patch_y_end ||
             x_end < patch_x_start || y_end < patch_y_start)) {
-        patch.tile_ids.push_back(i);
+        patch_tile_ids_[i].push_back(j);
       }
     }
   }
 
-  // Filter out empty patches
-  std::vector<Patch> patches2(0);
-  for (Patch& patch : patches) {
-    if (patch.tile_ids.size() > 0) {
-      patches2.push_back(patch);
+  // Reset output vectors
+  patch_coordinates.resize(0);
+  patch_nr_tiles.resize(0);
+  patch_tile_ids.resize(0);
+  patch_tile_id_offsets.resize(0);
+
+  // Fill in the output vectors for the non-empty patches
+  for (int i = 0; i < nr_patches; i++) {
+    int nr_tiles_patch = patch_tile_ids_[i].size();
+
+    if (nr_tiles_patch > 0) {
+      // Add the number of tiles for the current patch
+      patch_nr_tiles.push_back(nr_tiles_patch);
+
+      // Add the coordinate for the current patch
+      patch_coordinates.push_back(patch_coordinates_[i]);
+
+      // Add the tile id offset to the number of tile ids
+      // in all previous non-empty patches.
+      patch_tile_id_offsets.push_back(patch_tile_ids.size());
+
+      // Add all tile ids for the current patch
+      for (int j = 0; j < nr_tiles_patch; j++) {
+        patch_tile_ids.push_back(patch_tile_ids_[i][j]);
+      }
     }
   }
-
-  return patches2;
 }
 
-void run_adder_patch_to_grid(
-  int                               grid_size,
-  int                               patch_size,
-  int                               nr_patches,
-  idg::Coordinate*     __restrict__ patch_coordinates,
-  std::complex<float>* __restrict__ grid,
-  std::complex<float>* __restrict__ patches_buffer)
-{
-    std::complex<float>* dst_ptr = grid;
-    std::complex<float>* src_ptr = patches_buffer;
+void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,
+                             idg::Coordinate* __restrict__ patch_coordinates,
+                             std::complex<float>* __restrict__ grid,
+                             std::complex<float>* __restrict__ patches_buffer) {
+  std::complex<float>* dst_ptr = grid;
+  std::complex<float>* src_ptr = patches_buffer;
 
 #pragma omp parallel for
-    for (int y_ = 0; y_ < patch_size; y_++) {
-      for (int i = 0; i < nr_patches; i++) {
-        int x = patch_coordinates[i].x;
-        int y = patch_coordinates[i].y;
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-          for (int x_ = 0; x_ < patch_size; x_++) {
-            size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
-            size_t src_idx = index_grid(patch_size, i, pol, y_, x_);
-            dst_ptr[dst_idx] += src_ptr[src_idx];
-          }  // end for x_
-        }    // end for pol
-      }      // end for i
-    }        // end for y_
+  for (int y_ = 0; y_ < patch_size; y_++) {
+    for (int i = 0; i < nr_patches; i++) {
+      int x = patch_coordinates[i].x;
+      int y = patch_coordinates[i].y;
+      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+        for (int x_ = 0; x_ < patch_size; x_++) {
+          size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
+          size_t src_idx = index_grid(patch_size, i, pol, y_, x_);
+          dst_ptr[dst_idx] += src_ptr[src_idx];
+        }  // end for x_
+      }    // end for pol
+    }      // end for i
+  }        // end for y_
 }
 
 void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
@@ -757,11 +779,15 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   cu::DeviceMemory d_padded_tile_ids(context, sizeof_tile_ids);
   cu::DeviceMemory d_packed_tile_ids(context, sizeof_tile_ids);
 
-  // Alloacte patch buffer
+  // Alloacte patches buffers
   int patch_size = min(grid_size, 1024);
   size_t sizeof_patch =
       patch_size * patch_size * NR_CORRELATIONS * sizeof(idg::float2);
-  cu::DeviceMemory d_patch(context, sizeof_patch);
+  int nr_patches_batch = 3;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
+  for (int i = 0; i < nr_patches_batch; i++) {
+    d_patches.emplace_back(new cu::DeviceMemory(context, sizeof_patch));
+  }
 
   // Initialize d_padded_tile_ids
   std::vector<int> padded_tile_ids(nr_tiles_batch);
@@ -848,33 +874,57 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       executestream.synchronize();
 
       // Find all tiles that (partially) fit in the current patch
-      auto patches = find_patches_for_tiles(
+      std::vector<idg::Coordinate> patch_coordinates;
+      std::vector<int> patch_nr_tiles;
+      std::vector<int> patch_tile_ids;
+      std::vector<int> patch_tile_id_offsets;
+      find_patches_for_tiles(
           grid_size, tile_size, w_padded_tile_size, patch_size,
-          current_nr_tiles, &tile_coordinates[tile_offset]);
+          current_nr_tiles, &tile_coordinates[tile_offset], patch_coordinates,
+          patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
+      int total_nr_patches = patch_coordinates.size();
 
 #if 1
       // Iterate patches in batches (note: reuing h_padded_tiles for patches)
       int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
       int current_nr_patches = max_nr_patches;
 
-      for (int patch_offset = 0; patch_offset < patches.size();
+      // Events
+      std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+      std::vector<std::unique_ptr<cu::Event>> outputCopied;
+      for (int i = 0; i < nr_patches_batch; i++) {
+        gpuFinished.emplace_back(new cu::Event(context));
+        outputCopied.emplace_back(new cu::Event(context));
+      }
+
+      for (int patch_offset = 0; patch_offset < total_nr_patches;
            patch_offset += current_nr_patches) {
         for (int i = 0; i < current_nr_patches; i++) {
-          int patch_id = patch_offset + i;
           current_nr_patches =
-              min(current_nr_patches, patches.size() - patch_offset);
+              min(current_nr_patches, total_nr_patches - patch_offset);
 
-          auto& patch = patches[patch_offset + i];
-          auto& packed_tile_ids = patch.tile_ids;
-          auto& patch_coordinate = patch.coordinate;
-          int current_nr_tiles = packed_tile_ids.size();
+          int id = i % nr_patches_batch;
+          cu::DeviceMemory& d_patch = *d_patches[id];
+
+          // Wait for previous patch to be computed
+          if (i > nr_patches_batch) {
+            gpuFinished[id]->synchronize();
+          }
+
+          // Get patch metadata
+          int patch_id = patch_offset + i;
+          int* packed_tile_ids =
+              &patch_tile_ids[patch_tile_id_offsets[patch_id]];
+          idg::Coordinate patch_coordinate = patch_coordinates[patch_id];
+          int current_nr_tiles = patch_nr_tiles[patch_id];
 
           // Copy packed tile ids to GPU
           sizeof_tile_ids = current_nr_tiles * sizeof(int);
-          htodstream.memcpyHtoDAsync(d_packed_tile_ids, packed_tile_ids.data(),
-                                     sizeof_tile_ids);
+          executestream.memcpyHtoDAsync(d_packed_tile_ids, packed_tile_ids,
+                                        sizeof_tile_ids);
 
           // Reset patch
+          executestream.waitEvent(*outputCopied[id]);
           d_patch.zero(executestream);
 
           // Combine tiles onto patch
@@ -882,40 +932,26 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
               current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
               w_padded_tile_size, patch_size, patch_coordinate,
               d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+          executestream.record(*gpuFinished[id]);
 
           // Copy patch to the host
-          executestream.synchronize();
           void* patch_ptr =
               static_cast<char*>(h_padded_tiles) + patch_id * sizeof_patch;
-          htodstream.memcpyDtoHAsync(patch_ptr, d_patch, sizeof_patch);
-
-          // Wait for patch to be copied
-          htodstream.synchronize();
+          dtohstream.waitEvent(*gpuFinished[id]);
+          dtohstream.memcpyDtoHAsync(patch_ptr, d_patch, sizeof_patch);
+          dtohstream.record(*outputCopied[id]);
         }
+
+        // Wait for patches to be copied
+        dtohstream.synchronize();
 
         // Add patch to the grid
         cu::Marker marker("patch_to_grid", cu::Marker::red);
         marker.start();
 
-  current_nr_patches = patches.size();
-  std::vector<idg::Coordinate> patch_coordinates(current_nr_patches);
-  for (int i = 0; i < current_nr_patches; i++)
-  {
-    patch_coordinates[i] = patches[i].coordinate;
-  }
-
-runtime = -omp_get_wtime();
-run_adder_patch_to_grid(
-  grid_size,
-  patch_size,
-  current_nr_patches,
-  patch_coordinates.data(),
-  m_grid->data(),
-  h_padded_tiles);
-  runtime += omp_get_wtime();
-  bytes = current_nr_patches * sizeof_patch;
-  bandwidth = (3*bytes) / runtime * 1e-9;
-  std::cout << "Adder: bytes = " << bytes << ", bw = " << bandwidth << " GB/s" << std::endl;
+        run_adder_patch_to_grid(grid_size, patch_size, current_nr_patches,
+                                patch_coordinates.data(), m_grid->data(),
+                                h_padded_tiles);
         marker.end();
       }  // end for patch_offset
 #else
