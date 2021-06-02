@@ -816,26 +816,37 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     jobs.push_back(std::move(job));
   }
 
+  // FFT plan
+  std::unique_ptr<cufft::C2C_2D> fft;
+
   // Iterate all jobs
+  int last_w_padded_tile_size = w_padded_tile_size;
   for (auto& job : jobs) {
     int tile_offset = job.tile_offset;
     int current_nr_tiles = job.current_nr_tiles;
 
     // Set w_padded_tile_size for current job
-    w_padded_tile_size =
-      *std::max_element(
+    int current_w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
-    // Initialize FFT for w_padded_tiles
-    unsigned stride = 1;
-    unsigned dist = w_padded_tile_size * w_padded_tile_size;
-    unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
-    cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size, stride,
-                      dist, batch);
-    fft.setStream(executestream);
-    cufftComplex* tile_ptr =
-        reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
+    cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
+        static_cast<CUdeviceptr>(d_padded_tiles));
+
+    if (tile_offset == 0 ||
+        current_w_padded_tile_size != last_w_padded_tile_size)
+    {
+      // Initialize FFT for w_padded_tiles
+      unsigned stride = 1;
+      unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
+      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+
+      fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
+        current_w_padded_tile_size, stride, dist, batch));
+      fft->setStream(executestream);
+
+      last_w_padded_tile_size = current_w_padded_tile_size;
+    }
 
     // Copy tile metadata to GPU
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
@@ -850,25 +861,25 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
     // Call kernel_copy_tiles
     device.launch_copy_tiles(current_nr_tiles, padded_tile_size,
-                             w_padded_tile_size, d_tile_ids, d_padded_tile_ids,
+                             current_w_padded_tile_size, d_tile_ids, d_padded_tile_ids,
                              d_tiles, d_padded_tiles);
 
     // Launch inverse FFT
-    fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
+    fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
-                                         w_padded_tile_size, d_padded_tiles,
+                                         current_w_padded_tile_size, d_padded_tiles,
                                          d_shift, d_tile_coordinates, -1);
 
     // Launch forward FFT
-    fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
+    fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
     if (m_use_unified_memory) {
       // Call kernel_wtiles_to_grid
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_adder_wtiles_to_grid(
-          current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
+          current_nr_tiles, grid_size, tile_size, current_w_padded_tile_size,
           d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
 
       // Wait for GPU to finish
@@ -883,7 +894,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       std::vector<int> patch_tile_ids;
       std::vector<int> patch_tile_id_offsets;
       find_patches_for_tiles(
-          grid_size, tile_size, w_padded_tile_size, m_patch_size,
+          grid_size, tile_size, current_w_padded_tile_size, m_patch_size,
           current_nr_tiles, &tile_coordinates[tile_offset], patch_coordinates,
           patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
       int total_nr_patches = patch_coordinates.size();
@@ -935,7 +946,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
           // Combine tiles onto patch
           device.launch_adder_wtiles_to_patch(
               current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-              w_padded_tile_size, m_patch_size, patch_coordinate,
+              current_w_padded_tile_size, m_patch_size, patch_coordinate,
               d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
           executestream.record(*gpuFinished[id]);
 
