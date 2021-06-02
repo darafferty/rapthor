@@ -606,7 +606,9 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   // Assume that the first three will use the same amount of memory
   // Thus, given that padded tiles are larger than tiles, the padded
   // tiles will always need to be processed in batches.
-  m_nr_tiles = (free_memory * 0.25) / sizeof_tile;
+  size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
+  free_memory -= m_nr_patches_batch * sizeof_patch;
+  m_nr_tiles = (free_memory * 0.2) / sizeof_tile;
   size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
   m_buffers_wtiling.d_tiles->resize(sizeof_tiles);
   m_buffers_wtiling.d_padded_tiles->resize(sizeof_tiles);
@@ -829,16 +831,15 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
-    if (tile_offset == 0 ||
-        current_w_padded_tile_size != last_w_padded_tile_size)
-    {
+    if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
       unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
 
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
-        current_w_padded_tile_size, stride, dist, batch));
+                                  current_w_padded_tile_size, stride, dist,
+                                  batch));
       fft->setStream(executestream);
 
       last_w_padded_tile_size = current_w_padded_tile_size;
@@ -857,16 +858,16 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
     // Call kernel_copy_tiles
     device.launch_copy_tiles(current_nr_tiles, padded_tile_size,
-                             current_w_padded_tile_size, d_tile_ids, d_padded_tile_ids,
-                             d_tiles, d_padded_tiles);
+                             current_w_padded_tile_size, d_tile_ids,
+                             d_padded_tile_ids, d_tiles, d_padded_tiles);
 
     // Launch inverse FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
-    device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
-                                         current_w_padded_tile_size, d_padded_tiles,
-                                         d_shift, d_tile_coordinates, -1);
+    device.launch_apply_phasor_to_wtiles(
+        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
+        d_padded_tiles, d_shift, d_tile_coordinates, -1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
