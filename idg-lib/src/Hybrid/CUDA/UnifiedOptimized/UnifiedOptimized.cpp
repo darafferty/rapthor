@@ -736,11 +736,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   InstanceCUDA& device = get_device(0);
   cu::Context& context = device.get_context();
   cu::Stream& executestream = device.get_execute_stream();
-  cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
-
-  // Load CPU object
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
 
   // Load buffers
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
@@ -897,24 +893,24 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
           grid_size, tile_size, current_w_padded_tile_size, m_patch_size,
           current_nr_tiles, &tile_coordinates[tile_offset], patch_coordinates,
           patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
-      int total_nr_patches = patch_coordinates.size();
+      unsigned int total_nr_patches = patch_coordinates.size();
 
       // Iterate patches in batches (note: reusing h_padded_tiles for patches)
       size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
-      int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
-      int current_nr_patches = max_nr_patches;
+      unsigned int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
+      unsigned int current_nr_patches = max_nr_patches;
 
       // Events
       std::vector<std::unique_ptr<cu::Event>> gpuFinished;
       std::vector<std::unique_ptr<cu::Event>> outputCopied;
-      for (int i = 0; i < m_nr_patches_batch; i++) {
+      for (unsigned int i = 0; i < m_nr_patches_batch; i++) {
         gpuFinished.emplace_back(new cu::Event(context));
         outputCopied.emplace_back(new cu::Event(context));
       }
 
-      for (int patch_offset = 0; patch_offset < total_nr_patches;
+      for (unsigned int patch_offset = 0; patch_offset < total_nr_patches;
            patch_offset += current_nr_patches) {
-        for (int i = 0; i < current_nr_patches; i++) {
+        for (unsigned int i = 0; i < current_nr_patches; i++) {
           current_nr_patches =
               min(current_nr_patches, total_nr_patches - patch_offset);
 
