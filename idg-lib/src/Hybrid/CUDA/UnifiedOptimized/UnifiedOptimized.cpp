@@ -899,8 +899,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
           patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
       int total_nr_patches = patch_coordinates.size();
 
-#if 1
-      // Iterate patches in batches (note: reuing h_padded_tiles for patches)
+      // Iterate patches in batches (note: reusing h_padded_tiles for patches)
       size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
       int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
       int current_nr_patches = max_nr_patches;
@@ -970,21 +969,6 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                 h_padded_tiles);
         marker.end();
       }  // end for patch_offset
-#else
-      // Copy tiles to the host
-      size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
-      dtohstream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_copy);
-
-      // Wait for tiles to be copied
-      dtohstream.synchronize();
-
-      // Add tiles to grid on host
-      std::complex<float>* tile_ptr =
-          static_cast<std::complex<float>*>(h_padded_tiles.ptr());
-      cpuKernels.run_adder_wtiles_to_grid(
-          current_nr_tiles, tile_size, w_padded_tile_size, grid_size,
-          &tile_coordinates[tile_offset], tile_ptr, m_grid->data());
-#endif
     }  // end if m_use_unified_memory
   }    // end for jobs
 }
