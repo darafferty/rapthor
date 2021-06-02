@@ -4,12 +4,11 @@
 # Ensure that we use /usr as install prefix when packaging.
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
 
-# Base list of components. 
+# Base list of components.
 set(CPACK_COMPONENTS_ALL
-  api
-  base
-  # util
-  # examples
+    api base
+    # util
+    # examples
 )
 
 # Dependencies between base components.
@@ -64,8 +63,7 @@ if(Git_FOUND)
     COMMAND bash -c "${GIT_EXECUTABLE} describe --tags --dirty"
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE VERSION_STRING
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    ERROR_QUIET)
+    OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 endif()
 if(NOT VERSION_STRING)
   set(VERSION_STRING "0.0")

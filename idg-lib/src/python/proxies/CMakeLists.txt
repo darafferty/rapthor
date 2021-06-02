@@ -2,9 +2,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 install(
-    FILES
-    Python.py
-    PythonReference.py
-    COMPONENT python
-    DESTINATION
-    ${PYTHON_INSTALL_DIR})
+  FILES Python.py PythonReference.py
+  COMPONENT python
+  DESTINATION ${PYTHON_INSTALL_DIR})

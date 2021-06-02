@@ -4,38 +4,20 @@
 #project(test-cuda-wtiling)
 
 # Forward test
-set (FORWARD test-cuda-wtiling-forward.x)
-add_executable (
-    ${FORWARD}
-    forward.cpp
-)
+set(FORWARD test-cuda-wtiling-forward.x)
+add_executable(${FORWARD} forward.cpp)
 
-target_link_libraries (
-    ${FORWARD}
-    ${LINK_LIBRARIES}
-)
+target_link_libraries(${FORWARD} ${LINK_LIBRARIES})
 
-target_include_directories(
-    ${FORWARD} PRIVATE
-    ${CUDA_INCLUDE_DIR}
-)
+target_include_directories(${FORWARD} PRIVATE ${CUDA_INCLUDE_DIR})
 
 # Backward test
-set (BACKWARD test-cuda-wtiling-backward.x)
-add_executable (
-    ${BACKWARD}
-    backward.cpp
-)
+set(BACKWARD test-cuda-wtiling-backward.x)
+add_executable(${BACKWARD} backward.cpp)
 
-target_link_libraries (
-    ${BACKWARD}
-    ${LINK_LIBRARIES}
-)
+target_link_libraries(${BACKWARD} ${LINK_LIBRARIES})
 
-target_include_directories(
-    ${BACKWARD} PRIVATE
-    ${CUDA_INCLUDE_DIR}
-)
+target_include_directories(${BACKWARD} PRIVATE ${CUDA_INCLUDE_DIR})
 
 # Set tests
 add_built_test(${FORWARD} LABEL bin_cxx)
