@@ -549,9 +549,9 @@ int main(int argc, char* argv[]) {
   memset(u_grid, 0, u_grid.size());
 
   // Add tiles to patch
-  for (int y = 0; y < grid_size; y += patch_size) {
-    for (int x = 0; x < grid_size; x += patch_size) {
-      idg::Coordinate patch_coordinate = {x, y};
+  for (unsigned int y = 0; y < grid_size; y += patch_size) {
+    for (unsigned int x = 0; x < grid_size; x += patch_size) {
+      idg::Coordinate patch_coordinate = {(int)x, (int)y};
 
       // Reset patch to zero
       d_patch.zero();
