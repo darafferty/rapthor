@@ -4,24 +4,19 @@
 project(idg-plan.x)
 
 # Set sources
-set (${PROJECT_NAME}_sources
-    main.cpp
-)
+set(${PROJECT_NAME}_sources main.cpp)
 
 # Set build target
-add_executable (${PROJECT_NAME} ${${PROJECT_NAME}_sources})
+add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
 set(LINK_LIBRARIES idg-util idg-common idg-cpu)
 
-target_link_libraries (
-    ${PROJECT_NAME}
-    ${LINK_LIBRARIES}
-)
+target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARIES})
 
 # install
-install(TARGETS ${PROJECT_NAME}
-    RUNTIME DESTINATION bin/examples/cxx
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib/static
-)
+install(
+  TARGETS ${PROJECT_NAME}
+  RUNTIME DESTINATION bin/examples/cxx
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib/static)

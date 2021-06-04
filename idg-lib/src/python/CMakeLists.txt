@@ -2,13 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Create list of files to be installed. This depends on build options.
-set(_py_files
-  __init__.py
-  idgtypes.py
-  Proxy.py
-  fft.py
-  Plan.py
-)
+set(_py_files __init__.py idgtypes.py Proxy.py fft.py Plan.py)
 
 if(BUILD_LIB_CPU)
   list(APPEND _py_files CPU.py)
@@ -24,10 +18,10 @@ if(BUILD_LIB_OPENCL)
 endif()
 
 # Install Python modules.
-install(FILES ${_py_files}
-        COMPONENT python
-        DESTINATION
-        ${PYTHON_INSTALL_DIR})
+install(
+  FILES ${_py_files}
+  COMPONENT python
+  DESTINATION ${PYTHON_INSTALL_DIR})
 
 # Python-only proxies
 add_subdirectory(proxies)

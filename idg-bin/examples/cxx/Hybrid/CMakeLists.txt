@@ -3,6 +3,6 @@
 
 project(examples-hybrid)
 
-if (BUILD_LIB_CPU AND BUILD_LIB_CUDA)
-    add_subdirectory(CUDA)
+if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
+  add_subdirectory(CUDA)
 endif()
