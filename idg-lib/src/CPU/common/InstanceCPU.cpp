@@ -221,7 +221,8 @@ void InstanceCPU::load_kernel_funcions() {
             idg::Coordinate *tile_coordinates, idg::float2 *tiles,             \
             idg::float2 *grid))
 #define sig_tiles_to_grid (void (*)(int, int, int, int, void *, void *, void *))
-#define sig_tiles_from_grid (void (*)(int, int, int, int, void *, void *, void *))
+#define sig_tiles_from_grid \
+  (void (*)(int, int, int, int, void *, void *, void *))
 
 #define sig_average_beam                                                  \
   (void (*)(int, int, int, int, int, int, void *, void *, void *, void *, \

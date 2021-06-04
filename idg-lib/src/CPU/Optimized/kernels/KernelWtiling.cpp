@@ -49,18 +49,13 @@ void kernel_apply_phasor(int w_padded_tile_size, float image_size, float w_step,
   }
 }  // end kernel_apply_phasor
 
-
-inline void kernel_tile_from_grid(int wtile_size,
-                                  int w_padded_tile_size,
-                                  int grid_size,
-                                  idg::Coordinate& coordinate,
-                                  idg::float2 *tile,
-                                  const idg::float2 *grid)
-{
-  int x0 = coordinate.x * wtile_size -
-           (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
-  int y0 = coordinate.y * wtile_size -
-           (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
+inline void kernel_tile_from_grid(int wtile_size, int w_padded_tile_size,
+                                  int grid_size, idg::Coordinate &coordinate,
+                                  idg::float2 *tile, const idg::float2 *grid) {
+  int x0 = coordinate.x * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
+           grid_size / 2;
+  int y0 = coordinate.y * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
+           grid_size / 2;
   int x_start = std::max(0, x0);
   int y_start = std::max(0, y0);
   int x_end = std::min(x0 + w_padded_tile_size, grid_size);
@@ -77,32 +72,23 @@ inline void kernel_tile_from_grid(int wtile_size,
   }
 }
 
-void kernel_tiles_from_grid(int nr_tiles,
-                            int wtile_size,
-                            int w_padded_tile_size,
-                            int grid_size,
-                            idg::Coordinate *coordinates,
-                            idg::float2 *tiles,
-                            const idg::float2 *grid)
-{
+void kernel_tiles_from_grid(int nr_tiles, int wtile_size,
+                            int w_padded_tile_size, int grid_size,
+                            idg::Coordinate *coordinates, idg::float2 *tiles,
+                            const idg::float2 *grid) {
 #pragma omp parallel for
-  for (int i = 0; i < nr_tiles; i++)
-  {
-    size_t sizeof_w_padded_tile = NR_POLARIZATIONS * w_padded_tile_size * w_padded_tile_size;
+  for (int i = 0; i < nr_tiles; i++) {
+    size_t sizeof_w_padded_tile =
+        NR_POLARIZATIONS * w_padded_tile_size * w_padded_tile_size;
     idg::float2 *tile = &tiles[i * sizeof_w_padded_tile];
     kernel_tile_from_grid(wtile_size, w_padded_tile_size, grid_size,
                           coordinates[i], tile, grid);
   }
 }
 
-void kernel_tiles_to_grid(int nr_tiles,
-                          int wtile_size,
-                          int w_padded_tile_size,
-                          int grid_size,
-                          idg::Coordinate *coordinates,
-                          const idg::float2 *tiles,
-                          idg::float2 *grid)
-{
+void kernel_tiles_to_grid(int nr_tiles, int wtile_size, int w_padded_tile_size,
+                          int grid_size, idg::Coordinate *coordinates,
+                          const idg::float2 *tiles, idg::float2 *grid) {
 #pragma omp parallel
   {
     for (int i = 0; i < nr_tiles; i++) {
