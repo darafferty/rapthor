@@ -40,7 +40,7 @@ setup(
                  'Topic :: Scientific/Engineering :: Astronomy'],
     install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely', 'toil[cwl]',
                       'Pillow', 'reproject', 'python-dateutil', 'pytz', 'Rtree',
-                      'loess'],
+                      'loess', 'lsmtool', 'python-casacore'],
     scripts=['bin/rapthor',
              'bin/plotrapthor',
              'rapthor/scripts/blank_image.py',
