@@ -727,6 +727,30 @@ void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,
   }        // end for y_
 }
 
+void run_splitter_patch_from_grid(
+    int grid_size, int patch_size, int nr_patches,
+    idg::Coordinate* __restrict__ patch_coordinates,
+    std::complex<float>* __restrict__ grid,
+    std::complex<float>* __restrict__ patches_buffer) {
+  std::complex<float>* dst_ptr = patches_buffer;
+  std::complex<float>* src_ptr = grid;
+
+#pragma omp parallel for
+  for (int y_ = 0; y_ < patch_size; y_++) {
+    for (int i = 0; i < nr_patches; i++) {
+      int x = patch_coordinates[i].x;
+      int y = patch_coordinates[i].y;
+      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+        for (int x_ = 0; x_ < patch_size; x_++) {
+          size_t dst_idx = index_grid(patch_size, i, pol, y_, x_);
+          size_t src_idx = index_grid(grid_size, pol, y + y_, x + x_);
+          dst_ptr[dst_idx] = src_ptr[src_idx];
+        }  // end for x_
+      }    // end for pol
+    }      // end for i
+  }        // end for y_
+}
+
 void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
@@ -1044,9 +1068,6 @@ void UnifiedOptimized::run_wtiles_from_grid(
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
 
-  // Load CPU object
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-
   // Load buffers
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
   cu::DeviceMemory& d_padded_tiles = *m_buffers_wtiling.d_padded_tiles;
@@ -1090,6 +1111,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
   size_t sizeof_tile_ids = nr_tiles_batch * sizeof(int);
   cu::DeviceMemory d_tile_ids(context, sizeof_tile_ids);
   cu::DeviceMemory d_padded_tile_ids(context, sizeof_tile_ids);
+  cu::DeviceMemory d_packed_tile_ids(context, sizeof_tile_ids);
 
   // Initialize d_padded_tile_ids
   std::vector<int> padded_tile_ids(nr_tiles_batch);
@@ -1146,26 +1168,96 @@ void UnifiedOptimized::run_wtiles_from_grid(
                                   &tile_coordinates[tile_offset],
                                   sizeof_tile_coordinates);
 
-    // Split tile from grid
+    // Split tiles from grid
     if (m_use_unified_memory) {
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_splitter_wtiles_from_grid(
           current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
           d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
     } else {
-      h_padded_tiles.zero();
-      std::complex<float>* tile_ptr =
-          static_cast<std::complex<float>*>(h_padded_tiles.ptr());
-      cpuKernels.run_splitter_wtiles_to_grid(
-          current_nr_tiles, tile_size, w_padded_tile_size, grid_size,
-          &tile_coordinates[tile_offset], tile_ptr, m_grid->data());
+      // Find all tiles that (partially) fit in the current patch
+      std::vector<idg::Coordinate> patch_coordinates;
+      std::vector<int> patch_nr_tiles;
+      std::vector<int> patch_tile_ids;
+      std::vector<int> patch_tile_id_offsets;
+      find_patches_for_tiles(
+          grid_size, tile_size, w_padded_tile_size, m_patch_size,
+          current_nr_tiles, &tile_coordinates[tile_offset], patch_coordinates,
+          patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
+      unsigned int total_nr_patches = patch_coordinates.size();
 
-      // Copy tiles to GPU
-      size_t sizeof_copy = current_nr_tiles * sizeof_w_padded_tile;
-      htodstream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, sizeof_copy);
+      // Iterate patches in batches (note: reusing h_padded_tiles for patches)
+      size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
+      unsigned int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
+      unsigned int current_nr_patches = max_nr_patches;
 
-      // Wait for all tiles to be copied
-      htodstream.synchronize();
+      // Events
+      std::vector<std::unique_ptr<cu::Event>> inputCopied;
+      std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+      for (unsigned int i = 0; i < m_nr_patches_batch; i++) {
+        inputCopied.emplace_back(new cu::Event(context));
+        gpuFinished.emplace_back(new cu::Event(context));
+      }
+
+      // Reset padded tiles
+      d_padded_tiles.zero(executestream);
+
+      for (unsigned int patch_offset = 0; patch_offset < total_nr_patches;
+           patch_offset += current_nr_patches) {
+        current_nr_patches =
+            min(current_nr_patches, total_nr_patches - patch_offset);
+
+        // Split patch from grid
+        cu::Marker marker("patch_from_grid", cu::Marker::red);
+        marker.start();
+
+        run_splitter_patch_from_grid(
+            grid_size, m_patch_size, current_nr_patches,
+            &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
+
+        marker.end();
+
+        for (unsigned int i = 0; i < current_nr_patches; i++) {
+          int id = i % m_nr_patches_batch;
+          cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
+
+          // Wait for previous patch to be computed
+          if (i > m_nr_patches_batch) {
+            gpuFinished[id]->synchronize();
+          }
+
+          // Get patch metadata
+          int patch_id = patch_offset + i;
+          int* packed_tile_ids =
+              &patch_tile_ids[patch_tile_id_offsets[patch_id]];
+          idg::Coordinate patch_coordinate = patch_coordinates[patch_id];
+          int current_nr_tiles = patch_nr_tiles[patch_id];
+
+          // Copy packed tile ids to GPU
+          sizeof_tile_ids = current_nr_tiles * sizeof(int);
+          executestream.memcpyHtoDAsync(d_packed_tile_ids, packed_tile_ids,
+                                        sizeof_tile_ids);
+
+          // Copy patch to the GPU
+          void* patch_ptr =
+              static_cast<char*>(h_padded_tiles) + patch_id * sizeof_patch;
+          htodstream.waitEvent(*gpuFinished[id]);
+          htodstream.memcpyHtoDAsync(d_patch, patch_ptr, sizeof_patch);
+          htodstream.record(*inputCopied[id]);
+
+          // Read tile from patch
+          executestream.waitEvent(*inputCopied[id]);
+          device.launch_splitter_wtiles_from_patch(
+              current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
+              w_padded_tile_size, m_patch_size, patch_coordinate,
+              d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+          executestream.record(*gpuFinished[id]);
+        }
+
+        // Wait for tiles to be created
+        executestream.synchronize();
+
+      }  // end for patch_offset
     }
 
     // Launch inverse FFT
