@@ -383,7 +383,7 @@ __global__ void kernel_wtiles_to_patch(
     const Coordinate               patch_coordinate,
     const int*        __restrict__ tile_ids,
     const Coordinate* __restrict__ tile_coordinates,
-    const float2*     __restrict   tiles,
+    const float2*     __restrict__ tiles,
     float2*           __restrict__ patch)
 {
     // Map blockIdx.x to polarization

@@ -911,10 +911,10 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
       for (unsigned int patch_offset = 0; patch_offset < total_nr_patches;
            patch_offset += current_nr_patches) {
-        for (unsigned int i = 0; i < current_nr_patches; i++) {
-          current_nr_patches =
-              min(current_nr_patches, total_nr_patches - patch_offset);
+        current_nr_patches =
+            min(current_nr_patches, total_nr_patches - patch_offset);
 
+        for (unsigned int i = 0; i < current_nr_patches; i++) {
           int id = i % m_nr_patches_batch;
           cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
@@ -962,12 +962,12 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         marker.start();
 
         run_adder_patch_to_grid(grid_size, m_patch_size, current_nr_patches,
-                                patch_coordinates.data(), m_grid->data(),
-                                h_padded_tiles);
+                                &patch_coordinates[patch_offset],
+                                m_grid->data(), h_padded_tiles);
         marker.end();
       }  // end for patch_offset
-    }  // end if m_use_unified_memory
-  }    // end for jobs
+    }    // end if m_use_unified_memory
+  }      // end for jobs
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
