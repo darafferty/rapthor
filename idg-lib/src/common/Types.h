@@ -60,6 +60,13 @@ inline void operator+=(float2& x, const float2& y) {
   x.imag += y.imag;
 }
 
+inline void operator*=(float2& x, const float2& y) {
+  float a = x.real * y.real - x.imag * y.imag;
+  float b = x.real * y.imag + x.imag * y.real;
+  x.real = a;
+  x.imag = b;
+}
+
 inline float2 conj(const float2& x) { return {x.real, -x.imag}; }
 
 inline double2 operator*(const double2& x, const double2& y) {

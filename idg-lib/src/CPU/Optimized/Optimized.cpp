@@ -27,8 +27,7 @@ std::vector<std::string> Optimized::default_libraries() {
   libraries.push_back(prefix + "fft.so");
   libraries.push_back(prefix + "adder-wstack.so");
   libraries.push_back(prefix + "splitter-wstack.so");
-  libraries.push_back(prefix + "adder-wtiles.so");
-  libraries.push_back(prefix + "splitter-wtiles.so");
+  libraries.push_back(prefix + "wtiling.so");
   prefix = "Reference/libcpu-reference-kernel-";
   libraries.push_back(prefix + "average-beam.so");
   return libraries;

@@ -53,11 +53,8 @@ add_library(${PROJECT_NAME}-adder-wstack KernelAdderWStack.cpp)
 add_library(${PROJECT_NAME}-splitter-wstack KernelSplitterWStack.cpp)
 
 # Add libraries for w-tiles
-add_library(${PROJECT_NAME}-adder-wtiles KernelAdderWTiles.cpp)
-add_library(${PROJECT_NAME}-splitter-wtiles KernelSplitterWTiles.cpp)
-
-target_link_libraries(${PROJECT_NAME}-adder-wtiles idg-fft)
-target_link_libraries(${PROJECT_NAME}-splitter-wtiles idg-fft)
+add_library(${PROJECT_NAME}-wtiling KernelWtiling.cpp)
+target_link_libraries(${PROJECT_NAME}-wtiling idg-common)
 
 foreach(
   tgt
@@ -69,8 +66,7 @@ foreach(
   calibrate
   adder-wstack
   splitter-wstack
-  adder-wtiles
-  splitter-wtiles)
+  wtiling)
   set_target_properties(
     ${PROJECT_NAME}-${tgt}
     PROPERTIES SOVERSION 0 LIBRARY_OUTPUT_DIRECTORY
@@ -87,7 +83,6 @@ install(
           ${PROJECT_NAME}-calibrate
           ${PROJECT_NAME}-adder-wstack
           ${PROJECT_NAME}-splitter-wstack
-          ${PROJECT_NAME}-adder-wtiles
-          ${PROJECT_NAME}-splitter-wtiles
+          ${PROJECT_NAME}-wtiling
   COMPONENT cpu
   DESTINATION lib/idg-cpu/Optimized)
