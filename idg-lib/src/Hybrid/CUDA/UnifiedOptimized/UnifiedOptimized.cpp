@@ -1125,16 +1125,6 @@ void UnifiedOptimized::run_wtiles_from_grid(
   cu::DeviceMemory d_shift(context, shift.bytes());
   executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
 
-  // Initialize FFT for w_padded_tiles
-  unsigned stride = 1;
-  unsigned dist = w_padded_tile_size * w_padded_tile_size;
-  unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
-  cufft::C2C_2D fft(context, w_padded_tile_size, w_padded_tile_size, stride,
-                    dist, batch);
-  fft.setStream(executestream);
-  cufftComplex* tile_ptr =
-      reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
-
   // Create jobs
   struct JobData {
     int tile_offset;
@@ -1154,10 +1144,36 @@ void UnifiedOptimized::run_wtiles_from_grid(
     jobs.push_back(std::move(job));
   }
 
+  // FFT plan
+  std::unique_ptr<cufft::C2C_2D> fft;
+
   // Iterate all jobs
+  int last_w_padded_tile_size = w_padded_tile_size;
   for (auto& job : jobs) {
     int tile_offset = job.tile_offset;
     int current_nr_tiles = job.current_nr_tiles;
+
+    // Set w_padded_tile_size for current job
+    int current_w_padded_tile_size = *std::max_element(
+        w_padded_tile_sizes.begin() + tile_offset,
+        w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
+
+    cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
+        static_cast<CUdeviceptr>(d_padded_tiles));
+
+    if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
+      // Initialize FFT for w_padded_tiles
+      unsigned stride = 1;
+      unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
+      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+
+      fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
+                                  current_w_padded_tile_size, stride, dist,
+                                  batch));
+      fft->setStream(executestream);
+
+      last_w_padded_tile_size = current_w_padded_tile_size;
+    }
 
     // Copy tile metadata to GPU
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
@@ -1261,7 +1277,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
     }
 
     // Launch inverse FFT
-    fft.execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
+    fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
@@ -1269,7 +1285,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
                                          d_shift, d_tile_coordinates, 1);
 
     // Launch forward FFT
-    fft.execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
+    fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
     // Call kernel_copy_tiles
     device.launch_copy_tiles(current_nr_tiles, w_padded_tile_size,
