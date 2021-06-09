@@ -788,9 +788,11 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   int w_padded_tile_size =
       *std::max_element(w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
 
+#if defined(DEBUG)
   std::cout << "tile_size: " << tile_size << std::endl;
   std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
   std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
+#endif
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
@@ -1092,9 +1094,11 @@ void UnifiedOptimized::run_wtiles_from_grid(
   int w_padded_tile_size =
       *std::max_element(w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
 
+#if defined(DEBUG)
   std::cout << "tile_size: " << tile_size << std::endl;
   std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
   std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
+#endif
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
