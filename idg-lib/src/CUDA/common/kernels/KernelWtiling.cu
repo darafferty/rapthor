@@ -449,6 +449,7 @@ __global__ void kernel_wtiles_to_patch(
 } // end kernel_wtiles_to_patch
 
 __global__ void kernel_wtiles_from_patch(
+    const unsigned int             nr_tiles,
     const long                     grid_size,
     const unsigned int             tile_size,
     const unsigned int             padded_tile_size,
@@ -463,57 +464,61 @@ __global__ void kernel_wtiles_from_patch(
     assert(gridDim.x == NR_POLARIZATIONS);
     unsigned int pol = blockIdx.x;
 
-    // Map blockIdx.y to tiles
-    unsigned int tile_index = tile_ids[blockIdx.y];
+    // Map blockIdx.y to row of patch
+    unsigned int y = blockIdx.y;
 
     // Map threadIdx.x to thread id
     unsigned int tid = threadIdx.x;
 
-    // Compute the number of threads working on one polarization of a tile
+    // Compute the number of threads working on one polarization/row of a patch
     unsigned int nr_threads = blockDim.x;
 
-    // Compute position of tile in grid
-    const Coordinate& coordinate = tile_coordinates[tile_index];
-    int x0 = coordinate.x * tile_size -
-             (padded_tile_size - tile_size) / 2 + grid_size / 2;
-    int y0 = coordinate.y * tile_size -
-             (padded_tile_size - tile_size) / 2 + grid_size / 2;
-    int x_start = max(0, x0);
-    int y_start = max(0, y0);
-
-    int x_end = x_start + padded_tile_size;
-    int y_end = y_start + padded_tile_size;
-
-    // Shift start to inside patch
-    x_start = max(x_start, patch_coordinate.x);
-    y_start = max(y_start, patch_coordinate.y);
-
-    // Shift end to inside patch
-    x_end = min(x_end, patch_coordinate.x + patch_size);
-    y_end = min(y_end, patch_coordinate.y + patch_size);
-
-    // Compute number of pixels to process
-    int height = y_end - y_start;
-    int width = x_end - x_start;
-
-    // Read tile from patch
-    for (unsigned int i = tid; i < (height * width); i += nr_threads)
+    for (unsigned int i = 0; i < nr_tiles; i++)
     {
-        unsigned int y = i / width;
-        unsigned int x = i % width;
+        unsigned int tile_index = tile_ids[i];
 
-        unsigned int y_src = y_start + y;
-        unsigned int x_src = x_start + x;
+        // Compute position of tile in grid
+        const Coordinate& coordinate = tile_coordinates[tile_index];
+        int x0 = coordinate.x * tile_size -
+                 (padded_tile_size - tile_size) / 2 + grid_size / 2;
+        int y0 = coordinate.y * tile_size -
+                 (padded_tile_size - tile_size) / 2 + grid_size / 2;
+        int x_start = max(0, x0);
+        int y_start = max(0, y0);
 
-        int y_dst = y_src - y0;
-        int x_dst = x_src - x0;
+        int x_end = x_start + padded_tile_size;
+        int y_end = y_start + padded_tile_size;
 
-        y_src -= patch_coordinate.y;
-        x_src -= patch_coordinate.x;
-        unsigned long src_idx = index_grid(patch_size, pol, y_src, x_src);
-        unsigned long dst_idx = index_grid(padded_tile_size, tile_index, pol, y_dst, x_dst);
-        tiles[dst_idx] = patch[src_idx];
-    }
+        // Shift start to inside patch
+        x_start = max(x_start, patch_coordinate.x);
+        y_start = max(y_start, patch_coordinate.y);
+
+        // Shift end to inside patch
+        x_end = min(x_end, patch_coordinate.x + patch_size);
+        y_end = min(y_end, patch_coordinate.y + patch_size);
+
+        // Compute number of pixels to process
+        int height = y_end - y_start;
+        int width = x_end - x_start;
+
+        // Set tile from patch
+        if (y < height)
+        {
+            unsigned int y_patch = y_start + y - patch_coordinate.y;
+            unsigned int y_tile  = y_start + y - y0;
+
+            for (unsigned int x = tid; x < width; x += nr_threads)
+            {
+                unsigned int x_patch = x_start + x - patch_coordinate.x;
+                unsigned int x_tile  = x_start + x - x0;
+
+                unsigned long idx_patch = index_grid(patch_size, pol, y_patch, x_patch);
+                unsigned long idx_tile  = index_grid(padded_tile_size, tile_index, pol, y_tile, x_tile);
+
+                tiles[idx_tile] = patch[idx_patch];
+            }
+        } // end if y
+    } // end for i
 } // end kernel_wtiles_to_patch
 
 } // end extern "C"
