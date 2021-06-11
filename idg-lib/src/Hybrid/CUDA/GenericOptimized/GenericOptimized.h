@@ -46,6 +46,9 @@ class GenericOptimized : public cuda::CUDA {
       Plan::Options options) override;
 
  private:
+  /*
+   * Gridding
+   */
   void do_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
@@ -54,17 +57,6 @@ class GenericOptimized : public cuda::CUDA {
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
-
-  void do_degridding(
-      const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal) override;
-
-  void do_transform(DomainAtoDomainB direction) override;
 
   void run_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
@@ -75,6 +67,18 @@ class GenericOptimized : public cuda::CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
 
+  /*
+   * Degridding
+   */
+  void do_degridding(
+      const Plan& plan, const Array1D<float>& frequencies,
+      Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array2D<UVW<float>>& uvw,
+      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array1D<unsigned int>& aterms_offsets,
+      const Array2D<float>& spheroidal) override;
+
   void run_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
       Array3D<Visibility<std::complex<float>>>& visibilities,
@@ -84,6 +88,14 @@ class GenericOptimized : public cuda::CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
 
+  /*
+   * FFT
+   */
+  void do_transform(DomainAtoDomainB direction) override;
+
+  /*
+   * Calibration
+   */
   void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
       const Array1D<float>& frequencies,
