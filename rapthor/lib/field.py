@@ -1102,7 +1102,7 @@ class Field(object):
                           'Using 2.0 instead'.format(convergence_ratio))
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
-            self.log.info('The convergence ratio is set to {} but must be >= 0.5 '
+            self.log.info('The convergence ratio is set to {} but must be >= 0.5. '
                           'Using 0.5 instead'.format(convergence_ratio))
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
@@ -1122,7 +1122,7 @@ class Field(object):
         image.calc_noise()
         rmspost = image.noise
         self.log.info('Ratio of current image noise to previous image '
-                      'noise = {0:.2f}.'.format(rmspost/rmspre))
+                      'noise = {0:.2f}'.format(rmspost/rmspre))
 
         if rmspost / rmspre < convergence_ratio:
             # Report not converged (and not diverged)
