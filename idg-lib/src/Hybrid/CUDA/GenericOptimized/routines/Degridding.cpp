@@ -114,6 +114,7 @@ void GenericOptimized::run_degridding(
 
       // Load memory objects
       cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+      cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
       // Wait for input buffer to be free
       if (job_id > 0) {
@@ -125,10 +126,17 @@ void GenericOptimized::run_degridding(
       marker_splitter.start();
 
       if (plan.get_use_wtiles()) {
-        cpuKernels.run_splitter_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
-            h_subgrids, grid_ptr);
+        if (!m_disable_wtiling_gpu)
+        {
+          run_subgrids_from_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
+                                   image_size, w_step, shift, wtile_initialize_set,
+                                   d_subgrids, d_metadata);
+        } else {
+          cpuKernels.run_splitter_wtiles(
+              current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+              shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
+              h_subgrids, grid_ptr);
+        }
         subgrid_offset += current_nr_subgrids;
       } else if (w_step != 0.0) {
         cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,

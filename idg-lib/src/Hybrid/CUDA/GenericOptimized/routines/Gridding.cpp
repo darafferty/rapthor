@@ -56,7 +56,10 @@ void GenericOptimized::run_gridding(
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
-  h_subgrids.resize(sizeof_subgrids);
+  if (m_disable_wtiling_gpu)
+  {
+    h_subgrids.resize(sizeof_subgrids);
+  }
 
   // Performance measurements
   m_report->initialize(nr_channels, subgrid_size, grid_size);
@@ -98,9 +101,9 @@ void GenericOptimized::run_gridding(
 
   // Start asynchronous computation on the host
   std::thread host_thread = std::thread([&]() {
-    int subgrid_offset = 0;
     for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
       // Get parameters for current job
+      auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
       auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
       void* metadata_ptr = jobs[job_id].metadata_ptr;
       std::complex<float>* grid_ptr = grid.data();
@@ -108,29 +111,39 @@ void GenericOptimized::run_gridding(
 
       // Load memory objects
       cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
+      cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
 
       // Wait for scaler to finish
       locks_cpu[job_id].lock();
 
       // Copy subgrid to host
-      dtohstream.waitEvent(*gpuFinished[job_id]);
-      auto sizeof_subgrids =
-          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-      dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
-      dtohstream.record(*outputCopied[job_id]);
+      if (m_disable_wtiling_gpu)
+      {
+        dtohstream.waitEvent(*gpuFinished[job_id]);
+        auto sizeof_subgrids =
+            auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+        dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
+        dtohstream.record(*outputCopied[job_id]);
 
-      // Wait for subgrids to be copied
-      outputCopied[job_id]->synchronize();
+        // Wait for subgrids to be copied
+        outputCopied[job_id]->synchronize();
+      }
 
       // Run adder on host
       cu::Marker marker_adder("run_adder", cu::Marker::blue);
       marker_adder.start();
       if (plan.get_use_wtiles()) {
-        cpuKernels.run_adder_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
-            h_subgrids, grid_ptr);
-        subgrid_offset += current_nr_subgrids;
+        if (!m_disable_wtiling_gpu)
+        {
+          run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
+                                 image_size, w_step, shift, wtile_flush_set,
+                                 d_subgrids, d_metadata);
+        } else {
+          cpuKernels.run_adder_wtiles(
+              current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+              shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
+              h_subgrids, grid_ptr);
+        }
       } else if (w_step != 0.0) {
         cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size,
                                     subgrid_size, metadata_ptr, h_subgrids,

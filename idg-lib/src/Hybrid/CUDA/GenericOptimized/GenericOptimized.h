@@ -26,10 +26,12 @@ class GenericOptimized : public cuda::CUDA {
   }
 
   virtual bool do_supports_wtiles() override {
-    return cpuProxy->do_supports_wtiles();
+    return !m_disable_wtiling_gpu || cpuProxy->do_supports_wtiles();
   }
 
   virtual bool supports_avg_aterm_correction() { return true; }
+
+  void set_disable_wtiling_gpu(bool v) { m_disable_wtiling_gpu = v; }
 
   void set_grid(std::shared_ptr<Grid> grid) override;
 
@@ -127,8 +129,54 @@ class GenericOptimized : public cuda::CUDA {
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array2D<float>& parameter_vector) override;
 
+  /*
+   * W-Tiling
+   */
+  void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
+                          float w_step, const Array1D<float>& shift,
+                          WTileUpdateInfo& wtile_flush_info);
+
+  void run_subgrids_to_wtiles(unsigned int subgrid_offset,
+                              unsigned int nr_subgrids,
+                              unsigned int subgrid_size, float image_size,
+                              float w_step, const Array1D<float>& shift,
+                              WTileUpdateSet& wtile_flush_set,
+                              cu::DeviceMemory& d_subgrids,
+                              cu::DeviceMemory& d_metadata);
+
+  void run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
+                            float w_step, const Array1D<float>& shift,
+                            WTileUpdateInfo& wtile_initialize_info);
+
+  void run_subgrids_from_wtiles(unsigned int subgrid_offset,
+                                unsigned int nr_subgrids,
+                                unsigned int subgrid_size, float image_size,
+                                float w_step, const Array1D<float>& shift,
+                                WTileUpdateSet& wtile_initialize_set,
+                                cu::DeviceMemory& d_subgrids,
+                                cu::DeviceMemory& d_metadata);
+
+  void flush_wtiles();
+
  protected:
   idg::proxy::cpu::CPU* cpuProxy;
+
+  /*
+   * W-Tiling state
+   */
+  bool m_disable_wtiling_gpu = false;
+  WTiles m_wtiles;
+  unsigned int m_nr_tiles = 0;  // configured in init_cache
+  const unsigned int m_tile_size = 128;
+  const unsigned int m_patch_size = 512;
+  const unsigned int m_nr_patches_batch = 3;
+
+  struct {
+    std::unique_ptr<cu::DeviceMemory> d_tiles;
+    std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
+    std::unique_ptr<cu::HostMemory> h_tiles;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
+  } m_buffers_wtiling;
 
   /*
    * Calibration state
