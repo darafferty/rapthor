@@ -168,10 +168,12 @@ class Image(Operation):
                 self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
 
             if self.field.use_mpi:
-                # Set number of nodes to allocate to each imaging subpipeline
+                # Set number of nodes to allocate to each imaging subpipeline. We subtract
+                # one node because Toil must use one node for its job, which in turn calls
+                # salloc to reserve the nodes for the MPI job
                 nnodes = self.parset['cluster_specific']['max_nodes']
                 nsubpipes = min(nsectors, nnodes)
-                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes))
+                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
                 self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
