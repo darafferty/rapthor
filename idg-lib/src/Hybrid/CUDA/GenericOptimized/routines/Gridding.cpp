@@ -56,8 +56,7 @@ void GenericOptimized::run_gridding(
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
-  if (m_disable_wtiling_gpu)
-  {
+  if (m_disable_wtiling_gpu) {
     h_subgrids.resize(sizeof_subgrids);
   }
 
@@ -86,82 +85,6 @@ void GenericOptimized::run_gridding(
   // Start performance measurement
   startStates[device_id] = device.measure();
   startStates[nr_devices] = hostPowerSensor->read();
-
-  // Locks to make the GPU wait
-  std::vector<std::mutex> locks_gpu(jobs.size());
-  for (auto& lock : locks_gpu) {
-    lock.lock();
-  }
-
-  // Locks to make the CPU wait
-  std::vector<std::mutex> locks_cpu(jobs.size());
-  for (auto& lock : locks_cpu) {
-    lock.lock();
-  }
-
-  // Start asynchronous computation on the host
-  std::thread host_thread = std::thread([&]() {
-    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-      // Get parameters for current job
-      auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
-      auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-      void* metadata_ptr = jobs[job_id].metadata_ptr;
-      std::complex<float>* grid_ptr = grid.data();
-      unsigned local_id = job_id % 2;
-
-      // Load memory objects
-      cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
-      cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
-
-      // Wait for scaler to finish
-      locks_cpu[job_id].lock();
-
-      // Copy subgrid to host
-      if (m_disable_wtiling_gpu)
-      {
-        dtohstream.waitEvent(*gpuFinished[job_id]);
-        auto sizeof_subgrids =
-            auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-        dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
-        dtohstream.record(*outputCopied[job_id]);
-
-        // Wait for subgrids to be copied
-        outputCopied[job_id]->synchronize();
-      }
-
-      // Run adder on host
-      cu::Marker marker_adder("run_adder", cu::Marker::blue);
-      marker_adder.start();
-      if (plan.get_use_wtiles()) {
-        if (!m_disable_wtiling_gpu)
-        {
-          run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
-                                 image_size, w_step, shift, wtile_flush_set,
-                                 d_subgrids, d_metadata);
-        } else {
-          cpuKernels.run_adder_wtiles(
-              current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-              shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
-              h_subgrids, grid_ptr);
-        }
-      } else if (w_step != 0.0) {
-        cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size,
-                                    subgrid_size, metadata_ptr, h_subgrids,
-                                    grid_ptr);
-      } else {
-        cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
-                             metadata_ptr, h_subgrids, grid_ptr);
-      }
-      marker_adder.end();
-
-      // Report performance
-      device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
-                            jobs[job_id].current_nr_subgrids);
-
-      // Signal that the subgrids are added
-      locks_gpu[job_id].unlock();
-    }
-  });
 
   // Iterate all jobs
   for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
@@ -232,11 +155,6 @@ void GenericOptimized::run_gridding(
       htodstream.record(*inputCopied[job_id_next]);
     }
 
-    // Wait for output buffer to be free
-    if (job_id > 1) {
-      locks_gpu[job_id - 2].lock();
-    }
-
     // Initialize subgrids to zero
     d_subgrids.zero(executestream);
 
@@ -258,17 +176,47 @@ void GenericOptimized::run_gridding(
     device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
-    // Wait for scalar to finish
-    gpuFinished[job_id]->synchronize();
+    // Copy subgrid to host
+    if (m_disable_wtiling_gpu) {
+      dtohstream.waitEvent(*gpuFinished[job_id]);
+      auto sizeof_subgrids =
+          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+      dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
+      dtohstream.record(*outputCopied[job_id]);
 
-    // Signal that the subgrids are computed
-    locks_cpu[job_id].unlock();
+      // Wait for subgrids to be copied
+      outputCopied[job_id]->synchronize();
+    }
+
+    // Run adder kernel
+    cu::Marker marker_adder("run_adder", cu::Marker::blue);
+    marker_adder.start();
+    if (plan.get_use_wtiles()) {
+      auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+
+      if (!m_disable_wtiling_gpu) {
+        run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids,
+                               subgrid_size, image_size, w_step, shift,
+                               wtile_flush_set, d_subgrids, d_metadata);
+      } else {
+        cpuKernels.run_adder_wtiles(
+            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+            shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
+            h_subgrids, m_grid->data());
+      }
+    } else if (w_step != 0.0) {
+      cpuKernels.run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size,
+                                  metadata_ptr, h_subgrids, m_grid->data());
+    } else {
+      cpuKernels.run_adder(current_nr_subgrids, grid_size, subgrid_size,
+                           metadata_ptr, h_subgrids, m_grid->data());
+    }
+    marker_adder.end();
+
+    // Report performance
+    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+                          jobs[job_id].current_nr_subgrids);
   }  // end for bl
-
-  // Wait for host thread
-  if (host_thread.joinable()) {
-    host_thread.join();
-  }
 
   // End performance measurement
   endStates[device_id] = device.measure();
