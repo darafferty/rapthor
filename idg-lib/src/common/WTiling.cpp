@@ -98,8 +98,16 @@ void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,
     for (int i = 0; i < nr_patches; i++) {
       int x = patch_coordinates[i].x;
       int y = patch_coordinates[i].y;
+
+      int width = std::min(patch_size, grid_size - x);
+      int height = std::min(patch_size, grid_size - y);
+
+      if (y_ >= height) {
+        break;
+      }
+
       for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-        for (int x_ = 0; x_ < patch_size; x_++) {
+        for (int x_ = 0; x_ < width; x_++) {
           size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
           size_t src_idx = index_grid(patch_size, i, pol, y_, x_);
           dst_ptr[dst_idx] += src_ptr[src_idx];
