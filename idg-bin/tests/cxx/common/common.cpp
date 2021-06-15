@@ -182,9 +182,9 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   }
 
   // Init cache, with valid w_steps if both proxies support it
-  float w_step = proxy1.supports_wtiling() && proxy2.supports_wtiling()
-                     ? 4.0 / (image_size * image_size)
-                     : 0.0;
+  bool use_wtiles = proxy1.supports_wtiling() && proxy2.supports_wtiling();
+  float w_step =
+      use_wtiles ? (2 * kernel_size) / (image_size * image_size) : 0.0;
   proxy1.init_cache(subgrid_size, cell_size, w_step, shift);
   proxy2.init_cache(subgrid_size, cell_size, w_step, shift);
 

@@ -193,7 +193,8 @@ void run() {
   float image_size =
       data.compute_image_size(grid_padding * grid_size, nr_channels);
   float cell_size = image_size / grid_size;
-  float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
+  float w_step =
+      use_wtiles ? (2 * kernel_size) / (image_size * image_size) : 0.0;
 
   // Print parameters
   print_parameters(total_nr_stations, total_nr_channels, total_nr_timesteps,
