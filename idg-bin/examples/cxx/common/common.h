@@ -230,6 +230,7 @@ void run() {
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
   auto grid =
       proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+  grid->zero();
   idg::Array1D<float> shift = idg::get_zero_shift();
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(proxy, nr_stations, nr_baselines);

@@ -87,6 +87,8 @@ int test01() {
   int location_x = grid_size / 2 + offset_x;
   int location_y = grid_size / 2 + offset_y;
   float amplitude = 1.0f;
+  grid->zero();
+  grid_ref->zero();
   (*grid_ref)(0, 0, location_y, location_x) = amplitude;
   (*grid_ref)(0, 1, location_y, location_x) = amplitude;
   (*grid_ref)(0, 2, location_y, location_x) = amplitude;
@@ -120,8 +122,7 @@ int test01() {
   proxy.transform(idg::FourierDomainToImageDomain);
 
   float grid_error = get_accuracy(grid_size * grid_size * nr_correlations,
-                                  (std::complex<float> *)grid->data(),
-                                  (std::complex<float> *)grid_ref->data());
+                                  grid->data(), grid_ref->data());
 
   // Predict visibilities
   clog << ">>> Predict visibilities" << endl;

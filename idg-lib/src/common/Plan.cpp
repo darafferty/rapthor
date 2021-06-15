@@ -620,6 +620,7 @@ int Plan::get_nr_timesteps(int baseline) const {
 }
 
 int Plan::get_nr_timesteps(int baseline, int n) const {
+  assert(n <= int(total_nr_timesteps_per_baseline.size()) - baseline);
   auto begin = next(total_nr_timesteps_per_baseline.begin(), baseline);
   auto end = next(begin, n);
   return accumulate(begin, end, 0);
@@ -682,7 +683,7 @@ void Plan::initialize_job(const unsigned int nr_baselines,
   auto last_bl = bl + current_nr_baselines;
 
   // Skip empty baselines
-  while (get_nr_timesteps(first_bl, 1) == 0 && first_bl < last_bl) {
+  while (first_bl < last_bl && get_nr_timesteps(first_bl, 1) == 0) {
     first_bl++;
   }
 

@@ -201,12 +201,13 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
 #if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
+  grid->zero();
   proxy2.gridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
                   aterms_offsets, spheroidal);
   proxy2.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
-  proxy1.set_grid(grid_ref);
+  grid_ref->zero();
   proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
                   aterms_offsets, spheroidal);
   proxy1.get_final_grid();
