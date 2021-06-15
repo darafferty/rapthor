@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <cassert>
+
 #include "WTiling.h"
 #include "Index.h"
 
@@ -84,6 +87,51 @@ void find_patches_for_tiles(int grid_size, int tile_size, int padded_tile_size,
       }
     }
   }
+}
+
+void sort_by_patches(int grid_size, int tile_size, int padded_tile_size,
+                     int patch_size, int nr_tiles,
+                     WTileUpdateInfo& update_info) {
+  // Find the tile to patch mapping
+  std::vector<idg::Coordinate> patch_coordinates;
+  std::vector<int> patch_nr_tiles;
+  std::vector<int> patch_tile_ids;
+  std::vector<int> patch_tile_id_offsets;
+  find_patches_for_tiles(
+      grid_size, tile_size, padded_tile_size, patch_size,
+      update_info.wtile_ids.size(), update_info.wtile_coordinates.data(),
+      patch_coordinates, patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
+
+  // The patch_tile_ids now has a list of all tiles, sorted by patch.
+  // Use this list to construct a new WTileUpdateInfo
+  WTileUpdateInfo update_info_sorted;
+  update_info_sorted.subgrid_index = update_info.subgrid_index;
+  update_info_sorted.wtile_ids.resize(0);
+  update_info_sorted.wtile_coordinates.resize(0);
+
+  // Find unique tile ids
+  std::vector<int> tile_ids_sorted;
+  for (int i : patch_tile_ids) {
+    if (std::find(tile_ids_sorted.begin(), tile_ids_sorted.end(), i) ==
+        tile_ids_sorted.end()) {
+      tile_ids_sorted.push_back(i);
+    }
+  }
+
+  // Fill in the new update info
+  for (int i : tile_ids_sorted) {
+    update_info_sorted.wtile_ids.push_back(update_info.wtile_ids[i]);
+    update_info_sorted.wtile_coordinates.push_back(
+        update_info.wtile_coordinates[i]);
+  }
+
+  // Sanity check
+  assert(update_info.wtile_ids.size() == update_info_sorted.wtile_ids.size());
+
+  // Swap the update info
+  std::swap(update_info.wtile_ids, update_info_sorted.wtile_ids);
+  std::swap(update_info.wtile_coordinates,
+            update_info_sorted.wtile_coordinates);
 }
 
 void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,

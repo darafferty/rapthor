@@ -34,11 +34,15 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // Get information on what wtiles to flush
   const int tile_size = m_tile_size;
+  const int padded_tile_size = tile_size + subgrid_size;
   const unsigned int nr_tiles = wtile_flush_info.wtile_ids.size();
   std::vector<idg::Coordinate>& tile_coordinates =
       wtile_flush_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_flush_info.wtile_ids;
-  const int padded_tile_size = tile_size + subgrid_size;
+
+  // Sort wtile_flush_info
+  sort_by_patches(grid_size, tile_size, padded_tile_size, m_patch_size,
+                  nr_tiles, wtile_flush_info);
 
   // Compute w_padded_tile_size for all tiles
   const float image_size_shift =
@@ -326,13 +330,17 @@ void GenericOptimized::run_wtiles_from_grid(
 
   // Get information on what wtiles to flush
   const int tile_size = m_tile_size;
+  const int padded_tile_size = tile_size + subgrid_size;
   const unsigned int nr_tiles = wtile_initialize_info.wtile_ids.size();
   std::vector<idg::Coordinate>& tile_coordinates =
       wtile_initialize_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_initialize_info.wtile_ids;
 
+  // Sort wtile_flush_info
+  sort_by_patches(grid_size, tile_size, padded_tile_size, m_patch_size,
+                  nr_tiles, wtile_initialize_info);
+
   // Compute w_padded_tile_size for all tiles
-  const int padded_tile_size = tile_size + subgrid_size;
   const float image_size_shift =
       image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
   std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
