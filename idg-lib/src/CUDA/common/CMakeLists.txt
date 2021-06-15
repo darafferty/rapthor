@@ -10,8 +10,14 @@ include_directories(${CUDA_INCLUDE_DIR})
 set(${PROJECT_NAME}_headers CUDA.h CU.h CUFFT.h InstanceCUDA.h PowerRecord.h)
 
 # Set sources
-set(${PROJECT_NAME}_sources CUDA.cpp CU.cpp CUFFT.cpp InstanceCUDA.cpp
-                            PowerRecord.cpp)
+set(${PROJECT_NAME}_sources
+    CUDA.cpp
+    CU.cpp
+    CUFFT.cpp
+    InstanceCUDA.cpp
+    PowerRecord.cpp
+    routines/FFT.cpp
+    routines/Beam.cpp)
 
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}

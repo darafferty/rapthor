@@ -10,7 +10,9 @@ include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDA_INCLUDE_DIR})
 set(${PROJECT_NAME}_headers GenericOptimized.h GenericOptimizedC.h)
 
 # Set sources
-set(${PROJECT_NAME}_sources GenericOptimized.cpp GenericOptimizedC.cpp)
+set(${PROJECT_NAME}_sources
+    GenericOptimized.cpp GenericOptimizedC.cpp routines/Gridding.cpp
+    routines/Degridding.cpp routines/Calibration.cpp)
 
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}

@@ -54,6 +54,13 @@ class CUDA : public Proxy {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
 
+  void cleanup();
+
+  static ProxyInfo default_info();
+
+  /*
+   * Beam
+   */
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
       const Array2D<UVW<float>>& uvw,
@@ -63,11 +70,10 @@ class CUDA : public Proxy {
       const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam) override;
 
+  /*
+   * FFT
+   */
   virtual void do_transform(DomainAtoDomainB direction) override;
-
-  void cleanup();
-
-  static ProxyInfo default_info();
 
  protected:
   void init_devices();
