@@ -9,6 +9,7 @@ from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
 from toil.leader import FailedJobsException
 from toil.cwl import cwltoil
+import toil.version as toil_version
 from rapthor.lib.context import Timer
 
 DIR = os.path.dirname(os.path.abspath(__file__))
@@ -48,8 +49,9 @@ class Operation(object):
         self.log = logging.getLogger('rapthor:{0}'.format(self.name))
         self.force_serial_jobs = False  # force jobs to run serially
 
-        # Extra Toil env variables
+        # Extra Toil env variables and Toil version
         self.toil_env_variables = {}
+        self.toil_major_version = int(toil_version.version.split('.')[0])
 
         # rapthor working directory
         self.rapthor_working_dir = self.parset['dir_working']
@@ -212,7 +214,7 @@ class Operation(object):
 #        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
-        if self.field.use_mpi:
+        if self.field.use_mpi and self.toil_major_version > 5:
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
                 # Use salloc to request the SLRUM allocation and run the MPI job

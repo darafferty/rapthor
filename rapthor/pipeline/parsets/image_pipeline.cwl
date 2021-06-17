@@ -154,6 +154,12 @@ inputs:
     type: string[]
 
 {% if use_mpi %}
+  - id: mpi_ntasks_per_node
+    label: Number of tasks
+    doc: |
+      The number of tasks per node for MPI jobs (length = n_sectors).
+    type: int[]
+
   - id: mpi_nnodes
     label: Number of nodes
     doc: |
@@ -329,6 +335,8 @@ steps:
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
+      - id: mpi_ntasks_per_node
+        source: mpi_ntasks_per_node
       - id: mpi_nnodes
         source: mpi_nnodes
 {% endif %}
@@ -380,7 +388,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, aterms_config_file, aterm_image_filenames,
 {% if use_mpi %}
-              mpi_nnodes,
+              mpi_ntasks_per_node, mpi_nnodes,
 {% endif %}
 {% if do_multiscale_clean %}
               multiscale_scales_pixel,
@@ -396,7 +404,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, h5parm, central_patch_name,
 {% if use_mpi %}
-              mpi_nnodes,
+              mpi_ntasks_per_node, mpi_nnodes,
 {% endif %}
 {% if do_multiscale_clean %}
               multiscale_scales_pixel,

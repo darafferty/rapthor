@@ -129,6 +129,12 @@ inputs:
       The filenames of the a-term images (length = 1).
     type: string
 {% if use_mpi %}
+  - id: mpi_ntasks_per_node
+    label: Number of tasks
+    doc: |
+      The number of tasks per node for MPI jobs (length = 1).
+    type: int
+
   - id: mpi_nnodes
     label: Number of nodes
     doc: |
@@ -364,9 +370,17 @@ steps:
 {% if use_screens %}
 {% if use_mpi %}
 {% if do_multiscale_clean %}
+{% if toil_version < 5 %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale_toil4.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
+{% endif %}
+{% else %}
+{% if toil_version < 5 %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_toil4.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
+{% endif %}
 {% endif %}
 {% else %}
 {% if do_multiscale_clean %}
@@ -399,6 +413,8 @@ steps:
       - id: config
         source: make_aterm_config/aterms_config
 {% if use_mpi %}
+      - id: ntasks
+        source: mpi_ntasks_per_node
       - id: nnodes
         source: mpi_nnodes
 {% endif %}

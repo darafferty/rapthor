@@ -175,6 +175,8 @@ class Image(Operation):
                 nsubpipes = min(nsectors, nnodes)
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
                 self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
+                self.input_parms.update({'mpi_ntasks_per_node': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
+                self.input_parms.update({'toil_version': self.toil_major_version})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
             self.input_parms.update({'central_patch_name': central_patch_name})
