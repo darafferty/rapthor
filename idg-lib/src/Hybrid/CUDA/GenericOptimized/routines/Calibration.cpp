@@ -52,6 +52,8 @@ void GenericOptimized::do_calibrate_init(
 
   // Load stream
   cu::Stream& htodstream = device.get_htod_stream();
+  cu::Stream& dtohstream = device.get_dtoh_stream();
+  cu::Stream& executestream = device.get_execute_stream();
 
   // Find max number of subgrids
   unsigned int max_nr_subgrids = 0;
@@ -78,44 +80,11 @@ void GenericOptimized::do_calibrate_init(
     void* subgrids_ptr = subgrids_.data();
     std::complex<float>* grid_ptr = m_grid->data();
     void* aterm_idx_ptr = (void*)plans[antenna_nr]->get_aterm_indices_ptr();
-
-    // Splitter kernel
-    if (w_step == 0.0) {
-      cpuKernels.run_splitter(nr_subgrids, grid_size, subgrid_size,
-                              metadata_ptr, subgrids_ptr, grid_ptr);
-    } else if (plans[antenna_nr]->get_use_wtiles()) {
-      WTileUpdateSet wtile_initialize_set =
-          plans[antenna_nr]->get_wtile_initialize_set();
-      cpuKernels.run_splitter_wtiles(
-          nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-          shift.data(), 0 /* subgrid_offset */, wtile_initialize_set,
-          metadata_ptr, subgrids_ptr, grid_ptr);
-    } else {
-      cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
-                                     metadata_ptr, subgrids_ptr, grid_ptr);
-    }
-
-    // FFT kernel
-    cpuKernels.run_subgrid_fft(grid_size, subgrid_size, nr_subgrids,
-                               subgrids_ptr, CUFFT_FORWARD);
-
-    // Apply spheroidal
-    for (int i = 0; i < (int)nr_subgrids; i++) {
-      for (int pol = 0; pol < nr_polarizations; pol++) {
-        for (int j = 0; j < subgrid_size; j++) {
-          for (int k = 0; k < subgrid_size; k++) {
-            int y = (j + (subgrid_size / 2)) % subgrid_size;
-            int x = (k + (subgrid_size / 2)) % subgrid_size;
-            subgrids_(i, pol, y, x) *= spheroidal(j, k);
-          }
-        }
-      }
-    }
-
-    // Allocate and initialize device memory for current antenna
     void* visibilities_ptr = visibilities.data(antenna_nr);
     void* weights_ptr = weights.data(antenna_nr);
     void* uvw_ptr = uvw.data(antenna_nr);
+
+    // Allocate and initialize device memory for current antenna
     auto sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids);
     auto sizeof_subgrids =
         auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
@@ -143,13 +112,71 @@ void GenericOptimized::do_calibrate_init(
     cu::DeviceMemory& d_weights = *m_buffers.d_weights_[antenna_nr];
     cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[antenna_nr];
     cu::DeviceMemory& d_aterm_idx = *m_buffers.d_aterms_indices_[antenna_nr];
+
+    // Copy metadata to device
     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
-    htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
+
+    // Splitter kernel
+    if (w_step == 0.0) {
+      cpuKernels.run_splitter(nr_subgrids, grid_size, subgrid_size,
+                              metadata_ptr, subgrids_ptr, grid_ptr);
+    } else if (plans[antenna_nr]->get_use_wtiles()) {
+      WTileUpdateSet wtile_initialize_set =
+          plans[antenna_nr]->get_wtile_initialize_set();
+      if (!m_disable_wtiling_gpu) {
+        // Initialize subgrid FFT
+        device.plan_subgrid_fft(subgrid_size, nr_subgrids);
+
+        // Wait for metadata to be copied
+        htodstream.synchronize();
+
+        // Create subgrids
+        run_subgrids_from_wtiles(0 /* subgrid_offset */, nr_subgrids,
+                                 subgrid_size, image_size, w_step, shift,
+                                 wtile_initialize_set, d_subgrids, d_metadata);
+        executestream.synchronize();
+
+        // Copy subgrids to host
+        dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
+        dtohstream.synchronize();
+      } else {
+        cpuKernels.run_splitter_wtiles(
+            nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+            shift.data(), 0 /* subgrid_offset */, wtile_initialize_set,
+            metadata_ptr, subgrids_ptr, grid_ptr);
+      }
+    } else {
+      cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
+                                     metadata_ptr, subgrids_ptr, grid_ptr);
+    }
+
+    // Copy data to device
+    htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
     htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
                                sizeof_visibilities);
     htodstream.memcpyHtoDAsync(d_weights, weights_ptr, sizeof_weights);
     htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
     htodstream.memcpyHtoDAsync(d_aterm_idx, aterm_idx_ptr, sizeof_aterm_idx);
+
+    // FFT kernel
+    cpuKernels.run_subgrid_fft(grid_size, subgrid_size, nr_subgrids,
+                               subgrids_ptr, CUFFT_FORWARD);
+
+    // Apply spheroidal
+    for (int i = 0; i < (int)nr_subgrids; i++) {
+      for (int pol = 0; pol < nr_polarizations; pol++) {
+        for (int j = 0; j < subgrid_size; j++) {
+          for (int k = 0; k < subgrid_size; k++) {
+            int y = (j + (subgrid_size / 2)) % subgrid_size;
+            int x = (k + (subgrid_size / 2)) % subgrid_size;
+            subgrids_(i, pol, y, x) *= spheroidal(j, k);
+          }
+        }
+      }
+    }
+
+    // Copy subgrids to device
+    htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
     htodstream.synchronize();
   }  // end for antennas
 
