@@ -214,7 +214,7 @@ class Operation(object):
 #        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
-        if self.field.use_mpi and self.toil_major_version > 5:
+        if self.field.use_mpi and self.toil_major_version >= 5:
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
                 # Use salloc to request the SLRUM allocation and run the MPI job
