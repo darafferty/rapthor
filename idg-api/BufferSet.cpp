@@ -404,8 +404,6 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
         *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_1D_t& inv_tapers __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
-    arr_float_1D_t& phases __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_real __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_imag __attribute__((aligned(64))) =
@@ -465,22 +463,17 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
             }  // end for x
           }    // end for pol
         } else {
-          // Compute phase. Note that this code has no test coverage.
+          // Compute phasor. Note that this code has no test coverage.
           // TODO: Test if the sign for compute_n is correct.
           for (int x = 0; x < m_size; x++) {
             const float w_offset = (w + 0.5) * m_w_step;
             const float l = (x - ((int)m_size / 2)) * m_cell_size;
             const float m = (y - ((int)m_size / 2)) * m_cell_size;
             const float n = compute_n(l, -m, m_shift.data());
-            phases[x] = 2 * M_PI * n * w_offset;
-          }  // end for x
-
-          // Compute phasor
-          for (int x = 0; x < m_size; x++) {
-            float phase = phases[x];
+            const float phase = 2 * M_PI * n * w_offset;
             phasor_real[x] = cosf(phase);
             phasor_imag[x] = sinf(phase);
-          }  // end for x
+          }
 
           // Compute current row of w-plane
           for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
@@ -512,7 +505,6 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
     free(w_row_real);
     free(w_row_imag);
     free(inv_tapers);
-    free(phases);
     free(phasor_real);
     free(phasor_imag);
   }
@@ -621,8 +613,6 @@ void BufferSetImpl::get_image(double* image) {
         *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_1D_t& inv_tapers __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
-    arr_float_1D_t& phases __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_real __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_imag __attribute__((aligned(64))) =
@@ -663,21 +653,16 @@ void BufferSetImpl::get_image(double* image) {
             }  // end for pol
           }    // end for x
 
-          // Compute phase
+          // Compute phasor
           for (int x = 0; x < m_size; x++) {
             const float w_offset = (w + 0.5) * m_w_step;
             const float l = (x - ((int)m_size / 2)) * m_cell_size;
             const float m = (y - ((int)m_size / 2)) * m_cell_size;
             const float n = compute_n(l, -m, m_shift.data());
-            phases[x] = -2 * M_PI * n * w_offset;
-          }
-
-          // Compute phasor
-          for (int x = 0; x < m_size; x++) {
-            float phase = phases[x];
+            const float phase = -2 * M_PI * n * w_offset;
             phasor_real[x] = cosf(phase);
             phasor_imag[x] = sinf(phase);
-          }  // end for x
+          }
 
           // Compute current row of w-plane
           for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
@@ -726,7 +711,6 @@ void BufferSetImpl::get_image(double* image) {
     free(w_row_real);
     free(w_row_imag);
     free(inv_tapers);
-    free(phases);
     free(phasor_real);
     free(phasor_imag);
   }
