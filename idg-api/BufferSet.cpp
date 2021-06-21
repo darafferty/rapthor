@@ -391,31 +391,25 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   {
     typedef float arr_float_1D_t[m_size];
     typedef float arr_float_2D_t[NR_CORRELATIONS][m_size];
+    const size_t size_1D = (sizeof(arr_float_1D_t) + 63) & ~size_t(63);
+    const size_t size_2D = (sizeof(arr_float_2D_t) + 63) & ~size_t(63);
 
     arr_float_2D_t& w0_row_real __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w0_row_imag __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w_row_real __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w_row_imag __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_1D_t& inv_tapers __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phases __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_real __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_imag __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
 
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
@@ -614,31 +608,25 @@ void BufferSetImpl::get_image(double* image) {
   {
     typedef float arr_float_1D_t[m_size];
     typedef float arr_float_2D_t[NR_CORRELATIONS][m_size];
+    const size_t size_1D = (sizeof(arr_float_1D_t) + 63) & ~size_t(63);
+    const size_t size_2D = (sizeof(arr_float_2D_t) + 63) & ~size_t(63);
 
     arr_float_2D_t& w0_row_real __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w0_row_imag __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w_row_real __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w_row_imag __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_2D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_2D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_1D_t& inv_tapers __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phases __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_real __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_imag __attribute__((aligned(64))) =
-        *reinterpret_cast<arr_float_1D_t*>(
-            aligned_alloc(64, (sizeof(arr_float_1D_t) + 63) & ~64));
+        *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
 
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
