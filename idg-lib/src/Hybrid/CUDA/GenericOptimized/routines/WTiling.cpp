@@ -428,6 +428,8 @@ void GenericOptimized::run_wtiles_from_grid(
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
     executestream.memcpyHtoDAsync(d_tile_ids, &tile_ids[tile_offset],
                                   sizeof_tile_ids);
+    executestream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(),
+                                  sizeof_tile_ids);
     sizeof_tile_coordinates = current_nr_tiles * sizeof(idg::Coordinate);
     executestream.memcpyHtoDAsync(d_tile_coordinates,
                                   &tile_coordinates[tile_offset],
