@@ -223,8 +223,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         executestream.record(*gpuFinished[id]);
 
         // Copy patch to the host
-        void* patch_ptr =
-            static_cast<char*>(h_padded_tiles) + patch_id * sizeof_patch;
+        void* patch_ptr = static_cast<char*>(h_padded_tiles) + i * sizeof_patch;
         dtohstream.waitEvent(*gpuFinished[id]);
         dtohstream.memcpyDtoHAsync(patch_ptr, d_patch, sizeof_patch);
         dtohstream.record(*outputCopied[id]);
@@ -498,8 +497,7 @@ void GenericOptimized::run_wtiles_from_grid(
                                       sizeof_tile_ids);
 
         // Copy patch to the GPU
-        void* patch_ptr =
-            static_cast<char*>(h_padded_tiles) + patch_id * sizeof_patch;
+        void* patch_ptr = static_cast<char*>(h_padded_tiles) + i * sizeof_patch;
         htodstream.waitEvent(*gpuFinished[id]);
         htodstream.memcpyHtoDAsync(d_patch, patch_ptr, sizeof_patch);
         htodstream.record(*inputCopied[id]);
