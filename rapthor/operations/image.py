@@ -38,7 +38,8 @@ class Image(Operation):
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
                              'do_multiscale_clean': self.field.do_multiscale_clean,
-                             'use_mpi': self.field.use_mpi}
+                             'use_mpi': self.field.use_mpi,
+                             'toil_version': self.toil_major_version}
 
     def set_input_parameters(self):
         """
@@ -175,6 +176,7 @@ class Image(Operation):
                 nsubpipes = min(nsectors, nnodes)
                 nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
                 self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
+                self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
             self.input_parms.update({'central_patch_name': central_patch_name})
