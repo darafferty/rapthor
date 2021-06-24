@@ -129,10 +129,10 @@ inputs:
       The filenames of the a-term images (length = 1).
     type: string
 {% if use_mpi %}
-  - id: mpi_ntasks_per_node
-    label: Number of tasks
+  - id: mpi_cpus_per_task
+    label: Number of CPUs per task
     doc: |
-      The number of tasks per node for MPI jobs (length = 1).
+      The number of CPUs per task to request from Slurm for MPI jobs (length = 1).
     type: int
 
   - id: mpi_nnodes
@@ -414,7 +414,7 @@ steps:
         source: make_aterm_config/aterms_config
 {% if use_mpi %}
       - id: ntasks
-        source: mpi_ntasks_per_node
+        source: mpi_cpus_per_task
       - id: nnodes
         source: mpi_nnodes
 {% endif %}

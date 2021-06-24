@@ -154,10 +154,10 @@ inputs:
     type: string[]
 
 {% if use_mpi %}
-  - id: mpi_ntasks_per_node
-    label: Number of tasks
+  - id: mpi_cpus_per_task
+    label: Number of CPUs per task
     doc: |
-      The number of tasks per node for MPI jobs (length = n_sectors).
+      The number of CPUs per task to request from Slurm for MPI jobs (length = n_sectors).
     type: int[]
 
   - id: mpi_nnodes
@@ -335,8 +335,8 @@ steps:
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
-      - id: mpi_ntasks_per_node
-        source: mpi_ntasks_per_node
+      - id: mpi_cpus_per_task
+        source: mpi_cpus_per_task
       - id: mpi_nnodes
         source: mpi_nnodes
 {% endif %}
@@ -388,7 +388,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, aterms_config_file, aterm_image_filenames,
 {% if use_mpi %}
-              mpi_ntasks_per_node, mpi_nnodes,
+              mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
 {% if do_multiscale_clean %}
               multiscale_scales_pixel,
@@ -404,7 +404,7 @@ steps:
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file, h5parm, central_patch_name,
 {% if use_mpi %}
-              mpi_ntasks_per_node, mpi_nnodes,
+              mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
 {% if do_multiscale_clean %}
               multiscale_scales_pixel,
