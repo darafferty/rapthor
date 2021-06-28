@@ -8,7 +8,6 @@
 #ifndef IDG_FFTW_H_
 #define IDG_FFTW_H_
 
-#include "idg-config.h"
 #include <iostream>
 #include <complex>
 #include <stdexcept>
@@ -16,20 +15,20 @@
 
 namespace idg {
 
+// in-place batched 2d-FFT for complex float  m-by-n arrays
+void fft2f(unsigned batch, int m, int n, std::complex<float> *data);
+
 // in-place 2d-FFT for complex float m-by-n array
 void fft2f(int m, int n, std::complex<float> *data);
 
 // in-place 2d-FFT for complex float n-by-n array
 void fft2f(int n, std::complex<float> *data);
 
-// in-place batched 2d-FFT for complex float  m-b-n arrays
-void fft2f(unsigned batch, int m, int n, std::complex<float> *data);
+// in-place batched 2d-iFFT for complex float  m-b-n arrays
+void ifft2f(unsigned batch, int m, int n, std::complex<float> *data);
 
 // in-place 2d-iFFT for complex float m-by-n arrays
 void ifft2f(int m, int n, std::complex<float> *data);
-
-// in-place batched 2d-iFFT for complex float  m-b-n arrays
-void ifft2f(unsigned batch, int m, int n, std::complex<float> *data);
 
 // in-place 2d-iFFT for complex float n-by-n array
 void ifft2f(int n, std::complex<float> *data);

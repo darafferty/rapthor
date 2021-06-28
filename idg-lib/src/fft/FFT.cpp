@@ -9,91 +9,108 @@ using namespace std;
 
 namespace idg {
 
-void fft2f(int m, int n, complex<float> *data) {
-  fftwf_complex *tmp = (fftwf_complex *)data;
-  fftwf_plan plan;
+void kernel_fft_composite(unsigned batch, int m, int n,
+                          std::complex<float> *data, int sign) {
+  fftwf_complex *in_ptr = reinterpret_cast<fftwf_complex *>(data);
+  fftwf_complex *out_ptr = reinterpret_cast<fftwf_complex *>(data);
 
-#pragma omp critical
-  {
-    fftwf_plan_with_nthreads(4);
-    plan = fftwf_plan_dft_2d(m, n, tmp, tmp, FFTW_FORWARD, FFTW_ESTIMATE);
+  // Initialize FFT plans
+  fftwf_plan plan_col = fftwf_plan_dft_1d(n, NULL, NULL, sign, FFTW_ESTIMATE);
+  fftwf_plan plan_row =
+      m == n ? plan_col : fftwf_plan_dft_1d(m, NULL, NULL, sign, FFTW_ESTIMATE);
+
+  for (unsigned i = 0; i < batch; i++) {
+// FFT over rows
+#pragma omp parallel for
+    for (int y = 0; y < m; y++) {
+      uint64_t offset = size_t(i) * size_t(m) * size_t(n) + y * size_t(n);
+      fftwf_execute_dft(plan_col, in_ptr + offset, out_ptr + offset);
+    }
+
+// Iterate all columns
+#pragma omp parallel for
+    for (int x = 0; x < n; x++) {
+      std::complex<float> tmp[m];
+
+      // Copy column into temporary buffer
+      for (int y = 0; y < m; y++) {
+        uint64_t offset = size_t(i) * size_t(m) * size_t(n) + y * size_t(n) + x;
+        tmp[y] = data[offset];
+      }
+
+      // FFT column
+      fftwf_complex *tmp_ptr = reinterpret_cast<fftwf_complex *>(tmp);
+      fftwf_execute_dft(plan_col, tmp_ptr, tmp_ptr);
+
+      // Store the result in the output buffer
+      for (int y = 0; y < m; y++) {
+        uint64_t offset = size_t(i) * size_t(m) * size_t(n) + y * size_t(n) + x;
+        data[offset] = tmp[y];
+      }
+    }
   }
-  ifftshift(m, n, data);
-  fftwf_execute(plan);
-  fftshift(m, n, data);
+
+  // Free FFT plans
+  fftwf_destroy_plan(plan_col);
+  if (m != n) {
+    fftwf_destroy_plan(plan_row);
+  }
+}
+
+void kernel_fft_coarse(int batch, int height, int width,
+                       std::complex<float> *data, int sign) {
+  fftwf_complex *data_ptr = reinterpret_cast<fftwf_complex *>(data);
+
+  // Create plan
+  fftwf_plan plan;
+  plan =
+      fftwf_plan_dft_2d(height, width, data_ptr, data_ptr, sign, FFTW_ESTIMATE);
+
+#pragma omp parallel for private(data_ptr)
+  for (int i = 0; i < batch; i++) {
+    data_ptr = reinterpret_cast<fftwf_complex *>(data) + (i * height * width);
+
+    // Execute FFTs
+    fftwf_execute_dft(plan, data_ptr, data_ptr);
+  }  // end for batch
+
+  // Cleanup
   fftwf_destroy_plan(plan);
 }
 
-void fft2f(int n, complex<float> *data) { fft2f(n, n, data); }
+void kernel_fft(unsigned batch, int height, int width,
+                std::complex<float> *data, int sign) {
+  int n = std::max(height, width);
+
+  // Select FFT based on the size of the transformation
+  // On AMD Epyc (Zen 2), performing many small FFTs is faster using 2D
+  // FFTs while the composite approach is faster for larger transformations.
+  if (n < 256) {
+    kernel_fft_coarse(batch, height, width, data, sign);
+  } else {
+    kernel_fft_composite(batch, height, width, data, sign);
+  }
+}
 
 void fft2f(unsigned batch, int m, int n, complex<float> *data) {
-  if (batch == 1) {
-    fft2f(m, n, data);
-    return;
-  }
-
-  fftwf_complex *tmp = (fftwf_complex *)data;
-  fftwf_plan plan;
-
-#pragma omp critical
-  {
-    fftwf_plan_with_nthreads(4);
-    plan = fftwf_plan_dft_2d(m, n, tmp, tmp, FFTW_FORWARD, FFTW_ESTIMATE);
-  }
-
-#pragma omp parallel for private(tmp)
-  for (unsigned i = 0; i < batch; i++) {
-    tmp = (fftwf_complex *)data + size_t(i) * size_t(m) * size_t(n);
-    ifftshift(m, n, tmp);
-    fftwf_execute_dft(plan, tmp, tmp);
-    fftshift(m, n, tmp);
-  }
-
-  fftwf_destroy_plan(plan);
+  ifftshift(batch, m, n, data);
+  kernel_fft(batch, m, n, data, FFTW_FORWARD);
+  fftshift(batch, m, n, data);
 }
 
-void ifft2f(int m, int n, complex<float> *data) {
-  fftwf_complex *tmp = (fftwf_complex *)data;
-  fftwf_plan plan;
+void fft2f(int m, int n, std::complex<float> *data) { fft2f(1, m, n, data); }
 
-#pragma omp critical
-  {
-    fftwf_plan_with_nthreads(4);
-    plan = fftwf_plan_dft_2d(m, n, tmp, tmp, FFTW_BACKWARD, FFTW_ESTIMATE);
-  }
-  ifftshift(m, n, data);
-  fftwf_execute(plan);
-  fftshift(m, n, data);
-  fftwf_destroy_plan(plan);
-}
+void fft2f(int n, std::complex<float> *data) { fft2f(n, n, data); }
 
 void ifft2f(unsigned batch, int m, int n, complex<float> *data) {
-  if (batch == 1) {
-    ifft2f(m, n, data);
-    return;
-  }
-
-  fftwf_complex *tmp = (fftwf_complex *)data;
-  fftwf_plan plan;
-
-#pragma omp critical
-  {
-    fftwf_plan_with_nthreads(4);
-    plan = fftwf_plan_dft_2d(m, n, tmp, tmp, FFTW_BACKWARD, FFTW_ESTIMATE);
-  }
-
-#pragma omp parallel for private(tmp)
-  for (unsigned i = 0; i < batch; i++) {
-    tmp = (fftwf_complex *)data + size_t(i) * size_t(m) * size_t(n);
-    ifftshift(m, n, tmp);
-    fftwf_execute_dft(plan, tmp, tmp);
-    fftshift(m, n, tmp);
-  }
-
-  fftwf_destroy_plan(plan);
+  ifftshift(batch, m, n, data);
+  kernel_fft(batch, m, n, data, FFTW_BACKWARD);
+  fftshift(batch, m, n, data);
 }
 
-void ifft2f(int n, complex<float> *data) { ifft2f(n, n, data); }
+void ifft2f(int m, int n, std::complex<float> *data) { ifft2f(1, n, n, data); }
+
+void ifft2f(int n, std::complex<float> *data) { ifft2f(n, n, data); }
 
 void fft2f_r2c(int m, int n, float *data_in, complex<float> *data_out) {
   fftwf_complex *tmp = (fftwf_complex *)data_out;
