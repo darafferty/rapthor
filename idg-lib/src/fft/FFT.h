@@ -50,6 +50,10 @@ void ifft2f_c2r(int n, std::complex<float> *data_in, float *data_out);
 // TODO: make work for odd dimensions
 template <typename T>
 void fftshift(int m, int n, T *array) {
+  if (m % 2 != 0 || n % 2 != 0)
+    throw std::invalid_argument(
+        "Only grids with even height and width are supported.");
+
 #pragma omp parallel for
   for (int i = 0; i < m / 2; i++) {
     T buffer[n];
@@ -93,7 +97,6 @@ void ifftshift(int batch, int m, int n, T *array) {
 // TODO: make work for odd dimensions
 template <typename T>
 void ifftshift(int m, int n, T *array) {
-  if (n % 2 != 0) throw std::invalid_argument("Only square grids supported.");
   fftshift(m, n, array);
 }
 
