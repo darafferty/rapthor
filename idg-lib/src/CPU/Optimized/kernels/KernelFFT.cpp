@@ -115,7 +115,6 @@ void kernel_fft_subgrid(long size, long batch, fftwf_complex* _data, int sign) {
 
   // Create plan
   fftwf_plan plan;
-  fftwf_plan_with_nthreads(1);
   plan = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, _data, n, istride,
                              idist, _data, n, ostride, odist, sign, flags);
 

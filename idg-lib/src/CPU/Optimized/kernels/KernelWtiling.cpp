@@ -273,7 +273,6 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
       int idist = n[0] * n[1];
       int odist = idist;
       int flags = FFTW_ESTIMATE;
-      fftwf_plan_with_nthreads(1);
       fftwf_plan plan_forward = fftwf_plan_many_dft(
           rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
           ostride, odist, FFTW_FORWARD, flags);
@@ -451,7 +450,6 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
       int idist = n[0] * n[1];
       int odist = idist;
       int flags = FFTW_ESTIMATE;
-      fftwf_plan_with_nthreads(1);
       fftwf_plan plan_forward = fftwf_plan_many_dft(
           rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
           ostride, odist, FFTW_FORWARD, flags);

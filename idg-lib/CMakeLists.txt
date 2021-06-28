@@ -123,7 +123,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" OR ${BUILD_WITH_MKL})
   set(FFTW3_LIBRARIES ${MKL_LIBRARIES})
   set(FFTW3_INCLUDE_DIR "${MKL_INCLUDE_DIRS}/fftw")
 else()
-  find_package(FFTW3 REQUIRED COMPONENTS single threads)
+  find_package(FFTW3 REQUIRED COMPONENTS single)
 endif()
 
 # CUDA
