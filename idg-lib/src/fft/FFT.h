@@ -54,7 +54,7 @@ void fftshift(int m, int n, T *array) {
 
   for (int i = 0; i < m / 2; i++) {
     // save i-th row into buffer
-    memcpy(buffer, &array[i * n], n * sizeof(T));
+    std::memcpy(buffer, &array[i * n], n * sizeof(T));
 
     auto j = i + m / 2;
     std::memcpy(&array[i * n + n / 2], &array[j * n], (n / 2) * sizeof(T));
