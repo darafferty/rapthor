@@ -11,6 +11,9 @@ set(${PROJECT_NAME}_headers FFT.h FFTC.h)
 
 set(${PROJECT_NAME}_sources FFT.cpp)
 
+# Compiler options
+add_compile_options("-O3")
+
 # create library
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
