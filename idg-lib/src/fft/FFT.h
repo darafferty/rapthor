@@ -86,6 +86,13 @@ void fftshift(int n, T *array) {
 // ifftshift for m-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
+void ifftshift(int batch, int m, int n, T *array) {
+  fftshift(batch, m, n, array);
+}
+
+// ifftshift for m-by-n array of type T
+// TODO: make work for odd dimensions
+template <typename T>
 void ifftshift(int m, int n, T *array) {
   if (n % 2 != 0) throw std::invalid_argument("Only square grids supported.");
   fftshift(m, n, array);
