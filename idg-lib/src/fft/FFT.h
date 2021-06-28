@@ -50,9 +50,10 @@ void ifft2f_c2r(int n, std::complex<float> *data_in, float *data_out);
 // TODO: make work for odd dimensions
 template <typename T>
 void fftshift(int m, int n, T *array) {
-  auto buffer = new T[n];
-
+#pragma omp parallel for
   for (int i = 0; i < m / 2; i++) {
+    T buffer[n];
+
     // save i-th row into buffer
     std::memcpy(buffer, &array[i * n], n * sizeof(T));
 
@@ -62,8 +63,6 @@ void fftshift(int m, int n, T *array) {
     std::memcpy(&array[j * n], &buffer[n / 2], (n / 2) * sizeof(T));
     std::memcpy(&array[j * n + n / 2], &buffer[0], (n / 2) * sizeof(T));
   }
-
-  delete[] buffer;
 }
 
 // fftshift for m-by-n array of type T
@@ -71,7 +70,7 @@ void fftshift(int m, int n, T *array) {
 template <typename T>
 void fftshift(int batch, int m, int n, T *array) {
 #pragma omp parallel for
-  for (size_t i = 0; i < batch; i++) {
+  for (int i = 0; i < batch; i++) {
     fftshift(m, n, &array[i * m * n]);
   }
 }
