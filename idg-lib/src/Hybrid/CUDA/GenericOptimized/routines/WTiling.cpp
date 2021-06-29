@@ -531,6 +531,9 @@ void GenericOptimized::run_wtiles_from_grid(
     device.launch_copy_tiles(current_nr_tiles, current_w_padded_tile_size,
                              padded_tile_size, d_padded_tile_ids, d_tile_ids,
                              d_padded_tiles, d_tiles);
+
+    // Wait for tiles to be copied
+    executestream.synchronize();
   }  // end for tile_offset
 }
 
