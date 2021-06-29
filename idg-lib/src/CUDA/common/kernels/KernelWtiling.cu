@@ -428,11 +428,14 @@ __global__ void kernel_wtiles_to_patch(
         int height = y_end - y_start;
         int width = x_end - x_start;
 
+        // Compute y position in patch and tile
+        unsigned int y_patch = y_start + y - patch_coordinate.y;
+        unsigned int y_tile  = y_start + y - y0;
+
         // Add tile to patch
-        if (y < height)
+        if (y < height && y_patch < patch_size && width > 0)
         {
             unsigned int y_patch = y_start + y - patch_coordinate.y;
-            unsigned int y_tile  = y_start + y - y0;
 
             for (unsigned int x = tid; x < width; x += nr_threads)
             {
@@ -501,12 +504,13 @@ __global__ void kernel_wtiles_from_patch(
         int height = y_end - y_start;
         int width = x_end - x_start;
 
-        // Set tile from patch
-        if (y < height)
-        {
-            unsigned int y_patch = y_start + y - patch_coordinate.y;
-            unsigned int y_tile  = y_start + y - y0;
+        // Compute y position in patch and tile
+        unsigned int y_patch = y_start + y - patch_coordinate.y;
+        unsigned int y_tile  = y_start + y - y0;
 
+        // Set tile from patch
+        if (y < height && y_patch < patch_size && width > 0)
+        {
             for (unsigned int x = tid; x < width; x += nr_threads)
             {
                 unsigned int x_patch = x_start + x - patch_coordinate.x;
