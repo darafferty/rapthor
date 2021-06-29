@@ -440,7 +440,7 @@ void GenericOptimized::run_wtiles_from_grid(
     std::vector<int> patch_tile_ids;
     std::vector<int> patch_tile_id_offsets;
     find_patches_for_tiles(
-        grid_size, tile_size, w_padded_tile_size, m_patch_size,
+        grid_size, tile_size, current_w_padded_tile_size, m_patch_size,
         current_nr_tiles, &tile_coordinates[tile_offset], patch_coordinates,
         patch_nr_tiles, patch_tile_ids, patch_tile_id_offsets);
     unsigned int total_nr_patches = patch_coordinates.size();
@@ -506,7 +506,7 @@ void GenericOptimized::run_wtiles_from_grid(
         executestream.waitEvent(*inputCopied[id]);
         device.launch_splitter_wtiles_from_patch(
             current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-            w_padded_tile_size, m_patch_size, patch_coordinate,
+            current_w_padded_tile_size, m_patch_size, patch_coordinate,
             d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
         executestream.record(*gpuFinished[id]);
       }
@@ -520,15 +520,15 @@ void GenericOptimized::run_wtiles_from_grid(
     fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
-    device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
-                                         w_padded_tile_size, d_padded_tiles,
-                                         d_shift, d_tile_coordinates, 1);
+    device.launch_apply_phasor_to_wtiles(
+        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
+        d_padded_tiles, d_shift, d_tile_coordinates, 1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, w_padded_tile_size,
+    device.launch_copy_tiles(current_nr_tiles, current_w_padded_tile_size,
                              padded_tile_size, d_padded_tile_ids, d_tile_ids,
                              d_padded_tiles, d_tiles);
   }  // end for tile_offset
