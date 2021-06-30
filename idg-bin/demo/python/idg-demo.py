@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -10,7 +10,7 @@ import signal
 import argparse
 import time
 import idg
-import util
+import idg.util
 
 # Enable interactive plotting and create figure to plot into
 plt.ion()
@@ -37,7 +37,7 @@ parser.add_argument('-c', '--column',
                     required=False, default="CORRECTED_DATA")
 parser.add_argument('--imagesize',
                     help='Image size (cell size / grid size)',
-                    required=False, type=float, default=0.1)
+                    required=False, type=float, default=0.2)
 parser.add_argument('--use-cuda',
                     help='Use CUDA proxy',
                     required=False, action='store_true')
@@ -52,24 +52,24 @@ use_cuda   = args.use_cuda
 ######################################################################
 # Open measurementset
 ######################################################################
-table = pyrap.tables.table(msin)
+table = pyrap.tables.taql("SELECT * FROM $msin WHERE ANTENNA1 != ANTENNA2")
 
 # Read parameters from measurementset
 t_ant = pyrap.tables.table(table.getkeyword("ANTENNA"))
 t_spw = pyrap.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
 frequencies = np.asarray(t_spw[0]['CHAN_FREQ'], dtype=np.float32)
 
+nr_baselines     = len(table.iter("TIME").next())
 
 ######################################################################
 # Parameters
 ######################################################################
 nr_stations      = len(t_ant)
-nr_baselines     = (nr_stations * (nr_stations - 1)) / 2
 nr_channels      = table[0][datacolumn].shape[0]
 nr_timesteps     = 256
 nr_timeslots     = 1
 nr_correlations  = 4
-grid_size        = 1024
+grid_size        = 512
 subgrid_size     = 32
 kernel_size      = 16
 cell_size        = image_size / grid_size
@@ -78,31 +78,35 @@ cell_size        = image_size / grid_size
 ######################################################################
 # Initialize data
 ######################################################################
-grid           = util.get_example_grid(nr_correlations, grid_size)
-aterms         = util.get_identity_aterms(
+grid           = idg.util.get_example_grid(nr_correlations, grid_size)
+aterms         = idg.util.get_identity_aterms(
                     nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-aterms_offsets = util.get_example_aterms_offset(
+aterms_offsets = idg.util.get_example_aterms_offset(
                     nr_timeslots, nr_timesteps)
 
-# Initialize spheroidal
-spheroidal = util.get_example_spheroidal(subgrid_size)
-spheroidal_grid = util.get_identity_spheroidal(grid_size)
+# Initialize taper
+taper = idg.util.get_example_spheroidal(subgrid_size)
+taper_grid = idg.util.get_identity_spheroidal(grid_size)
 
 ######################################################################
 # Initialize proxy
 ######################################################################
 if use_cuda:
-    proxy = idg.CUDA.Generic(nr_correlations, subgrid_size)
+    proxy = idg.CUDA.Generic()
 else:
-    proxy = idg.CPU.Optimized(nr_correlations, subgrid_size)
+    proxy = idg.CPU.Optimized()
 
+w_step = 0.0
+shift = np.zeros(3, np.float32)
+proxy.set_grid(grid)
+proxy.init_cache(subgrid_size, cell_size, w_step, shift)
 
 ######################################################################
 # Process entire measurementset
 ######################################################################
 nr_rows = table.nrows()
 nr_rows_read = 0
-nr_rows_per_batch = (nr_baselines + nr_stations) * nr_timesteps
+nr_rows_per_batch = nr_baselines * nr_timesteps
 nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
 
 # Initialize empty buffers
@@ -117,6 +121,9 @@ img          = np.zeros(shape=(nr_correlations, grid_size, grid_size),
                         dtype=idg.gridtype)
 
 iteration = 0
+print(nr_rows_read)
+print(nr_rows_per_batch)
+print(nr_rows_to_process)
 while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     # Reset buffers
     uvw.fill(0)
@@ -146,7 +153,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     flags_block     = table.getcol('FLAG',
                                    startrow = nr_rows_read,
                                    nrow = nr_rows_per_batch)
-    vis_block = vis_block * -flags_block
+    vis_block = vis_block * ~flags_block
     vis_block[np.isnan(vis_block)] = 0
 
     nr_rows_read += nr_rows_per_batch
@@ -186,8 +193,9 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
             baselines[bl] = (antenna1, antenna2)
 
             # Set uvw
-            uvw_ = uvw_block[t][bl]
-            uvw[bl][t] = uvw_
+            uvw[bl][t]['u'] = uvw_block[t][bl][0]
+            uvw[bl][t]['v'] = uvw_block[t][bl][1]
+            uvw[bl][t]['w'] = uvw_block[t][bl][2]
 
             # Set visibilities
             visibilities[bl][t] = vis_block[t][bl]
@@ -198,8 +206,8 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     time_gridding = -time.time()
 
     proxy.gridding(
-        w_offset, cell_size, kernel_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+        kernel_size, frequencies, visibilities,
+        uvw, baselines, aterms, aterms_offsets, taper)
 
     time_gridding += time.time()
 
@@ -207,15 +215,16 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     time_fft = -time.time()
 
     # Using fft from library
-    np.copyto(img, grid)
-    proxy.transform(idg.FourierDomainToImageDomain, img)
-    img_real = np.real(img[0,:,:])
+    # proxy.transform(idg.FourierDomainToImageDomain, img)
+    # np.copyto(img, grid)
+    img = np.fft.fft2(grid[0,:,:])
+    img_real = np.real(img)
     time_fft += time.time()
 
     time_plot = -time.time()
 
     # Remove spheroidal from grid
-    img_real = img_real/spheroidal_grid
+    img_real = img_real/taper_grid
 
     # Crop image
     img_crop = img_real[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
@@ -246,14 +255,14 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
 
     # Print timings
     time_total += time.time()
-    print ">>> Iteration %d" % iteration
-    print "Runtime total:     %5d ms"            % (time_total*1000)
-    print "Runtime reading:   %5d ms (%5.2f %%)" % (time_read*1000,      100.0 * time_read/time_total)
-    print "Runtime transpose: %5d ms (%5.2f %%)" % (time_transpose*1000, 100.0 * time_transpose/time_total)
-    print "Runtime gridding:  %5d ms (%5.2f %%)" % (time_gridding*1000,  100.0 * time_gridding/time_total)
-    print "Runtime fft:       %5d ms (%5.2f %%)" % (time_fft*1000,       100.0 * time_fft/time_total)
-    print "Runtime plot:      %5d ms (%5.2f %%)" % (time_plot*1000,      100.0 * time_plot/time_total)
-    print ""
+    print(">>> Iteration %d" % iteration)
+    print("Runtime total:     %5d ms"            % (time_total*1000))
+    print("Runtime reading:   %5d ms (%5.2f %%)" % (time_read*1000,      100.0 * time_read/time_total))
+    print("Runtime transpose: %5d ms (%5.2f %%)" % (time_transpose*1000, 100.0 * time_transpose/time_total))
+    print("Runtime gridding:  %5d ms (%5.2f %%)" % (time_gridding*1000,  100.0 * time_gridding/time_total))
+    print("Runtime fft:       %5d ms (%5.2f %%)" % (time_fft*1000,       100.0 * time_fft/time_total))
+    print("Runtime plot:      %5d ms (%5.2f %%)" % (time_plot*1000,      100.0 * time_plot/time_total))
+    print()
     iteration += 1
 
     plt.show()
