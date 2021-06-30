@@ -8,7 +8,6 @@
 #ifndef IDG_FFTW_H_
 #define IDG_FFTW_H_
 
-#include "idg-config.h"
 #include <iostream>
 #include <complex>
 #include <stdexcept>
@@ -16,20 +15,20 @@
 
 namespace idg {
 
+// in-place batched 2d-FFT for complex float  m-by-n arrays
+void fft2f(unsigned batch, int m, int n, std::complex<float> *data);
+
 // in-place 2d-FFT for complex float m-by-n array
 void fft2f(int m, int n, std::complex<float> *data);
 
 // in-place 2d-FFT for complex float n-by-n array
 void fft2f(int n, std::complex<float> *data);
 
-// in-place batched 2d-FFT for complex float  m-b-n arrays
-void fft2f(unsigned batch, int m, int n, std::complex<float> *data);
+// in-place batched 2d-iFFT for complex float  m-b-n arrays
+void ifft2f(unsigned batch, int m, int n, std::complex<float> *data);
 
 // in-place 2d-iFFT for complex float m-by-n arrays
 void ifft2f(int m, int n, std::complex<float> *data);
-
-// in-place batched 2d-iFFT for complex float  m-b-n arrays
-void ifft2f(unsigned batch, int m, int n, std::complex<float> *data);
 
 // in-place 2d-iFFT for complex float n-by-n array
 void ifft2f(int n, std::complex<float> *data);
@@ -50,11 +49,16 @@ void ifft2f_c2r(int n, std::complex<float> *data_in, float *data_out);
 // TODO: make work for odd dimensions
 template <typename T>
 void fftshift(int m, int n, T *array) {
-  auto buffer = new T[n];
+  if (m % 2 != 0 || n % 2 != 0)
+    throw std::invalid_argument(
+        "Only grids with even height and width are supported.");
 
+#pragma omp parallel for
   for (int i = 0; i < m / 2; i++) {
+    T buffer[n];
+
     // save i-th row into buffer
-    memcpy(buffer, &array[i * n], n * sizeof(T));
+    std::memcpy(buffer, &array[i * n], n * sizeof(T));
 
     auto j = i + m / 2;
     std::memcpy(&array[i * n + n / 2], &array[j * n], (n / 2) * sizeof(T));
@@ -62,8 +66,6 @@ void fftshift(int m, int n, T *array) {
     std::memcpy(&array[j * n], &buffer[n / 2], (n / 2) * sizeof(T));
     std::memcpy(&array[j * n + n / 2], &buffer[0], (n / 2) * sizeof(T));
   }
-
-  delete[] buffer;
 }
 
 // fftshift for m-by-n array of type T
@@ -71,7 +73,7 @@ void fftshift(int m, int n, T *array) {
 template <typename T>
 void fftshift(int batch, int m, int n, T *array) {
 #pragma omp parallel for
-  for (size_t i = 0; i < batch; i++) {
+  for (int i = 0; i < batch; i++) {
     fftshift(m, n, &array[i * m * n]);
   }
 }
@@ -86,8 +88,14 @@ void fftshift(int n, T *array) {
 // ifftshift for m-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
+void ifftshift(int batch, int m, int n, T *array) {
+  fftshift(batch, m, n, array);
+}
+
+// ifftshift for m-by-n array of type T
+// TODO: make work for odd dimensions
+template <typename T>
 void ifftshift(int m, int n, T *array) {
-  if (n % 2 != 0) throw std::invalid_argument("Only square grids supported.");
   fftshift(m, n, array);
 }
 

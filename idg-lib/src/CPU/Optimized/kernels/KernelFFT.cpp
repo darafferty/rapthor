@@ -51,7 +51,7 @@ void kernel_fft_grid(long size, std::complex<float>* data,
 #pragma omp for
       for (unsigned int y = 0; y < size; y++) {
         // Copy row data -> tmp
-        unsigned int x = -1;
+        int x = -1;
         int dir = 1;
         copy_1d(size, pol, y, x, dir, data, tmp.data());
 
@@ -67,7 +67,7 @@ void kernel_fft_grid(long size, std::complex<float>* data,
 #pragma omp for
       for (unsigned int x = 0; x < size; x++) {
         // Copy column data -> tmp
-        unsigned int y = -1;
+        int y = -1;
         int dir = 1;
         copy_1d(size, pol, y, x, dir, data, tmp.data());
 
@@ -115,7 +115,6 @@ void kernel_fft_subgrid(long size, long batch, fftwf_complex* _data, int sign) {
 
   // Create plan
   fftwf_plan plan;
-  fftwf_plan_with_nthreads(1);
   plan = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, _data, n, istride,
                              idist, _data, n, ostride, odist, sign, flags);
 

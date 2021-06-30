@@ -152,6 +152,44 @@ inline void kernel_copy_tile(int src_tile_size, int dst_tile_size,
   }
 }
 
+void kernel_fft_composite(fftwf_plan plan, int batch, int size,
+                          std::complex<float> *data) {
+  fftwf_complex *in_ptr = reinterpret_cast<fftwf_complex *>(data);
+  fftwf_complex *out_ptr = reinterpret_cast<fftwf_complex *>(data);
+
+  for (int i = 0; i < batch; i++) {
+    // FFT over rows
+    for (int y = 0; y < size; y++) {
+      uint64_t offset =
+          size_t(i) * size_t(size) * size_t(size) + y * size_t(size);
+      fftwf_execute_dft(plan, in_ptr + offset, out_ptr + offset);
+    }
+
+    // Iterate all columns
+    for (int x = 0; x < size; x++) {
+      std::complex<float> tmp[size];
+
+      // Copy column into temporary buffer
+      for (int y = 0; y < size; y++) {
+        uint64_t offset =
+            size_t(i) * size_t(size) * size_t(size) + y * size_t(size) + x;
+        tmp[y] = data[offset];
+      }
+
+      // FFT column
+      fftwf_complex *tmp_ptr = reinterpret_cast<fftwf_complex *>(tmp);
+      fftwf_execute_dft(plan, tmp_ptr, tmp_ptr);
+
+      // Store the result in the output buffer
+      for (int y = 0; y < size; y++) {
+        uint64_t offset =
+            size_t(i) * size_t(size) * size_t(size) + y * size_t(size) + x;
+        data[offset] = tmp[y];
+      }
+    }
+  }
+}
+
 void kernel_adder_subgrids_to_wtiles(
     const long nr_subgrids, const int grid_size, const int subgrid_size,
     const int wtile_size, const idg::Metadata *metadata,
@@ -266,20 +304,10 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
 
     // Initialize FFT plans
     if (fft_plans.find(w_padded_tile_size) == fft_plans.end()) {
-      int rank = 2;
-      int n[] = {w_padded_tile_size, w_padded_tile_size};
-      int istride = 1;
-      int ostride = istride;
-      int idist = n[0] * n[1];
-      int odist = idist;
-      int flags = FFTW_ESTIMATE;
-      fftwf_plan_with_nthreads(1);
-      fftwf_plan plan_forward = fftwf_plan_many_dft(
-          rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
-          ostride, odist, FFTW_FORWARD, flags);
-      fftwf_plan plan_backward = fftwf_plan_many_dft(
-          rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
-          ostride, odist, FFTW_BACKWARD, flags);
+      fftwf_plan plan_forward = fftwf_plan_dft_1d(
+          w_padded_tile_size, nullptr, nullptr, FFTW_FORWARD, FFTW_ESTIMATE);
+      fftwf_plan plan_backward = fftwf_plan_dft_1d(
+          w_padded_tile_size, nullptr, nullptr, FFTW_BACKWARD, FFTW_ESTIMATE);
       fft_plans.insert({w_padded_tile_size, {plan_forward, plan_backward}});
     }
 
@@ -306,16 +334,18 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
           idg::float2({0.0, 0.0}));
 
       // Forward FFT
-      fftwf_complex *tile_ptr =
-          reinterpret_cast<fftwf_complex *>(tile_buffers.data(i, 0, 0, 0));
-      fftwf_execute_dft(plan_forward, tile_ptr, tile_ptr);
+      std::complex<float> *tile_ptr = reinterpret_cast<std::complex<float> *>(
+          tile_buffers.data(i, 0, 0, 0));
+      kernel_fft_composite(plan_forward, NR_CORRELATIONS, w_padded_tile_size,
+                           tile_ptr);
 
       // Multiply w term
       kernel_apply_phasor(w_padded_tile_size, image_size, w_step, shift,
                           coordinate, tile_buffers.data(i, 0, 0, 0), -1);
 
       // Backwards FFT
-      fftwf_execute_dft(plan_backward, tile_ptr, tile_ptr);
+      kernel_fft_composite(plan_backward, NR_CORRELATIONS, w_padded_tile_size,
+                           tile_ptr);
     }
 
     // Add current batch of tiles to grid
@@ -444,20 +474,10 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 
     // Initialize FFT plans
     if (fft_plans.find(w_padded_tile_size) == fft_plans.end()) {
-      int rank = 2;
-      int n[] = {w_padded_tile_size, w_padded_tile_size};
-      int istride = 1;
-      int ostride = istride;
-      int idist = n[0] * n[1];
-      int odist = idist;
-      int flags = FFTW_ESTIMATE;
-      fftwf_plan_with_nthreads(1);
-      fftwf_plan plan_forward = fftwf_plan_many_dft(
-          rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
-          ostride, odist, FFTW_FORWARD, flags);
-      fftwf_plan plan_backward = fftwf_plan_many_dft(
-          rank, n, NR_POLARIZATIONS, nullptr, n, istride, idist, nullptr, n,
-          ostride, odist, FFTW_BACKWARD, flags);
+      fftwf_plan plan_forward = fftwf_plan_dft_1d(
+          w_padded_tile_size, nullptr, nullptr, FFTW_FORWARD, FFTW_ESTIMATE);
+      fftwf_plan plan_backward = fftwf_plan_dft_1d(
+          w_padded_tile_size, nullptr, nullptr, FFTW_BACKWARD, FFTW_ESTIMATE);
       fft_plans.insert({w_padded_tile_size, {plan_forward, plan_backward}});
     }
 
@@ -477,16 +497,18 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
       idg::Coordinate &coordinate = tile_coordinates[tile_idx];
 
       // Backwards FFT
-      fftwf_complex *tile_ptr =
-          reinterpret_cast<fftwf_complex *>(tile_buffers.data(i, 0, 0, 0));
-      fftwf_execute_dft(plan_backward, tile_ptr, tile_ptr);
+      std::complex<float> *tile_ptr = reinterpret_cast<std::complex<float> *>(
+          tile_buffers.data(i, 0, 0, 0));
+      kernel_fft_composite(plan_backward, NR_CORRELATIONS, w_padded_tile_size,
+                           tile_ptr);
 
       // Multiply w term
       kernel_apply_phasor(w_padded_tile_size, image_size, w_step, shift,
                           coordinate, tile_buffers.data(i, 0, 0, 0), 1);
 
       // Forward FFT
-      fftwf_execute_dft(plan_forward, tile_ptr, tile_ptr);
+      kernel_fft_composite(plan_forward, NR_CORRELATIONS, w_padded_tile_size,
+                           tile_ptr);
 
       // Copy tile
       size_t dst_idx =
