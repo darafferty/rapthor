@@ -576,7 +576,7 @@ void GenericOptimized::run_subgrids_from_wtiles(
     // Check whether initialization needs to happen before the end of the job
     if (!wtile_initialize_set.empty() &&
         wtile_initialize_set.front().subgrid_index -
-                (int)(subgrid_index - subgrid_offset) <
+                (int)(subgrid_index + subgrid_offset) <
             nr_subgrids_to_process) {
       // Reduce the number of subgrids to process to just before the next
       // initialization event
