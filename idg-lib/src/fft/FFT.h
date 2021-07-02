@@ -72,9 +72,8 @@ void fftshift(int m, int n, T *array) {
 // TODO: make work for odd dimensions
 template <typename T>
 void fftshift(int batch, int m, int n, T *array) {
-#pragma omp parallel for
   for (int i = 0; i < batch; i++) {
-    fftshift(m, n, &array[i * m * n]);
+    fftshift(m, n, &array[size_t(i) * size_t(m) * size_t(n)]);
   }
 }
 
