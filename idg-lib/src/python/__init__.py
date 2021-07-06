@@ -13,9 +13,9 @@ import importlib
 # the full path of the shared object file
 def load_library(libname):
     path = os.path.dirname(os.path.realpath(__file__))
-    path, junk = os.path.split(path)
-    path, junk = os.path.split(path)
-    path, junk = os.path.split(path)
+    path, _ = os.path.split(path)
+    path, _ = os.path.split(path)
+    path, _ = os.path.split(path)
     libpath = os.path.join(path, libname)
     lib = ctypes.cdll.LoadLibrary(libpath)
     return lib
