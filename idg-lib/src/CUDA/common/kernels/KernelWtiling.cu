@@ -412,9 +412,8 @@ __global__ void kernel_wtiles_to_patch(
                  (padded_tile_size - tile_size) / 2 + grid_size / 2;
         int x_start = x0;
         int y_start = y0;
-
-        int x_end = x_start + padded_tile_size;
-        int y_end = y_start + padded_tile_size;
+        int x_end = x0 + padded_tile_size;
+        int y_end = y0 + padded_tile_size;
 
         // Shift start to inside patch
         x_start = max(x_start, patch_coordinate.x);
@@ -426,7 +425,7 @@ __global__ void kernel_wtiles_to_patch(
 
         // Compute number of pixels to process
         int height = y_end - y_start;
-        int width = x_end - x_start;
+        int width  = x_end - x_start;
 
         // Compute y position in patch and tile
         unsigned int y_patch = y_start + y - patch_coordinate.y;
@@ -435,16 +434,15 @@ __global__ void kernel_wtiles_to_patch(
         // Add tile to patch
         if (y < height && y_patch < patch_size && width > 0)
         {
-            unsigned int y_patch = y_start + y - patch_coordinate.y;
-
             for (unsigned int x = tid; x < width; x += nr_threads)
             {
+                // Compute x position in patch and tile
                 unsigned int x_patch = x_start + x - patch_coordinate.x;
                 unsigned int x_tile  = x_start + x - x0;
 
+                // Add tile value to patch
                 unsigned long idx_patch = index_grid(patch_size, pol, y_patch, x_patch);
                 unsigned long idx_tile  = index_grid(padded_tile_size, tile_index, pol, y_tile, x_tile);
-
                 atomicAdd(patch[idx_patch], tiles[idx_tile]);
             }
         } // end if y
@@ -502,7 +500,7 @@ __global__ void kernel_wtiles_from_patch(
 
         // Compute number of pixels to process
         int height = y_end - y_start;
-        int width = x_end - x_start;
+        int width  = x_end - x_start;
 
         // Compute y position in patch and tile
         unsigned int y_patch = y_start + y - patch_coordinate.y;
