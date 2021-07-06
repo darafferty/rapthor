@@ -410,8 +410,8 @@ __global__ void kernel_wtiles_to_patch(
                  (padded_tile_size - tile_size) / 2 + grid_size / 2;
         int y0 = coordinate.y * tile_size -
                  (padded_tile_size - tile_size) / 2 + grid_size / 2;
-        int x_start = max(0, x0);
-        int y_start = max(0, y0);
+        int x_start = x0;
+        int y_start = y0;
 
         int x_end = x_start + padded_tile_size;
         int y_end = y_start + padded_tile_size;
@@ -486,8 +486,8 @@ __global__ void kernel_wtiles_from_patch(
                  (padded_tile_size - tile_size) / 2 + grid_size / 2;
         int y0 = coordinate.y * tile_size -
                  (padded_tile_size - tile_size) / 2 + grid_size / 2;
-        int x_start = max(0, x0);
-        int y_start = max(0, y0);
+        int x_start = x0;
+        int y_start = y0;
 
         int x_end = x_start + padded_tile_size;
         int y_end = y_start + padded_tile_size;
