@@ -486,7 +486,6 @@ __global__ void kernel_wtiles_from_patch(
                  (padded_tile_size - tile_size) / 2 + grid_size / 2;
         int x_start = x0;
         int y_start = y0;
-
         int x_end = x_start + padded_tile_size;
         int y_end = y_start + padded_tile_size;
 
@@ -511,16 +510,17 @@ __global__ void kernel_wtiles_from_patch(
         {
             for (unsigned int x = tid; x < width; x += nr_threads)
             {
+                // Compute y position in patch and tile
                 unsigned int x_patch = x_start + x - patch_coordinate.x;
                 unsigned int x_tile  = x_start + x - x0;
 
+                // Set tile value from patch
                 unsigned long idx_patch = index_grid(patch_size, pol, y_patch, x_patch);
                 unsigned long idx_tile  = index_grid(padded_tile_size, tile_index, pol, y_tile, x_tile);
-
                 tiles[idx_tile] = patch[idx_patch];
             }
         } // end if y
     } // end for i
-} // end kernel_wtiles_to_patch
+} // end kernel_wtiles_from_patch
 
 } // end extern "C"
