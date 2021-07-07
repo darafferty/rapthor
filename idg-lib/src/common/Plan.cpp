@@ -273,7 +273,7 @@ void Plan::initialize(
   // Temporary metadata vector for individual baselines
   int max_nr_subgrids_per_baseline =
       max_nr_timesteps_per_subgrid > 0
-          ? nr_timesteps / max_nr_timesteps_per_subgrid
+          ? (nr_timesteps / max_nr_timesteps_per_subgrid) + 1
           : nr_timesteps;
   idg::Array2D<Metadata> metadata_(nr_baselines,
                                    nr_channels * max_nr_subgrids_per_baseline);
