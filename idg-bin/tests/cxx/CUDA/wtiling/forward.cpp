@@ -33,7 +33,8 @@ void init_data(std::complex<float>* data, int* ids, unsigned int n,
       for (unsigned int y = 0; y < size; y++) {
         for (unsigned int x = 0; x < size; x++) {
           size_t idx = index_grid(size, ids[tile], pol, y, x);
-          data[idx] = std::complex<float>((y + 1), (x + 1)) * scale;
+          data[idx] =
+              std::complex<float>((y + 1) / size, (x + 1) / size) * scale;
         }
       }
     }
@@ -512,6 +513,80 @@ int main(int argc, char* argv[]) {
 
   // Run adder_wtiles_to_grid on host
   idg::Array3D<std::complex<float>> grid(NR_CORRELATIONS, grid_size, grid_size);
+  grid.zero();
+  wtiles_to_grid(nr_tiles, grid_size, tile_size - subgrid_size,
+                 padded_tile_size, h_padded_tile_ids, tile_coordinates.data(),
+                 h_padded_tiles, grid.data());
+
+  n = NR_CORRELATIONS * grid_size * grid_size;
+  accuracy = compare_arrays(n, u_grid, grid.data());
+  if (accuracy < TOLERANCE) {
+    std::cout << "Passed." << std::endl;
+  } else {
+    std::cout << "Failed." << std::endl;
+    success = false;
+  }
+  std::cout << std::endl;
+
+  /********************************************************************************
+   * Test wtiles to patch
+   ********************************************************************************/
+  std::cout << ">> Testing wtiles_to_patch" << std::endl;
+
+  // Initialize tiles
+  nr_tiles = 2;
+  init_data(h_padded_tiles, h_padded_tile_ids, nr_tiles, padded_tile_size);
+  stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
+
+  // Allocate patch
+  int patch_size = grid_size / 2;
+  size_t sizeof_patch =
+      NR_CORRELATIONS * patch_size * patch_size * sizeof(std::complex<float>);
+  cu::HostMemory h_patch(context, sizeof_patch);
+  cu::DeviceMemory d_patch(context, sizeof_patch);
+
+  // Reset grid
+  memset(u_grid, 0, u_grid.size());
+
+  // Add tiles to patch
+  for (unsigned int y = 0; y < grid_size; y += patch_size) {
+    for (unsigned int x = 0; x < grid_size; x += patch_size) {
+      idg::Coordinate patch_coordinate = {(int)x, (int)y};
+
+      // Reset patch to zero
+      d_patch.zero();
+
+      // Run adder_wtiles_to_patch on GPU
+      cuda.launch_adder_wtiles_to_patch(
+          nr_tiles, grid_size, tile_size - subgrid_size, padded_tile_size,
+          patch_size, patch_coordinate, d_padded_tile_ids, d_tile_coordinates,
+          d_padded_tiles, d_patch);
+
+      // Copy patch to the host
+      stream.synchronize();
+      stream.memcpyDtoHAsync(h_patch, d_patch, sizeof_patch);
+
+      // Wait for patch to be copied
+      stream.synchronize();
+
+      // Add patch to grid
+#pragma omp parallel for
+      for (int y_ = 0; y_ < patch_size; y_++) {
+        for (int x_ = 0; x_ < patch_size; x_++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+            std::complex<float>* dst_ptr = u_grid;
+            std::complex<float>* src_ptr =
+                static_cast<std::complex<float>*>(h_patch);
+            size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
+            size_t src_idx = index_grid(patch_size, pol, y_, x_);
+            dst_ptr[dst_idx] += src_ptr[src_idx];
+          }
+        }
+      }
+    }
+  }
+
+  // Create reference grid
   grid.zero();
   wtiles_to_grid(nr_tiles, grid_size, tile_size - subgrid_size,
                  padded_tile_size, h_padded_tile_ids, tile_coordinates.data(),

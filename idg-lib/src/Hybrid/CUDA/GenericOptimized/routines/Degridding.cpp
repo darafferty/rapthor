@@ -90,70 +90,6 @@ void GenericOptimized::run_degridding(
   startStates[device_id] = device.measure();
   startStates[nr_devices] = hostPowerSensor->read();
 
-  // Locks to make the GPU wait
-  std::vector<std::mutex> locks_gpu(jobs.size());
-  for (auto& lock : locks_gpu) {
-    lock.lock();
-  }
-
-  // Locks to make the CPU wait
-  std::vector<std::mutex> locks_cpu(jobs.size());
-  for (auto& lock : locks_cpu) {
-    lock.lock();
-  }
-
-  // Start host thread to create subgrids
-  std::thread host_thread = std::thread([&] {
-    int subgrid_offset = 0;
-    for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
-      // Get parameters for current job
-      auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-      void* metadata_ptr = jobs[job_id].metadata_ptr;
-      std::complex<float>* grid_ptr = grid.data();
-      unsigned local_id = job_id % 2;
-
-      // Load memory objects
-      cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
-
-      // Wait for input buffer to be free
-      if (job_id > 0) {
-        locks_cpu[job_id - 1].lock();
-      }
-
-      // Run splitter kernel
-      cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
-      marker_splitter.start();
-
-      if (plan.get_use_wtiles()) {
-        cpuKernels.run_splitter_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
-            h_subgrids, grid_ptr);
-        subgrid_offset += current_nr_subgrids;
-      } else if (w_step != 0.0) {
-        cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
-                                       subgrid_size, metadata_ptr, h_subgrids,
-                                       grid_ptr);
-      } else {
-        cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                                metadata_ptr, h_subgrids, grid_ptr);
-      }
-
-      marker_splitter.end();
-
-      // Copy subgrids to device
-      auto sizeof_subgrids =
-          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
-      htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
-
-      // Wait for subgrids to be copied
-      htodstream.synchronize();
-
-      // Unlock this job
-      locks_gpu[job_id].unlock();
-    }
-  });  // end host thread
-
   // Iterate all jobs
   for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
     // Id for double-buffering
@@ -174,9 +110,6 @@ void GenericOptimized::run_degridding(
     cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
     cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
     cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
-
-    // Wait for subgrids to be computed
-    locks_gpu[job_id].lock();
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -221,6 +154,44 @@ void GenericOptimized::run_degridding(
     // Initialize visibilities to zero
     d_visibilities.zero(executestream);
 
+    // Run splitter kernel
+    cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
+    marker_splitter.start();
+
+    if (plan.get_use_wtiles()) {
+      auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+
+      if (!m_disable_wtiling_gpu) {
+        run_subgrids_from_wtiles(subgrid_offset, current_nr_subgrids,
+                                 subgrid_size, image_size, w_step, shift,
+                                 wtile_initialize_set, d_subgrids, d_metadata);
+      } else {
+        cpuKernels.run_splitter_wtiles(
+            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
+            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
+            h_subgrids, m_grid->data());
+      }
+    } else if (w_step != 0.0) {
+      cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
+                                     subgrid_size, metadata_ptr, h_subgrids,
+                                     m_grid->data());
+    } else {
+      cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
+                              metadata_ptr, h_subgrids, m_grid->data());
+    }
+
+    if (m_disable_wtiling_gpu) {
+      // Copy subgrids to device
+      auto sizeof_subgrids =
+          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+      htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
+
+      // Wait for subgrids to be copied
+      htodstream.synchronize();
+    }
+
+    marker_splitter.end();
+
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
                               ImageDomainToFourierDomain);
@@ -232,10 +203,6 @@ void GenericOptimized::run_degridding(
                             d_wavenumbers, d_visibilities, d_spheroidal,
                             d_aterms, d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
-
-    // Signal that the input buffer is free
-    inputCopied[job_id]->synchronize();
-    locks_cpu[job_id].unlock();
 
     // Wait for degridder to finish
     gpuFinished[job_id]->synchronize();
@@ -252,11 +219,6 @@ void GenericOptimized::run_degridding(
     device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
-
-  // Wait for host thread
-  if (host_thread.joinable()) {
-    host_thread.join();
-  }
 
   // Wait for all visibilities to be copied
   dtohstream.synchronize();

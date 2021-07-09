@@ -124,7 +124,8 @@ class InstanceCUDA : public KernelsInstance {
                                      float w_step, unsigned int tile_size,
                                      cu::DeviceMemory& d_tiles,
                                      cu::DeviceMemory& d_shift,
-                                     cu::DeviceMemory& d_tile_coordinates);
+                                     cu::DeviceMemory& d_tile_coordinates,
+                                     int sign = -1);
 
   void launch_adder_subgrids_to_wtiles(int nr_subgrids, long grid_size,
                                        int subgrid_size, int tile_size,
@@ -153,6 +154,20 @@ class InstanceCUDA : public KernelsInstance {
                                         cu::DeviceMemory& d_tile_coordinates,
                                         cu::DeviceMemory& d_tiles,
                                         cu::UnifiedMemory& u_grid);
+
+  void launch_adder_wtiles_to_patch(int nr_tiles, long grid_size, int tile_size,
+                                    int padded_tile_size, int patch_size,
+                                    idg::Coordinate patch_coordinate,
+                                    cu::DeviceMemory& d_tile_ids,
+                                    cu::DeviceMemory& d_tile_coordinates,
+                                    cu::DeviceMemory& d_tiles,
+                                    cu::DeviceMemory& d_patch);
+
+  void launch_splitter_wtiles_from_patch(
+      int nr_tiles, long grid_size, int tile_size, int padded_tile_size,
+      int patch_size, idg::Coordinate patch_coordinate,
+      cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
+      cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch);
 
   // Misc
   void free_fft_plans();
@@ -272,6 +287,8 @@ static const std::string name_wtiles_to_grid = "kernel_wtiles_to_grid";
 static const std::string name_subgrids_from_wtiles =
     "kernel_subgrids_from_wtiles";
 static const std::string name_wtiles_from_grid = "kernel_wtiles_from_grid";
+static const std::string name_wtiles_to_patch = "kernel_wtiles_to_patch";
+static const std::string name_wtiles_from_patch = "kernel_wtiles_from_patch";
 
 }  // end namespace cuda
 }  // end namespace kernel

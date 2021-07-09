@@ -21,7 +21,8 @@ set(${PROJECT_NAME}_headers
     PowerSensor.h
     Report.h
     Math.h
-    WTiles.h)
+    WTiles.h
+    WTiling.h)
 
 set(${PROJECT_NAME}_sources
     ProxyInfo.cpp
@@ -35,7 +36,8 @@ set(${PROJECT_NAME}_sources
     PlanC.cpp
     PowerSensor.cpp
     Report.cpp
-    WTiles.cpp)
+    WTiles.cpp
+    WTiling.cpp)
 
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
