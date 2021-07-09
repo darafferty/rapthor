@@ -70,8 +70,12 @@ __device__ void kernel_degridder_(
             }
         }
 
+        // Determine the first and last timestep to process
+        int time_start = time_offset_global + time_offset_local;
+        int time_end = time_start + current_nr_timesteps;
+
         for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, nr_threads); i += nr_threads) {
-            int time = time_offset_local + (i / nr_channels_parallel);
+            int time = time_start + (i / nr_channels_parallel);
             int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
 
             float2 visXX[unroll_channels];
@@ -88,10 +92,10 @@ __device__ void kernel_degridder_(
 
             float u, v, w;
 
-            if (time < nr_timesteps) {
-                u = uvw[time_offset_global + time].u;
-                v = uvw[time_offset_global + time].v;
-                w = uvw[time_offset_global + time].w;
+            if (time < time_end) {
+                u = uvw[time].u;
+                v = uvw[time].v;
+                w = uvw[time].w;
             }
 
             __syncthreads();
@@ -179,10 +183,10 @@ __device__ void kernel_degridder_(
             } // end for pixel_offset
 
             for (int chan = 0; chan < unroll_channels; chan++) {
-                if (time < nr_timesteps) {
+                if (time < time_end) {
                     // Store visibility
                     const float scale = 1.0f / (subgrid_size * subgrid_size);
-                    int idx_time = time_offset_global + time;
+                    int idx_time = time;
                     int idx_chan = channel_offset + channel_offset_local + chan;
                     int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
                     float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);

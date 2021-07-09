@@ -244,13 +244,6 @@ void Plan::initialize(
   std::clog << "grid_size    : " << grid_size << std::endl;
 #endif
 
-  // Get options
-  m_w_step = options.w_step;
-  int nr_w_layers = options.nr_w_layers;
-  int max_nr_timesteps_per_subgrid = options.max_nr_timesteps_per_subgrid;
-  int max_nr_channels_per_subgrid = options.max_nr_channels_per_subgrid;
-  bool plan_strict = options.plan_strict;
-
   // Check arguments
   assert(baselines.get_x_dim() == uvw.get_y_dim());
 
@@ -262,6 +255,14 @@ void Plan::initialize(
   auto image_size = cell_size * grid_size;  // TODO: remove
   auto wtile_size = wtiles.get_wtile_size();
 
+  // Get options
+  m_w_step = options.w_step;
+  int nr_w_layers = options.nr_w_layers;
+  int max_nr_timesteps_per_subgrid =
+      min(options.max_nr_timesteps_per_subgrid, nr_timesteps);
+  int max_nr_channels_per_subgrid = options.max_nr_channels_per_subgrid;
+  bool plan_strict = options.plan_strict;
+
   // Spectral-line imaging
   bool simulate_spectral_line = options.simulate_spectral_line;
   auto nr_channels_ = nr_channels;
@@ -272,7 +273,7 @@ void Plan::initialize(
   // Temporary metadata vector for individual baselines
   int max_nr_subgrids_per_baseline =
       max_nr_timesteps_per_subgrid > 0
-          ? nr_timesteps / max_nr_timesteps_per_subgrid
+          ? (nr_timesteps / max_nr_timesteps_per_subgrid) + 1
           : nr_timesteps;
   idg::Array2D<Metadata> metadata_(nr_baselines,
                                    nr_channels * max_nr_subgrids_per_baseline);
