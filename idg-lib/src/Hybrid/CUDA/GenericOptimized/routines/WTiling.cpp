@@ -469,7 +469,6 @@ void GenericOptimized::run_wtiles_from_grid(
       // Split patch from grid
       cu::Marker marker("patch_from_grid", cu::Marker::red);
       marker.start();
-      h_padded_tiles.zero();
       run_splitter_patch_from_grid(grid_size, m_patch_size, current_nr_patches,
                                    &patch_coordinates[patch_offset],
                                    m_grid->data(), h_padded_tiles);
