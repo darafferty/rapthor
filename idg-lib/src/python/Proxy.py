@@ -6,6 +6,9 @@ import ctypes
 import numpy as np
 import idg
 
+FourierDomainToImageDomain = 0
+ImageDomainToFourierDomain = 1
+
 class Proxy(object):
 
     def __del__(self):
@@ -27,27 +30,27 @@ class Proxy(object):
         Grid visibilities onto grid.
 
         :param kernel_size: int
-        :param frequencies: numpy.ndarray(
+        :param frequencies: np.ndarray(
                 shapenr_channels,
-                dtype = idg.frequenciestype)
-        :param visibilities: numpy.ndarray(
+                dtype = np.float32)
+        :param visibilities: np.ndarray(
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
-                dtype=idg.visibilitiestype)
-        :param uvw: numpy.ndarray(
-                shape=(nr_baselines, nr_timesteps),
-                dtype = idg.uvwtype)
-        :param baselines: numpy.ndarray(
-                shape=(nr_baselines),
-                dtype=idg.baselinetype)
-        :param aterms: numpy.ndarray(
+                dtype=np.complex64)
+        :param uvw: np.ndarray(
+                shape=(nr_baselines, nr_timesteps,3),
+                dtype = np.float32)
+        :param baselines: np.ndarray(
+                shape=(nr_baselines,2),
+                dtype=np.intc)
+        :param aterms: np.ndarray(
                 shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
-                dtype = idg.atermtype)
-        :param aterms_offsets: numpy.ndarray(
+                dtype = np.float32)
+        :param aterms_offsets: np.ndarray(
                 shape=(nr_timeslots+1),
-                dtype = idg.atermoffsettype)
-        :param taper: numpy.ndarray(
+                dtype = np.int)
+        :param taper: np.ndarray(
                 shape=(height, width),
-                dtype = idg.tapertype)
+                dtype = np.float32)
         """
         # extract dimensions
         nr_channels = frequencies.shape[0]
@@ -70,31 +73,31 @@ class Proxy(object):
             ctypes.c_int,    # nr_timeslots
             ctypes.c_int,    # int nr_stations
             np.ctypeslib.ndpointer(
-                dtype=idg.frequenciestype,
+                dtype=np.float32,
                 shape=(nr_channels,),
                 flags='C_CONTIGUOUS'),   # frequencies
             np.ctypeslib.ndpointer(
-                dtype=idg.visibilitiestype,
+                dtype=np.complex64,
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
                 flags='C_CONTIGUOUS'), # visibilities
             np.ctypeslib.ndpointer(
-                dtype=idg.uvwtype,
-                shape=(nr_baselines, nr_timesteps),
+                dtype=np.float32,
+                shape=(nr_baselines, nr_timesteps, 3),
                 flags='C_CONTIGUOUS'), # uvw
             np.ctypeslib.ndpointer(
-                dtype=idg.baselinetype,
-                shape=(nr_baselines,),
+                dtype=np.intc,
+                shape=(nr_baselines,2),
                 flags='C_CONTIGUOUS'),# baselines
             np.ctypeslib.ndpointer(
-                dtype=idg.atermtype,
+                dtype=np.complex64,
                 shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'), # aterms
             np.ctypeslib.ndpointer(
-                dtype=idg.atermoffsettype,
+                dtype=np.intc,
                 shape=(nr_timeslots+1, ),
                 flags='C_CONTIGUOUS'), # aterms_offsets
             np.ctypeslib.ndpointer(
-                dtype=idg.tapertype,
+                dtype=np.float32,
                 shape=(subgrid_size, subgrid_size),
                 flags='C_CONTIGUOUS')] # taper
         # call C function to do the work
@@ -129,27 +132,27 @@ class Proxy(object):
         """
         Degrid visibilities from grid.
 
-        :param frequencies: numpy.ndarray(
+        :param frequencies: np.ndarray(
                 shapenr_channels,
-                dtype = idg.frequenciestype)
-        :param visibilities: numpy.ndarray(
+                dtype = np.float32)
+        :param visibilities: np.ndarray(
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
-                dtype=idg.visibilitiestype)
-        :param uvw: numpy.ndarray(
-                shape=(nr_baselines, nr_timesteps),
-                dtype = idg.uvwtype)
-        :param baselines: numpy.ndarray(
-                shape=(nr_baselines),
-                dtype=idg.baselinetype)
-        :param aterms: numpy.ndarray(
+                dtype=np.complex64)
+        :param uvw: np.ndarray(
+                shape=(nr_baselines, nr_timesteps, 3),
+                dtype = np.float32)
+        :param baselines: np.ndarray(
+                shape=(nr_baselines, 2),
+                dtype=np.intc)
+        :param aterms: np.ndarray(
                 shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
-                dtype = idg.atermtype)
-        :param aterms_offsets: numpy.ndarray(
+                dtype = np.complex64)
+        :param aterms_offsets: np.ndarray(
                 shape=(nr_timeslots+1),
-                dtype = idg.atermoffsettype)
-        :param taper: numpy.ndarray(
+                dtype = np.intc)
+        :param taper: np.ndarray(
                 shape=(height, width),
-                dtype = idg.tapertype)
+                dtype = np.float32)
         """
         # extract dimensions
         nr_channels = frequencies.shape[0]
@@ -172,31 +175,31 @@ class Proxy(object):
             ctypes.c_int,    # nr_timeslots
             ctypes.c_int,    # int nr_stations
             np.ctypeslib.ndpointer(
-                dtype=idg.frequenciestype,
+                dtype=np.float32,
                 shape=(nr_channels,),
                 flags='C_CONTIGUOUS'),   # frequencies
             np.ctypeslib.ndpointer(
-                dtype=idg.visibilitiestype,
+                dtype=np.complex64,
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
                 flags='C_CONTIGUOUS'), # visibilities
             np.ctypeslib.ndpointer(
-                dtype=idg.uvwtype,
-                shape=(nr_baselines, nr_timesteps),
+                dtype=np.float32,
+                shape=(nr_baselines, nr_timesteps,3),
                 flags='C_CONTIGUOUS'), # uvw
             np.ctypeslib.ndpointer(
-                dtype=idg.baselinetype,
-                shape=(nr_baselines,),
+                dtype=np.intc,
+                shape=(nr_baselines, 2),
                 flags='C_CONTIGUOUS'),# baselines
             np.ctypeslib.ndpointer(
-                dtype=idg.atermtype,
+                dtype=np.complex64,
                 shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'), # aterms
             np.ctypeslib.ndpointer(
-                dtype=idg.atermoffsettype,
+                dtype=np.intc,
                 shape=(nr_timeslots+1, ),
                 flags='C_CONTIGUOUS'), # aterms_offsets
             np.ctypeslib.ndpointer(
-                dtype=idg.tapertype,
+                dtype=np.float32,
                 shape=(subgrid_size, subgrid_size),
                 flags='C_CONTIGUOUS')] # taper
         # call C function to do the work
@@ -248,24 +251,24 @@ class Proxy(object):
         """
         Calibrate
 
-        :param frequencies: numpy.ndarray(
+        :param frequencies: np.ndarray(
                 shape = (nr_channels,)
-                dtype = idg.frequenciestype)
-        :param visibilities: numpy.ndarray(
+                dtype = np.float32)
+        :param visibilities: np.ndarray(
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
-                dtype=idg.visibilitiestype)
-        :param uvw: numpy.ndarray(
-                shape=(nr_baselines, nr_timesteps),
-                dtype = idg.uvwtype)
-        :param baselines: numpy.ndarray(
-                shape=(nr_baselines),
-                dtype=idg.baselinetype)
-        :param grid: numpy.ndarray(
+                dtype=np.complex64)
+        :param uvw: np.ndarray(
+                shape=(nr_baselines, nr_timesteps, 3),
+                dtype = np.float32)
+        :param baselines: np.ndarray(
+                shape=(nr_baselines, 2),
+                dtype=np.intc)
+        :param grid: np.ndarray(
                 shape=(nr_correlations, height, width),
-                dtype = idg.gridtype)
-        :param taper: numpy.ndarray(
+                dtype = np.complex64)
+        :param taper: np.ndarray(
                 shape=(height, width),
-                dtype = idg.tapertype)
+                dtype = np.float32)
         """
         # extract dimensions
         subgrid_size    = taper.shape[0]
@@ -298,12 +301,12 @@ class Proxy(object):
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
                 flags='C_CONTIGUOUS'),   #float* weights,
             np.ctypeslib.ndpointer(
-                dtype = idg.uvwtype,
-                shape=(nr_baselines, nr_timesteps),
+                dtype = np.float32,
+                shape=(nr_baselines, nr_timesteps, 3),
                 flags='C_CONTIGUOUS'),   #float* uvw,
             np.ctypeslib.ndpointer(
-                dtype=idg.baselinetype,
-                shape=(nr_baselines,),
+                dtype=np.intc,
+                shape=(nr_baselines, 2),
                 flags='C_CONTIGUOUS'),   #unsigned int* baselines,
             np.ctypeslib.ndpointer(
                 dtype=np.int32,
@@ -517,7 +520,7 @@ class Proxy(object):
         # Get float pointer to grid data
         ptr = ctypes.cast(ptr, ctypes.POINTER(ctypes.c_float))
 
-        # Construct numpy array out of this pointer
+        # Construct np array out of this pointer
         shape = (nr_correlations, grid_size, grid_size)
         length = np.prod(shape[:])*2
         grid = np.ctypeslib.as_array(ptr, shape=(length,)).view(np.complex64)
@@ -533,9 +536,9 @@ class Proxy(object):
         """
         Set grid to use in proxy
 
-        :param grid: numpy.ndarray(
+        :param grid: np.ndarray(
                 shape=(nr_correlations, height, width),
-                dtype = idg.gridtype)
+                dtype = np.complex64)
         """
 
         # Get dimensions
@@ -571,9 +574,9 @@ class Proxy(object):
         """
         Flush all pending gridding operations to grid
 
-        :param grid: numpy.ndarray(
+        :param grid: np.ndarray(
                 shape=(nr_correlations, height, width),
-                dtype = idg.gridtype) Optional, if present data will be copied into this array
+                dtype = np.complex64) Optional, if present data will be copied into this array
         """
 
         # Set argument types

@@ -110,15 +110,15 @@ nr_rows_per_batch = nr_baselines * nr_timesteps
 nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
 
 # Initialize empty buffers
-uvw          = np.zeros(shape=(nr_baselines, nr_timesteps),
-                        dtype=idg.uvwtype)
+uvw          = np.zeros(shape=(nr_baselines, nr_timesteps,3),
+                        dtype=np.float32)
 visibilities = np.zeros(shape=(nr_baselines, nr_timesteps, nr_channels,
                                nr_correlations),
-                        dtype=idg.visibilitiestype)
-baselines    = np.zeros(shape=(nr_baselines),
-                        dtype=idg.baselinetype)
+                        dtype=np.complex64)
+baselines    = np.zeros(shape=(nr_baselines, 2),
+                        dtype=np.intc)
 img          = np.zeros(shape=(nr_correlations, grid_size, grid_size),
-                        dtype=idg.gridtype)
+                        dtype=np.complex64)
 
 iteration = 0
 print(nr_rows_read)
@@ -193,9 +193,7 @@ while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
             baselines[bl] = (antenna1, antenna2)
 
             # Set uvw
-            uvw[bl][t]['u'] = uvw_block[t][bl][0]
-            uvw[bl][t]['v'] = uvw_block[t][bl][1]
-            uvw[bl][t]['w'] = uvw_block[t][bl][2]
+            uvw[bl][t] = uvw_block[t][bl]
 
             # Set visibilities
             visibilities[bl][t] = vis_block[t][bl]
