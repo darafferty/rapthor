@@ -749,6 +749,8 @@ void BufferSetImpl::init_compute_avg_beam(compute_flags flag) {
 }
 
 void BufferSetImpl::finalize_compute_avg_beam() {
+  m_avg_beam_watch->Start();
+
   m_matrix_inverse_beam =
       std::make_shared<std::vector<std::complex<float>>>(m_average_beam);
   m_scalar_beam = std::make_shared<std::vector<float>>(m_size * m_size);
@@ -906,6 +908,8 @@ void BufferSetImpl::finalize_compute_avg_beam() {
                           *m_matrix_inverse_beam);
   }
 #endif
+
+  m_avg_beam_watch->Pause();
 }
 
 void BufferSetImpl::set_matrix_inverse_beam(
