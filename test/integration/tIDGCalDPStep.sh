@@ -52,7 +52,7 @@ then
     echo "Already found a reduced size MS named ${MSNAME}"
 else
     # Reduce the LOFAR_MOCK.ms even further by selecting 15 statios, write to ${MSNAME}
-    DPPP msin=$DATADIR/LOFAR_MOCK.ms 'filter.baseline=0,10,20,30,40,50,52~60&' msout=$DATADIR/$MSNAME steps=[filter] filter.remove=true msout.overwrite=true
+    DP3 msin=$DATADIR/LOFAR_MOCK.ms 'filter.baseline=0,10,20,30,40,50,52~60&' msout=$DATADIR/$MSNAME steps=[filter] filter.remove=true msout.overwrite=true
 fi
 
 # Download the modelimage.ms if it does not yet exist
