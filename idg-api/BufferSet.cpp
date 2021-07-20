@@ -749,6 +749,8 @@ void BufferSetImpl::init_compute_avg_beam(compute_flags flag) {
 }
 
 void BufferSetImpl::finalize_compute_avg_beam() {
+  m_avg_beam_watch->Start();
+
   m_matrix_inverse_beam =
       std::make_shared<std::vector<std::complex<float>>>(m_average_beam);
   m_scalar_beam = std::make_shared<std::vector<float>>(m_size * m_size);
@@ -812,6 +814,7 @@ void BufferSetImpl::finalize_compute_avg_beam() {
   //     6. divide out taper and normalize
 
   // 1. multiply by taper
+#pragma omp parallel for
   for (int i = 0; i < int(m_subgridsize); i++) {
     for (int j = 0; j < int(m_subgridsize); j++) {
       scalar_beam_subgrid[i * m_subgridsize + j] *=
@@ -823,6 +826,7 @@ void BufferSetImpl::finalize_compute_avg_beam() {
   fft2f(m_subgridsize, scalar_beam_subgrid.data());
 
   // 3. multiply by phase gradient for half pixel shift
+#pragma omp parallel for
   for (size_t i = 0; i < m_subgridsize; i++) {
     for (size_t j = 0; j < m_subgridsize; j++) {
       float phase = -M_PI * ((float(i) + float(j)) / m_subgridsize - 1.0);
@@ -843,6 +847,7 @@ void BufferSetImpl::finalize_compute_avg_beam() {
     ptrdiff_t end_idx =
         std::min(ptrdiff_t(m_subgridsize), ptrdiff_t(m_padded_size) - offset);
 
+#pragma omp parallel for
     for (ptrdiff_t i = begin_idx; i < end_idx; i++) {
       for (ptrdiff_t j = begin_idx; j < end_idx; j++) {
         scalar_beam_padded[(i + offset) * m_padded_size + (j + offset)] =
@@ -865,6 +870,7 @@ void BufferSetImpl::finalize_compute_avg_beam() {
             .real() *
         m_inv_taper[x_center] * m_inv_taper[y_center];
     float normalization = 1.0 / center_value;
+#pragma omp parallel for
     for (size_t y = 0; y < m_size; y++) {
       for (size_t x = 0; x < m_size; x++) {
         (*m_scalar_beam)[m_size * y + x] =
@@ -902,6 +908,8 @@ void BufferSetImpl::finalize_compute_avg_beam() {
                           *m_matrix_inverse_beam);
   }
 #endif
+
+  m_avg_beam_watch->Pause();
 }
 
 void BufferSetImpl::set_matrix_inverse_beam(
