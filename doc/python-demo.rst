@@ -3,6 +3,6 @@
 Python demo
 ===========
 
-.. literalinclude:: ../idg-bin/demo/python/demo-idg.py
+.. literalinclude:: ../idg-bin/demo/python/idg-demo.py
 
 

@@ -2,6 +2,8 @@
 Interfaces
 ==========
 
+:py:class:`idg.Proxy.Proxy`
+
 There are two levels of interfaces. The lower level Proxy in idg-lib, 
 and a higher level BufferSet in idg-api. 
 
@@ -22,6 +24,6 @@ bindings available.
    
    c++-proxy
    c++-bufferset
-   c-proxy
+   c-interface
    python-proxy
 

@@ -1,24 +1,33 @@
+.. include:: intro.rst
+
 .. toctree::
    :maxdepth: 2
    :hidden:
+   :caption: Getting started
    
-   what-is-idg
    quick-start
    build-instructions
-   C++-interface
-   python-interface
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: Demos
+
    python-demo
 
+.. toctree::
+   :maxdepth: 2
+   :hidden:
 
+   interfaces
 
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: ......
+   
+   indices-and-tables
+ 
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 
 
