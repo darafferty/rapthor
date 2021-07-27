@@ -9,7 +9,7 @@ using namespace std;
 
 namespace idg {
 
-void kernel_fft_composite(unsigned batch, int m, int n,
+void kernel_fft_composite(unsigned batch, unsigned int m, unsigned int n,
                           std::complex<float> *data, int sign) {
   fftwf_complex *in_ptr = reinterpret_cast<fftwf_complex *>(data);
   fftwf_complex *out_ptr = reinterpret_cast<fftwf_complex *>(data);
@@ -19,33 +19,44 @@ void kernel_fft_composite(unsigned batch, int m, int n,
   fftwf_plan plan_row =
       m == n ? plan_col : fftwf_plan_dft_1d(m, NULL, NULL, sign, FFTW_ESTIMATE);
 
-  for (unsigned i = 0; i < batch; i++) {
+  for (size_t i = 0; i < batch; i++) {
 // FFT over rows
 #pragma omp parallel for
-    for (int y = 0; y < m; y++) {
-      uint64_t offset = size_t(i) * size_t(m) * size_t(n) + y * size_t(n);
+    for (size_t y = 0; y < m; y++) {
+      uint64_t offset = i * m * n + y * n;
       fftwf_execute_dft(plan_col, in_ptr + offset, out_ptr + offset);
     }
 
-// Iterate all columns
+    // Iterate all columns
+    size_t unroll = 4;
 #pragma omp parallel for
-    for (int x = 0; x < n; x++) {
-      std::complex<float> tmp[m];
+    for (size_t x = 0; x < n; x += unroll) {
+      std::complex<float> tmp[unroll * m];
 
       // Copy column into temporary buffer
-      for (int y = 0; y < m; y++) {
-        uint64_t offset = size_t(i) * size_t(m) * size_t(n) + y * size_t(n) + x;
-        tmp[y] = data[offset];
+      for (size_t y = 0; y < m; y++) {
+        for (size_t j = 0; j < unroll; j++) {
+          if ((x + j) < n) {
+            size_t offset = i * m * n + y * n + x + j;
+            tmp[j * m + y] = data[offset];
+          }
+        }
       }
 
       // FFT column
-      fftwf_complex *tmp_ptr = reinterpret_cast<fftwf_complex *>(tmp);
-      fftwf_execute_dft(plan_col, tmp_ptr, tmp_ptr);
+      for (size_t j = 0; j < unroll; j++) {
+        fftwf_complex *tmp_ptr = reinterpret_cast<fftwf_complex *>(&tmp[j * m]);
+        fftwf_execute_dft(plan_col, tmp_ptr, tmp_ptr);
+      }
 
       // Store the result in the output buffer
-      for (int y = 0; y < m; y++) {
-        uint64_t offset = size_t(i) * size_t(m) * size_t(n) + y * size_t(n) + x;
-        data[offset] = tmp[y];
+      for (size_t y = 0; y < m; y++) {
+        for (size_t j = 0; j < unroll; j++) {
+          if ((x + j) < n) {
+            size_t offset = i * m * n + y * n + x + j;
+            data[offset] = tmp[j * m + y];
+          }
+        }
       }
     }
   }
