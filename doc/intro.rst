@@ -7,7 +7,7 @@ Image Domain Gridding (IDG) is a fast method for convolutional resampling (gridd
 Working in the image domain avoids the computation of oversampled convolution functions.
 This is especially advantageous when the DDEs vary on short time scales.
 
-This library has implementation for both CPU and GPU.
+This library has implementations for both the CPU and the GPU.
 The algorithm uses sin/cos evaluations and multiply-add operations on many small on grids.
 This makes it somewhat costly on a CPU, but it makes a very good match
 with GPUs with hardware support for sin/cos evaluations.
