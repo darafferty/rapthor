@@ -2,7 +2,7 @@
 Image Domain Gridding
 =====================
 
-Image Domain Gridding (IDG) is a fast method for convolutional resampling (gridding/degridding) of radio astronomical data (visibilities). In the gridding process direction dependent effects (DDEs) or A-tems can be applied.
+Image Domain Gridding (IDG) is a fast method for convolutional resampling (gridding/degridding) of radio astronomical data (visibilities). Direction dependent effects (DDEs) or A-tems can be applied in the gridding process.
 
 Working in the image domain avoids the computation of oversampled convolution functions.
 This is especially advantageous when the DDEs vary on short time scales.
