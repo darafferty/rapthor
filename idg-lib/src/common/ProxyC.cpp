@@ -200,11 +200,13 @@ void Proxy_get_final_grid(struct Proxy* p, std::complex<float>* grid_ptr,
                           unsigned int width) {
   std::shared_ptr<idg::Grid> grid =
       reinterpret_cast<idg::proxy::Proxy*>(p)->get_final_grid();
-  assert(grid->get_w_dim() == nr_w_layers);
-  assert(grid->get_z_dim() == nr_correlations);
-  assert(grid->get_y_dim() == height);
-  assert(grid->get_x_dim() == width);
-  memcpy(grid_ptr, grid->data(), grid->bytes());
+  if (grid_ptr) {
+    assert(grid->get_w_dim() == nr_w_layers);
+    assert(grid->get_z_dim() == nr_correlations);
+    assert(grid->get_y_dim() == height);
+    assert(grid->get_x_dim() == width);
+    memcpy(grid_ptr, grid->data(), grid->bytes());
+  }
 }
 
 }  // end extern "C"

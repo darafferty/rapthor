@@ -566,23 +566,15 @@ class Proxy(object):
 
     def get_final_grid(
         self,
-        grid):
+        grid = None):
 
         """
-        Retrieve grid from proxy
+        Flush all pending gridding operations to grid
 
         :param grid: numpy.ndarray(
                 shape=(nr_correlations, height, width),
-                dtype = idg.gridtype)
+                dtype = idg.gridtype) Optional, if present data will be copied into this array
         """
-
-        # Get dimensions
-        shape = grid.shape
-        nr_w_layers = 1
-        nr_correlations = shape[0]
-        grid_size = shape[1]
-        height = grid_size
-        width = grid_size
 
         # Set argument types
         self.lib.Proxy_get_final_grid.argtypes = [
@@ -593,11 +585,29 @@ class Proxy(object):
                 ctypes.c_int,
                 ctypes.c_int]
 
-        # Call the C function
-        self.lib.Proxy_get_final_grid(
-            ctypes.c_void_p(self.obj),
-            grid.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_int(nr_w_layers),
-            ctypes.c_int(nr_correlations),
-            ctypes.c_int(height),
-            ctypes.c_int(width))
+        if grid is not None:
+
+            # Get dimensions
+            shape = grid.shape
+            nr_w_layers = 1
+            nr_correlations = shape[0]
+            grid_size = shape[1]
+            height = grid_size
+            width = grid_size
+
+            # Call the C function
+            self.lib.Proxy_get_final_grid(
+                ctypes.c_void_p(self.obj),
+                grid.ctypes.data_as(ctypes.c_void_p),
+                ctypes.c_int(nr_w_layers),
+                ctypes.c_int(nr_correlations),
+                ctypes.c_int(height),
+                ctypes.c_int(width))
+        else:
+            self.lib.Proxy_get_final_grid(
+                ctypes.c_void_p(self.obj),
+                0,
+                0,
+                0,
+                0,
+                0)
