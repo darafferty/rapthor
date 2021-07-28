@@ -16,7 +16,7 @@ The BufferSet also chooses the configuration of the Proxy (kernel size, taper,..
 has get_image and set_image methods to do the final/initial FFT.
 The BufferSet is the interface that WSClean uses for its IDG gridding mode.
 
-Both interfaces are written in C++, but for the Proxy there are C-binding and Python
+Both interfaces are written in C++, but for the Proxy there are C-bindings and Python
 bindings available.
 
 .. toctree::
