@@ -1,10 +1,6 @@
-.. _build-instructions-label:
+# Build instructions
 
-==================
-Build instructions
-==================
-
-# Quick installation guide:      
+## Quick installation guide:      
 ```
 git clone --recursive -j4 https://gitlab.com/astron-idg/idg.git      
 cd idg     
