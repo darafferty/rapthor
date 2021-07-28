@@ -12,7 +12,7 @@ The Proxy expects blocks of data grouped per baseline.
 
 The BufferSet accepts data per row in the measurement set, until a block is complete and
 then sends the block to the underlying Proxy.
-The BufferSet also chooses the configuration the Proxy (kernel size, taper,...) and
+The BufferSet also chooses the configuration of the Proxy (kernel size, taper,...) and
 has get_image and set_image methods to do the final/initial FFT.
 The BufferSet is the interface that WSClean uses for its IDG gridding mode.
 
