@@ -141,7 +141,7 @@ configure_file("${PROJECT_SOURCE_DIR}/cmake/config/environment-module.in"
 install(FILES ${PROJECT_BINARY_DIR}/idg.env DESTINATION share)
 
 # Add integration tests
-add_subdirectory(test/integration)
+add_subdirectory(test)
 
 # Packaging
 if(BUILD_PACKAGES)

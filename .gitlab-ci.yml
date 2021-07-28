@@ -155,7 +155,6 @@ idg-integration-docker:
   allow_failure: true
   image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
   before_script:
-    - export HOME_DIR=$PWD
     # Install IDG
     - mkdir /opt/idg && mkdir -p build
     - cd build
@@ -171,21 +170,21 @@ idg-integration-docker:
     - mkdir build && cd build
     - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
-    - cd $HOME_DIR && rm -rf /wsclean
+    - cd $CI_PROJECT_DIR && rm -rf /wsclean
     # Install dp3
     - mkdir /dp3 && cd /dp3 && git clone https://github.com/lofar-astron/DP3.git src
     - mkdir build && cd build
     - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
-    - cd $HOME_DIR && rm -rf /dp3
+    - cd $CI_PROJECT_DIR && rm -rf /dp3
     - export DP3_LIB=/usr/lib
   script:
     # Return to idg build directory to run tests
     - cd build
     - ctest --output-on-failure -L integration
     # Test idg-cal scripts
-    - cd $HOME_DIR/idg-cal/unit_tests
-    - pytest .
+    - cd $CI_PROJECT_DIR/idg-cal/unit_tests
+    - pytest -v .
   rules:
     - when: on_success
 
@@ -196,8 +195,8 @@ idg-integration-das:
     - ci_gpu
   needs: []
   before_script:
-    # Makes it easy to find the idg source location later on
-    - export CURRENT_SOURCE=$PWD
+    # Clean and generate reports folder in CI_PROJECT_DIR for storing the junit test reports
+    - rm -rf reports/* && mkdir -p reports
     - source scripts/load_modules.sh
     - python3 -m pip install --user --upgrade pip
     # Make sure h5py is build against the hdf5 library loaded by load_modules.sh
@@ -212,7 +211,7 @@ idg-integration-das:
     # Install idg
     - mkdir -p ~/opt/idg && cd ~/opt/idg  && rm -rf *
     # Copy source code to src
-    - mkdir src && cp -r $CURRENT_SOURCE/. src/.
+    - mkdir src && cp -r $CI_PROJECT_DIR/. src/.
     - mkdir build && cd build
     # Build with GPU libs
     - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
@@ -238,9 +237,13 @@ idg-integration-das:
     # Run integration tests
     - "python3 -m pip install --user --only-binary=:all: python-casacore"
     - ctest --output-on-failure -L integration
+    - mv test_*.xml $CI_PROJECT_DIR/reports/
     # Test idg-cal scripts
-    - cd $CURRENT_SOURCE/idg-cal/unit_tests
-    - pytest .
+    - cd $CI_PROJECT_DIR/idg-cal/unit_tests
+    - pytest -v --junitxml=$CI_PROJECT_DIR/reports/test_idgcal.xml .
+  artifacts:
+    reports:
+      junit: reports/test_*.xml
   rules:
     - <<: *if_astron_repo
 
