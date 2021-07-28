@@ -8,7 +8,7 @@ Working in the image domain avoids the computation of oversampled convolution fu
 This is especially advantageous when the DDEs vary on short time scales.
 
 This library has implementations for both the CPU and the GPU.
-The algorithm uses sin/cos evaluations and multiply-add operations on many small on grids.
+The algorithm uses sin/cos evaluations and multiply-add operations on many small grids, that are coined "subgrids" in the IDG terminology.
 This makes it somewhat costly on a CPU, but it makes a very good match
 with GPUs with hardware support for sin/cos evaluations.
 Gridding speeds of several GB/s on a single GPU device have been achieved (cite veenboer)
