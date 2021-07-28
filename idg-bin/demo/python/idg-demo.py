@@ -52,7 +52,7 @@ use_cuda   = args.use_cuda
 ######################################################################
 # Open measurementset
 ######################################################################
-table = pyrap.tables.taql("SELECT * FROM $msin WHERE ANTENNA1 != ANTENNA2")
+table = pyrap.tables.taql(f"SELECT * FROM {msin} WHERE ANTENNA1 != ANTENNA2")
 
 # Read parameters from measurementset
 t_ant = pyrap.tables.table(table.getkeyword("ANTENNA"))
