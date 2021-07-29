@@ -14,6 +14,36 @@ using namespace idg::proxy::cuda;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
+unsigned int find_nr_tiles_batch(
+  unsigned int nr_tiles_batch,
+  const unsigned int w_padded_tile_size,
+  const cu::Context& context,
+  std::unique_ptr<cufft::C2C_2D>& fft) {
+  while (!fft)
+  {
+    try {
+    unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+    unsigned stride = 1;
+    unsigned dist = w_padded_tile_size * w_padded_tile_size;
+    fft.reset(new cufft::C2C_2D(context, w_padded_tile_size,
+                                w_padded_tile_size, stride, dist,
+                                batch));
+    } catch (cufft::Error& e) {
+      nr_tiles_batch /= 2;
+      if (nr_tiles_batch > 1) {
+        #if defined(DEBUG)
+        std::clog << __func__ << ": reducing nr_tiles_batch to: "
+                  << nr_tiles_batch << std::endl;
+        #endif
+      } else {
+        std::cerr << __func__ << ": could not plan tile-fft." << std::endl;
+      }
+    }
+  }
+
+  return nr_tiles_batch;
+}
+
 void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
@@ -62,6 +92,12 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
 
+  // FFT plan
+  std::unique_ptr<cufft::C2C_2D> fft;
+
+  // Reduce nr_tiles_batch such that a fft plan can be made
+  nr_tiles_batch = find_nr_tiles_batch(nr_tiles_batch, w_padded_tile_size, context, fft);
+
   // Allocate coordinates buffer
   size_t sizeof_tile_coordinates = nr_tiles_batch * sizeof(idg::Coordinate);
   cu::DeviceMemory d_tile_coordinates(context, sizeof_tile_coordinates);
@@ -100,9 +136,6 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     job.tile_offset = tile_offset;
     jobs.push_back(std::move(job));
   }
-
-  // FFT plan
-  std::unique_ptr<cufft::C2C_2D> fft;
 
   // Iterate all jobs
   int last_w_padded_tile_size = w_padded_tile_size;
@@ -379,6 +412,13 @@ void GenericOptimized::run_wtiles_from_grid(
     int current_nr_tiles;
   };
 
+  // FFT plan
+  std::unique_ptr<cufft::C2C_2D> fft;
+
+  // Reduce nr_tiles_batch such that a fft plan can be made
+  nr_tiles_batch = find_nr_tiles_batch(nr_tiles_batch, w_padded_tile_size, context, fft);
+
+  // Create jobs
   std::vector<JobData> jobs;
 
   unsigned int current_nr_tiles = nr_tiles_batch;
@@ -391,9 +431,6 @@ void GenericOptimized::run_wtiles_from_grid(
     job.tile_offset = tile_offset;
     jobs.push_back(std::move(job));
   }
-
-  // FFT plan
-  std::unique_ptr<cufft::C2C_2D> fft;
 
   // Iterate all jobs
   int last_w_padded_tile_size = w_padded_tile_size;
