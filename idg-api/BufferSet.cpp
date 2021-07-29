@@ -161,6 +161,15 @@ std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
   return proxy;
 }
 
+std::shared_ptr<idg::Grid> BufferSetImpl::allocate_grid() {
+  m_proxy->free_grid();
+  std::shared_ptr<idg::Grid> grid =
+      m_proxy->allocate_grid(m_nr_w_layers, 4, m_padded_size, m_padded_size);
+  grid->zero();
+  m_proxy->set_grid(grid);
+  return grid;
+}
+
 void BufferSetImpl::init(size_t size, float cell_size, float max_w,
                          float shiftl, float shiftm, options_type& options) {
   m_average_beam.clear();
@@ -208,13 +217,12 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   // this cuts the w kernel approximately at the 1% level
   const float max_w_size = max_w * image_size_shift * m_image_size;
 
-  int nr_w_layers;
   float w_kernel_size;
 
   if (m_proxy->supports_wtiling()) {
     w_kernel_size = 8;
     m_w_step = 2 * w_kernel_size / (image_size_shift * m_image_size);
-    nr_w_layers = 1;
+    m_nr_w_layers = 1;
     m_apply_wstack_correction = false;
   } else if (m_proxy->supports_wstacking()) {
     // some heuristic to set kernel size
@@ -223,22 +231,23 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     // but for now does something reasonable
     w_kernel_size = std::max(8, int(std::round(2 * std::sqrt(max_w_size))));
     m_w_step = 2 * w_kernel_size / (image_size_shift * m_image_size);
-    nr_w_layers = std::ceil(max_w / m_w_step);
+    m_nr_w_layers = std::ceil(max_w / m_w_step);
 
     // restrict nr w layers
-    if (max_nr_w_layers) nr_w_layers = std::min(max_nr_w_layers, nr_w_layers);
-    m_w_step = max_w / nr_w_layers;
+    if (max_nr_w_layers)
+      m_nr_w_layers = std::min(max_nr_w_layers, m_nr_w_layers);
+    m_w_step = max_w / m_nr_w_layers;
     w_kernel_size = 0.5 * m_w_step * image_size_shift * m_image_size;
     m_apply_wstack_correction = true;
   } else {
     w_kernel_size = max_w_size;
-    nr_w_layers = 1;
+    m_nr_w_layers = 1;
     m_w_step = 0.0;
     m_apply_wstack_correction = false;
   }
 
 #ifndef NDEBUG
-  std::cout << "nr_w_layers: " << nr_w_layers << std::endl;
+  std::cout << "nr_w_layers: " << m_nr_w_layers << std::endl;
 #endif
 
   m_shift(0) = shiftl;
@@ -265,10 +274,7 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     }
   }
 
-  std::shared_ptr<Grid> grid =
-      m_proxy->allocate_grid(nr_w_layers, 4, m_padded_size, m_padded_size);
-  grid->zero();
-  m_proxy->set_grid(std::move(grid));
+  allocate_grid();
   m_proxy->init_cache(m_subgridsize, m_cell_size, m_w_step, m_shift);
 
   m_taper_subgrid.resize(m_subgridsize);
@@ -375,7 +381,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   std::cout << std::setprecision(3);
 #endif
 
-  Grid& grid = *m_proxy->get_final_grid();
+  Grid& grid = *allocate_grid();
 
   const int nr_w_layers = grid.get_w_dim();
   const size_t y0 = (m_padded_size - m_size) / 2;
@@ -718,6 +724,9 @@ void BufferSetImpl::get_image(double* image) {
 #if ENABLE_VERBOSE_TIMING
   std::cout << "w-stacking runtime: " << runtime_stacking << std::endl;
 #endif
+
+  // Free grid in proxy
+  m_proxy->free_grid();
 
   // Report overall runtime
   runtime += omp_get_wtime();

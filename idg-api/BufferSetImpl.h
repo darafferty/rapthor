@@ -95,6 +95,9 @@ class BufferSetImpl : public virtual BufferSet {
  private:
   std::unique_ptr<proxy::Proxy> create_proxy(Type architecture);
 
+  std::shared_ptr<idg::Grid> allocate_grid();
+  void free_grid();
+
   std::unique_ptr<proxy::Proxy> m_proxy;
   BufferSetType m_buffer_set_type;
   std::vector<std::unique_ptr<GridderBufferImpl>> m_gridderbuffers;
@@ -113,6 +116,7 @@ class BufferSetImpl : public virtual BufferSet {
   float m_image_size;
   float m_cell_size;
   float m_w_step;
+  int m_nr_w_layers;
   Array1D<float> m_shift;
   size_t m_size;
   size_t m_padded_size;
