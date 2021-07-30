@@ -3,7 +3,7 @@
 
 # Install Python examples
 install(
-  FILES demo-idg.py demo-idg2.py demo-hdf5.py
+  FILES idg-demo.py idg-demo2.py idg-demo-hdf5.py
   PERMISSIONS
     OWNER_READ
     OWNER_WRITE
@@ -13,4 +13,4 @@ install(
     WORLD_READ
     WORLD_EXECUTE
   COMPONENT demo
-  DESTINATION bin/demo/python)
+  DESTINATION bin)

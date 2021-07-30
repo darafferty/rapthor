@@ -10,6 +10,10 @@ option(BUILD_WITH_DEMOS "Build with demos" OFF)
 option(BUILD_WITH_MPI "Build with MPI" OFF)
 option(BUILD_PACKAGES "Build package(s)" OFF)
 option(BUILD_TESTING "" OFF)
+
+set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules"
+                      ${CMAKE_MODULE_PATH})
+
 include(CTest)
 
 # TODO: integer valued compile variables should be handled more elegantly
@@ -132,6 +136,7 @@ add_subdirectory("idg-api")
 if(BUILD_WITH_PYTHON)
   add_subdirectory("idg-cal")
 endif()
+add_subdirectory("doc")
 
 # Write environment-module
 configure_file("${PROJECT_SOURCE_DIR}/cmake/config/environment-module.in"
