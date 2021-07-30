@@ -2,7 +2,7 @@ C Interface
 ===========
 
 The C-interface provides access to the C++ classes through function calls.
-Because C does not have classes they are passes as opaque pointers, i.e.
+Because C does not have classes they are passed as opaque pointers, i.e.
 pointers to an incomplete type.
 
 A proxy instance can be created by a call to one of the constructor functions:
