@@ -13,7 +13,7 @@ WSClean can then be invokes like this ::
 
     wclean -use-idg -size 1024 1024 -scale 10asec example.ms
 
-To learn how to use IDG as a component in your own software the quickest route is to look at the :ref:`python-demo-label`. To run the python demo the IDG library needs to build with python support and demos ::
+To learn how to use IDG as a component in your own software the quickest route is to look at the :ref:`python-demo-label`. To run the python demo the IDG library needs to be built with python support and demos ::
 
     cmake -DBUILD_WITH_PYTHON=ON -DBUILD_WITH_DEMOS=ON
     make
@@ -25,6 +25,4 @@ The demo needs a measurement set. An example measurement set can be downloaded f
  ::
 
     idg-demo.py ~/data/MWA-1052736496-averaged.ms --column DATA
-
-
 

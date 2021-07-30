@@ -28,6 +28,3 @@
    
    indices-and-tables
  
-
-
-

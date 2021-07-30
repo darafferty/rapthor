@@ -23,7 +23,7 @@ left at the default values by a regular user.
 
 All libraries are installed in `'<installpath>/lib'`. The header files in
 `'<installpath>/include'`. The Python module in
-`'<installpath>/lib/python2.7/dist-packages'`. Make sure that your
+`'<installpath>/lib/python3.8/site-packages'`. Make sure that your
 `LD_LIBRARY_PATH` and `PYTHONPATH` are set as appropiate.      
 
 
