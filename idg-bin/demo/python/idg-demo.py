@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.constants as sc
-import pyrap.tables
+import casacore.tables as pt
 import signal
 import argparse
 import time
@@ -52,11 +52,13 @@ use_cuda   = args.use_cuda
 ######################################################################
 # Open measurementset
 ######################################################################
-table = pyrap.tables.taql(f"SELECT * FROM {msin} WHERE ANTENNA1 != ANTENNA2")
+table = pt.taql(f"SELECT * FROM {msin} WHERE ANTENNA1 != ANTENNA2")
+nr_times_ms = len(pt.taql(f"SELECT DISTINCT TIME FROM {msin}"))
+print(f"nr_times_ms: {nr_times_ms}")
 
 # Read parameters from measurementset
-t_ant = pyrap.tables.table(table.getkeyword("ANTENNA"))
-t_spw = pyrap.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
+t_ant = pt.table(table.getkeyword("ANTENNA"))
+t_spw = pt.table(table.getkeyword("SPECTRAL_WINDOW"))
 frequencies = np.asarray(t_spw[0]['CHAN_FREQ'], dtype=np.float32)
 
 nr_baselines     = len(table.iter("TIME").next())
@@ -66,8 +68,10 @@ nr_baselines     = len(table.iter("TIME").next())
 ######################################################################
 nr_stations      = len(t_ant)
 nr_channels      = table[0][datacolumn].shape[0]
-nr_timesteps     = 256
-nr_timeslots     = 1
+nr_timesteps     = min(nr_times_ms, 256) # Number of time steps per call to IDG
+if nr_timesteps > nr_times_ms:
+  nr_timesteps = 2  # This should be much larger...
+nr_timeslots     = 1 # Number of time steps per A-term
 nr_correlations  = 4
 grid_size        = 512
 subgrid_size     = 32
@@ -108,6 +112,7 @@ nr_rows = table.nrows()
 nr_rows_read = 0
 nr_rows_per_batch = nr_baselines * nr_timesteps
 nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
+print(f"nr_rows: {nr_rows}")
 
 # Initialize empty buffers
 uvw          = np.zeros(shape=(nr_baselines, nr_timesteps,3),
@@ -121,10 +126,10 @@ img          = np.zeros(shape=(nr_correlations, grid_size, grid_size),
                         dtype=np.complex64)
 
 iteration = 0
-print(nr_rows_read)
-print(nr_rows_per_batch)
-print(nr_rows_to_process)
-while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
+print(f"nr_rows_read: {nr_rows_read}")
+print(f"nr_rows_per_batch: {nr_rows_per_batch}")
+print(f"nr_rows_to_process: {nr_rows_to_process}")
+while (nr_rows_read + nr_rows_per_batch) <= nr_rows_to_process:
     # Reset buffers
     uvw.fill(0)
     visibilities.fill(0)
