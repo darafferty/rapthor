@@ -45,7 +45,7 @@ else()
     COMMENT "Generating doxygen docs")
 
   set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR})
-  set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR})
+  set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/html)
 
   add_custom_target(
     doc

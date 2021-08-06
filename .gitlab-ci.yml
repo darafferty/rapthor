@@ -104,7 +104,7 @@ idg-test:
   stage: test
   image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
-    - mkdir build
+    - mkdir -p build
     - cd build
     - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
     - make install -j4
@@ -310,3 +310,38 @@ check-stack:
       when: never
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - when: never
+
+build-doc:
+  stage: build
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["build-base"]
+  script:
+    - apt update && apt install -y doxygen
+    - python3 -m pip install sphinx breathe sphinx-rtd-theme myst-parser
+    - mkdir -p build && cd build
+    - cmake -DBUILD_WITH_PYTHON=ON ..
+    - make install -j4
+    - make doc
+  artifacts: # Only for master the docs are published; for branches it may be useful to browse the artifacts
+    paths:
+    - build/doc/html
+  rules:
+    - <<: *if_astron_repo
+
+publish-doc:
+  stage: publish
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["build-doc"]
+  before_script:
+    - apt-get install -y openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | base64 -d | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "dop810,195.169.155.206 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFCjBBJSbZSFmDGJK8Xlxa2gt/4TUqacQAo1kxWVwMeHqqXP0+HasL9tDYe25Ci7/Ug3roQkwoJBzyuCkN+dtr8=" >> ~/.ssh/known_hosts
+  script:
+    - scp -r build/doc/html/* citt@dop810:IDG
+  rules:
+    - <<: *if_not_astron_repo
+      when: never
+    - if: '$CI_COMMIT_BRANCH == "master"'
