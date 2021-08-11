@@ -352,35 +352,6 @@ void GenericOptimized::do_calibrate_finish() {
   m_report->print_visibilities(auxiliary::name_calibrate);
 }
 
-void GenericOptimized::do_calibrate_init_hessian_vector_product() {
-  m_calibrate_state.hessian_vector_product_visibilities =
-      Array3D<Visibility<std::complex<float>>>(m_calibrate_state.nr_baselines,
-                                               m_calibrate_state.nr_timesteps,
-                                               m_calibrate_state.nr_channels);
-  std::memset(m_calibrate_state.hessian_vector_product_visibilities.data(), 0,
-              m_calibrate_state.hessian_vector_product_visibilities.bytes());
-}
-
-void GenericOptimized::do_calibrate_update_hessian_vector_product1(
-    const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    const Array2D<float>& parameter_vector) {
-  // TODO for now call the cpu instance
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-  cpuKernels.run_calibrate_hessian_vector_product1(
-      antenna_nr, aterms, derivative_aterms, parameter_vector);
-}
-
-void GenericOptimized::do_calibrate_update_hessian_vector_product2(
-    const int station_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    Array2D<float>& parameter_vector) {
-  // TODO for now call the cpu instance
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-  cpuKernels.run_calibrate_hessian_vector_product2(
-      station_nr, aterms, derivative_aterms, parameter_vector);
-}
-
 }  // namespace hybrid
 }  // namespace proxy
 }  // namespace idg

@@ -7,13 +7,18 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-#include "Types.h"
-#include "Index.h"
+#include "common/Types.h"
+#include "common/Index.h"
 
-extern "C" {
+namespace idg {
+namespace kernel {
+namespace cpu {
+namespace reference {
+
 void kernel_splitter(const long nr_subgrids, const long grid_size,
                      const int subgrid_size, const idg::Metadata* metadata,
-                     idg::float2* subgrid, const idg::float2* grid) {
+                     std::complex<float>* subgrid,
+                     const std::complex<float>* grid) {
 #pragma omp parallel for
   for (int s = 0; s < nr_subgrids; s++) {
     // Load position in grid
@@ -45,14 +50,14 @@ void kernel_splitter(const long nr_subgrids, const long grid_size,
             subgrid_y >= 1 && subgrid_y < grid_size - subgrid_size) {
           // Compute phasor
           float phase = -M_PI * (x + y - subgrid_size) / subgrid_size;
-          idg::float2 phasor = {cosf(phase), sinf(phase)};
+          std::complex<float> phasor = {cosf(phase), sinf(phase)};
 
           // Set grid value to subgrid
           for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
             int pol_src = index_pol[pol];
             long src_idx = index_grid(grid_size, pol_src, y_src, x_src);
             long dst_idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
-            idg::float2 value = grid[src_idx];
+            std::complex<float> value = grid[src_idx];
             value = negative_w ? conj(value) : value;
             subgrid[dst_idx] = phasor * value;
           }
@@ -61,4 +66,8 @@ void kernel_splitter(const long nr_subgrids, const long grid_size,
     }
   }
 }
-}
+
+}  // end namespace reference
+}  // end namespace cpu
+}  // end namespace kernel
+}  // end namespace idg

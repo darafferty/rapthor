@@ -86,20 +86,6 @@ class Proxy {
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array3D<double>& hessian, Array2D<double>& gradient, double& residual);
 
-  void calibrate_init_hessian_vector_product();
-
-  void calibrate_update_hessian_vector_product1(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      const Array2D<float>& parameter_vector);
-
-  void calibrate_update_hessian_vector_product2(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array2D<float>& parameter_vector);
-
   void calibrate_finish();
 
   //! Applies (inverse) Fourier transform to grid
@@ -121,8 +107,7 @@ class Proxy {
 
   //! Methods for querying and disabling Proxy capabilities
   bool supports_wstacking() {
-    return (!m_disable_wstacking && do_supports_wstack_gridding() &&
-            do_supports_wstack_degridding());
+    return (!m_disable_wstacking && do_supports_wstacking());
   }
 
   void set_disable_wstacking(bool v) { m_disable_wstacking = v; }
@@ -251,20 +236,6 @@ class Proxy {
 
   virtual void do_calibrate_finish() {}
 
-  virtual void do_calibrate_init_hessian_vector_product() {}
-
-  virtual void do_calibrate_update_hessian_vector_product1(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      const Array2D<float>& parameter_vector) {}
-
-  virtual void do_calibrate_update_hessian_vector_product2(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array2D<float>& parameter_vector) {}
-
   //! Applyies (inverse) Fourier transform to grid
   virtual void do_transform(DomainAtoDomainB direction){};
 
@@ -309,8 +280,7 @@ class Proxy {
   std::vector<std::complex<float>> m_avg_aterm_correction;
 
  protected:
-  virtual bool do_supports_wstack_gridding() { return false; }
-  virtual bool do_supports_wstack_degridding() { return false; }
+  virtual bool do_supports_wstacking() { return false; }
   virtual bool do_supports_wtiles() { return false; }
 
   std::shared_ptr<Grid> m_grid = nullptr;

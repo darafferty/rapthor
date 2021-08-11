@@ -72,7 +72,7 @@ inline void compute_reduction_scalar(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, idg::float2 output[NR_POLARIZATIONS]) {
+    const float *phasor_imag, std::complex<float> output[NR_POLARIZATIONS]) {
   float output_xx_real = 0.0f;
   float output_xy_real = 0.0f;
   float output_yx_real = 0.0f;
@@ -116,10 +116,10 @@ inline void compute_reduction_scalar(
   *offset = n;
 
   // Update output
-  output[0] += {output_xx_real, output_xx_imag};
-  output[1] += {output_xy_real, output_xy_imag};
-  output[2] += {output_yx_real, output_yx_imag};
-  output[3] += {output_yy_real, output_yy_imag};
+  output[0] += std::complex<float>(output_xx_real, output_xx_imag);
+  output[1] += std::complex<float>(output_xy_real, output_xy_imag);
+  output[2] += std::complex<float>(output_yx_real, output_yx_imag);
+  output[3] += std::complex<float>(output_yy_real, output_yy_imag);
 }  // end compute_reduction_scalar
 
 inline void compute_reduction_avx_fma(
@@ -128,7 +128,7 @@ inline void compute_reduction_avx_fma(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, idg::float2 output[NR_POLARIZATIONS]) {
+    const float *phasor_imag, std::complex<float> output[NR_POLARIZATIONS]) {
 #if defined(__FMA__)
   const int vector_length = 8;
 
@@ -184,14 +184,14 @@ inline void compute_reduction_avx_fma(
 
   // Reduce all vectors
   if (n - *offset > 0) {
-    output[0].real += _mm256_horizontal_add(output_xx_r);
-    output[1].real += _mm256_horizontal_add(output_xy_r);
-    output[2].real += _mm256_horizontal_add(output_yx_r);
-    output[3].real += _mm256_horizontal_add(output_yy_r);
-    output[0].imag += _mm256_horizontal_add(output_xx_i);
-    output[1].imag += _mm256_horizontal_add(output_xy_i);
-    output[2].imag += _mm256_horizontal_add(output_yx_i);
-    output[3].imag += _mm256_horizontal_add(output_yy_i);
+    output[0] += std::complex<float>(_mm256_horizontal_add(output_xx_r),
+                                     _mm256_horizontal_add(output_xx_i));
+    output[1] += std::complex<float>(_mm256_horizontal_add(output_xy_r),
+                                     _mm256_horizontal_add(output_xy_i));
+    output[2] += std::complex<float>(_mm256_horizontal_add(output_yx_r),
+                                     _mm256_horizontal_add(output_yx_i));
+    output[3] += std::complex<float>(_mm256_horizontal_add(output_yy_r),
+                                     _mm256_horizontal_add(output_yy_i));
   }
 
   *offset += vector_length * ((n - *offset) / vector_length);
@@ -216,7 +216,7 @@ inline void compute_reduction_altivec(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, idg::float2 output[NR_POLARIZATIONS]) {
+    const float *phasor_imag, std::complex<float> output[NR_POLARIZATIONS]) {
 #if defined(__PPC__)
   const int vector_length = 4;
 
@@ -292,7 +292,7 @@ inline void compute_reduction_avx(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, idg::float2 output[NR_POLARIZATIONS]) {
+    const float *phasor_imag, std::complex<float> output[NR_POLARIZATIONS]) {
 #if defined(__AVX__)
   const int vector_length = 8;
 
@@ -348,14 +348,14 @@ inline void compute_reduction_avx(
 
   // Reduce all vectors
   if (n - *offset > 0) {
-    output[0].real += _mm256_horizontal_add(output_xx_r);
-    output[1].real += _mm256_horizontal_add(output_xy_r);
-    output[2].real += _mm256_horizontal_add(output_yx_r);
-    output[3].real += _mm256_horizontal_add(output_yy_r);
-    output[0].imag += _mm256_horizontal_add(output_xx_i);
-    output[1].imag += _mm256_horizontal_add(output_xy_i);
-    output[2].imag += _mm256_horizontal_add(output_yx_i);
-    output[3].imag += _mm256_horizontal_add(output_yy_i);
+    output[0] += std::complex<float>(_mm256_horizontal_add(output_xx_r),
+                                     _mm256_horizontal_add(output_xx_i));
+    output[1] += std::complex<float>(_mm256_horizontal_add(output_xy_r),
+                                     _mm256_horizontal_add(output_xy_i));
+    output[2] += std::complex<float>(_mm256_horizontal_add(output_yx_r),
+                                     _mm256_horizontal_add(output_yx_i));
+    output[3] += std::complex<float>(_mm256_horizontal_add(output_yy_r),
+                                     _mm256_horizontal_add(output_yy_i));
   }
 
   *offset += vector_length * ((n - *offset) / vector_length);
@@ -368,7 +368,7 @@ inline void compute_reduction_avx512(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, idg::float2 output[NR_POLARIZATIONS]) {
+    const float *phasor_imag, std::complex<float> output[NR_POLARIZATIONS]) {
 #if defined(__AVX512F__)
   const int vector_length = 16;
 
@@ -424,14 +424,14 @@ inline void compute_reduction_avx512(
 
   // Reduce all vectors
   if (n - *offset > 0) {
-    output[0].real += _mm512_horizontal_add(output_xx_r);
-    output[1].real += _mm512_horizontal_add(output_xy_r);
-    output[2].real += _mm512_horizontal_add(output_yx_r);
-    output[3].real += _mm512_horizontal_add(output_yy_r);
-    output[0].imag += _mm512_horizontal_add(output_xx_i);
-    output[1].imag += _mm512_horizontal_add(output_xy_i);
-    output[2].imag += _mm512_horizontal_add(output_yx_i);
-    output[3].imag += _mm512_horizontal_add(output_yy_i);
+    output[0] += std::complex<float>(_mm512_horizontal_add(output_xx_r),
+                                     _mm512_horizontal_add(output_xx_i));
+    output[1] += std::complex<float>(_mm512_horizontal_add(output_xy_r),
+                                     _mm512_horizontal_add(output_xy_i));
+    output[2] += std::complex<float>(_mm512_horizontal_add(output_yx_r),
+                                     _mm512_horizontal_add(output_yx_i));
+    output[3] += std::complex<float>(_mm512_horizontal_add(output_yy_r),
+                                     _mm512_horizontal_add(output_yy_i));
   }
 
   *offset += vector_length * ((n - *offset) / vector_length);
@@ -444,11 +444,12 @@ inline void compute_reduction(
     const float *input_xx_imag, const float *input_xy_imag,
     const float *input_yx_imag, const float *input_yy_imag,
     const float *phasor_real, const float *phasor_imag,
-    idg::float2 output[NR_POLARIZATIONS]) {
+    std::complex<float> output[NR_POLARIZATIONS]) {
   int offset = 0;
 
   // Initialize output to zero
-  memset(output, 0, NR_POLARIZATIONS * sizeof(idg::float2));
+  memset(static_cast<void *>(output), 0,
+         NR_POLARIZATIONS * sizeof(std::complex<float>));
 
   // Vectorized loop, 4-elements, altivec
   compute_reduction_altivec(&offset, n, input_xx_real, input_xy_real,

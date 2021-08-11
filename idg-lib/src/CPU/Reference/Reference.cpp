@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "Reference.h"
+#include "ReferenceKernels.h"
+#include "kernels/Kernels.h"
 
 using namespace std;
 
@@ -10,22 +12,12 @@ namespace proxy {
 namespace cpu {
 
 // Constructor
-Reference::Reference(std::vector<std::string> libraries) : CPU(libraries) {
+Reference::Reference() : CPU() {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
-}
 
-std::vector<std::string> Reference::default_libraries() {
-  std::string prefix = "Reference/libcpu-reference-kernel-";
-  std::vector<std::string> libraries;
-  libraries.push_back(prefix + "gridder.so");
-  libraries.push_back(prefix + "degridder.so");
-  libraries.push_back(prefix + "adder.so");
-  libraries.push_back(prefix + "splitter.so");
-  libraries.push_back(prefix + "fft.so");
-  libraries.push_back(prefix + "average-beam.so");
-  return libraries;
+  m_kernels.reset(new kernel::cpu::ReferenceKernels());
 }
 
 }  // namespace cpu

@@ -15,7 +15,7 @@ namespace cpu {
 class CPU : public Proxy {
  public:
   // Constructor
-  CPU(std::vector<std::string> libraries);
+  CPU();
 
   // Disallow assignment and pass-by-value
   CPU& operator=(const CPU& rhs) = delete;
@@ -26,18 +26,18 @@ class CPU : public Proxy {
 
   std::unique_ptr<auxiliary::Memory> allocate_memory(size_t bytes) override;
 
-  virtual bool do_supports_wstack_gridding() override {
-    return kernels.has_adder_wstack();
-  }
-  virtual bool do_supports_wstack_degridding() override {
-    return kernels.has_splitter_wstack();
-  }
+  // virtual bool do_supports_wstack_gridding() override {
+  //  return kernels.has_adder_wstack();
+  //}
+  // virtual bool do_supports_wstack_degridding() override {
+  //  return kernels.has_splitter_wstack();
+  //}
   virtual bool supports_avg_aterm_correction() override { return true; }
-  virtual bool do_supports_wtiles() override {
-    return kernels.has_adder_wtiles() && kernels.has_splitter_wtiles();
-  }
+  // virtual bool do_supports_wtiles() override {
+  //  return kernels.has_adder_wtiles() && kernels.has_splitter_wtiles();
+  //}
 
-  kernel::cpu::InstanceCPU& get_kernels() { return kernels; }
+  std::shared_ptr<kernel::cpu::InstanceCPU> get_kernels() { return m_kernels; }
 
   std::unique_ptr<Plan> make_plan(
       const int kernel_size, const Array1D<float>& frequencies,
@@ -93,20 +93,6 @@ class CPU : public Proxy {
 
   void do_calibrate_finish() override;
 
-  void do_calibrate_init_hessian_vector_product() override;
-
-  void do_calibrate_update_hessian_vector_product1(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      const Array2D<float>& parameter_vector) override;
-
-  void do_calibrate_update_hessian_vector_product2(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array2D<float>& parameter_vector) override;
-
   void do_transform(DomainAtoDomainB direction) override;
 
   void do_compute_avg_beam(
@@ -122,7 +108,7 @@ class CPU : public Proxy {
   void init_wtiles(int grid_size, int subgrid_size, float image_size,
                    float w_step);
 
-  kernel::cpu::InstanceCPU kernels;
+  std::shared_ptr<kernel::cpu::InstanceCPU> m_kernels;
   std::shared_ptr<powersensor::PowerSensor> m_powersensor;
 
   /*
@@ -155,8 +141,6 @@ class CPU : public Proxy {
     std::vector<Array4D<std::complex<float>>> subgrids;
     std::vector<Array4D<std::complex<float>>> phasors;
     std::vector<int> max_nr_timesteps;
-    Array3D<Visibility<std::complex<float>>>
-        hessian_vector_product_visibilities;
   } m_calibrate_state;
 
 };  // end class CPU

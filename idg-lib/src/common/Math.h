@@ -99,7 +99,7 @@ inline FUNCTION_ATTRIBUTES void conjugate(const T *a, T *b) {
   }
 }
 
-FUNCTION_ATTRIBUTES int next_composite(int n) {
+FUNCTION_ATTRIBUTES inline int next_composite(int n) {
   n += (n & 1);
   while (true) {
     int nn = n;

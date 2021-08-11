@@ -13,10 +13,7 @@ namespace cpu {
 class Reference : public CPU {
  public:
   // Constructor
-  Reference(std::vector<std::string> libraries = default_libraries());
-
- private:
-  static std::vector<std::string> default_libraries();
+  Reference();
 
 };  // class Reference
 

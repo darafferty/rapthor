@@ -21,134 +21,128 @@ class InstanceCPU : public KernelsInstance {
   static constexpr int kWTileSize = 128;
 
   // Constructor
-  InstanceCPU(std::vector<std::string> libraries);
+  InstanceCPU();
 
   // Destructor
   virtual ~InstanceCPU();
 
-  void run_gridder(int nr_subgrids, int grid_size, int subgrid_size,
-                   float image_size, float w_step, const float *shift,
-                   int nr_channels, int nr_stations, void *uvw,
-                   void *wavenumbers, void *visibilities, void *spheroidal,
-                   void *aterm, void *aterm_idx, void *avg_aterm,
-                   void *metadata, void *subgrid);
+/*
+ * Main kernels
+ */
+#define KERNEL_GRIDDER_ARGUMENTS                                         \
+  const int nr_subgrids, const long grid_size, const int subgrid_size,   \
+      const float image_size, const float w_step_in_lambda,              \
+      const float *__restrict__ shift, const int nr_channels,            \
+      const int nr_stations, const idg::UVW<float> *uvw,                 \
+      const float *wavenumbers, const std::complex<float> *visibilities, \
+      const float *spheroidal, const std::complex<float> *aterms,        \
+      const int *aterms_indices, const std::complex<float> *avg_aterm,   \
+      const idg::Metadata *metadata, std::complex<float> *subgrid
+  virtual void run_gridder(KERNEL_GRIDDER_ARGUMENTS) = 0;
 
-  void run_degridder(int nr_subgrids, int grid_size, int subgrid_size,
-                     float image_size, float w_step, const float *shift,
-                     int nr_channels, int nr_stations, void *uvw,
-                     void *wavenumbers, void *visibilities, void *spheroidal,
-                     void *aterm, void *aterm_idx, void *metadata,
-                     void *subgrid);
+#define KERNEL_DEGRIDDER_ARGUMENTS                                     \
+  const int nr_subgrids, const long grid_size, const int subgrid_size, \
+      const float image_size, const float w_step_in_lambda,            \
+      const float *__restrict__ shift, const int nr_channels,          \
+      const int nr_stations, const idg::UVW<float> *uvw,               \
+      const float *wavenumbers, std::complex<float> *visibilities,     \
+      const float *spheroidal, const std::complex<float> *aterms,      \
+      const int *aterms_indices, const idg::Metadata *metadata,        \
+      const std::complex<float> *subgrid
+  virtual void run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) = 0;
 
-  void run_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
-                        int nr_channels, int nr_aterms, int subgrid_size,
-                        void *uvw, void *baselines, void *aterms,
-                        void *aterms_offsets, void *weights,
-                        void *average_beam);
+#define KERNEL_FFT_ARGUMENTS \
+  long grid_size, long size, long batch, std::complex<float> *data, int sign
+  virtual void run_fft(KERNEL_FFT_ARGUMENTS) = 0;
 
-  void run_calibrate(int nr_subgrids, int grid_size, int subgrid_size,
-                     float image_size, float w_step, const float *shift,
-                     int max_nr_timesteps, int nr_channels, int nr_terms,
-                     int nr_stations, int nr_time_slots, const UVW<float> *uvw,
-                     const float *wavenumbers, float2 *visibilities,
-                     const float *weights, const float2 *aterm,
-                     const float2 *aterm_derivative, const int *aterms_indices,
-                     const Metadata *metadata, const float2 *subgrid,
-                     const float2 *phasors, double *hessian, double *gradient,
-                     double *residual);
+#define KERNEL_SUBGRID_FFT_ARGUMENTS \
+  long grid_size, long size, long batch, std::complex<float> *data, int sign
+  virtual void run_subgrid_fft(KERNEL_SUBGRID_FFT_ARGUMENTS) = 0;
 
-  void run_calibrate_hessian_vector_product1(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>> &aterms,
-      const Array4D<Matrix2x2<std::complex<float>>> &derivative_aterms,
-      const Array2D<float> &parameter_vector);
+#define KERNEL_ADDER_ARGUMENTS                                           \
+  const long nr_subgrids, const long grid_size, const int subgrid_size,  \
+      const idg::Metadata *metadata, const std::complex<float> *subgrid, \
+      std::complex<float> *grid
+  virtual void run_adder(KERNEL_ADDER_ARGUMENTS) = 0;
 
-  void run_calibrate_hessian_vector_product2(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>> &aterms,
-      const Array4D<Matrix2x2<std::complex<float>>> &derivative_aterms,
-      Array2D<float> &parameter_vector);
+#define KERNEL_SPLITTER_ARGUMENTS                                       \
+  const long nr_subgrids, const long grid_size, const int subgrid_size, \
+      const idg::Metadata *metadata, std::complex<float> *subgrid,      \
+      const std::complex<float> *grid
+  virtual void run_splitter(KERNEL_SPLITTER_ARGUMENTS) = 0;
 
-  void run_phasor(int nr_subgrids, int grid_size, int subgrid_size,
-                  float image_size, float w_step, const float *shift,
-                  int max_nr_timesteps, int nr_channels, void *uvw,
-                  void *wavenumbers, void *metadata, void *phasors);
+#define KERNEL_AVERAGE_BEAM_ARGUMENTS                                        \
+  const unsigned int nr_baselines, const unsigned int nr_antennas,           \
+      const unsigned int nr_timesteps, const unsigned int nr_channels,       \
+      const unsigned int nr_aterms, const unsigned int subgrid_size,         \
+      const idg::UVW<float> *uvw, const idg::Baseline *baselines,            \
+      const std::complex<float> *aterms, const unsigned int *aterms_offsets, \
+      const float *weights, std::complex<float> *average_beam
+  virtual void run_average_beam(KERNEL_AVERAGE_BEAM_ARGUMENTS) = 0;
 
-  void run_fft(int grid_size, int size, int batch, void *data, int direction);
+/*
+ * Calibration
+ */
+#define KERNEL_CALIBRATE_ARGUMENTS                                             \
+  int nr_subgrids, long grid_size, int subgrid_size, float image_size,         \
+      float w_step, const float *shift, int max_nr_timesteps, int nr_channels, \
+      int nr_terms, int nr_stations, int nr_time_slots, const UVW<float> *uvw, \
+      const float *wavenumbers, std::complex<float> *visibilities,             \
+      const float *weights, const std::complex<float> *aterm,                  \
+      const std::complex<float> *aterm_derivative, const int *aterms_indices,  \
+      const Metadata *metadata, const std::complex<float> *subgrid,            \
+      const std::complex<float> *phasors, double *hessian, double *gradient,   \
+      double *residual
+  virtual void run_calibrate(KERNEL_CALIBRATE_ARGUMENTS){};
 
-  void run_subgrid_fft(int grid_size, int size, int batch, void *data,
-                       int direction);
+#define KERNEL_CALIBRATE_PHASOR_ARGUMENTS                                      \
+  int nr_subgrids, int grid_size, int subgrid_size, float image_size,          \
+      float w_step, const float *shift, int max_nr_timesteps, int nr_channels, \
+      const UVW<float> *uvw, const float *wavenumbers,                         \
+      const idg::Metadata *metadata, std::complex<float> *phasors
+  virtual void run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS){};
 
-  void run_adder(int nr_subgrids, int grid_size, int subgrid_size,
-                 void *metadata, void *subgrid, void *grid);
+  /*
+   * W-Stacking
+   */
+  virtual bool do_supports_wstacking() { return false; };
 
-  void run_splitter(int nr_subgrids, int grid_size, int subgrid_size,
-                    void *metadata, void *subgrid, void *grid);
+#define KERNEL_ADDER_WSTACK_ARGUMENTS                                    \
+  int nr_subgrids, long grid_size, int subgrid_size,                     \
+      const idg::Metadata *metadata, const std::complex<float> *subgrid, \
+      std::complex<float> *grid
+  virtual void run_adder_wstack(KERNEL_ADDER_WSTACK_ARGUMENTS){};
 
-  void run_adder_wstack(int nr_subgrids, int grid_size, int subgrid_size,
-                        void *metadata, void *subgrid, void *grid);
+#define KERNEL_SPLITTER_WSTACK_ARGUMENTS                           \
+  int nr_subgrids, long grid_size, int subgrid_size,               \
+      const idg::Metadata *metadata, std::complex<float> *subgrid, \
+      const std::complex<float> *grid
+  virtual void run_splitter_wstack(KERNEL_SPLITTER_WSTACK_ARGUMENTS){};
 
-  void run_splitter_wstack(int nr_subgrids, int grid_size, int subgrid_size,
-                           void *metadata, void *subgrid, void *grid);
+  /*
+   * W-Tiling
+   */
+  virtual bool do_supports_wtiling() { return false; };
 
-  void run_adder_subgrids_to_wtiles(int nr_subgrids, int grid_size,
-                                    int subgrid_size, void *metadata,
-                                    void *subgrid);
+#define KERNEL_ADDER_TILES_TO_GRID_ARGUMENTS                       \
+  int grid_size, int subgrid_size, float image_size, float w_step, \
+      const float *shift, int nr_tiles, int *tile_ids,             \
+      const idg::Coordinate *tile_coordinates, std::complex<float> *grid
+  virtual void run_adder_tiles_to_grid(KERNEL_ADDER_TILES_TO_GRID_ARGUMENTS){};
 
-  void run_splitter_subgrids_from_wtiles(int nr_subgrids, int grid_size,
-                                         int subgrid_size, void *metadata,
-                                         void *subgrid);
+#define KERNEL_ADDER_WTILES_ARGUMENTS                                 \
+  int nr_subgrids, int grid_size, int subgrid_size, float image_size, \
+      float w_step, const float *shift, int subgrid_offset,           \
+      WTileUpdateSet &wtile_flush_set, const idg::Metadata *metadata, \
+      const std::complex<float> *subgrid, std::complex<float> *grid
+  virtual void run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS){};
 
-  void run_adder_wtiles_to_grid(int grid_size, int subgrid_size,
-                                float image_size, float w_step,
-                                const float *shift, int nr_tiles, int *tile_ids,
-                                idg::Coordinate *tile_coordinates,
-                                std::complex<float> *grid);
-
-  void run_adder_wtiles_to_grid(int nr_tiles, int wtile_size,
-                                int w_padded_tile_size, int grid_size,
-                                idg::Coordinate *tile_coordinates,
-                                std::complex<float> *tiles,
-                                std::complex<float> *grid);
-
-  void run_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
-                                     float image_size, float w_step,
-                                     const float *shift, int nr_tiles,
-                                     int *tile_ids,
-                                     Coordinate *tile_coordinates,
-                                     std::complex<float> *grid);
-
-  void run_splitter_wtiles_to_grid(int nr_tiles, int wtile_size,
-                                   int w_padded_tile_size, int grid_size,
-                                   idg::Coordinate *tile_coordinates,
-                                   std::complex<float> *tiles,
-                                   std::complex<float> *grid);
-
-  void run_adder_wtiles(unsigned int nr_subgrids, unsigned int grid_size,
-                        unsigned int subgrid_size, float image_size,
-                        float w_step, const float *shift, int subgrid_offset,
-                        WTileUpdateSet &wtile_flush_set, void *metadata,
-                        void *subgrid, std::complex<float> *grid);
-
-  void run_splitter_wtiles(int nr_subgrids, int grid_size, int subgrid_size,
-                           float image_size, float w_step, const float *shift,
-                           int subgrid_offset,
-                           WTileUpdateSet &wtile_initialize_set, void *metadata,
-                           void *subgrid, std::complex<float> *grid);
-
-  bool has_adder_wstack() { return (function_adder_wstack != nullptr); }
-
-  bool has_splitter_wstack() { return (function_splitter_wstack != nullptr); }
-
-  bool has_adder_wtiles() {
-    return (function_adder_subgrids_to_wtiles != nullptr) &&
-           (function_adder_wtiles_to_grid != nullptr);
-  }
-
-  bool has_splitter_wtiles() {
-    return (function_splitter_wtiles_from_grid != nullptr) &&
-           (function_splitter_subgrids_from_wtiles != nullptr);
-  }
+#define KERNEL_SPLITTER_WTILES_ARGUMENTS                                   \
+  int nr_subgrids, int grid_size, int subgrid_size, float image_size,      \
+      float w_step, const float *shift, int subgrid_offset,                \
+      WTileUpdateSet &wtile_initialize_set, const idg::Metadata *metadata, \
+      std::complex<float> *subgrid, const std::complex<float> *grid
+  virtual void run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS){};
 
   /**
    * Creates the buffer to store the wtiles
@@ -160,63 +154,11 @@ class InstanceCPU : public KernelsInstance {
    * @param subgrid_size size of the subgrids
    * @return The number of wtiles
    */
-  virtual size_t init_wtiles(size_t grid_size, int subgrid_size);
+  virtual size_t init_wtiles(size_t grid_size, int subgrid_size) { return 0; };
 
  protected:
-  void compile(Compiler compiler, Compilerflags flags);
-  void load_shared_objects(std::vector<std::string> libraries);
-  void load_kernel_funcions();
-
-  std::vector<runtime::Module *> modules;
-
   idg::Array1D<std::complex<float>> m_wtiles_buffer;
-
-  std::unique_ptr<runtime::Function> function_gridder;
-  std::unique_ptr<runtime::Function> function_degridder;
-  std::unique_ptr<runtime::Function> function_calibrate;
-  std::unique_ptr<runtime::Function> function_calibrate_hessian_vector_product1;
-  std::unique_ptr<runtime::Function> function_calibrate_hessian_vector_product2;
-  std::unique_ptr<runtime::Function> function_phasor;
-  std::unique_ptr<runtime::Function> function_fft;
-  std::unique_ptr<runtime::Function> function_adder;
-  std::unique_ptr<runtime::Function> function_splitter;
-  std::unique_ptr<runtime::Function> function_adder_wstack;
-  std::unique_ptr<runtime::Function> function_splitter_wstack;
-  std::unique_ptr<runtime::Function> function_adder_wtiles_to_grid;
-  std::unique_ptr<runtime::Function> function_splitter_wtiles_from_grid;
-  std::unique_ptr<runtime::Function> function_adder_subgrids_to_wtiles;
-  std::unique_ptr<runtime::Function> function_splitter_subgrids_from_wtiles;
-  std::unique_ptr<runtime::Function> function_tiles_to_grid;
-  std::unique_ptr<runtime::Function> function_tiles_from_grid;
-  std::unique_ptr<runtime::Function> function_average_beam;
 };
-
-// Kernel names
-static const std::string name_gridder = "kernel_gridder";
-static const std::string name_degridder = "kernel_degridder";
-static const std::string name_calibrate = "kernel_calibrate";
-static const std::string name_calibrate_hessian_vector_product1 =
-    "kernel_calibrate_hessian_vector_product1";
-static const std::string name_calibrate_hessian_vector_product2 =
-    "kernel_calibrate_hessian_vector_product2";
-static const std::string name_phasor = "kernel_phasor";
-static const std::string name_adder = "kernel_adder";
-static const std::string name_splitter = "kernel_splitter";
-static const std::string name_adder_wstack = "kernel_adder_wstack";
-static const std::string name_splitter_wstack = "kernel_splitter_wstack";
-static const std::string name_adder_subgrids_to_wtiles =
-    "kernel_adder_subgrids_to_wtiles";
-static const std::string name_adder_wtiles_to_grid =
-    "kernel_adder_wtiles_to_grid";
-static const std::string name_splitter_subgrids_from_wtiles =
-    "kernel_splitter_subgrids_from_wtiles";
-static const std::string name_splitter_wtiles_from_grid =
-    "kernel_splitter_wtiles_from_grid";
-static const std::string name_tiles_to_grid = "kernel_tiles_to_grid";
-static const std::string name_tiles_from_grid = "kernel_tiles_from_grid";
-static const std::string name_fft = "kernel_fft";
-static const std::string name_scaler = "kernel_scaler";
-static const std::string name_average_beam = "kernel_average_beam";
 
 }  // end namespace cpu
 }  // end namespace kernel

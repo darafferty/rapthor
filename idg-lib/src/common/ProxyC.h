@@ -127,22 +127,6 @@ void Proxy_calibrate_update(struct Proxy* p, const unsigned int station_nr,
  */
 void Proxy_calibrate_finish(struct Proxy* p);
 
-void Proxy_calibrate_init_hessian_vector_product(struct Proxy* p);
-
-void Proxy_calibrate_hessian_vector_product1(
-    struct Proxy* p, const unsigned int station_nr,
-    const unsigned int subgrid_size, const unsigned int nr_stations,
-    const unsigned int nr_time_slots, const unsigned int nr_terms,
-    float complex* aterms, float complex* aterm_derivatives,
-    float* parameter_vector);
-
-void Proxy_calibrate_update_hessian_vector_product2(
-    struct Proxy* p, const unsigned int station_nr,
-    const unsigned int subgrid_size, const unsigned int nr_stations,
-    const unsigned int nr_time_slots, const unsigned int nr_terms,
-    float complex* aterms, float complex* aterm_derivatives,
-    float* parameter_vector);
-
 /**
  * Fourier transformation
  *
