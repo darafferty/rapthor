@@ -28,7 +28,7 @@ void GenericOptimized::run_degridding(
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
 
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+  auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
@@ -61,7 +61,7 @@ void GenericOptimized::run_degridding(
   // Performance measurements
   m_report->initialize(nr_channels, subgrid_size, grid_size);
   device.set_report(m_report);
-  cpuKernels.set_report(m_report);
+  cpuKernels->set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -101,9 +101,9 @@ void GenericOptimized::run_degridding(
     auto current_time_offset = jobs[job_id].current_time_offset;
     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
     auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-    void* metadata_ptr = jobs[job_id].metadata_ptr;
-    void* uvw_ptr = jobs[job_id].uvw_ptr;
-    void* visibilities_ptr = jobs[job_id].visibilities_ptr;
+    auto metadata_ptr = jobs[job_id].metadata_ptr;
+    auto uvw_ptr = jobs[job_id].uvw_ptr;
+    auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
@@ -130,8 +130,8 @@ void GenericOptimized::run_degridding(
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
       auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      void* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      void* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
 
       // Copy input data to device
       auto sizeof_uvw_next =
@@ -166,18 +166,18 @@ void GenericOptimized::run_degridding(
                                  subgrid_size, image_size, w_step, shift,
                                  wtile_initialize_set, d_subgrids, d_metadata);
       } else {
-        cpuKernels.run_splitter_wtiles(
+        cpuKernels->run_splitter_wtiles(
             current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
             shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
             h_subgrids, m_grid->data());
       }
     } else if (w_step != 0.0) {
-      cpuKernels.run_splitter_wstack(current_nr_subgrids, grid_size,
-                                     subgrid_size, metadata_ptr, h_subgrids,
-                                     m_grid->data());
+      cpuKernels->run_splitter_wstack(current_nr_subgrids, grid_size,
+                                      subgrid_size, metadata_ptr, h_subgrids,
+                                      m_grid->data());
     } else {
-      cpuKernels.run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                              metadata_ptr, h_subgrids, m_grid->data());
+      cpuKernels->run_splitter(current_nr_subgrids, grid_size, subgrid_size,
+                               metadata_ptr, h_subgrids, m_grid->data());
     }
 
     if (m_disable_wtiling || m_disable_wtiling_gpu) {

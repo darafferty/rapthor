@@ -111,7 +111,7 @@ void UnifiedOptimized::run_gridding(
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
 
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+  auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
@@ -139,7 +139,7 @@ void UnifiedOptimized::run_gridding(
   // Performance measurements
   m_report->initialize(nr_channels, subgrid_size, grid_size);
   device.set_report(m_report);
-  cpuKernels.set_report(m_report);
+  cpuKernels->set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -180,9 +180,9 @@ void UnifiedOptimized::run_gridding(
     auto current_time_offset = jobs[job_id].current_time_offset;
     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
     auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-    void* metadata_ptr = jobs[job_id].metadata_ptr;
-    void* uvw_ptr = jobs[job_id].uvw_ptr;
-    void* visibilities_ptr = jobs[job_id].visibilities_ptr;
+    auto metadata_ptr = jobs[job_id].metadata_ptr;
+    auto uvw_ptr = jobs[job_id].uvw_ptr;
+    auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
@@ -215,9 +215,9 @@ void UnifiedOptimized::run_gridding(
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
       auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      void* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      void* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
-      void* visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      auto visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
 
       // Copy input data to device
       auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
@@ -326,7 +326,7 @@ void UnifiedOptimized::run_degridding(
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
 
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
+  auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
   auto nr_baselines = visibilities.get_z_dim();
@@ -359,7 +359,7 @@ void UnifiedOptimized::run_degridding(
   // Performance measurements
   m_report->initialize(nr_channels, subgrid_size, grid_size);
   device.set_report(m_report);
-  cpuKernels.set_report(m_report);
+  cpuKernels->set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -399,9 +399,9 @@ void UnifiedOptimized::run_degridding(
     auto current_time_offset = jobs[job_id].current_time_offset;
     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
     auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-    void* metadata_ptr = jobs[job_id].metadata_ptr;
-    void* uvw_ptr = jobs[job_id].uvw_ptr;
-    void* visibilities_ptr = jobs[job_id].visibilities_ptr;
+    auto metadata_ptr = jobs[job_id].metadata_ptr;
+    auto uvw_ptr = jobs[job_id].uvw_ptr;
+    auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
@@ -428,8 +428,8 @@ void UnifiedOptimized::run_degridding(
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
       auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      void* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      void* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
 
       // Copy input data to device
       auto sizeof_uvw_next =

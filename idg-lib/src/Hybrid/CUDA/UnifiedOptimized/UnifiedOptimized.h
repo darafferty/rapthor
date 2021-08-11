@@ -20,7 +20,7 @@ class UnifiedOptimized : public cuda::CUDA {
   UnifiedOptimized();
   ~UnifiedOptimized();
 
-  virtual bool do_supports_wtiles() override { return true; }
+  virtual bool do_supports_wtiling() override { return true; }
 
   virtual std::shared_ptr<Grid> allocate_grid(size_t nr_w_layers,
                                               size_t nr_correlations,

@@ -18,11 +18,8 @@ class GenericOptimized : public cuda::CUDA {
   GenericOptimized();
   ~GenericOptimized();
 
-  virtual bool do_supports_wstack_gridding() {
-    return cpuProxy->do_supports_wstack_gridding();
-  }
-  virtual bool do_supports_wstack_degridding() {
-    return cpuProxy->do_supports_wstack_degridding();
+  virtual bool do_supports_wstacking() {
+    return cpuProxy->do_supports_wstacking();
   }
 
   virtual bool do_supports_wtiling() override {

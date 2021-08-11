@@ -108,9 +108,9 @@ void Generic::run_gridding(
     auto current_time_offset = jobs[job_id].current_time_offset;
     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
     auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-    void* metadata_ptr = jobs[job_id].metadata_ptr;
-    void* uvw_ptr = jobs[job_id].uvw_ptr;
-    void* visibilities_ptr = jobs[job_id].visibilities_ptr;
+    auto metadata_ptr = jobs[job_id].metadata_ptr;
+    auto uvw_ptr = jobs[job_id].uvw_ptr;
+    auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
@@ -143,9 +143,9 @@ void Generic::run_gridding(
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
       auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      void* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      void* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
-      void* visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      auto visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
 
       // Copy input data to device
       auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
@@ -332,9 +332,9 @@ void Generic::run_degridding(
     auto current_time_offset = jobs[job_id].current_time_offset;
     auto current_nr_baselines = jobs[job_id].current_nr_baselines;
     auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
-    void* metadata_ptr = jobs[job_id].metadata_ptr;
-    void* uvw_ptr = jobs[job_id].uvw_ptr;
-    void* visibilities_ptr = jobs[job_id].visibilities_ptr;
+    auto metadata_ptr = jobs[job_id].metadata_ptr;
+    auto uvw_ptr = jobs[job_id].uvw_ptr;
+    auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
@@ -361,8 +361,8 @@ void Generic::run_degridding(
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
       auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      void* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      void* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
 
       // Copy input data to device
       auto sizeof_uvw_next =
