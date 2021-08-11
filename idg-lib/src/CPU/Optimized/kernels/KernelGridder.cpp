@@ -101,7 +101,7 @@ void kernel_gridder(
     size_t subgrid_idx = index_subgrid(subgrid_size, s, 0, 0, 0);
     std::complex<float>* subgrid_ptr = &subgrid[subgrid_idx];
     memset(static_cast<void*>(subgrid_ptr), 0,
-           NR_POLARIZATIONS * nr_pixels * sizeof(idg::float2));
+           NR_POLARIZATIONS * nr_pixels * sizeof(std::complex<float>));
 
     // Load metadata
     const idg::Metadata m = metadata[s];
@@ -134,7 +134,7 @@ void kernel_gridder(
 
     // Initialize local subgrid
     memset(static_cast<void*>(subgrid_local), 0,
-           NR_POLARIZATIONS * nr_pixels * sizeof(idg::float2));
+           NR_POLARIZATIONS * nr_pixels * sizeof(std::complex<float>));
 
     // Initialize aterm index to first timestep
     int aterm_idx_previous = aterms_indices[time_offset_global];
@@ -185,7 +185,7 @@ void kernel_gridder(
 
         // Reset local subgrid for new aterms
         memset(static_cast<void*>(subgrid_local), 0,
-               NR_POLARIZATIONS * nr_pixels * sizeof(idg::float2));
+               NR_POLARIZATIONS * nr_pixels * sizeof(std::complex<float>));
 
         // Update aterm indices
         aterm_idx_previous = aterm_idx_current;

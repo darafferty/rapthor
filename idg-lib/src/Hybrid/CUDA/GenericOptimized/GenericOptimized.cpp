@@ -120,7 +120,7 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
     // Compute the size of one tile
     int tile_size = m_tile_size + subgrid_size;
     size_t sizeof_tile =
-        NR_CORRELATIONS * tile_size * tile_size * sizeof(idg::float2);
+        NR_CORRELATIONS * tile_size * tile_size * sizeof(std::complex<float>);
 
     // Initialize patches
     m_buffers_wtiling.d_patches.resize(m_nr_patches_batch);
