@@ -54,7 +54,7 @@ class BufferImpl : public virtual Buffer {
   void set_stations(size_t nrStations);
   size_t get_stations() const;
 
-  size_t get_nr_polarizations() const;
+  size_t get_nr_correlations() const;
 
   void set_image(double* image) {}
 

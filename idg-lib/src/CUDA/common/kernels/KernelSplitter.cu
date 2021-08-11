@@ -33,8 +33,8 @@ __global__ void kernel_splitter(
     bool negative_w = subgrid_w < 0;
 
     // Determine polarization index
-    const int index_pol_default[NR_POLARIZATIONS]    = {0, 1, 2, 3};
-    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+    const int index_pol_default[NR_CORRELATIONS]    = {0, 1, 2, 3};
+    const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
     int *index_pol = (int *) (negative_w ? index_pol_default : index_pol_transposed);
 
     // Iterate all pixels in subgrid
@@ -59,7 +59,7 @@ __global__ void kernel_splitter(
 
             // Set grid value to subgrid
             #pragma unroll 4
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
                 int pol_src = index_pol[pol];
                 long src_idx = enable_tiling ?
                     index_grid_tiling(TILE_SIZE_GRID, grid_size, pol_src, y_src, x_src) :

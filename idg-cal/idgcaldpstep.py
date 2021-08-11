@@ -355,7 +355,7 @@ class IDGCalDPStep(dp3.Step):
 
         # parameters has shape (nr_stations, nr_coeffs) for amplitude and (nr_stations, nr_phase_updates, nr_coeffs)
         # for amplitude
-        # amplitude/phase basis (Bampl/Bphase) (nr_coeffs, subgridsize, subgridzise, nr_polarizations)
+        # amplitude/phase basis (Bampl/Bphase) (nr_coeffs, subgridsize, subgridzise, nr_correlations)
         aterm_ampl = np.tensordot(
             parameters[:, : self.ampl_poly.nr_coeffs], self.Bampl, axes=((1,), (0,))
         )
@@ -582,7 +582,7 @@ class IDGCalDPStep(dp3.Step):
         Returns
         -------
         np.ndarray
-            Array containing the complex exponential, shape is (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+            Array containing the complex exponential, shape is (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
         """
         # Result is repeated nr_phase_updates times to match complex exponential term
         return np.repeat(
@@ -609,7 +609,7 @@ class IDGCalDPStep(dp3.Step):
         Returns
         -------
         np.ndarray
-            Array containing the complex exponential, shape is (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+            Array containing the complex exponential, shape is (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
         """
         return np.exp(
             1j
@@ -634,19 +634,19 @@ def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
     Parameters
     ----------
     aterm_ampl : np.ndarray
-        Amplitude tensor product B_a * x_a, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+        Amplitude tensor product B_a * x_a, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
     aterm_phase : np.ndarray
-        Phase tensor product B_p * x_p, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_polarizations)
+        Phase tensor product B_p * x_p, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
     B_a : np.ndarray
-        Expanded (amplitude) basis functions, should have shape (nr_ampl_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+        Expanded (amplitude) basis functions, should have shape (nr_ampl_coeffs, subgrid_size, subgrid_size, nr_correlations)
     B_p : np.ndarray
-        Expande (phase) basis functions, should have shape (nr_phase_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+        Expande (phase) basis functions, should have shape (nr_phase_coeffs, subgrid_size, subgrid_size, nr_correlations)
 
     Returns
     -------
     np.ndarray
         Column stacked derivative [\partial g/ \partial x_a, \partial g / \partial x_p]^T
-        Output has shape (nr_phase_updates, nr_coeffs, subgrid_size, subgrid_size, nr_polarizations)
+        Output has shape (nr_phase_updates, nr_coeffs, subgrid_size, subgrid_size, nr_correlations)
         where nr_coeffs = len(x_a) + len(x_p)
     """
     # new-axis is introduced at "stations" axis

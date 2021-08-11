@@ -78,7 +78,7 @@ InstanceCUDA::~InstanceCUDA() {
 std::string InstanceCUDA::get_compiler_flags() {
   // Constants
   std::stringstream flags_constants;
-  flags_constants << "-DNR_POLARIZATIONS=" << NR_CORRELATIONS;
+  flags_constants << "-DNR_CORRELATIONS=" << NR_CORRELATIONS;
 
   // CUDA specific flags
   std::stringstream flags_cuda;

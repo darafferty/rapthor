@@ -26,15 +26,15 @@ void kernel_average_beam(const unsigned int nr_baselines,
                          std::complex<float> *__restrict__ average_beam_) {
   // Define multidimensional types
   typedef std::complex<float> AverageBeam[subgrid_size * subgrid_size]
-                                         [NR_POLARIZATIONS][NR_POLARIZATIONS];
+                                         [NR_CORRELATIONS][NR_CORRELATIONS];
   typedef std::complex<float> ATerms[nr_aterms][nr_antennas][subgrid_size]
-                                    [subgrid_size][NR_POLARIZATIONS];
+                                    [subgrid_size][NR_CORRELATIONS];
   typedef unsigned int ATermOffsets[nr_aterms + 1];
   typedef unsigned int StationPairs[nr_baselines][2];
   typedef float UVW[nr_baselines][nr_timesteps][3];
   typedef float Weights[nr_baselines][nr_timesteps][nr_channels]
-                       [NR_POLARIZATIONS];
-  typedef float SumOfWeights[nr_baselines][nr_aterms][NR_POLARIZATIONS];
+                       [NR_CORRELATIONS];
+  typedef float SumOfWeights[nr_baselines][nr_aterms][NR_CORRELATIONS];
 
   // Cast class members to multidimensional types used in this method
   const ATerms &aterms = *reinterpret_cast<const ATerms *>(aterms_);
@@ -48,7 +48,7 @@ void kernel_average_beam(const unsigned int nr_baselines,
 
   // Initialize sum of weights
   std::vector<float> sum_of_weights_buffer(
-      nr_baselines * nr_aterms * NR_POLARIZATIONS, 0.0);
+      nr_baselines * nr_aterms * NR_CORRELATIONS, 0.0);
   SumOfWeights &sum_of_weights =
       *((SumOfWeights *)sum_of_weights_buffer.data());
 
@@ -64,7 +64,7 @@ void kernel_average_beam(const unsigned int nr_baselines,
         if (std::isinf(uvw[bl][t][0])) continue;
 
         for (unsigned int ch = 0; ch < nr_channels; ch++) {
-          for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
             sum_of_weights[bl][n][pol] += weights[bl][t][ch][pol];
           }
         }
@@ -75,7 +75,7 @@ void kernel_average_beam(const unsigned int nr_baselines,
 // Compute average beam for all pixels
 #pragma omp parallel for
   for (unsigned int i = 0; i < subgrid_size * subgrid_size; i++) {
-    std::complex<double> sum[NR_POLARIZATIONS][NR_POLARIZATIONS];
+    std::complex<double> sum[NR_CORRELATIONS][NR_CORRELATIONS];
 
     // Loop over aterms
     for (unsigned int n = 0; n < nr_aterms; n++) {
@@ -120,15 +120,15 @@ void kernel_average_beam(const unsigned int nr_baselines,
         kp[3 + 8] = aYY2 * aYX1;
         kp[3 + 12] = aYY2 * aYY1;
 
-        for (int ii = 0; ii < NR_POLARIZATIONS; ii++) {
-          for (int jj = 0; jj < NR_POLARIZATIONS; jj++) {
+        for (int ii = 0; ii < NR_CORRELATIONS; ii++) {
+          for (int jj = 0; jj < NR_CORRELATIONS; jj++) {
             // Load weights for current baseline, aterm
             float *weights = &sum_of_weights[bl][n][0];
 
             // Compute real and imaginary part of update separately
             float update_real = 0;
             float update_imag = 0;
-            for (int p = 0; p < NR_POLARIZATIONS; p++) {
+            for (int p = 0; p < NR_CORRELATIONS; p++) {
               float kp1_real = kp[4 * ii + p].real();
               float kp1_imag = -kp[4 * ii + p].imag();
               float kp2_real = kp[4 * jj + p].real();

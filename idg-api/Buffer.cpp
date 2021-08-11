@@ -101,7 +101,7 @@ size_t BufferImpl::get_frequencies_size() const {
   return m_frequencies.get_x_dim();
 }
 
-size_t BufferImpl::get_nr_polarizations() const { return m_nrPolarizations; }
+size_t BufferImpl::get_nr_correlations() const { return m_nrPolarizations; }
 
 // Plan creation and helper functions
 
@@ -212,8 +212,8 @@ int Buffer_get_frequencies_size(idg::api::BufferImpl* p) {
   return p->get_frequencies_size();
 }
 
-int Buffer_get_nr_polarizations(idg::api::BufferImpl* p) {
-  return p->get_nr_polarizations();
+int Buffer_get_nr_correlations(idg::api::BufferImpl* p) {
+  return p->get_nr_correlations();
 }
 
 double Buffer_get_image_size(idg::api::BufferImpl* p) {

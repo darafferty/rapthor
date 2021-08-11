@@ -68,7 +68,7 @@ void GenericOptimized::do_calibrate_init(
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     // Allocate subgrids for current antenna
     unsigned int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
-    Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations,
+    Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_correlations,
                                            subgrid_size, subgrid_size);
 
     if (nr_subgrids > max_nr_subgrids) {
@@ -164,7 +164,7 @@ void GenericOptimized::do_calibrate_init(
 
     // Apply spheroidal
     for (int i = 0; i < (int)nr_subgrids; i++) {
-      for (int pol = 0; pol < nr_polarizations; pol++) {
+      for (int pol = 0; pol < nr_correlations; pol++) {
         for (int j = 0; j < subgrid_size; j++) {
           for (int k = 0; k < subgrid_size; k++) {
             int y = (j + (subgrid_size / 2)) % subgrid_size;

@@ -20,7 +20,7 @@ void kernel_adder(const long nr_subgrids, const long grid_size,
                   const std::complex<float>* subgrid,
                   std::complex<float>* grid) {
 #pragma omp parallel for
-  for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+  for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
     for (int s = 0; s < nr_subgrids; s++) {
       // Load subgrid coordinates
       int subgrid_x = metadata[s].coordinate.x;
@@ -36,8 +36,8 @@ void kernel_adder(const long nr_subgrids, const long grid_size,
       }
 
       // Determine polarization index
-      const int index_pol_default[NR_POLARIZATIONS] = {0, 1, 2, 3};
-      const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+      const int index_pol_default[NR_CORRELATIONS] = {0, 1, 2, 3};
+      const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
       int* index_pol =
           (int*)(negative_w ? index_pol_default : index_pol_transposed);
 

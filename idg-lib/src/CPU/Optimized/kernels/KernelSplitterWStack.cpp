@@ -41,8 +41,8 @@ void kernel_splitter_wstack(const int nr_subgrids, const long grid_size,
     int w_layer = negative_w ? -subgrid_w - 1 : subgrid_w;
 
     // Determine polarization index
-    const int index_pol_default[NR_POLARIZATIONS] = {0, 1, 2, 3};
-    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+    const int index_pol_default[NR_CORRELATIONS] = {0, 1, 2, 3};
+    const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
     int* index_pol =
         (int*)(negative_w ? index_pol_default : index_pol_transposed);
 
@@ -63,7 +63,7 @@ void kernel_splitter_wstack(const int nr_subgrids, const long grid_size,
           std::complex<float> phasor = {phasor_real[y][x], phasor_imag[y][x]};
 
           // Set grid value to subgrid
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             int pol_src = index_pol[pol];
             long src_idx =
                 index_grid(grid_size, w_layer, pol_src, y_src, x_src);

@@ -275,7 +275,7 @@ class Proxy {
 
   Array1D<float> compute_wavenumbers(const Array1D<float>& frequencies) const;
 
-  const int nr_polarizations = 4;
+  const int nr_correlations = 4;
 
   std::vector<std::complex<float>> m_avg_aterm_correction;
 

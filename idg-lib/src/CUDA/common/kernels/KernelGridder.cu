@@ -48,7 +48,7 @@ __device__ void update_subgrid(
     apply_aterm_gridder(pixel, aterm1, aterm2);
 
     // Update subgrid
-    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+    for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
         int idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
         subgrid[idx] += pixel[pol];
     }

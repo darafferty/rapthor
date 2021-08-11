@@ -55,8 +55,8 @@ void kernel_adder_wstack(const int nr_subgrids, const long grid_size,
         continue;
 
       // Determine polarization index
-      const int index_pol_default[NR_POLARIZATIONS] = {0, 1, 2, 3};
-      const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+      const int index_pol_default[NR_CORRELATIONS] = {0, 1, 2, 3};
+      const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
       int* index_pol =
           (int*)(negative_w ? index_pol_default : index_pol_transposed);
 
@@ -86,7 +86,7 @@ void kernel_adder_wstack(const int nr_subgrids, const long grid_size,
                                         phasor_imag[y_][x_]};
 
           // Add subgrid value to grid
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             int pol_dst = index_pol[pol];
             long dst_idx =
                 index_grid(grid_size, subgrid_w, pol_dst, y_dst, x_dst);

@@ -128,9 +128,9 @@ void kernel_degridder(
           int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
           // Load pixel values and apply spheroidal
-          std::complex<float> pixels[NR_POLARIZATIONS]
+          std::complex<float> pixels[NR_CORRELATIONS]
               __attribute__((aligned(ALIGNMENT)));
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             size_t src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
             pixels[pol] = _spheroidal * subgrid[src_idx];
           }
@@ -172,7 +172,7 @@ void kernel_degridder(
         compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
 
         // Compute visibilities
-        std::complex<float> sums[NR_POLARIZATIONS]
+        std::complex<float> sums[NR_CORRELATIONS]
             __attribute__((aligned(ALIGNMENT)));
 
         compute_reduction(nr_pixels, pixels_xx_real, pixels_xy_real,
@@ -185,7 +185,7 @@ void kernel_degridder(
         int time_idx = time_offset + time;
         int chan_idx = chan;
         size_t dst_idx = index_visibility(nr_channels, time_idx, chan_idx, 0);
-        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
           visibilities[dst_idx + pol] = {scale * sums[pol].real(),
                                          scale * sums[pol].imag()};
         }

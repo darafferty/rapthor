@@ -44,13 +44,13 @@ void kernel_degridder(
     const float w_offset = 2 * M_PI * w_offset_in_lambda;
 
     // Storage
-    std::complex<float> pixels[subgrid_size][subgrid_size][NR_POLARIZATIONS];
+    std::complex<float> pixels[subgrid_size][subgrid_size][NR_CORRELATIONS];
 
     // Iterate all timesteps
     for (int time = 0; time < nr_timesteps; time++) {
       // Reset pixels
       memset((void*)pixels, 0,
-             subgrid_size * subgrid_size * NR_POLARIZATIONS *
+             subgrid_size * subgrid_size * NR_CORRELATIONS *
                  sizeof(std::complex<float>));
 
       // Apply aterm to subgrid
@@ -64,10 +64,10 @@ void kernel_degridder(
           int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
           // Load pixel values and apply spheroidal
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             pixels[y][x][pol] =
                 sph *
-                subgrid[s * NR_POLARIZATIONS * subgrid_size * subgrid_size +
+                subgrid[s * NR_CORRELATIONS * subgrid_size * subgrid_size +
                         pol * subgrid_size * subgrid_size +
                         y_src * subgrid_size + x_src];
           }
@@ -78,16 +78,16 @@ void kernel_degridder(
           // Load aterm for station1
           int station1_index =
               (aterm_index * nr_stations + station1) * subgrid_size *
-                  subgrid_size * NR_POLARIZATIONS +
-              y * subgrid_size * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                  subgrid_size * NR_CORRELATIONS +
+              y * subgrid_size * NR_CORRELATIONS + x * NR_CORRELATIONS;
           const std::complex<float>* aterms1 =
               (std::complex<float>*)&aterms[station1_index];
 
           // Load aterm for station2
           int station2_index =
               (aterm_index * nr_stations + station2) * subgrid_size *
-                  subgrid_size * NR_POLARIZATIONS +
-              y * subgrid_size * NR_POLARIZATIONS + x * NR_POLARIZATIONS;
+                  subgrid_size * NR_CORRELATIONS +
+              y * subgrid_size * NR_CORRELATIONS + x * NR_CORRELATIONS;
           const std::complex<float>* aterms2 =
               (std::complex<float>*)&aterms[station2_index];
 
@@ -103,7 +103,7 @@ void kernel_degridder(
       // Iterate all channels
       for (int chan = channel_begin; chan < channel_end; chan++) {
         // Update all polarizations
-        std::array<std::complex<float>, NR_POLARIZATIONS> sum;
+        std::array<std::complex<float>, NR_CORRELATIONS> sum;
         sum.fill(0.0f);
 
         // Iterate all pixels in subgrid
@@ -130,7 +130,7 @@ void kernel_degridder(
             // Compute phasor
             const std::complex<float> phasor = {cosf(phase), sinf(phase)};
 
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
               sum[pol] += pixels[y][x][pol] * phasor;
             }
           }  // end for x
@@ -138,8 +138,8 @@ void kernel_degridder(
 
         const float scale = 1.0f / (subgrid_size * subgrid_size);
         size_t index = (time_offset + time) * nr_channels + chan;
-        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-          visibilities[index * NR_POLARIZATIONS + pol] = sum[pol] * scale;
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          visibilities[index * NR_CORRELATIONS + pol] = sum[pol] * scale;
         }
       }  // end for channel
     }    // end for time

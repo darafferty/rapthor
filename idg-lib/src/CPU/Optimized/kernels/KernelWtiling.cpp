@@ -46,7 +46,7 @@ void kernel_apply_phasor(int w_padded_tile_size, float image_size, float w_step,
       std::complex<float> phasor = {std::cos(phase) / N, std::sin(phase) / N};
 
       // Apply correction
-      for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
         size_t idx = index_grid(w_padded_tile_size, pol, y, x);
         tile[idx] *= phasor;
       }
@@ -70,7 +70,7 @@ inline void kernel_tile_from_grid(int wtile_size, int w_padded_tile_size,
 
   for (int y = y_start; y < y_end; y++) {
     for (int x = x_start; x < x_end; x++) {
-      for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
         size_t src_idx = index_grid(grid_size, pol, y, x);
         size_t dst_idx = index_grid(w_padded_tile_size, pol, y - y0, x - x0);
         tile[dst_idx] = grid[src_idx];
@@ -87,7 +87,7 @@ void kernel_tiles_from_grid(int nr_tiles, int wtile_size,
 #pragma omp parallel for
   for (int i = 0; i < nr_tiles; i++) {
     size_t sizeof_w_padded_tile =
-        NR_POLARIZATIONS * w_padded_tile_size * w_padded_tile_size;
+        NR_CORRELATIONS * w_padded_tile_size * w_padded_tile_size;
     std::complex<float> *tile = &tiles[i * sizeof_w_padded_tile];
     kernel_tile_from_grid(wtile_size, w_padded_tile_size, grid_size,
                           coordinates[i], tile, grid);
@@ -115,7 +115,7 @@ void kernel_tiles_to_grid(int nr_tiles, int wtile_size, int w_padded_tile_size,
 #pragma omp for collapse(2)
       for (int y = y_start; y < y_end; y++) {
         for (int x = x_start; x < x_end; x++) {
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             size_t src_idx =
                 index_grid(w_padded_tile_size, i, pol, y - y0, x - x0);
             size_t dst_idx = index_grid(grid_size, pol, y, x);
@@ -130,12 +130,12 @@ void kernel_tiles_to_grid(int nr_tiles, int wtile_size, int w_padded_tile_size,
 inline void kernel_copy_tile(int src_tile_size, int dst_tile_size,
                              const std::complex<float> *src_tile,
                              std::complex<float> *dst_tile) {
-  const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+  const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
   int padding = dst_tile_size - src_tile_size;
   int padding2 = padding / 2;
   int copy_tile_size = min(src_tile_size, dst_tile_size);
 
-  for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+  for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
     for (int y = 0; y < copy_tile_size; y++) {
       for (int x = 0; x < copy_tile_size; x++) {
         int src_y = y;
@@ -256,7 +256,7 @@ void kernel_adder_subgrids_to_wtiles(
           std::complex<float> phasor = {phasor_real[idx], phasor_imag[idx]};
 
           // Add subgrid value to tiles
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             long dst_idx = index_grid(wtile_size + subgrid_size, tile_index,
                                       pol, y_dst, x_dst);
             long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
@@ -307,7 +307,7 @@ void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
 
     // Allocate tile buffers
     idg::Array4D<std::complex<float>> tile_buffers(
-        current_nr_tiles, NR_POLARIZATIONS, w_padded_tile_size,
+        current_nr_tiles, NR_CORRELATIONS, w_padded_tile_size,
         w_padded_tile_size);
     tile_buffers.zero();
 
@@ -428,7 +428,7 @@ void kernel_splitter_subgrids_from_wtiles(
           std::complex<float> phasor = {phasor_real[idx], phasor_imag[idx]};
 
           // Split subgrid from tile
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             long src_idx = index_grid(wtile_size + subgrid_size, tile_index,
                                       pol, y_dst, x_dst);
             long dst_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
@@ -478,7 +478,7 @@ void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
 
     // Allocate tile buffers
     idg::Array4D<std::complex<float>> tile_buffers(
-        current_nr_tiles, NR_POLARIZATIONS, w_padded_tile_size,
+        current_nr_tiles, NR_CORRELATIONS, w_padded_tile_size,
         w_padded_tile_size);
     tile_buffers.zero();
 

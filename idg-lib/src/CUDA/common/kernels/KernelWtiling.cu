@@ -16,11 +16,11 @@ __global__ void kernel_copy_tiles(
           float2*     __restrict__ dst_tiles)
 {
     // Map blockIdx.x to polarizations
-    assert(gridDim.x == NR_POLARIZATIONS);
+    assert(gridDim.x == NR_CORRELATIONS);
     unsigned int pol = blockIdx.x;
 
     // Tranpose the polarizations
-    const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+    const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
     unsigned int src_pol = pol;
     unsigned int dst_pol = index_pol_transposed[pol];
 
@@ -92,7 +92,7 @@ __global__ void kernel_apply_phasor(
     const int                      sign)
 {
     // Map blockIdx.x to polarizations
-    assert(gridDim.x == NR_POLARIZATIONS);
+    assert(gridDim.x == NR_CORRELATIONS);
     unsigned int pol = blockIdx.x;
 
     // Map blockIdx.y to tile_index
@@ -194,7 +194,7 @@ __global__ void kernel_subgrids_to_wtiles(
 
             // Add subgrid value to grid
             #pragma unroll 4
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
                 long dst_idx = index_grid(tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
                 long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
@@ -214,7 +214,7 @@ __global__ void kernel_wtiles_to_grid(
           float2*   __restrict__   grid)
 {
     // Map blockIdx.x to polarizations
-    assert(gridDim.x == NR_POLARIZATIONS);
+    assert(gridDim.x == NR_CORRELATIONS);
     unsigned int pol = blockIdx.x;
 
     // Map blockIdx.x to tiles
@@ -312,7 +312,7 @@ __global__ void kernel_subgrids_from_wtiles(
 
             // Set subgrid value from grid
             #pragma unroll 4
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
                 long src_idx = index_grid(tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
                 long dst_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 subgrid[dst_idx] = tiles[src_idx] * phasor;
@@ -331,7 +331,7 @@ __global__ void kernel_wtiles_from_grid(
     const float2*     __restrict__ grid)
 {
     // Map blockIdx.x to polarizations
-    assert(gridDim.x == NR_POLARIZATIONS);
+    assert(gridDim.x == NR_CORRELATIONS);
     unsigned int pol = blockIdx.x;
 
     // Map blockIdx.x to tiles
@@ -388,7 +388,7 @@ __global__ void kernel_wtiles_to_patch(
     float2*           __restrict__ patch)
 {
     // Map blockIdx.x to polarization
-    assert(gridDim.x == NR_POLARIZATIONS);
+    assert(gridDim.x == NR_CORRELATIONS);
     unsigned int pol = blockIdx.x;
 
     // Map blockIdx.y to row of patch
@@ -462,7 +462,7 @@ __global__ void kernel_wtiles_from_patch(
     const float2*     __restrict__ patch)
 {
     // Map blockIdx.x to polarization
-    assert(gridDim.x == NR_POLARIZATIONS);
+    assert(gridDim.x == NR_CORRELATIONS);
     unsigned int pol = blockIdx.x;
 
     // Map blockIdx.y to row of patch

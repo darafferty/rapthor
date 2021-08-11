@@ -28,7 +28,7 @@ else()
 endif()
 
 # Miscellaneous options
-add_compile_options("-DNR_POLARIZATIONS=4")
+add_compile_options("-DNR_CORRELATIONS=4")
 add_library(
   ${PROJECT_NAME} OBJECT
   Kernels.h

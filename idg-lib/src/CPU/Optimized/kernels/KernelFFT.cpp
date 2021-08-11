@@ -48,7 +48,7 @@ void kernel_fft_grid(long size, std::complex<float>* data,
     std::vector<std::complex<float>> tmp(size);
     fftwf_complex* tmp_ptr = reinterpret_cast<fftwf_complex*>(tmp.data());
 
-    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+    for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
       // Execute 1D FFT over all rows
 #pragma omp for
       for (unsigned int y = 0; y < size; y++) {
@@ -118,13 +118,13 @@ void kernel_fft_subgrid(long size, long batch, std::complex<float>* data,
 
   // Create plan
   fftwf_plan plan;
-  plan = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, data_ptr, n, istride,
+  plan = fftwf_plan_many_dft(rank, n, NR_CORRELATIONS, data_ptr, n, istride,
                              idist, data_ptr, n, ostride, odist, sign, flags);
 
 #pragma omp parallel for private(data_ptr)
   for (int i = 0; i < batch; i++) {
     data_ptr = reinterpret_cast<fftwf_complex*>(data) +
-               i * (NR_POLARIZATIONS * size * size);
+               i * (NR_CORRELATIONS * size * size);
 
     // Execute FFTs
     fftwf_execute_dft(plan, data_ptr, data_ptr);
@@ -132,7 +132,7 @@ void kernel_fft_subgrid(long size, long batch, std::complex<float>* data,
     // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
     if (sign == FFTW_BACKWARD) {
       float scale = 1 / (double(size) * double(size));
-      for (int i = 0; i < NR_POLARIZATIONS * size * size; i++) {
+      for (int i = 0; i < NR_CORRELATIONS * size * size; i++) {
         data_ptr[i][0] *= scale;
         data_ptr[i][1] *= scale;
       }

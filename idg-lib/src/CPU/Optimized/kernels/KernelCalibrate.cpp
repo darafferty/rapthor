@@ -115,8 +115,8 @@ void kernel_calibrate(
             int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
             // Load pixel values
-            std::complex<float> pixels[NR_POLARIZATIONS];
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            std::complex<float> pixels[NR_CORRELATIONS];
+            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
               size_t src_idx =
                   index_subgrid(subgrid_size, s, pol, y_src, x_src);
               pixels[pol] = subgrid[src_idx];
@@ -177,11 +177,11 @@ void kernel_calibrate(
         }
 
         // Compute visibilities
-        float sums_real[NR_POLARIZATIONS][nr_terms + 1];
-        float sums_imag[NR_POLARIZATIONS][nr_terms + 1];
+        float sums_real[NR_CORRELATIONS][nr_terms + 1];
+        float sums_imag[NR_CORRELATIONS][nr_terms + 1];
 
         for (unsigned int term_nr = 0; term_nr < (nr_terms + 1); term_nr++) {
-          std::complex<float> sum[NR_POLARIZATIONS]
+          std::complex<float> sum[NR_CORRELATIONS]
               __attribute__((aligned(ALIGNMENT)));
 
           compute_reduction(nr_pixels, pixels_xx_real[term_nr],
@@ -193,16 +193,16 @@ void kernel_calibrate(
 
           // Store and scale sums
           const float scale = 1.0f / nr_pixels;
-          for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
             sums_real[pol][term_nr] = sum[pol].real() * scale;
             sums_imag[pol][term_nr] = sum[pol].imag() * scale;
           }
         }
 
         // Compute residual visibilities
-        float visibility_res_real[NR_POLARIZATIONS];
-        float visibility_res_imag[NR_POLARIZATIONS];
-        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        float visibility_res_real[NR_CORRELATIONS];
+        float visibility_res_imag[NR_CORRELATIONS];
+        for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
           int time_idx = time_offset + time;
           int chan_idx = chan;
           size_t vis_idx =
@@ -214,7 +214,7 @@ void kernel_calibrate(
         }
 
         // Update local residual and gradient
-        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
           int time_idx = time_offset + time;
           int chan_idx = chan;
           size_t vis_idx =
@@ -232,7 +232,7 @@ void kernel_calibrate(
         }
 
         // Update local hessian
-        for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
           int time_idx = time_offset + time;
           int chan_idx = chan;
           size_t vis_idx =

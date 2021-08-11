@@ -157,8 +157,8 @@ void wtiles_from_grid(int nr_tiles, int grid_size, int tile_size,
 
     for (int y = y_start; y < y_end; y++) {
       for (int x = x_start; x < x_end; x++) {
-        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-          const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
           unsigned int pol_src = index_pol_transposed[pol];
           unsigned int pol_dst = pol;
           unsigned long src_idx = index_grid(grid_size, pol_src, y, x);

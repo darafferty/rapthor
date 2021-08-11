@@ -122,8 +122,8 @@ __device__ void kernel_degridder_(
                     float spheroidal_ = spheroidal[y * subgrid_size + x];
 
                     // Load pixels
-                    float2 pixel[NR_POLARIZATIONS];
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    float2 pixel[NR_CORRELATIONS];
+                    for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
                         unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                         pixel[pol] = subgrid[pixel_idx] * spheroidal_;
                     }

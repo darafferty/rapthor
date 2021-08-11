@@ -22,7 +22,7 @@ __kernel void kernel_scaler(
         int y = i / subgrid_size;
         int x = i % subgrid_size;
 
-        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
             int idx = index_subgrid(subgrid_size, s, pol, y, x);
             float2 value = subgrid[idx];
             subgrid[idx] = (float2) (value.x * scale, value.y * scale);
