@@ -48,7 +48,7 @@ void Proxy::degridding(
                    baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) &&
-      (!do_supports_wstacking() && !do_supports_wtiles())) {
+      (!do_supports_wstacking() && !do_supports_wtiling())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support degridding with "
         "W-stacking.");
@@ -190,11 +190,6 @@ void Proxy::calibrate_finish() { do_calibrate_finish(); }
 
 void Proxy::set_avg_aterm_correction(
     const Array4D<std::complex<float>>& avg_aterm_correction) {
-  if (!supports_avg_aterm_correction()) {
-    throw exception::NotImplemented(
-        "This proxy does not support average aterm correction");
-  }
-
   // check_dimensions_avg_aterm_correction();
   std::complex<float>* data = avg_aterm_correction.data();
   size_t size =

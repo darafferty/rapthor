@@ -39,7 +39,7 @@ class OptimizedKernels : public InstanceCPU {
   /*
    * W-Stacking
    */
-  virtual bool do_supports_wstacking() override { return true; };
+  bool do_supports_wstacking() override { return true; };
 
   virtual void run_adder_wstack(KERNEL_ADDER_WSTACK_ARGUMENTS) override;
 
@@ -48,7 +48,7 @@ class OptimizedKernels : public InstanceCPU {
   /*
    * W-Tiling
    */
-  virtual bool do_supports_wtiling() override { return true; };
+  bool do_supports_wtiling() override { return true; };
 
   virtual size_t init_wtiles(size_t grid_size, int subgrid_size) override;
 

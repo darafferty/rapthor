@@ -26,16 +26,13 @@ class CPU : public Proxy {
 
   std::unique_ptr<auxiliary::Memory> allocate_memory(size_t bytes) override;
 
-  // virtual bool do_supports_wstack_gridding() override {
-  //  return kernels.has_adder_wstack();
-  //}
-  // virtual bool do_supports_wstack_degridding() override {
-  //  return kernels.has_splitter_wstack();
-  //}
-  virtual bool supports_avg_aterm_correction() override { return true; }
-  // virtual bool do_supports_wtiles() override {
-  //  return kernels.has_adder_wtiles() && kernels.has_splitter_wtiles();
-  //}
+  virtual bool do_supports_wstacking() override {
+    return m_kernels->do_supports_wstacking();
+  }
+
+  virtual bool do_supports_wtiling() override {
+    return m_kernels->do_supports_wtiling();
+  }
 
   std::shared_ptr<kernel::cpu::InstanceCPU> get_kernels() { return m_kernels; }
 

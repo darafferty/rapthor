@@ -115,10 +115,8 @@ class Proxy {
   virtual void set_disable_wtiling(bool v) { m_disable_wtiling = v; }
 
   bool supports_wtiling() {
-    return (!m_disable_wtiling && do_supports_wtiles());
+    return (!m_disable_wtiling && do_supports_wtiling());
   }
-
-  virtual bool supports_avg_aterm_correction() { return false; }
 
   void set_avg_aterm_correction(
       const Array4D<std::complex<float>>& avg_aterm_correction);
@@ -281,7 +279,7 @@ class Proxy {
 
  protected:
   virtual bool do_supports_wstacking() { return false; }
-  virtual bool do_supports_wtiles() { return false; }
+  virtual bool do_supports_wtiling() { return false; }
 
   std::shared_ptr<Grid> m_grid = nullptr;
 
