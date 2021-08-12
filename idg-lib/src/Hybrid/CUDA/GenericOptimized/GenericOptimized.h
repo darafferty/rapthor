@@ -31,6 +31,11 @@ class GenericOptimized : public cuda::CUDA {
 
   virtual bool supports_avg_aterm_correction() { return true; }
 
+  void set_disable_wtiling(bool v) override {
+    m_disable_wtiling = v;
+    cpuProxy->set_disable_wtiling(v);
+  }
+
   void set_disable_wtiling_gpu(bool v) { m_disable_wtiling_gpu = v; }
 
   void set_grid(std::shared_ptr<Grid> grid) override;

@@ -112,7 +112,7 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
   // Initialize cache
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
 
-  if (!m_disable_wtiling_gpu) {
+  if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
     // Allocate wtiles on GPU
     InstanceCUDA& device = get_device(0);
     const cu::Context& context = get_device(0).get_context();
