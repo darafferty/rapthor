@@ -159,13 +159,13 @@ class IDGCalDPStep(dp3.Step):
             self.info().get_channel_frequencies(), dtype=np.float32
         )
         self.nr_channels = len(self.frequencies)
-        self.baselines = np.zeros(shape=(self.nr_baselines), dtype=idg.baselinetype)
+        self.baselines = np.zeros(shape=(self.nr_baselines,2 ), dtype=np.int32)
 
         station1 = np.array(self.info().get_antenna1())
         station2 = np.array(self.info().get_antenna2())
         self.auto_corr_mask = station1 != station2
-        self.baselines["station1"] = station1[self.auto_corr_mask]
-        self.baselines["station2"] = station2[self.auto_corr_mask]
+        self.baselines[:,0] = station1[self.auto_corr_mask]
+        self.baselines[:,1] = station2[self.auto_corr_mask]
 
         # Axes data
         axes_labels = ["ant", "time", "dir"]
@@ -308,11 +308,11 @@ class IDGCalDPStep(dp3.Step):
         flags = self.__extract_buffer("flags")
         weights = self.__extract_buffer("weights")
         uvw_ = self.__extract_buffer("uvw", apply_autocorr_mask=False)
-        uvw = np.zeros(shape=(self.nr_baselines, self.ampl_interval), dtype=idg.uvwtype)
+        uvw = np.zeros(shape=(self.nr_baselines, self.ampl_interval, 3), dtype=np.float32)
 
-        uvw["u"] = uvw_[self.auto_corr_mask, :, 0]
-        uvw["v"] = -uvw_[self.auto_corr_mask, :, 1]
-        uvw["w"] = -uvw_[self.auto_corr_mask, :, 2]
+        uvw[..., 0] = uvw_[self.auto_corr_mask, :, 0]
+        uvw[..., 1] = -uvw_[self.auto_corr_mask, :, 1]
+        uvw[..., 2] = -uvw_[self.auto_corr_mask, :, 2]
 
         # Flag NaNs
         flags[np.isnan(visibilities)] = True

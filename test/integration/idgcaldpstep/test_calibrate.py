@@ -145,7 +145,7 @@ def init_tapered_grid(params):
 
 def init_buffers(nr_baselines, nr_channels, nr_timesteps, nr_correlations):
     # Initialize empty buffers
-    uvw = np.zeros(shape=(nr_baselines, nr_timesteps), dtype=idg.uvwtype)
+    uvw = np.zeros(shape=(nr_baselines, nr_timesteps, 3), dtype=np.float32)
     visibilities = np.zeros(
         shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
         dtype=idg.visibilitiestype,
@@ -220,14 +220,11 @@ def test_idgcal(params):
     # Construct baseline array
     baselines = np.array(
         [(a1, a2) for a1, a2 in zip(antenna1_block[0, :], antenna2_block[0, :])],
-        dtype=idg.baselinetype,
+        dtype=np.int32,
     )
 
     # Transpose uvw, visibilities and weights
-    uvw_t = uvw_block.transpose((1, 0, 2))
-    uvw[...]["u"] = uvw_t[..., 0]
-    uvw[...]["v"] = uvw_t[..., 1]
-    uvw[...]["w"] = uvw_t[..., 2]
+    uvw[:]  = uvw_block.transpose((1, 0, 2))
     visibilities[...] = vis_block.transpose((1, 0, 2, 3))
     weights[...] = weight_block.transpose((1, 0, 2, 3))
 
@@ -289,7 +286,7 @@ def test_idgcal(params):
     aterms[:, :, :, :, :] = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
 
     uvw1 = np.zeros(
-        shape=(nr_stations, nr_stations - 1, nr_timesteps), dtype=idg.uvwtype
+        shape=(nr_stations, nr_stations - 1, nr_timesteps, 3), dtype=np.float32
     )
     visibilities1 = np.zeros(
         shape=(
@@ -311,7 +308,7 @@ def test_idgcal(params):
         ),
         dtype=np.float32,
     )
-    baselines1 = np.zeros(shape=(nr_stations, nr_stations - 1), dtype=idg.baselinetype)
+    baselines1 = np.zeros(shape=(nr_stations, nr_stations - 1, 2), dtype=np.int32)
 
     for bl in range(nr_baselines):
         # Set baselines
@@ -333,9 +330,7 @@ def test_idgcal(params):
         baselines1[antenna1][bl1] = (antenna1, antenna2)
 
         # Set uvw
-        uvw1[antenna1][bl1]["u"] = -uvw[bl]["u"]
-        uvw1[antenna1][bl1]["v"] = -uvw[bl]["v"]
-        uvw1[antenna1][bl1]["w"] = -uvw[bl]["w"]
+        uvw1[antenna1][bl1] = -uvw[bl]
 
         # Set visibilities
         visibilities1[antenna1][bl1] = np.conj(
