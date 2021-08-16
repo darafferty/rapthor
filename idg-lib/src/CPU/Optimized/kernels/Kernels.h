@@ -23,27 +23,9 @@ void kernel_splitter(KERNEL_SPLITTER_ARGUMENTS);
 /*
  * Calibration
  */
-void kernel_calibrate(
-    const unsigned int nr_subgrids, const unsigned long grid_size,
-    const unsigned int subgrid_size, const float image_size,
-    const float w_step_in_lambda, const float* __restrict__ shift,
-    const unsigned int max_nr_timesteps, const unsigned int nr_channels,
-    const unsigned int nr_stations, const unsigned int nr_terms,
-    const unsigned int nr_time_slots, const idg::UVW<float>* uvw,
-    const float* wavenumbers, std::complex<float>* visibilities,
-    const float* weights, const std::complex<float>* aterms,
-    const std::complex<float>* aterm_derivatives, const int* aterms_indices,
-    const idg::Metadata* metadata, const std::complex<float>* subgrid,
-    const std::complex<float>* phasors, double* hessian, double* gradient,
-    double* residual);
+void kernel_calibrate(KERNEL_CALIBRATE_ARGUMENTS);
 
-void kernel_phasor(const int nr_subgrids, const long grid_size,
-                   const int subgrid_size, const float image_size,
-                   const float w_step_in_lambda,
-                   const float* __restrict__ shift, const int max_nr_timesteps,
-                   const int nr_channels, const idg::UVW<float>* uvw,
-                   const float* wavenumbers, const idg::Metadata* metadata,
-                   std::complex<float>* phasors);
+void kernel_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS);
 
 /*
  * W-Stacking

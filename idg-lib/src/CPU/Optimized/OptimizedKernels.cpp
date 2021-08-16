@@ -97,11 +97,11 @@ void OptimizedKernels::run_splitter(KERNEL_SPLITTER_ARGUMENTS) {
 void OptimizedKernels::run_calibrate(KERNEL_CALIBRATE_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_calibrate(nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-                   shift, max_nr_timesteps, nr_channels, nr_stations, nr_terms,
-                   nr_time_slots, uvw, wavenumbers, visibilities, weights,
-                   aterm, aterm_derivative, aterms_indices, metadata, subgrid,
-                   phasors, hessian, gradient, residual);
+  kernel_calibrate(
+      nr_subgrids, grid_size, subgrid_size, image_size, w_step_in_lambda, shift,
+      max_nr_timesteps, nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
+      wavenumbers, visibilities, weights, aterms, aterm_derivatives,
+      aterms_indices, metadata, subgrid, phasors, hessian, gradient, residual);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update<Report::calibrate>(states[0], states[1]);
@@ -109,9 +109,9 @@ void OptimizedKernels::run_calibrate(KERNEL_CALIBRATE_ARGUMENTS) {
 }
 
 void OptimizedKernels::run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS) {
-  kernel_phasor(nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift,
-                max_nr_timesteps, nr_channels, uvw, wavenumbers, metadata,
-                phasors);
+  kernel_phasor(nr_subgrids, grid_size, subgrid_size, image_size,
+                w_step_in_lambda, shift, max_nr_timesteps, nr_channels, uvw,
+                wavenumbers, metadata, phasors);
 }
 
 /*
