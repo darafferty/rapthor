@@ -165,6 +165,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
       unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
 
+      fft.reset();
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
                                   current_w_padded_tile_size, stride, dist,
                                   batch));
@@ -459,6 +460,7 @@ void GenericOptimized::run_wtiles_from_grid(
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
       unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
 
+      fft.reset();
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
                                   current_w_padded_tile_size, stride, dist,
                                   batch));
