@@ -922,10 +922,10 @@ def get_example_frequencies(nr_channels, dtype=frequenciestype, info=False):
 
 
 def get_example_baselines(nr_stations, nr_baselines,
-                          dtype=baselinetype, info=False):
+                          dtype=np.int32, info=False):
     """Initialize and return example baselines array"""
-    baselines = np.zeros(nr_baselines,
-                            dtype = baselinetype)
+    baselines = np.zeros((nr_baselines, 2),
+                            dtype = np.int32)
     init_example_baselines(baselines, nr_stations)
     if info==True:
         print("baselines: np.ndarray(shape = (nr_channels), " + \

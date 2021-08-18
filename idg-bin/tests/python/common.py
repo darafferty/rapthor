@@ -162,7 +162,7 @@ def main(proxyname, plot=True):
     baseline_offset = 0
     time_offset = 0
 
-    uvw = np.zeros((nr_baselines, nr_timesteps), dtype=idg.uvwtype)
+    uvw = np.zeros((nr_baselines, nr_timesteps, 3), dtype=np.float32)
     frequencies = np.zeros(nr_channels, dtype=idg.frequenciestype)
     data.get_frequencies(frequencies, nr_channels, image_size, channel_offset)
     data.get_uvw(
@@ -177,7 +177,8 @@ def main(proxyname, plot=True):
     spheroidal = util.get_identity_spheroidal(subgrid_size)
     shift = np.zeros(3, dtype=np.float32)
 
-    uvw["w"] = 0
+    # set w to zero
+    uvw[...,-1] = 0
 
     # Initialize dummy visibilities
     example_visibilities = util.get_example_visibilities(
