@@ -23,12 +23,15 @@ void init(unsigned flags = 0);
 template <typename T>
 class Error : public std::exception {
  public:
-  Error(T result) : _result(result) {}
+  Error(T result, std::string &message) : _result(result), _message(message) {}
+
+  const char *what() const throw() { return _message.c_str(); };
 
   operator T() const { return _result; }
 
  private:
   T _result;
+  std::string _message;
 };
 
 class Device {
