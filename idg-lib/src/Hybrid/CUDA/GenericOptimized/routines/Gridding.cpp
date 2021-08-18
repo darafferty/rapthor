@@ -56,7 +56,7 @@ void GenericOptimized::run_gridding(
   auto sizeof_subgrids =
       auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
-  if (m_disable_wtiling_gpu) {
+  if (m_disable_wtiling || m_disable_wtiling_gpu) {
     h_subgrids.resize(sizeof_subgrids);
   }
 
@@ -177,7 +177,7 @@ void GenericOptimized::run_gridding(
     executestream.record(*gpuFinished[job_id]);
 
     // Copy subgrid to host
-    if (m_disable_wtiling_gpu) {
+    if (m_disable_wtiling || m_disable_wtiling_gpu) {
       dtohstream.waitEvent(*gpuFinished[job_id]);
       auto sizeof_subgrids =
           auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);

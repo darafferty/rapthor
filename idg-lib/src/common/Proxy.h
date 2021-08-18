@@ -127,7 +127,7 @@ class Proxy {
 
   void set_disable_wstacking(bool v) { m_disable_wstacking = v; }
 
-  void set_disable_wtiling(bool v) { m_disable_wtiling = v; }
+  virtual void set_disable_wtiling(bool v) { m_disable_wtiling = v; }
 
   bool supports_wtiling() {
     return (!m_disable_wtiling && do_supports_wtiles());

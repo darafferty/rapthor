@@ -26,10 +26,16 @@ class GenericOptimized : public cuda::CUDA {
   }
 
   virtual bool do_supports_wtiles() override {
-    return !m_disable_wtiling_gpu || cpuProxy->do_supports_wtiles();
+    return !m_disable_wtiling &&
+           (!m_disable_wtiling_gpu || cpuProxy->do_supports_wtiles());
   }
 
   virtual bool supports_avg_aterm_correction() { return true; }
+
+  void set_disable_wtiling(bool v) override {
+    m_disable_wtiling = v;
+    cpuProxy->set_disable_wtiling(v);
+  }
 
   void set_disable_wtiling_gpu(bool v) { m_disable_wtiling_gpu = v; }
 

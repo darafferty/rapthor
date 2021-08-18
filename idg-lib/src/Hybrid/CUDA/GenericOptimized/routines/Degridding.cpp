@@ -180,7 +180,7 @@ void GenericOptimized::run_degridding(
                               metadata_ptr, h_subgrids, m_grid->data());
     }
 
-    if (m_disable_wtiling_gpu) {
+    if (m_disable_wtiling || m_disable_wtiling_gpu) {
       // Copy subgrids to device
       auto sizeof_subgrids =
           auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
