@@ -859,15 +859,15 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
     m_fft_subgrid_size = size;
   }
 
-  while (m_fft_plan_subgrid == nullptr) {
+  while (!m_fft_plan_subgrid) {
     try {
       // Plan bulk fft
       unsigned stride = 1;
       unsigned dist = size * size;
-      auto fft_plan = new cufft::C2C_2D(*context, size, size, stride, dist,
-                                        m_fft_subgrid_bulk * NR_CORRELATIONS);
-      fft_plan->setStream(*executestream);
-      m_fft_plan_subgrid.reset(fft_plan);
+      m_fft_plan_subgrid.reset(
+          new cufft::C2C_2D(*context, size, size, stride, dist,
+                            m_fft_subgrid_bulk * NR_CORRELATIONS));
+      m_fft_plan_subgrid->setStream(*executestream);
       auto sizeof_subgrids =
           auxiliary::sizeof_subgrids(m_fft_subgrid_bulk, m_fft_subgrid_size);
       d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
@@ -877,6 +877,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
       if (m_fft_subgrid_bulk > 0) {
         std::clog << __func__ << ": reducing subgrid-fft bulk size to: "
                   << m_fft_subgrid_bulk << std::endl;
+        d_fft_subgrid.reset();
       } else {
         std::cerr << __func__ << ": could not plan subgrid-fft." << std::endl;
         throw e;
