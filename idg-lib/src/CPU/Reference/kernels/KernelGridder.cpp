@@ -14,8 +14,9 @@ namespace cpu {
 namespace reference {
 
 void kernel_gridder(
-    const int nr_subgrids, const long grid_size, const int subgrid_size,
-    const float image_size, const float w_step_in_lambda, const float* shift,
+    const int nr_subgrids, const int nr_polarizations, const long grid_size,
+    const int subgrid_size, const float image_size,
+    const float w_step_in_lambda, const float* shift, const int nr_correlations,
     const int nr_channels, const int nr_stations, const idg::UVW<float>* uvw,
     const float* wavenumbers, const std::complex<float>* visibilities,
     const float* spheroidal, const std::complex<float>* aterms,
@@ -44,9 +45,9 @@ void kernel_gridder(
     const float w_offset = 2 * M_PI * w_offset_in_lambda;
 
     // Storage
-    std::complex<float> pixels[NR_CORRELATIONS][subgrid_size][subgrid_size];
+    std::complex<float> pixels[nr_polarizations][subgrid_size][subgrid_size];
     memset((void*)pixels, 0,
-           subgrid_size * subgrid_size * NR_CORRELATIONS *
+           subgrid_size * subgrid_size * nr_polarizations *
                sizeof(std::complex<float>));
 
     // Iterate all pixels in subgrid
@@ -66,9 +67,9 @@ void kernel_gridder(
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
           // Pixel
-          std::complex<float> pixel[NR_CORRELATIONS];
+          std::complex<float> pixel[nr_polarizations];
           memset((void*)pixel, 0,
-                 NR_CORRELATIONS * sizeof(std::complex<float>));
+                 nr_polarizations * sizeof(std::complex<float>));
 
           // Load UVW coordinates
           const float u = uvw[time_offset + time].u;
@@ -88,9 +89,9 @@ void kernel_gridder(
 
             // Update pixel for every polarization
             size_t index = (time_offset + time) * nr_channels + chan;
-            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+            for (int pol = 0; pol < nr_correlations; pol++) {
               std::complex<float> visibility =
-                  visibilities[index * NR_CORRELATIONS + pol];
+                  visibilities[index * nr_correlations + pol];
               pixel[pol] += visibility * phasor;
             }
           }  // end for channel
@@ -101,30 +102,30 @@ void kernel_gridder(
           // Load a term for station1
           int station1_index =
               (aterm_index * nr_stations + station1) * subgrid_size *
-                  subgrid_size * NR_CORRELATIONS +
-              y * subgrid_size * NR_CORRELATIONS + x * NR_CORRELATIONS;
+                  subgrid_size * nr_polarizations +
+              y * subgrid_size * nr_polarizations + x * nr_polarizations;
           const std::complex<float>* aterms1 =
               (std::complex<float>*)&aterms[station1_index];
 
           // Load aterm for station2
           int station2_index =
               (aterm_index * nr_stations + station2) * subgrid_size *
-                  subgrid_size * NR_CORRELATIONS +
-              y * subgrid_size * NR_CORRELATIONS + x * NR_CORRELATIONS;
+                  subgrid_size * nr_polarizations +
+              y * subgrid_size * nr_polarizations + x * nr_polarizations;
           const std::complex<float>* aterms2 =
               (std::complex<float>*)&aterms[station2_index];
 
           apply_aterm_gridder(pixel, aterms1, aterms2);
 
           // Update pixel
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
             pixels[pol][y][x] += pixel[pol];
           }
         }  // end for time
 
         // Load pixel
-        std::complex<float> pixel[NR_CORRELATIONS];
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+        std::complex<float> pixel[nr_polarizations];
+        for (int pol = 0; pol < nr_polarizations; pol++) {
           pixel[pol] = pixels[pol][y][x];
         }
 
@@ -141,8 +142,8 @@ void kernel_gridder(
         int y_dst = (y + (subgrid_size / 2)) % subgrid_size;
 
         // Set subgrid value
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-          subgrid[s * NR_CORRELATIONS * subgrid_size * subgrid_size +
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+          subgrid[s * nr_polarizations * subgrid_size * subgrid_size +
                   pol * subgrid_size * subgrid_size + y_dst * subgrid_size +
                   x_dst] = pixel[pol] * sph;
         }

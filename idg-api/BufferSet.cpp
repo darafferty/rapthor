@@ -32,6 +32,8 @@
 
 #define ENABLE_VERBOSE_TIMING 0
 
+#define NR_CORRELATIONS 4
+
 extern "C" void cgetrf_(int* m, int* n, std::complex<float>* a, int* lda,
                         int* ipiv, int* info);
 
@@ -71,6 +73,7 @@ int nextcomposite(int n) {
 BufferSetImpl::BufferSetImpl(Type architecture)
     : m_default_aterm_correction(0, 0, 0, 0),
       m_avg_aterm_correction(0, 0, 0, 0),
+      m_nr_polarizations(1),
       m_proxy(create_proxy(architecture)),
       m_shift(2),
       m_get_image_watch(Stopwatch::create()),
@@ -577,6 +580,7 @@ void BufferSetImpl::get_image(double* image) {
 
   // Flush all pending operations on the grid
   const Grid& grid = *m_proxy->get_final_grid();
+  int nr_polarizations = grid.get_z_dim();
 
   double runtime = -omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
@@ -591,7 +595,7 @@ void BufferSetImpl::get_image(double* image) {
 #if ENABLE_VERBOSE_TIMING
   std::cout << "ifft w_layers";
 #endif
-  int batch = nr_w_layers * 4;
+  int batch = nr_w_layers * nr_polarizations;
   double runtime_fft = -omp_get_wtime();
   idg::ifft2f(batch, m_padded_size, m_padded_size, grid.data(0, 0, 0, 0));
   runtime_fft += omp_get_wtime();
@@ -636,7 +640,7 @@ void BufferSetImpl::get_image(double* image) {
 
       if (!m_apply_wstack_correction) {
         // Compute current row of w-plane
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+        for (int pol = 0; pol < nr_polarizations; pol++) {
           for (int x = 0; x < m_size; x++) {
             auto value = grid(0, pol, y + y0, x + x0);
             w0_row_real[pol][x] = value.real() * inv_tapers[x];
@@ -651,7 +655,7 @@ void BufferSetImpl::get_image(double* image) {
 
         for (int w = 0; w < nr_w_layers; w++) {
           // Copy current row of w-plane
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
               auto value = grid(w, pol, y + y0, x + x0);
               w_row_real[pol][x] = value.real();
@@ -671,21 +675,24 @@ void BufferSetImpl::get_image(double* image) {
           }
 
           // Compute current row of w-plane
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
               float value_real = w_row_real[pol][x] * inv_tapers[x];
               float value_imag = w_row_imag[pol][x] * inv_tapers[x];
               float phasor_real_ = phasor_real[x];
               float phasor_imag_ = phasor_imag[x];
               w_row_real[pol][x] = value_real * phasor_real_;
-              w_row_imag[pol][x] = value_real * phasor_imag_;
               w_row_real[pol][x] -= value_imag * phasor_imag_;
-              w_row_imag[pol][x] += value_imag * phasor_real_;
+              if (nr_polarizations > 1) {
+                // Imaginary values are only used for full polarization
+                w_row_imag[pol][x] = value_real * phasor_imag_;
+                w_row_imag[pol][x] += value_imag * phasor_real_;
+              }
             }  // end for x
           }    // end for pol
 
           // Add to first w-plane
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
               w0_row_real[pol][x] += w_row_real[pol][x];
               w0_row_imag[pol][x] += w_row_imag[pol][x];
@@ -696,20 +703,27 @@ void BufferSetImpl::get_image(double* image) {
 
       // Copy grid to image
       for (int x = 0; x < m_size; x++) {
-        float polXX_real = w0_row_real[0][x];
-        float polXY_real = w0_row_real[1][x];
-        float polYX_real = w0_row_real[2][x];
-        float polYY_real = w0_row_real[3][x];
-        float polXY_imag = w0_row_imag[1][x];
-        float polYX_imag = w0_row_imag[2][x];
-        double stokesI = 0.5 * (polXX_real + polYY_real);
-        double stokesQ = 0.5 * (polXX_real - polYY_real);
-        double stokesU = 0.5 * (polXY_real + polYX_real);
-        double stokesV = 0.5 * (-polXY_imag + polYX_imag);
-        image_array(0, y, x) = stokesI;
-        image_array(1, y, x) = stokesQ;
-        image_array(2, y, x) = stokesU;
-        image_array(3, y, x) = stokesV;
+        if (nr_polarizations == 4) {
+          // Full polarization
+          float polXX_real = w0_row_real[0][x];
+          float polXY_real = w0_row_real[1][x];
+          float polYX_real = w0_row_real[2][x];
+          float polYY_real = w0_row_real[3][x];
+          float polXY_imag = w0_row_imag[1][x];
+          float polYX_imag = w0_row_imag[2][x];
+          double stokesI = 0.5 * (polXX_real + polYY_real);
+          double stokesQ = 0.5 * (polXX_real - polYY_real);
+          double stokesU = 0.5 * (polXY_real + polYX_real);
+          double stokesV = 0.5 * (-polXY_imag + polYX_imag);
+          image_array(0, y, x) = stokesI;
+          image_array(1, y, x) = stokesQ;
+          image_array(2, y, x) = stokesU;
+          image_array(3, y, x) = stokesV;
+        } else if (nr_polarizations == 1) {
+          // Stokes I polarization only
+          double stokesI = w0_row_real[0][x];
+          image_array(0, y, x) = stokesI;
+        }
       }  // end for x
     }    // end for y
     free(w0_row_real);

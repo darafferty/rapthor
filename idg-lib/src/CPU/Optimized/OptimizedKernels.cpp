@@ -15,10 +15,11 @@ using namespace idg::kernel::cpu::optimized;
 void OptimizedKernels::run_gridder(KERNEL_GRIDDER_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_gridder(nr_subgrids, grid_size, subgrid_size, image_size,
-                 w_step_in_lambda, shift, nr_channels, nr_stations, uvw,
-                 wavenumbers, visibilities, spheroidal, aterms, aterms_indices,
-                 avg_aterm, metadata, subgrid);
+  kernel_gridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                 image_size, w_step_in_lambda, shift, nr_correlations,
+                 nr_channels, nr_stations, uvw, wavenumbers, visibilities,
+                 spheroidal, aterms, aterms_indices, avg_aterm, metadata,
+                 subgrid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::gridder, states[0], states[1]);
@@ -28,10 +29,10 @@ void OptimizedKernels::run_gridder(KERNEL_GRIDDER_ARGUMENTS) {
 void OptimizedKernels::run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_degridder(nr_subgrids, grid_size, subgrid_size, image_size,
-                   w_step_in_lambda, shift, nr_channels, nr_stations, uvw,
-                   wavenumbers, visibilities, spheroidal, aterms,
-                   aterms_indices, metadata, subgrid);
+  kernel_degridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                   image_size, w_step_in_lambda, shift, nr_correlations,
+                   nr_channels, nr_stations, uvw, wavenumbers, visibilities,
+                   spheroidal, aterms, aterms_indices, metadata, subgrid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::degridder, states[0], states[1]);
@@ -42,8 +43,8 @@ void OptimizedKernels::run_average_beam(KERNEL_AVERAGE_BEAM_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
   kernel_average_beam(nr_baselines, nr_antennas, nr_timesteps, nr_channels,
-                      nr_aterms, subgrid_size, uvw, baselines, aterms,
-                      aterms_offsets, weights, average_beam);
+                      nr_aterms, subgrid_size, nr_polarizations, uvw, baselines,
+                      aterms, aterms_offsets, weights, average_beam);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::average_beam, states[0], states[1]);
@@ -73,7 +74,8 @@ void OptimizedKernels::run_subgrid_fft(KERNEL_SUBGRID_FFT_ARGUMENTS) {
 void OptimizedKernels::run_adder(KERNEL_ADDER_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_adder(nr_subgrids, grid_size, subgrid_size, metadata, subgrid, grid);
+  kernel_adder(nr_subgrids, nr_polarizations, grid_size, subgrid_size, metadata,
+               subgrid, grid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::adder, states[0], states[1]);
@@ -83,8 +85,8 @@ void OptimizedKernels::run_adder(KERNEL_ADDER_ARGUMENTS) {
 void OptimizedKernels::run_splitter(KERNEL_SPLITTER_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_splitter(nr_subgrids, grid_size, subgrid_size, metadata, subgrid,
-                  grid);
+  kernel_splitter(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                  metadata, subgrid, grid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::splitter, states[0], states[1]);
@@ -97,11 +99,12 @@ void OptimizedKernels::run_splitter(KERNEL_SPLITTER_ARGUMENTS) {
 void OptimizedKernels::run_calibrate(KERNEL_CALIBRATE_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_calibrate(
-      nr_subgrids, grid_size, subgrid_size, image_size, w_step_in_lambda, shift,
-      max_nr_timesteps, nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
-      wavenumbers, visibilities, weights, aterms, aterm_derivatives,
-      aterms_indices, metadata, subgrid, phasors, hessian, gradient, residual);
+  kernel_calibrate(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                   image_size, w_step_in_lambda, shift, max_nr_timesteps,
+                   nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
+                   wavenumbers, visibilities, weights, aterms,
+                   aterm_derivatives, aterms_indices, metadata, subgrid,
+                   phasors, hessian, gradient, residual);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update<Report::calibrate>(states[0], states[1]);
@@ -120,8 +123,8 @@ void OptimizedKernels::run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS) {
 void OptimizedKernels::run_adder_wstack(KERNEL_ADDER_WSTACK_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_adder_wstack(nr_subgrids, grid_size, subgrid_size, metadata, subgrid,
-                      grid);
+  kernel_adder_wstack(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                      metadata, subgrid, grid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::adder, states[0], states[1]);
@@ -131,8 +134,8 @@ void OptimizedKernels::run_adder_wstack(KERNEL_ADDER_WSTACK_ARGUMENTS) {
 void OptimizedKernels::run_splitter_wstack(KERNEL_SPLITTER_WSTACK_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_splitter_wstack(nr_subgrids, grid_size, subgrid_size, metadata,
-                         subgrid, grid);
+  kernel_splitter_wstack(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                         metadata, subgrid, grid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::splitter, states[0], states[1]);
@@ -142,7 +145,8 @@ void OptimizedKernels::run_splitter_wstack(KERNEL_SPLITTER_WSTACK_ARGUMENTS) {
 /*
  * W-Tiling
  */
-size_t OptimizedKernels::init_wtiles(size_t grid_size, int subgrid_size) {
+size_t OptimizedKernels::init_wtiles(int nr_polarizations, size_t grid_size,
+                                     int subgrid_size) {
   // Heuristic for choosing the number of wtiles.
   // A number that is too small will result in excessive flushing, too large in
   // excessive memory usage.
@@ -158,7 +162,7 @@ size_t OptimizedKernels::init_wtiles(size_t grid_size, int subgrid_size) {
 
   // Make sure that the wtiles buffer does not use an excessive amount of memory
   const size_t padded_wtile_size = size_t(kWTileSize) + size_t(subgrid_size);
-  size_t sizeof_padded_wtile = NR_CORRELATIONS * padded_wtile_size *
+  size_t sizeof_padded_wtile = nr_polarizations * padded_wtile_size *
                                padded_wtile_size * sizeof(std::complex<float>);
   size_t sizeof_padded_wtiles = nr_wtiles * sizeof_padded_wtile;
   size_t free_memory = auxiliary::get_free_memory() * 1024 * 1024;  // Bytes
@@ -178,9 +182,10 @@ void OptimizedKernels::run_adder_tiles_to_grid(
     KERNEL_ADDER_TILES_TO_GRID_ARGUMENTS) {
   powersensor::State states[2];
   states[0] = m_powersensor->read();
-  kernel_adder_wtiles_to_grid(grid_size, subgrid_size, kWTileSize, image_size,
-                              w_step, shift, nr_tiles, tile_ids,
-                              tile_coordinates, m_wtiles_buffer.data(), grid);
+  kernel_adder_wtiles_to_grid(nr_polarizations, grid_size, subgrid_size,
+                              kWTileSize, image_size, w_step, shift, nr_tiles,
+                              tile_ids, tile_coordinates,
+                              m_wtiles_buffer.data(), grid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::wtiling_forward, states[0], states[1]);
@@ -198,11 +203,12 @@ void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
       WTileUpdateInfo &wtile_flush_info = wtile_flush_set.front();
 
       // Project wtiles to master grid
-      kernel_adder_wtiles_to_grid(
-          grid_size, subgrid_size, kWTileSize, image_size, w_step, shift,
-          wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
-          wtile_flush_info.wtile_coordinates.data(), m_wtiles_buffer.data(),
-          grid);
+      kernel_adder_wtiles_to_grid(nr_polarizations, grid_size, subgrid_size,
+                                  kWTileSize, image_size, w_step, shift,
+                                  wtile_flush_info.wtile_ids.size(),
+                                  wtile_flush_info.wtile_ids.data(),
+                                  wtile_flush_info.wtile_coordinates.data(),
+                                  m_wtiles_buffer.data(), grid);
 
       // Remove the flush event from the queue
       wtile_flush_set.pop_front();
@@ -223,11 +229,12 @@ void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
     }
 
     // Add all subgrids than can be added to the wtiles
-    kernel_adder_subgrids_to_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, kWTileSize,
-        &metadata[subgrid_index],
-        &subgrid[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
-        m_wtiles_buffer.data());
+    kernel_adder_subgrids_to_wtiles(nr_subgrids_to_process, nr_polarizations,
+                                    grid_size, subgrid_size, kWTileSize,
+                                    &metadata[subgrid_index],
+                                    &subgrid[subgrid_index * subgrid_size *
+                                             subgrid_size * nr_polarizations],
+                                    m_wtiles_buffer.data());
     // Increment the subgrid index by the actual number of processed subgrids
     subgrid_index += nr_subgrids_to_process;
   }
@@ -251,8 +258,8 @@ void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
       WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
       // Initialize the wtiles from the grid
       kernel_splitter_wtiles_from_grid(
-          grid_size, subgrid_size, kWTileSize, image_size, w_step, shift,
-          wtile_initialize_info.wtile_ids.size(),
+          nr_polarizations, grid_size, subgrid_size, kWTileSize, image_size,
+          w_step, shift, wtile_initialize_info.wtile_ids.size(),
           wtile_initialize_info.wtile_ids.data(),
           wtile_initialize_info.wtile_coordinates.data(),
           m_wtiles_buffer.data(), grid);
@@ -278,9 +285,10 @@ void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
 
     // Process all subgrids that can be processed now
     kernel_splitter_subgrids_from_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, kWTileSize,
-        &metadata[subgrid_index],
-        &subgrid[subgrid_index * subgrid_size * subgrid_size * NR_CORRELATIONS],
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        kWTileSize, &metadata[subgrid_index],
+        &subgrid[subgrid_index * subgrid_size * subgrid_size *
+                 nr_polarizations],
         m_wtiles_buffer.data());
 
     // Increment the subgrid index by the actual number of processed subgrids

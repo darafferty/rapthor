@@ -314,9 +314,9 @@ Array1D<float> Proxy::compute_wavenumbers(
 }
 
 std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
-                                           size_t nr_correlations,
+                                           size_t nr_polarizations,
                                            size_t height, size_t width) {
-  return std::make_shared<Grid>(nr_w_layers, nr_correlations, height, width);
+  return std::make_shared<Grid>(nr_w_layers, nr_polarizations, height, width);
 }
 
 void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {

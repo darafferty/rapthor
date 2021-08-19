@@ -7,9 +7,9 @@
 
 #include "Math.h"
 
-inline void update_subgrid(int nr_pixels, int nr_stations, int subgrid_size,
-                           int subgrid, int aterm_index, int station1,
-                           int station2, const float* spheroidal,
+inline void update_subgrid(int nr_polarizations, int nr_pixels, int nr_stations,
+                           int subgrid_size, int subgrid, int aterm_index,
+                           int station1, int station2, const float* spheroidal,
                            const std::complex<float>* aterms,
                            const std::complex<float>* avg_aterm_correction,
                            const std::complex<float>* subgrid_local,
@@ -21,13 +21,15 @@ inline void update_subgrid(int nr_pixels, int nr_stations, int subgrid_size,
 
     // Apply the conjugate transpose of the A-term
     size_t station1_idx =
-        index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, 0);
+        index_aterm(subgrid_size, nr_polarizations, nr_stations, aterm_index,
+                    station1, y, x, 0);
     size_t station2_idx =
-        index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, 0);
+        index_aterm(subgrid_size, nr_polarizations, nr_stations, aterm_index,
+                    station2, y, x, 0);
     const std::complex<float>* aterm1_ptr = &aterms[station1_idx];
     const std::complex<float>* aterm2_ptr = &aterms[station2_idx];
-    std::complex<float> pixels[NR_CORRELATIONS];
-    for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
+    std::complex<float> pixels[nr_polarizations];
+    for (int pol = 0; pol < nr_polarizations; pol++) {
       pixels[pol] = subgrid_local[pol * nr_pixels + i];
     }
     apply_aterm_gridder(pixels, aterm1_ptr, aterm2_ptr);
@@ -44,8 +46,9 @@ inline void update_subgrid(int nr_pixels, int nr_stations, int subgrid_size,
     float sph = spheroidal[y * subgrid_size + x];
 
     // Update global subgrid
-    for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
-      size_t dst_idx = index_subgrid(subgrid_size, subgrid, pol, y_dst, x_dst);
+    for (int pol = 0; pol < nr_polarizations; pol++) {
+      size_t dst_idx = index_subgrid(nr_polarizations, subgrid_size, subgrid,
+                                     pol, y_dst, x_dst);
       subgrid_global[dst_idx] += pixels[pol] * sph;
     }
   }
@@ -56,14 +59,18 @@ namespace kernel {
 namespace cpu {
 namespace optimized {
 
-void kernel_gridder(
-    const int nr_subgrids, const long grid_size, const int subgrid_size,
-    const float image_size, const float w_step_in_lambda, const float* shift,
-    const int nr_channels, const int nr_stations, const idg::UVW<float>* uvw,
-    const float* wavenumbers, const std::complex<float>* visibilities,
-    const float* spheroidal, const std::complex<float>* aterms,
-    const int* aterms_indices, const std::complex<float>* avg_aterm_correction,
-    const idg::Metadata* metadata, std::complex<float>* subgrid) {
+void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
+                    const long grid_size, const int subgrid_size,
+                    const float image_size, const float w_step_in_lambda,
+                    const float* __restrict__ shift, const int nr_correlations,
+                    const int nr_channels, const int nr_stations,
+                    const idg::UVW<float>* uvw, const float* wavenumbers,
+                    const std::complex<float>* visibilities,
+                    const float* spheroidal, const std::complex<float>* aterms,
+                    const int* aterms_indices,
+                    const std::complex<float>* avg_aterm_correction,
+                    const idg::Metadata* metadata,
+                    std::complex<float>* subgrid) {
 #if defined(USE_LOOKUP)
   initialize_lookup();
 #endif
@@ -93,10 +100,11 @@ void kernel_gridder(
 #pragma omp parallel for schedule(guided)
   for (int s = 0; s < nr_subgrids; s++) {
     // Initialize global subgrid
-    size_t subgrid_idx = index_subgrid(subgrid_size, s, 0, 0, 0);
+    size_t subgrid_idx =
+        index_subgrid(nr_polarizations, subgrid_size, s, 0, 0, 0);
     std::complex<float>* subgrid_ptr = &subgrid[subgrid_idx];
     memset(static_cast<void*>(subgrid_ptr), 0,
-           NR_CORRELATIONS * nr_pixels * sizeof(std::complex<float>));
+           nr_polarizations * nr_pixels * sizeof(std::complex<float>));
 
     // Load metadata
     const idg::Metadata m = metadata[s];
@@ -125,11 +133,11 @@ void kernel_gridder(
     float* phasor_imag = allocate_memory<float>(total_nr_visibilities);
     float* phase = allocate_memory<float>(total_nr_visibilities);
     std::complex<float>* subgrid_local =
-        allocate_memory<std::complex<float>>(NR_CORRELATIONS * nr_pixels);
+        allocate_memory<std::complex<float>>(nr_polarizations * nr_pixels);
 
     // Initialize local subgrid
     memset(static_cast<void*>(subgrid_local), 0,
-           NR_CORRELATIONS * nr_pixels * sizeof(std::complex<float>));
+           nr_polarizations * nr_pixels * sizeof(std::complex<float>));
 
     // Initialize aterm index to first timestep
     int aterm_idx_previous = aterms_indices[time_offset_global];
@@ -169,13 +177,13 @@ void kernel_gridder(
 
       if (aterm_changed) {
         // Update subgrid
-        update_subgrid(nr_pixels, nr_stations, subgrid_size, s,
-                       aterm_idx_previous, station1, station2, spheroidal,
+        update_subgrid(nr_polarizations, nr_pixels, nr_stations, subgrid_size,
+                       s, aterm_idx_previous, station1, station2, spheroidal,
                        aterms, avg_aterm_correction, subgrid_local, subgrid);
 
         // Reset local subgrid for new aterms
         memset(static_cast<void*>(subgrid_local), 0,
-               NR_CORRELATIONS * nr_pixels * sizeof(std::complex<float>));
+               nr_polarizations * nr_pixels * sizeof(std::complex<float>));
 
         // Update aterm indices
         aterm_idx_previous = aterm_idx_current;
@@ -186,7 +194,8 @@ void kernel_gridder(
         for (int chan = channel_begin; chan < channel_end; chan++) {
           int time_idx = time_offset_global + time_offset_local + time;
           int chan_idx = chan - channel_begin;
-          size_t src_idx = index_visibility(nr_channels, time_idx, chan, 0);
+          size_t src_idx =
+              index_visibility(nr_correlations, nr_channels, time_idx, chan, 0);
 #if !defined(USE_EXTRAPOLATE)
           size_t dst_idx = time * nr_channels_subgrid + chan_idx;
 #else
@@ -300,7 +309,7 @@ void kernel_gridder(
 #endif
 
         // Compute pixels
-        std::complex<float> pixels[NR_CORRELATIONS]
+        std::complex<float> pixels[nr_polarizations]
             __attribute__((aligned(ALIGNMENT)));
         compute_reduction(current_nr_visibilities, vis_xx_real, vis_xy_real,
                           vis_yx_real, vis_yy_real, vis_xx_imag, vis_xy_imag,
@@ -308,16 +317,17 @@ void kernel_gridder(
                           pixels);
 
         // Update local subgrid
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-          size_t idx = index_subgrid(subgrid_size, 0, pol, y, x);
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+          size_t idx =
+              index_subgrid(nr_polarizations, subgrid_size, 0, pol, y, x);
           subgrid_local[idx] += pixels[pol];
         }
       }  // end for i (pixels)
     }    // end time_offset_local
 
-    update_subgrid(nr_pixels, nr_stations, subgrid_size, s, aterm_idx_previous,
-                   station1, station2, spheroidal, aterms, avg_aterm_correction,
-                   subgrid_local, subgrid);
+    update_subgrid(nr_polarizations, nr_pixels, nr_stations, subgrid_size, s,
+                   aterm_idx_previous, station1, station2, spheroidal, aterms,
+                   avg_aterm_correction, subgrid_local, subgrid);
 
     // Free memory
     free(vis_xx_real);

@@ -11,7 +11,7 @@ namespace idg {
 namespace kernel {
 
 void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
-  int nr_correlations = data.get_z_dim();
+  int nr_polarizations = data.get_z_dim();
   int height = data.get_y_dim();
   int width = data.get_x_dim();
   ASSERT(height == width);
@@ -26,7 +26,7 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
   int n2 = n / 2;
 
   // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
-  for (int pol = 0; pol < nr_correlations; pol++) {
+  for (int pol = 0; pol < nr_polarizations; pol++) {
 #pragma omp parallel for private(tmp13, tmp24) collapse(2)
     for (int i = 0; i < n2; i++) {
       for (int k = 0; k < n2; k++) {
@@ -47,7 +47,7 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
 
 void KernelsInstance::scale(Array3D<std::complex<float>>& data,
                             std::complex<float> scale) const {
-  int nr_correlations = data.get_z_dim();
+  int nr_polarizations = data.get_z_dim();
   int height = data.get_y_dim();
   int width = data.get_x_dim();
 
@@ -55,7 +55,7 @@ void KernelsInstance::scale(Array3D<std::complex<float>>& data,
   states[0] = m_powersensor->read();
 
 #pragma omp parallel for collapse(3)
-  for (int pol = 0; pol < nr_correlations; pol++) {
+  for (int pol = 0; pol < nr_polarizations; pol++) {
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
         std::complex<float> value = data(pol, y, x);
@@ -70,8 +70,9 @@ void KernelsInstance::scale(Array3D<std::complex<float>>& data,
 }
 
 void KernelsInstance::tile_backward(
-    const unsigned long grid_size, const unsigned int tile_size,
-    const Array5D<std::complex<float>>& grid_src, Grid& grid_dst) const {
+    const unsigned int nr_polarizations, const unsigned long grid_size,
+    const unsigned int tile_size, const Array5D<std::complex<float>>& grid_src,
+    Grid& grid_dst) const {
   ASSERT(grid_src.bytes() == grid_dst.bytes());
 
   std::complex<float>* src_ptr = (std::complex<float>*)grid_src.data();
@@ -81,17 +82,19 @@ void KernelsInstance::tile_backward(
   for (unsigned long pixel = 0; pixel < grid_size * grid_size; pixel++) {
     int y = pixel / grid_size;
     int x = pixel % grid_size;
-    for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
-      long src_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
-      long dst_idx = index_grid(grid_size, 0, pol, y, x);
+    for (unsigned short pol = 0; pol < nr_polarizations; pol++) {
+      long src_idx =
+          index_grid_tiling(nr_polarizations, tile_size, grid_size, pol, y, x);
+      long dst_idx = index_grid_4d(nr_polarizations, grid_size, 0, pol, y, x);
       dst_ptr[dst_idx] = src_ptr[src_idx];
     }
   }
 }
 
 void KernelsInstance::tile_forward(
-    const unsigned long grid_size, const unsigned int tile_size,
-    const Grid& grid_src, Array5D<std::complex<float>>& grid_dst) const {
+    const unsigned int nr_polarizations, const unsigned long grid_size,
+    const unsigned int tile_size, const Grid& grid_src,
+    Array5D<std::complex<float>>& grid_dst) const {
   ASSERT(grid_src.bytes() == grid_dst.bytes());
 
   std::complex<float>* src_ptr = (std::complex<float>*)grid_src.data();
@@ -101,20 +104,22 @@ void KernelsInstance::tile_forward(
   for (unsigned long pixel = 0; pixel < grid_size * grid_size; pixel++) {
     int y = pixel / grid_size;
     int x = pixel % grid_size;
-    for (unsigned short pol = 0; pol < NR_CORRELATIONS; pol++) {
-      long src_idx = index_grid(grid_size, 0, pol, y, x);
-      long dst_idx = index_grid_tiling(tile_size, grid_size, pol, y, x);
+    for (unsigned short pol = 0; pol < nr_polarizations; pol++) {
+      long src_idx = index_grid_4d(nr_polarizations, grid_size, 0, pol, y, x);
+      long dst_idx =
+          index_grid_tiling(nr_polarizations, tile_size, grid_size, pol, y, x);
       dst_ptr[dst_idx] = src_ptr[src_idx];
     }
   }
 }
 
 void KernelsInstance::transpose_aterm(
+    const unsigned int nr_polarizations,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms_src,
     Array4D<std::complex<float>>& aterms_dst) const {
   ASSERT(aterms_src.bytes() == aterms_dst.bytes());
   ASSERT(aterms_src.get_y_dim() == aterms_src.get_x_dim());
-  ASSERT(aterms_dst.get_z_dim() == NR_CORRELATIONS);
+  ASSERT(aterms_dst.get_z_dim() == nr_polarizations);
   const unsigned int nr_stations = aterms_src.get_w_dim();
   const unsigned int nr_timeslots = aterms_src.get_z_dim();
   const unsigned int subgrid_size = aterms_src.get_y_dim();

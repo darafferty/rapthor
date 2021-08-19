@@ -32,7 +32,7 @@ void init_data(std::complex<float>* data, int* ids, unsigned int n,
     for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
       for (unsigned int y = 0; y < size; y++) {
         for (unsigned int x = 0; x < size; x++) {
-          size_t idx = index_grid(size, ids[tile], pol, y, x);
+          size_t idx = index_grid_4d(size, ids[tile], pol, y, x);
           data[idx] =
               std::complex<float>((y + 1) / size, (x + 1) / size) * scale;
         }
@@ -54,15 +54,15 @@ int compare_tiles(std::complex<float>* tiles, std::complex<float>* padded_tiles,
           int tile_id = tile_ids[tile];
 
           size_t padded_idx =
-              index_grid(padded_tile_size, padded_tile_id, pol, y, x);
+              index_grid_4d(padded_tile_size, padded_tile_id, pol, y, x);
           std::complex<float> value = padded_tiles[padded_idx];
 
           std::complex<float> reference(0, 0);
 
           if (y >= padding && y < (tile_size + padding) && x >= padding &&
               x < (tile_size + padding)) {
-            size_t idx =
-                index_grid(tile_size, tile_id, pol, y - padding, x - padding);
+            size_t idx = index_grid_4d(tile_size, tile_id, pol, y - padding,
+                                       x - padding);
             reference = tiles[idx];
           }
           std::complex<float> difference = reference - value;
@@ -145,7 +145,7 @@ void apply_phasor(std::complex<float>* tiles, idg::Coordinate* tile_coordinates,
           // Compute phasor
           std::complex<float> phasor = {std::cos(phase) / N,
                                         std::sin(phase) / N};
-          unsigned int idx = index_grid(tile_size, tile_index, pol, y, x);
+          unsigned int idx = index_grid_4d(tile_size, tile_index, pol, y, x);
 
           // Apply phasor
           tiles[idx] *= phasor;
@@ -198,8 +198,8 @@ void subgrids_to_wtiles(const long nr_subgrids, const int grid_size,
 
           // Add subgrid value to tiles
           for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-            long dst_idx = index_grid(tile_size + subgrid_size, tile_index, pol,
-                                      y_dst, x_dst);
+            long dst_idx = index_grid_4d(tile_size + subgrid_size, tile_index,
+                                         pol, y_dst, x_dst);
             long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
 
             std::complex<float> value = phasor * subgrid[src_idx];
@@ -233,9 +233,9 @@ void wtiles_to_grid(int nr_tiles, int grid_size, int tile_size,
           const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
           unsigned int pol_src = pol;
           unsigned int pol_dst = index_pol_transposed[pol];
-          unsigned long dst_idx = index_grid(grid_size, pol_src, y, x);
+          unsigned long dst_idx = index_grid_3d(grid_size, pol_src, y, x);
           unsigned long src_idx =
-              index_grid(padded_tile_size, i, pol_dst, (y - y0), (x - x0));
+              index_grid_4d(padded_tile_size, i, pol_dst, (y - y0), (x - x0));
           grid[dst_idx] += tiles[src_idx];
         }  // end for pol
       }    // end for x
@@ -577,8 +577,8 @@ int main(int argc, char* argv[]) {
             std::complex<float>* dst_ptr = u_grid;
             std::complex<float>* src_ptr =
                 static_cast<std::complex<float>*>(h_patch);
-            size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
-            size_t src_idx = index_grid(patch_size, pol, y_, x_);
+            size_t dst_idx = index_grid_3d(grid_size, pol, y + y_, x + x_);
+            size_t src_idx = index_grid_3d(patch_size, pol, y_, x_);
             dst_ptr[dst_idx] += src_ptr[src_idx];
           }
         }

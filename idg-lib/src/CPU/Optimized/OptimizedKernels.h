@@ -50,7 +50,8 @@ class OptimizedKernels : public InstanceCPU {
    */
   bool do_supports_wtiling() override { return true; };
 
-  virtual size_t init_wtiles(size_t grid_size, int subgrid_size) override;
+  virtual size_t init_wtiles(int nr_polarizations, size_t grid_size,
+                             int subgrid_size) override;
 
   virtual void run_adder_tiles_to_grid(
       KERNEL_ADDER_TILES_TO_GRID_ARGUMENTS) override;

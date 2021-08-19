@@ -38,9 +38,11 @@ inline float FUNCTION_ATTRIBUTES compute_n(float l, float m,
   return compute_n(l - shift[0], m - shift[1]);
 }
 
+#define NR_CORRELATIONS_ATERM 4
+
 template <typename T>
 FUNCTION_ATTRIBUTES inline void apply_avg_aterm_correction(
-    const T C[16], T pixels[NR_CORRELATIONS]) {
+    const T C[16], T pixels[NR_CORRELATIONS_ATERM]) {
   //        [pixel0
   //         pixel1
   //         pixel2   = vec( [ pixels[0], pixels[1],
@@ -66,7 +68,7 @@ template <typename T>
 inline FUNCTION_ATTRIBUTES void apply_avg_aterm_correction(const T C[16],
                                                            T &uvXX, T &uvXY,
                                                            T &uvYX, T &uvYY) {
-  T uv[NR_CORRELATIONS] = {uvXX, uvXY, uvYX, uvYY};
+  T uv[NR_CORRELATIONS_ATERM] = {uvXX, uvXY, uvYX, uvYY};
 
   apply_avg_aterm_correction(C, uv);
 

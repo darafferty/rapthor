@@ -66,6 +66,10 @@ inline float _mm512_horizontal_add(__m512 x) {
   return _mm_cvtss_f32(x8);
 }
 #endif
+
+// Assume full polarization
+#define NR_CORRELATIONS 4
+
 inline void compute_reduction_scalar(
     int *offset, const int n, const float *input_xx_real,
     const float *input_xy_real, const float *input_yx_real,
@@ -481,3 +485,6 @@ inline void compute_reduction(
                            input_xy_imag, input_yx_imag, input_yy_imag,
                            phasor_real, phasor_imag, output);
 }
+
+// Do not expose NR_CORRELATIONS outside of this header file
+#undef NR_CORRELATIONS

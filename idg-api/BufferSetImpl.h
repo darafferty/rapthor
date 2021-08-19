@@ -112,6 +112,7 @@ class BufferSetImpl : public virtual BufferSet {
   std::shared_ptr<std::vector<std::complex<float>>> m_matrix_inverse_beam;
   Array4D<std::complex<float>> m_default_aterm_correction;
   Array4D<std::complex<float>> m_avg_aterm_correction;
+  int m_nr_polarizations;
   size_t m_subgridsize;
   float m_image_size;
   float m_cell_size;

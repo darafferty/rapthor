@@ -37,30 +37,26 @@ void kernel_splitter_wstack(KERNEL_SPLITTER_WSTACK_ARGUMENTS);
 /*
  * W-Tiling
  */
-void kernel_adder_wtiles_to_grid(int grid_size, int subgrid_size,
-                                 int wtile_size, float image_size, float w_step,
-                                 const float* shift, int nr_tiles,
-                                 const int* tile_ids,
-                                 const idg::Coordinate* tile_coordinates,
-                                 std::complex<float>* tiles,
-                                 std::complex<float>* grid);
+void kernel_adder_wtiles_to_grid(
+    int nr_polarizations, int grid_size, int subgrid_size, int wtile_size,
+    float image_size, float w_step, const float* shift, int nr_tiles,
+    const int* tile_ids, const idg::Coordinate* tile_coordinates,
+    std::complex<float>* tiles, std::complex<float>* grid);
 
 void kernel_adder_subgrids_to_wtiles(
-    const long nr_subgrids, const int grid_size, const int subgrid_size,
-    const int wtile_size, const idg::Metadata* metadata,
+    const long nr_subgrids, const int nr_polarizations, const int grid_size,
+    const int subgrid_size, const int wtile_size, const idg::Metadata* metadata,
     const std::complex<float>* subgrid, std::complex<float>* tiles);
 
-void kernel_splitter_wtiles_from_grid(int grid_size, int subgrid_size,
-                                      int wtile_size, float image_size,
-                                      float w_step, const float* shift,
-                                      int nr_tiles, const int* tile_ids,
-                                      const idg::Coordinate* tile_coordinates,
-                                      std::complex<float>* tiles,
-                                      const std::complex<float>* grid);
+void kernel_splitter_wtiles_from_grid(
+    int nr_polarizations, int grid_size, int subgrid_size, int wtile_size,
+    float image_size, float w_step, const float* shift, int nr_tiles,
+    const int* tile_ids, const idg::Coordinate* tile_coordinates,
+    std::complex<float>* tiles, const std::complex<float>* grid);
 
 void kernel_splitter_subgrids_from_wtiles(
-    const long nr_subgrids, const int grid_size, const int subgrid_size,
-    const int wtile_size, const idg::Metadata* metadata,
+    const long nr_subgrids, const int nr_polarizations, const int grid_size,
+    const int subgrid_size, const int wtile_size, const idg::Metadata* metadata,
     std::complex<float>* subgrid, const std::complex<float>* tiles);
 
 }  // end namespace optimized

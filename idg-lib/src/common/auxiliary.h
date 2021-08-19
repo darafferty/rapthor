@@ -18,7 +18,6 @@ inline int max(int a, int b) { return a > b ? a : b; }
 
 namespace idg {
 namespace auxiliary {
-#define NR_CORRELATIONS 4
 
 /*
     Operation and byte count

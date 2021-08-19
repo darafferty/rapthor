@@ -54,6 +54,10 @@ class Plan {
     // consider only first channel when creating subgrids,
     // add additional subgrids for every subsequent frequencies
     bool simulate_spectral_line = false;
+
+    // Create Stokes I polarization only, if !stokes_i_only
+    // all four Stokes polarizations are created.
+    bool stokes_i_only = false;
   };
 
   // Constructors

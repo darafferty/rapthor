@@ -134,7 +134,8 @@ void sort_by_patches(int grid_size, int tile_size, int padded_tile_size,
             update_info_sorted.wtile_coordinates);
 }
 
-void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,
+void run_adder_patch_to_grid(int nr_polarizations, int grid_size,
+                             int patch_size, int nr_patches,
                              idg::Coordinate* __restrict__ patch_coordinates,
                              std::complex<float>* __restrict__ grid,
                              std::complex<float>* __restrict__ patches_buffer) {
@@ -154,10 +155,11 @@ void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,
         break;
       }
 
-      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+      for (int pol = 0; pol < nr_polarizations; pol++) {
         for (int x_ = 0; x_ < width; x_++) {
-          size_t dst_idx = index_grid(grid_size, pol, y + y_, x + x_);
-          size_t src_idx = index_grid(patch_size, i, pol, y_, x_);
+          size_t dst_idx = index_grid_3d(grid_size, pol, y + y_, x + x_);
+          size_t src_idx =
+              index_grid_4d(nr_polarizations, patch_size, i, pol, y_, x_);
           dst_ptr[dst_idx] += src_ptr[src_idx];
         }  // end for x_
       }    // end for pol
@@ -166,7 +168,7 @@ void run_adder_patch_to_grid(int grid_size, int patch_size, int nr_patches,
 }
 
 void run_splitter_patch_from_grid(
-    int grid_size, int patch_size, int nr_patches,
+    int nr_polarizations, long grid_size, int patch_size, int nr_patches,
     idg::Coordinate* __restrict__ patch_coordinates,
     std::complex<float>* __restrict__ grid,
     std::complex<float>* __restrict__ patches_buffer) {
@@ -179,27 +181,30 @@ void run_splitter_patch_from_grid(
       int x = patch_coordinates[i].x;
       int y = patch_coordinates[i].y;
 
-      int width = std::min(patch_size, grid_size - x);
-      int height = std::min(patch_size, grid_size - y);
+      int width = std::min(static_cast<long>(patch_size), grid_size - x);
+      int height = std::min(static_cast<long>(patch_size), grid_size - y);
 
       if (y_ >= height) {
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+        for (int pol = 0; pol < nr_polarizations; pol++) {
           for (int x_ = 0; x_ < patch_size; x_++) {
-            size_t dst_idx = index_grid(patch_size, i, pol, y_, x_);
+            size_t dst_idx =
+                index_grid_4d(nr_polarizations, patch_size, i, pol, y_, x_);
             dst_ptr[dst_idx] = 0;
           }  // end for x_
         }
         continue;
       }
 
-      for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+      for (int pol = 0; pol < nr_polarizations; pol++) {
         for (int x_ = 0; x_ < width; x_++) {
-          size_t dst_idx = index_grid(patch_size, i, pol, y_, x_);
-          size_t src_idx = index_grid(grid_size, pol, y + y_, x + x_);
+          size_t dst_idx =
+              index_grid_4d(nr_polarizations, patch_size, i, pol, y_, x_);
+          size_t src_idx = index_grid_3d(grid_size, pol, y + y_, x + x_);
           dst_ptr[dst_idx] = src_ptr[src_idx];
         }  // end for x_
         for (int x_ = width; x_ < patch_size; x_++) {
-          size_t dst_idx = index_grid(patch_size, i, pol, y_, x_);
+          size_t dst_idx =
+              index_grid_4d(nr_polarizations, patch_size, i, pol, y_, x_);
           dst_ptr[dst_idx] = 0;
         }  // end for x_
       }    // end for pol

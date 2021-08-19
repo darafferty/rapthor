@@ -136,11 +136,12 @@ void BulkDegridderImpl::compute_visibilities(
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 
   // Transpose bufferVisibilities into visibilities.
+  const unsigned int nr_correlations = 4;
   static_assert(sizeof(Visibility<std::complex<float>>) ==
-                    NR_CORRELATIONS * sizeof(std::complex<float>),
+                    nr_correlations * sizeof(std::complex<float>),
                 "Correlation count mismatch");
 
-  const size_t baseline_size = frequencies_.size() * NR_CORRELATIONS;
+  const size_t baseline_size = frequencies_.size() * nr_correlations;
   for (size_t t = 0; t < nr_timesteps; ++t) {
     for (size_t bl = 0; bl < nr_baselines; ++bl) {
       const int local_bl = baseline_map[bl];
