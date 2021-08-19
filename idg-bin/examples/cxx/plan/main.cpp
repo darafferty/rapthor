@@ -246,12 +246,12 @@ int main(int argc, char **argv) {
 
     // Compute the size of some data structures
     size_t sizeof_padded_tile = 1ULL * padded_tile_size * padded_tile_size *
-                                NR_CORRELATIONS * sizeof(idg::float2);
+                                NR_CORRELATIONS * sizeof(std::complex<float>);
     size_t sizeof_padded_tiles = 1ULL * nr_tiles * sizeof_padded_tile;
     float sizeof_padded_tiles_gb =
         (float)sizeof_padded_tiles / (1024 * 1024 * 1024);
-    size_t sizeof_grid =
-        1ULL * grid_size * grid_size * NR_CORRELATIONS * sizeof(idg::float2);
+    size_t sizeof_grid = 1ULL * grid_size * grid_size * NR_CORRELATIONS *
+                         sizeof(std::complex<float>);
     float sizeof_grid_gb = (float)sizeof_grid / (1024 * 1024 * 1024);
 
     // Print information

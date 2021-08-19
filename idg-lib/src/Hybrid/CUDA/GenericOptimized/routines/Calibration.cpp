@@ -18,8 +18,8 @@ void GenericOptimized::do_calibrate_init(
     Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
     Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
     const Array2D<float>& spheroidal) {
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-  cpuKernels.set_report(m_report);
+  auto cpuKernels = cpuProxy->get_kernels();
+  cpuKernels->set_report(m_report);
 
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -76,13 +76,13 @@ void GenericOptimized::do_calibrate_init(
     }
 
     // Get data pointers
-    void* metadata_ptr = (void*)plans[antenna_nr]->get_metadata_ptr();
-    void* subgrids_ptr = subgrids_.data();
-    std::complex<float>* grid_ptr = m_grid->data();
-    void* aterm_idx_ptr = (void*)plans[antenna_nr]->get_aterm_indices_ptr();
-    void* visibilities_ptr = visibilities.data(antenna_nr);
-    void* weights_ptr = weights.data(antenna_nr);
-    void* uvw_ptr = uvw.data(antenna_nr);
+    auto metadata_ptr = plans[antenna_nr]->get_metadata_ptr();
+    auto subgrids_ptr = subgrids_.data();
+    auto grid_ptr = m_grid->data();
+    auto aterm_idx_ptr = plans[antenna_nr]->get_aterm_indices_ptr();
+    auto visibilities_ptr = visibilities.data(antenna_nr);
+    auto weights_ptr = weights.data(antenna_nr);
+    auto uvw_ptr = uvw.data(antenna_nr);
 
     // Allocate and initialize device memory for current antenna
     auto sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids);
@@ -118,8 +118,8 @@ void GenericOptimized::do_calibrate_init(
 
     // Splitter kernel
     if (w_step == 0.0) {
-      cpuKernels.run_splitter(nr_subgrids, grid_size, subgrid_size,
-                              metadata_ptr, subgrids_ptr, grid_ptr);
+      cpuKernels->run_splitter(nr_subgrids, grid_size, subgrid_size,
+                               metadata_ptr, subgrids_ptr, grid_ptr);
     } else if (plans[antenna_nr]->get_use_wtiles()) {
       WTileUpdateSet wtile_initialize_set =
           plans[antenna_nr]->get_wtile_initialize_set();
@@ -140,14 +140,14 @@ void GenericOptimized::do_calibrate_init(
         dtohstream.memcpyDtoHAsync(subgrids_ptr, d_subgrids, sizeof_subgrids);
         dtohstream.synchronize();
       } else {
-        cpuKernels.run_splitter_wtiles(
+        cpuKernels->run_splitter_wtiles(
             nr_subgrids, grid_size, subgrid_size, image_size, w_step,
             shift.data(), 0 /* subgrid_offset */, wtile_initialize_set,
             metadata_ptr, subgrids_ptr, grid_ptr);
       }
     } else {
-      cpuKernels.run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
-                                     metadata_ptr, subgrids_ptr, grid_ptr);
+      cpuKernels->run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
+                                      metadata_ptr, subgrids_ptr, grid_ptr);
     }
 
     // Copy data to device
@@ -159,8 +159,8 @@ void GenericOptimized::do_calibrate_init(
     htodstream.memcpyHtoDAsync(d_aterm_idx, aterm_idx_ptr, sizeof_aterm_idx);
 
     // FFT kernel
-    cpuKernels.run_subgrid_fft(grid_size, subgrid_size, nr_subgrids,
-                               subgrids_ptr, CUFFT_FORWARD);
+    cpuKernels->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids,
+                                subgrids_ptr, CUFFT_FORWARD);
 
     // Apply spheroidal
     for (int i = 0; i < (int)nr_subgrids; i++) {
@@ -350,35 +350,6 @@ void GenericOptimized::do_calibrate_finish() {
   }
   m_report->print_total(total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_calibrate);
-}
-
-void GenericOptimized::do_calibrate_init_hessian_vector_product() {
-  m_calibrate_state.hessian_vector_product_visibilities =
-      Array3D<Visibility<std::complex<float>>>(m_calibrate_state.nr_baselines,
-                                               m_calibrate_state.nr_timesteps,
-                                               m_calibrate_state.nr_channels);
-  std::memset(m_calibrate_state.hessian_vector_product_visibilities.data(), 0,
-              m_calibrate_state.hessian_vector_product_visibilities.bytes());
-}
-
-void GenericOptimized::do_calibrate_update_hessian_vector_product1(
-    const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    const Array2D<float>& parameter_vector) {
-  // TODO for now call the cpu instance
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-  cpuKernels.run_calibrate_hessian_vector_product1(
-      antenna_nr, aterms, derivative_aterms, parameter_vector);
-}
-
-void GenericOptimized::do_calibrate_update_hessian_vector_product2(
-    const int station_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    Array2D<float>& parameter_vector) {
-  // TODO for now call the cpu instance
-  InstanceCPU& cpuKernels = cpuProxy->get_kernels();
-  cpuKernels.run_calibrate_hessian_vector_product2(
-      station_nr, aterms, derivative_aterms, parameter_vector);
 }
 
 }  // namespace hybrid

@@ -146,9 +146,9 @@ class CUDA : public Proxy {
     unsigned current_nr_baselines;
     unsigned current_nr_subgrids;
     unsigned current_nr_timesteps;
-    void* metadata_ptr;
-    void* uvw_ptr;
-    void* visibilities_ptr;
+    const idg::Metadata* metadata_ptr;
+    const idg::UVW<float>* uvw_ptr;
+    idg::Matrix2x2<std::complex<float>>* visibilities_ptr;
   };
 
   std::vector<JobData> jobs;

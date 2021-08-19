@@ -1,12 +1,6 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-cmake_minimum_required(VERSION 2.8.0)
-
-# set policies
-cmake_policy(SET CMP0003 NEW) # 2.6.0
-cmake_policy(SET CMP0012 NEW) # 2.8.0
-
 # the project
 project(ImageDomainGridder CXX)
 

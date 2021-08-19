@@ -1,11 +1,10 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-project(cpu-reference-kernel)
+project(cpu-reference-kernels)
 
 # Include directories
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../common/
-                    ${FFTW3_INCLUDE_DIR})
+include_directories(${FFTW3_INCLUDE_DIR})
 
 # Build type options
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -30,26 +29,12 @@ endif()
 
 # Miscellaneous options
 add_compile_options("-DNR_POLARIZATIONS=4")
-
-# Add libraries
-add_library(${PROJECT_NAME}-gridder KernelGridder.cpp)
-add_library(${PROJECT_NAME}-degridder KernelDegridder.cpp)
-add_library(${PROJECT_NAME}-adder KernelAdder.cpp)
-add_library(${PROJECT_NAME}-splitter KernelSplitter.cpp)
-add_library(${PROJECT_NAME}-fft KernelFFT.cpp)
-add_library(${PROJECT_NAME}-average-beam KernelAverageBeam.cpp)
-
-foreach(tgt gridder degridder adder splitter fft average-beam)
-  set_target_properties(
-    ${PROJECT_NAME}-${tgt}
-    PROPERTIES SOVERSION 0 LIBRARY_OUTPUT_DIRECTORY
-                           ${CMAKE_BINARY_DIR}/lib/idg-cpu/Reference)
-endforeach()
-
-# Copy kernel libraries
-install(
-  TARGETS ${PROJECT_NAME}-gridder ${PROJECT_NAME}-degridder
-          ${PROJECT_NAME}-adder ${PROJECT_NAME}-splitter ${PROJECT_NAME}-fft
-          ${PROJECT_NAME}-average-beam
-  COMPONENT cpu
-  DESTINATION lib/idg-cpu/Reference)
+add_library(
+  ${PROJECT_NAME} OBJECT
+  Kernels.h
+  KernelGridder.cpp
+  KernelDegridder.cpp
+  KernelAdder.cpp
+  KernelSplitter.cpp
+  KernelFFT.cpp
+  KernelAverageBeam.cpp)

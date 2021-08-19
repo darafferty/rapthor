@@ -57,7 +57,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(idg::float2);
+                                NR_CORRELATIONS * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -346,7 +346,7 @@ void GenericOptimized::run_wtiles_from_grid(
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(idg::float2);
+                                NR_CORRELATIONS * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);

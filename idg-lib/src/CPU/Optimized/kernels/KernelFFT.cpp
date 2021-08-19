@@ -18,19 +18,21 @@ void copy_1d(unsigned long size, int pol,
              int col,  // copy_col: > 0, copy_row: -1
              int dir,  // backward: -1, forward: 1
              std::complex<float>* a, std::complex<float>* b,
-             std::complex<float> scale = std::complex<float>(1, 1)) {
+             std::complex<float> scale = {1, 1}) {
   for (unsigned int i = 0; i < size; i++) {
     unsigned long a_idx = row == -1 ? index_grid(size, pol, i, col)
                                     : index_grid(size, pol, row, i);
     unsigned long b_idx = i;
     std::complex<float>& src = dir == 1 ? a[a_idx] : b[b_idx];
     std::complex<float>* dst = dir == 1 ? &b[b_idx] : &a[a_idx];
-    *dst = std::complex<float>(src.real() * scale.real(),
-                               src.imag() * scale.imag());
+    *dst = {src.real() * scale.real(), src.imag() * scale.imag()};
   }
 }
 
-extern "C" {
+namespace idg {
+namespace kernel {
+namespace cpu {
+namespace optimized {
 
 void kernel_fft_grid(long size, std::complex<float>* data,
                      int sign  // -1=FFTW_FORWARD, 1=FFTW_BACKWARD
@@ -93,8 +95,9 @@ void kernel_fft_grid(long size, std::complex<float>* data,
   fftwf_destroy_plan(plan);
 }
 
-void kernel_fft_subgrid(long size, long batch, fftwf_complex* _data, int sign) {
-  fftwf_complex* data = (fftwf_complex*)_data;
+void kernel_fft_subgrid(long size, long batch, std::complex<float>* data,
+                        int sign) {
+  fftwf_complex* data_ptr = reinterpret_cast<fftwf_complex*>(data);
 
   // 2D FFT
   int rank = 2;
@@ -115,22 +118,23 @@ void kernel_fft_subgrid(long size, long batch, fftwf_complex* _data, int sign) {
 
   // Create plan
   fftwf_plan plan;
-  plan = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, _data, n, istride,
-                             idist, _data, n, ostride, odist, sign, flags);
+  plan = fftwf_plan_many_dft(rank, n, NR_POLARIZATIONS, data_ptr, n, istride,
+                             idist, data_ptr, n, ostride, odist, sign, flags);
 
-#pragma omp parallel for private(data)
+#pragma omp parallel for private(data_ptr)
   for (int i = 0; i < batch; i++) {
-    data = (fftwf_complex*)_data + i * (NR_POLARIZATIONS * size * size);
+    data_ptr = reinterpret_cast<fftwf_complex*>(data) +
+               i * (NR_POLARIZATIONS * size * size);
 
     // Execute FFTs
-    fftwf_execute_dft(plan, data, data);
+    fftwf_execute_dft(plan, data_ptr, data_ptr);
 
     // Scaling in case of an inverse FFT, so that FFT(iFFT())=identity()
     if (sign == FFTW_BACKWARD) {
       float scale = 1 / (double(size) * double(size));
       for (int i = 0; i < NR_POLARIZATIONS * size * size; i++) {
-        data[i][0] *= scale;
-        data[i][1] *= scale;
+        data_ptr[i][0] *= scale;
+        data_ptr[i][1] *= scale;
       }
     }
 
@@ -140,13 +144,17 @@ void kernel_fft_subgrid(long size, long batch, fftwf_complex* _data, int sign) {
   fftwf_destroy_plan(plan);
 }
 
-void kernel_fft(long gridsize, long size, long batch, fftwf_complex* data,
-                int sign) {
-  if (size == gridsize) {  // a bit of a hack; TODO: make separate functions for
-                           // two cases
-    kernel_fft_grid(size, reinterpret_cast<std::complex<float>*>(data), sign);
+void kernel_fft(long grid_size, long size, long batch,
+                std::complex<float>* data, int sign) {
+  if (size == grid_size) {  // a bit of a hack; TODO: make separate functions
+                            // for two cases
+    kernel_fft_grid(size, data, sign);
   } else {
     kernel_fft_subgrid(size, batch, data, sign);
   }
 }
-}
+
+}  // end namespace optimized
+}  // end namespace cpu
+}  // end namespace kernel
+}  // end namespace idg

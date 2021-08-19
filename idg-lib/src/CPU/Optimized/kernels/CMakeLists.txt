@@ -1,7 +1,7 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-project(cpu-optimized-kernel)
+project(cpu-optimized-kernels)
 
 # Build type options
 add_compile_options("-Wall")
@@ -40,49 +40,19 @@ if(${USE_PHASOR_EXTRAPOLATION})
   add_compile_options("-DUSE_EXTRAPOLATE")
 endif()
 
-# Add libraries
-add_library(${PROJECT_NAME}-gridder KernelGridder.cpp)
-add_library(${PROJECT_NAME}-degridder KernelDegridder.cpp)
-add_library(${PROJECT_NAME}-adder KernelAdder.cpp)
-add_library(${PROJECT_NAME}-splitter KernelSplitter.cpp)
-add_library(${PROJECT_NAME}-fft KernelFFT.cpp)
-add_library(${PROJECT_NAME}-calibrate KernelCalibrate.cpp)
+# Add library
+add_library(
+  ${PROJECT_NAME} OBJECT
+  Kernels.h
+  KernelGridder.cpp
+  KernelDegridder.cpp
+  KernelAdder.cpp
+  KernelSplitter.cpp
+  KernelFFT.cpp
+  KernelCalibrate.cpp
+  KernelAdderWStack.cpp
+  KernelSplitterWStack.cpp
+  KernelWtiling.cpp)
 
-# Add libraries for w-stacking
-add_library(${PROJECT_NAME}-adder-wstack KernelAdderWStack.cpp)
-add_library(${PROJECT_NAME}-splitter-wstack KernelSplitterWStack.cpp)
-
-# Add libraries for w-tiles
-add_library(${PROJECT_NAME}-wtiling KernelWtiling.cpp)
-target_link_libraries(${PROJECT_NAME}-wtiling idg-common)
-
-foreach(
-  tgt
-  gridder
-  degridder
-  adder
-  splitter
-  fft
-  calibrate
-  adder-wstack
-  splitter-wstack
-  wtiling)
-  set_target_properties(
-    ${PROJECT_NAME}-${tgt}
-    PROPERTIES SOVERSION 0 LIBRARY_OUTPUT_DIRECTORY
-                           ${CMAKE_BINARY_DIR}/lib/idg-cpu/Optimized)
-endforeach()
-
-# Copy kernel libraries
-install(
-  TARGETS ${PROJECT_NAME}-gridder
-          ${PROJECT_NAME}-degridder
-          ${PROJECT_NAME}-adder
-          ${PROJECT_NAME}-splitter
-          ${PROJECT_NAME}-fft
-          ${PROJECT_NAME}-calibrate
-          ${PROJECT_NAME}-adder-wstack
-          ${PROJECT_NAME}-splitter-wstack
-          ${PROJECT_NAME}-wtiling
-  COMPONENT cpu
-  DESTINATION lib/idg-cpu/Optimized)
+# Link libraries
+target_link_libraries(${PROJECT_NAME} idg-common)

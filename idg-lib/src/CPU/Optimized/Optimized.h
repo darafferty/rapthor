@@ -14,14 +14,8 @@ namespace cpu {
  */
 class Optimized : public CPU {
  public:
-  /*!
-   * @param libraries: optional list of libraries to load, used to lookup
-   * kernels
-   */
-  Optimized(std::vector<std::string> libraries = default_libraries());
-
- private:
-  static std::vector<std::string> default_libraries();
+  // Constructor
+  Optimized();
 
 };  // class Optimized
 

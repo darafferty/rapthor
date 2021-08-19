@@ -5,18 +5,25 @@
 #include <cmath>
 #include <vector>
 
-#include "Types.h"
+#include "common/Types.h"
 
-extern "C" {
-void kernel_average_beam(
-    const unsigned int nr_baselines, const unsigned int nr_antennas,
-    const unsigned int nr_timesteps, const unsigned int nr_channels,
-    const unsigned int nr_aterms, const unsigned int subgrid_size,
-    const idg::UVW<float> *__restrict__ uvw_,
-    const idg::Baseline *__restrict__ baselines_,
-    const idg::float2 *__restrict__ aterms_,
-    const int *__restrict__ aterms_offsets_, const float *__restrict__ weights_,
-    float *__restrict__ average_beam_) {
+namespace idg {
+namespace kernel {
+namespace cpu {
+namespace reference {
+
+void kernel_average_beam(const unsigned int nr_baselines,
+                         const unsigned int nr_antennas,
+                         const unsigned int nr_timesteps,
+                         const unsigned int nr_channels,
+                         const unsigned int nr_aterms,
+                         const unsigned int subgrid_size,
+                         const idg::UVW<float> *__restrict__ uvw_,
+                         const idg::Baseline *__restrict__ baselines_,
+                         const std::complex<float> *__restrict__ aterms_,
+                         const unsigned int *__restrict__ aterms_offsets_,
+                         const float *__restrict__ weights_,
+                         std::complex<float> *__restrict__ average_beam_) {
   // Define multidimensional types
   typedef std::complex<float> AverageBeam[subgrid_size * subgrid_size]
                                          [NR_POLARIZATIONS][NR_POLARIZATIONS];
@@ -147,4 +154,8 @@ void kernel_average_beam(
     }
   }  // end for pixels
 }  // end kernel_average_beam
-}  // end extern "C"
+
+}  // end namespace reference
+}  // end namespace cpu
+}  // end namespace kernel
+}  // end namespace idg

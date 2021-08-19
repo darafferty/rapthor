@@ -456,7 +456,7 @@ void CUDA::initialize(
             plan.get_nr_subgrids(first_bl, current_nr_baselines);
         job.current_nr_timesteps =
             plan.get_nr_timesteps(first_bl, current_nr_baselines);
-        job.metadata_ptr = (void*)plan.get_metadata_ptr(first_bl);
+        job.metadata_ptr = plan.get_metadata_ptr(first_bl);
         job.uvw_ptr = uvw.data(first_bl, 0);
         job.visibilities_ptr = visibilities.data(first_bl, 0, 0);
         jobs.push_back(job);

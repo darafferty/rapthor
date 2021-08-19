@@ -26,8 +26,7 @@ void Proxy::gridding(
   check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
                    baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
-  if ((plan.get_w_step() != 0.0) &&
-      (!do_supports_wstack_gridding() && !do_supports_wtiles())) {
+  if ((plan.get_w_step() != 0.0) && !do_supports_wstacking()) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support gridding with "
         "W-stacking or W-tiling.");
@@ -49,7 +48,7 @@ void Proxy::degridding(
                    baselines, *m_grid, aterms, aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) &&
-      (!do_supports_wstack_degridding() && !do_supports_wtiles())) {
+      (!do_supports_wstacking() && !do_supports_wtiling())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support degridding with "
         "W-stacking.");
@@ -189,33 +188,8 @@ void Proxy::calibrate_update(
 
 void Proxy::calibrate_finish() { do_calibrate_finish(); }
 
-void Proxy::calibrate_init_hessian_vector_product() {
-  do_calibrate_init_hessian_vector_product();
-}
-
-void Proxy::calibrate_update_hessian_vector_product1(
-    const int station_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    const Array2D<float>& parameter_vector) {
-  do_calibrate_update_hessian_vector_product1(
-      station_nr, aterms, derivative_aterms, parameter_vector);
-}
-
-void Proxy::calibrate_update_hessian_vector_product2(
-    const int station_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    Array2D<float>& parameter_vector) {
-  do_calibrate_update_hessian_vector_product2(
-      station_nr, aterms, derivative_aterms, parameter_vector);
-}
-
 void Proxy::set_avg_aterm_correction(
     const Array4D<std::complex<float>>& avg_aterm_correction) {
-  if (!supports_avg_aterm_correction()) {
-    throw exception::NotImplemented(
-        "This proxy does not support average aterm correction");
-  }
-
   // check_dimensions_avg_aterm_correction();
   std::complex<float>* data = avg_aterm_correction.data();
   size_t size =

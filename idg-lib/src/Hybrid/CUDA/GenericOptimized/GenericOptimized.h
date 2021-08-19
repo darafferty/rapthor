@@ -18,19 +18,14 @@ class GenericOptimized : public cuda::CUDA {
   GenericOptimized();
   ~GenericOptimized();
 
-  virtual bool do_supports_wstack_gridding() {
-    return cpuProxy->do_supports_wstack_gridding();
-  }
-  virtual bool do_supports_wstack_degridding() {
-    return cpuProxy->do_supports_wstack_degridding();
+  virtual bool do_supports_wstacking() {
+    return cpuProxy->do_supports_wstacking();
   }
 
-  virtual bool do_supports_wtiles() override {
+  virtual bool do_supports_wtiling() override {
     return !m_disable_wtiling &&
-           (!m_disable_wtiling_gpu || cpuProxy->do_supports_wtiles());
+           (!m_disable_wtiling_gpu || cpuProxy->supports_wtiling());
   }
-
-  virtual bool supports_avg_aterm_correction() { return true; }
 
   void set_disable_wtiling(bool v) override {
     m_disable_wtiling = v;
@@ -121,20 +116,6 @@ class GenericOptimized : public cuda::CUDA {
 
   void do_calibrate_finish() override;
 
-  void do_calibrate_init_hessian_vector_product() override;
-
-  void do_calibrate_update_hessian_vector_product1(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      const Array2D<float>& parameter_vector) override;
-
-  void do_calibrate_update_hessian_vector_product2(
-      const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array2D<float>& parameter_vector) override;
-
   /*
    * W-Tiling
    */
@@ -193,8 +174,6 @@ class GenericOptimized : public cuda::CUDA {
     unsigned int nr_timesteps;
     unsigned int nr_channels;
     Array3D<UVW<float>> uvw;
-    Array3D<Visibility<std::complex<float>>>
-        hessian_vector_product_visibilities;
   } m_calibrate_state;
 
   // Note:

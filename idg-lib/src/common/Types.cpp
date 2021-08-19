@@ -37,14 +37,4 @@ ostream& operator<<(ostream& out, const UVW<T>& uvw) {
   return out;
 }
 
-ostream& operator<<(ostream& os, const float2& x) {
-  os << "(" << x.real << "," << x.imag << ")";
-  return os;
-}
-
-ostream& operator<<(ostream& os, const double2& x) {
-  os << "(" << x.real << "," << x.imag << ")";
-  return os;
-}
-
 }  // namespace idg
