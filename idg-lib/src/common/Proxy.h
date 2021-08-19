@@ -159,6 +159,7 @@ class Proxy {
    * Set grid to be used for gridding, degridding or calibration
    */
   virtual void set_grid(std::shared_ptr<Grid> grid);
+  virtual void free_grid();
 
   /**
    * Flush all pending operations and return the current grid.

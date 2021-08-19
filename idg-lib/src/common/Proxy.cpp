@@ -327,6 +327,8 @@ void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {
   }
 }
 
+void Proxy::free_grid() { m_grid.reset(); }
+
 std::shared_ptr<Grid> Proxy::get_final_grid() { return m_grid; }
 
 std::unique_ptr<auxiliary::Memory> Proxy::allocate_memory(size_t bytes) {
