@@ -183,8 +183,8 @@ def main(proxyname):
     baseline_offset = 0
     time_offset     = 0
 
-    uvw            = numpy.zeros((nr_baselines, nr_timesteps), dtype=idg.uvwtype)
-    frequencies    = numpy.zeros((nr_channels), dtype=idg.frequenciestype)
+    uvw            = numpy.zeros((nr_baselines, nr_timesteps, 3), dtype=numpy.float32)
+    frequencies    = numpy.zeros((nr_channels), dtype=numpy.float32)
     data.get_frequencies(frequencies, nr_channels, image_size, channel_offset)
     data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
 
