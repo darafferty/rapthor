@@ -53,6 +53,3 @@ add_library(
   KernelAdderWStack.cpp
   KernelSplitterWStack.cpp
   KernelWtiling.cpp)
-
-# Link libraries
-target_link_libraries(${PROJECT_NAME} idg-common)
