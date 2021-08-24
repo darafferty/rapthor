@@ -3,15 +3,13 @@
 
 import numpy as np
 import casacore.tables
-import signal
-import argparse
-import time
 import idg
 import idg.util as util
-import astropy.io.fits as fits
-from idg.idgcalutils import next_composite, idgwindow
+
 import pytest
 import os
+
+from utils import read_fits_parameters, init_buffers, init_tapered_grid
 
 """
 Script for testing the calibrate_init and the calibrate_update methods.
@@ -24,7 +22,8 @@ IMAGENAME = os.path.join(os.environ["DATADIR"], os.environ["MODELIMAGE"])
 
 PROXIES = ["idg.CPU.Optimized", "idg.HybridCUDA.GenericOptimized"]
 
-@pytest.fixture(params = PROXIES)
+
+@pytest.fixture(params=PROXIES)
 def set_parameters(request):
     params = {}
     params["proxy"] = request.param
@@ -87,81 +86,10 @@ def read_ms(nr_timesteps, nr_correlations):
     return ms_dict
 
 
-def read_fits_parameters(padding):
-    fits_dict = {}
-    h = fits.getheader(IMAGENAME)
-
-    fits_dict["cell_size"] = abs(h["CDELT1"]) / 180 * np.pi
-    fits_dict["N0"] = h["NAXIS1"]
-    fits_dict["N"] = next_composite(int(fits_dict["N0"] * padding))
-    return fits_dict
-
-
-def init_tapered_grid(params):
-    # Initialize taper
-    taper = idgwindow(
-        params["subgrid_size"], params["taper_support"], params["padding"]
-    )
-
-    N0 = 1000
-    N = next_composite(int(N0 * params["padding"]))
-    grid_size = N
-
-    d = np.zeros(shape=(N0, N0), dtype=np.float32)
-    d[range(200, N0 - 200, 200), range(200, N0 - 200, 200)] = 1.0
-
-    taper_ = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(taper)))
-    taper_grid = np.zeros(grid_size, dtype=np.complex128)
-    taper_grid[
-        (grid_size - params["subgrid_size"])
-        // 2 : (grid_size + params["subgrid_size"])
-        // 2
-    ] = (
-        taper_
-        * np.exp(
-            -1j
-            * np.linspace(-np.pi / 2, np.pi / 2, params["subgrid_size"], endpoint=False)
-        )
-    )
-    taper_grid = (
-        np.fft.fftshift(np.fft.ifft(np.fft.ifftshift(taper_grid))).real
-        * grid_size
-        / params["subgrid_size"]
-    )
-    taper_grid0 = taper_grid[(N - N0) // 2 : (N + N0) // 2]
-
-    grid = np.zeros(
-        shape=(params["nr_correlations"], grid_size, grid_size), dtype=idg.gridtype
-    )
-    grid[0, (N - N0) // 2 : (N + N0) // 2, (N - N0) // 2 : (N + N0) // 2] = d[
-        :, :
-    ] / np.outer(taper_grid0, taper_grid0)
-    grid[3, (N - N0) // 2 : (N + N0) // 2, (N - N0) // 2 : (N + N0) // 2] = d[
-        :, :
-    ] / np.outer(taper_grid0, taper_grid0)
-    taper = np.outer(taper, taper).astype(np.float32)
-    return taper, grid
-
-
-def init_buffers(nr_baselines, nr_channels, nr_timesteps, nr_correlations):
-    # Initialize empty buffers
-    uvw = np.zeros(shape=(nr_baselines, nr_timesteps, 3), dtype=np.float32)
-    visibilities = np.zeros(
-        shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
-        dtype=idg.visibilitiestype,
-    )
-    weights = np.zeros(
-        shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
-        dtype=np.float32,
-    )
-    return (uvw, visibilities, weights)
-
-
 @pytest.mark.parametrize("params", [pytest.lazy_fixture("set_parameters")])
 def test_idgcal(params):
-    fits_settings = read_fits_parameters(params["padding"])
+    fits_settings = read_fits_parameters(IMAGENAME)
     N0 = fits_settings["N0"]
-    N = fits_settings["N"]
     ms_dict = read_ms(params["nr_timesteps"], params["nr_correlations"])
 
     uvw, visibilities, weights = init_buffers(
@@ -193,7 +121,17 @@ def test_idgcal(params):
     frequencies = ms_dict["frequencies"]
 
     # Init proxy
-    taper, grid = init_tapered_grid(params)
+    d = np.zeros(shape=(N0, N0), dtype=np.float32)
+    d[range(200, N0 - 200, 200), range(200, N0 - 200, 200)] = 1.0
+    taper, grid = init_tapered_grid(
+        params["subgrid_size"],
+        params["taper_support"],
+        params["padding"],
+        params["nr_correlations"],
+        N0=N0,
+        d=d,
+    )
+
     try:
         proxy = eval(params["proxy"])()
     except:

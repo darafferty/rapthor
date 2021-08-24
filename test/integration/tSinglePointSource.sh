@@ -38,4 +38,4 @@ cd $WORKDIR
 # pytest -s captures the print() statments
 # TODO: check/add more fine grained log levels
 PYTEST=$(which pytest-3 || echo "pytest")
-${PYTEST} --exitfirst ${DIR}/singlepointsource/test_pointsource.py
+${PYTEST} -v --exitfirst ${DIR}/singlepointsource/test_pointsource.py

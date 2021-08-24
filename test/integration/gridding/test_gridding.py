@@ -26,11 +26,12 @@
 
 import pytest
 import os
-from subprocess import call, check_call
+from subprocess import check_call
 
 import numpy as np
 from astropy.io import fits
 import casacore.tables
+from utils import preparetestset
 
 # Extract some environment variables
 DATADIR = os.environ["DATADIR"]
@@ -51,7 +52,7 @@ IMAGESIZE = 512  # pixels
 STOKESLIST = ["Q"]
 
 
-@pytest.fixture(params=[-128, 0])
+@pytest.fixture(params=[-128])
 def define_nx(request):
     """
     Define the offset in x pixels for the point source
@@ -59,7 +60,7 @@ def define_nx(request):
     return request.param
 
 
-@pytest.fixture(params=[0])
+@pytest.fixture(params=[-128])
 def define_ny(request):
     """
     Define the offset in y pixels for the point source
@@ -67,8 +68,8 @@ def define_ny(request):
     return request.param
 
 
-@pytest.fixture(params=[True])
-def define_grid_on(request):
+@pytest.fixture(params=[False, True])
+def define_grid_with_beam(request):
     """
     Use a term correction for beam?
     """
@@ -150,110 +151,7 @@ def test_setup(stokes):
         "-grid-with-beam",
         MS,
     ]
-    returncode = call(cmd)
-    assert returncode == 0
-
-
-def preparetestset(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
-    """
-    Prepare the test set
-
-    TODO: this function is now called both by test_gridding as test_degridding.
-    Maybe this can be done a bit more efficient
-    """
-    offset = (int(ny), int(nx))
-    template = os.path.join(DATADIR, "template.fits")
-    ms = MS
-
-    stokes1 = stokes
-    with fits.open(template) as img:
-        N = img[0].data.shape[-1]
-        img[0].data[:] = 0.0
-
-        for stokes2 in ["Q", "U", "V"]:
-            if stokes1 != stokes2:
-                img.writeto(
-                    f"pointsource-{stokes1}-{stokes2}-model.fits", overwrite=True,
-                )
-
-        img[0].data[0, 0, int(N / 2 + offset[0]), int(N / 2 + offset[1])] = 1.0
-
-        img.writeto(f"pointsource-{stokes1}-I-model.fits", overwrite=True)
-        if stokes1 != "I":
-            img.writeto(f"pointsource-{stokes1}-{stokes1}-model.fits", overwrite=True)
-
-    check_call(
-        [
-            "casapy2bbs.py",
-            "--no-patches",
-            f"pointsource-{stokes1}-{stokes1}-model.fits",
-            "temp.cat",
-        ]
-    )
-
-    full_stokes_list = ["I", "Q", "U", "V"]
-    stokesI_idx = 4
-    stokes_idx = 4 + full_stokes_list.index(stokes)
-
-    file_in = "temp.cat"
-    file_out = f"pointsource-{stokes}.cat"
-
-    with open(file_in, "r") as f_in:
-        contents = f_in.readlines()
-
-    # Extract and modify line 7 from the temp.cat file
-    patch_info = contents[6].split(",")
-    patch_info[stokes_idx] = patch_info[stokesI_idx]
-    contents[6] = ",".join(patch_info)
-
-    # Write cat file for corresponding component
-    file_out = f"pointsource-{stokes}.cat"
-    with open(file_out, "w") as f_out:
-        f_out.writelines(contents)
-
-    sourcedb = f"pointsource-{stokes}.sourcedb"
-    check_call(["rm", "-rf", sourcedb])
-    check_call(
-        [
-            "makesourcedb",
-            f"in={file_out}",
-            "format=Name, Type, Ra, Dec, I, Q, U, V",
-            f"out={sourcedb}",
-        ]
-    )
-
-    T = casacore.tables.taql(
-        "SELECT TIME, cdatetime(TIME-.1) AS TIMESTR FROM $ms GROUPBY TIME"
-    )
-
-    # Modify global variable INTERVALEND
-    global INTERVALEND
-    if INTERVALEND == 0:
-        INTERVALEND = len(T) - 1
-
-    starttimestr = T[INTERVALSTART]["TIMESTR"]
-    endtimestr = T[INTERVALEND]["TIMESTR"]
-
-    check_call(
-        [
-            "DPPP",
-            os.path.join(
-                COMMONDIR,
-                (
-                    "dp3-predict-correct.parset"
-                    if (grid_with_beam and differential_beam)
-                    else "dp3-predict.parset"
-                ),
-            ),
-            f"msin={ms}",
-            f"msin.starttime={starttimestr}",
-            f"msin.endtime={endtimestr}",
-            f"msin.startchan={STARTCHAN}",
-            f"msin.nchan={NCHAN}",
-            f"predict.sourcedb={sourcedb}",
-            f"predict.usebeammodel={grid_with_beam}",
-        ]
-    )
+    check_call(cmd)
 
 
 @pytest.mark.parametrize(
@@ -263,7 +161,7 @@ def preparetestset(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
             pytest.lazy_fixture("define_stokes"),
             pytest.lazy_fixture("define_nx"),
             pytest.lazy_fixture("define_ny"),
-            pytest.lazy_fixture("define_grid_on"),
+            pytest.lazy_fixture("define_grid_with_beam"),
             pytest.lazy_fixture("define_differential_beam"),
             pytest.lazy_fixture("define_idgmode"),
         )
@@ -271,11 +169,24 @@ def preparetestset(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
 )
 def test_degridding(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
     # Write sourcedb and run DPPP predict
-    preparetestset(stokes, nx, ny, grid_with_beam, differential_beam, idgmode)
-
     ms = MS
+    preparetestset(
+        stokes,
+        nx,
+        ny,
+        grid_with_beam,
+        differential_beam,
+        DATADIR,
+        COMMONDIR,
+        ms,
+        INTERVALSTART,
+        INTERVALEND,
+        STARTCHAN,
+        NCHAN,
+    )
+
     T = casacore.tables.taql(
-        "SELECT TIME, cdatetime(TIME-.1) AS TIMESTR FROM $ms GROUPBY TIME"
+        f"SELECT TIME, cdatetime(TIME-.1) AS TIMESTR FROM {ms} GROUPBY TIME"
     )
     starttime = T[INTERVALSTART]["TIME"] - 0.1
     endtime = T[INTERVALEND]["TIME"] - 0.1
@@ -314,7 +225,7 @@ def test_degridding(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
     check_call(cmd)
 
     t = casacore.tables.taql(
-        "SELECT * FROM $ms WHERE TIME>$starttime AND TIME<$endtime  AND ANTENNA1!=ANTENNA2"
+        f"SELECT * FROM {ms} WHERE TIME>{starttime} AND TIME<{endtime}  AND ANTENNA1!=ANTENNA2"
     )
 
     data = t.getcol("DATA")  # generated by DPPP
@@ -339,28 +250,39 @@ def test_degridding(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
             pytest.lazy_fixture("define_stokes"),
             pytest.lazy_fixture("define_nx"),
             pytest.lazy_fixture("define_ny"),
-            pytest.lazy_fixture("define_grid_on"),
+            pytest.lazy_fixture("define_grid_with_beam"),
             pytest.lazy_fixture("define_differential_beam"),
             pytest.lazy_fixture("define_idgmode"),
         )
     ],
 )
 def test_gridding(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
-    preparetestset(stokes, nx, ny, grid_with_beam, differential_beam, idgmode)
+    ms = MS
+    preparetestset(
+        stokes,
+        nx,
+        ny,
+        grid_with_beam,
+        differential_beam,
+        DATADIR,
+        COMMONDIR,
+        ms,
+        INTERVALSTART,
+        INTERVALEND,
+        STARTCHAN,
+        NCHAN,
+    )
 
     offset = (int(ny), int(nx))
-    ms = MS
 
-    T = casacore.tables.taql(
-        "SELECT TIME, cdatetime(TIME-.1) AS TIMESTR FROM $(ms) GROUPBY TIME"
-    )
+    name = f"pointsource-{stokes}" + ("-beam" if grid_with_beam else "")
 
     cmd = (
         [
             "wsclean",
             "-quiet",
             "-name",
-            f"pointsource-{stokes}",
+            name,
             "-data-column",
             "DATA",
             "-size",
@@ -378,6 +300,8 @@ def test_gridding(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
             "-idg-mode",
             idgmode,
             "-no-dirty",
+            "-weight",
+            "natural",
         ]
         + (
             ["-channel-range", str(STARTCHAN), str(STARTCHAN + NCHAN)]
@@ -398,9 +322,7 @@ def test_gridding(stokes, nx, ny, grid_with_beam, differential_beam, idgmode):
         beam = np.load("scalar_beam.npy")
 
     for stokes1 in STOKESLIST:
-        imgname = (
-            f'pointsource-{stokes}-{stokes1}-image{["", "-pb"][grid_with_beam]}.fits'
-        )
+        imgname = f'{name}-{stokes1}-image{["", "-pb"][grid_with_beam]}.fits'
         with fits.open(imgname) as img:
             N = img[0].data.shape[-1]
             flux = img[0].data[0, 0, int(N / 2 + offset[0]), int(N / 2 + offset[1])]

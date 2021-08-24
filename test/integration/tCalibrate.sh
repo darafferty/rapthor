@@ -9,6 +9,7 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 export DATADIR=${DIR}/tmp/data
+export PYTHONPATH="${DIR}/common:$PYTHONPATH"
 export MODELIMAGE="modelimage.fits"
 export MSNAME="LOFAR_MOCK_3STATIONS.ms"
 
