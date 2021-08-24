@@ -165,8 +165,10 @@ idg-integration-docker:
     - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
     # Compile against wsclean
     - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
-    # Needed as long as https://jira.skatelescope.org/browse/AST-435 is not resolved
-    - cd src && git checkout f328f94 && cd ..
+    # Check-out wsclean on master 23-07-2021
+    # TODO: check-out on wsclean release as soon as a new release
+    # becomes available
+    - cd src && git checkout db6cd735 && cd ..
     - mkdir build && cd build
     - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
@@ -222,8 +224,10 @@ idg-integration-das:
     # Install wsclean (needs libgsl)
     - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
     - git clone https://gitlab.com/aroffringa/wsclean.git src
-    # Needed as long as https://jira.skatelescope.org/browse/AST-435 is not resolved
-    - cd src && git checkout f328f94 && cd ..
+    # Check-out wsclean on master 23-07-2021
+    # TODO: check-out on wsclean release as soon as a new release
+    # becomes available
+    - cd src && git checkout db6cd735 && cd ..
     - mkdir build && cd build
     - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
     - make install -j4
@@ -235,7 +239,7 @@ idg-integration-das:
     - ctest -j8 --output-on-failure -LE integration
     - echo "Finished unit tests"
     # Run integration tests
-    - "python3 -m pip install --user --only-binary=:all: python-casacore"
+    - CFLAGS="-I${WCSLIB_INCLUDE} -I${CFITSIO_INCLUDE}" python3 -m pip install --user --no-binary python-casacore python-casacore
     - ctest --output-on-failure -L integration
     - mv test_*.xml $CI_PROJECT_DIR/reports/
     # Test idg-cal scripts

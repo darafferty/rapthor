@@ -21,7 +21,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
 # Build everybeam, checked-out at tag given by $EVERYBEAM_VERSION_TAG
     && mkdir /everybeam && cd /everybeam && git clone https://git.astron.nl/RD/EveryBeam.git src \
     && mkdir build && cd build \
-    && cmake -DCMAKE_INSTALL_PREFIX=/usr ../src -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+    && cmake -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_WITH_PYTHON=ON ../src -DPYTHON_EXECUTABLE=/usr/bin/python3 \
     && make install -j4 \
     && cd / && rm -rf everybeam \
 # Install WSRT Measures (extra casacore data, for integration tests)
@@ -34,10 +34,9 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     # Make sure h5py is build against the installed hdf5 library
     # This is important when h5py is imported in embedded python code
     # and the main executable is also linked against the hdf5 library.
-    # This happens for example when DPPP is running a PythonDPStep that is 
+    # This happens for example when DPPP is running a PythonDPStep that is
     # importing h5py
     && python3 -m pip install h5py --user --no-binary=h5py --force-reinstall --no-deps \
     && pip3 install pytest pytest-lazy-fixture h5py \
 # Install some python packages and h5py deps
     && pip3 install astropy scipy pytest pytest-lazy-fixture matplotlib h5py
-
