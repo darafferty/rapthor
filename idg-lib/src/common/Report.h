@@ -102,7 +102,7 @@ class Report {
     sentinel
   };
 
-  inline const std::string get_name(ID id) {
+  inline std::string get_name(ID id) {
     switch (id) {
       case gridding:
         return auxiliary::name_gridding;
@@ -145,7 +145,7 @@ class Report {
     }
   }
 
-  inline const uint64_t get_flops(ID id, Parameters parameters) {
+  inline uint64_t get_flops(ID id, Parameters parameters) {
     int nr_channels = parameters.nr_channels;
     int subgrid_size = parameters.subgrid_size;
     int grid_size = parameters.grid_size;
@@ -176,7 +176,7 @@ class Report {
     }
   }
 
-  inline const uint64_t get_bytes(ID id, Parameters parameters) {
+  inline uint64_t get_bytes(ID id, Parameters parameters) {
     int nr_channels = parameters.nr_channels;
     int subgrid_size = parameters.subgrid_size;
     int grid_size = parameters.grid_size;
