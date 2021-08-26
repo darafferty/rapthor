@@ -50,6 +50,8 @@ else()
   add_custom_target(
     doc
     COMMAND
+      ${CMAKE_COMMAND} -E env
+      PYTHONPATH="${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages:${CMAKE_SOURCE_DIR}/idg-bin/tests/python:$ENV{PYTHONPATH}"
       ${SPHINX_EXECUTABLE} -b html ${SPHINX_SOURCE} ${SPHINX_BUILD}
       # Tell Breathe where to find the Doxygen output
       -Dbreathe_projects.IDG=${DOXYGEN_OUTPUT_DIR}/xml

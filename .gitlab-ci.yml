@@ -321,7 +321,7 @@ build-doc:
   needs: ["build-base"]
   script:
     - apt update && apt install -y doxygen
-    - python3 -m pip install sphinx breathe sphinx-rtd-theme myst-parser
+    - python3 -m pip install numpy sphinx breathe sphinx-rtd-theme myst-parser
     - mkdir -p build && cd build
     - cmake -DBUILD_WITH_PYTHON=ON ..
     - make install -j4
