@@ -111,10 +111,10 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     InstanceCUDA& device = get_device(0);
 
     auto nr_w_layers = grid->get_w_dim();
-    auto nr_correlations = grid->get_z_dim();
+    auto nr_polarizations = grid->get_z_dim();
     auto grid_height = grid->get_y_dim();
     auto grid_width = grid->get_x_dim();
-    assert(nr_correlations == NR_CORRELATIONS);
+    assert(nr_polarizations == NR_CORRELATIONS);
     assert(grid_height == grid_width);
     auto grid_size = grid_width;
     auto tile_size = device.get_tile_size_grid();
@@ -124,19 +124,22 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     assert(nr_w_layers == 1);
     auto nr_tiles_1d = grid_size / tile_size;
     auto* grid_tiled = new Array5D<std::complex<float>>(
-        *u_grid_tiled, nr_tiles_1d, nr_tiles_1d, nr_correlations, tile_size,
+        *u_grid_tiled, nr_tiles_1d, nr_tiles_1d, nr_polarizations, tile_size,
         tile_size);
     m_grid_tiled.reset(grid_tiled);
-    device.tile_forward(grid_size, tile_size, *grid, *m_grid_tiled);
+    device.tile_forward(nr_polarizations, grid_size, tile_size, *grid,
+                        *m_grid_tiled);
   }
 }
 
 std::shared_ptr<Grid> Unified::get_final_grid() {
   if (m_enable_tiling) {
     InstanceCUDA& device = get_device(0);
+    auto nr_polarizations = m_grid->get_z_dim();
     auto grid_size = m_grid->get_x_dim();
     auto tile_size = device.get_tile_size_grid();
-    device.tile_backward(grid_size, tile_size, *m_grid_tiled, *m_grid);
+    device.tile_backward(nr_polarizations, grid_size, tile_size, *m_grid_tiled,
+                         *m_grid);
   }
 
   return m_grid;

@@ -96,8 +96,8 @@ __global__ void kernel_average_beam(
           } // end for time
         }
 
-        int station1_idx = index_aterm(subgrid_size, nr_antennas, aterms_idx, antenna1, y, x, 0);
-        int station2_idx = index_aterm(subgrid_size, nr_antennas, aterms_idx, antenna2, y, x, 0);
+        int station1_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_antennas, aterms_idx, antenna1, y, x, 0);
+        int station2_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_antennas, aterms_idx, antenna2, y, x, 0);
 
         float2 aXX1 = aterms[station1_idx + 0];
         float2 aXY1 = aterms[station1_idx + 1];

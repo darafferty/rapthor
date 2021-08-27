@@ -626,7 +626,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
                                           WTileUpdateInfo& wtile_flush_info) {
-  // Load grid
+  // Load grid parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
 
   // Load CUDA objects
@@ -858,9 +859,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         cu::Marker marker("patch_to_grid", cu::Marker::red);
         marker.start();
 
-        run_adder_patch_to_grid(grid_size, m_patch_size, current_nr_patches,
-                                &patch_coordinates[patch_offset],
-                                m_grid->data(), h_padded_tiles);
+        run_adder_patch_to_grid(
+            nr_polarizations, grid_size, m_patch_size, current_nr_patches,
+            &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
         marker.end();
       }  // end for patch_offset
     }    // end if m_use_unified_memory
@@ -932,7 +933,8 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
 void UnifiedOptimized::run_wtiles_from_grid(
     unsigned int subgrid_size, float image_size, float w_step,
     const Array1D<float>& shift, WTileUpdateInfo& wtile_initialize_info) {
-  // Load grid
+  // Load grid parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
 
   // Load CUDA objects
@@ -1103,7 +1105,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
         marker.start();
 
         run_splitter_patch_from_grid(
-            grid_size, m_patch_size, current_nr_patches,
+            nr_polarizations, grid_size, m_patch_size, current_nr_patches,
             &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
 
         marker.end();

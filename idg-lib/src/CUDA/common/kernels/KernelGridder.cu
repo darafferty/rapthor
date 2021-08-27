@@ -41,15 +41,15 @@ __device__ void update_subgrid(
     int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
     // Apply aterm
-    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station1, y, x, 0);
-    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_index, station2, y, x, 0);
+    int station1_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_stations, aterm_index, station1, y, x, 0);
+    int station2_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_stations, aterm_index, station2, y, x, 0);
     float2 *aterm1 = (float2 *) &aterms[station1_idx];
     float2 *aterm2 = (float2 *) &aterms[station2_idx];
     apply_aterm_gridder(pixel, aterm1, aterm2);
 
     // Update subgrid
     for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
-        int idx = index_subgrid(subgrid_size, s, pol, y_dst, x_dst);
+        int idx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_dst, x_dst);
         subgrid[idx] += pixel[pol];
     }
 }
@@ -79,10 +79,10 @@ __device__ void finalize_subgrid(
             int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
             // Compute pixel indices
-            int idx_xx = index_subgrid(subgrid_size, s, 0, y_src, x_src);
-            int idx_xy = index_subgrid(subgrid_size, s, 1, y_src, x_src);
-            int idx_yx = index_subgrid(subgrid_size, s, 2, y_src, x_src);
-            int idx_yy = index_subgrid(subgrid_size, s, 3, y_src, x_src);
+            int idx_xx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 0, y_src, x_src);
+            int idx_xy = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 1, y_src, x_src);
+            int idx_yx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 2, y_src, x_src);
+            int idx_yy = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 3, y_src, x_src);
 
             // Load pixels
             float2 pixelXX = subgrid[idx_xx];
@@ -211,7 +211,7 @@ __device__ void
                 int k = v / 2;
                 int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
                 int idx_chan = channel_offset + (k % current_nr_channels);
-                long idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                long idx_vis = index_visibility(NR_CORRELATIONS, nr_channels, idx_time, idx_chan, 0);
                 float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
                 visibilities_[k][j] = vis_ptr[j];
             }

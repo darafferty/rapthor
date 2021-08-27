@@ -48,7 +48,7 @@ __global__ void kernel_copy_tiles(
 
             if (y < dst_tile_size)
             {
-                size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, pol, y, x);
+                size_t dst_idx = index_grid_4d(NR_CORRELATIONS, dst_tile_size, dst_tile_index, pol, y, x);
                 dst_tiles[dst_idx] = make_float2(0, 0);
             }
         }
@@ -74,8 +74,8 @@ __global__ void kernel_copy_tiles(
 
         if (src_y < src_tile_size && dst_y < dst_tile_size)
         {
-            size_t dst_idx = index_grid(dst_tile_size, dst_tile_index, dst_pol, dst_y, dst_x);
-            size_t src_idx = index_grid(src_tile_size, src_tile_index, src_pol, src_y, src_x);
+            size_t dst_idx = index_grid_4d(NR_CORRELATIONS, dst_tile_size, dst_tile_index, dst_pol, dst_y, dst_x);
+            size_t src_idx = index_grid_4d(NR_CORRELATIONS, src_tile_size, src_tile_index, src_pol, src_y, src_x);
             dst_tiles[dst_idx] = src_tiles[src_idx];
             src_tiles[src_idx] = make_float2(0, 0);
         }
@@ -134,7 +134,7 @@ __global__ void kernel_apply_phasor(
             float2 phasor = make_float2(cosf(phase), sinf(phase)) * scale;
 
             // Apply correction
-            size_t idx = index_grid(tile_size, tile_index, pol, y, x);
+            size_t idx = index_grid_4d(NR_CORRELATIONS, tile_size, tile_index, pol, y, x);
             tiles[idx] = tiles[idx] * phasor;
         }
     }
@@ -195,8 +195,8 @@ __global__ void kernel_subgrids_to_wtiles(
             // Add subgrid value to grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-                long dst_idx = index_grid(tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
-                long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                long dst_idx = index_grid_4d(NR_CORRELATIONS, tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
+                long src_idx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
                 atomicAdd(tiles[dst_idx], value);
             }
@@ -251,8 +251,8 @@ __global__ void kernel_wtiles_to_grid(
 
         if (y < padded_tile_size)
         {
-            unsigned long dst_idx = index_grid(grid_size, pol, y_dst, x_dst);
-            unsigned long src_idx = index_grid(padded_tile_size, tile_index, pol, y_src, x_src);
+            unsigned long dst_idx = index_grid_3d(grid_size, pol, y_dst, x_dst);
+            unsigned long src_idx = index_grid_4d(NR_CORRELATIONS, padded_tile_size, tile_index, pol, y_src, x_src);
             atomicAdd(grid[dst_idx], tiles[src_idx]);
         }
     }
@@ -313,8 +313,8 @@ __global__ void kernel_subgrids_from_wtiles(
             // Set subgrid value from grid
             #pragma unroll 4
             for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-                long src_idx = index_grid(tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
-                long dst_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                long src_idx = index_grid_4d(NR_CORRELATIONS, tile_size + subgrid_size, tile_index, pol, y_dst, x_dst);
+                long dst_idx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_src, x_src);
                 subgrid[dst_idx] = tiles[src_idx] * phasor;
             }
         }
@@ -368,8 +368,8 @@ __global__ void kernel_wtiles_from_grid(
 
         if (y < padded_tile_size)
         {
-            unsigned long src_idx = index_grid(grid_size, pol, y_src, x_src);
-            unsigned long dst_idx = index_grid(padded_tile_size, tile_index, pol, y_dst, x_dst);
+            unsigned long src_idx = index_grid_3d(grid_size, pol, y_src, x_src);
+            unsigned long dst_idx = index_grid_4d(NR_CORRELATIONS, padded_tile_size, tile_index, pol, y_dst, x_dst);
             tiles[dst_idx] = grid[src_idx];
         }
     }
@@ -441,8 +441,8 @@ __global__ void kernel_wtiles_to_patch(
                 unsigned int x_tile  = x_start + x - x0;
 
                 // Add tile value to patch
-                unsigned long idx_patch = index_grid(patch_size, pol, y_patch, x_patch);
-                unsigned long idx_tile  = index_grid(padded_tile_size, tile_index, pol, y_tile, x_tile);
+                unsigned long idx_patch = index_grid_3d(patch_size, pol, y_patch, x_patch);
+                unsigned long idx_tile  = index_grid_4d(NR_CORRELATIONS, padded_tile_size, tile_index, pol, y_tile, x_tile);
                 atomicAdd(patch[idx_patch], tiles[idx_tile]);
             }
         } // end if y
@@ -515,8 +515,8 @@ __global__ void kernel_wtiles_from_patch(
                 unsigned int x_tile  = x_start + x - x0;
 
                 // Set tile value from patch
-                unsigned long idx_patch = index_grid(patch_size, pol, y_patch, x_patch);
-                unsigned long idx_tile  = index_grid(padded_tile_size, tile_index, pol, y_tile, x_tile);
+                unsigned long idx_patch = index_grid_3d(patch_size, pol, y_patch, x_patch);
+                unsigned long idx_tile  = index_grid_4d(NR_CORRELATIONS, padded_tile_size, tile_index, pol, y_tile, x_tile);
                 tiles[idx_tile] = patch[idx_patch];
             }
         } // end if y

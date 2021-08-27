@@ -18,13 +18,14 @@ void sort_by_patches(long grid_size, int tile_size, int padded_tile_size,
                      int patch_size, int nr_tiles,
                      WTileUpdateInfo& update_info);
 
-void run_adder_patch_to_grid(long grid_size, int patch_size, int nr_patches,
+void run_adder_patch_to_grid(int nr_polarizations, long grid_size,
+                             int patch_size, int nr_patches,
                              idg::Coordinate* __restrict__ patch_coordinates,
                              std::complex<float>* __restrict__ grid,
                              std::complex<float>* __restrict__ patches_buffer);
 
 void run_splitter_patch_from_grid(
-    long grid_size, int patch_size, int nr_patches,
+    int nr_polarizations, long grid_size, int patch_size, int nr_patches,
     idg::Coordinate* __restrict__ patch_coordinates,
     std::complex<float>* __restrict__ grid,
     std::complex<float>* __restrict__ patches_buffer);

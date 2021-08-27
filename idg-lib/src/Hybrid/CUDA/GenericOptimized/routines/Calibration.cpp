@@ -25,6 +25,7 @@ void GenericOptimized::do_calibrate_init(
 
   // Arguments
   auto nr_antennas = plans.size();
+  auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto image_size = m_cache_state.cell_size * grid_size;
   auto w_step = m_cache_state.w_step;
@@ -118,8 +119,9 @@ void GenericOptimized::do_calibrate_init(
 
     // Splitter kernel
     if (w_step == 0.0) {
-      cpuKernels->run_splitter(nr_subgrids, grid_size, subgrid_size,
-                               metadata_ptr, subgrids_ptr, grid_ptr);
+      cpuKernels->run_splitter(nr_subgrids, nr_polarizations, grid_size,
+                               subgrid_size, metadata_ptr, subgrids_ptr,
+                               grid_ptr);
     } else if (plans[antenna_nr]->get_use_wtiles()) {
       WTileUpdateSet wtile_initialize_set =
           plans[antenna_nr]->get_wtile_initialize_set();
@@ -141,13 +143,14 @@ void GenericOptimized::do_calibrate_init(
         dtohstream.synchronize();
       } else {
         cpuKernels->run_splitter_wtiles(
-            nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), 0 /* subgrid_offset */, wtile_initialize_set,
+            nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+            w_step, shift.data(), 0 /* subgrid_offset */, wtile_initialize_set,
             metadata_ptr, subgrids_ptr, grid_ptr);
       }
     } else {
-      cpuKernels->run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
-                                      metadata_ptr, subgrids_ptr, grid_ptr);
+      cpuKernels->run_splitter_wstack(nr_subgrids, nr_polarizations, grid_size,
+                                      subgrid_size, metadata_ptr, subgrids_ptr,
+                                      grid_ptr);
     }
 
     // Copy data to device
@@ -233,6 +236,7 @@ void GenericOptimized::do_calibrate_update(
   auto subgrid_size = aterms.get_y_dim();
   auto nr_timeslots = aterms.get_w_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_y_dim();
   auto image_size = m_cache_state.cell_size * grid_size;
   auto w_step = m_cache_state.w_step;
@@ -258,8 +262,9 @@ void GenericOptimized::do_calibrate_update(
                                                  subgrid_size, subgrid_size);
   Array4D<std::complex<float>> aterm_derivatives_transposed(
       nr_aterm_derivatives, nr_correlations, subgrid_size, subgrid_size);
-  device.transpose_aterm(aterms, aterms_transposed);
-  device.transpose_aterm(aterm_derivatives, aterm_derivatives_transposed);
+  device.transpose_aterm(nr_polarizations, aterms, aterms_transposed);
+  device.transpose_aterm(nr_polarizations, aterm_derivatives,
+                         aterm_derivatives_transposed);
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();

@@ -124,13 +124,13 @@ __device__ void kernel_degridder_(
                     // Load pixels
                     float2 pixel[NR_CORRELATIONS];
                     for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
-                        unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+                        unsigned int pixel_idx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_src, x_src);
                         pixel[pol] = subgrid[pixel_idx] * spheroidal_;
                     }
 
                     // Apply aterm
-                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x, 0);
-                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
+                    int station1_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_stations, aterm_idx, station1, y, x, 0);
+                    int station2_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_stations, aterm_idx, station2, y, x, 0);
                     float2 *aterm1 = (float2 *) &aterms[station1_idx];
                     float2 *aterm2 = (float2 *) &aterms[station2_idx];
                     apply_aterm_degridder(pixel, aterm1, aterm2);
@@ -188,7 +188,7 @@ __device__ void kernel_degridder_(
                     const float scale = 1.0f / (subgrid_size * subgrid_size);
                     int idx_time = time;
                     int idx_chan = channel_offset + channel_offset_local + chan;
-                    int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
+                    int idx_vis = index_visibility(NR_CORRELATIONS, nr_channels, idx_time, idx_chan, 0);
                     float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
                     float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
                     float4 *vis_ptr = (float4 *) &visibilities[idx_vis];

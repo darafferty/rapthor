@@ -32,7 +32,7 @@ __global__ void kernel_scaler(
 
         if (y < subgrid_size) {
             for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-                int idx = index_subgrid(subgrid_size, s, pol, y, x);
+                int idx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y, x);
                 subgrid[idx] = subgrid[idx] * scale;
             }
         }

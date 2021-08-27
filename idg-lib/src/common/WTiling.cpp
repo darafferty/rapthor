@@ -6,7 +6,7 @@
 
 namespace idg {
 
-void find_patches_for_tiles(int grid_size, int tile_size, int padded_tile_size,
+void find_patches_for_tiles(long grid_size, int tile_size, int padded_tile_size,
                             int patch_size, int nr_tiles,
                             const idg::Coordinate* tile_coordinates,
                             std::vector<idg::Coordinate>& patch_coordinates,
@@ -89,7 +89,7 @@ void find_patches_for_tiles(int grid_size, int tile_size, int padded_tile_size,
   }
 }
 
-void sort_by_patches(int grid_size, int tile_size, int padded_tile_size,
+void sort_by_patches(long grid_size, int tile_size, int padded_tile_size,
                      int patch_size, int nr_tiles,
                      WTileUpdateInfo& update_info) {
   // Find the tile to patch mapping
@@ -134,7 +134,7 @@ void sort_by_patches(int grid_size, int tile_size, int padded_tile_size,
             update_info_sorted.wtile_coordinates);
 }
 
-void run_adder_patch_to_grid(int nr_polarizations, int grid_size,
+void run_adder_patch_to_grid(int nr_polarizations, long grid_size,
                              int patch_size, int nr_patches,
                              idg::Coordinate* __restrict__ patch_coordinates,
                              std::complex<float>* __restrict__ grid,
@@ -148,8 +148,8 @@ void run_adder_patch_to_grid(int nr_polarizations, int grid_size,
       int x = patch_coordinates[i].x;
       int y = patch_coordinates[i].y;
 
-      int width = std::min(patch_size, grid_size - x);
-      int height = std::min(patch_size, grid_size - y);
+      int width = std::min(patch_size, (int)grid_size - x);
+      int height = std::min(patch_size, (int)grid_size - y);
 
       if (y_ >= height) {
         break;

@@ -35,6 +35,7 @@ void GenericOptimized::run_degridding(
   auto nr_timesteps = visibilities.get_y_dim();
   auto nr_channels = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -167,17 +168,18 @@ void GenericOptimized::run_degridding(
                                  wtile_initialize_set, d_subgrids, d_metadata);
       } else {
         cpuKernels->run_splitter_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), subgrid_offset, wtile_initialize_set, metadata_ptr,
-            h_subgrids, m_grid->data());
+            current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+            image_size, w_step, shift.data(), subgrid_offset,
+            wtile_initialize_set, metadata_ptr, h_subgrids, m_grid->data());
       }
     } else if (w_step != 0.0) {
-      cpuKernels->run_splitter_wstack(current_nr_subgrids, grid_size,
-                                      subgrid_size, metadata_ptr, h_subgrids,
-                                      m_grid->data());
+      cpuKernels->run_splitter_wstack(current_nr_subgrids, nr_polarizations,
+                                      grid_size, subgrid_size, metadata_ptr,
+                                      h_subgrids, m_grid->data());
     } else {
-      cpuKernels->run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                               metadata_ptr, h_subgrids, m_grid->data());
+      cpuKernels->run_splitter(current_nr_subgrids, nr_polarizations, grid_size,
+                               subgrid_size, metadata_ptr, h_subgrids,
+                               m_grid->data());
     }
 
     if (m_disable_wtiling || m_disable_wtiling_gpu) {

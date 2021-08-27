@@ -190,9 +190,9 @@ __global__ void kernel_calibrate_sums(
                             float2 aterm2[NR_CORRELATIONS];
                             for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
                                 unsigned int term_idx   = term_offset + term_nr;
-                                unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                                unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_terms, aterm_idx, term_idx, y, x, pol);
-                                unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                                unsigned int pixel_idx  = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_src, x_src);
+                                unsigned int aterm1_idx = index_aterm_transposed(NR_CORRELATIONS, subgrid_size, nr_terms, aterm_idx, term_idx, y, x, pol);
+                                unsigned int aterm2_idx = index_aterm_transposed(NR_CORRELATIONS, subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
                                 pixel[pol]  = subgrid[pixel_idx];
                                 aterm1[pol] = aterm_derivatives[aterm1_idx];
                                 aterm2[pol] = aterm[aterm2_idx];
@@ -380,9 +380,9 @@ __global__ void kernel_calibrate_gradient(
                         float2 aterm1[NR_CORRELATIONS];
                         float2 aterm2[NR_CORRELATIONS];
                         for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
-                            unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                            unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station1, y, x, pol);
-                            unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                            unsigned int pixel_idx  = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_src, x_src);
+                            unsigned int aterm1_idx = index_aterm_transposed(NR_CORRELATIONS, subgrid_size, nr_stations, aterm_idx, station1, y, x, pol);
+                            unsigned int aterm2_idx = index_aterm_transposed(NR_CORRELATIONS, subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
                             pixel[pol]  = subgrid[pixel_idx];
                             aterm1[pol] = aterm[aterm1_idx];
                             aterm2[pol] = aterm[aterm2_idx];
@@ -433,7 +433,7 @@ __global__ void kernel_calibrate_gradient(
                 float2 residual_weighted[NR_CORRELATIONS];
                 const float scale = 1.0f / nr_pixels;
                 for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
-                    unsigned int vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
+                    unsigned int vis_idx = index_visibility(NR_CORRELATIONS, nr_channels, time_idx_global, chan_idx_local, pol);
                     residual[pol] = visibilities[vis_idx] - (sum[pol] * scale);
                     residual_weighted[pol] = residual[pol] * weights[vis_idx];
 
@@ -521,7 +521,7 @@ __global__ void kernel_calibrate_hessian(
                 for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
                     unsigned int time_idx_global = time_offset_global + time_offset_local + time;
                     unsigned int chan_idx_local  = channel_begin + chan;
-                    unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
+                    unsigned int  vis_idx = index_visibility(NR_CORRELATIONS, nr_channels, time_idx_global, chan_idx_local, pol);
                     unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx_local);
                     unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx_local);
                     float2 sum0 = sums_y[sum_idx0];
