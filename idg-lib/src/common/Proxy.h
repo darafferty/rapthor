@@ -38,15 +38,16 @@ class Proxy {
   /*
       High level routines
   */
-  /*! Add visibilities to a grid, applying aterms
+  /*! Add visibilities to a grid, applying A-terms.
    *
    *  set_grid()
    *  Proxy::set_grid()
    *  idg::proxy::Proxy::set_grid()
    *  \verbatim embed:rst:leading-asterisk
    *  Before calling this function, the grid needs to have been set
-   *  by a call to the set_grid function
+   *  by a call to the set_grid function.
    *  The plan can be obtained by a call to the make_plan function.
+   * 
    *  :py:class:`idg.Proxy.Proxy`
    * :cpp:class:`Proxy <idg::proxy::Proxy>`
    *  \endverbatim
@@ -156,7 +157,7 @@ class Proxy {
                                               size_t height, size_t width);
 
   /**
-   * Set grid to be used for gridding, degridding or calibration
+   * Set grid to be used for gridding, degridding or calibration.
    */
   virtual void set_grid(std::shared_ptr<Grid> grid);
   virtual void free_grid();
