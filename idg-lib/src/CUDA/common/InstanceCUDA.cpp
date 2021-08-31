@@ -669,6 +669,7 @@ void InstanceCUDA::launch_calibrate(
                                    &w_step,    d_metadata,    d_lmnp};
   executestream->launchKernel(*function_lmnp, grid, block, 0, parameters_lmnp);
 
+  const unsigned int nr_polarizations = 4;
   unsigned int max_nr_terms = 8;
   unsigned int current_nr_terms_y = max_nr_terms;
   for (unsigned int term_offset_y = 0; term_offset_y < (unsigned int)nr_terms;
@@ -678,7 +679,8 @@ void InstanceCUDA::launch_calibrate(
     unsigned int current_nr_terms_y = last_term_y - term_offset_y;
 
     // Compute sums1
-    const void* parameters_sums[] = {&subgrid_size,
+    const void* parameters_sums[] = {&nr_polarizations,
+                                     &subgrid_size,
                                      &image_size,
                                      &total_nr_timesteps,
                                      &nr_channels,
@@ -700,7 +702,8 @@ void InstanceCUDA::launch_calibrate(
 
     // Compute gradient (diagonal)
     if (term_offset_y == 0) {
-      const void* parameters_gradient[] = {&subgrid_size,
+      const void* parameters_gradient[] = {&nr_polarizations,
+                                           &subgrid_size,
                                            &image_size,
                                            &total_nr_timesteps,
                                            &nr_channels,
@@ -726,17 +729,12 @@ void InstanceCUDA::launch_calibrate(
     }
 
     // Compute hessian (diagonal)
-    const void* parameters_hessian1[] = {&total_nr_timesteps,
-                                         &nr_channels,
-                                         &term_offset_y,
-                                         &term_offset_y,
-                                         &nr_terms,
-                                         d_weights,
-                                         d_aterm_indices,
-                                         d_metadata,
-                                         d_sums1,
-                                         d_sums1,
-                                         d_hessian};
+    const void* parameters_hessian1[] = {&nr_polarizations, &total_nr_timesteps,
+                                         &nr_channels,      &term_offset_y,
+                                         &term_offset_y,    &nr_terms,
+                                         d_weights,         d_aterm_indices,
+                                         d_metadata,        d_sums1,
+                                         d_sums1,           d_hessian};
     dim3 block_hessian(current_nr_terms_y, current_nr_terms_y);
     executestream->launchKernel(*function_hessian, grid, block_hessian, 0,
                                 parameters_hessian1);
@@ -750,7 +748,8 @@ void InstanceCUDA::launch_calibrate(
       current_nr_terms_x = last_term_x - term_offset_x;
 
       // Compute sums2 (horizontal offset)
-      const void* parameters_sums[] = {&subgrid_size,
+      const void* parameters_sums[] = {&nr_polarizations,
+                                       &subgrid_size,
                                        &image_size,
                                        &total_nr_timesteps,
                                        &nr_channels,
@@ -772,7 +771,8 @@ void InstanceCUDA::launch_calibrate(
 
       // Compute gradient (horizontal offset)
       if (term_offset_y == 0) {
-        const void* parameters_gradient[] = {&subgrid_size,
+        const void* parameters_gradient[] = {&nr_polarizations,
+                                             &subgrid_size,
                                              &image_size,
                                              &total_nr_timesteps,
                                              &nr_channels,
@@ -791,23 +791,20 @@ void InstanceCUDA::launch_calibrate(
                                              d_subgrid,
                                              d_sums2,
                                              d_lmnp,
-                                             d_gradient};
+                                             d_gradient,
+                                             d_residual};
         executestream->launchKernel(*function_gradient, grid, block, 0,
                                     parameters_gradient);
       }
 
       // Compute hessian (horizontal offset)
-      const void* parameters_hessian2[] = {&total_nr_timesteps,
-                                           &nr_channels,
-                                           &term_offset_y,
-                                           &term_offset_x,
-                                           &nr_terms,
-                                           d_weights,
-                                           d_aterm_indices,
-                                           d_metadata,
-                                           d_sums1,
-                                           d_sums2,
-                                           d_hessian};
+      const void* parameters_hessian2[] = {
+          &nr_polarizations, &total_nr_timesteps,
+          &nr_channels,      &term_offset_y,
+          &term_offset_x,    &nr_terms,
+          d_weights,         d_aterm_indices,
+          d_metadata,        d_sums1,
+          d_sums2,           d_hessian};
       dim3 block_hessian(current_nr_terms_x, current_nr_terms_y);
       executestream->launchKernel(*function_hessian, grid, block_hessian, 0,
                                   parameters_hessian2);

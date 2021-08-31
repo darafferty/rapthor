@@ -162,8 +162,9 @@ void GenericOptimized::do_calibrate_init(
     htodstream.memcpyHtoDAsync(d_aterm_idx, aterm_idx_ptr, sizeof_aterm_idx);
 
     // FFT kernel
-    cpuKernels->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids,
-                                subgrids_ptr, CUFFT_FORWARD);
+    cpuKernels->run_subgrid_fft(grid_size, subgrid_size,
+                                nr_subgrids * nr_polarizations, subgrids_ptr,
+                                CUFFT_FORWARD);
 
     // Apply spheroidal
     for (int i = 0; i < (int)nr_subgrids; i++) {
