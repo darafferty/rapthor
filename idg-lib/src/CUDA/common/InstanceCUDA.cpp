@@ -1078,7 +1078,8 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
 
 void InstanceCUDA::launch_scaler(int nr_subgrids, int subgrid_size,
                                  cu::DeviceMemory& d_subgrid) {
-  const void* parameters[] = {&subgrid_size, d_subgrid};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&nr_polarizations, &subgrid_size, d_subgrid};
   dim3 grid(nr_subgrids);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::fft_scale);
