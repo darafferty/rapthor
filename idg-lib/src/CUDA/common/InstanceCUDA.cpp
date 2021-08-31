@@ -1000,8 +1000,10 @@ void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
                                 cu::DeviceMemory& d_subgrid,
                                 cu::DeviceMemory& d_grid) {
   const bool enable_tiling = false;
-  const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
-                              d_subgrid,  d_grid,        &enable_tiling};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
+                              d_metadata,        d_subgrid,  d_grid,
+                              &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::adder);
