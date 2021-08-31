@@ -868,6 +868,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
 #endif
 
   // Force plan (re-)creation if subgrid size changed
+  const int nr_polarizations = 4;
   if (size != m_fft_subgrid_size) {
     m_fft_subgrid_bulk = m_fft_subgrid_bulk_default;
     m_fft_plan_subgrid.reset();
@@ -883,8 +884,8 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
           new cufft::C2C_2D(*context, size, size, stride, dist,
                             m_fft_subgrid_bulk * NR_CORRELATIONS));
       m_fft_plan_subgrid->setStream(*executestream);
-      auto sizeof_subgrids =
-          auxiliary::sizeof_subgrids(m_fft_subgrid_bulk, m_fft_subgrid_size);
+      auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+          m_fft_subgrid_bulk, m_fft_subgrid_size, nr_polarizations);
       d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
     } catch (cufft::Error& e) {
       // bulk might be too large, try again using half the bulk size
