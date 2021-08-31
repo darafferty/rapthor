@@ -1119,9 +1119,10 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(
     int subgrid_offset, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
     std::complex<float> scale) {
-  const void* parameters[] = {&grid_size,      &subgrid_size, &tile_size,
-                              &subgrid_offset, d_metadata,    d_subgrid,
-                              d_tiles,         &scale};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
+                              &tile_size,        &subgrid_offset, d_metadata,
+                              d_subgrid,         d_tiles,         &scale};
   dim3 grid(nr_subgrids);
   executestream->launchKernel(*functions_wtiling[2], grid, block_adder, 0,
                               parameters);
@@ -1146,9 +1147,10 @@ void InstanceCUDA::launch_splitter_subgrids_from_wtiles(
     int subgrid_offset, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
     std::complex<float> scale) {
-  const void* parameters[] = {&grid_size,      &subgrid_size, &tile_size,
-                              &subgrid_offset, d_metadata,    d_subgrid,
-                              d_tiles,         &scale};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
+                              &tile_size,        &subgrid_offset, d_metadata,
+                              d_subgrid,         d_tiles,         &scale};
   dim3 grid(nr_subgrids);
   executestream->launchKernel(*functions_wtiling[4], grid, block_adder, 0,
                               parameters);
