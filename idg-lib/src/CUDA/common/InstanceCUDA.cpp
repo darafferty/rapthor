@@ -557,12 +557,26 @@ void InstanceCUDA::launch_gridder(
     cu::DeviceMemory& d_aterms_indices,
     cu::DeviceMemory& d_avg_aterm_correction, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid) {
-  const void* parameters[] = {
-      &time_offset, &grid_size, &subgrid_size,    &image_size,
-      &w_step,      &shift_l,   &shift_m,         &nr_channels,
-      &nr_stations, d_uvw,      d_wavenumbers,    d_visibilities,
-      d_spheroidal, d_aterms,   d_aterms_indices, d_avg_aterm_correction,
-      d_metadata,   d_subgrid};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&time_offset,
+                              &nr_polarizations,
+                              &grid_size,
+                              &subgrid_size,
+                              &image_size,
+                              &w_step,
+                              &shift_l,
+                              &shift_m,
+                              &nr_channels,
+                              &nr_stations,
+                              d_uvw,
+                              d_wavenumbers,
+                              d_visibilities,
+                              d_spheroidal,
+                              d_aterms,
+                              d_aterms_indices,
+                              d_avg_aterm_correction,
+                              d_metadata,
+                              d_subgrid};
 
   dim3 grid(nr_subgrids);
   dim3 block(block_gridder);

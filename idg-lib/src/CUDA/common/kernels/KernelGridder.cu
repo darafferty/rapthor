@@ -16,6 +16,7 @@ __shared__ float wavenumbers_[MAX_NR_CHANNELS];
 /*
     Kernel
 */
+template<unsigned nr_polarizations>
 __device__ void update_subgrid(
     const unsigned             subgrid_size,
     const unsigned             nr_stations,
@@ -41,20 +42,28 @@ __device__ void update_subgrid(
     int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
     // Apply aterm
-    int station1_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_stations, aterm_index, station1, y, x, 0);
-    int station2_idx = index_aterm(subgrid_size, NR_CORRELATIONS, nr_stations, aterm_index, station2, y, x, 0);
+    int station1_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_index, station1, y, x, 0);
+    int station2_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_index, station2, y, x, 0);
     float2 *aterm1 = (float2 *) &aterms[station1_idx];
     float2 *aterm2 = (float2 *) &aterms[station2_idx];
     apply_aterm_gridder(pixel, aterm1, aterm2);
 
     // Update subgrid
-    for (unsigned pol = 0; pol < NR_CORRELATIONS; pol++) {
-        int idx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, pol, y_dst, x_dst);
-        subgrid[idx] += pixel[pol];
+    if (nr_polarizations == 1) {
+        // Stokes-I only
+        int idx = index_subgrid(4, subgrid_size, s, 0, y_dst, x_dst);
+        subgrid[idx] += (pixel[0] + pixel[2]) * 0.5f;
+    } else {
+        // Full Stokes
+        for (unsigned pol = 0; pol < nr_polarizations; pol++) {
+            int idx = index_subgrid(4, subgrid_size, s, pol, y_dst, x_dst);
+            subgrid[idx] += pixel[pol];
+        }
     }
 }
 
 __device__ void finalize_subgrid(
+    const unsigned                      nr_polarizations,
     const unsigned                      subgrid_size,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ avg_aterm_correction,
@@ -79,10 +88,10 @@ __device__ void finalize_subgrid(
             int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
             // Compute pixel indices
-            int idx_xx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 0, y_src, x_src);
-            int idx_xy = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 1, y_src, x_src);
-            int idx_yx = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 2, y_src, x_src);
-            int idx_yy = index_subgrid(NR_CORRELATIONS, subgrid_size, s, 3, y_src, x_src);
+            int idx_xx = index_subgrid(4, subgrid_size, s, 0, y_src, x_src);
+            int idx_xy = index_subgrid(4, subgrid_size, s, 1, y_src, x_src);
+            int idx_yx = index_subgrid(4, subgrid_size, s, 2, y_src, x_src);
+            int idx_yy = index_subgrid(4, subgrid_size, s, 3, y_src, x_src);
 
             // Load pixels
             float2 pixelXX = subgrid[idx_xx];
@@ -102,14 +111,16 @@ __device__ void finalize_subgrid(
 
             // Update subgrid
             subgrid[idx_xx] = pixelXX * spheroidal_;
-            subgrid[idx_xy] = pixelXY * spheroidal_;
-            subgrid[idx_yx] = pixelYX * spheroidal_;
-            subgrid[idx_yy] = pixelYY * spheroidal_;
+            if (nr_polarizations > 1) {
+                subgrid[idx_xy] = pixelXY * spheroidal_;
+                subgrid[idx_yx] = pixelYX * spheroidal_;
+                subgrid[idx_yy] = pixelYY * spheroidal_;
+            }
         }
     } // end for i (pixels)
 }
 
-template<int current_nr_channels>
+template<int current_nr_channels, int nr_polarizations>
 __device__ void
     kernel_gridder_(
     const int                           time_offset_job,
@@ -211,7 +222,7 @@ __device__ void
                 int k = v / 2;
                 int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
                 int idx_chan = channel_offset + (k % current_nr_channels);
-                long idx_vis = index_visibility(NR_CORRELATIONS, nr_channels, idx_time, idx_chan, 0);
+                long idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
                 float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
                 visibilities_[k][j] = vis_ptr[j];
             }
@@ -236,7 +247,7 @@ __device__ void
 
                         // Update subgrid
                         if (y < subgrid_size) {
-                            update_subgrid(
+                            update_subgrid<nr_polarizations>(
                                 subgrid_size, nr_stations, tid, nr_threads, s, y, x,
                                 aterm_idx_previous, station1, station2,
                                 pixelsXX[j], pixelsXY[j], pixelsYX[j], pixelsYY[j],
@@ -299,7 +310,7 @@ __device__ void
             int x = i_ % subgrid_size;
 
             if (y < subgrid_size) {
-                update_subgrid(
+                update_subgrid<nr_polarizations>(
                     subgrid_size, nr_stations, tid, nr_threads, s, y, x,
                     aterm_idx_previous, station1, station2,
                     pixelsXX[j], pixelsXY[j], pixelsYX[j], pixelsYY[j],
@@ -319,19 +330,27 @@ __device__ void
 
 #define KERNEL_GRIDDER(current_nr_channels) \
     for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
-        kernel_gridder_<current_nr_channels>( \
-            time_offset, grid_size, subgrid_size, image_size, w_step, \
-            shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
-            uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
+        if (nr_polarizations == 1) { \
+            kernel_gridder_<current_nr_channels, 1>( \
+                time_offset, grid_size, subgrid_size, image_size, w_step, \
+                shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
+                uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
+        }  else { \
+            kernel_gridder_<current_nr_channels, 4>( \
+                time_offset, grid_size, subgrid_size, image_size, w_step, \
+                shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
+                uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
+        } \
     }
 
 #define FINALIZE_SUBGRID \
     finalize_subgrid( \
-    subgrid_size, spheroidal, avg_aterm_correction, metadata, subgrid);
+    nr_polarizations, subgrid_size, spheroidal, avg_aterm_correction, metadata, subgrid);
 
 
 #define GLOBAL_ARGUMENTS \
-    const int                         time_offset,  \
+    const int                         time_offset,      \
+    const int                         nr_polarizations, \
     const int                         grid_size,    \
     const int                         subgrid_size, \
     const float                       image_size,   \
