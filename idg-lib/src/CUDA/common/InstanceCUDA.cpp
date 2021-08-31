@@ -9,8 +9,6 @@
 using namespace idg::kernel;
 using namespace powersensor;
 
-#define NR_CORRELATIONS 4
-
 /*
  * Option to enable repeated kernel invocations
  * this is used to measure energy consumpton
@@ -78,7 +76,6 @@ InstanceCUDA::~InstanceCUDA() {
 std::string InstanceCUDA::get_compiler_flags() {
   // Constants
   std::stringstream flags_constants;
-  flags_constants << "-DNR_CORRELATIONS=" << NR_CORRELATIONS;
 
   // CUDA specific flags
   std::stringstream flags_cuda;
