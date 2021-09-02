@@ -250,22 +250,24 @@ class Proxy {
 
  protected:
   void check_dimensions(
-      unsigned int subgrid_size, unsigned int frequencies_nr_channels,
+      const Plan::Options& options, unsigned int subgrid_size,
+      unsigned int frequencies_nr_channels,
       unsigned int visibilities_nr_baselines,
       unsigned int visibilities_nr_timesteps,
       unsigned int visibilities_nr_channels,
       unsigned int visibilities_nr_correlations, unsigned int uvw_nr_baselines,
       unsigned int uvw_nr_timesteps, unsigned int uvw_nr_coordinates,
       unsigned int baselines_nr_baselines, unsigned int baselines_two,
-      unsigned int grid_nr_correlations, unsigned int grid_height,
+      unsigned int grid_nr_polarizations, unsigned int grid_height,
       unsigned int grid_width, unsigned int aterms_nr_timeslots,
       unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
-      unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
+      unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
       unsigned int aterms_offsets_nr_timeslots_plus_one,
       unsigned int spheroidal_height, unsigned int spheroidal_width) const;
 
   void check_dimensions(
-      unsigned int subgrid_size, const Array1D<float>& frequencies,
+      const Plan::Options& options, unsigned int subgrid_size,
+      const Array1D<float>& frequencies,
       const Array3D<Visibility<std::complex<float>>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,

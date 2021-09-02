@@ -33,6 +33,8 @@ class UnifiedOptimized;
 
 class Plan {
  public:
+  enum Mode { FULL_POLARIZATION, STOKES_I_ONLY };
+
   struct Options {
     Options() {}
 
@@ -55,9 +57,8 @@ class Plan {
     // add additional subgrids for every subsequent frequencies
     bool simulate_spectral_line = false;
 
-    // Create Stokes I polarization only, if !stokes_i_only
-    // all four Stokes polarizations are created.
-    bool stokes_i_only = false;
+    // Imaging mode
+    Mode mode = Mode::FULL_POLARIZATION;
   };
 
   // Constructors
@@ -90,6 +91,8 @@ class Plan {
       const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
       const Options& options);
 
+  // options
+  const Options get_options() const { return m_options; };
   // total number of subgrids
   int get_nr_subgrids() const;
 
@@ -187,6 +190,7 @@ class Plan {
   WTileUpdateSet m_wtile_flush_set;
   std::vector<int> aterm_indices;
   bool use_wtiles;
+  Options m_options;
 };  // class Plan
 
 }  // namespace idg

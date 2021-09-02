@@ -23,8 +23,9 @@ void Proxy::gridding(
     const Array2D<float>& spheroidal) {
   assert(m_grid != nullptr);
 
-  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
-                   baselines, *m_grid, aterms, aterms_offsets, spheroidal);
+  check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
+                   visibilities, uvw, baselines, *m_grid, aterms,
+                   aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) && !do_supports_wstacking()) {
     throw std::invalid_argument(
@@ -44,8 +45,9 @@ void Proxy::degridding(
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
-  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
-                   baselines, *m_grid, aterms, aterms_offsets, spheroidal);
+  check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
+                   visibilities, uvw, baselines, *m_grid, aterms,
+                   aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) &&
       (!do_supports_wstacking() && !do_supports_wtiling())) {
@@ -248,17 +250,18 @@ void Proxy::do_compute_avg_beam(
 }
 
 void Proxy::check_dimensions(
-    unsigned int subgrid_size, unsigned int frequencies_nr_channels,
+    const Plan::Options& options, unsigned int subgrid_size,
+    unsigned int frequencies_nr_channels,
     unsigned int visibilities_nr_baselines,
     unsigned int visibilities_nr_timesteps,
     unsigned int visibilities_nr_channels,
     unsigned int visibilities_nr_correlations, unsigned int uvw_nr_baselines,
     unsigned int uvw_nr_timesteps, unsigned int uvw_nr_coordinates,
     unsigned int baselines_nr_baselines, unsigned int baselines_two,
-    unsigned int grid_nr_correlations, unsigned int grid_height,
+    unsigned int grid_nr_polarizations, unsigned int grid_height,
     unsigned int grid_width, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
-    unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
+    unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
     unsigned int aterms_offsets_nr_timeslots_plus_one,
     unsigned int spheroidal_height, unsigned int spheroidal_width) const {
   throw_assert(frequencies_nr_channels > 0, "");
@@ -269,8 +272,8 @@ void Proxy::check_dimensions(
   throw_assert(
       visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4,
       "");
-  throw_assert(visibilities_nr_correlations == grid_nr_correlations, "");
-  throw_assert(visibilities_nr_correlations == aterms_nr_correlations, "");
+  throw_assert(visibilities_nr_correlations == grid_nr_polarizations, "");
+  throw_assert(visibilities_nr_correlations == aterms_nr_polarizations, "");
   throw_assert(uvw_nr_coordinates == 3, "");
   throw_assert(baselines_two == 2, "");
   throw_assert(grid_height == grid_width, "");  // TODO: remove restriction
@@ -280,17 +283,27 @@ void Proxy::check_dimensions(
                "");  // TODO: remove restriction
   throw_assert(spheroidal_height == subgrid_size, "");
   throw_assert(spheroidal_height == subgrid_size, "");
+  if (options.mode == Plan::Mode::FULL_POLARIZATION) {
+    throw_assert(visibilities_nr_correlations == 4, "");
+    throw_assert(grid_nr_polarizations == 4, "");
+    throw_assert(aterms_nr_polarizations == 4, "");
+  } else if (options.mode == Plan::Mode::STOKES_I_ONLY) {
+    throw_assert(visibilities_nr_correlations == 2, "");
+    throw_assert(grid_nr_polarizations == 1, "");
+    throw_assert(aterms_nr_polarizations == 2, "");
+  }
 }
 
 void Proxy::check_dimensions(
-    unsigned int subgrid_size, const Array1D<float>& frequencies,
+    const Plan::Options& options, unsigned int subgrid_size,
+    const Array1D<float>& frequencies,
     const Array3D<Visibility<std::complex<float>>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) const {
-  check_dimensions(subgrid_size, frequencies.get_x_dim(),
+  check_dimensions(options, subgrid_size, frequencies.get_x_dim(),
                    visibilities.get_z_dim(), visibilities.get_y_dim(),
                    visibilities.get_x_dim(), 4, uvw.get_y_dim(),
                    uvw.get_x_dim(), 3, baselines.get_x_dim(), 2,

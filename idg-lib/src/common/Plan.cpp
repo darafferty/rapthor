@@ -17,7 +17,10 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
            const Array1D<unsigned int>& aterms_offsets, Options options)
-    : m_subgrid_size(subgrid_size), m_cell_size(cell_size), use_wtiles(false) {
+    : m_subgrid_size(subgrid_size),
+      m_cell_size(cell_size),
+      use_wtiles(false),
+      m_options(options) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << endl;
 #endif
@@ -36,7 +39,10 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
            const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
            Options options)
-    : m_subgrid_size(subgrid_size), m_cell_size(cell_size), use_wtiles(true) {
+    : m_subgrid_size(subgrid_size),
+      m_cell_size(cell_size),
+      use_wtiles(true),
+      m_options(options) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << " (with WTiles)" << endl;
 #endif
