@@ -1019,8 +1019,10 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
                                         cu::UnifiedMemory& u_grid) {
   CUdeviceptr grid_ptr = u_grid;
   bool enable_tiling = true;
-  const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
-                              d_subgrid,  &grid_ptr,     &enable_tiling};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
+                              d_metadata,        d_subgrid,  &grid_ptr,
+                              &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::adder);
@@ -1059,8 +1061,10 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
                                            cu::UnifiedMemory& u_grid) {
   CUdeviceptr grid_ptr = u_grid;
   const bool enable_tiling = true;
-  const void* parameters[] = {&grid_size, &subgrid_size, d_metadata,
-                              d_subgrid,  &grid_ptr,     &enable_tiling};
+  const int nr_polarizations = 4;
+  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
+                              d_metadata,        d_subgrid,  &grid_ptr,
+                              &enable_tiling};
   dim3 grid(nr_subgrids);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
