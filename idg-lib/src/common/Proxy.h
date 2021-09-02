@@ -47,7 +47,7 @@ class Proxy {
    *  Before calling this function, the grid needs to have been set
    *  by a call to the set_grid function.
    *  The plan can be obtained by a call to the make_plan function.
-   * 
+   *
    *  :py:class:`idg.Proxy.Proxy`
    * :cpp:class:`Proxy <idg::proxy::Proxy>`
    *  \endverbatim
