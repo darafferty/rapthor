@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <cassert>
+#include <sstream>
 
 #include <vector_types.h>
 
@@ -21,14 +22,16 @@ namespace cu {
 inline void __assertCudaCall(CUresult result, char const *const func,
                              const char *const file, int const line) {
   if (result != CUDA_SUCCESS) {
+    std::stringstream message_stream;
     const char *msg;
     cuGetErrorString(result, &msg);
-    std::cerr << "CUDA Error at " << file;
-    std::cerr << ":" << line;
-    std::cerr << " in function " << func;
-    std::cerr << ": " << msg;
-    std::cerr << std::endl;
-    throw Error<CUresult>(result);
+    message_stream << "CUDA Error at " << file;
+    message_stream << ":" << line;
+    message_stream << " in function " << func;
+    message_stream << ": " << msg;
+    message_stream << std::endl;
+    std::string message = message_stream.str();
+    throw Error<CUresult>(result, message);
   }
 }
 
@@ -324,7 +327,8 @@ void Source::compile(const char *output_file_name,
   int retval = system(command_line.str().c_str());
 
   if (WEXITSTATUS(retval) != 0) {
-    throw cu::Error<CUresult>(CUDA_ERROR_INVALID_SOURCE);
+    std::string message(output_file_name);
+    throw cu::Error<CUresult>(CUDA_ERROR_INVALID_SOURCE, message);
   }
 }
 

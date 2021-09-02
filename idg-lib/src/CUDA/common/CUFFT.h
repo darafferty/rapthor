@@ -15,14 +15,18 @@ namespace cufft {
 
 class Error : public std::exception {
  public:
-  Error(cufftResult result) : _result(result) {}
+  Error(cufftResult result, std::string& message)
+      : _result(result), _message(message) {}
 
-  virtual const char* what() const throw();
+  const char* what() const throw() { return _message.c_str(); };
+
+  static const char* what(cufftResult result);
 
   operator cufftResult() const { return _result; }
 
  private:
   cufftResult _result;
+  std::string _message;
 };
 
 class C2C_1D {
