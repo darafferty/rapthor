@@ -89,8 +89,8 @@ void GenericOptimized::do_calibrate_init(
     auto sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids);
     auto sizeof_subgrids =
         auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
-    auto sizeof_visibilities =
-        auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+    auto sizeof_visibilities = auxiliary::sizeof_visibilities(
+        nr_baselines, nr_timesteps, nr_channels, nr_correlations);
     auto sizeof_weights =
         auxiliary::sizeof_weights(nr_baselines, nr_timesteps, nr_channels);
     auto sizeof_uvw = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);

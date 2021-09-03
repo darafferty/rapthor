@@ -199,9 +199,10 @@ uint64_t bytes_scaler(uint64_t nr_subgrids, uint64_t subgrid_size,
 */
 uint64_t sizeof_visibilities(unsigned int nr_baselines,
                              unsigned int nr_timesteps,
-                             unsigned int nr_channels) {
-  return 1ULL * nr_baselines * nr_timesteps * nr_channels *
-         sizeof(Visibility<std::complex<float>>);
+                             unsigned int nr_channels,
+                             unsigned int nr_correlations) {
+  return 1ULL * nr_baselines * nr_timesteps * nr_channels * nr_correlations *
+         sizeof(std::complex<float>);
 }
 
 uint64_t sizeof_uvw(unsigned int nr_baselines, unsigned int nr_timesteps) {

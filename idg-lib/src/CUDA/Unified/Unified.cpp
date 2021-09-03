@@ -36,7 +36,7 @@ Unified::~Unified() {
 
 void Unified::do_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -71,8 +71,7 @@ void Unified::do_gridding(
 
 void Unified::do_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,

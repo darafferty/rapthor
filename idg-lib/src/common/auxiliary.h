@@ -69,7 +69,8 @@ uint64_t bytes_scaler(uint64_t nr_subgrids, uint64_t subgrid_size,
 */
 uint64_t sizeof_visibilities(unsigned int nr_baselines,
                              unsigned int nr_timesteps,
-                             unsigned int nr_channels);
+                             unsigned int nr_channels,
+                             unsigned int nr_correlations);
 
 uint64_t sizeof_uvw(unsigned int nr_baselines, unsigned int nr_timesteps);
 

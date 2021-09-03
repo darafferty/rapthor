@@ -52,6 +52,7 @@ class CPU : public Proxy {
   unsigned int compute_jobsize(const Plan& plan,
                                const unsigned int nr_timesteps,
                                const unsigned int nr_channels,
+                               const unsigned int nr_correlations,
                                const unsigned int subgrid_size);
 
   // Routines

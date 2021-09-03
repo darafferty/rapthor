@@ -99,11 +99,12 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
 unsigned int CPU::compute_jobsize(const Plan &plan,
                                   const unsigned int nr_timesteps,
                                   const unsigned int nr_channels,
+                                  const unsigned int nr_correlations,
                                   const unsigned int subgrid_size) {
   auto nr_baselines = plan.get_nr_baselines();
   auto jobsize = nr_baselines;
-  auto sizeof_visibilities =
-      auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+  auto sizeof_visibilities = auxiliary::sizeof_visibilities(
+      nr_baselines, nr_timesteps, nr_channels, nr_correlations);
 
   // Make sure that every job will fit in memory
   do {
@@ -178,8 +179,8 @@ void CPU::do_gridding(
   WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
 
   try {
-    auto jobsize =
-        compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
+    auto jobsize = compute_jobsize(plan, nr_timesteps, nr_channels,
+                                   nr_correlations, subgrid_size);
 
     // Allocate memory for subgrids
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -306,8 +307,8 @@ void CPU::do_degridding(
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
   try {
-    auto jobsize =
-        compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
+    auto jobsize = compute_jobsize(plan, nr_timesteps, nr_channels,
+                                   nr_correlations, subgrid_size);
 
     // Allocate memory for subgrids
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);

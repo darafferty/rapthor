@@ -47,7 +47,7 @@ class CUDA : public Proxy {
 
   void initialize(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -148,7 +148,7 @@ class CUDA : public Proxy {
     unsigned current_nr_timesteps;
     const idg::Metadata* metadata_ptr;
     const idg::UVW<float>* uvw_ptr;
-    idg::Matrix2x2<std::complex<float>>* visibilities_ptr;
+    std::complex<float>* visibilities_ptr;
   };
 
   std::vector<JobData> jobs;

@@ -15,7 +15,7 @@ namespace hybrid {
 
 void GenericOptimized::run_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -31,9 +31,10 @@ void GenericOptimized::run_gridding(
   auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
   auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
@@ -116,7 +117,7 @@ void GenericOptimized::run_gridding(
     // Copy input data for first job to device
     if (job_id == 0) {
       auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-          current_nr_baselines, nr_timesteps, nr_channels);
+          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
       auto sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
@@ -144,7 +145,7 @@ void GenericOptimized::run_gridding(
 
       // Copy input data to device
       auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
-          nr_baselines_next, nr_timesteps, nr_channels);
+          nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw_next =
           auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
       auto sizeof_metadata_next = auxiliary::sizeof_metadata(nr_subgrids_next);
@@ -237,7 +238,7 @@ void GenericOptimized::run_gridding(
 
 void GenericOptimized::do_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
