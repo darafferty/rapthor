@@ -78,7 +78,7 @@ void GridderBufferImpl::grid_visibilities(
 
   std::copy_n(visibilities, m_nr_channels * m_nrPolarizations,
               reinterpret_cast<std::complex<float> *>(
-                  &m_bufferVisibilities(local_bl, local_time, 0)));
+                  &m_bufferVisibilities(local_bl, local_time, 0, 0)));
   std::copy_n(weights, m_nr_channels * 4,
               &m_buffer_weights(local_bl, local_time, 0, 0));
 }
@@ -220,9 +220,8 @@ void GridderBufferImpl::malloc_buffers() {
   proxy::Proxy &proxy = m_bufferset.get_proxy();
   m_bufferUVW2 =
       proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-  m_bufferVisibilities2 =
-      proxy.allocate_array3d<Visibility<std::complex<float>>>(
-          m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+  m_bufferVisibilities2 = proxy.allocate_array4d<std::complex<float>>(
+      m_nr_baselines, m_bufferTimesteps, m_nr_channels, NR_CORRELATIONS);
   m_bufferStationPairs2 =
       proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
           m_nr_baselines);

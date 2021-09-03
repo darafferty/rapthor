@@ -54,10 +54,12 @@ int test01() {
   idg::Array1D<float> frequencies(nr_channels);
   data.get_frequencies(frequencies, image_size);
   idg::Array2D<idg::UVW<float>> uvw = data.get_uvw(nr_baselines, nr_timesteps);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
-      idg::get_example_visibilities(uvw, frequencies, image_size, grid_size);
+  idg::Array4D<std::complex<float>> visibilities =
+      idg::get_example_visibilities(uvw, frequencies, image_size, grid_size,
+                                    nr_correlations);
+  idg::Array4D<std::complex<float>> visibilities_ref =
+      idg::get_example_visibilities(uvw, frequencies, image_size, grid_size,
+                                    nr_correlations);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
   auto grid = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations,

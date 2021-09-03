@@ -410,9 +410,8 @@ void run_master() {
       std::ceil((float)total_nr_timesteps / nr_timesteps);
   idg::Array3D<idg::UVW<float>> uvws = proxy.allocate_array3d<idg::UVW<float>>(
       nr_time_blocks, nr_baselines, nr_timesteps);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
-                                  nr_channels);
+  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
+      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   unsigned int bl_offset = 0;
 
   // Vector of plans
@@ -649,9 +648,8 @@ void run_worker() {
       std::ceil((float)total_nr_timesteps / nr_timesteps);
   idg::Array3D<idg::UVW<float>> uvws = proxy.allocate_array3d<idg::UVW<float>>(
       nr_time_blocks, nr_baselines, nr_timesteps);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
-                                  nr_channels);
+  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
+      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   unsigned int bl_offset = 0;
 
   // Vector of plans

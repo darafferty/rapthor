@@ -119,9 +119,8 @@ void BufferImpl::malloc_buffers() {
   proxy::Proxy& proxy = m_bufferset.get_proxy();
   m_bufferUVW =
       proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-  m_bufferVisibilities =
-      proxy.allocate_array3d<Visibility<std::complex<float>>>(
-          m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+  m_bufferVisibilities = proxy.allocate_array4d<std::complex<float>>(
+      m_nr_baselines, m_bufferTimesteps, m_nr_channels, NR_CORRELATIONS);
   m_bufferStationPairs =
       proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
           m_nr_baselines);

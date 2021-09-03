@@ -43,10 +43,7 @@ template <class T>
 using Aterm = Matrix2x2<T>;
 
 template <class T>
-using Visibility = Matrix2x2<T>;
-
-template <class T>
-using Visibilities = std::vector<Visibility<T>>;
+using Visibilities = std::vector<std::complex<T>>;
 
 template <class T>
 using VisibilityGroup = std::vector<Visibility<T>>;

@@ -54,7 +54,7 @@ class Proxy {
    */
 
   void gridding(const Plan& plan, const Array1D<float>& frequencies,
-                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array4D<std::complex<float>>& visibilities,
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -63,7 +63,7 @@ class Proxy {
 
   void degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -202,7 +202,7 @@ class Proxy {
   //! Degrid the visibilities from a uniform grid
   virtual void do_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -211,7 +211,7 @@ class Proxy {
 
   virtual void do_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -268,7 +268,7 @@ class Proxy {
   void check_dimensions(
       const Plan::Options& options, unsigned int subgrid_size,
       const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,

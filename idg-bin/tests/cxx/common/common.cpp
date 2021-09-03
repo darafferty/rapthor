@@ -141,12 +141,11 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   idg::Array2D<idg::UVW<float>> uvw =
       proxy2.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
   data.get_uvw(uvw);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(proxy2, nr_baselines, nr_timesteps,
-                                  nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ref =
+  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
+      proxy2, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+  idg::Array4D<std::complex<float>> visibilities_ref =
       idg::get_dummy_visibilities(proxy1, nr_baselines, nr_timesteps,
-                                  nr_channels);
+                                  nr_channels, nr_correlations);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(proxy2, nr_stations, nr_baselines);
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =

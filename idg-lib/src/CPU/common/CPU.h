@@ -57,7 +57,7 @@ class CPU : public Proxy {
   // Routines
   void do_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -66,7 +66,7 @@ class CPU : public Proxy {
 
   void do_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,

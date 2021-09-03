@@ -124,21 +124,29 @@ Array1D<float> get_example_frequencies(proxy::Proxy &proxy,
   return frequencies;
 }
 
-Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
+Array4D<std::complex<float>> get_dummy_visibilities(
     proxy::Proxy &proxy, unsigned int nr_baselines, unsigned int nr_timesteps,
-    unsigned int nr_channels) {
-  using T = Visibility<std::complex<float>>;
-  Array3D<T> visibilities =
-      proxy.allocate_array3d<T>(nr_baselines, nr_timesteps, nr_channels);
+    unsigned int nr_channels, unsigned int nr_correlations) {
+  assert(nr_correlations == 2 || nr_correlations == 4);
 
-  const Visibility<std::complex<float>> visibility = {1.0f, 0.0f, 0.0f, 1.0f};
+  Array4D<std::complex<float>> visibilities =
+      proxy.allocate_array4d<std::complex<float>>(nr_baselines, nr_timesteps,
+                                                  nr_channels, nr_correlations);
 
 // Set all visibilities
 #pragma omp parallel for
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
     for (unsigned time = 0; time < nr_timesteps; time++) {
       for (unsigned chan = 0; chan < nr_channels; chan++) {
-        visibilities(bl, time, chan) = visibility;
+        if (nr_correlations == 2) {
+          visibilities(bl, time, chan, 0) = 1.0f;
+          visibilities(bl, time, chan, 1) = 1.0f;
+        } else if (nr_correlations == 4) {
+          visibilities(bl, time, chan, 0) = 1.0f;
+          visibilities(bl, time, chan, 1) = 0.0f;
+          visibilities(bl, time, chan, 2) = 0.0f;
+          visibilities(bl, time, chan, 3) = 1.0f;
+        }
       }
     }
   }
@@ -146,17 +154,18 @@ Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
   return visibilities;
 }
 
-Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+Array4D<std::complex<float>> get_example_visibilities(
     proxy::Proxy &proxy, Array2D<UVW<float>> &uvw, Array1D<float> &frequencies,
-    float image_size, unsigned int grid_size, unsigned int nr_point_sources,
-    int max_pixel_offset, unsigned int random_seed, float amplitude) {
+    float image_size, unsigned int nr_correlations, unsigned int grid_size,
+    unsigned int nr_point_sources, int max_pixel_offset,
+    unsigned int random_seed, float amplitude) {
   unsigned int nr_baselines = uvw.get_y_dim();
   unsigned int nr_timesteps = uvw.get_x_dim();
   unsigned int nr_channels = frequencies.get_x_dim();
 
-  using T = Visibility<std::complex<float>>;
-  Array3D<T> visibilities =
-      proxy.allocate_array3d<T>(nr_baselines, nr_timesteps, nr_channels);
+  Array4D<std::complex<float>> visibilities =
+      proxy.allocate_array4d<std::complex<float>>(nr_baselines, nr_timesteps,
+                                                  nr_channels, nr_correlations);
 
   if (max_pixel_offset == -1) {
     max_pixel_offset = grid_size / 2;
@@ -324,19 +333,28 @@ Array1D<float> get_example_frequencies(unsigned int nr_channels,
   return frequencies;
 }
 
-Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
+Array4D<std::complex<float>> get_dummy_visibilities(
     unsigned int nr_baselines, unsigned int nr_timesteps,
-    unsigned int nr_channels) {
-  Array3D<Visibility<std::complex<float>>> visibilities(
-      nr_baselines, nr_timesteps, nr_channels);
-  const Visibility<std::complex<float>> visibility = {1.0f, 0.0f, 0.0f, 1.0f};
+    unsigned int nr_channels, unsigned int nr_correlations) {
+  assert(nr_correlations == 2 || nr_correlations == 4);
+
+  Array4D<std::complex<float>> visibilities(nr_baselines, nr_timesteps,
+                                            nr_channels, nr_correlations);
 
 // Set all visibilities
 #pragma omp parallel for
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
     for (unsigned time = 0; time < nr_timesteps; time++) {
       for (unsigned chan = 0; chan < nr_channels; chan++) {
-        visibilities(bl, time, chan) = visibility;
+        if (nr_correlations == 2) {
+          visibilities(bl, time, chan, 0) = 1.0f;
+          visibilities(bl, time, chan, 1) = 1.0f;
+        } else if (nr_correlations == 4) {
+          visibilities(bl, time, chan, 0) = 1.0f;
+          visibilities(bl, time, chan, 1) = 0.0f;
+          visibilities(bl, time, chan, 2) = 0.0f;
+          visibilities(bl, time, chan, 3) = 1.0f;
+        }
       }
     }
   }
@@ -344,18 +362,19 @@ Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
   return visibilities;
 }
 
-Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+Array4D<std::complex<float>> get_example_visibilities(
     Array2D<UVW<float>> &uvw, Array1D<float> &frequencies, float image_size,
-    unsigned int grid_size, unsigned int nr_point_sources,
-    unsigned int max_pixel_offset, unsigned int random_seed, float amplitude) {
+    unsigned int grid_size, unsigned int nr_correlations,
+    unsigned int nr_point_sources, unsigned int max_pixel_offset,
+    unsigned int random_seed, float amplitude) {
   unsigned int nr_baselines = uvw.get_y_dim();
   unsigned int nr_timesteps = uvw.get_x_dim();
   unsigned int nr_channels = frequencies.get_x_dim();
 
-  Array3D<Visibility<std::complex<float>>> visibilities(
-      nr_baselines, nr_timesteps, nr_channels);
+  Array4D<std::complex<float>> visibilities(nr_baselines, nr_timesteps,
+                                            nr_channels, nr_correlations);
   std::fill_n(visibilities.data(), visibilities.size(),
-              Visibility<std::complex<float>>{0.0, 0.0, 0.0, 0.0});
+              std::complex<float>{0.0, 0.0});
 
   srand(random_seed);
 
@@ -511,13 +530,14 @@ Array1D<float> get_zero_shift() {
   return shift;
 }
 
-void add_pt_src(Array3D<Visibility<std::complex<float>>> &visibilities,
+void add_pt_src(Array4D<std::complex<float>> &visibilities,
                 Array2D<UVW<float>> &uvw, Array1D<float> &frequencies,
                 float image_size, unsigned int grid_size, float offset_x,
                 float offset_y, float amplitude) {
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
 
   float l = offset_x * image_size / grid_size;
   float m = offset_y * image_size / grid_size;
@@ -531,10 +551,9 @@ void add_pt_src(Array3D<Visibility<std::complex<float>>> &visibilities,
         std::complex<float> value =
             amplitude *
             exp(std::complex<float>(0, -2 * M_PI * (u * l + v * m)));
-        visibilities(bl, t, c).xx += value;
-        visibilities(bl, t, c).xy += value;
-        visibilities(bl, t, c).yx += value;
-        visibilities(bl, t, c).yy += value;
+        for (unsigned cor = 0; cor < nr_correlations; cor++) {
+          visibilities(bl, t, c, cor) += value;
+        }
       }
     }
   }

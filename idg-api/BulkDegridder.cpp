@@ -63,9 +63,8 @@ void BulkDegridderImpl::compute_visibilities(
   std::vector<int> baseline_map;
   auto bufferUVW =
       proxy.allocate_array2d<UVW<float>>(nr_baselines, nr_timesteps);
-  auto bufferVisibilities =
-      proxy.allocate_array3d<Visibility<std::complex<float>>>(
-          nr_baselines, nr_timesteps, frequencies_.size());
+  auto bufferVisibilities = proxy.allocate_array4d<std::complex<float>>(
+      nr_baselines, nr_timesteps, frequencies_.size(), NR_CORRELATIONS);
   // The proxy does not touch visibilities for out-of-bound uvw coordinates.
   // Since we copy all visibilities to the caller, initialize them to zero.
   bufferVisibilities.zero();
@@ -137,9 +136,6 @@ void BulkDegridderImpl::compute_visibilities(
 
   // Transpose bufferVisibilities into visibilities.
   const unsigned int nr_correlations = 4;
-  static_assert(sizeof(Visibility<std::complex<float>>) ==
-                    nr_correlations * sizeof(std::complex<float>),
-                "Correlation count mismatch");
 
   const size_t baseline_size = frequencies_.size() * nr_correlations;
   for (size_t t = 0; t < nr_timesteps; ++t) {

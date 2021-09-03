@@ -25,13 +25,14 @@ Array1D<float> get_example_frequencies(
     float start_frequency = Data::start_frequency,
     float frequency_increment = Data::frequency_increment);
 
-Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
+Array4D<std::complex<float>> get_dummy_visibilities(
     proxy::Proxy& proxy, unsigned int nr_baselines, unsigned int nr_timesteps,
-    unsigned int nr_channels);
+    unsigned int nr_channels, unsigned int nr_correlations);
 
-Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+Array4D<std::complex<float>> get_example_visibilities(
     proxy::Proxy& proxy, Array2D<UVW<float>>& uvw, Array1D<float>& frequencies,
-    float image_size, unsigned int grid_size, unsigned int nr_point_sources = 4,
+    float image_size, unsigned int nr_correlations, unsigned int grid_size,
+    unsigned int nr_polarizations, unsigned int nr_point_sources = 4,
     unsigned int max_pixel_offset = -1, unsigned int random_seed = 2,
     float amplitude = 1);
 
@@ -68,15 +69,15 @@ Array1D<float> get_example_frequencies(
     unsigned int nr_channels, float start_frequency = Data::start_frequency,
     float frequency_increment = Data::frequency_increment);
 
-Array3D<Visibility<std::complex<float>>> get_dummy_visibilities(
+Array4D<std::complex<float>> get_dummy_visibilities(
     unsigned int nr_baselines, unsigned int nr_timesteps,
-    unsigned int nr_channels);
+    unsigned int nr_channels, unsigned int nr_correlations);
 
-Array3D<Visibility<std::complex<float>>> get_example_visibilities(
+Array4D<std::complex<float>> get_example_visibilities(
     Array2D<UVW<float>>& uvw, Array1D<float>& frequencies, float image_size,
-    unsigned int grid_size, unsigned int nr_point_sources = 4,
-    unsigned int max_pixel_offset = -1, unsigned int random_seed = 2,
-    float amplitude = 1);
+    unsigned int grid_size, unsigned int nr_correlations,
+    unsigned int nr_point_sources = 4, unsigned int max_pixel_offset = -1,
+    unsigned int random_seed = 2, float amplitude = 1);
 
 Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
     unsigned int nr_stations, unsigned int nr_baselines);
@@ -103,7 +104,7 @@ Array2D<float> get_example_spheroidal(unsigned int height, unsigned int width);
 
 float evaluate_spheroidal(float nu);
 
-void add_pt_src(Array3D<Visibility<std::complex<float>>>& visibilities,
+void add_pt_src(Array4D<std::complex<float>>& visibilities,
                 Array2D<UVW<float>>& uvw, Array1D<float>& frequencies,
                 float image_size, unsigned int grid_size, float x, float y,
                 float amplitude);

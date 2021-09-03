@@ -8,15 +8,14 @@ extern "C" {
 void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
                     int nr_channels, int nr_baselines, int nr_timesteps,
                     int nr_correlations, int nr_timeslots, int nr_stations,
-                    float* frequencies,
-                    idg::Visibility<std::complex<float>>* visibilities,
+                    float* frequencies, std::complex<float>* visibilities,
                     idg::UVW<float>* uvw,
                     std::pair<unsigned int, unsigned int>* baselines,
                     std::complex<float>* aterms, unsigned int* aterms_offsets,
                     float* taper) {
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      visibilities, nr_baselines, nr_timesteps, nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<idg::UVW<float>> uvw_(uvw, nr_baselines, nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(baselines,
                                                                  nr_baselines);
@@ -38,15 +37,14 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
 void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
                       int nr_channels, int nr_baselines, int nr_timesteps,
                       int nr_correlations, int nr_timeslots, int nr_stations,
-                      float* frequencies,
-                      idg::Visibility<std::complex<float>>* visibilities,
+                      float* frequencies, std::complex<float>* visibilities,
                       idg::UVW<float>* uvw,
                       std::pair<unsigned int, unsigned int>* baselines,
                       std::complex<float>* aterms, unsigned int* aterms_offsets,
                       float* taper) {
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      visibilities, nr_baselines, nr_timesteps, nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<idg::UVW<float>> uvw_(uvw, nr_baselines, nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(baselines,
                                                                  nr_baselines);

@@ -148,7 +148,7 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
 */
 void CPU::do_gridding(
     const Plan &plan, const Array1D<float> &frequencies,
-    const Array3D<Visibility<std::complex<float>>> &visibilities,
+    const Array4D<std::complex<float>> &visibilities,
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array4D<Matrix2x2<std::complex<float>>> &aterms,
@@ -163,10 +163,10 @@ void CPU::do_gridding(
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
-  auto nr_correlations = 4;
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto subgrid_size = plan.get_subgrid_size();
@@ -277,8 +277,7 @@ void CPU::do_gridding(
 
 void CPU::do_degridding(
     const Plan &plan, const Array1D<float> &frequencies,
-    Array3D<Visibility<std::complex<float>>> &visibilities,
-    const Array2D<UVW<float>> &uvw,
+    Array4D<std::complex<float>> &visibilities, const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array4D<Matrix2x2<std::complex<float>>> &aterms,
     const Array1D<unsigned int> &aterms_offsets,
@@ -292,9 +291,10 @@ void CPU::do_degridding(
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto image_size = plan.get_cell_size() * grid_size;

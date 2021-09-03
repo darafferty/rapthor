@@ -15,7 +15,7 @@ Proxy::~Proxy() {}
 
 void Proxy::gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -39,8 +39,7 @@ void Proxy::gridding(
 
 void Proxy::degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
@@ -297,17 +296,17 @@ void Proxy::check_dimensions(
 void Proxy::check_dimensions(
     const Plan::Options& options, unsigned int subgrid_size,
     const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) const {
   check_dimensions(options, subgrid_size, frequencies.get_x_dim(),
-                   visibilities.get_z_dim(), visibilities.get_y_dim(),
-                   visibilities.get_x_dim(), 4, uvw.get_y_dim(),
-                   uvw.get_x_dim(), 3, baselines.get_x_dim(), 2,
-                   grid.get_z_dim(), grid.get_y_dim(), grid.get_x_dim(),
+                   visibilities.get_w_dim(), visibilities.get_z_dim(),
+                   visibilities.get_y_dim(), visibilities.get_x_dim(),
+                   uvw.get_y_dim(), uvw.get_x_dim(), 3, baselines.get_x_dim(),
+                   2, grid.get_z_dim(), grid.get_y_dim(), grid.get_x_dim(),
                    aterms.get_w_dim(), aterms.get_z_dim(), aterms.get_y_dim(),
                    aterms.get_x_dim(), 4, aterms_offsets.get_x_dim(),
                    spheroidal.get_y_dim(), spheroidal.get_x_dim());

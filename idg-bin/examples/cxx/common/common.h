@@ -25,7 +25,8 @@
 
 using namespace std;
 
-std::tuple<int, int, int, int, int, int, int, int, int, int, int, float, bool>
+std::tuple<int, int, int, int, int, int, int, int, int, int, int, float, bool,
+           bool>
 read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;      // all LOFAR LBA stations
   const unsigned int DEFAULT_NR_CHANNELS = 16 * 4;  // 16 channels, 4 subbands
@@ -38,6 +39,7 @@ read_parameters() {
   const unsigned int DEFAULT_NR_CYCLES = 1;
   const float DEFAULT_GRID_PADDING = 1.0;
   const bool DEFAULT_USE_WTILES = false;
+  const bool DEFAULT_STOKES_I_ONLY = false;
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
@@ -89,10 +91,14 @@ read_parameters() {
   auto use_wtiles =
       cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
 
-  return std::make_tuple(total_nr_stations, total_nr_channels,
-                         total_nr_timesteps, nr_stations, nr_channels,
-                         nr_timesteps, nr_timeslots, grid_size, subgrid_size,
-                         kernel_size, nr_cycles, grid_padding, use_wtiles);
+  char *cstr_stokes_i_only = getenv("STOKES_I_ONLY");
+  auto stokes_i_only =
+      cstr_stokes_i_only ? atoi(cstr_stokes_i_only) : DEFAULT_STOKES_I_ONLY;
+
+  return std::make_tuple(
+      total_nr_stations, total_nr_channels, total_nr_timesteps, nr_stations,
+      nr_channels, nr_timesteps, nr_timeslots, grid_size, subgrid_size,
+      kernel_size, nr_cycles, grid_padding, use_wtiles, stokes_i_only);
 }
 
 void print_parameters(unsigned int total_nr_stations,
@@ -158,6 +164,7 @@ void run() {
   // Constants
   unsigned int nr_w_layers = 1;
   unsigned int nr_correlations = 4;
+  unsigned int nr_polarizations = 4;
   unsigned int total_nr_stations;
   unsigned int total_nr_timesteps;
   unsigned int total_nr_channels;
@@ -172,13 +179,20 @@ void run() {
   unsigned int nr_cycles;
   float grid_padding;
   bool use_wtiles;
+  bool stokes_i_only;
 
   // Read parameters from environment
   std::tie(total_nr_stations, total_nr_channels, total_nr_timesteps,
            nr_stations, nr_channels, nr_timesteps, nr_timeslots, grid_size,
-           subgrid_size, kernel_size, nr_cycles, grid_padding, use_wtiles) =
-      read_parameters();
+           subgrid_size, kernel_size, nr_cycles, grid_padding, use_wtiles,
+           stokes_i_only) = read_parameters();
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
+
+  // Update parameters for Stokes-I only mode
+  if (stokes_i_only) {
+    nr_correlations = 2;
+    nr_polarizations = 1;
+  }
 
   // Initialize Data object
   clog << ">>> Initialize data" << endl;
@@ -217,9 +231,8 @@ void run() {
   // Allocate and initialize static data structures
   clog << ">>> Initialize data structures" << endl;
 #if USE_DUMMY_VISIBILITIES
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
-      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
-                                  nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_ = idg::get_dummy_visibilities(
+      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
 #endif
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size,
@@ -229,7 +242,7 @@ void run() {
   idg::Array2D<float> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
   auto grid =
-      proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+      proxy.allocate_grid(nr_w_layers, nr_polarizations, grid_size, grid_size);
   grid->zero();
   idg::Array1D<float> shift = idg::get_zero_shift();
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
@@ -307,15 +320,15 @@ void run() {
 
 // Initialize visibilities
 #if !USE_DUMMY_VISIBILITIES
-        idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_ =
+        idg::Array4D<std::complex<float>> visibilities_ =
             idg::get_example_visibilities(proxy, uvw, frequencies, image_size,
-                                          grid_size);
+                                          grid_size, nr_correlations);
 #endif
 
         auto nr_channels_ = simulate_spectral_line ? 1 : nr_channels;
-        idg::Array3D<idg::Visibility<std::complex<float>>> visibilities(
+        idg::Array4D<std::complex<float>> visibilities(
             visibilities_.data(), nr_baselines, current_nr_timesteps,
-            nr_channels_);
+            nr_channels_, nr_correlations);
 
         // Create plan
         if (plans.size() == 0 || cycle == 0) {
