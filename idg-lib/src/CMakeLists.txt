@@ -104,8 +104,11 @@ install(
 if(BUILD_LIB_CPU)
   add_library(
     idg-cpu
-    $<TARGET_OBJECTS:cpu-common> $<TARGET_OBJECTS:cpu-reference>
-    $<TARGET_OBJECTS:cpu-optimized> $<TARGET_OBJECTS:cpu-reference-kernels>
+    $<TARGET_OBJECTS:common>
+    $<TARGET_OBJECTS:cpu-common>
+    $<TARGET_OBJECTS:cpu-reference>
+    $<TARGET_OBJECTS:cpu-optimized>
+    $<TARGET_OBJECTS:cpu-reference-kernels>
     $<TARGET_OBJECTS:cpu-optimized-kernels>)
 
   set(LINK_LIBRARIES idg-common ${FFTW3_LIBRARIES})
