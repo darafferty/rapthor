@@ -1,6 +1,6 @@
-==========
-Interfaces
-==========
+===================
+Interfaces Overview
+===================
 
 :py:class:`idg.Proxy.Proxy`
 
@@ -18,12 +18,3 @@ The BufferSet is the interface that `WSClean <https://wsclean.readthedocs.io/en/
 
 Both interfaces are written in C++, but for the Proxy there are C-bindings and Python
 bindings available.
-
-.. toctree::
-   :maxdepth: 2
-   
-   c++-proxy
-   c++-bufferset
-   c-interface
-   python-proxy
-
