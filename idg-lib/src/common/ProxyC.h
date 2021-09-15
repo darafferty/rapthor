@@ -3,29 +3,37 @@
 
 /**
  * Grid visibilities
- * 
- * This wrapper creates a Plan, and Arrays from the raw data pointers and then passes these on 
- * to the @ref idg::proxy::Proxy::gridding "gridding" method of @p p
  *
- * @param p Pointer to Proxy object, previously obtained by one of the create_<proxy_name>() functions. 
- * @param kernel_size Size of the kernel, 
- * see the documentation on @verbatim embed:rst:inline :doc:`kernelsize` @endverbatim
+ * This wrapper creates a Plan, and Arrays from the raw data pointers and then
+ * passes these on to the @ref idg::proxy::Proxy::gridding "gridding" method of
+ * @p p
+ *
+ * @param p Pointer to Proxy object, previously obtained by one of the
+ * create_<proxy_name>() functions.
+ * @param kernel_size Size of the kernel,
+ * see the documentation on @verbatim embed:rst:inline :doc:`kernelsize`
+ * @endverbatim
  * @param subgrid_size Size of the subgrids
  * @param nr_channels Number of channels
  * @param nr_baselines Number of baselines
  * @param nr_timesteps Number of time steps
  * @param nr_correlations Number of correlations
  * @param nr_timeslots Number of a-term time slots
- * see the documentation on @verbatim embed:rst:inline :doc:`aterms` @endverbatim
+ * see the documentation on @verbatim embed:rst:inline :doc:`aterms`
+ * @endverbatim
  * @param nr_stations Number of stations
  * @param frequencies Pointer to @p nr_channels frequencies (floats)
- * @param visibilities Pointer to @p nr_baselines * @p nr_timesteps * @p nr_correlations visibilities (complex float*)
- * @param uvw Pointer to @p nr_baselines * @p nr_timesteps u,v,w triplets (floats)
+ * @param visibilities Pointer to @p nr_baselines * @p nr_timesteps * @p
+ * nr_correlations visibilities (complex float*)
+ * @param uvw Pointer to @p nr_baselines * @p nr_timesteps u,v,w triplets
+ * (floats)
  * @param baselines Pointer to @p nr_baselines pairs of station indices (ints)
- * @param aterms Pointer to @p nr_timeslots x @p nr_stations x 2 x 2 Jones matrix entries (float complex*) see aterms
- * @param aterms_offsets Pointer to @p nr_timesteps + 1  time step indices, 
- * see the documentation on @verbatim embed:rst:inline :doc:`aterms` @endverbatim
- * @param taper Pointer to @p subgrid_size x @p subgrid_size floats, 
+ * @param aterms Pointer to @p nr_timeslots x @p nr_stations x 2 x 2 Jones
+ * matrix entries (float complex*) see aterms
+ * @param aterms_offsets Pointer to @p nr_timesteps + 1  time step indices,
+ * see the documentation on @verbatim embed:rst:inline :doc:`aterms`
+ * @endverbatim
+ * @param taper Pointer to @p subgrid_size x @p subgrid_size floats,
  * see the documentation on @verbatim embed:rst:inline :doc:`taper` @endverbatim
  */
 void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
@@ -39,28 +47,36 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
  * Degrid visibilities
  *
  * This wrapper creates a @ref idg::Plan "Plan" for the given uvw coordinates,
- * and @ref ArrayTypes.h "Arrays" from the raw data pointers and then passes these on 
- * to the @ref idg::proxy::Proxy::degridding "degridding" method of @p p
+ * and @ref ArrayTypes.h "Arrays" from the raw data pointers and then passes
+ * these on to the @ref idg::proxy::Proxy::degridding "degridding" method of @p
+ * p
  *
- * @param p Pointer to Proxy object, previously obtained by one of the create_<proxy_name>() functions. 
- * @param kernel_size Size of the kernel, 
- * see the documentation on @verbatim embed:rst:inline :doc:`kernelsize` @endverbatim
+ * @param p Pointer to Proxy object, previously obtained by one of the
+ * create_<proxy_name>() functions.
+ * @param kernel_size Size of the kernel,
+ * see the documentation on @verbatim embed:rst:inline :doc:`kernelsize`
+ * @endverbatim
  * @param subgrid_size Size of the subgrids
  * @param nr_channels Number of channels
  * @param nr_baselines Number of baselines
  * @param nr_timesteps Number of time steps
  * @param nr_correlations Number of correlations
  * @param nr_timeslots Number of a-term time slots
- * see the documentation on @verbatim embed:rst:inline :doc:`aterms` @endverbatim
+ * see the documentation on @verbatim embed:rst:inline :doc:`aterms`
+ * @endverbatim
  * @param nr_stations Number of stations
  * @param frequencies Pointer to @p nr_channels frequencies (floats)
- * @param visibilities Pointer to @p nr_baselines * @p nr_timesteps * @p nr_correlations visibilities (complex float*)
- * @param uvw Pointer to @p nr_baselines * @p nr_timesteps u,v,w triplets (floats)
+ * @param visibilities Pointer to @p nr_baselines * @p nr_timesteps * @p
+ * nr_correlations visibilities (complex float*)
+ * @param uvw Pointer to @p nr_baselines * @p nr_timesteps u,v,w triplets
+ * (floats)
  * @param baselines Pointer to @p nr_baselines pairs of station indices (ints)
- * @param aterms Pointer to @p nr_timeslots x @p nr_stations x 2 x 2 Jones matrix entries (float complex*) see aterms
- * @param aterms_offsets Pointer to @p nr_timesteps + 1  time step indices, 
- * see the documentation on @verbatim embed:rst:inline :doc:`aterms` @endverbatim
- * @param taper Pointer to @p subgrid_size x @p subgrid_size floats, 
+ * @param aterms Pointer to @p nr_timeslots x @p nr_stations x 2 x 2 Jones
+ * matrix entries (float complex*) see aterms
+ * @param aterms_offsets Pointer to @p nr_timesteps + 1  time step indices,
+ * see the documentation on @verbatim embed:rst:inline :doc:`aterms`
+ * @endverbatim
+ * @param taper Pointer to @p subgrid_size x @p subgrid_size floats,
  * see the documentation on @verbatim embed:rst:inline :doc:`taper` @endverbatim
  */
 
@@ -78,7 +94,7 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
  * @param p
  * @param subgrid_size
  * @param cell_size size of a cell (pixel) in radians
- * @param w_step 
+ * @param w_step
  * @param shift
  */
 void Proxy_init_cache(struct Proxy* p, unsigned int subgrid_size,
