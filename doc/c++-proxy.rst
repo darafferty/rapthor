@@ -14,4 +14,3 @@ See below for the description of the :cpp:class:`Proxy <idg::proxy::Proxy>` clas
 .. doxygenclass:: idg::proxy::Proxy
    :members:
 
-
