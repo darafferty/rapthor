@@ -3,5 +3,7 @@ FROM ubuntu:20.04
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     apt-get install -y \
     libboost-all-dev g++ cmake libfftw3-dev liblapacke-dev \
-    python3 python3-pip git && \
-    pip3 install clang-format==9.0.0 cmake-format gcovr
+    python3 python3-pip git clang-format-12 && \
+# The formatter needs a binary named 'clang-format', not 'clang-format-12'
+    ln -sf clang-format-12 /usr/bin/clang-format && \
+    pip3 install cmake-format gcovr
