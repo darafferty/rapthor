@@ -77,10 +77,10 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
                           std::complex<float>* visibilities, float* weights,
                           float* uvw, unsigned int* baselines,
                           unsigned int* aterms_offsets, float* spheroidal) {
+  const unsigned int nr_correlations = 4;
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      (idg::Visibility<std::complex<float>>*)visibilities, nr_baselines,
-      nr_timesteps, nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   idg::Array3D<idg::Visibility<float>> weights_(
       (idg::Visibility<float>*)weights, nr_baselines, nr_timesteps,
       nr_channels);

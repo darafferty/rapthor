@@ -77,7 +77,7 @@ class CPU : public Proxy {
   void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
       const Array1D<float>& frequencies,
-      Array4D<Visibility<std::complex<float>>>&& visibilities,
+      Array5D<std::complex<float>>&& visibilities,
       Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
       const Array2D<float>& spheroidal) override;
@@ -132,7 +132,7 @@ class CPU : public Proxy {
     unsigned int nr_timesteps;
     unsigned int nr_channels;
     Array1D<float> wavenumbers;
-    Array4D<Visibility<std::complex<float>>> visibilities;
+    Array5D<std::complex<float>> visibilities;  // ANTxANTxTIMExCHANxCOR
     Array4D<Visibility<float>> weights;
     Array3D<UVW<float>> uvw;
     Array2D<std::pair<unsigned int, unsigned int>> baselines;

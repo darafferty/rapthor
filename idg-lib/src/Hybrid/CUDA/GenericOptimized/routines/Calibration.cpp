@@ -14,7 +14,7 @@ namespace hybrid {
 void GenericOptimized::do_calibrate_init(
     std::vector<std::unique_ptr<Plan>>&& plans,
     const Array1D<float>& frequencies,
-    Array4D<Visibility<std::complex<float>>>&& visibilities,
+    Array5D<std::complex<float>>&& visibilities,
     Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
     Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
     const Array2D<float>& spheroidal) {
@@ -30,11 +30,11 @@ void GenericOptimized::do_calibrate_init(
   auto image_size = m_cache_state.cell_size * grid_size;
   auto w_step = m_cache_state.w_step;
   auto subgrid_size = m_cache_state.subgrid_size;
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_d_dim();
+  auto nr_timesteps = visibilities.get_c_dim();
+  auto nr_channels = visibilities.get_b_dim();
+  auto nr_correlations = visibilities.get_a_dim();
   auto max_nr_terms = m_calibrate_max_nr_terms;
-  auto nr_correlations = 4;
   auto& shift = m_cache_state.shift;
 
   // Allocate subgrids for all antennas
@@ -168,7 +168,7 @@ void GenericOptimized::do_calibrate_init(
 
     // Apply spheroidal
     for (int i = 0; i < (int)nr_subgrids; i++) {
-      for (int pol = 0; pol < nr_correlations; pol++) {
+      for (unsigned int pol = 0; pol < nr_correlations; pol++) {
         for (int j = 0; j < subgrid_size; j++) {
           for (int k = 0; k < subgrid_size; k++) {
             int y = (j + (subgrid_size / 2)) % subgrid_size;
