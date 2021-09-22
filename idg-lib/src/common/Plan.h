@@ -151,8 +151,7 @@ class Plan {
                       unsigned int* current_nr_baselines) const;
 
   // set visibilities not used by plan to zero
-  void mask_visibilities(
-      Array3D<Visibility<std::complex<float>>>& visibilities) const;
+  void mask_visibilities(Array5D<std::complex<float>>& visibilities) const;
 
   WTileUpdateSet get_wtile_initialize_set() const {
     return m_wtile_initialize_set;
