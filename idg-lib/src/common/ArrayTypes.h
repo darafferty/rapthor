@@ -359,7 +359,7 @@ class Array4D : public Array1D<T> {
 template <class T>
 class Array5D : public Array1D<T> {
  public:
-  Array5D(size_t e_dim, size_t d_dim = 0, size_t c_dim = 0, size_t b_dim = 0,
+  Array5D(size_t e_dim = 0, size_t d_dim = 0, size_t c_dim = 0, size_t b_dim = 0,
           size_t a_dim = 0)
       : Array1D<T>(e_dim * d_dim * c_dim * b_dim * a_dim),
         m_e_dim(e_dim),
