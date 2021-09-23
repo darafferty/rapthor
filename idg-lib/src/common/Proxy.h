@@ -73,8 +73,8 @@ class Proxy {
   // Prepare a calibration cycle
   void calibrate_init(
       const unsigned int kernel_size, const Array1D<float>& frequencies,
-      Array4D<std::complex<float>>& visibilities,
-      Array3D<Visibility<float>>& weights, const Array2D<UVW<float>>& uvw,
+      Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
+      const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
@@ -223,8 +223,8 @@ class Proxy {
   virtual void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
       const Array1D<float>& frequencies,
-      Array5D<std::complex<float>>&& visibilities,
-      Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
+      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
       const Array2D<float>& spheroidal) {}
 

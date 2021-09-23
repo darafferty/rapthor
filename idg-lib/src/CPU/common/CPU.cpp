@@ -406,8 +406,8 @@ void CPU::do_degridding(
 void CPU::do_calibrate_init(
     std::vector<std::unique_ptr<Plan>> &&plans,
     const Array1D<float> &frequencies,
-    Array5D<std::complex<float>> &&visibilities,
-    Array4D<Visibility<float>> &&weights, Array3D<UVW<float>> &&uvw,
+    Array5D<std::complex<float>> &&visibilities, Array5D<float> &&weights,
+    Array3D<UVW<float>> &&uvw,
     Array2D<std::pair<unsigned int, unsigned int>> &&baselines,
     const Array2D<float> &spheroidal) {
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
