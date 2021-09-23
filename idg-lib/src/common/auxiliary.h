@@ -79,7 +79,7 @@ uint64_t sizeof_subgrids(unsigned int nr_subgrids, unsigned int subgrid_size,
 
 uint64_t sizeof_metadata(unsigned int nr_subgrids);
 
-uint64_t sizeof_grid(unsigned int grid_size, uint64_t nr_correlations = 4);
+uint64_t sizeof_grid(unsigned int grid_size, uint64_t nr_correlations);
 
 uint64_t sizeof_wavenumbers(unsigned int nr_channels);
 
