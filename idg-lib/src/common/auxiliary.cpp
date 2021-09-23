@@ -210,7 +210,7 @@ uint64_t sizeof_uvw(unsigned int nr_baselines, unsigned int nr_timesteps) {
 }
 
 uint64_t sizeof_subgrids(unsigned int nr_subgrids, unsigned int subgrid_size,
-                         uint64_t nr_correlations) {
+                         unsigned int nr_correlations) {
   return 1ULL * nr_subgrids * nr_correlations * subgrid_size * subgrid_size *
          sizeof(std::complex<float>);
 }

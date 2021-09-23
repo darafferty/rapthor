@@ -43,6 +43,7 @@ class CUDA : public Proxy {
                                    const unsigned int nr_timeslots,
                                    const unsigned int nr_timesteps,
                                    const unsigned int nr_channels,
+                                   const unsigned int nr_polarizations,
                                    const unsigned int subgrid_size);
 
   void initialize(
@@ -86,6 +87,7 @@ class CUDA : public Proxy {
     unsigned int nr_timeslots = 0;
     unsigned int nr_timesteps = 0;
     unsigned int nr_channels = 0;
+    unsigned int nr_polarizations = 0;
     unsigned int subgrid_size = 0;
     unsigned int nr_baselines = 0;
     std::vector<int> jobsize;

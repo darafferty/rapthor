@@ -852,7 +852,8 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
   end_measurement(data);
 }
 
-void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
+void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch,
+                                    unsigned nr_polarizations) {
 #if USE_CUSTOM_FFT
   if (size == 32) {
     m_fft_subgrid_size = size;
@@ -862,7 +863,6 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
 #endif
 
   // Force plan (re-)creation if subgrid size changed
-  const int nr_polarizations = 4;
   if (size != m_fft_subgrid_size) {
     m_fft_subgrid_bulk = m_fft_subgrid_bulk_default;
     m_fft_plan_subgrid.reset();
@@ -898,6 +898,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch) {
 
 void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
                                       unsigned int nr_subgrids,
+                                      unsigned int nr_polarizations,
                                       DomainAtoDomainB direction) {
   cufftComplex* data_ptr =
       reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_data));
@@ -932,8 +933,8 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   // Check for remainder
   unsigned int fft_subgrid_remainder = nr_subgrids % m_fft_subgrid_bulk;
   if (fft_subgrid_remainder > 0) {
-    auto sizeof_subgrids =
-        auxiliary::sizeof_subgrids(fft_subgrid_remainder, m_fft_subgrid_size);
+    auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+        fft_subgrid_remainder, m_fft_subgrid_size, nr_polarizations);
     executestream->memcpyDtoDAsync(*d_fft_subgrid, (CUdeviceptr)data_ptr,
                                    sizeof_subgrids);
     cufftComplex* tmp_ptr = reinterpret_cast<cufftComplex*>(

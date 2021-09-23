@@ -119,6 +119,7 @@ void UnifiedOptimized::run_gridding(
   auto nr_channels = visibilities.get_y_dim();
   auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -248,7 +249,7 @@ void UnifiedOptimized::run_gridding(
         d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               FourierDomainToImageDomain);
 
     // Run W-tiling
@@ -334,6 +335,7 @@ void UnifiedOptimized::run_degridding(
   auto nr_channels = visibilities.get_y_dim();
   auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -352,8 +354,8 @@ void UnifiedOptimized::run_degridding(
   cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
-  auto sizeof_subgrids =
-      auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+  auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+      max_nr_subgrids, subgrid_size, nr_polarizations);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
   h_subgrids.resize(sizeof_subgrids);
 
@@ -463,7 +465,7 @@ void UnifiedOptimized::run_degridding(
                              d_subgrids, d_metadata);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               ImageDomainToFourierDomain);
 
     // Launch degridder kernel

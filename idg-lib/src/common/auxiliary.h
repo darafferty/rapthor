@@ -75,7 +75,7 @@ uint64_t sizeof_visibilities(unsigned int nr_baselines,
 uint64_t sizeof_uvw(unsigned int nr_baselines, unsigned int nr_timesteps);
 
 uint64_t sizeof_subgrids(unsigned int nr_subgrids, unsigned int subgrid_size,
-                         uint64_t nr_correlations = 4);
+                         unsigned int nr_correlations);
 
 uint64_t sizeof_metadata(unsigned int nr_subgrids);
 

@@ -176,6 +176,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
                                        const unsigned int nr_timeslots,
                                        const unsigned int nr_timesteps,
                                        const unsigned int nr_channels,
+                                       const unsigned int nr_polarizations,
                                        const unsigned int subgrid_size) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
@@ -196,6 +197,9 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
     reset = true;
   };
   if (nr_channels != m_gridding_state.nr_channels) {
+    reset = true;
+  };
+  if (nr_polarizations != m_gridding_state.nr_polarizations) {
     reset = true;
   };
   if (subgrid_size != m_gridding_state.subgrid_size) {
@@ -229,6 +233,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
   m_gridding_state.nr_timeslots = nr_timeslots;
   m_gridding_state.nr_timesteps = nr_timesteps;
   m_gridding_state.nr_channels = nr_channels;
+  m_gridding_state.nr_polarizations = nr_polarizations;
   m_gridding_state.subgrid_size = subgrid_size;
   m_gridding_state.nr_baselines = nr_baselines;
 
@@ -257,7 +262,8 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
   bytes_job += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels,
                                               nr_correlations);
   bytes_job += auxiliary::sizeof_uvw(1, nr_timesteps);
-  bytes_job += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size);
+  bytes_job += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size,
+                                          nr_polarizations);
   bytes_job += auxiliary::sizeof_metadata(max_nr_subgrids_bl);
   bytes_job *= m_max_nr_streams;
 
@@ -366,6 +372,7 @@ void CUDA::initialize(
   marker.start();
 
   // Arguments
+  auto nr_polarizations = m_grid->get_z_dim();
   auto subgrid_size = plan.get_subgrid_size();
   auto nr_channels = frequencies.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
@@ -380,7 +387,7 @@ void CUDA::initialize(
 
   // Compute jobsize
   compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels,
-                  subgrid_size);
+                  nr_polarizations, subgrid_size);
 
   try {
     // Allocate and initialize device memory
@@ -435,8 +442,8 @@ void CUDA::initialize(
         m_buffers.d_uvw_[t]->resize(sizeof_uvw);
 
         // Subgrids
-        size_t sizeof_subgrids =
-            auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+        size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+            max_nr_subgrids, subgrid_size, nr_polarizations);
         m_buffers.d_subgrids_[t]->resize(sizeof_subgrids);
 
         // Metadata
@@ -466,7 +473,7 @@ void CUDA::initialize(
       }
 
       // Plan subgrid fft
-      device.plan_subgrid_fft(subgrid_size, max_nr_subgrids);
+      device.plan_subgrid_fft(subgrid_size, max_nr_subgrids, nr_polarizations);
 
       // Wait for memory copies
       htodstream.synchronize();

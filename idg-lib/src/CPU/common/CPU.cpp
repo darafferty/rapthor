@@ -100,6 +100,7 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
                                   const unsigned int nr_timesteps,
                                   const unsigned int nr_channels,
                                   const unsigned int nr_correlations,
+                                  const unsigned int nr_polarizations,
                                   const unsigned int subgrid_size) {
   auto nr_baselines = plan.get_nr_baselines();
   auto jobsize = nr_baselines;
@@ -112,8 +113,8 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
     // Determine the size of the subgrids for this jobsize
-    auto sizeof_subgrids =
-        auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+    auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+        max_nr_subgrids, subgrid_size, nr_polarizations);
 
 #if defined(DEBUG_COMPUTE_JOBSIZE)
     std::clog << "size of subgrids: " << sizeof_subgrids << std::endl;
@@ -179,8 +180,9 @@ void CPU::do_gridding(
   WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
 
   try {
-    auto jobsize = compute_jobsize(plan, nr_timesteps, nr_channels,
-                                   nr_correlations, subgrid_size);
+    auto jobsize =
+        compute_jobsize(plan, nr_timesteps, nr_channels, nr_correlations,
+                        nr_polarizations, subgrid_size);
 
     // Allocate memory for subgrids
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
@@ -307,8 +309,9 @@ void CPU::do_degridding(
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
   try {
-    auto jobsize = compute_jobsize(plan, nr_timesteps, nr_channels,
-                                   nr_correlations, subgrid_size);
+    auto jobsize =
+        compute_jobsize(plan, nr_timesteps, nr_channels, nr_correlations,
+                        nr_polarizations, subgrid_size);
 
     // Allocate memory for subgrids
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);

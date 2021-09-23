@@ -54,8 +54,8 @@ void GenericOptimized::run_degridding(
   cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
-  auto sizeof_subgrids =
-      auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+  auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+      max_nr_subgrids, subgrid_size, nr_polarizations);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
   h_subgrids.resize(sizeof_subgrids);
 
@@ -184,8 +184,8 @@ void GenericOptimized::run_degridding(
 
     if (m_disable_wtiling || m_disable_wtiling_gpu) {
       // Copy subgrids to device
-      auto sizeof_subgrids =
-          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+      auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+          current_nr_subgrids, subgrid_size, nr_polarizations);
       htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
 
       // Wait for subgrids to be copied
@@ -195,7 +195,7 @@ void GenericOptimized::run_degridding(
     marker_splitter.end();
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               ImageDomainToFourierDomain);
 
     // Launch degridder kernel

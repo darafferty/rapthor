@@ -53,6 +53,7 @@ class CPU : public Proxy {
                                const unsigned int nr_timesteps,
                                const unsigned int nr_channels,
                                const unsigned int nr_correlations,
+                               const unsigned int nr_polarizations,
                                const unsigned int subgrid_size);
 
   // Routines

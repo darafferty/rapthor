@@ -49,6 +49,7 @@ void Generic::run_gridding(
   auto nr_channels = visibilities.get_y_dim();
   auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -181,7 +182,7 @@ void Generic::run_gridding(
         d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               FourierDomainToImageDomain);
 
     // Launch adder kernel
@@ -271,6 +272,7 @@ void Generic::run_degridding(
   auto nr_channels = visibilities.get_y_dim();
   auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -398,7 +400,7 @@ void Generic::run_degridding(
     d_visibilities.zero(executestream);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               ImageDomainToFourierDomain);
 
     // Launch degridder kernel

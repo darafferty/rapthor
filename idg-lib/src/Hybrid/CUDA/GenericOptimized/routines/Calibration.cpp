@@ -88,7 +88,7 @@ void GenericOptimized::do_calibrate_init(
     // Allocate and initialize device memory for current antenna
     auto sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids);
     auto sizeof_subgrids =
-        auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size);
+        auxiliary::sizeof_subgrids(nr_subgrids, subgrid_size, nr_polarizations);
     auto sizeof_visibilities = auxiliary::sizeof_visibilities(
         nr_baselines, nr_timesteps, nr_channels, nr_correlations);
     auto sizeof_weights =
@@ -127,7 +127,7 @@ void GenericOptimized::do_calibrate_init(
           plans[antenna_nr]->get_wtile_initialize_set();
       if (!m_disable_wtiling_gpu) {
         // Initialize subgrid FFT
-        device.plan_subgrid_fft(subgrid_size, nr_subgrids);
+        device.plan_subgrid_fft(subgrid_size, nr_subgrids, nr_polarizations);
 
         // Wait for metadata to be copied
         htodstream.synchronize();
