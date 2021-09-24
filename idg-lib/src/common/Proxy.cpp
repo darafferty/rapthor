@@ -272,10 +272,8 @@ void Proxy::check_dimensions(
   throw_assert(visibilities_nr_baselines == baselines_nr_baselines, "");
   throw_assert(visibilities_nr_timesteps == uvw_nr_timesteps, "");
   throw_assert(
-      visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4,
+      visibilities_nr_correlations == 2 || visibilities_nr_correlations == 4,
       "");
-  throw_assert(visibilities_nr_correlations == grid_nr_polarizations, "");
-  throw_assert(visibilities_nr_correlations == aterms_nr_polarizations, "");
   throw_assert(uvw_nr_coordinates == 3, "");
   throw_assert(baselines_two == 2, "");
   throw_assert(grid_height == grid_width, "");  // TODO: remove restriction
@@ -292,7 +290,8 @@ void Proxy::check_dimensions(
   } else if (options.mode == Plan::Mode::STOKES_I_ONLY) {
     throw_assert(visibilities_nr_correlations == 2, "");
     throw_assert(grid_nr_polarizations == 1, "");
-    throw_assert(aterms_nr_polarizations == 2, "");
+    throw_assert(aterms_nr_polarizations == 4,
+                 "");  // TODO: pass only XX and YY
   }
 }
 

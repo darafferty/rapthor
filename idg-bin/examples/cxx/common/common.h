@@ -108,7 +108,7 @@ void print_parameters(unsigned int total_nr_stations,
                       unsigned int nr_timeslots, float image_size,
                       unsigned int grid_size, unsigned int subgrid_size,
                       unsigned int kernel_size, float w_step,
-                      float grid_padding) {
+                      float grid_padding, bool stokes_i_only) {
   const int fw1 = 30;
   const int fw2 = 10;
   ostream &os = clog;
@@ -154,6 +154,9 @@ void print_parameters(unsigned int total_nr_stations,
 
   os << setw(fw1) << left << "Grid padding"
      << "== " << setw(fw2) << right << grid_padding << endl;
+
+  os << setw(fw1) << left << "Stokes I only"
+     << "== " << setw(fw2) << right << stokes_i_only << endl;
 
   os << "-----------" << endl;
 }
@@ -214,7 +217,7 @@ void run() {
   print_parameters(total_nr_stations, total_nr_channels, total_nr_timesteps,
                    nr_stations, nr_channels, nr_timesteps, nr_timeslots,
                    image_size, grid_size, subgrid_size, kernel_size, w_step,
-                   grid_padding);
+                   grid_padding, stokes_i_only);
 
   // Warn for unrealistic number of timesteps
   float observation_length = (total_nr_timesteps * integration_time) / 3600;
@@ -272,6 +275,8 @@ void run() {
   options.simulate_spectral_line = simulate_spectral_line;
   options.max_nr_timesteps_per_subgrid = 128;
   options.max_nr_channels_per_subgrid = 8;
+  options.mode = stokes_i_only ? idg::Plan::Mode::STOKES_I_ONLY
+                               : idg::Plan::Mode::FULL_POLARIZATION;
   omp_set_nested(true);
 
   // Vector of plans
