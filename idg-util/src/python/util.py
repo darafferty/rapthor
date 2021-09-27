@@ -400,8 +400,8 @@ def plot_frequencies(frequencies):
     plt.ylabel("rad/m")
 
 
-def plot_visibilities(visibilities, form='abs', maxtime=np.inf):
-    """Plot Grid data
+def plot_visibilities_all(visibilities, form='abs', maxtime=np.inf):
+    """Plot visibility data
     Input:
     visibilities - np.ndarray(shape=(nr_baselines, nr_time,
                                 nr_channels, nr_correlations),
@@ -474,6 +474,61 @@ def plot_visibilities(visibilities, form='abs', maxtime=np.inf):
                             top=False,
                             labelbottom=False)
 
+def plot_visibilities(visibilities, form='abs', maxtime=np.inf):
+    """Plot visibility data
+    Input:
+    visibilities - np.ndarray(shape=(nr_baselines, nr_time,
+                                nr_channels, nr_correlations),
+                                dtype=idg.visibilitiestype)
+    form - 'real', 'imag', 'abs', 'angle'
+    """
+    nr_polarizations = visibilities.shape[3]
+    if (nr_polarizations == 4):
+        plot_visibilities_all(visibilities, form, maxtime)
+        return
+    else:
+        pol = 0
+
+    if maxtime > visibilities.shape[1]:
+        maxtime = visibilities.shape[1] + 1
+
+    if (form == 'real'):
+        visXX = np.real(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.real(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Real'
+    elif (form == 'imag'):
+        visXX = np.imag(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.imag(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Imag'
+    elif (form == 'angle'):
+        visXX = np.angle(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.angle(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Angle'
+    else:
+        visXX = np.abs(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.abs(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Abs'
+
+    fig, axarr = plt.subplots(2, num=get_figure_name("visibilities"))
+    fig.suptitle(title, fontsize=14)
+
+    axarr[0].plot(visXX)
+    axarr[1].plot(visYY)
+
+    axarr[0].set_title('XX')
+    axarr[1].set_title('YY')
+
+    axarr[0].tick_params(axis='both',
+                         which='both',
+                         bottom=False,
+                         top=False,
+                         labelbottom=False)
+
+    axarr[1].tick_params(axis='both',
+                         which='both',
+                         bottom=False,
+                         top=False,
+                         labelbottom=False)
 
 def plot_aterms(aterms):
     """Plot A-terms
@@ -621,9 +676,12 @@ def plot_grid(grid,
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
-    if (pol == 'all'):
+    nr_polarizations = grid.shape[0]
+    if (nr_polarizations == 4 and pol == 'all'):
         plot_grid_all(grid, form, scaling, interpolation_method)
         return
+    else:
+        pol = 0
 
     if (scaling == 'log'):
         grid = np.abs(grid) + 1

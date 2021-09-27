@@ -123,6 +123,7 @@ def main(proxyname):
     layout_file      = get_layout_file()
     nr_stations      = get_nr_stations()
     nr_baselines     = get_nr_baselines()
+    nr_polarizations = 4 if nr_correlations == 4 else 1
 
     ######################################################################
     # initialize data generator
@@ -170,6 +171,7 @@ def main(proxyname):
     print("nr_timesteps          = ", nr_timesteps)
     print("nr_timeslots          = ", nr_timeslots)
     print("nr_correlations       = ", nr_correlations)
+    print("nr_polarizations      = ", nr_polarizations)
     print("subgrid_size          = ", subgrid_size)
     print("grid_size             = ", grid_size)
     print("image_size            = ", image_size)
@@ -189,10 +191,10 @@ def main(proxyname):
     data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
 
     baselines      = util.get_example_baselines(nr_stations, nr_baselines)
-    grid           = p.allocate_grid(nr_correlations, grid_size)
+    grid           = p.allocate_grid(nr_polarizations, grid_size)
 
     aterms         = util.get_identity_aterms(
-                        nr_timeslots, nr_stations, subgrid_size, nr_correlations)
+                        nr_timeslots, nr_stations, subgrid_size, 4)
     aterms_offsets = util.get_example_aterms_offset(
                         nr_timeslots, nr_timesteps)
     spheroidal     = util.get_identity_spheroidal(subgrid_size)

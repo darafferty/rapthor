@@ -25,9 +25,14 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
   idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
   idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
 
+  idg::Plan::Options options;
+  options.mode = nr_correlations == 4 ? idg::Plan::Mode::FULL_POLARIZATION
+                                      : idg::Plan::Mode::STOKES_I_ONLY;
+
   std::unique_ptr<idg::Plan> plan =
       reinterpret_cast<idg::proxy::Proxy*>(p)->make_plan(
-          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_);
+          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_,
+          options);
 
   reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
       *plan, frequencies_, visibilities_, uvw_, baselines_, aterms_,
@@ -54,9 +59,14 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
   idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
   idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
 
+  idg::Plan::Options options;
+  options.mode = nr_correlations == 4 ? idg::Plan::Mode::FULL_POLARIZATION
+                                      : idg::Plan::Mode::STOKES_I_ONLY;
+
   std::unique_ptr<idg::Plan> plan =
       reinterpret_cast<idg::proxy::Proxy*>(p)->make_plan(
-          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_);
+          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_,
+          options);
 
   reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(
       *plan, frequencies_, visibilities_, uvw_, baselines_, aterms_,
