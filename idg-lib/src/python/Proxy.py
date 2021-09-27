@@ -83,7 +83,7 @@ class Proxy(object):
         nr_channels = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
-        nr_correlations = 4
+        nr_correlations = visibilities.shape[3]
         nr_timeslots       = aterms.shape[0]
         nr_stations        = aterms.shape[1]
         subgrid_size       = aterms.shape[2]
@@ -188,7 +188,7 @@ class Proxy(object):
         nr_channels = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
-        nr_correlations = 4
+        nr_correlations = visibilities.shape[3]
         nr_timeslots       = aterms.shape[0]
         nr_stations        = aterms.shape[1]
         subgrid_size       = aterms.shape[2]
