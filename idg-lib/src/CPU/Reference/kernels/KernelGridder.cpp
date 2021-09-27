@@ -45,7 +45,7 @@ void kernel_gridder(
     const float w_offset = 2 * M_PI * w_offset_in_lambda;
 
     // Storage
-    std::complex<float> pixels[nr_polarizations][subgrid_size][subgrid_size];
+    std::complex<float> pixels[4][subgrid_size][subgrid_size];
     memset((void*)pixels, 0,
            subgrid_size * subgrid_size * nr_polarizations *
                sizeof(std::complex<float>));
@@ -67,9 +67,8 @@ void kernel_gridder(
         // Iterate all timesteps
         for (int time = 0; time < nr_timesteps; time++) {
           // Pixel
-          std::complex<float> pixel[nr_polarizations];
-          memset((void*)pixel, 0,
-                 nr_polarizations * sizeof(std::complex<float>));
+          std::complex<float> pixel[4];
+          memset((void*)pixel, 0, 4 * sizeof(std::complex<float>));
 
           // Load UVW coordinates
           const float u = uvw[time_offset + time].u;
@@ -89,10 +88,19 @@ void kernel_gridder(
 
             // Update pixel for every polarization
             size_t index = (time_offset + time) * nr_channels + chan;
-            for (int pol = 0; pol < nr_correlations; pol++) {
-              std::complex<float> visibility =
-                  visibilities[index * nr_correlations + pol];
-              pixel[pol] += visibility * phasor;
+            if (nr_correlations == 4) {
+              for (int pol = 0; pol < nr_correlations; pol++) {
+                std::complex<float> visibility =
+                    visibilities[index * nr_correlations + pol];
+                pixel[pol] += visibility * phasor;
+              }
+            } else if (nr_correlations == 2) {
+              std::complex<float> visibility_xx =
+                  visibilities[index * nr_correlations + 0];
+              std::complex<float> visibility_yy =
+                  visibilities[index * nr_correlations + 1];
+              pixel[0] += visibility_xx * phasor;
+              pixel[3] += visibility_yy * phasor;
             }
           }  // end for channel
 
@@ -118,8 +126,13 @@ void kernel_gridder(
           apply_aterm_gridder(pixel, aterms1, aterms2);
 
           // Update pixel
-          for (int pol = 0; pol < nr_polarizations; pol++) {
-            pixels[pol][y][x] += pixel[pol];
+          if (nr_correlations == 4) {
+            for (int pol = 0; pol < nr_polarizations; pol++) {
+              pixels[pol][y][x] += pixel[pol];
+            }
+          } else if (nr_correlations == 2) {
+            pixels[0][y][x] += pixel[0];
+            pixels[3][y][x] += pixel[3];
           }
         }  // end for time
 
@@ -142,10 +155,18 @@ void kernel_gridder(
         int y_dst = (y + (subgrid_size / 2)) % subgrid_size;
 
         // Set subgrid value
-        for (int pol = 0; pol < nr_polarizations; pol++) {
-          subgrid[s * nr_polarizations * subgrid_size * subgrid_size +
-                  pol * subgrid_size * subgrid_size + y_dst * subgrid_size +
-                  x_dst] = pixel[pol] * sph;
+        if (nr_correlations == 4) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
+            size_t index = s * nr_polarizations * subgrid_size * subgrid_size +
+                           pol * subgrid_size * subgrid_size +
+                           y_dst * subgrid_size + x_dst;
+            subgrid[index] = pixel[pol] * sph;
+          }
+        } else if (nr_correlations == 2) {
+          size_t index = s * nr_polarizations * subgrid_size * subgrid_size +
+                         0 * subgrid_size * subgrid_size +
+                         y_dst * subgrid_size + x_dst;
+          subgrid[index] = ((pixel[0] * sph) + (pixel[3] * sph)) * 0.5f;
         }
       }  // end for x
     }    // end for y

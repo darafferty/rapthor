@@ -20,16 +20,14 @@ inline void update_subgrid(int nr_polarizations, int nr_pixels, int nr_stations,
     int x = i % subgrid_size;
 
     // Apply the conjugate transpose of the A-term
-    size_t station1_idx =
-        index_aterm(subgrid_size, nr_polarizations, nr_stations, aterm_index,
-                    station1, y, x, 0);
-    size_t station2_idx =
-        index_aterm(subgrid_size, nr_polarizations, nr_stations, aterm_index,
-                    station2, y, x, 0);
+    size_t station1_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_index,
+                                      station1, y, x, 0);
+    size_t station2_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_index,
+                                      station2, y, x, 0);
     const std::complex<float>* aterm1_ptr = &aterms[station1_idx];
     const std::complex<float>* aterm2_ptr = &aterms[station2_idx];
-    std::complex<float> pixels[nr_polarizations];
-    for (int pol = 0; pol < nr_polarizations; pol++) {
+    std::complex<float> pixels[4];
+    for (int pol = 0; pol < 4; pol++) {
       pixels[pol] = subgrid_local[pol * nr_pixels + i];
     }
     apply_aterm_gridder(pixels, aterm1_ptr, aterm2_ptr);
@@ -46,10 +44,16 @@ inline void update_subgrid(int nr_polarizations, int nr_pixels, int nr_stations,
     float sph = spheroidal[y * subgrid_size + x];
 
     // Update global subgrid
-    for (int pol = 0; pol < nr_polarizations; pol++) {
-      size_t dst_idx = index_subgrid(nr_polarizations, subgrid_size, subgrid,
-                                     pol, y_dst, x_dst);
-      subgrid_global[dst_idx] += pixels[pol] * sph;
+    if (nr_polarizations == 4) {
+      for (int pol = 0; pol < nr_polarizations; pol++) {
+        size_t dst_idx = index_subgrid(nr_polarizations, subgrid_size, subgrid,
+                                       pol, y_dst, x_dst);
+        subgrid_global[dst_idx] += pixels[pol] * sph;
+      }
+    } else if (nr_polarizations == 1) {
+      size_t dst_idx = index_subgrid(nr_polarizations, subgrid_size, subgrid, 0,
+                                     y_dst, x_dst);
+      subgrid_global[dst_idx] += ((pixels[0] * sph) + (pixels[3] * sph)) * 0.5f;
     }
   }
 }
@@ -121,23 +125,36 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
 
     // Allocate memory
     size_t total_nr_visibilities = nr_timesteps * nr_channels_subgrid;
-    float* vis_xx_real = allocate_memory<float>(total_nr_visibilities);
-    float* vis_xy_real = allocate_memory<float>(total_nr_visibilities);
-    float* vis_yx_real = allocate_memory<float>(total_nr_visibilities);
-    float* vis_yy_real = allocate_memory<float>(total_nr_visibilities);
-    float* vis_xx_imag = allocate_memory<float>(total_nr_visibilities);
-    float* vis_xy_imag = allocate_memory<float>(total_nr_visibilities);
-    float* vis_yx_imag = allocate_memory<float>(total_nr_visibilities);
-    float* vis_yy_imag = allocate_memory<float>(total_nr_visibilities);
+    float* vis_xx_real = nullptr;
+    float* vis_xx_imag = nullptr;
+    float* vis_xy_real = nullptr;
+    float* vis_xy_imag = nullptr;
+    float* vis_yx_real = nullptr;
+    float* vis_yx_imag = nullptr;
+    float* vis_yy_real = nullptr;
+    float* vis_yy_imag = nullptr;
+
+    vis_xx_real = allocate_memory<float>(total_nr_visibilities);
+    vis_xx_imag = allocate_memory<float>(total_nr_visibilities);
+    if (nr_correlations == 4) {
+      vis_xy_real = allocate_memory<float>(total_nr_visibilities);
+      vis_xy_imag = allocate_memory<float>(total_nr_visibilities);
+      vis_yx_real = allocate_memory<float>(total_nr_visibilities);
+      vis_yx_imag = allocate_memory<float>(total_nr_visibilities);
+    }
+    vis_yy_real = allocate_memory<float>(total_nr_visibilities);
+    vis_yy_imag = allocate_memory<float>(total_nr_visibilities);
     float* phasor_real = allocate_memory<float>(total_nr_visibilities);
     float* phasor_imag = allocate_memory<float>(total_nr_visibilities);
     float* phase = allocate_memory<float>(total_nr_visibilities);
-    std::complex<float>* subgrid_local =
-        allocate_memory<std::complex<float>>(nr_polarizations * nr_pixels);
 
     // Initialize local subgrid
+    //  - NR_CORRELATIONS=4, all four polarizations are used.
+    //  - NR_CORRELATIONS=2, use only first and last polarization index.
+    std::complex<float>* subgrid_local =
+        allocate_memory<std::complex<float>>(4 * nr_pixels);
     memset(static_cast<void*>(subgrid_local), 0,
-           nr_polarizations * nr_pixels * sizeof(std::complex<float>));
+           4 * nr_pixels * sizeof(std::complex<float>));
 
     // Initialize aterm index to first timestep
     int aterm_idx_previous = aterms_indices[time_offset_global];
@@ -204,10 +221,12 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
 
           vis_xx_real[dst_idx] = visibilities[src_idx + 0].real();
           vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag();
-          vis_xy_real[dst_idx] = visibilities[src_idx + 1].real();
-          vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag();
-          vis_yx_real[dst_idx] = visibilities[src_idx + 2].real();
-          vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag();
+          if (nr_correlations == 4) {
+            vis_xy_real[dst_idx] = visibilities[src_idx + 1].real();
+            vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag();
+            vis_yx_real[dst_idx] = visibilities[src_idx + 2].real();
+            vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag();
+          }
           vis_yy_real[dst_idx] = visibilities[src_idx + 3].real();
           vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag();
         }
@@ -309,18 +328,33 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
 #endif
 
         // Compute pixels
-        std::complex<float> pixels[nr_polarizations]
+        std::complex<float> pixels[nr_correlations]
             __attribute__((aligned(ALIGNMENT)));
-        compute_reduction(current_nr_visibilities, vis_xx_real, vis_xy_real,
-                          vis_yx_real, vis_yy_real, vis_xx_imag, vis_xy_imag,
-                          vis_yx_imag, vis_yy_imag, phasor_real, phasor_imag,
-                          pixels);
+        if (nr_correlations == 4) {
+          compute_reduction(current_nr_visibilities, vis_xx_real, vis_xy_real,
+                            vis_yx_real, vis_yy_real, vis_xx_imag, vis_xy_imag,
+                            vis_yx_imag, vis_yy_imag, phasor_real, phasor_imag,
+                            pixels);
+        } else if (nr_correlations == 2) {
+          compute_reduction(current_nr_visibilities, vis_xx_real, vis_yy_real,
+                            vis_xx_imag, vis_yy_imag, phasor_real, phasor_imag,
+                            pixels);
+        }
 
         // Update local subgrid
-        for (int pol = 0; pol < nr_polarizations; pol++) {
-          size_t idx =
-              index_subgrid(nr_polarizations, subgrid_size, 0, pol, y, x);
-          subgrid_local[idx] += pixels[pol];
+        if (nr_correlations == 4) {
+          for (int pol = 0; pol < 4; pol++) {
+            size_t idx =
+                index_subgrid(nr_polarizations, subgrid_size, 0, pol, y, x);
+            subgrid_local[idx] += pixels[pol];
+          }
+        } else if (nr_correlations == 2) {
+          size_t idx_xx =
+              index_subgrid(nr_polarizations, subgrid_size, 0, 0, y, x);
+          size_t idx_yy =
+              index_subgrid(nr_polarizations, subgrid_size, 0, 0, y, x);
+          subgrid_local[idx_xx] += pixels[0];
+          subgrid_local[idx_yy] += pixels[1];
         }
       }  // end for i (pixels)
     }    // end time_offset_local

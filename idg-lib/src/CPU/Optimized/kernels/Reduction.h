@@ -67,16 +67,13 @@ inline float _mm512_horizontal_add(__m512 x) {
 }
 #endif
 
-// Assume full polarization
-#define NR_CORRELATIONS 4
-
 inline void compute_reduction_scalar(
     int *offset, const int n, const float *input_xx_real,
     const float *input_xy_real, const float *input_yx_real,
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, std::complex<float> output[NR_CORRELATIONS]) {
+    const float *phasor_imag, std::complex<float> output[4]) {
   float output_xx_real = 0.0f;
   float output_xy_real = 0.0f;
   float output_yx_real = 0.0f;
@@ -132,7 +129,7 @@ inline void compute_reduction_avx_fma(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, std::complex<float> output[NR_CORRELATIONS]) {
+    const float *phasor_imag, std::complex<float> output[4]) {
 #if defined(__FMA__)
   const int vector_length = 8;
 
@@ -220,7 +217,7 @@ inline void compute_reduction_altivec(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, std::complex<float> output[NR_CORRELATIONS]) {
+    const float *phasor_imag, std::complex<float> output[4]) {
 #if defined(__PPC__)
   const int vector_length = 4;
 
@@ -296,7 +293,7 @@ inline void compute_reduction_avx(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, std::complex<float> output[NR_CORRELATIONS]) {
+    const float *phasor_imag, std::complex<float> output[4]) {
 #if defined(__AVX__)
   const int vector_length = 8;
 
@@ -372,7 +369,7 @@ inline void compute_reduction_avx512(
     const float *input_yy_real, const float *input_xx_imag,
     const float *input_xy_imag, const float *input_yx_imag,
     const float *input_yy_imag, const float *phasor_real,
-    const float *phasor_imag, std::complex<float> output[NR_CORRELATIONS]) {
+    const float *phasor_imag, std::complex<float> output[4]) {
 #if defined(__AVX512F__)
   const int vector_length = 16;
 
@@ -448,12 +445,11 @@ inline void compute_reduction(
     const float *input_xx_imag, const float *input_xy_imag,
     const float *input_yx_imag, const float *input_yy_imag,
     const float *phasor_real, const float *phasor_imag,
-    std::complex<float> output[NR_CORRELATIONS]) {
+    std::complex<float> output[4]) {
   int offset = 0;
 
   // Initialize output to zero
-  memset(static_cast<void *>(output), 0,
-         NR_CORRELATIONS * sizeof(std::complex<float>));
+  memset(static_cast<void *>(output), 0, 4 * sizeof(std::complex<float>));
 
   // Vectorized loop, 4-elements, altivec
   compute_reduction_altivec(&offset, n, input_xx_real, input_xy_real,
@@ -486,5 +482,56 @@ inline void compute_reduction(
                            phasor_real, phasor_imag, output);
 }
 
-// Do not expose NR_CORRELATIONS outside of this header file
-#undef NR_CORRELATIONS
+inline void compute_reduction_scalar(
+    int *offset, const int n, const float *input_xx_real,
+    const float *input_yy_real, const float *input_xx_imag,
+    const float *input_yy_imag, const float *phasor_real,
+    const float *phasor_imag, std::complex<float> output[2]) {
+  float output_xx_real = 0.0f;
+  float output_yy_real = 0.0f;
+  float output_xx_imag = 0.0f;
+  float output_yy_imag = 0.0f;
+
+#if defined(__INTEL_COMPILER)
+#pragma omp simd reduction(+:output_xx_real,output_xx_imag, \
+                                 output_yy_real,output_yy_imag)
+#endif
+  for (int i = *offset; i < n; i++) {
+    float phasor_real_ = phasor_real[i];
+    float phasor_imag_ = phasor_imag[i];
+
+    output_xx_real += input_xx_real[i] * phasor_real_;
+    output_xx_imag += input_xx_real[i] * phasor_imag_;
+    output_xx_real -= input_xx_imag[i] * phasor_imag_;
+    output_xx_imag += input_xx_imag[i] * phasor_real_;
+
+    output_yy_real += input_yy_real[i] * phasor_real_;
+    output_yy_imag += input_yy_real[i] * phasor_imag_;
+    output_yy_real -= input_yy_imag[i] * phasor_imag_;
+    output_yy_imag += input_yy_imag[i] * phasor_real_;
+  }
+
+  *offset = n;
+
+  // Update output
+  output[0] += std::complex<float>(output_xx_real, output_xx_imag);
+  output[1] += std::complex<float>(output_yy_real, output_yy_imag);
+}  // end compute_reduction_scalar
+
+inline void compute_reduction(const int n, const float *input_xx_real,
+                              const float *input_yy_real,
+                              const float *input_xx_imag,
+                              const float *input_yy_imag,
+                              const float *phasor_real,
+                              const float *phasor_imag,
+                              std::complex<float> output[2]) {
+  int offset = 0;
+
+  // Initialize output to zero
+  memset(static_cast<void *>(output), 0, 2 * sizeof(std::complex<float>));
+
+  // Remainder loop, scalar
+  compute_reduction_scalar(&offset, n, input_xx_real, input_yy_real,
+                           input_xx_imag, input_yy_imag, phasor_real,
+                           phasor_imag, output);
+}
