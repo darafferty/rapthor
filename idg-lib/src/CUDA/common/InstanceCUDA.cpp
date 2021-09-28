@@ -876,7 +876,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch,
       unsigned dist = size * size;
       m_fft_plan_subgrid.reset(
           new cufft::C2C_2D(*context, size, size, stride, dist,
-                            m_fft_subgrid_bulk * NR_CORRELATIONS));
+                            m_fft_subgrid_bulk * nr_polarizations));
       m_fft_plan_subgrid->setStream(*executestream);
       auto sizeof_subgrids = auxiliary::sizeof_subgrids(
           m_fft_subgrid_bulk, m_fft_subgrid_size, nr_polarizations);
