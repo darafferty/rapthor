@@ -992,12 +992,12 @@ void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
   end_measurement(data);
 }
 
-void InstanceCUDA::launch_adder(int nr_subgrids, long grid_size,
-                                int subgrid_size, cu::DeviceMemory& d_metadata,
+void InstanceCUDA::launch_adder(int nr_subgrids, int nr_polarizations,
+                                long grid_size, int subgrid_size,
+                                cu::DeviceMemory& d_metadata,
                                 cu::DeviceMemory& d_subgrid,
                                 cu::DeviceMemory& d_grid) {
   const bool enable_tiling = false;
-  const int nr_polarizations = 4;
   const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
                               d_metadata,        d_subgrid,  d_grid,
                               &enable_tiling};

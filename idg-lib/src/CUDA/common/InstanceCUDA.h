@@ -92,9 +92,9 @@ class InstanceCUDA : public KernelsInstance {
   void launch_fft_shift(cu::DeviceMemory& d_data, int batch, long size,
                         std::complex<float> scale = {1.0, 1.0});
 
-  void launch_adder(int nr_subgrids, long grid_size, int subgrid_size,
-                    cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid,
-                    cu::DeviceMemory& d_grid);
+  void launch_adder(int nr_subgrids, int nr_polarizations, long grid_size,
+                    int subgrid_size, cu::DeviceMemory& d_metadata,
+                    cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_grid);
 
   void launch_adder_unified(int nr_subgrids, long grid_size, int subgrid_size,
                             cu::DeviceMemory& d_metadata,

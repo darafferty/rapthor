@@ -191,8 +191,8 @@ void Generic::run_gridding(
                                   d_metadata, d_subgrids, u_grid);
     } else {
       cu::DeviceMemory& d_grid = *m_buffers.d_grid;
-      device.launch_adder(current_nr_subgrids, grid_size, subgrid_size,
-                          d_metadata, d_subgrids, d_grid);
+      device.launch_adder(current_nr_subgrids, nr_polarizations, grid_size,
+                          subgrid_size, d_metadata, d_subgrids, d_grid);
     }
     executestream.record(*gpuFinished[job_id]);
 
