@@ -546,15 +546,14 @@ void InstanceCUDA::end_measurement(void* ptr) {
 }
 
 void InstanceCUDA::launch_gridder(
-    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
-    float image_size, float w_step, int nr_channels, int nr_stations,
-    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+    int time_offset, int nr_subgrids, int nr_polarizations, int grid_size,
+    int subgrid_size, float image_size, float w_step, int nr_channels,
+    int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
     cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
     cu::DeviceMemory& d_aterms_indices,
     cu::DeviceMemory& d_avg_aterm_correction, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid) {
-  const int nr_polarizations = 4;
   const void* parameters[] = {&time_offset,
                               &nr_polarizations,
                               &grid_size,

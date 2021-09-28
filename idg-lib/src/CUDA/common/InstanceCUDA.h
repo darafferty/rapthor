@@ -36,9 +36,9 @@ class InstanceCUDA : public KernelsInstance {
   void measure(PowerRecord& record, cu::Stream& stream);
 
   void launch_gridder(
-      int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
-      float image_size, float w_step, int nr_channels, int nr_stations,
-      float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+      int time_offset, int nr_subgrids, int nr_polarizations, int grid_size,
+      int subgrid_size, float image_size, float w_step, int nr_channels,
+      int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
       cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
       cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
       cu::DeviceMemory& d_aterm_indices,
