@@ -75,7 +75,7 @@ class InstanceCUDA : public KernelsInstance {
       cu::DeviceMemory& d_hessian, cu::DeviceMemory& d_gradient,
       cu::DeviceMemory& d_residual);
 
-  void launch_grid_fft(cu::DeviceMemory& d_data, int size,
+  void launch_grid_fft(cu::DeviceMemory& d_data, int batch, long size,
                        DomainAtoDomainB direction);
 
   void plan_subgrid_fft(unsigned size, unsigned batch,

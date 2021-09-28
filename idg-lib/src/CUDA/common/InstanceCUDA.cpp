@@ -810,8 +810,8 @@ void InstanceCUDA::launch_calibrate(
   end_measurement(data);
 }
 
-void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
-                                   DomainAtoDomainB direction) {
+void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int batch,
+                                   long grid_size, DomainAtoDomainB direction) {
   cu::ScopedContext scc(*context);
 
   int sign =
@@ -836,8 +836,8 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int grid_size,
   for (int i = 0; i < NR_REPETITIONS_GRID_FFT; i++) {
 #endif
 
-    // Enqueue fft for every correlation
-    for (unsigned i = 0; i < NR_CORRELATIONS; i++) {
+    // Enqueue fft for the entire batch
+    for (int i = 0; i < batch; i++) {
       cufftComplex* data_ptr =
           reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_data));
       data_ptr += i * grid_size * grid_size;
