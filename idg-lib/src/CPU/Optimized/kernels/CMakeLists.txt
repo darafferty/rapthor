@@ -43,7 +43,7 @@ endif()
 # Add library
 add_library(
   ${PROJECT_NAME} OBJECT
-  Kernels.h
+  Lookup.cpp
   KernelGridder.cpp
   KernelDegridder.cpp
   KernelAdder.cpp

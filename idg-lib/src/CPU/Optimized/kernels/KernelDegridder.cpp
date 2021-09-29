@@ -43,11 +43,6 @@ void kernel_degridder(
     m_index[i] = m_offset[i] - shift[1];
     n_index[i] = compute_n(l_index[i], m_index[i]);
     n_offset[i] = n_index[i];
-#if defined(USE_LOOKUP)
-    l_index[i] *= lookup_scale_factor();
-    m_index[i] *= lookup_scale_factor();
-    n_index[i] *= lookup_scale_factor();
-#endif
   }
 
 // Iterate all subgrids
@@ -94,9 +89,6 @@ void kernel_degridder(
     for (unsigned i = 0; i < nr_pixels; i++) {
       phase_offset[i] = u_offset * l_offset[i] + v_offset * m_offset[i] +
                         w_offset * n_offset[i];
-#if defined(USE_LOOKUP)
-      phase_offset[i] *= lookup_scale_factor();
-#endif
     }
 
     // Iterate all timesteps
