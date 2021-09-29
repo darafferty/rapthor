@@ -87,11 +87,6 @@ void kernel_gridder(
     m_index[i] = m_offset[i] - shift[1];
     n_index[i] = compute_n(l_index[i], m_index[i]);
     n_offset[i] = n_index[i];
-#if defined(USE_LOOKUP)
-    l_index[i] *= lookup_scale_factor();
-    m_index[i] *= lookup_scale_factor();
-    n_index[i] *= lookup_scale_factor();
-#endif
   }
 
 // Iterate all subgrids
@@ -140,16 +135,11 @@ void kernel_gridder(
     int aterm_idx_previous = aterms_indices[time_offset_global];
 
     // Compute u and v offset in wavelenghts
-    float u_offset = (x_coordinate + subgrid_size / 2 - grid_size / 2) *
-                     (2 * M_PI / image_size);
-    float v_offset = (y_coordinate + subgrid_size / 2 - grid_size / 2) *
-                     (2 * M_PI / image_size);
-    float w_offset = 2 * M_PI * w_offset_in_lambda;
-#if defined(USE_LOOKUP)
-    u_offset *= lookup_scale_factor();
-    v_offset *= lookup_scale_factor();
-    w_offset *= lookup_scale_factor();
-#endif
+    const float u_offset = (x_coordinate + subgrid_size / 2 - grid_size / 2) *
+                           (2 * M_PI / image_size);
+    const float v_offset = (y_coordinate + subgrid_size / 2 - grid_size / 2) *
+                           (2 * M_PI / image_size);
+    const float w_offset = 2 * M_PI * w_offset_in_lambda;
 
     // Iterate all timesteps
     int current_nr_timesteps = 0;
@@ -225,8 +215,9 @@ void kernel_gridder(
             __attribute__((aligned(ALIGNMENT)));
 
         // Compute phase offset
-        float phase_offset = u_offset * l_offset[i] + v_offset * m_offset[i] +
-                             w_offset * n_offset[i];
+        const float phase_offset = u_offset * l_offset[i] +
+                                   v_offset * m_offset[i] +
+                                   w_offset * n_offset[i];
 
         for (int time = 0; time < current_nr_timesteps; time++) {
           // Load UVW coordinate
@@ -236,7 +227,8 @@ void kernel_gridder(
           const float w = uvw[time_idx].w;
 
           // Compute phase index, including phase shift.
-          float phase_index = u * l_index[i] + v * m_index[i] + w * n_index[i];
+          const float phase_index =
+              u * l_index[i] + v * m_index[i] + w * n_index[i];
 
           // Compute phase
           for (int chan = channel_begin; chan < channel_end; chan++) {
