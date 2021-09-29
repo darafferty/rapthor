@@ -1032,13 +1032,12 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
   end_measurement(data);
 }
 
-void InstanceCUDA::launch_splitter(int nr_subgrids, long grid_size,
-                                   int subgrid_size,
+void InstanceCUDA::launch_splitter(int nr_subgrids, int nr_polarizations,
+                                   long grid_size, int subgrid_size,
                                    cu::DeviceMemory& d_metadata,
                                    cu::DeviceMemory& d_subgrid,
                                    cu::DeviceMemory& d_grid) {
   const bool enable_tiling = false;
-  const int nr_polarizations = 4;
   const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
                               d_metadata,        d_subgrid,  d_grid,
                               &enable_tiling};

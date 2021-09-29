@@ -392,8 +392,8 @@ void Generic::run_degridding(
                                      u_grid);
     } else {
       cu::DeviceMemory& d_grid = *m_buffers.d_grid;
-      device.launch_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                             d_metadata, d_subgrids, d_grid);
+      device.launch_splitter(current_nr_subgrids, nr_polarizations, grid_size,
+                             subgrid_size, d_metadata, d_subgrids, d_grid);
     }
 
     // Initialize visibilities to zero

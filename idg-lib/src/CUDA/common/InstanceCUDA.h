@@ -101,8 +101,8 @@ class InstanceCUDA : public KernelsInstance {
                             cu::DeviceMemory& d_subgrid,
                             cu::UnifiedMemory& u_grid);
 
-  void launch_splitter(int nr_subgrids, long grid_size, int subgrid_size,
-                       cu::DeviceMemory& d_metadata,
+  void launch_splitter(int nr_subgrids, int nr_polarizations, long grid_size,
+                       int subgrid_size, cu::DeviceMemory& d_metadata,
                        cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_grid);
 
   void launch_splitter_unified(int nr_subgrids, long grid_size,
