@@ -587,14 +587,13 @@ void InstanceCUDA::launch_gridder(
 }
 
 void InstanceCUDA::launch_degridder(
-    int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
-    float image_size, float w_step, int nr_channels, int nr_stations,
-    float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
+    int time_offset, int nr_subgrids, int nr_polarizations, int grid_size,
+    int subgrid_size, float image_size, float w_step, int nr_channels,
+    int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
     cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
     cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid) {
-  const int nr_polarizations = 4;
   const void* parameters[] = {
       &time_offset,   &nr_polarizations, &grid_size, &subgrid_size,
       &image_size,    &w_step,           &shift_l,   &shift_m,
@@ -861,6 +860,12 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch,
   }
 #endif
 
+  // For nr_polarizations == 4, we have 4 subgrids,
+  // for nr_polarizations == 2, we have 2 subgrids for which
+  // only one the odd ones (corresponding to Stokes I) need
+  // to be transformed. Hence also dist *= 2 below.
+  unsigned nr_correlations = nr_polarizations == 4 ? 4 : 2;
+
   // Force plan (re-)creation if subgrid size changed
   if (size != m_fft_subgrid_size) {
     m_fft_subgrid_bulk = m_fft_subgrid_bulk_default;
@@ -873,12 +878,15 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch,
       // Plan bulk fft
       unsigned stride = 1;
       unsigned dist = size * size;
+      if (nr_polarizations == 1) {
+        dist *= 2;
+      }
       m_fft_plan_subgrid.reset(
           new cufft::C2C_2D(*context, size, size, stride, dist,
                             m_fft_subgrid_bulk * nr_polarizations));
       m_fft_plan_subgrid->setStream(*executestream);
       auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-          m_fft_subgrid_bulk, m_fft_subgrid_size, nr_polarizations);
+          m_fft_subgrid_bulk, m_fft_subgrid_size, nr_correlations);
       d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
     } catch (cufft::Error& e) {
       // bulk might be too large, try again using half the bulk size
@@ -899,6 +907,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
                                       unsigned int nr_subgrids,
                                       unsigned int nr_polarizations,
                                       DomainAtoDomainB direction) {
+  unsigned int nr_correlations = nr_polarizations == 4 ? 4 : 2;
   cufftComplex* data_ptr =
       reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_data));
   int sign =
@@ -925,7 +934,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   unsigned s = 0;
   for (; (s + m_fft_subgrid_bulk) <= nr_subgrids; s += m_fft_subgrid_bulk) {
     m_fft_plan_subgrid->execute(data_ptr, data_ptr, sign);
-    data_ptr += m_fft_subgrid_size * m_fft_subgrid_size * NR_CORRELATIONS *
+    data_ptr += m_fft_subgrid_size * m_fft_subgrid_size * nr_correlations *
                 m_fft_subgrid_bulk;
   }
 
@@ -933,7 +942,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   unsigned int fft_subgrid_remainder = nr_subgrids % m_fft_subgrid_bulk;
   if (fft_subgrid_remainder > 0) {
     auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-        fft_subgrid_remainder, m_fft_subgrid_size, nr_polarizations);
+        fft_subgrid_remainder, m_fft_subgrid_size, nr_correlations);
     executestream->memcpyDtoDAsync(*d_fft_subgrid, (CUdeviceptr)data_ptr,
                                    sizeof_subgrids);
     cufftComplex* tmp_ptr = reinterpret_cast<cufftComplex*>(

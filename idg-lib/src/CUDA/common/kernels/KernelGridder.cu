@@ -51,8 +51,10 @@ __device__ void update_subgrid(
     // Update subgrid
     if (nr_polarizations == 1) {
         // Stokes-I only
-        int idx = index_subgrid(4, subgrid_size, s, 0, y_dst, x_dst);
-        subgrid[idx] += (pixel[0] + pixel[2]) * 0.5f;
+        int idx_xx = index_subgrid(2, subgrid_size, s, 0, y_dst, x_dst);
+        int idx_yy = index_subgrid(2, subgrid_size, s, 1, y_dst, x_dst);
+        subgrid[idx_xx] += pixel[0];
+        subgrid[idx_yy] += pixel[3];
     } else {
         // Full Stokes
         for (unsigned pol = 0; pol < nr_polarizations; pol++) {
@@ -87,17 +89,39 @@ __device__ void finalize_subgrid(
             int x_src = (x + (subgrid_size/2)) % subgrid_size;
             int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-            // Compute pixel indices
-            int idx_xx = index_subgrid(4, subgrid_size, s, 0, y_src, x_src);
-            int idx_xy = index_subgrid(4, subgrid_size, s, 1, y_src, x_src);
-            int idx_yx = index_subgrid(4, subgrid_size, s, 2, y_src, x_src);
-            int idx_yy = index_subgrid(4, subgrid_size, s, 3, y_src, x_src);
+            // Pixels
+            float2 pixelXX = make_float2(0, 0);
+            float2 pixelXY = make_float2(0, 0);
+            float2 pixelYX = make_float2(0, 0);
+            float2 pixelYY = make_float2(0, 0);
 
-            // Load pixels
-            float2 pixelXX = subgrid[idx_xx];
-            float2 pixelXY = subgrid[idx_xy];
-            float2 pixelYX = subgrid[idx_yx];
-            float2 pixelYY = subgrid[idx_yy];
+            // Pixel indices
+            int idx_xx = 0;
+            int idx_xy = 0;
+            int idx_yx = 0;
+            int idx_yy = 0;
+
+            if (nr_polarizations == 4) {
+                // Compute pixel indices
+                idx_xx = index_subgrid(nr_polarizations, subgrid_size, s, 0, y_src, x_src);
+                idx_xy = index_subgrid(nr_polarizations, subgrid_size, s, 1, y_src, x_src);
+                idx_yx = index_subgrid(nr_polarizations, subgrid_size, s, 2, y_src, x_src);
+                idx_yy = index_subgrid(nr_polarizations, subgrid_size, s, 3, y_src, x_src);
+
+                // Load pixels
+                pixelXX = subgrid[idx_xx];
+                pixelXY = subgrid[idx_xy];
+                pixelYX = subgrid[idx_yx];
+                pixelYY = subgrid[idx_yy];
+            } else if (nr_polarizations == 1) {
+                // Compute pixel indices
+                idx_xx = index_subgrid(2, subgrid_size, s, 0, y_src, x_src);
+                idx_yy = index_subgrid(2, subgrid_size, s, 1, y_src, x_src);
+
+                // Load pixels
+                pixelXX = subgrid[idx_xx];
+                pixelYY = subgrid[idx_yy];
+            }
 
             // Apply average aterm correction
             if (avg_aterm_correction) {
@@ -110,11 +134,13 @@ __device__ void finalize_subgrid(
             float spheroidal_ = spheroidal[i];
 
             // Update subgrid
-            subgrid[idx_xx] = pixelXX * spheroidal_;
-            if (nr_polarizations > 1) {
+            if (nr_polarizations == 4) {
+                subgrid[idx_xx] = pixelXX * spheroidal_;
                 subgrid[idx_xy] = pixelXY * spheroidal_;
                 subgrid[idx_yx] = pixelYX * spheroidal_;
                 subgrid[idx_yy] = pixelYY * spheroidal_;
+            } else if (nr_polarizations == 1) {
+                subgrid[idx_xx] = (pixelXX + pixelYY) * spheroidal_ * 0.5f;
             }
         }
     } // end for i (pixels)
@@ -217,14 +243,25 @@ __device__ void
             }
 
             // Load visibilities
-            for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += nr_threads) {
-                int j = v % 2; // one thread loads either upper or lower float4 part of visibility
-                int k = v / 2;
-                int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
-                int idx_chan = channel_offset + (k % current_nr_channels);
-                long idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
-                float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                visibilities_[k][j] = vis_ptr[j];
+            if (nr_polarizations == 4) {
+                for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += nr_threads) {
+                    int j = v % 2; // one thread loads either upper or lower float4 part of visibility
+                    int k = v / 2;
+                    int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
+                    int idx_chan = channel_offset + (k % current_nr_channels);
+                    long idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
+                    float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                    visibilities_[k][j] = vis_ptr[j];
+                }
+            } else if (nr_polarizations == 1) {
+                // Use only visibilities_[*][0].
+                for (int k = tid; k < current_nr_timesteps*current_nr_channels; k += nr_threads) {
+                    int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
+                    int idx_chan = channel_offset + (k % current_nr_channels);
+                    long idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
+                    float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                    visibilities_[k][0] = vis_ptr[0];
+                }
             }
 
             __syncthreads();
@@ -296,9 +333,13 @@ __device__ void
 
                         // Multiply visibility by phasor
                         cmac(pixelsXX[j], phasor, visXX);
-                        cmac(pixelsXY[j], phasor, visXY);
-                        cmac(pixelsYX[j], phasor, visYX);
-                        cmac(pixelsYY[j], phasor, visYY);
+                        if (nr_polarizations == 4) {
+                            cmac(pixelsXY[j], phasor, visXY);
+                            cmac(pixelsYX[j], phasor, visYX);
+                            cmac(pixelsYY[j], phasor, visYY);
+                        } else if (nr_polarizations == 1) {
+                            cmac(pixelsYY[j], phasor, visXY);
+                        }
                     }
                 } // end for chan
             } // end for time

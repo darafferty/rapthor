@@ -124,13 +124,17 @@ __device__ void kernel_degridder_(
 
                     // Load pixels
                     float2 pixel[4];
-                    for (unsigned pol = 0; pol < 4; pol++) {
-                        if (pol < nr_polarizations) {
-                            unsigned int pixel_idx = index_subgrid(4, subgrid_size, s, pol, y_src, x_src);
+                    if (nr_polarizations == 4) {
+                        for (unsigned pol = 0; pol < nr_polarizations; pol++) {
+                            unsigned int pixel_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_src, x_src);
                             pixel[pol] = subgrid[pixel_idx] * spheroidal_;
-                        } else {
-                            pixel[pol] = make_float2(0, 0);
                         }
+                    } else if (nr_polarizations == 1) {
+                        unsigned int pixel_idx = index_subgrid(2, subgrid_size, s, 0, y_src, x_src);
+                        pixel[0] = subgrid[pixel_idx] * spheroidal_;
+                        pixel[1] = make_float2(0, 0);
+                        pixel[2] = make_float2(0, 0);
+                        pixel[3] = subgrid[pixel_idx] * spheroidal_;
                     }
 
                     // Apply aterm
@@ -180,8 +184,10 @@ __device__ void kernel_degridder_(
 
                         // Multiply pixels by phasor
                         cmac(visXX[chan], phasor, apXX);
-                        cmac(visXY[chan], phasor, apXY);
-                        cmac(visYX[chan], phasor, apYX);
+                        if (nr_polarizations == 4) {
+                            cmac(visXY[chan], phasor, apXY);
+                            cmac(visYX[chan], phasor, apYX);
+                        }
                         cmac(visYY[chan], phasor, apYY);
                     } // end for chan
                 } // end for k (batch)
@@ -193,12 +199,19 @@ __device__ void kernel_degridder_(
                     const float scale = 1.0f / (subgrid_size * subgrid_size);
                     int idx_time = time;
                     int idx_chan = channel_offset + channel_offset_local + chan;
-                    int idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
-                    float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
-                    float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
-                    float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                    vis_ptr[0] = visA * scale;
-                    vis_ptr[1] = visB * scale;
+                    if (nr_polarizations == 4) {
+                        int idx_vis = index_visibility(nr_polarizations, nr_channels, idx_time, idx_chan, 0);
+                        float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
+                        float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
+                        float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                        vis_ptr[0] = visA * scale;
+                        vis_ptr[1] = visB * scale;
+                    } else if (nr_polarizations == 1) {
+                        int idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
+                        float4 vis = make_float4(visXX[chan].x, visXX[chan].y, visYY[chan].x, visYY[chan].y);
+                        float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                        *vis_ptr = vis * scale;
+                    }
                 }
             } // end for chan
         } // end for time

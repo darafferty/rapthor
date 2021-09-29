@@ -262,8 +262,13 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
   bytes_job += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels,
                                               nr_correlations);
   bytes_job += auxiliary::sizeof_uvw(1, nr_timesteps);
+  // In case of nr_polarizations=1, we still need subgrids for both XX and YY,
+  // since the gridder kernel uses this buffer also as scratch space before
+  // the average beam is applied. We therefore use nr_correlations below,
+  // instead of nr_polarizations.
+  unsigned int nr_correlations = nr_polarizations == 4 ? 4 : 2;
   bytes_job += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size,
-                                          nr_polarizations);
+                                          nr_correlations);
   bytes_job += auxiliary::sizeof_metadata(max_nr_subgrids_bl);
   bytes_job *= m_max_nr_streams;
 
@@ -442,8 +447,10 @@ void CUDA::initialize(
         m_buffers.d_uvw_[t]->resize(sizeof_uvw);
 
         // Subgrids
+        // We use nr_correlations to compute sizeof_subgids instead of
+        // nr_polarizations, see compute_jobsize for an explanation.
         size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
-            max_nr_subgrids, subgrid_size, nr_polarizations);
+            max_nr_subgrids, subgrid_size, nr_correlations);
         m_buffers.d_subgrids_[t]->resize(sizeof_subgrids);
 
         // Metadata
