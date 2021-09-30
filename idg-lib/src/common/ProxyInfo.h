@@ -58,7 +58,7 @@ class ProxyInfo {
  private:
   std::string path_to_src;  // path where src code that is put into libs lives
   std::string path_to_lib;  // path where to create the libs
-  std::map<std::string, std::vector<std::string> >
+  std::map<std::string, std::vector<std::string>>
       libs;  // maps library name to list of files
   bool delete_libs;
 };  // end class ProxyInfo
