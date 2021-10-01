@@ -1071,8 +1071,9 @@ void UnifiedOptimized::run_wtiles_from_grid(
     if (m_use_unified_memory) {
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_splitter_wtiles_from_grid(
-          current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
-          d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
+          nr_polarizations, current_nr_tiles, grid_size, tile_size,
+          w_padded_tile_size, d_padded_tile_ids, d_tile_coordinates,
+          d_padded_tiles, u_grid);
     } else {
       // Find all tiles that (partially) fit in the current patch
       std::vector<idg::Coordinate> patch_coordinates;
@@ -1147,9 +1148,10 @@ void UnifiedOptimized::run_wtiles_from_grid(
           // Read tile from patch
           executestream.waitEvent(*inputCopied[id]);
           device.launch_splitter_wtiles_from_patch(
-              current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-              w_padded_tile_size, m_patch_size, patch_coordinate,
-              d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+              nr_polarizations, current_nr_tiles, grid_size,
+              padded_tile_size - subgrid_size, w_padded_tile_size, m_patch_size,
+              patch_coordinate, d_packed_tile_ids, d_tile_coordinates,
+              d_padded_tiles, d_patch);
           executestream.record(*gpuFinished[id]);
         }
 

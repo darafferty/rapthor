@@ -555,9 +555,10 @@ void GenericOptimized::run_wtiles_from_grid(
         // Read tile from patch
         executestream.waitEvent(*inputCopied[id]);
         device.launch_splitter_wtiles_from_patch(
-            current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-            current_w_padded_tile_size, m_patch_size, patch_coordinate,
-            d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+            nr_polarizations, current_nr_tiles, grid_size,
+            padded_tile_size - subgrid_size, current_w_padded_tile_size,
+            m_patch_size, patch_coordinate, d_packed_tile_ids,
+            d_tile_coordinates, d_padded_tiles, d_patch);
         executestream.record(*gpuFinished[id]);
       }
 
