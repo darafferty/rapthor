@@ -114,6 +114,7 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
 
   // Parameters
   unsigned int nr_correlations = 4;
+  unsigned int nr_polarizations = 4;
   unsigned int nr_stations = 9;
   unsigned int nr_channels = 9;
   unsigned int nr_timesteps = 2048;
@@ -130,6 +131,14 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   // Get remaining parameters
   float image_size = data.compute_image_size(grid_size, nr_channels);
   float cell_size = image_size / grid_size;
+
+  // Configure Stokes-I only mode
+  char *cstr_stokes_i_only = getenv("STOKES_I_ONLY");
+  auto stokes_i_only = cstr_stokes_i_only ? atoi(cstr_stokes_i_only) : false;
+  if (stokes_i_only) {
+    nr_correlations = 2;
+    nr_polarizations = 1;
+  }
 
   print_parameters(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
                    image_size, grid_size, subgrid_size, kernel_size);
@@ -156,9 +165,9 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   idg::Array2D<float> spheroidal =
       idg::get_example_spheroidal(proxy2, subgrid_size, subgrid_size);
   idg::Array1D<float> shift = idg::get_zero_shift();
-  auto grid = proxy2.allocate_grid(1, nr_correlations, grid_size, grid_size);
+  auto grid = proxy2.allocate_grid(1, nr_polarizations, grid_size, grid_size);
   auto grid_ref =
-      proxy1.allocate_grid(1, nr_correlations, grid_size, grid_size);
+      proxy1.allocate_grid(1, nr_polarizations, grid_size, grid_size);
   std::clog << std::endl;
 
   // Flag the first visibilities by setting UVW coordinate to infinity
@@ -191,6 +200,8 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   std::clog << ">>> Create plan" << std::endl;
   idg::Plan::Options options;
   options.plan_strict = true;
+  options.mode = stokes_i_only ? idg::Plan::Mode::STOKES_I_ONLY
+                               : idg::Plan::Mode::FULL_POLARIZATION;
   std::unique_ptr<idg::Plan> plan1 = proxy1.make_plan(
       kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
   std::unique_ptr<idg::Plan> plan2 = proxy2.make_plan(
@@ -211,7 +222,7 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
                   aterms_offsets, spheroidal);
   proxy1.get_final_grid();
 
-  float grid_error = get_accuracy(nr_correlations * grid_size * grid_size,
+  float grid_error = get_accuracy(nr_polarizations * grid_size * grid_size,
                                   grid->data(), grid_ref->data());
 #endif
 
@@ -242,8 +253,7 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
                                                  4);
   idg::Array4D<std::complex<float>> average_beam_ref(subgrid_size, subgrid_size,
                                                      4, 4);
-  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels,
-                              nr_correlations);
+  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels, 4);
   weights.init(1.0f);
   average_beam.init(0.0f);
   average_beam_ref.init(0.0f);
