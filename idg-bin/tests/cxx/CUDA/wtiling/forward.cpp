@@ -520,9 +520,10 @@ int main(int argc, char* argv[]) {
   stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
 
   // Run adder_wtiles_to_grid on GPU
-  cuda.launch_adder_wtiles_to_grid(
-      nr_tiles, grid_size, tile_size - subgrid_size, padded_tile_size,
-      d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
+  cuda.launch_adder_wtiles_to_grid(nr_polarizations, nr_tiles, grid_size,
+                                   tile_size - subgrid_size, padded_tile_size,
+                                   d_padded_tile_ids, d_tile_coordinates,
+                                   d_padded_tiles, u_grid);
 
   // Run adder_wtiles_to_grid on host
   idg::Array3D<std::complex<float>> grid(NR_CORRELATIONS, grid_size, grid_size);
@@ -572,9 +573,9 @@ int main(int argc, char* argv[]) {
 
       // Run adder_wtiles_to_patch on GPU
       cuda.launch_adder_wtiles_to_patch(
-          nr_tiles, grid_size, tile_size - subgrid_size, padded_tile_size,
-          patch_size, patch_coordinate, d_padded_tile_ids, d_tile_coordinates,
-          d_padded_tiles, d_patch);
+          nr_polarizations, nr_tiles, grid_size, tile_size - subgrid_size,
+          padded_tile_size, patch_size, patch_coordinate, d_padded_tile_ids,
+          d_tile_coordinates, d_padded_tiles, d_patch);
 
       // Copy patch to the host
       stream.synchronize();

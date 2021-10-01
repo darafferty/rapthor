@@ -1136,14 +1136,15 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(
 }
 
 void InstanceCUDA::launch_adder_wtiles_to_grid(
-    int nr_tiles, long grid_size, int tile_size, int padded_tile_size,
-    cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
-    cu::DeviceMemory& d_tiles, cu::UnifiedMemory& u_grid) {
+    int nr_polarizations, int nr_tiles, long grid_size, int tile_size,
+    int padded_tile_size, cu::DeviceMemory& d_tile_ids,
+    cu::DeviceMemory& d_tile_coordinates, cu::DeviceMemory& d_tiles,
+    cu::UnifiedMemory& u_grid) {
   CUdeviceptr grid_ptr = u_grid;
   const void* parameters[] = {&grid_size, &tile_size,         &padded_tile_size,
                               d_tile_ids, d_tile_coordinates, d_tiles,
                               &grid_ptr};
-  dim3 grid(NR_CORRELATIONS, nr_tiles);
+  dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[3], grid, block, 0,
                               parameters);
@@ -1178,8 +1179,8 @@ void InstanceCUDA::launch_splitter_wtiles_from_grid(
 }
 
 void InstanceCUDA::launch_adder_wtiles_to_patch(
-    int nr_tiles, long grid_size, int tile_size, int padded_tile_size,
-    int patch_size, idg::Coordinate patch_coordinate,
+    int nr_polarizations, int nr_tiles, long grid_size, int tile_size,
+    int padded_tile_size, int patch_size, idg::Coordinate patch_coordinate,
     cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
     cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch) {
   const void* parameters[] = {&nr_tiles,   &grid_size,

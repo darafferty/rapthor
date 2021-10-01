@@ -262,9 +262,10 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
         // Combine tiles onto patch
         device.launch_adder_wtiles_to_patch(
-            current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-            current_w_padded_tile_size, m_patch_size, patch_coordinate,
-            d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+            nr_polarizations, current_nr_tiles, grid_size,
+            padded_tile_size - subgrid_size, current_w_padded_tile_size,
+            m_patch_size, patch_coordinate, d_packed_tile_ids,
+            d_tile_coordinates, d_padded_tiles, d_patch);
         executestream.record(*gpuFinished[id]);
 
         // Copy patch to the host
