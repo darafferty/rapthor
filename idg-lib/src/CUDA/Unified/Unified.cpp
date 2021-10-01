@@ -60,10 +60,11 @@ void Unified::do_gridding(
 #endif
   auto grid_ptr = m_grid.get();
   if (m_enable_tiling) {
+    auto nr_polarizations = m_grid->get_z_dim();
     auto height = m_grid->get_y_dim();
     auto width = m_grid->get_x_dim();
     grid_ptr =
-        new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
+        new idg::Grid(m_grid_tiled->data(), 1, nr_polarizations, height, width);
   }
   Generic::run_gridding(plan, frequencies, visibilities, uvw, baselines,
                         *grid_ptr, aterms, aterms_offsets, spheroidal);
@@ -94,10 +95,11 @@ void Unified::do_degridding(
 #endif
   auto grid_ptr = m_grid.get();
   if (m_enable_tiling) {
+    auto nr_polarizations = m_grid->get_z_dim();
     auto height = m_grid->get_y_dim();
     auto width = m_grid->get_x_dim();
     grid_ptr =
-        new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
+        new idg::Grid(m_grid_tiled->data(), 1, nr_polarizations, height, width);
   }
   Generic::run_degridding(plan, frequencies, visibilities, uvw, baselines,
                           *grid_ptr, aterms, aterms_offsets, spheroidal);
@@ -113,7 +115,6 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     auto nr_polarizations = grid->get_z_dim();
     auto grid_height = grid->get_y_dim();
     auto grid_width = grid->get_x_dim();
-    assert(nr_polarizations == NR_CORRELATIONS);
     assert(grid_height == grid_width);
     auto grid_size = grid_width;
     auto tile_size = device.get_tile_size_grid();

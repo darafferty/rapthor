@@ -221,7 +221,7 @@ void GridderBufferImpl::malloc_buffers() {
   m_bufferUVW2 =
       proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
   m_bufferVisibilities2 = proxy.allocate_array4d<std::complex<float>>(
-      m_nr_baselines, m_bufferTimesteps, m_nr_channels, NR_CORRELATIONS);
+      m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
   m_bufferStationPairs2 =
       proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
           m_nr_baselines);

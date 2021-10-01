@@ -66,8 +66,9 @@ void UnifiedOptimized::initialize_buffers() {
   m_buffers_wtiling.d_padded_tiles.reset(new cu::DeviceMemory(context, 0));
   m_buffers_wtiling.h_tiles.reset(new cu::HostMemory(context, 0));
   m_buffers_wtiling.d_patches.resize(m_nr_patches_batch);
+  const unsigned int nr_polarizations = 4;
   for (unsigned int i = 0; i < m_nr_patches_batch; i++) {
-    size_t sizeof_patch = NR_CORRELATIONS * m_patch_size * m_patch_size *
+    size_t sizeof_patch = nr_polarizations * m_patch_size * m_patch_size *
                           sizeof(std::complex<float>);
     m_buffers_wtiling.d_patches[i].reset(
         new cu::DeviceMemory(context, sizeof_patch));
@@ -598,8 +599,9 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   size_t free_memory = device.get_free_memory();
 
   // Compute the size of one tile
+  const int nr_polarizations = m_grid->get_z_dim();
   size_t sizeof_tile =
-      NR_CORRELATIONS * tile_size * tile_size * sizeof(std::complex<float>);
+      nr_polarizations * tile_size * tile_size * sizeof(std::complex<float>);
 
   // We need GPU memory for:
   // - The tiles: d_tiles (tile_size + subgrid_size)
@@ -670,7 +672,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -735,7 +737,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+      unsigned batch = nr_tiles_batch * nr_polarizations;
 
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
                                   current_w_padded_tile_size, stride, dist,
@@ -981,7 +983,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -1048,7 +1050,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+      unsigned batch = nr_tiles_batch * nr_polarizations;
 
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
                                   current_w_padded_tile_size, stride, dist,

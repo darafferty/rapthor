@@ -28,10 +28,10 @@ void init_data(std::complex<float>* data, int* ids, unsigned int n,
   for (unsigned int tile = 0; tile < n; tile++) {
     float scale = (float)(tile + 1) / n;
 
-    for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
+    for (unsigned int z = 0; z < m; z++) {
       for (unsigned int y = 0; y < size; y++) {
         for (unsigned int x = 0; x < size; x++) {
-          size_t idx = index_grid_4d(m, size, ids[tile], pol, y, x);
+          size_t idx = index_grid_4d(m, size, ids[tile], z, y, x);
           data[idx] = std::complex<float>((y + 1), (x + 1)) * scale;
         }
       }
@@ -123,7 +123,7 @@ void subgrids_from_wtiles(const long nr_subgrids, const int nr_polarizations,
           std::complex<float> phasor(cosf(phase), sinf(phase));
 
           // Add subgrid value to tiles
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
             long src_idx =
                 index_grid_4d(nr_polarizations, tile_size + subgrid_size,
                               tile_index, pol, y_dst, x_dst);
@@ -158,8 +158,8 @@ void wtiles_from_grid(int nr_tiles, int nr_polarizations, int grid_size,
 
     for (int y = y_start; y < y_end; y++) {
       for (int x = x_start; x < x_end; x++) {
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
-          const int index_pol_transposed[NR_CORRELATIONS] = {0, 2, 1, 3};
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+          const int index_pol_transposed[4] = {0, 2, 1, 3};
           unsigned int pol_src = index_pol_transposed[pol];
           unsigned int pol_dst = pol;
           unsigned long src_idx = index_grid_3d(grid_size, pol_src, y, x);
@@ -244,10 +244,10 @@ int main(int argc, char* argv[]) {
   size_t sizeof_tile_ids = nr_tiles * sizeof(int);
   size_t sizeof_tile_coordinates = nr_tiles * sizeof(idg::Coordinate);
   size_t sizeof_tile =
-      NR_CORRELATIONS * tile_size * tile_size * sizeof(std::complex<float>);
+      nr_polarizations * tile_size * tile_size * sizeof(std::complex<float>);
   size_t sizeof_padded_tile = padded_tile_size * padded_tile_size *
-                              NR_CORRELATIONS * sizeof(std::complex<float>);
-  size_t sizeof_subgrid = NR_CORRELATIONS * subgrid_size * subgrid_size *
+                              nr_polarizations * sizeof(std::complex<float>);
+  size_t sizeof_subgrid = nr_polarizations * subgrid_size * subgrid_size *
                           sizeof(std::complex<float>);
   size_t sizeof_tiles = max_nr_tiles * sizeof_tile;
   size_t sizeof_padded_tiles = nr_tiles * sizeof_padded_tile;
@@ -255,7 +255,7 @@ int main(int argc, char* argv[]) {
   size_t sizeof_subgrids = nr_subgrids * sizeof_subgrid;
   size_t sizeof_metadata = plan.get_sizeof_metadata();
   size_t sizeof_grid =
-      NR_CORRELATIONS * grid_size * grid_size * sizeof(std::complex<float>);
+      nr_polarizations * grid_size * grid_size * sizeof(std::complex<float>);
 
   // Allocate host buffers
   std::cout << ">> Allocate host buffers" << std::endl;
@@ -323,7 +323,7 @@ int main(int argc, char* argv[]) {
   stream.synchronize();
 
   // Run subgrids_from_wtiles on host
-  unsigned int n = nr_subgrids * NR_CORRELATIONS * subgrid_size * subgrid_size;
+  unsigned int n = nr_subgrids * nr_polarizations * subgrid_size * subgrid_size;
 
   std::vector<std::complex<float>> subgrids(n);
   stream.synchronize();
@@ -359,14 +359,14 @@ int main(int argc, char* argv[]) {
 
   // Run splitter_wtiles_from_grid on host
   idg::Array4D<std::complex<float>> padded_tiles(
-      max_nr_tiles, NR_CORRELATIONS, padded_tile_size, padded_tile_size);
+      max_nr_tiles, nr_polarizations, padded_tile_size, padded_tile_size);
   padded_tiles.zero();
   wtiles_from_grid(nr_tiles, nr_polarizations, grid_size,
                    tile_size - subgrid_size, padded_tile_size,
                    h_padded_tile_ids, tile_coordinates.data(),
                    padded_tiles.data(), u_grid);
 
-  n = nr_tiles * NR_CORRELATIONS * padded_tile_size * padded_tile_size;
+  n = nr_tiles * nr_polarizations * padded_tile_size * padded_tile_size;
   accuracy = compare_arrays(n, h_padded_tiles, padded_tiles.data());
   if (accuracy < TOLERANCE) {
     std::cout << "Passed." << std::endl;

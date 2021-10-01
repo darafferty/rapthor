@@ -16,11 +16,6 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules"
 
 include(CTest)
 
-# TODO: integer valued compile variables should be handled more elegantly
-# if there is a use case for them. Otherwise, they can be hard-coded.
-# This includes NR_CORRELATIONS and NR_CORRELATIONS, see AST-230
-add_compile_options("-DNR_CORRELATIONS=4")
-
 # build shared or static libraries (default: shared)
 if(BUILD_STATIC_LIBS)
   set(BUILD_SHARED_LIBS FALSE)

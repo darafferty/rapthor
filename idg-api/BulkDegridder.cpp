@@ -64,7 +64,7 @@ void BulkDegridderImpl::compute_visibilities(
   auto bufferUVW =
       proxy.allocate_array2d<UVW<float>>(nr_baselines, nr_timesteps);
   auto bufferVisibilities = proxy.allocate_array4d<std::complex<float>>(
-      nr_baselines, nr_timesteps, frequencies_.size(), NR_CORRELATIONS);
+      nr_baselines, nr_timesteps, frequencies_.size(), 4);
   // The proxy does not touch visibilities for out-of-bound uvw coordinates.
   // Since we copy all visibilities to the caller, initialize them to zero.
   bufferVisibilities.zero();
