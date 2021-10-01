@@ -47,7 +47,7 @@ void kernel_gridder(
     // Storage
     std::complex<float> pixels[4][subgrid_size][subgrid_size];
     memset((void*)pixels, 0,
-           subgrid_size * subgrid_size * nr_polarizations *
+           subgrid_size * subgrid_size * 4 *
                sizeof(std::complex<float>));
 
     // Iterate all pixels in subgrid
@@ -108,18 +108,16 @@ void kernel_gridder(
           int aterm_index = aterms_indices[time_offset + time];
 
           // Load a term for station1
-          int station1_index =
-              (aterm_index * nr_stations + station1) * subgrid_size *
-                  subgrid_size * nr_polarizations +
-              y * subgrid_size * nr_polarizations + x * nr_polarizations;
+          int station1_index = (aterm_index * nr_stations + station1) *
+                                   subgrid_size * subgrid_size * 4 +
+                               y * subgrid_size * 4 + x * 4;
           const std::complex<float>* aterms1 =
               (std::complex<float>*)&aterms[station1_index];
 
           // Load aterm for station2
-          int station2_index =
-              (aterm_index * nr_stations + station2) * subgrid_size *
-                  subgrid_size * nr_polarizations +
-              y * subgrid_size * nr_polarizations + x * nr_polarizations;
+          int station2_index = (aterm_index * nr_stations + station2) *
+                                   subgrid_size * subgrid_size * 4 +
+                               y * subgrid_size * 4 + x * 4;
           const std::complex<float>* aterms2 =
               (std::complex<float>*)&aterms[station2_index];
 
@@ -137,8 +135,8 @@ void kernel_gridder(
         }  // end for time
 
         // Load pixel
-        std::complex<float> pixel[nr_polarizations];
-        for (int pol = 0; pol < nr_polarizations; pol++) {
+        std::complex<float> pixel[4];
+        for (int pol = 0; pol < 4; pol++) {
           pixel[pol] = pixels[pol][y][x];
         }
 

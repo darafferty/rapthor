@@ -53,7 +53,7 @@ inline void update_subgrid(int nr_polarizations, int nr_pixels, int nr_stations,
     } else if (nr_polarizations == 1) {
       size_t dst_idx = index_subgrid(nr_polarizations, subgrid_size, subgrid, 0,
                                      y_dst, x_dst);
-      subgrid_global[dst_idx] += ((pixels[0] * sph) + (pixels[3] * sph)) * 0.5f;
+      subgrid_global[dst_idx] += (pixels[0] + pixels[3]) * sph * 0.5f;
     }
   }
 }
@@ -200,7 +200,7 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
 
         // Reset local subgrid for new aterms
         memset(static_cast<void*>(subgrid_local), 0,
-               nr_polarizations * nr_pixels * sizeof(std::complex<float>));
+               4 * nr_pixels * sizeof(std::complex<float>));
 
         // Update aterm indices
         aterm_idx_previous = aterm_idx_current;
@@ -219,16 +219,21 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
           size_t dst_idx = chan_idx * current_nr_timesteps + time;
 #endif
 
-          vis_xx_real[dst_idx] = visibilities[src_idx + 0].real();
-          vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag();
           if (nr_correlations == 4) {
+            vis_xx_real[dst_idx] = visibilities[src_idx + 0].real();
+            vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag();
             vis_xy_real[dst_idx] = visibilities[src_idx + 1].real();
             vis_xy_imag[dst_idx] = visibilities[src_idx + 1].imag();
             vis_yx_real[dst_idx] = visibilities[src_idx + 2].real();
             vis_yx_imag[dst_idx] = visibilities[src_idx + 2].imag();
+            vis_yy_real[dst_idx] = visibilities[src_idx + 3].real();
+            vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag();
+          } else if (nr_correlations == 2) {
+            vis_xx_real[dst_idx] = visibilities[src_idx + 0].real();
+            vis_xx_imag[dst_idx] = visibilities[src_idx + 0].imag();
+            vis_yy_real[dst_idx] = visibilities[src_idx + 1].real();
+            vis_yy_imag[dst_idx] = visibilities[src_idx + 1].imag();
           }
-          vis_yy_real[dst_idx] = visibilities[src_idx + 3].real();
-          vis_yy_imag[dst_idx] = visibilities[src_idx + 3].imag();
         }
       }
 
@@ -349,10 +354,8 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
             subgrid_local[idx] += pixels[pol];
           }
         } else if (nr_correlations == 2) {
-          size_t idx_xx =
-              index_subgrid(nr_polarizations, subgrid_size, 0, 0, y, x);
-          size_t idx_yy =
-              index_subgrid(nr_polarizations, subgrid_size, 0, 0, y, x);
+          size_t idx_xx = index_subgrid(4, subgrid_size, 0, 0, y, x);
+          size_t idx_yy = index_subgrid(4, subgrid_size, 0, 3, y, x);
           subgrid_local[idx_xx] += pixels[0];
           subgrid_local[idx_yy] += pixels[1];
         }
