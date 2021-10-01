@@ -115,8 +115,8 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_scaler(int nr_subgrids, int subgrid_size, void* u_subgrid);
 
-  void launch_copy_tiles(unsigned int nr_tiles, unsigned int src_tile_size,
-                         unsigned int dst_tile_size,
+  void launch_copy_tiles(unsigned int nr_polarizations, unsigned int nr_tiles,
+                         unsigned int src_tile_size, unsigned int dst_tile_size,
                          cu::DeviceMemory& d_src_tile_ids,
                          cu::DeviceMemory& d_dst_tile_ids,
                          cu::DeviceMemory& d_src_tiles,

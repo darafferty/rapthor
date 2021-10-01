@@ -187,9 +187,10 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                   sizeof_tile_coordinates);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, padded_tile_size,
-                             current_w_padded_tile_size, d_tile_ids,
-                             d_padded_tile_ids, d_tiles, d_padded_tiles);
+    device.launch_copy_tiles(nr_polarizations, current_nr_tiles,
+                             padded_tile_size, current_w_padded_tile_size,
+                             d_tile_ids, d_padded_tile_ids, d_tiles,
+                             d_padded_tiles);
 
     // Launch inverse FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
@@ -575,9 +576,10 @@ void GenericOptimized::run_wtiles_from_grid(
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, current_w_padded_tile_size,
-                             padded_tile_size, d_padded_tile_ids, d_tile_ids,
-                             d_padded_tiles, d_tiles);
+    device.launch_copy_tiles(nr_polarizations, current_nr_tiles,
+                             current_w_padded_tile_size, padded_tile_size,
+                             d_padded_tile_ids, d_tile_ids, d_padded_tiles,
+                             d_tiles);
 
     // Wait for tiles to be copied
     executestream.synchronize();
