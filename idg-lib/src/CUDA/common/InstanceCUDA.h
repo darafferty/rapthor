@@ -122,7 +122,8 @@ class InstanceCUDA : public KernelsInstance {
                          cu::DeviceMemory& d_src_tiles,
                          cu::DeviceMemory& d_dst_tiles);
 
-  void launch_apply_phasor_to_wtiles(unsigned int nr_tiles, float image_size,
+  void launch_apply_phasor_to_wtiles(unsigned int nr_polarizations,
+                                     unsigned int nr_tiles, float image_size,
                                      float w_step, unsigned int tile_size,
                                      cu::DeviceMemory& d_tiles,
                                      cu::DeviceMemory& d_shift,

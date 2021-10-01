@@ -446,9 +446,9 @@ int main(int argc, char* argv[]) {
   cufftComplex* d_padded_tiles_ptr =
       reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_padded_tiles));
   fft.execute(d_padded_tiles_ptr, d_padded_tiles_ptr, CUFFT_INVERSE);
-  cuda.launch_apply_phasor_to_wtiles(nr_tiles, image_size, w_step,
-                                     padded_tile_size, d_padded_tiles, d_shift,
-                                     d_tile_coordinates);
+  cuda.launch_apply_phasor_to_wtiles(nr_polarizations, nr_tiles, image_size,
+                                     w_step, padded_tile_size, d_padded_tiles,
+                                     d_shift, d_tile_coordinates);
   fft.execute(d_padded_tiles_ptr, d_padded_tiles_ptr, CUFFT_FORWARD);
   stream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_padded_tiles);
   stream.synchronize();

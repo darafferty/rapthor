@@ -197,8 +197,9 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(
-        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
-        d_padded_tiles, d_shift, d_tile_coordinates, -1);
+        nr_polarizations, current_nr_tiles, image_size, w_step,
+        current_w_padded_tile_size, d_padded_tiles, d_shift, d_tile_coordinates,
+        -1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
@@ -569,8 +570,9 @@ void GenericOptimized::run_wtiles_from_grid(
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(
-        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
-        d_padded_tiles, d_shift, d_tile_coordinates, 1);
+        nr_polarizations, current_nr_tiles, image_size, w_step,
+        current_w_padded_tile_size, d_padded_tiles, d_shift, d_tile_coordinates,
+        1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
