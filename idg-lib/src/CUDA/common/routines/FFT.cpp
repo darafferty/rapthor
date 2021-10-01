@@ -55,7 +55,7 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   // Report performance
   m_report->update<Report::host>(powerStates[0], powerStates[1]);
   m_report->update<Report::device>(powerStates[2], powerStates[3]);
-  m_report->print_total();
+  m_report->print_total(nr_polarizations);
 }
 
 }  // end namespace cuda

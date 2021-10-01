@@ -18,6 +18,7 @@ void CUDA::do_compute_avg_beam(
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
+  const unsigned int nr_polarizations = 4;
   const unsigned int nr_aterms = aterms_offsets.size() - 1;
   const unsigned int nr_baselines = baselines.get_x_dim();
   const unsigned int nr_timesteps = uvw.get_x_dim();
@@ -174,7 +175,7 @@ void CUDA::do_compute_avg_beam(
   }
 
   // Performance reporting
-  m_report->print_total();
+  m_report->print_total(nr_polarizations);
 }
 
 }  // end namespace cuda

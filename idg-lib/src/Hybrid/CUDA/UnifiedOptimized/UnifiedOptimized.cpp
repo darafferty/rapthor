@@ -260,7 +260,8 @@ void UnifiedOptimized::run_gridding(
                            d_subgrids, d_metadata);
 
     // Report performance
-    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(dtohstream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
 
     // Wait for GPU to finish
@@ -489,7 +490,8 @@ void UnifiedOptimized::run_degridding(
     dtohstream.record(*outputCopied[job_id]);
 
     // Report performance
-    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(executestream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
@@ -1248,6 +1250,7 @@ void UnifiedOptimized::run_subgrids_from_wtiles(
 
 void UnifiedOptimized::flush_wtiles() {
   // Get parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
   float cell_size = m_cache_state.cell_size;
   float image_size = grid_size * cell_size;
@@ -1268,7 +1271,7 @@ void UnifiedOptimized::flush_wtiles() {
                        wtile_flush_info);
     endState = device.measure();
     m_report->update(Report::wtiling_forward, startState, endState);
-    m_report->print_total();
+    m_report->print_total(nr_polarizations);
   }
 }
 

@@ -218,7 +218,8 @@ void GenericOptimized::run_degridding(
     dtohstream.record(*outputCopied[job_id]);
 
     // Report performance
-    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(executestream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 

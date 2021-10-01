@@ -658,6 +658,7 @@ void GenericOptimized::run_subgrids_from_wtiles(
 
 void GenericOptimized::flush_wtiles() {
   // Get parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
   float cell_size = m_cache_state.cell_size;
   float image_size = grid_size * cell_size;
@@ -678,7 +679,7 @@ void GenericOptimized::flush_wtiles() {
                        wtile_flush_info);
     endState = device.measure();
     m_report->update(Report::wtiling_forward, startState, endState);
-    m_report->print_total();
+    m_report->print_total(nr_polarizations);
   }
 }
 

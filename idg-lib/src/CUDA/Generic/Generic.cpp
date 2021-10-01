@@ -197,7 +197,8 @@ void Generic::run_gridding(
     executestream.record(*gpuFinished[job_id]);
 
     // Report performance
-    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(executestream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
 
     // Wait for adder to finish
@@ -423,7 +424,8 @@ void Generic::run_degridding(
     gpuFinished[job_id]->synchronize();
 
     // Report performance
-    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(dtohstream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 

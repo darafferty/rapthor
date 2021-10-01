@@ -91,7 +91,7 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
     states[1] = m_powersensor->read();
     m_report->update(Report::wtiling_forward, states[0], states[1]);
-    m_report->print_total();
+    m_report->print_total(nr_correlations);
   }
   return m_grid;
 }
@@ -252,7 +252,8 @@ void CPU::do_gridding(
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      m_report->print(current_nr_timesteps, current_nr_subgrids);
+      m_report->print(nr_correlations, current_nr_timesteps,
+                      current_nr_subgrids);
     }  // end for bl
 
     states[1] = m_powersensor->read();
@@ -261,7 +262,8 @@ void CPU::do_gridding(
     // Performance report
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+    m_report->print_total(nr_correlations, total_nr_timesteps,
+                          total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
     m_report->print_visibilities(auxiliary::name_gridding,
                                  total_nr_visibilities);
@@ -377,7 +379,8 @@ void CPU::do_degridding(
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      m_report->print(current_nr_timesteps, current_nr_subgrids);
+      m_report->print(nr_correlations, current_nr_timesteps,
+                      current_nr_subgrids);
     }  // end for bl
 
     states[1] = m_powersensor->read();
@@ -386,7 +389,8 @@ void CPU::do_degridding(
     // Report performance
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+    m_report->print_total(nr_correlations, total_nr_timesteps,
+                          total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
     m_report->print_visibilities(auxiliary::name_degridding,
                                  total_nr_visibilities);
@@ -517,7 +521,7 @@ void CPU::do_calibrate_init(
   // End performance measurement
   states[1] = m_powersensor->read();
   m_report->update<Report::ID::host>(states[0], states[1]);
-  m_report->print_total(0, 0);
+  m_report->print_total(nr_correlations);
 
   // Set calibration state member variables
   m_calibrate_state = {std::move(plans),           (unsigned int)nr_baselines,
@@ -597,7 +601,7 @@ void CPU::do_calibrate_finish() {
         m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
     total_nr_subgrids += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   }
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_calibrate);
 }
 
@@ -655,7 +659,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
     }
 
     // Report performance
-    m_report->print_total();
+    m_report->print_total(nr_correlations);
     std::clog << std::endl;
 
   } catch (const std::exception &e) {
@@ -693,7 +697,7 @@ void CPU::do_compute_avg_beam(
       subgrid_size, nr_polarizations, uvw.data(), baselines_ptr, aterms_ptr,
       aterms_offsets.data(), weights.data(), average_beam.data());
 
-  m_report->print_total();
+  m_report->print_total(nr_correlations);
 }  // end compute_avg_beam
 
 }  // namespace cpu

@@ -1212,6 +1212,7 @@ void InstanceCUDA::launch_splitter_wtiles_from_patch(
 }
 
 typedef struct {
+  int nr_polarizations;
   int nr_timesteps;
   int nr_subgrids;
   std::shared_ptr<Report> report;
@@ -1219,24 +1220,28 @@ typedef struct {
 
 void report_job(CUstream, CUresult, void* userData) {
   ReportData* data = static_cast<ReportData*>(userData);
+  int nr_polarizations = data->nr_polarizations;
+  int nr_correlations = nr_polarizations == 4 ? 4 : 2;
   int nr_timesteps = data->nr_timesteps;
   int nr_subgrids = data->nr_subgrids;
-  data->report->print(nr_timesteps, nr_subgrids);
+  data->report->print(nr_correlations, nr_timesteps, nr_subgrids);
   delete data;
 }
 
-ReportData* get_report_data(int nr_timesteps, int nr_subgrids,
-                            std::shared_ptr<Report> report) {
+ReportData* get_report_data(int nr_polarizations, int nr_timesteps,
+                            int nr_subgrids, std::shared_ptr<Report> report) {
   ReportData* data = new ReportData();
+  data->nr_polarizations = nr_polarizations;
   data->nr_timesteps = nr_timesteps;
   data->nr_subgrids = nr_subgrids;
   data->report = report;
   return data;
 }
 
-void InstanceCUDA::enqueue_report(cu::Stream& stream, int nr_timesteps,
-                                  int nr_subgrids) {
-  ReportData* data = get_report_data(nr_timesteps, nr_subgrids, m_report);
+void InstanceCUDA::enqueue_report(cu::Stream& stream, int nr_polarizations,
+                                  int nr_timesteps, int nr_subgrids) {
+  ReportData* data =
+      get_report_data(nr_polarizations, nr_timesteps, nr_subgrids, m_report);
   stream.addCallback((CUstreamCallback)&report_job, data);
 }
 

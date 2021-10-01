@@ -218,7 +218,8 @@ void GenericOptimized::run_gridding(
     marker_adder.end();
 
     // Report performance
-    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(dtohstream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 

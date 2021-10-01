@@ -36,10 +36,15 @@ uint64_t flops_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
   flops_per_visibility += nr_channels * nr_correlations * 8;  // update
 
   // Number of flops per subgrid
+  uint64_t nr_polarizations_aterm = 4;
   uint64_t flops_per_subgrid = 0;
-  flops_per_subgrid += nr_correlations * 30;  // aterm
-  flops_per_subgrid += nr_correlations * 2;   // spheroidal
-  flops_per_subgrid += 6;                     // shift
+  flops_per_subgrid += nr_polarizations_aterm * 30;  // aterm
+  if (nr_correlations == 4) {
+    flops_per_subgrid += 4 * 2;  // spheroidal
+  } else {
+    flops_per_subgrid += 1 * 2;  // spheroidal
+  }
+  flops_per_subgrid += 6;  // shift
 
   // Total number of flops
   uint64_t flops_total = 0;
@@ -68,8 +73,9 @@ uint64_t bytes_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
 
   // Number of bytes per aterm
   uint64_t bytes_per_aterm = 0;
+  uint64_t nr_polarizations_aterm = 4;
   bytes_per_aterm +=
-      1ULL * 2 * nr_correlations * 2 * sizeof(float);  // read aterm
+      1ULL * 2 * nr_polarizations_aterm * 2 * sizeof(float);  // read aterm
 
   // Number of bytes per spheroidal
   uint64_t bytes_per_spheroidal = 0;
@@ -143,8 +149,9 @@ uint64_t bytes_fft(uint64_t size, uint64_t batch, uint64_t nr_correlations) {
 uint64_t flops_adder(uint64_t nr_subgrids, uint64_t subgrid_size,
                      uint64_t nr_correlations) {
   uint64_t flops = 0;
+  int nr_polarizations = nr_correlations == 4 ? 4 : 1;
   flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 8;  // shift
-  flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_correlations *
+  flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_polarizations *
            2;  // add
   return flops;
 }
@@ -152,29 +159,33 @@ uint64_t flops_adder(uint64_t nr_subgrids, uint64_t subgrid_size,
 uint64_t bytes_adder(uint64_t nr_subgrids, uint64_t subgrid_size,
                      uint64_t nr_correlations) {
   uint64_t bytes = 0;
+  int nr_polarizations = nr_correlations == 4 ? 4 : 1;
   bytes += 1ULL * nr_subgrids * 2 * sizeof(int);  // coordinate
-  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 *
-           sizeof(float);  // grid in
-  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 *
-           sizeof(float);  // subgrid in
-  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 *
-           sizeof(float);  // subgrid out
+  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_polarizations *
+           2 * sizeof(float);  // grid in
+  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_polarizations *
+           2 * sizeof(float);  // subgrid in
+  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_polarizations *
+           2 * sizeof(float);  // subgrid out
   return bytes;
 }
 
-uint64_t flops_splitter(uint64_t nr_subgrids, uint64_t subgrid_size) {
+uint64_t flops_splitter(uint64_t nr_subgrids, uint64_t subgrid_size,
+                        uint64_t nr_correlations) {
   uint64_t flops = 0;
   flops += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 8;  // shift
   return flops;
 }
 
-uint64_t bytes_splitter(uint64_t nr_subgrids, uint64_t subgrid_size) {
+uint64_t bytes_splitter(uint64_t nr_subgrids, uint64_t subgrid_size,
+                        uint64_t nr_correlations) {
   uint64_t bytes = 0;
+  int nr_polarizations = nr_correlations == 4 ? 4 : 1;
   bytes += 1ULL * nr_subgrids * 2 * sizeof(int);  // coordinate
-  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 *
-           sizeof(float);  // grid in
-  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * 2 *
-           sizeof(float);  // subgrid out
+  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_polarizations *
+           2 * sizeof(float);  // grid in
+  bytes += 1ULL * nr_subgrids * subgrid_size * subgrid_size * nr_polarizations *
+           2 * sizeof(float);  // subgrid out
   return bytes;
 }
 

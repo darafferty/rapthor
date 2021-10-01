@@ -254,7 +254,8 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::DeviceMemory> d_fft_subgrid;
 
  public:
-  void enqueue_report(cu::Stream& stream, int nr_timesteps, int nr_subgrids);
+  void enqueue_report(cu::Stream& stream, int nr_polarizations,
+                      int nr_timesteps, int nr_subgrids);
 
   void copy_htoh(void* dst, void* src, size_t bytes);
 
