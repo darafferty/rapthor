@@ -123,7 +123,8 @@ class GenericOptimized : public cuda::CUDA {
                           float w_step, const Array1D<float>& shift,
                           WTileUpdateInfo& wtile_flush_info);
 
-  void run_subgrids_to_wtiles(unsigned int subgrid_offset,
+  void run_subgrids_to_wtiles(unsigned int nr_polarizations,
+                              unsigned int subgrid_offset,
                               unsigned int nr_subgrids,
                               unsigned int subgrid_size, float image_size,
                               float w_step, const Array1D<float>& shift,
@@ -135,7 +136,8 @@ class GenericOptimized : public cuda::CUDA {
                             float w_step, const Array1D<float>& shift,
                             WTileUpdateInfo& wtile_initialize_info);
 
-  void run_subgrids_from_wtiles(unsigned int subgrid_offset,
+  void run_subgrids_from_wtiles(unsigned int nr_polarizations,
+                                unsigned int subgrid_offset,
                                 unsigned int nr_subgrids,
                                 unsigned int subgrid_size, float image_size,
                                 float w_step, const Array1D<float>& shift,

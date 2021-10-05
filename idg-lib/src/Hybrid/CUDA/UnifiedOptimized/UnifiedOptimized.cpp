@@ -255,9 +255,9 @@ void UnifiedOptimized::run_gridding(
 
     // Run W-tiling
     auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
-    run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
-                           image_size, w_step, shift, wtile_flush_set,
-                           d_subgrids, d_metadata);
+    run_subgrids_to_wtiles(
+        nr_polarizations, subgrid_offset, current_nr_subgrids, subgrid_size,
+        image_size, w_step, shift, wtile_flush_set, d_subgrids, d_metadata);
 
     // Report performance
     device.enqueue_report(dtohstream, nr_polarizations,
@@ -462,9 +462,10 @@ void UnifiedOptimized::run_degridding(
 
     // Run W-tiling
     auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
-    run_subgrids_from_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
-                             image_size, w_step, shift, wtile_initialize_set,
-                             d_subgrids, d_metadata);
+    run_subgrids_from_wtiles(nr_polarizations, subgrid_offset,
+                             current_nr_subgrids, subgrid_size, image_size,
+                             w_step, shift, wtile_initialize_set, d_subgrids,
+                             d_metadata);
 
     // Launch FFT
     device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
@@ -879,10 +880,11 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const idg::Array1D<float>& shift, WTileUpdateSet& wtile_flush_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const idg::Array1D<float>& shift,
+    WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -927,8 +929,8 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
     int N = subgrid_size * subgrid_size;
     std::complex<float> scale(1.0f / N, 1.0f / N);
     device.launch_adder_subgrids_to_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
@@ -1185,10 +1187,11 @@ void UnifiedOptimized::run_wtiles_from_grid(
 }
 
 void UnifiedOptimized::run_subgrids_from_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const Array1D<float>& shift, WTileUpdateSet& wtile_initialize_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const Array1D<float>& shift,
+    WTileUpdateSet& wtile_initialize_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -1235,8 +1238,9 @@ void UnifiedOptimized::run_subgrids_from_wtiles(
     std::complex<float> scale(1.0f, 1.0f);
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_splitter_subgrids_from_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles, scale);  // scale?
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles,
+        scale);  // scale?
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids

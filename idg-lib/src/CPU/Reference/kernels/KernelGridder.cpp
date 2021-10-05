@@ -47,8 +47,7 @@ void kernel_gridder(
     // Storage
     std::complex<float> pixels[4][subgrid_size][subgrid_size];
     memset((void*)pixels, 0,
-           subgrid_size * subgrid_size * 4 *
-               sizeof(std::complex<float>));
+           subgrid_size * subgrid_size * 4 * sizeof(std::complex<float>));
 
     // Iterate all pixels in subgrid
     for (int y = 0; y < subgrid_size; y++) {

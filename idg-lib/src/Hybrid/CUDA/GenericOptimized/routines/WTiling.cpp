@@ -293,10 +293,11 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 }
 
 void GenericOptimized::run_subgrids_to_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const idg::Array1D<float>& shift, WTileUpdateSet& wtile_flush_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const idg::Array1D<float>& shift,
+    WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load GenericOptimized objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -339,8 +340,8 @@ void GenericOptimized::run_subgrids_to_wtiles(
     // Add all subgrids to the wtiles
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_adder_subgrids_to_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles);
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
@@ -594,10 +595,11 @@ void GenericOptimized::run_wtiles_from_grid(
 }
 
 void GenericOptimized::run_subgrids_from_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const Array1D<float>& shift, WTileUpdateSet& wtile_initialize_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const Array1D<float>& shift,
+    WTileUpdateSet& wtile_initialize_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load GenericOptimized objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -643,8 +645,8 @@ void GenericOptimized::run_subgrids_from_wtiles(
     // Process all subgrids that can be processed now
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_splitter_subgrids_from_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles);
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids

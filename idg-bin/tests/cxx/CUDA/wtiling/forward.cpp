@@ -485,9 +485,9 @@ int main(int argc, char* argv[]) {
 
   // Run subgrids_to_wtiles on GPU
   d_tiles.zero();
-  cuda.launch_adder_subgrids_to_wtiles(nr_subgrids, grid_size, subgrid_size,
-                                       tile_size - subgrid_size, 0, d_metadata,
-                                       d_subgrids, d_tiles);
+  cuda.launch_adder_subgrids_to_wtiles(nr_subgrids, nr_polarizations, grid_size,
+                                       subgrid_size, tile_size - subgrid_size,
+                                       0, d_metadata, d_subgrids, d_tiles);
   stream.memcpyDtoHAsync(h_tiles, d_tiles, sizeof_tiles);
   stream.synchronize();
 

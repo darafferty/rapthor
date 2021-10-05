@@ -1122,11 +1122,10 @@ void InstanceCUDA::launch_apply_phasor_to_wtiles(
 }
 
 void InstanceCUDA::launch_adder_subgrids_to_wtiles(
-    int nr_subgrids, long grid_size, int subgrid_size, int tile_size,
-    int subgrid_offset, cu::DeviceMemory& d_metadata,
+    int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
+    int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
     std::complex<float> scale) {
-  const int nr_polarizations = 4;
   const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
                               &tile_size,        &subgrid_offset, d_metadata,
                               d_subgrid,         d_tiles,         &scale};
@@ -1151,11 +1150,10 @@ void InstanceCUDA::launch_adder_wtiles_to_grid(
 }
 
 void InstanceCUDA::launch_splitter_subgrids_from_wtiles(
-    int nr_subgrids, long grid_size, int subgrid_size, int tile_size,
-    int subgrid_offset, cu::DeviceMemory& d_metadata,
+    int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
+    int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
     std::complex<float> scale) {
-  const int nr_polarizations = 4;
   const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
                               &tile_size,        &subgrid_offset, d_metadata,
                               d_subgrid,         d_tiles,         &scale};

@@ -133,7 +133,8 @@ void GenericOptimized::do_calibrate_init(
         htodstream.synchronize();
 
         // Create subgrids
-        run_subgrids_from_wtiles(0 /* subgrid_offset */, nr_subgrids,
+        const unsigned int subgrid_offset = 0;
+        run_subgrids_from_wtiles(nr_polarizations, subgrid_offset, nr_subgrids,
                                  subgrid_size, image_size, w_step, shift,
                                  wtile_initialize_set, d_subgrids, d_metadata);
         executestream.synchronize();

@@ -130,9 +130,9 @@ class InstanceCUDA : public KernelsInstance {
                                      cu::DeviceMemory& d_tile_coordinates,
                                      int sign = -1);
 
-  void launch_adder_subgrids_to_wtiles(int nr_subgrids, long grid_size,
-                                       int subgrid_size, int tile_size,
-                                       int subgrid_offset,
+  void launch_adder_subgrids_to_wtiles(int nr_subgrids, int nr_polarizations,
+                                       long grid_size, int subgrid_size,
+                                       int tile_size, int subgrid_offset,
                                        cu::DeviceMemory& d_metadata,
                                        cu::DeviceMemory& d_subgrid,
                                        cu::DeviceMemory& d_tiles,
@@ -147,8 +147,8 @@ class InstanceCUDA : public KernelsInstance {
                                    cu::UnifiedMemory& u_grid);
 
   void launch_splitter_subgrids_from_wtiles(
-      int nr_subgrids, long grid_size, int subgrid_size, int tile_size,
-      int subgrid_offset, cu::DeviceMemory& d_metadata,
+      int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
+      int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
       cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
       std::complex<float> scale = {1.0, 1.0});
 

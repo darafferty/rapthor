@@ -317,8 +317,8 @@ int main(int argc, char* argv[]) {
   // Run subgrids_from_wtiles on GPU
   d_subgrids.zero();
   cuda.launch_splitter_subgrids_from_wtiles(
-      nr_subgrids, grid_size, subgrid_size, tile_size - subgrid_size, 0,
-      d_metadata, d_subgrids, d_tiles);
+      nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+      tile_size - subgrid_size, 0, d_metadata, d_subgrids, d_tiles);
   stream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
   stream.synchronize();
 

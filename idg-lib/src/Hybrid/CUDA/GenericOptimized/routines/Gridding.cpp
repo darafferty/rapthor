@@ -197,9 +197,9 @@ void GenericOptimized::run_gridding(
       auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
 
       if (!m_disable_wtiling_gpu) {
-        run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids,
-                               subgrid_size, image_size, w_step, shift,
-                               wtile_flush_set, d_subgrids, d_metadata);
+        run_subgrids_to_wtiles(
+            nr_polarizations, subgrid_offset, current_nr_subgrids, subgrid_size,
+            image_size, w_step, shift, wtile_flush_set, d_subgrids, d_metadata);
       } else {
         cpuKernels->run_adder_wtiles(
             current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
