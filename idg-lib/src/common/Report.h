@@ -316,6 +316,7 @@ class Report {
 
   void print_total(int nr_correlations, int nr_timesteps = 0,
                    int nr_subgrids = 0) {
+    parameters.nr_correlations = nr_correlations;
     if (nr_timesteps == 0) {
       nr_timesteps = counters.total_nr_timesteps;
     }

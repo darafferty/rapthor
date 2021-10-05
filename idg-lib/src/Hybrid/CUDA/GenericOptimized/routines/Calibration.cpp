@@ -188,7 +188,7 @@ void GenericOptimized::do_calibrate_init(
   // End performance measurement
   states[1] = hostPowerSensor->read();
   m_report->update(Report::host, states[0], states[1]);
-  m_report->print_total(0, 0);
+  m_report->print_total(0, 0, 0);
 
   // Set calibration state member variables
   m_calibrate_state.plans = std::move(plans);
@@ -355,7 +355,7 @@ void GenericOptimized::do_calibrate_finish() {
         m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
     total_nr_subgrids += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   }
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_calibrate);
 }
 

@@ -220,7 +220,7 @@ void Generic::run_gridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
@@ -444,7 +444,7 @@ void Generic::run_degridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_degridding,
                                total_nr_visibilities);
 }  // end run_degridding
