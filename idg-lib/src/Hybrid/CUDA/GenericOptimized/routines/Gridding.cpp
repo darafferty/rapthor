@@ -183,7 +183,7 @@ void GenericOptimized::run_gridding(
     if (m_disable_wtiling || m_disable_wtiling_gpu) {
       dtohstream.waitEvent(*gpuFinished[job_id]);
       auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-          current_nr_subgrids, subgrid_size, nr_correlations);
+          current_nr_subgrids, subgrid_size, nr_polarizations);
       dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
       dtohstream.record(*outputCopied[job_id]);
 

@@ -49,18 +49,19 @@ __device__ void update_subgrid(
     apply_aterm_gridder(pixel, aterm1, aterm2);
 
     // Update subgrid
-    if (nr_polarizations == 1) {
-        // Stokes-I only
-        int idx_xx = index_subgrid(2, subgrid_size, s, 0, y_dst, x_dst);
-        int idx_yy = index_subgrid(2, subgrid_size, s, 1, y_dst, x_dst);
-        subgrid[idx_xx] += pixel[0];
-        subgrid[idx_yy] += pixel[3];
-    } else {
+    if (nr_polarizations == 4) {
         // Full Stokes
         for (unsigned pol = 0; pol < nr_polarizations; pol++) {
             int idx = index_subgrid(4, subgrid_size, s, pol, y_dst, x_dst);
             subgrid[idx] += pixel[pol];
         }
+    } else if (nr_polarizations == 1) {
+        // Stokes-I only
+        int idx_xx = index_subgrid(1, subgrid_size, s, 0, y_dst, x_dst);
+        int nr_subgrids = gridDim.x;
+        int idx_yy = idx_xx + (nr_subgrids * subgrid_size * subgrid_size);
+        subgrid[idx_xx] += pixel[0];
+        subgrid[idx_yy] += pixel[3];
     }
 }
 
@@ -76,6 +77,7 @@ __device__ void finalize_subgrid(
     unsigned tid = threadIdx.y * blockDim.x + threadIdx.x;
     unsigned nr_threads = blockDim.x * blockDim.y;
     unsigned s = blockIdx.x;
+    unsigned nr_subgrids = gridDim.x;
 
     __syncthreads();
 
@@ -115,8 +117,8 @@ __device__ void finalize_subgrid(
                 pixelYY = subgrid[idx_yy];
             } else if (nr_polarizations == 1) {
                 // Compute pixel indices
-                idx_xx = index_subgrid(2, subgrid_size, s, 0, y_src, x_src);
-                idx_yy = index_subgrid(2, subgrid_size, s, 1, y_src, x_src);
+                idx_xx = index_subgrid(1, subgrid_size, s, 0, y_src, x_src);
+                idx_yy = idx_xx + (nr_subgrids * subgrid_size * subgrid_size);
 
                 // Load pixels
                 pixelXX = subgrid[idx_xx];

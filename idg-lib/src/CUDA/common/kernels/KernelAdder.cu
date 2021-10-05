@@ -26,11 +26,6 @@ __global__ void kernel_adder(
     int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
-    // In case of nr_polarizations == 1, we have
-    // two subgrids of which only the odd ones need
-    // to be added to the grid.
-    int nr_correlations = nr_polarizations == 4 ? 4 : 2;
-
     // Compute scaling factor
     float scale = 1 / (float(subgrid_size)*float(subgrid_size));
 
@@ -73,7 +68,7 @@ __global__ void kernel_adder(
                 long dst_idx = enable_tiling ?
                     index_grid_tiling(nr_polarizations, TILE_SIZE_GRID, grid_size, pol_dst, y_dst, x_dst) :
                     index_grid_3d(grid_size, pol_dst, y_dst, x_dst);
-                long src_idx = index_subgrid(nr_correlations, subgrid_size, s, pol, y_src, x_src);
+                long src_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
                 value = negative_w ? conj(value) : value;
                 atomicAdd(grid[dst_idx], value);

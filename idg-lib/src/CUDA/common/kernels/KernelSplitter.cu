@@ -26,11 +26,6 @@ __global__ void kernel_splitter(
     int nr_threads = blockDim.x * blockDim.y;
     int s = blockIdx.x;
 
-    // In case of nr_polarizations == 1, we have
-    // two subgrids of which only the odd ones have
-    // to be initialized.
-    int nr_correlations = nr_polarizations == 4 ? 4 : 2;
-
     // Load position in grid
     const Metadata &m = metadata[s];
     int subgrid_x= m.coordinate.x;
@@ -70,7 +65,7 @@ __global__ void kernel_splitter(
                 long src_idx = enable_tiling ?
                     index_grid_tiling(nr_polarizations, TILE_SIZE_GRID, grid_size, pol_src, y_src, x_src) :
                     index_grid_3d(grid_size, pol_src, y_src, x_src);
-                long dst_idx = index_subgrid(nr_correlations, subgrid_size, s, pol, y_dst, x_dst);
+                long dst_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_dst, x_dst);
                 float2 value = grid[src_idx];
                 value = negative_w ? conj(value) : value;
                 subgrid[dst_idx] = phasor * value;

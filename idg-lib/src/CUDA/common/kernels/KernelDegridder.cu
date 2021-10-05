@@ -130,7 +130,7 @@ __device__ void kernel_degridder_(
                             pixel[pol] = subgrid[pixel_idx] * spheroidal_;
                         }
                     } else if (nr_polarizations == 1) {
-                        unsigned int pixel_idx = index_subgrid(2, subgrid_size, s, 0, y_src, x_src);
+                        unsigned int pixel_idx = index_subgrid(nr_polarizations, subgrid_size, s, 0, y_src, x_src);
                         pixel[0] = subgrid[pixel_idx] * spheroidal_;
                         pixel[1] = make_float2(0, 0);
                         pixel[2] = make_float2(0, 0);
