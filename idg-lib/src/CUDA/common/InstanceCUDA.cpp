@@ -1082,9 +1082,9 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
   end_measurement(data);
 }
 
-void InstanceCUDA::launch_scaler(int nr_subgrids, int subgrid_size,
+void InstanceCUDA::launch_scaler(int nr_subgrids, int nr_polarizations,
+                                 int subgrid_size,
                                  cu::DeviceMemory& d_subgrid) {
-  const int nr_polarizations = 4;
   const void* parameters[] = {&nr_polarizations, &subgrid_size, d_subgrid};
   dim3 grid(nr_subgrids);
   UpdateData* data =

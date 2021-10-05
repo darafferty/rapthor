@@ -175,7 +175,8 @@ void GenericOptimized::run_gridding(
                               FourierDomainToImageDomain);
 
     // Launch scaler
-    device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
+    device.launch_scaler(current_nr_subgrids, nr_polarizations, subgrid_size,
+                         d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Copy subgrid to host

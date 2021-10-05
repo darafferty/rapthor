@@ -110,7 +110,7 @@ class InstanceCUDA : public KernelsInstance {
                                cu::DeviceMemory& d_subgrid,
                                cu::UnifiedMemory& u_grid);
 
-  void launch_scaler(int nr_subgrids, int subgrid_size,
+  void launch_scaler(int nr_subgrids, int nr_polarizations, int subgrid_size,
                      cu::DeviceMemory& d_subgrid);
 
   void launch_scaler(int nr_subgrids, int subgrid_size, void* u_subgrid);

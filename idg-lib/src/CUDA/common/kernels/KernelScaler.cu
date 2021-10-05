@@ -32,8 +32,13 @@ __global__ void kernel_scaler(
         int x = i % subgrid_size;
 
         if (y < subgrid_size) {
-            for (int pol = 0; pol < nr_polarizations; pol++) {
-                int idx = index_subgrid(4, subgrid_size, s, pol, y, x);
+            if (nr_polarizations == 4) {
+                for (int pol = 0; pol < nr_polarizations; pol++) {
+                    int idx = index_subgrid(4, subgrid_size, s, pol, y, x);
+                    subgrid[idx] = subgrid[idx] * scale;
+                }
+            } else if (nr_polarizations == 1) {
+                int idx = index_subgrid(2, subgrid_size, s, 0, y, x);
                 subgrid[idx] = subgrid[idx] * scale;
             }
         }
