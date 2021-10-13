@@ -1,5 +1,7 @@
 # Image Domain Gridding (IDG)
 
+The documentation of IDG can be found [here](https://www.astron.nl/citt/IDG/).
+
 This repository will contain the three subprojects of Image Domain Gridding:
  * [idg-lib](https://gitlab.com/astron-idg/idg-lib): The core library
  * [idg-bin](https://gitlab.com/astron-idg/idg-bin): Examples in C++ and Python
