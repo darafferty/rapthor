@@ -1,0 +1,168 @@
+# Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# This file contains the common parts of both the Astron and SKA pipelines of
+# IDG. The yml files for those pipelines include this file.
+
+workflow:
+  rules:
+    # Don't create a pipeline if it's a commit pipeline on a branch having an open merge request
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - when: always
+
+stages:
+ - prepare
+ - build
+ - linting
+ - test
+ - integration_and_deploy
+ - publish
+ - pages
+
+format:
+  stage: linting
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - ./scripts/run-format.sh
+  allow_failure: true
+
+idg-python:
+  stage: build
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - mkdir build
+    - cd build
+    - cmake -DBUILD_WITH_PYTHON=ON ..
+    - make install -j4
+
+idg-release:
+  stage: build
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make install -j4
+
+idg-debug:
+  stage: build
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_BUILD_TYPE=Debug
+    - make install -j4
+  rules:
+    - when: on_success
+
+idg-test:
+  stage: test
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - mkdir -p build
+    - cd build
+    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
+    - make install -j4
+    - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
+    - ctest -j8 --output-on-failure -LE integration -T test
+    # Use the most recent Test.xml output file in a subdirectory of Testing/
+    - export XML=$(ls -t Testing/*/Test.xml | head -n1)
+    - mv $XML unittests.xml
+    # Capture coverage
+    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json -o run-unit.json
+    - gcovr --add-tracefile run-unit.json --xml > coverage.xml
+    - gcovr --add-tracefile run-unit.json
+  rules:
+    - when: on_success
+  artifacts:
+    paths:
+      - build/run-unit.json
+      - build/unittests.xml
+    reports:
+      junit: build/unittests.xml
+      cobertura: build/coverage.xml
+
+build-package:
+  stage: build
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - mkdir idg_package
+    - mkdir build
+    - cd build
+    - git fetch --unshallow # We need to unshallow for the tags (setting GIT_DEPTH is not good enough)
+    - cmake -DBUILD_PACKAGES=On ..
+    - make -j4
+    - make package
+    - mv $(ls -1 *.deb) ../idg_package/
+  artifacts:
+    paths:
+    - idg_package/
+  rules:
+    # The package is built only during a merge_request_event, a merge to master,
+    # or when the pipeline is triggered by a tag event.
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$UPLOAD_PACKAGE'
+
+# Notes for all integration test jobs:
+# - allow_failure is true, since the job will fail when IDG has breaking API
+#   changes and WSClean/DP3 have not incorporated those changes yet.
+# - Always use the most recent WSClean/DP3 master, instead of a fixed version:
+#   - EveryBeam may change, which will require the latest WSclean/DP3.
+#   - When the IDG API itself changes, use the latest WSClean/DP3 ASAP.
+# - Since the IDG repo should not have (circular) dependencies on WSClean and
+#   DP3, we want to run these jobs elsewhere in the future. See AST-653.
+idg-integration-docker:
+  stage: integration_and_deploy
+  allow_failure: true
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
+  before_script:
+    # Install IDG
+    - mkdir /opt/idg && mkdir -p build
+    - cd build
+    - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
+    - make install -j4
+    # Exported, since integrationstep tIDGCalDPStep needs this variable
+    - export IDG_LIB=/opt/idg/lib
+    - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
+    # Compile against wsclean
+    - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
+    - mkdir build && cd build
+    - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
+    - make install -j4
+    - cd $CI_PROJECT_DIR && rm -rf /wsclean
+    # Install dp3
+    - mkdir /dp3 && cd /dp3 && git clone https://github.com/lofar-astron/DP3.git src
+    - mkdir build && cd build
+    - cmake -DCMAKE_INSTALL_PREFIX=/usr ../src
+    - make install -j4
+    - cd $CI_PROJECT_DIR && rm -rf /dp3
+    - export DP3_LIB=/usr/lib
+  script:
+    # Return to idg build directory to run tests
+    - cd build
+    - ctest --output-on-failure -L integration
+    # Test idg-cal scripts
+    - cd $CI_PROJECT_DIR/idg-cal/unit_tests
+    - pytest -v .
+  rules:
+    - when: on_success
+
+# Building documentation happens for all branches, which allows browsing.
+# Publishing documentation only happens for the master branch on the Astron repo.
+build-doc:
+  stage: build
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["build-base"]
+  script:
+    - apt update && apt install -y doxygen
+    - python3 -m pip install numpy sphinx breathe sphinx-rtd-theme myst-parser
+    - mkdir -p build && cd build
+    - cmake -DBUILD_WITH_PYTHON=ON ..
+    - make install -j4
+    - make doc
+  artifacts:
+    paths:
+    - build/doc/html
