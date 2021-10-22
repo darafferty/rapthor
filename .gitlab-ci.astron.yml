@@ -1,0 +1,127 @@
+# Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# This file contains the pipelines that run on the Astron repository of IDG,
+# which is at https://git.astron.nl/RD/idg
+
+include: .gitlab-ci.common.yml
+
+build-base:
+  stage: prepare
+  image: docker:stable
+  script:
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base -f ./docker/ubuntu_20_04_base .
+
+build-integration:
+  stage: prepare
+  image: docker:stable
+  script:
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
+
+# See the idg-integration-docker job in .gitlab-ci.common.yml for notes about
+# integration test jobs.
+idg-integration-das:
+  stage: integration_and_deploy
+  allow_failure: true
+  tags:
+    - ci_gpu
+  needs: []
+  before_script:
+    # Clean and generate reports folder in CI_PROJECT_DIR for storing the junit test reports
+    - rm -rf reports/* && mkdir -p reports
+    - source scripts/load_modules.sh
+    - python3 -m pip install --user --upgrade pip
+    # Make sure h5py is build against the hdf5 library loaded by load_modules.sh
+    # This is important when h5py is imported in embedded python code
+    # and the main executable is also linked against the hdf5 library.
+    # This happens for example when DPPP is running a PythonDPStep that is
+    # importing h5py
+    - HDF5_DIR=${HDF5_ROOT} python3 -m pip install h5py --user --no-binary=h5py --force-reinstall --no-deps
+    - python3 -m pip install --user astropy scipy pytest pytest-lazy-fixture h5py matplotlib
+    # pytest executable is installed in local/bin. Add to PATH
+    - export PATH=$PATH:/home/gitlab-runner/.local/bin
+    # Install idg
+    - mkdir -p ~/opt/idg && cd ~/opt/idg  && rm -rf *
+    # Copy source code to src
+    - mkdir src && cp -r $CI_PROJECT_DIR/. src/.
+    - mkdir build && cd build
+    # Build with GPU libs
+    - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
+    # Exported, since integrationstep tIDGCalDPStep needs this variable
+    - export IDG_LIB=~/opt/idg/lib
+    - export LD_LIBRARY_PATH=$IDG_LIB:$LD_LIBRARY_PATH
+    # Install WSclean (needs libgsl)
+    - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
+    - git clone https://gitlab.com/aroffringa/wsclean.git src
+    - mkdir build && cd build
+    - export OPENBLAS_NUM_THREADS=1
+    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j4
+    - export PATH=$PATH:~/opt/wsclean/bin
+  script:
+    - cd ~/opt/idg/build
+    # Run unit tests (more precisely: the non-integration tests)
+    - ctest -j8 --output-on-failure -LE integration
+    - echo "Finished unit tests"
+    # Run integration tests
+    - CFLAGS="-I${WCSLIB_INCLUDE} -I${CFITSIO_INCLUDE}" python3 -m pip install --user --no-binary python-casacore python-casacore
+    - ctest --output-on-failure -L integration
+    - mv test_*.xml $CI_PROJECT_DIR/reports/
+    # Test idg-cal scripts
+    - cd $CI_PROJECT_DIR/idg-cal/unit_tests
+    - pytest -v --junitxml=$CI_PROJECT_DIR/reports/test_idgcal.xml .
+  artifacts:
+    reports:
+      junit: reports/test_*.xml
+
+deploy-package:
+  stage: integration_and_deploy
+  needs: ["build-package"]
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  script:
+    - pip3 install aptly-api-client
+    - chmod -R 700 external/schaap-packaging
+    - cd idg_package
+    - export FILES=$(ls -1 $PWD/*.deb)
+    - echo UPLOADING files $FILES
+    # The following example command must be executed first or else the update will fail because there is no repository
+    # create_repo.py -a amd64 -c testing -d bionic --gpg-key ${GPG_KEY} --gpg-passphrase ${GPG_PASS} schaap
+    - ../external/schaap-packaging/update_repo.py --cleanup -d bionic --gpg-key ${GPG_KEY} --gpg-passphrase ${GPG_PASS} schaap ${FILES}
+  rules:
+    # Only run on master because GPG_KEY and GPG_PASS are protected and therefore only available on protected branches.
+    - if: '$CI_COMMIT_BRANCH != "master"'
+      when: never
+    - if: '$UPLOAD_PACKAGE'
+
+check-stack:
+  variables:
+    # Pass commit hash to downstream pipeline
+    IDG_TRIGGER_HASH: $CI_COMMIT_SHA
+  stage: integration_and_deploy
+  needs: []
+  trigger:
+    project: RD/schaap-stack
+    branch: master
+    # This will mirror the status of the downstream pipeline
+    strategy: depend
+  rules:
+    # Only add job for a merge request event
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - when: never
+
+publish-doc:
+  stage: publish
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["build-doc"]
+  before_script:
+    - apt-get install -y openssh-client
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | base64 -d | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "dop810,195.169.155.206 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFCjBBJSbZSFmDGJK8Xlxa2gt/4TUqacQAo1kxWVwMeHqqXP0+HasL9tDYe25Ci7/Ug3roQkwoJBzyuCkN+dtr8=" >> ~/.ssh/known_hosts
+  script:
+    - scp -r build/doc/html/* citt@dop810:IDG
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "master"'
