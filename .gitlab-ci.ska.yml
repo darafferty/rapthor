@@ -13,7 +13,7 @@ include:
 
 # The SKA repo does not have a docker cache.
 # We need to push the base image to the gitlab registry which requires docker:dind
-build-base:
+prepare-base:
   stage: prepare
   image: docker:stable
   services:
@@ -25,11 +25,11 @@ build-base:
 
 # The SKA repo does not have a docker cache
 # We need to push the integration image to the gitlab registry which requires docker:dind
-build-integration:
+prepare-integration:
   stage: prepare
   image: docker:stable
   services:
-  - docker:dind
+    - docker:dind
   script:
     - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
     - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
@@ -38,15 +38,14 @@ build-integration:
 pages:
   stage: pages
   image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
-  needs: ["idg-test"]
+  needs: ["test-unit"]
   before_script:
     - apt-get update
     - apt-get -y install curl
   script:
     - mkdir -p .public/build/reports
     - cd .public
-    - gcovr -j$(($(nproc)/2 > 0 ? $(nproc)/2:1)) -r ../ -a ../build/run-unit.json --xml -o build/reports/code-coverage.xml
-    - gcovr -j$(($(nproc)/2 > 0 ? $(nproc)/2:1)) -r ../ -a ../build/run-unit.json --html --html-details -o index.html
+    - gcovr -j$(($(nproc)/2 > 0 ? $(nproc)/2:1)) -r ../ -a ../build/run-unit.json --xml build/reports/code-coverage.xml --html-details index.html
     - cp ../build/unittests.xml build/reports/unit-tests.xml
     # Create and upload GitLab badges
     - chmod -R 700 ../CI
