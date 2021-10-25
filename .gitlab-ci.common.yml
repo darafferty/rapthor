@@ -88,26 +88,30 @@ test-unit:
   stage: test
   needs: ["prepare-base"]
   image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  before_script:
+    - pip3 install pytest h5py
   script:
     - mkdir -p build
     - cd build
-    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On
+    # Use a Release build, since the unit tests will timeout with a Debug build.
+    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=On -DBUILD_WITH_PYTHON=On
     - make install -j4
     - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest -j8 --output-on-failure -LE integration -T test
-    # Use the most recent Test.xml output file in a subdirectory of Testing/
-    - export XML=$(ls -t Testing/*/Test.xml | head -n1)
-    - mv $XML unittests.xml
+    - ctest -j8 --output-on-failure -L 'unit|bin_cxx'
     # Capture coverage
     - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json run-unit.json --xml coverage.xml
     - gcovr --add-tracefile run-unit.json
+  after_script:
+    - mkdir -p build/reports
+    - ./scripts/junit-merge.py build/reports/unit-tests.xml $(find build -name unittest_*.xml)
+    - mv build/coverage.xml build/reports/code-coverage.xml
   artifacts:
     paths:
+      - build/reports
       - build/run-unit.json
-      - build/unittests.xml
     reports:
-      junit: build/unittests.xml
-      cobertura: build/coverage.xml
+      junit: build/reports/unit-tests.xml
+      cobertura: build/reports/code-coverage.xml
 
 # Notes for all integration test jobs:
 # - allow_failure is true, since the job will fail when IDG has breaking API
@@ -147,9 +151,6 @@ test-integration:
     # Return to idg build directory to run tests
     - cd build
     - ctest --output-on-failure -L integration
-    # Test idg-cal scripts
-    - cd $CI_PROJECT_DIR/idg-cal/unit_tests
-    - pytest -v .
 
 # Building documentation happens for all branches, which allows browsing.
 # Publishing documentation only happens for the master branch on the Astron repo.
