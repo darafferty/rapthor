@@ -71,6 +71,7 @@ class Report {
     int nr_terms = 0;
     int nr_timesteps = 0;
     int nr_subgrids = 0;
+    int nr_correlations = 0;
   };
 
   struct Counters {
@@ -152,18 +153,22 @@ class Report {
     int nr_terms = parameters.nr_terms;
     int nr_timesteps = parameters.nr_timesteps;
     int nr_subgrids = parameters.nr_subgrids;
+    int nr_correlations = parameters.nr_correlations;
 
     switch (id) {
       case adder:
-        return auxiliary::flops_adder(nr_subgrids, subgrid_size);
+        return auxiliary::flops_adder(nr_subgrids, subgrid_size,
+                                      nr_correlations);
       case splitter:
-        return auxiliary::flops_splitter(nr_subgrids, subgrid_size);
+        return auxiliary::flops_splitter(nr_subgrids, subgrid_size,
+                                         nr_correlations);
       case gridder:
         return auxiliary::flops_gridder(nr_channels, nr_timesteps, nr_subgrids,
-                                        subgrid_size);
+                                        subgrid_size, nr_correlations);
       case degridder:
         return auxiliary::flops_degridder(nr_channels, nr_timesteps,
-                                          nr_subgrids, subgrid_size);
+                                          nr_subgrids, subgrid_size,
+                                          nr_correlations);
       case calibrate:
         return auxiliary::flops_calibrate(nr_terms, nr_channels, nr_timesteps,
                                           nr_subgrids, subgrid_size);
@@ -182,18 +187,22 @@ class Report {
     int grid_size = parameters.grid_size;
     int nr_timesteps = parameters.nr_timesteps;
     int nr_subgrids = parameters.nr_subgrids;
+    int nr_correlations = parameters.nr_correlations;
 
     switch (id) {
       case adder:
-        return auxiliary::bytes_adder(nr_subgrids, subgrid_size);
+        return auxiliary::bytes_adder(nr_subgrids, subgrid_size,
+                                      nr_correlations);
       case splitter:
-        return auxiliary::bytes_splitter(nr_subgrids, subgrid_size);
+        return auxiliary::bytes_splitter(nr_subgrids, subgrid_size,
+                                         nr_correlations);
       case gridder:
         return auxiliary::bytes_gridder(nr_channels, nr_timesteps, nr_subgrids,
-                                        subgrid_size);
+                                        subgrid_size, nr_correlations);
       case degridder:
         return auxiliary::bytes_degridder(nr_channels, nr_timesteps,
-                                          nr_subgrids, subgrid_size);
+                                          nr_subgrids, subgrid_size,
+                                          nr_correlations);
       case subgrid_fft:
         return auxiliary::bytes_fft(subgrid_size, nr_subgrids);
       case grid_fft:
@@ -282,11 +291,12 @@ class Report {
     counters.total_nr_visibilities += nr_visibilities;
   }
 
-  void print(int nr_timesteps, int nr_subgrids, bool total = false,
-             std::string prefix = "") {
+  void print(int nr_correlations, int nr_timesteps, int nr_subgrids,
+             bool total = false, std::string prefix = "") {
     // Add additional parameters needed to compute flops and bytes
     parameters.nr_timesteps = nr_timesteps;
     parameters.nr_subgrids = nr_subgrids;
+    parameters.nr_correlations = nr_correlations;
 
     // Do not report short measurements, unless reporting total runtime
     bool ignore_short = !total;
@@ -304,14 +314,16 @@ class Report {
     }
   }
 
-  void print_total(int nr_timesteps = 0, int nr_subgrids = 0) {
+  void print_total(int nr_correlations, int nr_timesteps = 0,
+                   int nr_subgrids = 0) {
+    parameters.nr_correlations = nr_correlations;
     if (nr_timesteps == 0) {
       nr_timesteps = counters.total_nr_timesteps;
     }
     if (nr_subgrids == 0) {
       nr_subgrids = counters.total_nr_subgrids;
     }
-    print(nr_timesteps, nr_subgrids, true, prefix);
+    print(nr_correlations, nr_timesteps, nr_subgrids, true, prefix);
   }
 
   void print_visibilities(const std::string name, int nr_visibilities = 0) {

@@ -54,7 +54,7 @@ class GenericOptimized : public cuda::CUDA {
    */
   void do_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -63,7 +63,7 @@ class GenericOptimized : public cuda::CUDA {
 
   void run_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -75,7 +75,7 @@ class GenericOptimized : public cuda::CUDA {
    */
   void do_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -84,7 +84,7 @@ class GenericOptimized : public cuda::CUDA {
 
   void run_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -102,8 +102,8 @@ class GenericOptimized : public cuda::CUDA {
   void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
       const Array1D<float>& frequencies,
-      Array4D<Visibility<std::complex<float>>>&& visibilities,
-      Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
+      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
       const Array2D<float>& spheroidal) override;
 
@@ -123,7 +123,8 @@ class GenericOptimized : public cuda::CUDA {
                           float w_step, const Array1D<float>& shift,
                           WTileUpdateInfo& wtile_flush_info);
 
-  void run_subgrids_to_wtiles(unsigned int subgrid_offset,
+  void run_subgrids_to_wtiles(unsigned int nr_polarizations,
+                              unsigned int subgrid_offset,
                               unsigned int nr_subgrids,
                               unsigned int subgrid_size, float image_size,
                               float w_step, const Array1D<float>& shift,
@@ -135,7 +136,8 @@ class GenericOptimized : public cuda::CUDA {
                             float w_step, const Array1D<float>& shift,
                             WTileUpdateInfo& wtile_initialize_info);
 
-  void run_subgrids_from_wtiles(unsigned int subgrid_offset,
+  void run_subgrids_from_wtiles(unsigned int nr_polarizations,
+                                unsigned int subgrid_offset,
                                 unsigned int nr_subgrids,
                                 unsigned int subgrid_size, float image_size,
                                 float w_step, const Array1D<float>& shift,

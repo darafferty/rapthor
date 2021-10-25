@@ -16,8 +16,7 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   unsigned int grid_size = m_grid->get_x_dim();
   unsigned int nr_w_layers = m_grid->get_w_dim();
   assert(nr_w_layers == 1);
-  unsigned int nr_correlations = m_grid->get_z_dim();
-  assert(nr_correlations == 4);
+  unsigned int nr_polarizations = m_grid->get_z_dim();
 
   // Load device
   InstanceCUDA& device = get_device(0);
@@ -36,17 +35,17 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   powerStates[2] = device.measure();
 
   // Perform fft shift
-  device.launch_fft_shift(d_grid, nr_correlations, grid_size);
+  device.launch_fft_shift(d_grid, nr_polarizations, grid_size);
 
   // Execute fft
-  device.launch_grid_fft(d_grid, grid_size, direction);
+  device.launch_grid_fft(d_grid, nr_polarizations, grid_size, direction);
 
   // Perform fft shift and scaling
   std::complex<float> scale =
       (direction == FourierDomainToImageDomain)
           ? std::complex<float>(2.0 / (grid_size * grid_size), 0)
           : std::complex<float>(1.0, 1.0);
-  device.launch_fft_shift(d_grid, nr_correlations, grid_size, scale);
+  device.launch_fft_shift(d_grid, nr_polarizations, grid_size, scale);
 
   // End measurements
   stream.synchronize();
@@ -56,7 +55,7 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   // Report performance
   m_report->update<Report::host>(powerStates[0], powerStates[1]);
   m_report->update<Report::device>(powerStates[2], powerStates[3]);
-  m_report->print_total();
+  m_report->print_total(nr_polarizations);
 }
 
 }  // end namespace cuda

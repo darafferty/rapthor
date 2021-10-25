@@ -118,14 +118,15 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
     const cu::Context& context = get_device(0).get_context();
 
     // Compute the size of one tile
+    const int nr_polarizations = m_grid->get_z_dim();
     int tile_size = m_tile_size + subgrid_size;
     size_t sizeof_tile =
-        NR_CORRELATIONS * tile_size * tile_size * sizeof(std::complex<float>);
+        nr_polarizations * tile_size * tile_size * sizeof(std::complex<float>);
 
     // Initialize patches
     m_buffers_wtiling.d_patches.resize(m_nr_patches_batch);
     for (unsigned int i = 0; i < m_nr_patches_batch; i++) {
-      size_t sizeof_patch = NR_CORRELATIONS * m_patch_size * m_patch_size *
+      size_t sizeof_patch = nr_polarizations * m_patch_size * m_patch_size *
                             sizeof(std::complex<float>);
       m_buffers_wtiling.d_patches[i].reset(
           new cu::DeviceMemory(context, sizeof_patch));

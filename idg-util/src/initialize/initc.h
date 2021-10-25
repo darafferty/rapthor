@@ -30,20 +30,20 @@ void utils_init_example_frequencies(void *ptr, int nr_channels) {
 
 void utils_init_dummy_visibilities(void *ptr, int nr_baselines,
                                    int nr_timesteps, int nr_channels,
-                                   int nr_polarizations) {
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(nr_baselines, nr_timesteps, nr_channels);
+                                   int nr_correlations) {
+  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
+      nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   memcpy(ptr, visibilities.data(), visibilities.bytes());
 }
 
 void utils_add_pt_src(float x, float y, float amplitude, int nr_baselines,
-                      int nr_timesteps, int nr_channels, int nr_polarizations,
+                      int nr_timesteps, int nr_channels, int nr_correlations,
                       float image_size, int grid_size, void *uvw,
                       void *frequencies, void *visibilities) {
-  typedef idg::Matrix2x2<std::complex<float>> VisibilityType;
   typedef idg::UVW<float> UVWType;
-  idg::Array3D<VisibilityType> visibilities_(
-      (VisibilityType *)visibilities, nr_baselines, nr_timesteps, nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      reinterpret_cast<std::complex<float> *>(visibilities), nr_baselines,
+      nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<UVWType> uvw_((UVWType *)uvw, nr_baselines, nr_timesteps);
   idg::Array1D<float> frequencies_((float *)frequencies, nr_channels);
   idg::add_pt_src(visibilities_, uvw_, frequencies_, image_size, grid_size, x,
@@ -51,7 +51,7 @@ void utils_add_pt_src(float x, float y, float amplitude, int nr_baselines,
 }
 
 void utils_init_identity_aterms(void *ptr, int nr_timeslots, int nr_stations,
-                                int subgrid_size, int nr_polarizations) {
+                                int subgrid_size, int nr_correlations) {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
@@ -59,7 +59,7 @@ void utils_init_identity_aterms(void *ptr, int nr_timeslots, int nr_stations,
 }
 
 void utils_init_example_aterms(void *ptr, int nr_timeslots, int nr_stations,
-                               int subgrid_size, int nr_polarizations) {
+                               int subgrid_size, int nr_correlations) {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size,
                               subgrid_size);

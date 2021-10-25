@@ -64,8 +64,10 @@ std::unique_ptr<Plan> CPU::make_plan(
 void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
                      const Array1D<float> &shift) {
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
+  const int nr_polarizations = m_grid->get_z_dim();
   const size_t grid_size = m_grid->get_x_dim();
-  const int nr_wtiles = m_kernels->init_wtiles(grid_size, subgrid_size);
+  const int nr_wtiles =
+      m_kernels->init_wtiles(nr_polarizations, grid_size, subgrid_size);
   m_wtiles = WTiles(nr_wtiles, kernel::cpu::InstanceCPU::kWTileSize);
 }
 
@@ -73,6 +75,7 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
+    auto nr_polarizations = m_grid->get_z_dim();
     auto grid_size = m_grid->get_x_dim();
     auto image_size = grid_size * m_cache_state.cell_size;
     auto subgrid_size = m_cache_state.subgrid_size;
@@ -82,12 +85,13 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
     m_report->initialize(0, subgrid_size, grid_size);
     states[0] = m_powersensor->read();
     m_kernels->run_adder_tiles_to_grid(
-        grid_size, subgrid_size, image_size, w_step, shift.data(),
-        wtile_flush_info.wtile_ids.size(), wtile_flush_info.wtile_ids.data(),
+        nr_polarizations, grid_size, subgrid_size, image_size, w_step,
+        shift.data(), wtile_flush_info.wtile_ids.size(),
+        wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), m_grid->data());
     states[1] = m_powersensor->read();
     m_report->update(Report::wtiling_forward, states[0], states[1]);
-    m_report->print_total();
+    m_report->print_total(nr_correlations);
   }
   return m_grid;
 }
@@ -95,11 +99,13 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
 unsigned int CPU::compute_jobsize(const Plan &plan,
                                   const unsigned int nr_timesteps,
                                   const unsigned int nr_channels,
+                                  const unsigned int nr_correlations,
+                                  const unsigned int nr_polarizations,
                                   const unsigned int subgrid_size) {
   auto nr_baselines = plan.get_nr_baselines();
   auto jobsize = nr_baselines;
-  auto sizeof_visibilities =
-      auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
+  auto sizeof_visibilities = auxiliary::sizeof_visibilities(
+      nr_baselines, nr_timesteps, nr_channels, nr_correlations);
 
   // Make sure that every job will fit in memory
   do {
@@ -107,8 +113,8 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
     auto max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
 
     // Determine the size of the subgrids for this jobsize
-    auto sizeof_subgrids =
-        auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+    auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+        max_nr_subgrids, subgrid_size, nr_polarizations);
 
 #if defined(DEBUG_COMPUTE_JOBSIZE)
     std::clog << "size of subgrids: " << sizeof_subgrids << std::endl;
@@ -144,7 +150,7 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
 */
 void CPU::do_gridding(
     const Plan &plan, const Array1D<float> &frequencies,
-    const Array3D<Visibility<std::complex<float>>> &visibilities,
+    const Array4D<std::complex<float>> &visibilities,
     const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array4D<Matrix2x2<std::complex<float>>> &aterms,
@@ -159,9 +165,11 @@ void CPU::do_gridding(
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
+  auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto subgrid_size = plan.get_subgrid_size();
   auto &shift = plan.get_shift();
@@ -173,11 +181,12 @@ void CPU::do_gridding(
 
   try {
     auto jobsize =
-        compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
+        compute_jobsize(plan, nr_timesteps, nr_channels, nr_correlations,
+                        nr_polarizations, subgrid_size);
 
     // Allocate memory for subgrids
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_polarizations,
+    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_correlations,
                                           subgrid_size, subgrid_size);
 
     // Performance measurement
@@ -211,36 +220,40 @@ void CPU::do_gridding(
       std::complex<float> *grid_ptr = m_grid->data();
 
       // Gridder kernel
-      m_kernels->run_gridder(
-          current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-          shift_ptr, nr_channels, nr_stations, uvw_ptr, wavenumbers_ptr,
-          visibilities_ptr, spheroidal_ptr, aterm_ptr, aterm_idx_ptr,
-          avg_aterm_ptr, metadata_ptr, subgrids_ptr);
+      m_kernels->run_gridder(current_nr_subgrids, nr_polarizations, grid_size,
+                             subgrid_size, image_size, w_step, shift_ptr,
+                             nr_channels, nr_correlations, nr_stations, uvw_ptr,
+                             wavenumbers_ptr, visibilities_ptr, spheroidal_ptr,
+                             aterm_ptr, aterm_idx_ptr, avg_aterm_ptr,
+                             metadata_ptr, subgrids_ptr);
 
       // FFT kernel
-      m_kernels->run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids,
+      m_kernels->run_subgrid_fft(grid_size, subgrid_size,
+                                 current_nr_subgrids * nr_correlations,
                                  subgrids_ptr, FFTW_BACKWARD);
 
       // Adder kernel
       if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
-        m_kernels->run_adder_wtiles(current_nr_subgrids, grid_size,
-                                    subgrid_size, image_size, w_step, shift_ptr,
-                                    subgrid_offset, wtile_flush_set,
+        m_kernels->run_adder_wtiles(current_nr_subgrids, nr_polarizations,
+                                    grid_size, subgrid_size, image_size, w_step,
+                                    shift_ptr, subgrid_offset, wtile_flush_set,
                                     metadata_ptr, subgrids_ptr, grid_ptr);
       } else if (w_step != 0.0) {
-        m_kernels->run_adder_wstack(current_nr_subgrids, grid_size,
-                                    subgrid_size, metadata_ptr, subgrids_ptr,
-                                    grid_ptr);
+        m_kernels->run_adder_wstack(current_nr_subgrids, nr_polarizations,
+                                    grid_size, subgrid_size, metadata_ptr,
+                                    subgrids_ptr, grid_ptr);
       } else {
-        m_kernels->run_adder(current_nr_subgrids, grid_size, subgrid_size,
-                             metadata_ptr, subgrids_ptr, grid_ptr);
+        m_kernels->run_adder(current_nr_subgrids, nr_polarizations, grid_size,
+                             subgrid_size, metadata_ptr, subgrids_ptr,
+                             grid_ptr);
       }
 
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      m_report->print(current_nr_timesteps, current_nr_subgrids);
+      m_report->print(nr_correlations, current_nr_timesteps,
+                      current_nr_subgrids);
     }  // end for bl
 
     states[1] = m_powersensor->read();
@@ -249,7 +262,8 @@ void CPU::do_gridding(
     // Performance report
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+    m_report->print_total(nr_correlations, total_nr_timesteps,
+                          total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
     m_report->print_visibilities(auxiliary::name_gridding,
                                  total_nr_visibilities);
@@ -268,8 +282,7 @@ void CPU::do_gridding(
 
 void CPU::do_degridding(
     const Plan &plan, const Array1D<float> &frequencies,
-    Array3D<Visibility<std::complex<float>>> &visibilities,
-    const Array2D<UVW<float>> &uvw,
+    Array4D<std::complex<float>> &visibilities, const Array2D<UVW<float>> &uvw,
     const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
     const Array4D<Matrix2x2<std::complex<float>>> &aterms,
     const Array1D<unsigned int> &aterms_offsets,
@@ -283,9 +296,11 @@ void CPU::do_degridding(
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
+  auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto image_size = plan.get_cell_size() * grid_size;
   auto subgrid_size = plan.get_subgrid_size();
@@ -297,11 +312,12 @@ void CPU::do_degridding(
 
   try {
     auto jobsize =
-        compute_jobsize(plan, nr_timesteps, nr_channels, subgrid_size);
+        compute_jobsize(plan, nr_timesteps, nr_channels, nr_correlations,
+                        nr_polarizations, subgrid_size);
 
     // Allocate memory for subgrids
     int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_polarizations,
+    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_correlations,
                                           subgrid_size, subgrid_size);
 
     // Performance measurement
@@ -335,33 +351,36 @@ void CPU::do_degridding(
       if (plan.get_use_wtiles()) {
         auto subgrid_offset = plan.get_subgrid_offset(bl);
         m_kernels->run_splitter_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift_ptr, subgrid_offset, wtile_initialize_set, metadata_ptr,
-            subgrids_ptr, grid_ptr);
+            current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+            image_size, w_step, shift_ptr, subgrid_offset, wtile_initialize_set,
+            metadata_ptr, subgrids_ptr, grid_ptr);
       } else if (w_step != 0.0) {
-        m_kernels->run_splitter_wstack(current_nr_subgrids, grid_size,
-                                       subgrid_size, metadata_ptr, subgrids_ptr,
-                                       grid_ptr);
+        m_kernels->run_splitter_wstack(current_nr_subgrids, nr_polarizations,
+                                       grid_size, subgrid_size, metadata_ptr,
+                                       subgrids_ptr, grid_ptr);
       } else {
-        m_kernels->run_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                                metadata_ptr, subgrids_ptr, grid_ptr);
+        m_kernels->run_splitter(current_nr_subgrids, nr_polarizations,
+                                grid_size, subgrid_size, metadata_ptr,
+                                subgrids_ptr, grid_ptr);
       }
 
       // FFT kernel
-      m_kernels->run_subgrid_fft(grid_size, subgrid_size, current_nr_subgrids,
+      m_kernels->run_subgrid_fft(grid_size, subgrid_size,
+                                 current_nr_subgrids * nr_correlations,
                                  subgrids_ptr, FFTW_FORWARD);
 
       // Degridder kernel
-      m_kernels->run_degridder(current_nr_subgrids, grid_size, subgrid_size,
-                               image_size, w_step, shift_ptr, nr_channels,
-                               nr_stations, uvw_ptr, wavenumbers_ptr,
-                               visibilities_ptr, spheroidal_ptr, aterm_ptr,
-                               aterm_idx_ptr, metadata_ptr, subgrids_ptr);
+      m_kernels->run_degridder(
+          current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+          image_size, w_step, shift_ptr, nr_channels, nr_correlations,
+          nr_stations, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
+          spheroidal_ptr, aterm_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr);
 
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      m_report->print(current_nr_timesteps, current_nr_subgrids);
+      m_report->print(nr_correlations, current_nr_timesteps,
+                      current_nr_subgrids);
     }  // end for bl
 
     states[1] = m_powersensor->read();
@@ -370,7 +389,8 @@ void CPU::do_degridding(
     // Report performance
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+    m_report->print_total(nr_correlations, total_nr_timesteps,
+                          total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
     m_report->print_visibilities(auxiliary::name_degridding,
                                  total_nr_visibilities);
@@ -390,21 +410,24 @@ void CPU::do_degridding(
 void CPU::do_calibrate_init(
     std::vector<std::unique_ptr<Plan>> &&plans,
     const Array1D<float> &frequencies,
-    Array4D<Visibility<std::complex<float>>> &&visibilities,
-    Array4D<Visibility<float>> &&weights, Array3D<UVW<float>> &&uvw,
+    Array5D<std::complex<float>> &&visibilities, Array5D<float> &&weights,
+    Array3D<UVW<float>> &&uvw,
     Array2D<std::pair<unsigned int, unsigned int>> &&baselines,
     const Array2D<float> &spheroidal) {
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
   auto nr_antennas = plans.size();
+  auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto image_size = m_cache_state.cell_size * grid_size;
   auto w_step = m_cache_state.w_step;
   auto subgrid_size = m_cache_state.subgrid_size;
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_d_dim();
+  auto nr_timesteps = visibilities.get_c_dim();
+  auto nr_channels = visibilities.get_b_dim();
+  auto nr_correlations = visibilities.get_a_dim();
+  assert(nr_correlations == 4);
 
   // Allocate subgrids for all antennas
   std::vector<Array4D<std::complex<float>>> subgrids;
@@ -426,7 +449,7 @@ void CPU::do_calibrate_init(
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     // Allocate subgrids for current antenna
     int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
-    Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_polarizations,
+    Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_correlations,
                                            m_cache_state.subgrid_size,
                                            m_cache_state.subgrid_size);
 
@@ -441,25 +464,28 @@ void CPU::do_calibrate_init(
 
     // Splitter kernel
     if (w_step == 0.0) {
-      m_kernels->run_splitter(nr_subgrids, grid_size, subgrid_size,
-                              metadata_ptr, subgrids_ptr, grid_ptr);
+      m_kernels->run_splitter(nr_subgrids, nr_polarizations, grid_size,
+                              subgrid_size, metadata_ptr, subgrids_ptr,
+                              grid_ptr);
     } else if (plans[antenna_nr]->get_use_wtiles()) {
       m_kernels->run_splitter_wtiles(
-          nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift_ptr,
-          0 /* subgrid_offset */, wtile_initialize_set, metadata_ptr,
-          subgrids_ptr, grid_ptr);
+          nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+          w_step, shift_ptr, 0 /* subgrid_offset */, wtile_initialize_set,
+          metadata_ptr, subgrids_ptr, grid_ptr);
     } else {
-      m_kernels->run_splitter_wstack(nr_subgrids, grid_size, subgrid_size,
-                                     metadata_ptr, subgrids_ptr, grid_ptr);
+      m_kernels->run_splitter_wstack(nr_subgrids, nr_polarizations, grid_size,
+                                     subgrid_size, metadata_ptr, subgrids_ptr,
+                                     grid_ptr);
     }
 
     // FFT kernel
-    m_kernels->run_subgrid_fft(grid_size, subgrid_size, nr_subgrids,
-                               subgrids_ptr, FFTW_FORWARD);
+    m_kernels->run_subgrid_fft(grid_size, subgrid_size,
+                               nr_subgrids * nr_correlations, subgrids_ptr,
+                               FFTW_FORWARD);
 
     // Apply spheroidal
     for (int i = 0; i < nr_subgrids; i++) {
-      for (int pol = 0; pol < nr_polarizations; pol++) {
+      for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
         for (int j = 0; j < subgrid_size; j++) {
           for (int k = 0; k < subgrid_size; k++) {
             int y = (j + (subgrid_size / 2)) % subgrid_size;
@@ -495,7 +521,7 @@ void CPU::do_calibrate_init(
   // End performance measurement
   states[1] = m_powersensor->read();
   m_report->update<Report::ID::host>(states[0], states[1]);
-  m_report->print_total(0, 0);
+  m_report->print_total(nr_correlations);
 
   // Set calibration state member variables
   m_calibrate_state = {std::move(plans),           (unsigned int)nr_baselines,
@@ -517,6 +543,7 @@ void CPU::do_calibrate_update(
   auto subgrid_size = aterms.get_y_dim();
   auto nr_stations = aterms.get_z_dim();
   auto nr_timeslots = aterms.get_w_dim();
+  auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_y_dim();
   auto image_size = grid_size * m_cache_state.cell_size;
   auto w_step = m_cache_state.w_step;
@@ -549,11 +576,11 @@ void CPU::do_calibrate_update(
 
   // Run calibration update step
   m_kernels->run_calibrate(
-      nr_subgrids, grid_size, subgrid_size, image_size, w_step, shift_ptr,
-      max_nr_timesteps, nr_channels, nr_terms, nr_stations, nr_timeslots,
-      uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr, aterm_ptr,
-      aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr,
-      phasors_ptr, hessian_ptr, gradient_ptr, residual_ptr);
+      nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+      w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_stations,
+      nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
+      aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
+      subgrids_ptr, phasors_ptr, hessian_ptr, gradient_ptr, residual_ptr);
 
   // Performance reporting
   auto current_nr_subgrids = nr_subgrids;
@@ -574,7 +601,7 @@ void CPU::do_calibrate_finish() {
         m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
     total_nr_subgrids += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   }
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_calibrate);
 }
 
@@ -617,7 +644,8 @@ void CPU::do_transform(DomainAtoDomainB direction) {
       }
 
       // Run FFT
-      m_kernels->run_fft(grid_size, grid_size, 1, grid->data(), sign);
+      m_kernels->run_fft(grid_size, grid_size, nr_correlations, grid->data(),
+                         sign);
 
       // FFT shift
       if (direction == FourierDomainToImageDomain)
@@ -631,7 +659,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
     }
 
     // Report performance
-    m_report->print_total();
+    m_report->print_total(nr_correlations);
     std::clog << std::endl;
 
   } catch (const std::exception &e) {
@@ -656,6 +684,7 @@ void CPU::do_compute_avg_beam(
   const unsigned int nr_baselines = baselines.get_x_dim();
   const unsigned int nr_timesteps = uvw.get_x_dim();
   const unsigned int subgrid_size = average_beam.get_w_dim();
+  const unsigned int nr_polarizations = 4;
 
   m_report->initialize();
   m_kernels->set_report(m_report);
@@ -663,12 +692,12 @@ void CPU::do_compute_avg_beam(
   auto *baselines_ptr = reinterpret_cast<idg::Baseline *>(baselines.data());
   auto *aterms_ptr = reinterpret_cast<std::complex<float> *>(aterms.data());
 
-  m_kernels->run_average_beam(nr_baselines, nr_antennas, nr_timesteps,
-                              nr_channels, nr_aterms, subgrid_size, uvw.data(),
-                              baselines_ptr, aterms_ptr, aterms_offsets.data(),
-                              weights.data(), average_beam.data());
+  m_kernels->run_average_beam(
+      nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
+      subgrid_size, nr_polarizations, uvw.data(), baselines_ptr, aterms_ptr,
+      aterms_offsets.data(), weights.data(), average_beam.data());
 
-  m_report->print_total();
+  m_report->print_total(nr_correlations);
 }  // end compute_avg_beam
 
 }  // namespace cpu

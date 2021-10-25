@@ -66,7 +66,7 @@ class Proxy(object):
                 shape=(nr_baselines,2),
                 dtype=np.intc)
         :param aterms: np.ndarray(
-                shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
+                shape=(nr_timeslots, nr_stations, height, width, 4),
                 dtype = np.float32)
         :param aterms_offsets: np.ndarray(
                 shape=(nr_timeslots+1),
@@ -83,7 +83,7 @@ class Proxy(object):
         nr_channels = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
-        nr_correlations = 4
+        nr_correlations = visibilities.shape[3]
         nr_timeslots       = aterms.shape[0]
         nr_stations        = aterms.shape[1]
         subgrid_size       = aterms.shape[2]
@@ -117,7 +117,7 @@ class Proxy(object):
                 flags='C_CONTIGUOUS'),# baselines
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_correlations),
+                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
                 flags='C_CONTIGUOUS'), # aterms
             np.ctypeslib.ndpointer(
                 dtype=np.intc,
@@ -172,7 +172,7 @@ class Proxy(object):
                 shape=(nr_baselines, 2),
                 dtype=np.intc)
         :param aterms: np.ndarray(
-                shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
+                shape=(nr_timeslots, nr_stations, height, width, 4),
                 dtype = np.complex64)
         :param aterms_offsets: np.ndarray(
                 shape=(nr_timeslots+1),
@@ -188,7 +188,7 @@ class Proxy(object):
         nr_channels = frequencies.shape[0]
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
-        nr_correlations = 4
+        nr_correlations = visibilities.shape[3]
         nr_timeslots       = aterms.shape[0]
         nr_stations        = aterms.shape[1]
         subgrid_size       = aterms.shape[2]
@@ -222,7 +222,7 @@ class Proxy(object):
                 flags='C_CONTIGUOUS'),# baselines
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, nr_correlations),
+                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
                 flags='C_CONTIGUOUS'), # aterms
             np.ctypeslib.ndpointer(
                 dtype=np.intc,

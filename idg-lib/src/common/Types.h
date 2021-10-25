@@ -29,9 +29,6 @@ struct Matrix2x2 {
   T yy;
 };
 
-template <class T>
-using Visibility = Matrix2x2<T>;
-
 /* Debugging */
 template <typename T>
 inline bool isnan(T& value) {

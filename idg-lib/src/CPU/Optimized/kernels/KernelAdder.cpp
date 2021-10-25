@@ -15,8 +15,9 @@ namespace kernel {
 namespace cpu {
 namespace optimized {
 
-void kernel_adder(const long nr_subgrids, const long grid_size,
-                  const int subgrid_size, const idg::Metadata* metadata,
+void kernel_adder(const long nr_subgrids, const int nr_polarizations,
+                  const long grid_size, const int subgrid_size,
+                  const idg::Metadata* metadata,
                   const std::complex<float>* subgrid,
                   std::complex<float>* grid) {
   // Precompute phasor
@@ -57,8 +58,8 @@ void kernel_adder(const long nr_subgrids, const long grid_size,
         continue;
 
       // Determine polarization index
-      const int index_pol_default[NR_POLARIZATIONS] = {0, 1, 2, 3};
-      const int index_pol_transposed[NR_POLARIZATIONS] = {0, 2, 1, 3};
+      const int index_pol_default[4] = {0, 1, 2, 3};
+      const int index_pol_transposed[4] = {0, 2, 1, 3};
       int* index_pol =
           (int*)(negative_w ? index_pol_default : index_pol_transposed);
 
@@ -81,11 +82,12 @@ void kernel_adder(const long nr_subgrids, const long grid_size,
           std::complex<float> phasor = {phasor_real[y][x], phasor_imag[y][x]};
 
           // Add subgrid value to grid
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+          for (int pol = 0; pol < nr_polarizations; pol++) {
             int pol_dst = index_pol[pol];
-            long dst_idx =
-                index_grid(grid_size, subgrid_w, pol_dst, y_dst, x_dst);
-            long src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
+            long dst_idx = index_grid_4d(nr_polarizations, grid_size, subgrid_w,
+                                         pol_dst, y_dst, x_dst);
+            long src_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol,
+                                         y_src, x_src);
             std::complex<float> value = phasor * subgrid[src_idx];
             value = negative_w ? conj(value) : value;
             grid[dst_idx] += value;

@@ -14,19 +14,20 @@ using namespace idg::proxy::cuda;
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
-unsigned int plan_tile_fft(unsigned int nr_tiles_batch,
+unsigned int plan_tile_fft(unsigned int nr_polarizations,
+                           unsigned int nr_tiles_batch,
                            const unsigned int w_padded_tile_size,
                            const cu::Context& context, const size_t free_memory,
                            std::unique_ptr<cufft::C2C_2D>& fft) {
   // Determine the maximum batch size given the amount of
   // free device memory and the memory required for the FFT plan.
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch_fft = (free_memory / sizeof_w_padded_tile) * 0.95;
   nr_tiles_batch = std::min(nr_tiles_batch, nr_tiles_batch_fft);
 
   // Make FFT plan
-  unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+  unsigned batch = nr_tiles_batch * nr_polarizations;
   unsigned stride = 1;
   unsigned dist = w_padded_tile_size * w_padded_tile_size;
   while (!fft) {
@@ -57,7 +58,8 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
                                           WTileUpdateInfo& wtile_flush_info) {
-  // Load grid
+  // Load grid parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
 
   // Load CUDA objects
@@ -96,7 +98,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -123,8 +125,9 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-  nr_tiles_batch = plan_tile_fft(nr_tiles_batch, w_padded_tile_size, context,
-                                 device.get_free_memory(), fft);
+  nr_tiles_batch =
+      plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
+                    context, device.get_free_memory(), fft);
 
   // Create jobs
   struct JobData {
@@ -163,7 +166,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+      unsigned batch = nr_tiles_batch * nr_polarizations;
 
       fft.reset();
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
@@ -186,17 +189,19 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                   sizeof_tile_coordinates);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, padded_tile_size,
-                             current_w_padded_tile_size, d_tile_ids,
-                             d_padded_tile_ids, d_tiles, d_padded_tiles);
+    device.launch_copy_tiles(nr_polarizations, current_nr_tiles,
+                             padded_tile_size, current_w_padded_tile_size,
+                             d_tile_ids, d_padded_tile_ids, d_tiles,
+                             d_padded_tiles);
 
     // Launch inverse FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(
-        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
-        d_padded_tiles, d_shift, d_tile_coordinates, -1);
+        nr_polarizations, current_nr_tiles, image_size, w_step,
+        current_w_padded_tile_size, d_padded_tiles, d_shift, d_tile_coordinates,
+        -1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
@@ -259,9 +264,10 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
         // Combine tiles onto patch
         device.launch_adder_wtiles_to_patch(
-            current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-            current_w_padded_tile_size, m_patch_size, patch_coordinate,
-            d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+            nr_polarizations, current_nr_tiles, grid_size,
+            padded_tile_size - subgrid_size, current_w_padded_tile_size,
+            m_patch_size, patch_coordinate, d_packed_tile_ids,
+            d_tile_coordinates, d_padded_tiles, d_patch);
         executestream.record(*gpuFinished[id]);
 
         // Copy patch to the host
@@ -278,19 +284,20 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       cu::Marker marker("patch_to_grid", cu::Marker::red);
       marker.start();
 
-      run_adder_patch_to_grid(grid_size, m_patch_size, current_nr_patches,
-                              &patch_coordinates[patch_offset], m_grid->data(),
-                              h_padded_tiles);
+      run_adder_patch_to_grid(
+          nr_polarizations, grid_size, m_patch_size, current_nr_patches,
+          &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
       marker.end();
     }  // end for patch_offset
   }    // end for jobs
 }
 
 void GenericOptimized::run_subgrids_to_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const idg::Array1D<float>& shift, WTileUpdateSet& wtile_flush_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const idg::Array1D<float>& shift,
+    WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load GenericOptimized objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -333,8 +340,8 @@ void GenericOptimized::run_subgrids_to_wtiles(
     // Add all subgrids to the wtiles
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_adder_subgrids_to_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles);
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
@@ -349,7 +356,8 @@ void GenericOptimized::run_subgrids_to_wtiles(
 void GenericOptimized::run_wtiles_from_grid(
     unsigned int subgrid_size, float image_size, float w_step,
     const Array1D<float>& shift, WTileUpdateInfo& wtile_initialize_info) {
-  // Load grid
+  // Load grid parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
 
   // Load CUDA objects
@@ -388,7 +396,7 @@ void GenericOptimized::run_wtiles_from_grid(
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -423,8 +431,9 @@ void GenericOptimized::run_wtiles_from_grid(
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-  nr_tiles_batch = plan_tile_fft(nr_tiles_batch, w_padded_tile_size, context,
-                                 device.get_free_memory(), fft);
+  nr_tiles_batch =
+      plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
+                    context, device.get_free_memory(), fft);
 
   // Create jobs
   std::vector<JobData> jobs;
@@ -458,7 +467,7 @@ void GenericOptimized::run_wtiles_from_grid(
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+      unsigned batch = nr_tiles_batch * nr_polarizations;
 
       fft.reset();
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
@@ -515,9 +524,9 @@ void GenericOptimized::run_wtiles_from_grid(
       // Split patch from grid
       cu::Marker marker("patch_from_grid", cu::Marker::red);
       marker.start();
-      run_splitter_patch_from_grid(grid_size, m_patch_size, current_nr_patches,
-                                   &patch_coordinates[patch_offset],
-                                   m_grid->data(), h_padded_tiles);
+      run_splitter_patch_from_grid(
+          nr_polarizations, grid_size, m_patch_size, current_nr_patches,
+          &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
 
       marker.end();
 
@@ -550,9 +559,10 @@ void GenericOptimized::run_wtiles_from_grid(
         // Read tile from patch
         executestream.waitEvent(*inputCopied[id]);
         device.launch_splitter_wtiles_from_patch(
-            current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-            current_w_padded_tile_size, m_patch_size, patch_coordinate,
-            d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+            nr_polarizations, current_nr_tiles, grid_size,
+            padded_tile_size - subgrid_size, current_w_padded_tile_size,
+            m_patch_size, patch_coordinate, d_packed_tile_ids,
+            d_tile_coordinates, d_padded_tiles, d_patch);
         executestream.record(*gpuFinished[id]);
       }
 
@@ -566,16 +576,18 @@ void GenericOptimized::run_wtiles_from_grid(
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(
-        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
-        d_padded_tiles, d_shift, d_tile_coordinates, 1);
+        nr_polarizations, current_nr_tiles, image_size, w_step,
+        current_w_padded_tile_size, d_padded_tiles, d_shift, d_tile_coordinates,
+        1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, current_w_padded_tile_size,
-                             padded_tile_size, d_padded_tile_ids, d_tile_ids,
-                             d_padded_tiles, d_tiles);
+    device.launch_copy_tiles(nr_polarizations, current_nr_tiles,
+                             current_w_padded_tile_size, padded_tile_size,
+                             d_padded_tile_ids, d_tile_ids, d_padded_tiles,
+                             d_tiles);
 
     // Wait for tiles to be copied
     executestream.synchronize();
@@ -583,10 +595,11 @@ void GenericOptimized::run_wtiles_from_grid(
 }
 
 void GenericOptimized::run_subgrids_from_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const Array1D<float>& shift, WTileUpdateSet& wtile_initialize_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const Array1D<float>& shift,
+    WTileUpdateSet& wtile_initialize_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load GenericOptimized objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -632,8 +645,8 @@ void GenericOptimized::run_subgrids_from_wtiles(
     // Process all subgrids that can be processed now
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_splitter_subgrids_from_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles);
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
@@ -647,6 +660,7 @@ void GenericOptimized::run_subgrids_from_wtiles(
 
 void GenericOptimized::flush_wtiles() {
   // Get parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
   float cell_size = m_cache_state.cell_size;
   float image_size = grid_size * cell_size;
@@ -667,7 +681,7 @@ void GenericOptimized::flush_wtiles() {
                        wtile_flush_info);
     endState = device.measure();
     m_report->update(Report::wtiling_forward, startState, endState);
-    m_report->print_total();
+    m_report->print_total(nr_polarizations);
   }
 }
 

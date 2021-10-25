@@ -239,7 +239,7 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
 
 #pragma omp parallel
   {
-    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+    for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
       for (unsigned int i = (world_size + 1) / 2; i > 0; i /= 2) {
         if ((unsigned int)rank < i) {
           if (omp_get_thread_num() == 0) {
@@ -273,7 +273,7 @@ void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
   unsigned int grid_size = grid->get_y_dim();
   unsigned int w = 0;  // W-stacking is handled by the workers
   for (unsigned int y = 0; y < grid_size; y++) {
-    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+    for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
       std::complex<float> *row_ptr = grid->data(w, pol, y, 0);
       size_t sizeof_row = grid_size * sizeof(std::complex<float>);
       MPI_Bcast(row_ptr, sizeof_row, MPI_BYTE, root, MPI_COMM_WORLD);
@@ -410,9 +410,8 @@ void run_master() {
       std::ceil((float)total_nr_timesteps / nr_timesteps);
   idg::Array3D<idg::UVW<float>> uvws = proxy.allocate_array3d<idg::UVW<float>>(
       nr_time_blocks, nr_baselines, nr_timesteps);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
-                                  nr_channels);
+  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
+      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   unsigned int bl_offset = 0;
 
   // Vector of plans
@@ -649,9 +648,8 @@ void run_worker() {
       std::ceil((float)total_nr_timesteps / nr_timesteps);
   idg::Array3D<idg::UVW<float>> uvws = proxy.allocate_array3d<idg::UVW<float>>(
       nr_time_blocks, nr_baselines, nr_timesteps);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities =
-      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
-                                  nr_channels);
+  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
+      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   unsigned int bl_offset = 0;
 
   // Vector of plans

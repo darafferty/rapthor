@@ -13,10 +13,11 @@ namespace cpu {
 namespace optimized {
 
 void kernel_degridder(
-    const int nr_subgrids, const long grid_size, const int subgrid_size,
-    const float image_size, const float w_step_in_lambda,
-    const float* __restrict__ shift, const int nr_channels,
-    const int nr_stations, const idg::UVW<float>* uvw, const float* wavenumbers,
+    const int nr_subgrids, const int nr_polarizations, const long grid_size,
+    const int subgrid_size, const float image_size,
+    const float w_step_in_lambda, const float* __restrict__ shift,
+    const int nr_correlations, const int nr_channels, const int nr_stations,
+    const idg::UVW<float>* uvw, const float* wavenumbers,
     std::complex<float>* visibilities, const float* spheroidal,
     const std::complex<float>* aterms, const int* aterms_indices,
     const idg::Metadata* metadata, const std::complex<float>* subgrid) {
@@ -64,14 +65,24 @@ void kernel_degridder(
     size_t aterm_idx_previous = aterms_indices[time_offset];
 
     // Allocate memory
-    float* pixels_xx_real = allocate_memory<float>(nr_pixels);
-    float* pixels_xy_real = allocate_memory<float>(nr_pixels);
-    float* pixels_yx_real = allocate_memory<float>(nr_pixels);
-    float* pixels_yy_real = allocate_memory<float>(nr_pixels);
-    float* pixels_xx_imag = allocate_memory<float>(nr_pixels);
-    float* pixels_xy_imag = allocate_memory<float>(nr_pixels);
-    float* pixels_yx_imag = allocate_memory<float>(nr_pixels);
-    float* pixels_yy_imag = allocate_memory<float>(nr_pixels);
+    float* pixels_xx_real = nullptr;
+    float* pixels_xx_imag = nullptr;
+    float* pixels_xy_real = nullptr;
+    float* pixels_xy_imag = nullptr;
+    float* pixels_yx_real = nullptr;
+    float* pixels_yx_imag = nullptr;
+    float* pixels_yy_real = nullptr;
+    float* pixels_yy_imag = nullptr;
+    pixels_xx_real = allocate_memory<float>(nr_pixels);
+    pixels_xx_imag = allocate_memory<float>(nr_pixels);
+    if (nr_correlations == 4) {
+      pixels_xy_real = allocate_memory<float>(nr_pixels);
+      pixels_xy_imag = allocate_memory<float>(nr_pixels);
+      pixels_yx_real = allocate_memory<float>(nr_pixels);
+      pixels_yx_imag = allocate_memory<float>(nr_pixels);
+    }
+    pixels_yy_real = allocate_memory<float>(nr_pixels);
+    pixels_yy_imag = allocate_memory<float>(nr_pixels);
     float* phasor_real = allocate_memory<float>(nr_pixels);
     float* phasor_imag = allocate_memory<float>(nr_pixels);
     float* phase = allocate_memory<float>(nr_pixels);
@@ -128,30 +139,42 @@ void kernel_degridder(
           int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
           // Load pixel values and apply spheroidal
-          std::complex<float> pixels[NR_POLARIZATIONS]
-              __attribute__((aligned(ALIGNMENT)));
-          for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-            size_t src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-            pixels[pol] = _spheroidal * subgrid[src_idx];
+          std::complex<float> pixels[4] __attribute__((aligned(ALIGNMENT)));
+          if (nr_correlations == 4) {
+            for (int pol = 0; pol < nr_polarizations; pol++) {
+              size_t src_idx = index_subgrid(nr_polarizations, subgrid_size, s,
+                                             pol, y_src, x_src);
+              pixels[pol] = _spheroidal * subgrid[src_idx];
+            }
+          } else if (nr_correlations == 2) {
+            size_t src_idx = index_subgrid(nr_polarizations, subgrid_size, s, 0,
+                                           y_src, x_src);
+            std::complex<float> value = _spheroidal * subgrid[src_idx];
+            pixels[0] = value;
+            pixels[3] = value;
           }
 
           // Apply aterm
-          size_t station1_idx = index_aterm(
-              subgrid_size, nr_stations, aterm_idx_current, station1, y, x, 0);
-          size_t station2_idx = index_aterm(
-              subgrid_size, nr_stations, aterm_idx_current, station2, y, x, 0);
+          size_t station1_idx =
+              index_aterm(subgrid_size, 4, nr_stations, aterm_idx_current,
+                          station1, y, x, 0);
+          size_t station2_idx =
+              index_aterm(subgrid_size, 4, nr_stations, aterm_idx_current,
+                          station2, y, x, 0);
           const std::complex<float>* aterm1_ptr = &aterms[station1_idx];
           const std::complex<float>* aterm2_ptr = &aterms[station2_idx];
           apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
 
           // Store pixels
           pixels_xx_real[i] = pixels[0].real();
-          pixels_xy_real[i] = pixels[1].real();
-          pixels_yx_real[i] = pixels[2].real();
-          pixels_yy_real[i] = pixels[3].real();
           pixels_xx_imag[i] = pixels[0].imag();
-          pixels_xy_imag[i] = pixels[1].imag();
-          pixels_yx_imag[i] = pixels[2].imag();
+          if (nr_correlations == 4) {
+            pixels_xy_real[i] = pixels[1].real();
+            pixels_xy_imag[i] = pixels[1].imag();
+            pixels_yx_real[i] = pixels[2].real();
+            pixels_yx_imag[i] = pixels[2].imag();
+          }
+          pixels_yy_real[i] = pixels[3].real();
           pixels_yy_imag[i] = pixels[3].imag();
         }
 
@@ -172,20 +195,27 @@ void kernel_degridder(
         compute_sincos(nr_pixels, phase, phasor_imag, phasor_real);
 
         // Compute visibilities
-        std::complex<float> sums[NR_POLARIZATIONS]
+        std::complex<float> sums[nr_correlations]
             __attribute__((aligned(ALIGNMENT)));
 
-        compute_reduction(nr_pixels, pixels_xx_real, pixels_xy_real,
-                          pixels_yx_real, pixels_yy_real, pixels_xx_imag,
-                          pixels_xy_imag, pixels_yx_imag, pixels_yy_imag,
-                          phasor_real, phasor_imag, sums);
+        if (nr_correlations == 4) {
+          compute_reduction(nr_pixels, pixels_xx_real, pixels_xy_real,
+                            pixels_yx_real, pixels_yy_real, pixels_xx_imag,
+                            pixels_xy_imag, pixels_yx_imag, pixels_yy_imag,
+                            phasor_real, phasor_imag, sums);
+        } else {
+          compute_reduction(nr_pixels, pixels_xx_real, pixels_yy_real,
+                            pixels_xx_imag, pixels_yy_imag, phasor_real,
+                            phasor_imag, sums);
+        }
 
         // Store visibilities
         const float scale = 1.0f / nr_pixels;
         int time_idx = time_offset + time;
         int chan_idx = chan;
-        size_t dst_idx = index_visibility(nr_channels, time_idx, chan_idx, 0);
-        for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+        size_t dst_idx = index_visibility(nr_correlations, nr_channels,
+                                          time_idx, chan_idx, 0);
+        for (int pol = 0; pol < nr_correlations; pol++) {
           visibilities[dst_idx + pol] = {scale * sums[pol].real(),
                                          scale * sums[pol].imag()};
         }

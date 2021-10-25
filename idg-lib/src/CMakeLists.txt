@@ -104,8 +104,11 @@ install(
 if(BUILD_LIB_CPU)
   add_library(
     idg-cpu
-    $<TARGET_OBJECTS:cpu-common> $<TARGET_OBJECTS:cpu-reference>
-    $<TARGET_OBJECTS:cpu-optimized> $<TARGET_OBJECTS:cpu-reference-kernels>
+    $<TARGET_OBJECTS:common>
+    $<TARGET_OBJECTS:cpu-common>
+    $<TARGET_OBJECTS:cpu-reference>
+    $<TARGET_OBJECTS:cpu-optimized>
+    $<TARGET_OBJECTS:cpu-reference-kernels>
     $<TARGET_OBJECTS:cpu-optimized-kernels>)
 
   set(LINK_LIBRARIES idg-common ${FFTW3_LIBRARIES})
@@ -133,10 +136,10 @@ endif()
 if(BUILD_LIB_CUDA)
 
   add_library(
-    idg-cuda $<TARGET_OBJECTS:cuda-common> $<TARGET_OBJECTS:cuda-generic>
-             $<TARGET_OBJECTS:cuda-unified>)
+    idg-cuda $<TARGET_OBJECTS:common> $<TARGET_OBJECTS:cuda-common>
+             $<TARGET_OBJECTS:cuda-generic> $<TARGET_OBJECTS:cuda-unified>)
 
-  set(LINK_LIBRARIES idg-common ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY}
+  set(LINK_LIBRARIES ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY}
                      ${CUDA_NVTX_LIBRARY})
 
   target_link_libraries(idg-cuda ${LINK_LIBRARIES})

@@ -15,7 +15,7 @@ namespace hybrid {
 
 void GenericOptimized::run_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -31,10 +31,12 @@ void GenericOptimized::run_gridding(
   auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -53,8 +55,8 @@ void GenericOptimized::run_gridding(
   cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
-  auto sizeof_subgrids =
-      auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+  auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+      max_nr_subgrids, subgrid_size, nr_correlations);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
   if (m_disable_wtiling || m_disable_wtiling_gpu) {
     h_subgrids.resize(sizeof_subgrids);
@@ -115,7 +117,7 @@ void GenericOptimized::run_gridding(
     // Copy input data for first job to device
     if (job_id == 0) {
       auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-          current_nr_baselines, nr_timesteps, nr_channels);
+          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
       auto sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
@@ -143,7 +145,7 @@ void GenericOptimized::run_gridding(
 
       // Copy input data to device
       auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
-          nr_baselines_next, nr_timesteps, nr_channels);
+          nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw_next =
           auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
       auto sizeof_metadata_next = auxiliary::sizeof_metadata(nr_subgrids_next);
@@ -163,24 +165,25 @@ void GenericOptimized::run_gridding(
 
     // Launch gridder kernel
     device.launch_gridder(
-        current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
-        image_size, w_step, nr_channels, nr_stations, shift(0), shift(1), d_uvw,
-        d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_aterms_indices,
-        d_avg_aterm, d_metadata, d_subgrids);
+        current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+        subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+        shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms,
+        d_aterms_indices, d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               FourierDomainToImageDomain);
 
     // Launch scaler
-    device.launch_scaler(current_nr_subgrids, subgrid_size, d_subgrids);
+    device.launch_scaler(current_nr_subgrids, nr_polarizations, subgrid_size,
+                         d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Copy subgrid to host
     if (m_disable_wtiling || m_disable_wtiling_gpu) {
       dtohstream.waitEvent(*gpuFinished[job_id]);
-      auto sizeof_subgrids =
-          auxiliary::sizeof_subgrids(current_nr_subgrids, subgrid_size);
+      auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+          current_nr_subgrids, subgrid_size, nr_polarizations);
       dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
       dtohstream.record(*outputCopied[job_id]);
 
@@ -195,26 +198,29 @@ void GenericOptimized::run_gridding(
       auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
 
       if (!m_disable_wtiling_gpu) {
-        run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids,
-                               subgrid_size, image_size, w_step, shift,
-                               wtile_flush_set, d_subgrids, d_metadata);
+        run_subgrids_to_wtiles(
+            nr_polarizations, subgrid_offset, current_nr_subgrids, subgrid_size,
+            image_size, w_step, shift, wtile_flush_set, d_subgrids, d_metadata);
       } else {
         cpuKernels->run_adder_wtiles(
-            current_nr_subgrids, grid_size, subgrid_size, image_size, w_step,
-            shift.data(), subgrid_offset, wtile_flush_set, metadata_ptr,
-            h_subgrids, m_grid->data());
+            current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+            image_size, w_step, shift.data(), subgrid_offset, wtile_flush_set,
+            metadata_ptr, h_subgrids, m_grid->data());
       }
     } else if (w_step != 0.0) {
-      cpuKernels->run_adder_wstack(current_nr_subgrids, grid_size, subgrid_size,
-                                   metadata_ptr, h_subgrids, m_grid->data());
+      cpuKernels->run_adder_wstack(current_nr_subgrids, nr_polarizations,
+                                   grid_size, subgrid_size, metadata_ptr,
+                                   h_subgrids, m_grid->data());
     } else {
-      cpuKernels->run_adder(current_nr_subgrids, grid_size, subgrid_size,
-                            metadata_ptr, h_subgrids, m_grid->data());
+      cpuKernels->run_adder(current_nr_subgrids, nr_polarizations, grid_size,
+                            subgrid_size, metadata_ptr, h_subgrids,
+                            m_grid->data());
     }
     marker_adder.end();
 
     // Report performance
-    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(dtohstream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
@@ -228,13 +234,13 @@ void GenericOptimized::run_gridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void GenericOptimized::do_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,

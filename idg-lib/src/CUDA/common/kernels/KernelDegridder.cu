@@ -14,6 +14,7 @@ __shared__ float4 shared[3][BATCH_SIZE];
 template<int current_nr_channels, int unroll_channels>
 __device__ void kernel_degridder_(
     const int                         time_offset_job,
+    const int                         nr_polarizations,
     const int                         grid_size,
     const int                         subgrid_size,
     const float                       image_size,
@@ -122,22 +123,30 @@ __device__ void kernel_degridder_(
                     float spheroidal_ = spheroidal[y * subgrid_size + x];
 
                     // Load pixels
-                    float2 pixel[NR_POLARIZATIONS];
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int pixel_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                        pixel[pol] = subgrid[pixel_idx] * spheroidal_;
+                    float2 pixel[4];
+                    if (nr_polarizations == 4) {
+                        for (unsigned pol = 0; pol < nr_polarizations; pol++) {
+                            unsigned int pixel_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_src, x_src);
+                            pixel[pol] = subgrid[pixel_idx] * spheroidal_;
+                        }
+                    } else if (nr_polarizations == 1) {
+                        unsigned int pixel_idx = index_subgrid(nr_polarizations, subgrid_size, s, 0, y_src, x_src);
+                        pixel[0] = subgrid[pixel_idx] * spheroidal_;
+                        pixel[1] = make_float2(0, 0);
+                        pixel[2] = make_float2(0, 0);
+                        pixel[3] = subgrid[pixel_idx] * spheroidal_;
                     }
 
                     // Apply aterm
-                    int station1_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station1, y, x, 0);
-                    int station2_idx = index_aterm(subgrid_size, nr_stations, aterm_idx, station2, y, x, 0);
+                    int station1_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_idx, station1, y, x, 0);
+                    int station2_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_idx, station2, y, x, 0);
                     float2 *aterm1 = (float2 *) &aterms[station1_idx];
                     float2 *aterm2 = (float2 *) &aterms[station2_idx];
                     apply_aterm_degridder(pixel, aterm1, aterm2);
 
                     // Store pixels in shared memory
                     shared[0][j] = *((float4 *) &pixel[0]);
-                    shared[1][j] = *((float4 *) &pixel[2]);;
+                    shared[1][j] = *((float4 *) &pixel[2]);
 
                     // Compute l,m,n for phase offset and phase index
                     const float l_offset = compute_l(x, subgrid_size, image_size);
@@ -175,8 +184,10 @@ __device__ void kernel_degridder_(
 
                         // Multiply pixels by phasor
                         cmac(visXX[chan], phasor, apXX);
-                        cmac(visXY[chan], phasor, apXY);
-                        cmac(visYX[chan], phasor, apYX);
+                        if (nr_polarizations == 4) {
+                            cmac(visXY[chan], phasor, apXY);
+                            cmac(visYX[chan], phasor, apYX);
+                        }
                         cmac(visYY[chan], phasor, apYY);
                     } // end for chan
                 } // end for k (batch)
@@ -188,12 +199,19 @@ __device__ void kernel_degridder_(
                     const float scale = 1.0f / (subgrid_size * subgrid_size);
                     int idx_time = time;
                     int idx_chan = channel_offset + channel_offset_local + chan;
-                    int idx_vis = index_visibility(nr_channels, idx_time, idx_chan, 0);
-                    float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
-                    float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
-                    float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                    vis_ptr[0] = visA * scale;
-                    vis_ptr[1] = visB * scale;
+                    if (nr_polarizations == 4) {
+                        int idx_vis = index_visibility(nr_polarizations, nr_channels, idx_time, idx_chan, 0);
+                        float4 visA = make_float4(visXX[chan].x, visXX[chan].y, visXY[chan].x, visXY[chan].y);
+                        float4 visB = make_float4(visYX[chan].x, visYX[chan].y, visYY[chan].x, visYY[chan].y);
+                        float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                        vis_ptr[0] = visA * scale;
+                        vis_ptr[1] = visB * scale;
+                    } else if (nr_polarizations == 1) {
+                        int idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
+                        float4 vis = make_float4(visXX[chan].x, visXX[chan].y, visYY[chan].x, visYY[chan].y);
+                        float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                        *vis_ptr = vis * scale;
+                    }
                 }
             } // end for chan
         } // end for time
@@ -212,21 +230,22 @@ __device__ void kernel_degridder_(
     if (nr_timesteps / nr_aterms < (2*warpSize)) { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, 1>( \
-                time_offset, grid_size, subgrid_size, image_size, w_step, \
+                time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
                 shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     } else { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_<current_nr_channels, current_nr_channels>( \
-                time_offset, grid_size, subgrid_size, image_size, w_step, \
+                time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
                 shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
                 uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
         } \
     }
 
 #define GLOBAL_ARGUMENTS \
-    const int                         time_offset,  \
+    const int                         time_offset,      \
+    const int                         nr_polarizations, \
     const int                         grid_size,    \
     const int                         subgrid_size, \
     const float                       image_size,   \

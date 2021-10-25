@@ -14,5 +14,7 @@ endif()
 
 # Add subdirectories
 add_subdirectory(CPU)
-add_subdirectory(CUDA)
-add_subdirectory(Hybrid)
+if(BUILD_LIB_CUDA)
+  add_subdirectory(CUDA)
+  add_subdirectory(Hybrid)
+endif()

@@ -36,7 +36,7 @@ Unified::~Unified() {
 
 void Unified::do_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -60,10 +60,11 @@ void Unified::do_gridding(
 #endif
   auto grid_ptr = m_grid.get();
   if (m_enable_tiling) {
+    auto nr_polarizations = m_grid->get_z_dim();
     auto height = m_grid->get_y_dim();
     auto width = m_grid->get_x_dim();
     grid_ptr =
-        new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
+        new idg::Grid(m_grid_tiled->data(), 1, nr_polarizations, height, width);
   }
   Generic::run_gridding(plan, frequencies, visibilities, uvw, baselines,
                         *grid_ptr, aterms, aterms_offsets, spheroidal);
@@ -71,8 +72,7 @@ void Unified::do_gridding(
 
 void Unified::do_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
@@ -95,10 +95,11 @@ void Unified::do_degridding(
 #endif
   auto grid_ptr = m_grid.get();
   if (m_enable_tiling) {
+    auto nr_polarizations = m_grid->get_z_dim();
     auto height = m_grid->get_y_dim();
     auto width = m_grid->get_x_dim();
     grid_ptr =
-        new idg::Grid(m_grid_tiled->data(), 1, NR_CORRELATIONS, height, width);
+        new idg::Grid(m_grid_tiled->data(), 1, nr_polarizations, height, width);
   }
   Generic::run_degridding(plan, frequencies, visibilities, uvw, baselines,
                           *grid_ptr, aterms, aterms_offsets, spheroidal);
@@ -111,10 +112,9 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     InstanceCUDA& device = get_device(0);
 
     auto nr_w_layers = grid->get_w_dim();
-    auto nr_correlations = grid->get_z_dim();
+    auto nr_polarizations = grid->get_z_dim();
     auto grid_height = grid->get_y_dim();
     auto grid_width = grid->get_x_dim();
-    assert(nr_correlations == NR_CORRELATIONS);
     assert(grid_height == grid_width);
     auto grid_size = grid_width;
     auto tile_size = device.get_tile_size_grid();
@@ -124,19 +124,22 @@ void Unified::set_grid(std::shared_ptr<Grid> grid) {
     assert(nr_w_layers == 1);
     auto nr_tiles_1d = grid_size / tile_size;
     auto* grid_tiled = new Array5D<std::complex<float>>(
-        *u_grid_tiled, nr_tiles_1d, nr_tiles_1d, nr_correlations, tile_size,
+        *u_grid_tiled, nr_tiles_1d, nr_tiles_1d, nr_polarizations, tile_size,
         tile_size);
     m_grid_tiled.reset(grid_tiled);
-    device.tile_forward(grid_size, tile_size, *grid, *m_grid_tiled);
+    device.tile_forward(nr_polarizations, grid_size, tile_size, *grid,
+                        *m_grid_tiled);
   }
 }
 
 std::shared_ptr<Grid> Unified::get_final_grid() {
   if (m_enable_tiling) {
     InstanceCUDA& device = get_device(0);
+    auto nr_polarizations = m_grid->get_z_dim();
     auto grid_size = m_grid->get_x_dim();
     auto tile_size = device.get_tile_size_grid();
-    device.tile_backward(grid_size, tile_size, *m_grid_tiled, *m_grid);
+    device.tile_backward(nr_polarizations, grid_size, tile_size, *m_grid_tiled,
+                         *m_grid);
   }
 
   return m_grid;

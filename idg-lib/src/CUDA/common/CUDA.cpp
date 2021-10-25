@@ -176,6 +176,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
                                        const unsigned int nr_timeslots,
                                        const unsigned int nr_timesteps,
                                        const unsigned int nr_channels,
+                                       const unsigned int nr_polarizations,
                                        const unsigned int subgrid_size) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
@@ -196,6 +197,9 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
     reset = true;
   };
   if (nr_channels != m_gridding_state.nr_channels) {
+    reset = true;
+  };
+  if (nr_polarizations != m_gridding_state.nr_polarizations) {
     reset = true;
   };
   if (subgrid_size != m_gridding_state.subgrid_size) {
@@ -229,6 +233,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
   m_gridding_state.nr_timeslots = nr_timeslots;
   m_gridding_state.nr_timesteps = nr_timesteps;
   m_gridding_state.nr_channels = nr_channels;
+  m_gridding_state.nr_polarizations = nr_polarizations;
   m_gridding_state.subgrid_size = subgrid_size;
   m_gridding_state.nr_baselines = nr_baselines;
 
@@ -254,9 +259,16 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
 
   // Compute the amount of bytes needed for that job
   size_t bytes_job = 0;
-  bytes_job += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels);
+  bytes_job += auxiliary::sizeof_visibilities(1, nr_timesteps, nr_channels,
+                                              nr_correlations);
   bytes_job += auxiliary::sizeof_uvw(1, nr_timesteps);
-  bytes_job += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size);
+  // In case of nr_polarizations=1, we still need subgrids for both XX and YY,
+  // since the gridder kernel uses this buffer also as scratch space before
+  // the average beam is applied. We therefore use nr_correlations below,
+  // instead of nr_polarizations.
+  unsigned int nr_correlations = nr_polarizations == 4 ? 4 : 2;
+  bytes_job += auxiliary::sizeof_subgrids(max_nr_subgrids_bl, subgrid_size,
+                                          nr_correlations);
   bytes_job += auxiliary::sizeof_metadata(max_nr_subgrids_bl);
   bytes_job *= m_max_nr_streams;
 
@@ -351,7 +363,7 @@ std::vector<int> CUDA::compute_jobsize(const Plan& plan,
 
 void CUDA::initialize(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -365,19 +377,22 @@ void CUDA::initialize(
   marker.start();
 
   // Arguments
+  auto nr_polarizations = m_grid->get_z_dim();
   auto subgrid_size = plan.get_subgrid_size();
   auto nr_channels = frequencies.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
   auto nr_timeslots = aterms.get_w_dim();
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  assert(nr_channels == visibilities.get_y_dim());
+  auto nr_correlations = visibilities.get_x_dim();
 
   // Convert frequencies to wavenumbers
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Compute jobsize
   compute_jobsize(plan, nr_stations, nr_timeslots, nr_timesteps, nr_channels,
-                  subgrid_size);
+                  nr_polarizations, subgrid_size);
 
   try {
     // Allocate and initialize device memory
@@ -423,8 +438,8 @@ void CUDA::initialize(
       // Dynamic memory (per thread)
       for (unsigned t = 0; t < m_max_nr_streams; t++) {
         // Visibilities
-        size_t sizeof_visibilities =
-            auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels);
+        size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
+            jobsize, nr_timesteps, nr_channels, nr_correlations);
         m_buffers.d_visibilities_[t]->resize(sizeof_visibilities);
 
         // UVW coordinates
@@ -432,8 +447,10 @@ void CUDA::initialize(
         m_buffers.d_uvw_[t]->resize(sizeof_uvw);
 
         // Subgrids
-        size_t sizeof_subgrids =
-            auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+        // We use nr_correlations to compute sizeof_subgids instead of
+        // nr_polarizations, see compute_jobsize for an explanation.
+        size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+            max_nr_subgrids, subgrid_size, nr_correlations);
         m_buffers.d_subgrids_[t]->resize(sizeof_subgrids);
 
         // Metadata
@@ -458,12 +475,12 @@ void CUDA::initialize(
             plan.get_nr_timesteps(first_bl, current_nr_baselines);
         job.metadata_ptr = plan.get_metadata_ptr(first_bl);
         job.uvw_ptr = uvw.data(first_bl, 0);
-        job.visibilities_ptr = visibilities.data(first_bl, 0, 0);
+        job.visibilities_ptr = visibilities.data(first_bl, 0, 0, 0);
         jobs.push_back(job);
       }
 
       // Plan subgrid fft
-      device.plan_subgrid_fft(subgrid_size, max_nr_subgrids);
+      device.plan_subgrid_fft(subgrid_size, max_nr_subgrids, nr_polarizations);
 
       // Wait for memory copies
       htodstream.synchronize();

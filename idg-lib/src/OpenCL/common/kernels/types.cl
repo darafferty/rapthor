@@ -10,7 +10,7 @@ inline int index_grid(
         int y,
         int x)
 {
-    // grid: [NR_POLARIZATIONS][grid_size][grid_size]
+    // grid: [NR_CORRELATIONS][grid_size][grid_size]
     return pol * grid_size * grid_size +
            y * grid_size +
            x;
@@ -23,8 +23,8 @@ inline int index_subgrid(
     int y,
     int x)
 {
-    // subgrid: [nr_subgrids][NR_POLARIZATIONS][subgrid_size][subgrid_size]
-   return s * NR_POLARIZATIONS * subgrid_size * subgrid_size +
+    // subgrid: [nr_subgrids][NR_CORRELATIONS][subgrid_size][subgrid_size]
+   return s * NR_CORRELATIONS * subgrid_size * subgrid_size +
           pol * subgrid_size * subgrid_size +
           y * subgrid_size +
           x;
@@ -38,11 +38,11 @@ inline int index_aterm(
     int y,
     int x)
 {
-    // aterm: [nr_aterms][subgrid_size][subgrid_size][NR_POLARIZATIONS]
+    // aterm: [nr_aterms][subgrid_size][subgrid_size][NR_CORRELATIONS]
     int aterm_nr = (aterm_index * nr_stations + station);
-    return aterm_nr * subgrid_size * subgrid_size * NR_POLARIZATIONS +
-           y * subgrid_size * NR_POLARIZATIONS +
-           x * NR_POLARIZATIONS;
+    return aterm_nr * subgrid_size * subgrid_size * NR_CORRELATIONS +
+           y * subgrid_size * NR_CORRELATIONS +
+           x * NR_CORRELATIONS;
 }
 
 inline int index_visibility(
@@ -50,7 +50,7 @@ inline int index_visibility(
     int time,
     int chan)
 {
-    // visibilities: [nr_time][nr_channels][nr_polarizations]
-    return time * nr_channels * NR_POLARIZATIONS +
-           chan * NR_POLARIZATIONS;
+    // visibilities: [nr_time][nr_channels][nr_correlations]
+    return time * nr_channels * NR_CORRELATIONS +
+           chan * NR_CORRELATIONS;
 }

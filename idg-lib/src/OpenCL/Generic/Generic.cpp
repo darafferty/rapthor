@@ -338,7 +338,7 @@ void Generic::do_gridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
+  report.print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   startStates.pop_back();
   endStates.pop_back();
   report.print_devices(startStates, endStates);
@@ -560,7 +560,7 @@ void Generic::do_degridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  report.print_total(total_nr_timesteps, total_nr_subgrids);
+  report.print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   startStates.pop_back();
   endStates.pop_back();
   report.print_devices(startStates, endStates);

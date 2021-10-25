@@ -8,15 +8,14 @@ extern "C" {
 void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
                     int nr_channels, int nr_baselines, int nr_timesteps,
                     int nr_correlations, int nr_timeslots, int nr_stations,
-                    float* frequencies,
-                    idg::Visibility<std::complex<float>>* visibilities,
+                    float* frequencies, std::complex<float>* visibilities,
                     idg::UVW<float>* uvw,
                     std::pair<unsigned int, unsigned int>* baselines,
                     std::complex<float>* aterms, unsigned int* aterms_offsets,
                     float* taper) {
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      visibilities, nr_baselines, nr_timesteps, nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<idg::UVW<float>> uvw_(uvw, nr_baselines, nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(baselines,
                                                                  nr_baselines);
@@ -26,9 +25,14 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
   idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
   idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
 
+  idg::Plan::Options options;
+  options.mode = nr_correlations == 4 ? idg::Plan::Mode::FULL_POLARIZATION
+                                      : idg::Plan::Mode::STOKES_I_ONLY;
+
   std::unique_ptr<idg::Plan> plan =
       reinterpret_cast<idg::proxy::Proxy*>(p)->make_plan(
-          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_);
+          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_,
+          options);
 
   reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
       *plan, frequencies_, visibilities_, uvw_, baselines_, aterms_,
@@ -38,15 +42,14 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
 void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
                       int nr_channels, int nr_baselines, int nr_timesteps,
                       int nr_correlations, int nr_timeslots, int nr_stations,
-                      float* frequencies,
-                      idg::Visibility<std::complex<float>>* visibilities,
+                      float* frequencies, std::complex<float>* visibilities,
                       idg::UVW<float>* uvw,
                       std::pair<unsigned int, unsigned int>* baselines,
                       std::complex<float>* aterms, unsigned int* aterms_offsets,
                       float* taper) {
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      visibilities, nr_baselines, nr_timesteps, nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<idg::UVW<float>> uvw_(uvw, nr_baselines, nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(baselines,
                                                                  nr_baselines);
@@ -56,9 +59,14 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
   idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
   idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
 
+  idg::Plan::Options options;
+  options.mode = nr_correlations == 4 ? idg::Plan::Mode::FULL_POLARIZATION
+                                      : idg::Plan::Mode::STOKES_I_ONLY;
+
   std::unique_ptr<idg::Plan> plan =
       reinterpret_cast<idg::proxy::Proxy*>(p)->make_plan(
-          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_);
+          kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_,
+          options);
 
   reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(
       *plan, frequencies_, visibilities_, uvw_, baselines_, aterms_,
@@ -79,13 +87,12 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
                           std::complex<float>* visibilities, float* weights,
                           float* uvw, unsigned int* baselines,
                           unsigned int* aterms_offsets, float* spheroidal) {
+  const unsigned int nr_correlations = 4;
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array3D<idg::Visibility<std::complex<float>>> visibilities_(
-      (idg::Visibility<std::complex<float>>*)visibilities, nr_baselines,
-      nr_timesteps, nr_channels);
-  idg::Array3D<idg::Visibility<float>> weights_(
-      (idg::Visibility<float>*)weights, nr_baselines, nr_timesteps,
-      nr_channels);
+  idg::Array4D<std::complex<float>> visibilities_(
+      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+  idg::Array4D<float> weights_(reinterpret_cast<float*>(weights), nr_baselines,
+                               nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<idg::UVW<float>> uvw_((idg::UVW<float>*)uvw, nr_baselines,
                                      nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(

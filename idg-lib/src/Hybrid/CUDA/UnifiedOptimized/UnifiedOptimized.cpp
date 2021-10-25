@@ -66,8 +66,9 @@ void UnifiedOptimized::initialize_buffers() {
   m_buffers_wtiling.d_padded_tiles.reset(new cu::DeviceMemory(context, 0));
   m_buffers_wtiling.h_tiles.reset(new cu::HostMemory(context, 0));
   m_buffers_wtiling.d_patches.resize(m_nr_patches_batch);
+  const unsigned int nr_polarizations = 4;
   for (unsigned int i = 0; i < m_nr_patches_batch; i++) {
-    size_t sizeof_patch = NR_CORRELATIONS * m_patch_size * m_patch_size *
+    size_t sizeof_patch = nr_polarizations * m_patch_size * m_patch_size *
                           sizeof(std::complex<float>);
     m_buffers_wtiling.d_patches[i].reset(
         new cu::DeviceMemory(context, sizeof_patch));
@@ -98,7 +99,7 @@ void UnifiedOptimized::do_transform(DomainAtoDomainB direction) {
  */
 void UnifiedOptimized::run_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -114,10 +115,12 @@ void UnifiedOptimized::run_gridding(
   auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -193,7 +196,7 @@ void UnifiedOptimized::run_gridding(
     // Copy input data for first job to device
     if (job_id == 0) {
       auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-          current_nr_baselines, nr_timesteps, nr_channels);
+          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
       auto sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
@@ -221,7 +224,7 @@ void UnifiedOptimized::run_gridding(
 
       // Copy input data to device
       auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
-          nr_baselines_next, nr_timesteps, nr_channels);
+          nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw_next =
           auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
       auto sizeof_metadata_next = auxiliary::sizeof_metadata(nr_subgrids_next);
@@ -241,23 +244,24 @@ void UnifiedOptimized::run_gridding(
 
     // Launch gridder kernel
     device.launch_gridder(
-        current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
-        image_size, w_step, nr_channels, nr_stations, shift(0), shift(1), d_uvw,
-        d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_aterms_indices,
-        d_avg_aterm, d_metadata, d_subgrids);
+        current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+        subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+        shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms,
+        d_aterms_indices, d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               FourierDomainToImageDomain);
 
     // Run W-tiling
     auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
-    run_subgrids_to_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
-                           image_size, w_step, shift, wtile_flush_set,
-                           d_subgrids, d_metadata);
+    run_subgrids_to_wtiles(
+        nr_polarizations, subgrid_offset, current_nr_subgrids, subgrid_size,
+        image_size, w_step, shift, wtile_flush_set, d_subgrids, d_metadata);
 
     // Report performance
-    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(dtohstream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
 
     // Wait for GPU to finish
@@ -275,13 +279,13 @@ void UnifiedOptimized::run_gridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void UnifiedOptimized::do_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -313,8 +317,7 @@ void UnifiedOptimized::do_gridding(
  */
 void UnifiedOptimized::run_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
@@ -329,10 +332,12 @@ void UnifiedOptimized::run_degridding(
   auto cpuKernels = cpuProxy->get_kernels();
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -351,8 +356,8 @@ void UnifiedOptimized::run_degridding(
   cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
   auto max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
-  auto sizeof_subgrids =
-      auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size);
+  auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+      max_nr_subgrids, subgrid_size, nr_polarizations);
   cu::HostMemory& h_subgrids = *m_buffers.h_subgrids;
   h_subgrids.resize(sizeof_subgrids);
 
@@ -457,20 +462,21 @@ void UnifiedOptimized::run_degridding(
 
     // Run W-tiling
     auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
-    run_subgrids_from_wtiles(subgrid_offset, current_nr_subgrids, subgrid_size,
-                             image_size, w_step, shift, wtile_initialize_set,
-                             d_subgrids, d_metadata);
+    run_subgrids_from_wtiles(nr_polarizations, subgrid_offset,
+                             current_nr_subgrids, subgrid_size, image_size,
+                             w_step, shift, wtile_initialize_set, d_subgrids,
+                             d_metadata);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               ImageDomainToFourierDomain);
 
     // Launch degridder kernel
-    device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
-                            subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, shift(0), shift(1), d_uvw,
-                            d_wavenumbers, d_visibilities, d_spheroidal,
-                            d_aterms, d_aterms_indices, d_metadata, d_subgrids);
+    device.launch_degridder(
+        current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+        subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+        shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms,
+        d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Wait for degridder to finish
@@ -479,13 +485,14 @@ void UnifiedOptimized::run_degridding(
     // Copy visibilities to host
     dtohstream.waitEvent(*gpuFinished[job_id]);
     auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-        current_nr_baselines, nr_timesteps, nr_channels);
+        current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
                                sizeof_visibilities);
     dtohstream.record(*outputCopied[job_id]);
 
     // Report performance
-    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(executestream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
@@ -502,15 +509,14 @@ void UnifiedOptimized::run_degridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_degridding,
                                total_nr_visibilities);
 }  // end run_degridding
 
 void UnifiedOptimized::do_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
@@ -596,8 +602,9 @@ void UnifiedOptimized::init_cache(int subgrid_size, float cell_size,
   size_t free_memory = device.get_free_memory();
 
   // Compute the size of one tile
+  const int nr_polarizations = m_grid->get_z_dim();
   size_t sizeof_tile =
-      NR_CORRELATIONS * tile_size * tile_size * sizeof(std::complex<float>);
+      nr_polarizations * tile_size * tile_size * sizeof(std::complex<float>);
 
   // We need GPU memory for:
   // - The tiles: d_tiles (tile_size + subgrid_size)
@@ -626,7 +633,8 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                           float image_size, float w_step,
                                           const Array1D<float>& shift,
                                           WTileUpdateInfo& wtile_flush_info) {
-  // Load grid
+  // Load grid parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
 
   // Load CUDA objects
@@ -667,7 +675,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -732,7 +740,7 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+      unsigned batch = nr_tiles_batch * nr_polarizations;
 
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
                                   current_w_padded_tile_size, stride, dist,
@@ -754,17 +762,19 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                   sizeof_tile_coordinates);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, padded_tile_size,
-                             current_w_padded_tile_size, d_tile_ids,
-                             d_padded_tile_ids, d_tiles, d_padded_tiles);
+    device.launch_copy_tiles(nr_polarizations, current_nr_tiles,
+                             padded_tile_size, current_w_padded_tile_size,
+                             d_tile_ids, d_padded_tile_ids, d_tiles,
+                             d_padded_tiles);
 
     // Launch inverse FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
     device.launch_apply_phasor_to_wtiles(
-        current_nr_tiles, image_size, w_step, current_w_padded_tile_size,
-        d_padded_tiles, d_shift, d_tile_coordinates, -1);
+        nr_polarizations, current_nr_tiles, image_size, w_step,
+        current_w_padded_tile_size, d_padded_tiles, d_shift, d_tile_coordinates,
+        -1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
@@ -773,8 +783,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       // Call kernel_wtiles_to_grid
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_adder_wtiles_to_grid(
-          current_nr_tiles, grid_size, tile_size, current_w_padded_tile_size,
-          d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
+          nr_polarizations, current_nr_tiles, grid_size, tile_size,
+          current_w_padded_tile_size, d_padded_tile_ids, d_tile_coordinates,
+          d_padded_tiles, u_grid);
 
       // Wait for GPU to finish
       executestream.synchronize();
@@ -838,9 +849,10 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
           // Combine tiles onto patch
           device.launch_adder_wtiles_to_patch(
-              current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-              current_w_padded_tile_size, m_patch_size, patch_coordinate,
-              d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+              nr_polarizations, current_nr_tiles, grid_size,
+              padded_tile_size - subgrid_size, current_w_padded_tile_size,
+              m_patch_size, patch_coordinate, d_packed_tile_ids,
+              d_tile_coordinates, d_padded_tiles, d_patch);
           executestream.record(*gpuFinished[id]);
 
           // Copy patch to the host
@@ -858,9 +870,9 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
         cu::Marker marker("patch_to_grid", cu::Marker::red);
         marker.start();
 
-        run_adder_patch_to_grid(grid_size, m_patch_size, current_nr_patches,
-                                &patch_coordinates[patch_offset],
-                                m_grid->data(), h_padded_tiles);
+        run_adder_patch_to_grid(
+            nr_polarizations, grid_size, m_patch_size, current_nr_patches,
+            &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
         marker.end();
       }  // end for patch_offset
     }    // end if m_use_unified_memory
@@ -868,10 +880,11 @@ void UnifiedOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 }
 
 void UnifiedOptimized::run_subgrids_to_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const idg::Array1D<float>& shift, WTileUpdateSet& wtile_flush_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const idg::Array1D<float>& shift,
+    WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -916,8 +929,8 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
     int N = subgrid_size * subgrid_size;
     std::complex<float> scale(1.0f / N, 1.0f / N);
     device.launch_adder_subgrids_to_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
@@ -932,7 +945,8 @@ void UnifiedOptimized::run_subgrids_to_wtiles(
 void UnifiedOptimized::run_wtiles_from_grid(
     unsigned int subgrid_size, float image_size, float w_step,
     const Array1D<float>& shift, WTileUpdateInfo& wtile_initialize_info) {
-  // Load grid
+  // Load grid parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
 
   // Load CUDA objects
@@ -973,7 +987,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
-                                NR_CORRELATIONS * sizeof(std::complex<float>);
+                                nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
   nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
@@ -1040,7 +1054,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
       // Initialize FFT for w_padded_tiles
       unsigned stride = 1;
       unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * NR_CORRELATIONS;
+      unsigned batch = nr_tiles_batch * nr_polarizations;
 
       fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
                                   current_w_padded_tile_size, stride, dist,
@@ -1063,8 +1077,9 @@ void UnifiedOptimized::run_wtiles_from_grid(
     if (m_use_unified_memory) {
       cu::UnifiedMemory u_grid(context, m_grid->data(), m_grid->bytes());
       device.launch_splitter_wtiles_from_grid(
-          current_nr_tiles, grid_size, tile_size, w_padded_tile_size,
-          d_padded_tile_ids, d_tile_coordinates, d_padded_tiles, u_grid);
+          nr_polarizations, current_nr_tiles, grid_size, tile_size,
+          w_padded_tile_size, d_padded_tile_ids, d_tile_coordinates,
+          d_padded_tiles, u_grid);
     } else {
       // Find all tiles that (partially) fit in the current patch
       std::vector<idg::Coordinate> patch_coordinates;
@@ -1103,7 +1118,7 @@ void UnifiedOptimized::run_wtiles_from_grid(
         marker.start();
 
         run_splitter_patch_from_grid(
-            grid_size, m_patch_size, current_nr_patches,
+            nr_polarizations, grid_size, m_patch_size, current_nr_patches,
             &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
 
         marker.end();
@@ -1139,9 +1154,10 @@ void UnifiedOptimized::run_wtiles_from_grid(
           // Read tile from patch
           executestream.waitEvent(*inputCopied[id]);
           device.launch_splitter_wtiles_from_patch(
-              current_nr_tiles, grid_size, padded_tile_size - subgrid_size,
-              w_padded_tile_size, m_patch_size, patch_coordinate,
-              d_packed_tile_ids, d_tile_coordinates, d_padded_tiles, d_patch);
+              nr_polarizations, current_nr_tiles, grid_size,
+              padded_tile_size - subgrid_size, w_padded_tile_size, m_patch_size,
+              patch_coordinate, d_packed_tile_ids, d_tile_coordinates,
+              d_padded_tiles, d_patch);
           executestream.record(*gpuFinished[id]);
         }
 
@@ -1155,25 +1171,27 @@ void UnifiedOptimized::run_wtiles_from_grid(
     fft->execute(tile_ptr, tile_ptr, CUFFT_INVERSE);
 
     // Call kernel_apply_phasor
-    device.launch_apply_phasor_to_wtiles(current_nr_tiles, image_size, w_step,
-                                         w_padded_tile_size, d_padded_tiles,
-                                         d_shift, d_tile_coordinates, 1);
+    device.launch_apply_phasor_to_wtiles(
+        nr_polarizations, current_nr_tiles, image_size, w_step,
+        w_padded_tile_size, d_padded_tiles, d_shift, d_tile_coordinates, 1);
 
     // Launch forward FFT
     fft->execute(tile_ptr, tile_ptr, CUFFT_FORWARD);
 
     // Call kernel_copy_tiles
-    device.launch_copy_tiles(current_nr_tiles, w_padded_tile_size,
-                             padded_tile_size, d_padded_tile_ids, d_tile_ids,
-                             d_padded_tiles, d_tiles);
+    device.launch_copy_tiles(nr_polarizations, current_nr_tiles,
+                             w_padded_tile_size, padded_tile_size,
+                             d_padded_tile_ids, d_tile_ids, d_padded_tiles,
+                             d_tiles);
   }  // end for tile_offset
 }
 
 void UnifiedOptimized::run_subgrids_from_wtiles(
-    unsigned int subgrid_offset, unsigned int nr_subgrids,
-    unsigned int subgrid_size, float image_size, float w_step,
-    const Array1D<float>& shift, WTileUpdateSet& wtile_initialize_set,
-    cu::DeviceMemory& d_subgrids, cu::DeviceMemory& d_metadata) {
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const Array1D<float>& shift,
+    WTileUpdateSet& wtile_initialize_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -1220,8 +1238,9 @@ void UnifiedOptimized::run_subgrids_from_wtiles(
     std::complex<float> scale(1.0f, 1.0f);
     unsigned int grid_size = m_grid->get_x_dim();
     device.launch_splitter_subgrids_from_wtiles(
-        nr_subgrids_to_process, grid_size, subgrid_size, m_tile_size,
-        subgrid_index, d_metadata, d_subgrids, d_tiles, scale);  // scale?
+        nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
+        m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles,
+        scale);  // scale?
     stream.synchronize();
 
     // Increment the subgrid index by the actual number of processed subgrids
@@ -1235,6 +1254,7 @@ void UnifiedOptimized::run_subgrids_from_wtiles(
 
 void UnifiedOptimized::flush_wtiles() {
   // Get parameters
+  unsigned int nr_polarizations = m_grid->get_z_dim();
   unsigned int grid_size = m_grid->get_x_dim();
   float cell_size = m_cache_state.cell_size;
   float image_size = grid_size * cell_size;
@@ -1255,7 +1275,7 @@ void UnifiedOptimized::flush_wtiles() {
                        wtile_flush_info);
     endState = device.measure();
     m_report->update(Report::wtiling_forward, startState, endState);
-    m_report->print_total();
+    m_report->print_total(nr_polarizations);
   }
 }
 

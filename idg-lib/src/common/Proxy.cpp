@@ -15,7 +15,7 @@ Proxy::~Proxy() {}
 
 void Proxy::gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -23,8 +23,9 @@ void Proxy::gridding(
     const Array2D<float>& spheroidal) {
   assert(m_grid != nullptr);
 
-  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
-                   baselines, *m_grid, aterms, aterms_offsets, spheroidal);
+  check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
+                   visibilities, uvw, baselines, *m_grid, aterms,
+                   aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) && !do_supports_wstacking()) {
     throw std::invalid_argument(
@@ -38,14 +39,14 @@ void Proxy::gridding(
 
 void Proxy::degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
-  check_dimensions(plan.get_subgrid_size(), frequencies, visibilities, uvw,
-                   baselines, *m_grid, aterms, aterms_offsets, spheroidal);
+  check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
+                   visibilities, uvw, baselines, *m_grid, aterms,
+                   aterms_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) &&
       (!do_supports_wstacking() && !do_supports_wtiling())) {
@@ -60,8 +61,8 @@ void Proxy::degridding(
 
 void Proxy::calibrate_init(
     const unsigned int kernel_size, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    Array3D<Visibility<float>>& weights, const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
+    const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) {
@@ -91,7 +92,9 @@ void Proxy::calibrate_init(
   }
 
   // Arguments
-  auto nr_timesteps = visibilities.get_y_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_correlations = visibilities.get_x_dim();
+  assert(nr_correlations == 4);
   auto nr_baselines = baselines.get_x_dim();
   auto nr_channels = frequencies.get_x_dim();
 
@@ -104,10 +107,10 @@ void Proxy::calibrate_init(
 
   // New buffers for data grouped by station
   Array3D<UVW<float>> uvw1(nr_antennas, nr_antennas - 1, nr_timesteps);
-  Array4D<Visibility<std::complex<float>>> visibilities1(
-      nr_antennas, nr_antennas - 1, nr_timesteps, nr_channels);
-  Array4D<Visibility<float>> weights1(nr_antennas, nr_antennas - 1,
-                                      nr_timesteps, nr_channels);
+  Array5D<std::complex<float>> visibilities1(
+      nr_antennas, nr_antennas - 1, nr_timesteps, nr_channels, nr_correlations);
+  Array5D<float> weights1(nr_antennas, nr_antennas - 1, nr_timesteps,
+                          nr_channels, nr_correlations);
   Array2D<std::pair<unsigned int, unsigned int>> baselines1(nr_antennas,
                                                             nr_antennas - 1);
 
@@ -123,9 +126,12 @@ void Proxy::calibrate_init(
     for (unsigned int time = 0; time < nr_timesteps; time++) {
       uvw1(antenna1, bl1, time) = uvw(bl, time);
       for (unsigned int channel = 0; channel < nr_channels; channel++) {
-        visibilities1(antenna1, bl1, time, channel) =
-            visibilities(bl, time, channel);
-        weights1(antenna1, bl1, time, channel) = weights(bl, time, channel);
+        for (unsigned int cor = 0; cor < nr_correlations; cor++) {
+          visibilities1(antenna1, bl1, time, channel, cor) =
+              visibilities(bl, time, channel, cor);
+          weights1(antenna1, bl1, time, channel, cor) =
+              weights(bl, time, channel, cor);
+        }
       }
     }
 
@@ -143,14 +149,13 @@ void Proxy::calibrate_init(
       uvw1(antenna1, bl1, time).w = -uvw(bl, time).w;
 
       for (unsigned int channel = 0; channel < nr_channels; channel++) {
-        visibilities1(antenna1, bl1, time, channel) = {
-            conj(visibilities(bl, time, channel).xx),
-            conj(visibilities(bl, time, channel).yx),
-            conj(visibilities(bl, time, channel).xy),
-            conj(visibilities(bl, time, channel).yy)};
-        weights1(antenna1, bl1, time, channel) = {
-            weights(bl, time, channel).xx, weights(bl, time, channel).yx,
-            weights(bl, time, channel).xy, weights(bl, time, channel).yy};
+        unsigned int index_cor_transposed[4] = {0, 2, 1, 3};
+        for (unsigned int cor = 0; cor < nr_correlations; cor++) {
+          visibilities1(antenna1, bl1, time, channel, cor) =
+              conj(visibilities(bl, time, channel, cor));
+          weights1(antenna1, bl1, time, channel, cor) =
+              weights(bl, time, channel, index_cor_transposed[cor]);
+        }
       }  // end for channel
     }    // end for time
   }      // end for baseline
@@ -248,17 +253,18 @@ void Proxy::do_compute_avg_beam(
 }
 
 void Proxy::check_dimensions(
-    unsigned int subgrid_size, unsigned int frequencies_nr_channels,
+    const Plan::Options& options, unsigned int subgrid_size,
+    unsigned int frequencies_nr_channels,
     unsigned int visibilities_nr_baselines,
     unsigned int visibilities_nr_timesteps,
     unsigned int visibilities_nr_channels,
     unsigned int visibilities_nr_correlations, unsigned int uvw_nr_baselines,
     unsigned int uvw_nr_timesteps, unsigned int uvw_nr_coordinates,
     unsigned int baselines_nr_baselines, unsigned int baselines_two,
-    unsigned int grid_nr_correlations, unsigned int grid_height,
+    unsigned int grid_nr_polarizations, unsigned int grid_height,
     unsigned int grid_width, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
-    unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
+    unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
     unsigned int aterms_offsets_nr_timeslots_plus_one,
     unsigned int spheroidal_height, unsigned int spheroidal_width) const {
   throw_assert(frequencies_nr_channels > 0, "");
@@ -267,10 +273,8 @@ void Proxy::check_dimensions(
   throw_assert(visibilities_nr_baselines == baselines_nr_baselines, "");
   throw_assert(visibilities_nr_timesteps == uvw_nr_timesteps, "");
   throw_assert(
-      visibilities_nr_correlations == 1 || visibilities_nr_correlations == 4,
+      visibilities_nr_correlations == 2 || visibilities_nr_correlations == 4,
       "");
-  throw_assert(visibilities_nr_correlations == grid_nr_correlations, "");
-  throw_assert(visibilities_nr_correlations == aterms_nr_correlations, "");
   throw_assert(uvw_nr_coordinates == 3, "");
   throw_assert(baselines_two == 2, "");
   throw_assert(grid_height == grid_width, "");  // TODO: remove restriction
@@ -280,21 +284,32 @@ void Proxy::check_dimensions(
                "");  // TODO: remove restriction
   throw_assert(spheroidal_height == subgrid_size, "");
   throw_assert(spheroidal_height == subgrid_size, "");
+  if (options.mode == Plan::Mode::FULL_POLARIZATION) {
+    throw_assert(visibilities_nr_correlations == 4, "");
+    throw_assert(grid_nr_polarizations == 4, "");
+    throw_assert(aterms_nr_polarizations == 4, "");
+  } else if (options.mode == Plan::Mode::STOKES_I_ONLY) {
+    throw_assert(visibilities_nr_correlations == 2, "");
+    throw_assert(grid_nr_polarizations == 1, "");
+    throw_assert(aterms_nr_polarizations == 4,
+                 "");  // TODO: pass only XX and YY
+  }
 }
 
 void Proxy::check_dimensions(
-    unsigned int subgrid_size, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Plan::Options& options, unsigned int subgrid_size,
+    const Array1D<float>& frequencies,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal) const {
-  check_dimensions(subgrid_size, frequencies.get_x_dim(),
-                   visibilities.get_z_dim(), visibilities.get_y_dim(),
-                   visibilities.get_x_dim(), 4, uvw.get_y_dim(),
-                   uvw.get_x_dim(), 3, baselines.get_x_dim(), 2,
-                   grid.get_z_dim(), grid.get_y_dim(), grid.get_x_dim(),
+  check_dimensions(options, subgrid_size, frequencies.get_x_dim(),
+                   visibilities.get_w_dim(), visibilities.get_z_dim(),
+                   visibilities.get_y_dim(), visibilities.get_x_dim(),
+                   uvw.get_y_dim(), uvw.get_x_dim(), 3, baselines.get_x_dim(),
+                   2, grid.get_z_dim(), grid.get_y_dim(), grid.get_x_dim(),
                    aterms.get_w_dim(), aterms.get_z_dim(), aterms.get_y_dim(),
                    aterms.get_x_dim(), 4, aterms_offsets.get_x_dim(),
                    spheroidal.get_y_dim(), spheroidal.get_x_dim());
@@ -314,9 +329,9 @@ Array1D<float> Proxy::compute_wavenumbers(
 }
 
 std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
-                                           size_t nr_correlations,
+                                           size_t nr_polarizations,
                                            size_t height, size_t width) {
-  return std::make_shared<Grid>(nr_w_layers, nr_correlations, height, width);
+  return std::make_shared<Grid>(nr_w_layers, nr_polarizations, height, width);
 }
 
 void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {

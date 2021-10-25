@@ -162,7 +162,7 @@ void InstanceOpenCL::set_parameters() {
 std::string InstanceOpenCL::get_compiler_flags() {
   // Parameter flags
   std::stringstream flags_constants;
-  flags_constants << " -DNR_POLARIZATIONS=" << NR_CORRELATIONS;
+  flags_constants << " -DNR_CORRELATIONS=" << NR_CORRELATIONS;
 
   // OpenCL specific flags
   std::stringstream flags_opencl;

@@ -38,7 +38,7 @@ __kernel void kernel_adder(
 
             // Add subgrid value to grid
             #pragma unroll 4
-            for (int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+            for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
                 int dst_idx = index_grid(grid_size, pol, grid_y + y, grid_x + x);
                 int src_idx = index_subgrid(subgrid_size, s, pol, y_src, x_src);
                 atomicAdd(&(grid[dst_idx]), cmul(phasor, subgrid[src_idx]));

@@ -9,6 +9,7 @@
 #define BATCH_SIZE_PIXELS 64
 
 inline __device__ long index_sums(
+    unsigned int nr_polarizations,
     unsigned int total_nr_timesteps, // number of timesteps for all baselines
     unsigned int nr_channels,        // number channels for a single baseline
     unsigned int term_nr,
@@ -17,7 +18,7 @@ inline __device__ long index_sums(
     unsigned int chan)
 {
     // sums: [MAX_NR_TERMS][NR_POLARIZATIONS][TOTAL_NR_TIMESTEPS][NR_CHANNELS]
-    return term_nr * NR_POLARIZATIONS * total_nr_timesteps * nr_channels +
+    return term_nr * nr_polarizations * total_nr_timesteps * nr_channels +
            pol * total_nr_timesteps * nr_channels +
            time * nr_channels +
            chan;
@@ -86,6 +87,7 @@ __global__ void kernel_calibrate_lmnp(
 
 
 __global__ void kernel_calibrate_sums(
+    const int                      nr_polarizations,
     const int                      subgrid_size,
     const float                    image_size,
     const int                      total_nr_timesteps,
@@ -162,7 +164,7 @@ __global__ void kernel_calibrate_sums(
 
 
             // Accumulate sums in registers
-            float2 sum[MAX_NR_TERMS][NR_POLARIZATIONS] = {0, 0};
+            float2 sum[MAX_NR_TERMS][4] = {0, 0};
 
             // Iterate all pixels
             for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
@@ -185,14 +187,14 @@ __global__ void kernel_calibrate_sums(
                             unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
                              // Load pixel and aterms
-                            float2 pixel[NR_POLARIZATIONS];
-                            float2 aterm1[NR_POLARIZATIONS];
-                            float2 aterm2[NR_POLARIZATIONS];
-                            for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                            float2 pixel[4];
+                            float2 aterm1[4];
+                            float2 aterm2[4];
+                            for (unsigned pol = 0; pol < nr_polarizations; pol++) {
                                 unsigned int term_idx   = term_offset + term_nr;
-                                unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                                unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_terms, aterm_idx, term_idx, y, x, pol);
-                                unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                                unsigned int pixel_idx  = index_subgrid(4, subgrid_size, s, pol, y_src, x_src);
+                                unsigned int aterm1_idx = index_aterm_transposed(4, subgrid_size, nr_terms, aterm_idx, term_idx, y, x, pol);
+                                unsigned int aterm2_idx = index_aterm_transposed(4, subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
                                 pixel[pol]  = subgrid[pixel_idx];
                                 aterm1[pol] = aterm_derivatives[aterm1_idx];
                                 aterm2[pol] = aterm[aterm2_idx];
@@ -250,8 +252,8 @@ __global__ void kernel_calibrate_sums(
             const float scale = 1.0f / nr_pixels;
             if (time_idx_batch < current_nr_timesteps) {
                 for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
-                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
+                    for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
+                        unsigned int sum_idx = index_sums(nr_polarizations, total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
                         sums[sum_idx] = sum[term_nr][pol] * scale;
                     } // end for pol
                 } // end for term_nr
@@ -263,6 +265,7 @@ __global__ void kernel_calibrate_sums(
 
 
 __global__ void kernel_calibrate_gradient(
+    const int                      nr_polarizations,
     const int                      subgrid_size,
     const float                    image_size,
     const int                      total_nr_timesteps,
@@ -306,7 +309,7 @@ __global__ void kernel_calibrate_gradient(
     const unsigned int nr_channels_local  = channel_end - channel_begin;
 
     // Shared memory
-    __shared__ float2 pixels_[NR_POLARIZATIONS][BATCH_SIZE_PIXELS];
+    __shared__ float2 pixels_[4][BATCH_SIZE_PIXELS];
     __shared__ float4 lmnp_[BATCH_SIZE_PIXELS];
 
     // Accumulate gradient update in registers
@@ -353,7 +356,7 @@ __global__ void kernel_calibrate_gradient(
             float wavenumber = wavenumbers[chan_idx_local];
 
             // Accumulate sums in registers
-            float2 sum[NR_POLARIZATIONS] = {0, 0};
+            float2 sum[4] = {0, 0};
 
             // Iterate all pixels
             for (unsigned int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += BATCH_SIZE_PIXELS) {
@@ -365,7 +368,7 @@ __global__ void kernel_calibrate_gradient(
                     unsigned int x = (pixel_offset + j) % subgrid_size;
 
                     // Reset pixel to zero
-                    for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (unsigned pol = 0; pol < nr_polarizations; pol++) {
                         pixels_[pol][j] = make_float2(0, 0);
                     }
 
@@ -376,13 +379,13 @@ __global__ void kernel_calibrate_gradient(
                         unsigned int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
                         // Load pixel and aterms
-                        float2 pixel[NR_POLARIZATIONS];
-                        float2 aterm1[NR_POLARIZATIONS];
-                        float2 aterm2[NR_POLARIZATIONS];
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                            unsigned int pixel_idx  = index_subgrid(subgrid_size, s, pol, y_src, x_src);
-                            unsigned int aterm1_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station1, y, x, pol);
-                            unsigned int aterm2_idx = index_aterm_transposed(subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
+                        float2 pixel[4];
+                        float2 aterm1[4];
+                        float2 aterm2[4];
+                        for (unsigned pol = 0; pol < nr_polarizations; pol++) {
+                            unsigned int pixel_idx  = index_subgrid(4, subgrid_size, s, pol, y_src, x_src);
+                            unsigned int aterm1_idx = index_aterm_transposed(4, subgrid_size, nr_stations, aterm_idx, station1, y, x, pol);
+                            unsigned int aterm2_idx = index_aterm_transposed(4, subgrid_size, nr_stations, aterm_idx, station2, y, x, pol);
                             pixel[pol]  = subgrid[pixel_idx];
                             aterm1[pol] = aterm[aterm1_idx];
                             aterm2[pol] = aterm[aterm2_idx];
@@ -392,7 +395,7 @@ __global__ void kernel_calibrate_gradient(
                         apply_aterm_degridder(pixel, aterm1, aterm2);
 
                         // Store pixel in shared memory
-                        for (unsigned pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                        for (unsigned pol = 0; pol < nr_polarizations; pol++) {
                             pixels_[pol][j] = pixel[pol];
                         }
 
@@ -420,7 +423,7 @@ __global__ void kernel_calibrate_gradient(
                     float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                     // Update sum
-                    for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                    for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
                         cmac(sum[pol], phasor, pixels_[pol][j]);
                     }
                 } // end for j (batch)
@@ -429,17 +432,17 @@ __global__ void kernel_calibrate_gradient(
             if (time_idx_batch < current_nr_timesteps) {
 
                 // Compute residual
-                float2 residual[NR_POLARIZATIONS];
-                float2 residual_weighted[NR_POLARIZATIONS];
+                float2 residual[4];
+                float2 residual_weighted[4];
                 const float scale = 1.0f / nr_pixels;
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
-                    unsigned int vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
+                for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
+                    unsigned int vis_idx = index_visibility(nr_polarizations, nr_channels, time_idx_global, chan_idx_local, pol);
                     residual[pol] = visibilities[vis_idx] - (sum[pol] * scale);
                     residual_weighted[pol] = residual[pol] * weights[vis_idx];
 
                     // Compute gradient update
                     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
-                        unsigned int sum_idx = index_sums(total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
+                        unsigned int sum_idx = index_sums(4, total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
                         update[term_nr] += residual_weighted[pol].x * sums[sum_idx].x;
                         update[term_nr] += residual_weighted[pol].y * sums[sum_idx].y;
                     } // end for term
@@ -465,6 +468,7 @@ __global__ void kernel_calibrate_gradient(
 
 
 __global__ void kernel_calibrate_hessian(
+    const int                    nr_polarizations,
     const int                    total_nr_timesteps,
     const int                    nr_channels,
     const int                    term_offset_y,
@@ -518,12 +522,12 @@ __global__ void kernel_calibrate_hessian(
             for (unsigned int chan = 0; chan < nr_channels_local; chan++) {
 
                 // Iterate all polarizations
-                for (unsigned int pol = 0; pol < NR_POLARIZATIONS; pol++) {
+                for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
                     unsigned int time_idx_global = time_offset_global + time_offset_local + time;
                     unsigned int chan_idx_local  = channel_begin + chan;
-                    unsigned int  vis_idx = index_visibility(nr_channels, time_idx_global, chan_idx_local, pol);
-                    unsigned int sum_idx0 = index_sums(total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx_local);
-                    unsigned int sum_idx1 = index_sums(total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx_local);
+                    unsigned int  vis_idx = index_visibility(4, nr_channels, time_idx_global, chan_idx_local, pol);
+                    unsigned int sum_idx0 = index_sums(4, total_nr_timesteps, nr_channels, term_nr0, pol, time_idx_global, chan_idx_local);
+                    unsigned int sum_idx1 = index_sums(4, total_nr_timesteps, nr_channels, term_nr1, pol, time_idx_global, chan_idx_local);
                     float2 sum0 = sums_y[sum_idx0];
                     float2 sum1 = sums_x[sum_idx1] * weights[vis_idx];
 

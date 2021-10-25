@@ -18,26 +18,25 @@ inline int max(int a, int b) { return a > b ? a : b; }
 
 namespace idg {
 namespace auxiliary {
-#define NR_CORRELATIONS 4
 
 /*
     Operation and byte count
 */
 uint64_t flops_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
                        uint64_t nr_subgrids, uint64_t subgrid_size,
-                       uint64_t nr_correlations = 4);
+                       uint64_t nr_correlations);
 
 uint64_t bytes_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
                        uint64_t nr_subgrids, uint64_t subgrid_size,
-                       uint64_t nr_correlations = 4);
+                       uint64_t nr_correlations);
 
 uint64_t flops_degridder(uint64_t nr_channels, uint64_t nr_timesteps,
                          uint64_t nr_subgrids, uint64_t subgrid_size,
-                         uint64_t nr_correlations = 4);
+                         uint64_t nr_correlations);
 
 uint64_t bytes_degridder(uint64_t nr_channels, uint64_t nr_timesteps,
                          uint64_t nr_subgrids, uint64_t subgrid_size,
-                         uint64_t nr_correlations = 4);
+                         uint64_t nr_correlations);
 
 uint64_t flops_calibrate(uint64_t nr_terms, uint64_t nr_channels,
                          uint64_t nr_timesteps, uint64_t nr_subgrids,
@@ -50,14 +49,16 @@ uint64_t flops_fft(uint64_t size, uint64_t batch, uint64_t nr_correlations = 4);
 uint64_t bytes_fft(uint64_t size, uint64_t batch, uint64_t nr_correlations = 4);
 
 uint64_t flops_adder(uint64_t nr_subgrids, uint64_t subgrid_size,
-                     uint64_t nr_correlations = 4);
+                     uint64_t nr_correlations);
 
 uint64_t bytes_adder(uint64_t nr_subgrids, uint64_t subgrid_size,
-                     uint64_t nr_correlations = 4);
+                     uint64_t nr_correlations);
 
-uint64_t flops_splitter(uint64_t nr_subgrids, uint64_t subgrid_size);
+uint64_t flops_splitter(uint64_t nr_subgrids, uint64_t subgrid_size,
+                        uint64_t nr_correlations);
 
-uint64_t bytes_splitter(uint64_t nr_subgrids, uint64_t subgrid_size);
+uint64_t bytes_splitter(uint64_t nr_subgrids, uint64_t subgrid_size,
+                        uint64_t nr_correlations);
 
 uint64_t flops_scaler(uint64_t nr_subgrids, uint64_t subgrid_size,
                       uint64_t nr_correlations = 4);
@@ -70,16 +71,17 @@ uint64_t bytes_scaler(uint64_t nr_subgrids, uint64_t subgrid_size,
 */
 uint64_t sizeof_visibilities(unsigned int nr_baselines,
                              unsigned int nr_timesteps,
-                             unsigned int nr_channels);
+                             unsigned int nr_channels,
+                             unsigned int nr_correlations);
 
 uint64_t sizeof_uvw(unsigned int nr_baselines, unsigned int nr_timesteps);
 
 uint64_t sizeof_subgrids(unsigned int nr_subgrids, unsigned int subgrid_size,
-                         uint64_t nr_correlations = 4);
+                         unsigned int nr_correlations);
 
 uint64_t sizeof_metadata(unsigned int nr_subgrids);
 
-uint64_t sizeof_grid(unsigned int grid_size, uint64_t nr_correlations = 4);
+uint64_t sizeof_grid(unsigned int grid_size, uint64_t nr_correlations);
 
 uint64_t sizeof_wavenumbers(unsigned int nr_channels);
 

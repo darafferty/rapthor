@@ -101,7 +101,7 @@ size_t BufferImpl::get_frequencies_size() const {
   return m_frequencies.get_x_dim();
 }
 
-size_t BufferImpl::get_nr_polarizations() const { return m_nrPolarizations; }
+size_t BufferImpl::get_nr_correlations() const { return m_nrPolarizations; }
 
 // Plan creation and helper functions
 
@@ -119,9 +119,8 @@ void BufferImpl::malloc_buffers() {
   proxy::Proxy& proxy = m_bufferset.get_proxy();
   m_bufferUVW =
       proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-  m_bufferVisibilities =
-      proxy.allocate_array3d<Visibility<std::complex<float>>>(
-          m_nr_baselines, m_bufferTimesteps, m_nr_channels);
+  m_bufferVisibilities = proxy.allocate_array4d<std::complex<float>>(
+      m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
   m_bufferStationPairs =
       proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
           m_nr_baselines);
@@ -212,8 +211,8 @@ int Buffer_get_frequencies_size(idg::api::BufferImpl* p) {
   return p->get_frequencies_size();
 }
 
-int Buffer_get_nr_polarizations(idg::api::BufferImpl* p) {
-  return p->get_nr_polarizations();
+int Buffer_get_nr_correlations(idg::api::BufferImpl* p) {
+  return p->get_nr_correlations();
 }
 
 double Buffer_get_image_size(idg::api::BufferImpl* p) {

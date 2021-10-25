@@ -40,9 +40,8 @@ void kernel_fft(long gridsize, long size, long batch, std::complex<float>* data,
   fftwf_plan plan;
 #pragma omp critical
   {
-    plan = fftwf_plan_many_dft(rank, n, batch * NR_POLARIZATIONS, data_ptr, n,
-                               istride, idist, data_ptr, n, ostride, odist,
-                               sign, flags);
+    plan = fftwf_plan_many_dft(rank, n, batch, data_ptr, n, istride, idist,
+                               data_ptr, n, ostride, odist, sign, flags);
   }
 
   // Execute FFTs
@@ -62,7 +61,7 @@ void kernel_fft(long gridsize, long size, long batch, std::complex<float>* data,
     }
 
 #pragma omp parallel for
-    for (int i = 0; i < batch * NR_POLARIZATIONS * size * size; i++) {
+    for (int i = 0; i < batch * size * size; i++) {
       data_ptr[i][0] *= scale_real;
       data_ptr[i][1] *= scale_imag;
     }

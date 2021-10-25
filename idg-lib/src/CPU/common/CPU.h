@@ -52,12 +52,14 @@ class CPU : public Proxy {
   unsigned int compute_jobsize(const Plan& plan,
                                const unsigned int nr_timesteps,
                                const unsigned int nr_channels,
+                               const unsigned int nr_correlations,
+                               const unsigned int nr_polarizations,
                                const unsigned int subgrid_size);
 
   // Routines
   void do_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -66,7 +68,7 @@ class CPU : public Proxy {
 
   void do_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -76,8 +78,8 @@ class CPU : public Proxy {
   void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
       const Array1D<float>& frequencies,
-      Array4D<Visibility<std::complex<float>>>&& visibilities,
-      Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
+      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
       const Array2D<float>& spheroidal) override;
 
@@ -131,8 +133,8 @@ class CPU : public Proxy {
     unsigned int nr_timesteps;
     unsigned int nr_channels;
     Array1D<float> wavenumbers;
-    Array4D<Visibility<std::complex<float>>> visibilities;
-    Array4D<Visibility<float>> weights;
+    Array5D<std::complex<float>> visibilities;  // ANTxANTxTIMExCHANxCOR
+    Array5D<float> weights;                     // ANTxANTxTIMExCHANxCOR
     Array3D<UVW<float>> uvw;
     Array2D<std::pair<unsigned int, unsigned int>> baselines;
     std::vector<Array4D<std::complex<float>>> subgrids;

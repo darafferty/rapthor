@@ -68,7 +68,7 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
    *  \param antenna2 [in]  antenna1 < antenna2 < nrStations
    *  \param uvwInMeters [in] double[3]: (u, v, w)
    *  \param visibilities [in]
-   * std::complex<float>[NR_CHANNELS][NR_POLARIZATIONS]
+   * std::complex<float>[NR_CHANNELS][NR_CORRELATIONS]
    */
   void grid_visibilities(size_t timeIndex, size_t antenna1, size_t antenna2,
                          const double *uvwInMeters,
@@ -98,10 +98,10 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
    * Paremeters are need as transform is done on an external grid
    * i.e. on a copy
    * param crop_tolerance [in] ...
-   * param nr_polarizations [in] number of correlations (normally 4)
+   * param nr_correlations [in] number of correlations (normally 4)
    * param height [in] width in pixel
    * param width [in] width in pixel
-   * param grid [in] complex<double>[nr_polarizations][height][width]
+   * param grid [in] complex<double>[nr_correlations][height][width]
    */
 
   /** reset_aterm() Resets the new aterm for the next time chunk */
@@ -114,11 +114,10 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
   // secondary buffers
   Array2D<UVW<float>> m_bufferUVW2;  // BL x TI
   Array1D<std::pair<unsigned int, unsigned int>> m_bufferStationPairs2;  // BL
-  Array3D<Visibility<std::complex<float>>>
-      m_bufferVisibilities2;                              // BL x TI x CH
+  Array4D<std::complex<float>> m_bufferVisibilities2;     // BL x TI x CH x CR
   std::vector<Matrix2x2<std::complex<float>>> m_aterms2;  // ST x SB x SB
-  Array4D<float> m_buffer_weights;   // BL x TI x NR_CHANNELS x NR_POLARIZATIONS
-  Array4D<float> m_buffer_weights2;  // BL x TI x NR_CHANNELS x NR_POLARIZATIONS
+  Array4D<float> m_buffer_weights;   // BL x TI x NR_CHANNELS x NR_CORRELATIONS
+  Array4D<float> m_buffer_weights2;  // BL x TI x NR_CHANNELS x NR_CORRELATIONS
   std::vector<unsigned int> m_aterm_offsets2;
 
   std::thread m_flush_thread;

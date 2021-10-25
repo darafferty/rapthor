@@ -54,7 +54,7 @@ class Proxy {
    */
 
   void gridding(const Plan& plan, const Array1D<float>& frequencies,
-                const Array3D<Visibility<std::complex<float>>>& visibilities,
+                const Array4D<std::complex<float>>& visibilities,
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -63,7 +63,7 @@ class Proxy {
 
   void degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -73,8 +73,8 @@ class Proxy {
   // Prepare a calibration cycle
   void calibrate_init(
       const unsigned int kernel_size, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
-      Array3D<Visibility<float>>& weights, const Array2D<UVW<float>>& uvw,
+      Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
+      const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal);
@@ -202,7 +202,7 @@ class Proxy {
   //! Degrid the visibilities from a uniform grid
   virtual void do_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -211,7 +211,7 @@ class Proxy {
 
   virtual void do_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
-      Array3D<Visibility<std::complex<float>>>& visibilities,
+      Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -223,8 +223,8 @@ class Proxy {
   virtual void do_calibrate_init(
       std::vector<std::unique_ptr<Plan>>&& plans,
       const Array1D<float>& frequencies,
-      Array4D<Visibility<std::complex<float>>>&& visibilities,
-      Array4D<Visibility<float>>&& weights, Array3D<UVW<float>>&& uvw,
+      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
       const Array2D<float>& spheroidal) {}
 
@@ -250,23 +250,25 @@ class Proxy {
 
  protected:
   void check_dimensions(
-      unsigned int subgrid_size, unsigned int frequencies_nr_channels,
+      const Plan::Options& options, unsigned int subgrid_size,
+      unsigned int frequencies_nr_channels,
       unsigned int visibilities_nr_baselines,
       unsigned int visibilities_nr_timesteps,
       unsigned int visibilities_nr_channels,
       unsigned int visibilities_nr_correlations, unsigned int uvw_nr_baselines,
       unsigned int uvw_nr_timesteps, unsigned int uvw_nr_coordinates,
       unsigned int baselines_nr_baselines, unsigned int baselines_two,
-      unsigned int grid_nr_correlations, unsigned int grid_height,
+      unsigned int grid_nr_polarizations, unsigned int grid_height,
       unsigned int grid_width, unsigned int aterms_nr_timeslots,
       unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
-      unsigned int aterms_aterm_width, unsigned int aterms_nr_correlations,
+      unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
       unsigned int aterms_offsets_nr_timeslots_plus_one,
       unsigned int spheroidal_height, unsigned int spheroidal_width) const;
 
   void check_dimensions(
-      unsigned int subgrid_size, const Array1D<float>& frequencies,
-      const Array3D<Visibility<std::complex<float>>>& visibilities,
+      const Plan::Options& options, unsigned int subgrid_size,
+      const Array1D<float>& frequencies,
+      const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -275,7 +277,7 @@ class Proxy {
 
   Array1D<float> compute_wavenumbers(const Array1D<float>& frequencies) const;
 
-  const int nr_polarizations = 4;
+  const int nr_correlations = 4;
 
   std::vector<std::complex<float>> m_avg_aterm_correction;
 

@@ -64,7 +64,7 @@ def nr_baselines_to_nr_stations(nr_baselines):
 
 
 def add_pt_src(x, y, amplitude, nr_baselines, nr_time, nr_channels,
-               nr_polarizations, image_size, grid_size, uvw, frequencies, vis):
+               nr_correlations, image_size, grid_size, uvw, frequencies, vis):
     """
     Add a point source to the model
 
@@ -80,8 +80,8 @@ def add_pt_src(x, y, amplitude, nr_baselines, nr_time, nr_channels,
     :type nr_time: int
     :param nr_channels: [description]
     :type nr_channels: int
-    :param nr_polarizations: [description]
-    :type nr_polarizations: int
+    :param nr_correlations: [description]
+    :type nr_correlations: int
     :param image_size: [description]
     :type image_size: float
     :param grid_size: [description]
@@ -103,7 +103,7 @@ def add_pt_src(x, y, amplitude, nr_baselines, nr_time, nr_channels,
     lib.utils_add_pt_src(ctypes.c_float(x), ctypes.c_float(y),
                          ctypes.c_float(amplitude), ctypes.c_int(nr_baselines),
                          ctypes.c_int(nr_time), ctypes.c_int(nr_channels),
-                         ctypes.c_int(nr_polarizations),
+                         ctypes.c_int(nr_correlations),
                          ctypes.c_float(image_size), ctypes.c_int(grid_size),
                          uvw.ctypes.data_as(ctypes.c_void_p),
                          frequencies.ctypes.data_as(ctypes.c_void_p),
@@ -206,7 +206,7 @@ def init_grid_of_point_sources(N,
     N - odd integer for N by N point sources
     image_size - ...
     visibilities - np.ndarray(shape=(nr_baselines, nr_time,
-                                 nr_channels, nr_polarizations),
+                                 nr_channels, nr_correlations),
                                  dtype=idg.visibilitiestype)
     uvw - np.ndarray(shape=(nr_baselines,nr_time),
                         dtype = idg.uvwtype)
@@ -224,7 +224,7 @@ def init_grid_of_point_sources(N,
     nr_baselines = visibilities.shape[0]
     nr_time = visibilities.shape[1]
     nr_channels = visibilities.shape[2]
-    nr_polarizations = visibilities.shape[3]
+    nr_correlations = visibilities.shape[3]
 
     for b in range(nr_baselines):
         for t in range(nr_time):
@@ -242,7 +242,7 @@ def init_grid_of_point_sources(N,
                         if asymmetric == True:
                             if l > 0 and m > 0:
                                 value *= 2
-                        for p in range(nr_polarizations):
+                        for p in range(nr_correlations):
                             visibilities[b][t][c][p] += value
 
 
@@ -400,11 +400,11 @@ def plot_frequencies(frequencies):
     plt.ylabel("rad/m")
 
 
-def plot_visibilities(visibilities, form='abs', maxtime=np.inf):
-    """Plot Grid data
+def plot_visibilities_all(visibilities, form='abs', maxtime=np.inf):
+    """Plot visibility data
     Input:
     visibilities - np.ndarray(shape=(nr_baselines, nr_time,
-                                nr_channels, nr_polarizations),
+                                nr_channels, nr_correlations),
                                 dtype=idg.visibilitiestype)
     form - 'real', 'imag', 'abs', 'angle'
     """
@@ -474,12 +474,67 @@ def plot_visibilities(visibilities, form='abs', maxtime=np.inf):
                             top=False,
                             labelbottom=False)
 
+def plot_visibilities(visibilities, form='abs', maxtime=np.inf):
+    """Plot visibility data
+    Input:
+    visibilities - np.ndarray(shape=(nr_baselines, nr_time,
+                                nr_channels, nr_correlations),
+                                dtype=idg.visibilitiestype)
+    form - 'real', 'imag', 'abs', 'angle'
+    """
+    nr_polarizations = visibilities.shape[3]
+    if (nr_polarizations == 4):
+        plot_visibilities_all(visibilities, form, maxtime)
+        return
+    else:
+        pol = 0
+
+    if maxtime > visibilities.shape[1]:
+        maxtime = visibilities.shape[1] + 1
+
+    if (form == 'real'):
+        visXX = np.real(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.real(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Real'
+    elif (form == 'imag'):
+        visXX = np.imag(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.imag(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Imag'
+    elif (form == 'angle'):
+        visXX = np.angle(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.angle(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Angle'
+    else:
+        visXX = np.abs(visibilities[:, :maxtime, :, 0].flatten())
+        visYY = np.abs(visibilities[:, :maxtime, :, 1].flatten())
+        title = 'Abs'
+
+    fig, axarr = plt.subplots(2, num=get_figure_name("visibilities"))
+    fig.suptitle(title, fontsize=14)
+
+    axarr[0].plot(visXX)
+    axarr[1].plot(visYY)
+
+    axarr[0].set_title('XX')
+    axarr[1].set_title('YY')
+
+    axarr[0].tick_params(axis='both',
+                         which='both',
+                         bottom=False,
+                         top=False,
+                         labelbottom=False)
+
+    axarr[1].tick_params(axis='both',
+                         which='both',
+                         bottom=False,
+                         top=False,
+                         labelbottom=False)
 
 def plot_aterms(aterms):
     """Plot A-terms
     Input:
     aterms - np.ndarray(shape=(nr_timeslots, nr_stations,
-                           subgrid_size, subgrid_size, nr_polarizations),
+                           subgrid_size, subgrid_size, nr_correlations),
                            dtype = idg.atermtype)
     """
     print("TO BE IMPLEMENTED")
@@ -504,7 +559,7 @@ def plot_grid_all(grid,
                   interpolation_method='none'):
     """Plot Grid data
     Input:
-    grid - np.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+    grid - np.ndarray(shape=(nr_correlations, grid_size, grid_size),
                          dtype = idg.gridtype)
     form - 'real', 'imag', 'abs', 'angle'
     scaling - 'none', 'log', 'sqrt'
@@ -614,16 +669,19 @@ def plot_grid(grid,
               pol='all'):
     """Plot Grid data
     Input:
-    grid - np.ndarray(shape=(nr_polarizations, grid_size, grid_size),
+    grid - np.ndarray(shape=(nr_correlations, grid_size, grid_size),
                          dtype = idg.gridtype)
     form - 'real', 'imag', 'abs', 'angle'
     scaling - 'none', 'log', 'sqrt'
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
-    if (pol == 'all'):
+    nr_polarizations = grid.shape[0]
+    if (nr_polarizations == 4 and pol == 'all'):
         plot_grid_all(grid, form, scaling, interpolation_method)
         return
+    else:
+        pol = 0
 
     if (scaling == 'log'):
         grid = np.abs(grid) + 1
@@ -722,7 +780,7 @@ def init_identity_aterms(aterms):
     nr_timeslots = aterms.shape[0]
     nr_stations = aterms.shape[1]
     subgrid_size = aterms.shape[2]
-    nr_polarizations = aterms.shape[4]
+    nr_correlations = aterms.shape[4]
     lib.utils_init_identity_aterms.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
@@ -730,7 +788,7 @@ def init_identity_aterms(aterms):
                                    ctypes.c_int(nr_timeslots),
                                    ctypes.c_int(nr_stations),
                                    ctypes.c_int(subgrid_size),
-                                   ctypes.c_int(nr_polarizations))
+                                   ctypes.c_int(nr_correlations))
 
 
 def init_identity_spheroidal(spheroidal):
@@ -745,24 +803,24 @@ def init_identity_spheroidal(spheroidal):
 def get_identity_aterms(nr_timeslots,
                         nr_stations,
                         subgrid_size,
-                        nr_polarizations,
+                        nr_correlations,
                         dtype=atermtype,
                         info=False):
     aterms = np.zeros((nr_timeslots, nr_stations, subgrid_size,
-                          subgrid_size, nr_polarizations),
+                          subgrid_size, nr_correlations),
                          dtype=atermtype)
     init_identity_aterms(aterms)
     if info == True:
         print("aterms: np.ndarray(shape = (nr_timeslots, nr_stations," + \
-              "subgrid_size, subgrid_size, nr_polarizations), " + \
+              "subgrid_size, subgrid_size, nr_correlations), " + \
               "dtype = " + str(dtype) + ")")
     return aterms.astype(dtype=dtype)
 
 
-def get_zero_grid(nr_polarizations, grid_size, dtype=gridtype, info=False):
-    grid = np.zeros((nr_polarizations, grid_size, grid_size), dtype=dtype)
+def get_zero_grid(nr_correlations, grid_size, dtype=gridtype, info=False):
+    grid = np.zeros((nr_correlations, grid_size, grid_size), dtype=dtype)
     if info == True:
-        print("grid: np.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
+        print("grid: np.ndarray(shape = (nr_correlations, grid_size, grid_size), " + \
                                    "dtype = " + str(dtype) + ")")
     return grid
 
@@ -780,11 +838,11 @@ def get_identity_spheroidal(subgrid_size, dtype=tapertype, info=False):
 def get_zero_visibilities(nr_baselines,
                           nr_time,
                           nr_channels,
-                          nr_polarizations,
+                          nr_correlations,
                           dtype=visibilitiestype,
                           info=False):
     visibilities = np.zeros(shape=(nr_baselines, nr_time, nr_channels,
-                                      nr_polarizations),
+                                      nr_correlations),
                                dtype=visibilitiestype)
     return visibilities.astype(dtype=dtype)
 
@@ -825,14 +883,14 @@ def init_dummy_visibilities(visibilities):
     nr_baselines = visibilities.shape[0]
     nr_time = visibilities.shape[1]
     nr_channels = visibilities.shape[2]
-    nr_polarizations = visibilities.shape[3]
+    nr_correlations = visibilities.shape[3]
     lib.utils_init_example_visibilities.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
     lib.utils_init_dummy_visibilities(
         visibilities.ctypes.data_as(ctypes.c_void_p),
         ctypes.c_int(nr_baselines), ctypes.c_int(nr_time),
-        ctypes.c_int(nr_channels), ctypes.c_int(nr_polarizations))
+        ctypes.c_int(nr_channels), ctypes.c_int(nr_correlations))
 
 
 def init_identity_aterms(aterms):
@@ -840,7 +898,7 @@ def init_identity_aterms(aterms):
     nr_timeslots = aterms.shape[0]
     nr_stations = aterms.shape[1]
     subgrid_size = aterms.shape[2]
-    nr_polarizations = aterms.shape[4]
+    nr_correlations = aterms.shape[4]
     lib.utils_init_identity_aterms.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
@@ -848,7 +906,7 @@ def init_identity_aterms(aterms):
                                    ctypes.c_int(nr_timeslots),
                                    ctypes.c_int(nr_stations),
                                    ctypes.c_int(subgrid_size),
-                                   ctypes.c_int(nr_polarizations))
+                                   ctypes.c_int(nr_correlations))
 
 
 def init_example_spheroidal(spheroidal):
@@ -933,10 +991,10 @@ def get_example_baselines(nr_stations, nr_baselines,
     return baselines.astype(dtype=dtype)
 
 
-def get_example_grid(nr_polarizations, grid_size, dtype=gridtype, info=False):
-    grid = np.zeros((nr_polarizations, grid_size, grid_size), dtype=dtype)
+def get_example_grid(nr_correlations, grid_size, dtype=gridtype, info=False):
+    grid = np.zeros((nr_correlations, grid_size, grid_size), dtype=dtype)
     if info == True:
-        print("grid: np.ndarray(shape = (nr_polarizations, grid_size, grid_size), " + \
+        print("grid: np.ndarray(shape = (nr_correlations, grid_size, grid_size), " + \
                                    "dtype = " + str(dtype) + ")")
     return grid
 
@@ -944,17 +1002,17 @@ def get_example_grid(nr_polarizations, grid_size, dtype=gridtype, info=False):
 def get_example_aterms(nr_timeslots,
                        nr_stations,
                        subgrid_size,
-                       nr_polarizations,
+                       nr_correlations,
                        dtype=atermtype,
                        info=False):
     aterms = np.zeros((nr_timeslots, nr_stations, subgrid_size,
-                          subgrid_size, nr_polarizations),
+                          subgrid_size, nr_correlations),
                          dtype=atermtype)
     init_example_aterms(aterms, nr_timeslots, nr_stations, subgrid_size,
                         subgrid_size)
     if info == True:
         print("aterms: np.ndarray(shape = (nr_timeslots, nr_stations," + \
-              "subgrid_size, subgrid_size, nr_polarizations), " + \
+              "subgrid_size, subgrid_size, nr_correlations), " + \
               "dtype = " + str(dtype) + ")")
     return aterms.astype(dtype=dtype)
 
@@ -983,7 +1041,7 @@ def get_example_spheroidal(subgrid_size, dtype=tapertype, info=False):
 def get_example_visibilities(nr_baselines,
                              nr_time,
                              nr_channels,
-                             nr_polarizations,
+                             nr_correlations,
                              image_size,
                              grid_size,
                              uvw,
@@ -999,7 +1057,7 @@ def get_example_visibilities(nr_baselines,
 
     # Initialize visibilities to zero
     visibilities = np.zeros(
-        (nr_baselines, nr_time, nr_channels, nr_polarizations),
+        (nr_baselines, nr_time, nr_channels, nr_correlations),
         dtype=visibilitiestype)
 
     # Create offsets for fake point sources
@@ -1014,12 +1072,12 @@ def get_example_visibilities(nr_baselines,
     for offset in offsets:
         amplitude = 1
         add_pt_src(offset[0], offset[1], amplitude, nr_baselines, nr_time,
-                   nr_channels, nr_polarizations, image_size, grid_size, uvw,
+                   nr_channels, nr_correlations, image_size, grid_size, uvw,
                    frequencies, visibilities)
 
     if info == True:
         print("spheroidal: np.ndarray(shape = (nr_baselines, nr_time, " + \
-              "nr_channels, nr_polarizations), " + \
+              "nr_channels, nr_correlations), " + \
               "dtype = " + str(dtype) + ")")
 
     return visibilities.astype(dtype=dtype)

@@ -30,7 +30,7 @@ Generic::~Generic() {
 /* High level routines */
 void Generic::run_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -44,10 +44,12 @@ void Generic::run_gridding(
   const cu::Context& context = device.get_context();
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -121,7 +123,7 @@ void Generic::run_gridding(
     // Copy input data for first job to device
     if (job_id == 0) {
       auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-          current_nr_baselines, nr_timesteps, nr_channels);
+          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
       auto sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
@@ -149,7 +151,7 @@ void Generic::run_gridding(
 
       // Copy input data to device
       auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
-          nr_baselines_next, nr_timesteps, nr_channels);
+          nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw_next =
           auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
       auto sizeof_metadata_next = auxiliary::sizeof_metadata(nr_subgrids_next);
@@ -174,13 +176,13 @@ void Generic::run_gridding(
 
     // Launch gridder kernel
     device.launch_gridder(
-        current_time_offset, current_nr_subgrids, grid_size, subgrid_size,
-        image_size, w_step, nr_channels, nr_stations, shift(0), shift(1), d_uvw,
-        d_wavenumbers, d_visibilities, d_spheroidal, d_aterms, d_aterms_indices,
-        d_avg_aterm, d_metadata, d_subgrids);
+        current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+        subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+        shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms,
+        d_aterms_indices, d_avg_aterm, d_metadata, d_subgrids);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               FourierDomainToImageDomain);
 
     // Launch adder kernel
@@ -189,13 +191,14 @@ void Generic::run_gridding(
                                   d_metadata, d_subgrids, u_grid);
     } else {
       cu::DeviceMemory& d_grid = *m_buffers.d_grid;
-      device.launch_adder(current_nr_subgrids, grid_size, subgrid_size,
-                          d_metadata, d_subgrids, d_grid);
+      device.launch_adder(current_nr_subgrids, nr_polarizations, grid_size,
+                          subgrid_size, d_metadata, d_subgrids, d_grid);
     }
     executestream.record(*gpuFinished[job_id]);
 
     // Report performance
-    device.enqueue_report(executestream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(executestream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
 
     // Wait for adder to finish
@@ -217,13 +220,13 @@ void Generic::run_gridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
 }  // end run_gridding
 
 void Generic::do_gridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    const Array3D<Visibility<std::complex<float>>>& visibilities,
+    const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
@@ -252,8 +255,7 @@ void Generic::do_gridding(
 
 void Generic::run_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
@@ -266,10 +268,12 @@ void Generic::run_degridding(
   const cu::Context& context = device.get_context();
 
   // Arguments
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_w_dim();
+  auto nr_timesteps = visibilities.get_z_dim();
+  auto nr_channels = visibilities.get_y_dim();
+  auto nr_correlations = visibilities.get_x_dim();
   auto nr_stations = aterms.get_z_dim();
+  auto nr_polarizations = grid.get_z_dim();
   auto grid_size = grid.get_x_dim();
   auto cell_size = plan.get_cell_size();
   auto image_size = cell_size * grid_size;
@@ -389,29 +393,29 @@ void Generic::run_degridding(
                                      u_grid);
     } else {
       cu::DeviceMemory& d_grid = *m_buffers.d_grid;
-      device.launch_splitter(current_nr_subgrids, grid_size, subgrid_size,
-                             d_metadata, d_subgrids, d_grid);
+      device.launch_splitter(current_nr_subgrids, nr_polarizations, grid_size,
+                             subgrid_size, d_metadata, d_subgrids, d_grid);
     }
 
     // Initialize visibilities to zero
     d_visibilities.zero(executestream);
 
     // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
                               ImageDomainToFourierDomain);
 
     // Launch degridder kernel
-    device.launch_degridder(current_time_offset, current_nr_subgrids, grid_size,
-                            subgrid_size, image_size, w_step, nr_channels,
-                            nr_stations, shift(0), shift(1), d_uvw,
-                            d_wavenumbers, d_visibilities, d_spheroidal,
-                            d_aterms, d_aterms_indices, d_metadata, d_subgrids);
+    device.launch_degridder(
+        current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+        subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+        shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms,
+        d_aterms_indices, d_metadata, d_subgrids);
     executestream.record(*gpuFinished[job_id]);
 
     // Copy visibilities to host
     dtohstream.waitEvent(*gpuFinished[job_id]);
     auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-        current_nr_baselines, nr_timesteps, nr_channels);
+        current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
     dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
                                sizeof_visibilities);
     dtohstream.record(*outputCopied[job_id]);
@@ -420,7 +424,8 @@ void Generic::run_degridding(
     gpuFinished[job_id]->synchronize();
 
     // Report performance
-    device.enqueue_report(dtohstream, jobs[job_id].current_nr_timesteps,
+    device.enqueue_report(dtohstream, nr_polarizations,
+                          jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
@@ -439,15 +444,14 @@ void Generic::run_degridding(
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(total_nr_timesteps, total_nr_subgrids);
+  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_degridding,
                                total_nr_visibilities);
 }  // end run_degridding
 
 void Generic::do_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array3D<Visibility<std::complex<float>>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,

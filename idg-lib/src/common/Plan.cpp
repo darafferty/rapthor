@@ -17,7 +17,10 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
            const Array1D<unsigned int>& aterms_offsets, Options options)
-    : m_subgrid_size(subgrid_size), m_cell_size(cell_size), use_wtiles(false) {
+    : m_subgrid_size(subgrid_size),
+      m_cell_size(cell_size),
+      use_wtiles(false),
+      m_options(options) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << endl;
 #endif
@@ -36,7 +39,10 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
            const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
            Options options)
-    : m_subgrid_size(subgrid_size), m_cell_size(cell_size), use_wtiles(true) {
+    : m_subgrid_size(subgrid_size),
+      m_cell_size(cell_size),
+      use_wtiles(true),
+      m_options(options) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << " (with WTiles)" << endl;
 #endif
@@ -694,15 +700,15 @@ void Plan::initialize_job(const unsigned int nr_baselines,
   (*current_nr_baselines_) = last_bl - first_bl;
 }
 
-void Plan::mask_visibilities(
-    Array3D<Visibility<std::complex<float>>>& visibilities) const {
+void Plan::mask_visibilities(Array5D<std::complex<float>>& visibilities) const {
   // Get visibilities dimensions
-  auto nr_baselines = visibilities.get_z_dim();
-  auto nr_timesteps = visibilities.get_y_dim();
-  auto nr_channels = visibilities.get_x_dim();
+  auto nr_baselines = visibilities.get_d_dim();
+  auto nr_timesteps = visibilities.get_c_dim();
+  auto nr_channels = visibilities.get_b_dim();
+  auto nr_correlations = visibilities.get_a_dim();
 
   // The visibility mask is zero
-  const Visibility<std::complex<float>> zero = {0.0f, 0.0f, 0.0f, 0.0f};
+  const std::complex<float> zero = {0.0f, 0.0f};
 
   // Sanity check
   assert((unsigned)get_nr_baselines() == nr_baselines);
@@ -730,7 +736,9 @@ void Plan::mask_visibilities(
     // Mask all selected visibilities for all channels
     for (unsigned t = first; t < last; t++) {
       for (unsigned c = 0; c < nr_channels; c++) {
-        visibilities(0, t, c) = zero;
+        for (unsigned cor = 0; cor < nr_correlations; cor++) {
+          visibilities(0, t, c, cor) = zero;
+        }
       }
     }
   }
