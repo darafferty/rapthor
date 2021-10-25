@@ -109,8 +109,11 @@ if(BUILD_TESTING)
                      ${TEST_NAME})
     set_tests_properties(build-${TEST_NAME} PROPERTIES FIXTURES_SETUP
                                                        ${TEST_NAME})
-
-    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
+    set(JUNIT_ARG)
+    if(ARG_LABEL STREQUAL "unit")
+      set(JUNIT_ARG -f JUNIT -k unittest_${TEST_NAME}.xml)
+    endif()
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME} ${JUNIT_ARG})
     set_tests_properties(${TEST_NAME} PROPERTIES FIXTURES_REQUIRED ${TEST_NAME})
     if(ARG_LABEL)
       set_tests_properties(${TEST_NAME} PROPERTIES LABELS ${ARG_LABEL})
