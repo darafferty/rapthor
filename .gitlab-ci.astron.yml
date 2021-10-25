@@ -6,13 +6,13 @@
 
 include: .gitlab-ci.common.yml
 
-build-base:
+prepare-base:
   stage: prepare
   image: docker:stable
   script:
     - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base -f ./docker/ubuntu_20_04_base .
 
-build-integration:
+prepare-integration:
   stage: prepare
   image: docker:stable
   script:
@@ -20,12 +20,12 @@ build-integration:
 
 # See the idg-integration-docker job in .gitlab-ci.common.yml for notes about
 # integration test jobs.
-idg-integration-das:
-  stage: integration_and_deploy
+test-integration-das:
+  stage: test
+  needs: []
   allow_failure: true
   tags:
     - ci_gpu
-  needs: []
   before_script:
     # Clean and generate reports folder in CI_PROJECT_DIR for storing the junit test reports
     - rm -rf reports/* && mkdir -p reports
@@ -76,7 +76,7 @@ idg-integration-das:
       junit: reports/test_*.xml
 
 deploy-package:
-  stage: integration_and_deploy
+  stage: publish
   needs: ["build-package"]
   image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
   script:
@@ -95,11 +95,11 @@ deploy-package:
     - if: '$UPLOAD_PACKAGE'
 
 check-stack:
+  stage: test
+  needs: []
   variables:
     # Pass commit hash to downstream pipeline
     IDG_TRIGGER_HASH: $CI_COMMIT_SHA
-  stage: integration_and_deploy
-  needs: []
   trigger:
     project: RD/schaap-stack
     branch: master
@@ -110,10 +110,10 @@ check-stack:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - when: never
 
-publish-doc:
-  stage: publish
+documentation-publish:
+  stage: documentation-publish
+  needs: ["documentation-build"]
   image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
-  needs: ["build-doc"]
   before_script:
     - apt-get install -y openssh-client
     - eval $(ssh-agent -s)
