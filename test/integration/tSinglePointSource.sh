@@ -12,6 +12,8 @@
 # - idg/lib
 # are on your $LD_LIBRARY_PATH!
 
+ORIG_DIR=$(pwd)
+
 # Get full path to this script
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -38,4 +40,4 @@ cd $WORKDIR
 # pytest -s captures the print() statments
 # TODO: check/add more fine grained log levels
 PYTEST=$(which pytest-3 || echo "pytest")
-${PYTEST} -v --exitfirst ${DIR}/singlepointsource/test_pointsource.py
+${PYTEST} -v --exitfirst --junitxml=${ORIG_DIR}/test_singlepointsource.xml ${DIR}/singlepointsource/test_pointsource.py

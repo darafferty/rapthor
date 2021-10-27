@@ -3,6 +3,7 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+ORIG_DIR=$(pwd)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Set some environment variables
@@ -40,4 +41,4 @@ cd $WORKDIR
 # certain (fits) files to be present.
 # TODO: this needs to be setup a bit more generic
 PYTEST=$(which pytest-3 || echo "pytest")
-${PYTEST} -s -v --exitfirst ${DIR}/gridding/test_*.py
+${PYTEST} -s -v --exitfirst --junitxml=${ORIG_DIR}/test_griddegrid.xml ${DIR}/gridding/test_*.py

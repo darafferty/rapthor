@@ -67,6 +67,9 @@ test-integration-das:
     # Run integration tests
     - CFLAGS="-I${WCSLIB_INCLUDE} -I${CFITSIO_INCLUDE}" python3 -m pip install --user --no-binary python-casacore python-casacore
     - ctest --output-on-failure -L integration
+  after_script:
+    # Collect junit xml reports
+    - cd ~/opt/idg/build
     - mv $(find . -name test_*.xml) $CI_PROJECT_DIR/reports/
   artifacts:
     reports:

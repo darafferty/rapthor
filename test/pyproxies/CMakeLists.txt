@@ -6,7 +6,7 @@ add_test(
   NAME tPyProxies
   COMMAND
     python3 -m pytest -v --exitfirst
-    --junitxml=${CMAKE_BINARY_DIR}/test_pyproxies.xml
+    --junitxml=${CMAKE_CURRENT_BINARY_DIR}/test_pyproxies.xml
     "${CMAKE_CURRENT_SOURCE_DIR}/test_pyproxies.py")
 
 set_tests_properties(
