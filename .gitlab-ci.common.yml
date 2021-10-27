@@ -151,6 +151,13 @@ test-integration:
     # Return to idg build directory to run tests
     - cd build
     - ctest --output-on-failure -L integration
+  after_script:
+    # Collect junit xml reports
+    - mkdir -p build/reports
+    - mv $(find build/ -name test_*.xml) build/reports/
+  artifacts:
+    reports:
+      junit: build/reports/test_*.xml
 
 # Building documentation happens for all branches, which allows browsing.
 # Publishing documentation only happens for the master branch on the Astron repo.

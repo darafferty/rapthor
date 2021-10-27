@@ -37,6 +37,4 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     # This happens for example when DPPP is running a PythonDPStep that is
     # importing h5py
     && python3 -m pip install h5py --user --no-binary=h5py --force-reinstall --no-deps \
-    && pip3 install pytest pytest-lazy-fixture h5py \
-# Install some python packages and h5py deps
-    && pip3 install astropy scipy pytest pytest-lazy-fixture matplotlib h5py
+    && python3 -m pip install pytest pytest-lazy-fixture astropy scipy matplotlib

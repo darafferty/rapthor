@@ -3,6 +3,7 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+ORIG_DIR=$(pwd)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Set some environment variables
@@ -75,4 +76,4 @@ ls ${DP3_PYTHON_PATH}
 
 # Run the test
 # pytest -s captures the print() statements
-pytest -s --exitfirst ${DIR}/idgcaldpstep/test_idgcalstep.py
+pytest -s --exitfirst --junitxml ${ORIG_DIR}/test_idgcalstep.xml ${DIR}/idgcaldpstep/test_idgcalstep.py

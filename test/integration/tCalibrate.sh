@@ -6,6 +6,7 @@
 # Script for testing the calibrate_init and calibrate update method
 # in the idg proxies with test_calibrate.py.
 
+ORIG_DIR=$(pwd)
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 export DATADIR=${DIR}/tmp/data
@@ -57,4 +58,4 @@ else
 fi
 
 # Run the test
-pytest -s --exitfirst ${DIR}/idgcaldpstep/test_calibrate.py
+pytest -s --exitfirst --junitxml=${ORIG_DIR}/test_calibrate.xml ${DIR}/idgcaldpstep/test_calibrate.py
