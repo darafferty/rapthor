@@ -4,7 +4,7 @@
 project(cuda-unified)
 
 # Set headers
-include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDA_INCLUDE_DIR})
+include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
 
 # Set headers
 set(${PROJECT_NAME}_headers Unified.h UnifiedC.h)

@@ -139,8 +139,7 @@ if(BUILD_LIB_CUDA)
     idg-cuda $<TARGET_OBJECTS:common> $<TARGET_OBJECTS:cuda-common>
              $<TARGET_OBJECTS:cuda-generic> $<TARGET_OBJECTS:cuda-unified>)
 
-  set(LINK_LIBRARIES ${CUDA_CUDA_LIBRARY} ${CUDA_FFT_LIBRARY}
-                     ${CUDA_NVTX_LIBRARY})
+  set(LINK_LIBRARIES idg-common CUDA::cuda_driver CUDA::cufft CUDA::nvToolsExt)
 
   target_link_libraries(idg-cuda ${LINK_LIBRARIES})
 

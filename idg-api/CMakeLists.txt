@@ -85,7 +85,7 @@ set(${PROJECT_NAME}_sources Buffer.cpp BufferSet.cpp BulkDegridder.cpp
                             DegridderBuffer.cpp GridderBuffer.cpp taper.cpp)
 
 # enable rpath
-list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib ${CUDA_LIB_DIR})
+list(APPEND CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_headers}

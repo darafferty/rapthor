@@ -4,7 +4,7 @@
 project(cuda-common)
 
 # Set headers
-include_directories(${CUDA_INCLUDE_DIR})
+include_directories(${CUDAToolkit_INCLUDE_DIRS})
 
 # Set headers
 set(${PROJECT_NAME}_headers CUDA.h CU.h CUFFT.h InstanceCUDA.h PowerRecord.h)
