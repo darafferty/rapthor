@@ -37,7 +37,7 @@
 
 #cmakedefine REGISTER_HOST_MEMORY
 
-#define NVCC "@CUDA_NVCC@"
+#define NVCC "@CUDAToolkit_NVCC_EXECUTABLE@"
 
 #cmakedefine CUDA_KERNEL_DEBUG
 

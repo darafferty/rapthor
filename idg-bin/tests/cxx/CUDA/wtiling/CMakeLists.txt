@@ -9,15 +9,11 @@ add_executable(${FORWARD} forward.cpp)
 
 target_link_libraries(${FORWARD} ${LINK_LIBRARIES})
 
-target_include_directories(${FORWARD} PRIVATE ${CUDA_INCLUDE_DIR})
-
 # Backward test
 set(BACKWARD test-cuda-wtiling-backward.x)
 add_executable(${BACKWARD} backward.cpp)
 
 target_link_libraries(${BACKWARD} ${LINK_LIBRARIES})
-
-target_include_directories(${BACKWARD} PRIVATE ${CUDA_INCLUDE_DIR})
 
 # Set tests
 add_built_test(${FORWARD} LABEL bin_cxx)
