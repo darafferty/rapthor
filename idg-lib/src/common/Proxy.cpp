@@ -27,7 +27,8 @@ void Proxy::gridding(
                    visibilities, uvw, baselines, *m_grid, aterms,
                    aterms_offsets, spheroidal);
 
-  if ((plan.get_w_step() != 0.0) && !do_supports_wstacking()) {
+  if ((plan.get_w_step() != 0.0) &&
+      (!do_supports_wstacking() && !do_supports_wtiling())) {
     throw std::invalid_argument(
         "w_step is not zero, but this Proxy does not support gridding with "
         "W-stacking or W-tiling.");

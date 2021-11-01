@@ -1,6 +1,9 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#ifndef IDG_KERNELTYPES_H_
+#define IDG_KERNELTYPES_H_
+
 typedef struct {
   int x, y, z;
 } Coordinate;
@@ -35,3 +38,5 @@ typedef struct {
   float w;
 } UVW;
 #endif
+
+#endif  // IDG_KERNELTYPES_H_
