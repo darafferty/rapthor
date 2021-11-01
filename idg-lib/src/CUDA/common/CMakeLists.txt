@@ -27,7 +27,6 @@ if(NOT BUILD_STATIC_LIBS)
                                                    SOVERSION 0)
 endif()
 
-# set install
 install(
   FILES kernels/KernelDegridder.cu
         kernels/KernelFFT.cu
@@ -43,6 +42,12 @@ install(
         kernels/Types.h
   COMPONENT gpu
   DESTINATION lib/idg-cuda)
+
+# kernels/Types.h includes some common files, which need to be installed, too.
+install(
+  FILES ../../common/Index.h ../../common/KernelTypes.h ../../common/Math.h
+  COMPONENT gpu
+  DESTINATION lib/idg-cuda/common)
 
 # Make kernel findable in build tree
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory

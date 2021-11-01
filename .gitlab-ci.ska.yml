@@ -40,36 +40,79 @@ prepare-integration:
     - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
 
-test-unit-gpu:
-  stage: test
+prepare-gpu:
+  stage: prepare
   needs: []
+  image: docker:stable
+  services:
+    - docker:dind
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu -f ./docker/ubuntu_20_04_gpu .
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
+
+test-gpu:
+  stage: test
+  needs: ["prepare-gpu"]
   # This job may fail, since the k8srunner-gpu node is still experimental.
   allow_failure: true
   timeout: 10 minutes
   tags: [k8srunner-gpu]
-  image: nvidia/cuda:11.3.1-devel-ubuntu20.04
-  before_script:
-    - nvidia-smi
-    - export DEBIAN_FRONTEND=noninteractive
-    - apt-get update
-    - apt-get install -y --no-install-recommends libboost-all-dev g++ cmake libfftw3-dev liblapacke-dev python3 python3-pip git ninja-build
-    - pip3 install gcovr
-    - export LD_LIBRARY_PATH=/usr/local/cuda-11.3/compat:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
   script:
-    - mkdir -p build
-    - cd build
-    - cmake .. -DCMAKE_CXX_FLAGS="-coverage" -DCMAKE_EXE_LINKER_FLAGS="-coverage" -DBUILD_TESTING=On -DBUILD_LIB_CUDA=On -G Ninja
-    - ninja install
-    - export LD_LIBRARY_PATH=$(pwd)/lib:$LD_LIBRARY_PATH
-    - ctest -j8 --output-on-failure -R cuda
-    # Capture coverage
-    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json run-unit-gpu.json --xml coverage-gpu.xml
-    - gcovr --add-tracefile run-unit-gpu.json
-  artifacts:
-    paths:
-      - build/run-unit-gpu.json
-    reports:
-      cobertura: build/coverage-gpu.xml
+    - nvidia-smi
+    - cd /idg/bin
+    - for x in test-*; do echo == Running $x ==; ./$x; done
+
+deploy-package:
+  stage: publish
+  # Only deploy if the tests pass
+  needs: ["prepare-gpu","test-unit","test-integration","test-gpu"]
+  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
+  before_script:
+    - apt-get update
+    - apt-get install -y curl
+  script:
+    - cd /idg
+    - |
+      for pkg in idg-*.deb; do
+        out=${pkg//_/-}
+        out=${out/#idg-/${CI_PROJECT_NAME}-}
+        out=${out/%\.deb/-ubuntu20.04.deb}
+        out=${CAR_RAW_REPOSITORY_URL}/${CI_PROJECT_NAME}/$out
+        echo Deploying $pkg to $out...
+        curl -u ${CAR_RAW_USERNAME}:${CAR_RAW_PASSWORD} --upload-file $pkg $out
+      done
+  rules:
+    # Only deploy for the master branch, builds for tags, or when UPLOAD_PACKAGE
+    # is explicitly set.
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$UPLOAD_PACKAGE'
+
+deploy-docker:
+  stage: publish
+  # Only deploy if the tests pass
+  needs: ["versions","test-unit","test-integration","test-gpu"]
+  image: docker:stable
+  services:
+    - docker:dind
+  variables:
+    PIPELINE_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
+    CAR_IMAGE: ${CAR_OCI_REGISTRY_HOST}/${CI_PROJECT_NAME}/idg-cuda:${IDG_VERSION}
+  script:
+    - echo Deploying GPU docker image to ${CAR_IMAGE}
+    - echo ${CI_REGISTRY_PASSWORD} | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - echo ${CAR_OCI_REGISTRY_PASSWORD} | docker login --username ${CAR_OCI_REGISTRY_USERNAME} --password-stdin ${CAR_OCI_REGISTRY_HOST}
+    - docker pull ${PIPELINE_IMAGE}
+    - docker tag ${PIPELINE_IMAGE} ${CAR_IMAGE}
+    - docker push ${CAR_IMAGE}
+  rules:
+    # Only deploy for the master branch, builds for tags, or when UPLOAD_PACKAGE
+    # is explicitly set.
+    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$UPLOAD_PACKAGE'
 
 pages:
   stage: pages

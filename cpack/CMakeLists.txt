@@ -5,10 +5,8 @@
 set(CPACK_PACKAGING_INSTALL_PREFIX "/usr")
 
 # Base list of components.
-set(CPACK_COMPONENTS_ALL
-    api base
-    # util
-    # examples
+set(CPACK_COMPONENTS_ALL api base util
+                         # examples
 )
 
 # Dependencies between base components.
