@@ -175,7 +175,7 @@ void BufferImpl::set_aterm(size_t timeIndex,
               m_aterms.data() + m_aterms.size() - aterm_block_size);
   } else {  // local_time > last_offset
     // Insert new timeIndex before the last element in m_aterm_offsets.
-    assert(local_time < m_bufferTimesteps);
+    assert(local_time <= m_bufferTimesteps);
     m_aterm_offsets.back() = local_time;
     m_aterm_offsets.push_back(m_bufferTimesteps);
     m_aterms.insert(m_aterms.end(), local_aterms,
