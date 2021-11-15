@@ -193,7 +193,8 @@ class Field(object):
             Fraction of data to use during processing
         """
         if data_fraction < 1.0:
-            self.full_observations = self.observations[:]
+            if not hasattr(self, 'full_observations'):
+                self.full_observations = self.observations[:]
             self.observations = []
             for obs in self.full_observations:
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
@@ -1138,6 +1139,11 @@ class Field(object):
         """
         Updates parameters, sky models, etc. for current step
         """
+        # If the data fraction has changed, create new observations
+        if step_dict['data_fraction'] != self.__dict__['data_fraction']:
+            self.chunk_observations(step_dict['data_fraction'])
+
+        # Update field and sector dicts with the parameters for this iteration
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)

@@ -6,6 +6,7 @@ max_selfcal_loops = 8
 for i in range(max_selfcal_loops):
     strategy_steps.append({})
 
+    strategy_steps[i]['data_fraction'] = 0.2
     strategy_steps[i]['do_calibrate'] = True
     strategy_steps[i]['do_slowgain_solve'] = True
 

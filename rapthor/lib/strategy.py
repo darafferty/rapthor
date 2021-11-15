@@ -38,6 +38,8 @@ def set_strategy(field):
         for i in range(max_selfcal_loops):
             strategy_steps.append({})
 
+            strategy_steps[i]['data_fraction'] = 0.2
+
             strategy_steps[i]['do_calibrate'] = True
             if i == 0:
                 strategy_steps[i]['do_slowgain_solve'] = False
@@ -93,6 +95,8 @@ def set_strategy(field):
         # Image one or more sectors:
         #     - no calibration
         strategy_steps.append({})
+
+        strategy_steps[i]['data_fraction'] = 1.0
 
         strategy_steps[0]['do_calibrate'] = False
 

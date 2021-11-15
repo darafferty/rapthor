@@ -50,7 +50,7 @@ class Operation(object):
         self.force_serial_jobs = False  # force jobs to run serially
 
         # Extra Toil env variables and Toil version
-        self.toil_env_variables = {}
+        self.toil_env_variables = {'TOIL_SLURM_ARGS="--export=ALL"'}
         self.toil_major_version = int(toil_version.version.split('.')[0])
 
         # rapthor working directory
@@ -195,6 +195,7 @@ class Operation(object):
             args.extend(['--disableCaching'])
             args.extend(['--defaultCores', str(self.cpus_per_task)])
             args.extend(['--defaultMemory', self.mem_per_node_gb])
+            self.toil_env_variables['TOIL_SLURM_ARGS'] = "--export=ALL"
         args.extend(['--maxLocalJobs', str(self.max_nodes)])
         args.extend(['--jobStore', self.jobstore])
         if os.path.exists(self.jobstore):
