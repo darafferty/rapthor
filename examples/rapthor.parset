@@ -30,6 +30,7 @@ input_skymodel = /data/skymodel.txt
 # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
 # fraction, spaced out evenly over the full time range
 # data_fraction = 1.0
+# final_data_fraction = 1.0
 
 # Flagging ranges (default = no flagging). A range of times, baselines, and
 # frequencies to flag can be specified (see the DPPP documentation for details
