@@ -117,6 +117,14 @@ def get_global_options(parset):
     parset_dict = parset._sections['global'].copy()
     parset_dict.update({'calibration_specific': {}, 'imaging_specific': {}, 'cluster_specific': {}})
 
+    # Fraction of data to use (default = 1.0). If less than one, the input data are divided
+    # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
+    # fraction, spaced out evenly over the full time range
+    if 'data_fraction' in parset_dict:
+        parset_dict['data_fraction'] = parset.getfloat('global', 'data_fraction')
+    else:
+        parset_dict['data_fraction'] = 1.0
+
     # Regroup input sky model (default = True)
     if 'regroup_input_skymodel' in parset_dict:
         parset_dict['regroup_input_skymodel'] = parset.getboolean('global', 'regroup_input_skymodel')
@@ -178,7 +186,7 @@ def get_global_options(parset):
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
                        'flag_expr', 'input_skymodel', 'apparent_skymodel',
-                       'regroup_input_skymodel', 'input_h5parm']
+                       'regroup_input_skymodel', 'input_h5parm', 'data_fraction']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [global] section of the '

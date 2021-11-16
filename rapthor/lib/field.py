@@ -548,7 +548,7 @@ class Field(object):
         self.bright_source_skymodel = bright_source_skymodel
 
     def update_skymodels(self, index, regroup, target_flux=None,
-                         target_number=None):
+                         target_number=None, final=False):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -562,6 +562,8 @@ class Field(object):
             Target flux in Jy for grouping
         target_number : int, optional
             Target number of patches for grouping
+        final : bool, optional
+            If True, process as the final pass (combine initial and new sky models)
         """
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
@@ -642,6 +644,19 @@ class Field(object):
                 skymodel_apparent_sky._updateGroups()
                 skymodel_apparent_sky.setPatchPositions(method='wmean')
             else:
+                skymodel_apparent_sky = None
+
+            # If this is set as a final pass, concatenate the starting sky model with
+            # the new one (to allow subtraction of sources outside the imaged area)
+            if final:
+                # Load starting sky model
+                skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
+
+                # Concatenate
+                matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
+                skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
+                                              radius=matching_radius_deg,
+                                              keep='from1', inheritPatches=True)
                 skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
@@ -1135,20 +1150,31 @@ class Field(object):
             # Report converged (and not diverged)
             return True, False
 
-    def update(self, step_dict, index):
+    def update(self, step_dict, index, final=False):
         """
         Updates parameters, sky models, etc. for current step
+
+        Parameters
+        ----------
+        step_dict : dict
+            Dict of parameter values for given iteration
+        index : int
+            Index of iteration
+        final : bool, optional
+            If True, process as the final pass (combine initial and new sky models and
+            rechunk the input datasets)
         """
-        # If the data fraction has changed, create new observations
-        if step_dict['data_fraction'] != self.__dict__['data_fraction']:
-            self.chunk_observations(step_dict['data_fraction'])
+        # If this is set as a final pass, rechunk the input datasets
+        if final:
+            self.chunk_observations(self.parset['final_data_fraction'])
 
         # Update field and sector dicts with the parameters for this iteration
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
         self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=step_dict['target_flux'])
+                              target_flux=step_dict['target_flux'],
+                              final=final)
 
         # Check whether outliers and bright sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)

@@ -50,7 +50,7 @@ class Operation(object):
         self.force_serial_jobs = False  # force jobs to run serially
 
         # Extra Toil env variables and Toil version
-        self.toil_env_variables = {'TOIL_SLURM_ARGS="--export=ALL"'}
+        self.toil_env_variables = {}
         self.toil_major_version = int(toil_version.version.split('.')[0])
 
         # rapthor working directory
