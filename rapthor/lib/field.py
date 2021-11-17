@@ -96,6 +96,7 @@ class Field(object):
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
+        self.observations = self.full_observations[:]  # make copy so we don't alter originals
 
         # Define a reference observation for the comparisons below
         obs0 = self.full_observations[0]
@@ -1128,8 +1129,8 @@ class Field(object):
             divergence_ratio = 1.0
 
         if self.field_image_filename_prev is None:
-            # No previous iteration, so report nonconvergence
-            return False
+            # No previous iteration, so report not converged and not diverged
+            return False, False
 
         # Get noise from previous and current images
         image = FITSImage(self.field_image_filename_prev)
@@ -1165,9 +1166,13 @@ class Field(object):
             If True, process as the final pass (combine initial and new sky models and
             rechunk the input datasets)
         """
-        # If this is set as a final pass, rechunk the input datasets
+        # If this is set as a final pass, rechunk the input datasets, reset the sectors,
+        # and set some peeling/calibration options to the defaults
         if final:
             self.chunk_observations(self.parset['final_data_fraction'])
+#            self.define_imaging_sectors()
+            self.imaged_sources_only = False
+            self.peel_bright_sources = False
 
         # Update field and sector dicts with the parameters for this iteration
         self.__dict__.update(step_dict)
