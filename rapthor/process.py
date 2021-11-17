@@ -80,28 +80,28 @@ def run(parset_file, logging_level='info'):
                 log.info("Stopping at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
 
-        # Run with the final data fraction if needed
-        if parset['final_data_fraction'] != parset['data_fraction']:
-            field.update(step, index+2, final=True)
+    # Run with the final data fraction if needed
+    if parset['final_data_fraction'] != parset['data_fraction']:
+        field.update(step, index+2, final=True)
 
-            # Calibrate
-            if field.do_calibrate:
-                op = Calibrate(field, index+2)
-                op.run()
+        # Calibrate
+        if field.do_calibrate:
+            op = Calibrate(field, index+2)
+            op.run()
 
-            # Predict and subtract the sector models
-            if field.do_predict:
-                op = Predict(field, index+2)
-                op.run()
+        # Predict and subtract the sector models
+        if field.do_predict:
+            op = Predict(field, index+2)
+            op.run()
 
-            # Image the sectors
-            if field.do_image:
-                op = Image(field, index+2)
-                op.run()
+        # Image the sectors
+        if field.do_image:
+            op = Image(field, index+2)
+            op.run()
 
-                # Mosaic the sectors, for now just Stokes I
-                # TODO: run mosaic ops for IQUV+residuals
-                op = Mosaic(field, index+2)
-                op.run()
+            # Mosaic the sectors, for now just Stokes I
+            # TODO: run mosaic ops for IQUV+residuals
+            op = Mosaic(field, index+2)
+            op.run()
 
     log.info("Rapthor has finished :)")

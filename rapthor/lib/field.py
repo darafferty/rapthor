@@ -93,16 +93,16 @@ class Field(object):
         else:
             infix = ''
         self.log.debug('Scanning input MS file{}...'.format(infix))
-        self.observations = []
+        self.full_observations = []
         for ms_filename in self.ms_filenames:
-            self.observations.append(Observation(ms_filename))
+            self.full_observations.append(Observation(ms_filename))
 
         # Define a reference observation for the comparisons below
-        obs0 = self.observations[0]
+        obs0 = self.full_observations[0]
 
         # Check that all observations have the same antenna type
         self.antenna = obs0.antenna
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.antenna != obs.antenna:
                 self.log.critical('Antenna type for MS {0} differs from the one for MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -112,7 +112,7 @@ class Field(object):
         # NOTE: this may not be necessary and is disabled for now
         enforce_uniform_frequency_structure = False
         if enforce_uniform_frequency_structure:
-            for obs in self.observations:
+            for obs in self.full_observations:
                 if (obs0.numchannels != obs.numchannels or
                         obs0.startfreq != obs.startfreq or
                         obs0.endfreq != obs.endfreq or
@@ -124,7 +124,7 @@ class Field(object):
         # Check that all observations have the same pointing
         self.ra = obs0.ra
         self.dec = obs0.dec
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
                 self.log.critical('Pointing for MS {0} differs from the one for MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -132,7 +132,7 @@ class Field(object):
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.diam != obs.diam:
                 self.log.critical('Station diameter for MS {0} differs from the one for MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -140,7 +140,7 @@ class Field(object):
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.stations != obs.stations:
                 self.log.critical('Stations in MS {0} differ from those in MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -149,7 +149,7 @@ class Field(object):
         # Find mean elevation and FOV over all observations
         el_rad_list = []
         ref_freq_list = []
-        for obs in self.observations:
+        for obs in self.full_observations:
             el_rad_list.append(obs.mean_el_rad)
             ref_freq_list.append(obs.referencefreq)
         sec_el = 1.0 / np.sin(np.mean(el_rad_list))
@@ -170,11 +170,11 @@ class Field(object):
         # Set the MS file to use for beam model in sky model correction.
         # This should be the observation that best matches the weighted average
         # beam, so we use that closest to the mid point
-        times = [(obs.endtime+obs.starttime)/2.0 for obs in self.observations]
-        weights = [(obs.endtime-obs.starttime) for obs in self.observations]
+        times = [(obs.endtime+obs.starttime)/2.0 for obs in self.full_observations]
+        weights = [(obs.endtime-obs.starttime) for obs in self.full_observations]
         mid_time = np.average(times, weights=weights)
         mid_index = np.argmin(np.abs(np.array(times)-mid_time))
-        self.beam_ms_filename = self.observations[mid_index].ms_filename
+        self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
     def chunk_observations(self, data_fraction=1.0):
         """
@@ -193,8 +193,6 @@ class Field(object):
             Fraction of data to use during processing
         """
         if data_fraction < 1.0:
-            if not hasattr(self, 'full_observations'):
-                self.full_observations = self.observations[:]
             self.observations = []
             for obs in self.full_observations:
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
@@ -227,6 +225,9 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
+        else:
+            self.observations = self.full_observations[:]
+
         minnobs = self.parset['cluster_specific']['max_nodes']
         if len(self.imaging_sectors)*len(self.observations) < minnobs:
             # To ensure all the nodes are used efficiently, try to divide up the observations
