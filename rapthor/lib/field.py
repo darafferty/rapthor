@@ -1170,9 +1170,7 @@ class Field(object):
         # and set some peeling/calibration options to the defaults
         if final:
             self.chunk_observations(self.parset['final_data_fraction'])
-#            self.define_imaging_sectors()
             self.imaged_sources_only = False
-            self.peel_bright_sources = False
 
         # Update field and sector dicts with the parameters for this iteration
         self.__dict__.update(step_dict)

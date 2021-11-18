@@ -82,6 +82,9 @@ def run(parset_file, logging_level='info'):
 
     # Run with the final data fraction if needed
     if parset['final_data_fraction'] != parset['data_fraction']:
+        # Set peel_outliers to that of initial iteration, since the observations
+        # will be regenerated and outliers may need to be peeled
+        step['peel_outliers'] = strategy_steps[0]['peel_outliers']
         field.update(step, index+2, final=True)
 
         # Calibrate
