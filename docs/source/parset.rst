@@ -62,6 +62,11 @@ The available options are described below under their respective sections.
         data are divided by time into chunks that sum to the requested fraction,
         spaced out evenly over the full time range.
 
+    final_data_fraction
+        A final data fraction can be specified (default = ``data_fraction``)
+        such that a final processing pass (i.e., after selfcal finishes) is
+        done with a different fraction.
+
     flag_abstime
         Range of times to flag (default = no flagging). The syntax is that of
         the preflagger ``abstime`` parameter (see the DPPP documentation on the

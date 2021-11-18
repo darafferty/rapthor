@@ -28,7 +28,9 @@ input_skymodel = /data/skymodel.txt
 
 # Fraction of data to use (default = 1.0). If less than one, the input data are divided
 # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
-# fraction, spaced out evenly over the full time range
+# fraction, spaced out evenly over the full time range. A final fraction can also be
+# specified (default = data_fraction) such that a final processing pass (i.e., after
+# selfcal finishes) is done with a different fraction
 # data_fraction = 1.0
 # final_data_fraction = 1.0
 

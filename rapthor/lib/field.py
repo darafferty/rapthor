@@ -1166,7 +1166,7 @@ class Field(object):
             If True, process as the final pass (combine initial and new sky models and
             rechunk the input datasets)
         """
-        # If this is set as a final pass, rechunk the input datasets, reset the sectors,
+        # If this is set as a final pass, rechunk the input datasets
         # and set some peeling/calibration options to the defaults
         if final:
             self.chunk_observations(self.parset['final_data_fraction'])
