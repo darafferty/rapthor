@@ -77,11 +77,14 @@ def run(parset_file, logging_level='info'):
                 if has_diverged:
                     log.warning("Selfcal has diverged (ratio of current image noise "
                                 "to previous value is > {})".format(field.divergence_ratio))
-                log.info("Stopping at iteration {0} of {1}".format(index+1, len(strategy_steps)))
+                log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
 
     # Run with the final data fraction if needed
     if parset['final_data_fraction'] != parset['data_fraction']:
+        log.info("Starting final iteration with a data fraction of "
+                 "{0:.2f}".format(parset['final_data_fraction']))
+
         # Set peel_outliers to that of initial iteration, since the observations
         # will be regenerated and outliers may need to be peeled
         step['peel_outliers'] = strategy_steps[0]['peel_outliers']
