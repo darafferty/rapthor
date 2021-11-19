@@ -140,6 +140,8 @@ def get_global_options(parset):
     if parset_dict['final_data_fraction'] > 1.0:
         log.error('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
         sys.exit(1)
+    if parset_dict['final_data_fraction'] < parset_dict['data_fraction']:
+        log.warning('The final_data_fraction parameter is less than the initial data_fraction.')
 
     # Regroup input sky model (default = True)
     if 'regroup_input_skymodel' in parset_dict:
