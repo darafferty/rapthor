@@ -124,10 +124,22 @@ def get_global_options(parset):
         parset_dict['data_fraction'] = parset.getfloat('global', 'data_fraction')
     else:
         parset_dict['data_fraction'] = 1.0
+    if parset_dict['data_fraction'] <= 0.0:
+        log.error('The data_fraction parameter is <= 0. It must be > 0 and <= 1')
+        sys.exit(1)
+    if parset_dict['data_fraction'] > 1.0:
+        log.error('The data_fraction parameter is > 1. It must be > 0 and <= 1')
+        sys.exit(1)
     if 'final_data_fraction' in parset_dict:
         parset_dict['final_data_fraction'] = parset.getfloat('global', 'final_data_fraction')
     else:
         parset_dict['final_data_fraction'] = parset_dict['data_fraction']
+    if parset_dict['final_data_fraction'] <= 0.0:
+        log.error('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
+        sys.exit(1)
+    if parset_dict['final_data_fraction'] > 1.0:
+        log.error('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
+        sys.exit(1)
 
     # Regroup input sky model (default = True)
     if 'regroup_input_skymodel' in parset_dict:

@@ -10,6 +10,7 @@ from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 from rapthor.lib.field import Field
+import numpy as np
 
 log = logging.getLogger('rapthor')
 
@@ -81,13 +82,16 @@ def run(parset_file, logging_level='info'):
                 break
 
     # Run with the final data fraction if needed
-    if parset['final_data_fraction'] != parset['data_fraction']:
+    if not np.isclose(parset['final_data_fraction'], parset['data_fraction']):
         log.info("Starting final iteration with a data fraction of "
                  "{0:.2f}".format(parset['final_data_fraction']))
 
         # Set peel_outliers to that of initial iteration, since the observations
         # will be regenerated and outliers may need to be peeled
         step['peel_outliers'] = strategy_steps[0]['peel_outliers']
+
+        # Now start the final processing pass, incrementing the iteration index
+        # from that of the last selfcal iteration (so to index+2)
         field.update(step, index+2, final=True)
 
         # Calibrate
