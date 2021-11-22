@@ -28,8 +28,11 @@ input_skymodel = /data/skymodel.txt
 
 # Fraction of data to use (default = 1.0). If less than one, the input data are divided
 # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
-# fraction, spaced out evenly over the full time range
-# data_fraction = 1.0
+# fraction, spaced out evenly over the full time range. A final fraction can also be
+# specified (default = selfcal_data_fraction) such that a final processing pass (i.e., after
+# selfcal finishes) is done with a different fraction
+# selfcal_data_fraction = 1.0
+# final_data_fraction = 1.0
 
 # Flagging ranges (default = no flagging). A range of times, baselines, and
 # frequencies to flag can be specified (see the DPPP documentation for details

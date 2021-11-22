@@ -1,11 +1,11 @@
 [global]
 strategy = /home/rafferty/full_field_strategy.py
-dir_working = . 
+dir_working = .
 input_ms = resources/test.ms
 input_skymodel = resources/test_true_sky.txt
 apparent_skymodel = resources/test_apparent_sky.txt
 regroup_input_skymodel = True
-data_fraction = 0.2
+selfcal_data_fraction = 0.2
 
 [calibration]
 fast_timestep_sec = 32

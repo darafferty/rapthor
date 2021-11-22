@@ -331,7 +331,7 @@ class Observation(object):
         if self.numsamples == 1:
             self.log.critical('Only one time slot is availble for imaging, but at least '
                               'two are required. Please increase the fraction of data '
-                              'processed with the data_fraction parameter or supply a '
+                              'processed with the selfcal_data_fraction parameter or supply a '
                               'measurement set with more time slots.')
             sys.exit(1)
         max_timewidth_sec = min(120, int(self.numsamples / 2) * timestep_sec)

@@ -57,10 +57,15 @@ The available options are described below under their respective sections.
         file. See :ref:`rapthor_strategy` for details on making a custom
         strategy file.
 
-    data_fraction
+    selfcal_data_fraction
         Fraction of data to use (default = 1.0). If less than one, the input
         data are divided by time into chunks that sum to the requested fraction,
         spaced out evenly over the full time range.
+
+    final_data_fraction
+        A final data fraction can be specified (default = ``selfcal_data_fraction``)
+        such that a final processing pass (i.e., after selfcal finishes) is
+        done with a different fraction.
 
     flag_abstime
         Range of times to flag (default = no flagging). The syntax is that of

@@ -10,6 +10,7 @@ from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import Predict
 from rapthor.lib.field import Field
+import numpy as np
 
 log = logging.getLogger('rapthor')
 
@@ -77,7 +78,40 @@ def run(parset_file, logging_level='info'):
                 if has_diverged:
                     log.warning("Selfcal has diverged (ratio of current image noise "
                                 "to previous value is > {})".format(field.divergence_ratio))
-                log.info("Stopping at iteration {0} of {1}".format(index+1, len(strategy_steps)))
+                log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
+
+    # Run with the final data fraction if needed
+    if not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']):
+        log.info("Starting final iteration with a data fraction of "
+                 "{0:.2f}".format(parset['final_data_fraction']))
+
+        # Set peel_outliers to that of initial iteration, since the observations
+        # will be regenerated and outliers may need to be peeled
+        step['peel_outliers'] = strategy_steps[0]['peel_outliers']
+
+        # Now start the final processing pass, incrementing the iteration index
+        # from that of the last selfcal iteration (so to index+2)
+        field.update(step, index+2, final=True)
+
+        # Calibrate
+        if field.do_calibrate:
+            op = Calibrate(field, index+2)
+            op.run()
+
+        # Predict and subtract the sector models
+        if field.do_predict:
+            op = Predict(field, index+2)
+            op.run()
+
+        # Image the sectors
+        if field.do_image:
+            op = Image(field, index+2)
+            op.run()
+
+            # Mosaic the sectors, for now just Stokes I
+            # TODO: run mosaic ops for IQUV+residuals
+            op = Mosaic(field, index+2)
+            op.run()
 
     log.info("Rapthor has finished :)")

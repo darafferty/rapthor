@@ -121,9 +121,30 @@ def get_global_options(parset):
     # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
     # fraction, spaced out evenly over the full time range
     if 'data_fraction' in parset_dict:
-        parset_dict['data_fraction'] = parset.getfloat('global', 'data_fraction')
+        parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'data_fraction')
+        log.warning('The data_fraction parameter has been deprecated. Please use selfcal_data_fraction instead.')
+    if 'selfcal_data_fraction' in parset_dict:
+        parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'selfcal_data_fraction')
     else:
-        parset_dict['data_fraction'] = 1.0
+        parset_dict['selfcal_data_fraction'] = 1.0
+    if parset_dict['selfcal_data_fraction'] <= 0.0:
+        log.error('The selfcal_data_fraction parameter is <= 0. It must be > 0 and <= 1')
+        sys.exit(1)
+    if parset_dict['selfcal_data_fraction'] > 1.0:
+        log.error('The selfcal_data_fraction parameter is > 1. It must be > 0 and <= 1')
+        sys.exit(1)
+    if 'final_data_fraction' in parset_dict:
+        parset_dict['final_data_fraction'] = parset.getfloat('global', 'final_data_fraction')
+    else:
+        parset_dict['final_data_fraction'] = parset_dict['selfcal_data_fraction']
+    if parset_dict['final_data_fraction'] <= 0.0:
+        log.error('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
+        sys.exit(1)
+    if parset_dict['final_data_fraction'] > 1.0:
+        log.error('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
+        sys.exit(1)
+    if parset_dict['final_data_fraction'] < parset_dict['selfcal_data_fraction']:
+        log.warning('The final_data_fraction parameter is less than selfcal_data_fraction.')
 
     # Regroup input sky model (default = True)
     if 'regroup_input_skymodel' in parset_dict:
@@ -186,7 +207,8 @@ def get_global_options(parset):
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
                        'flag_expr', 'input_skymodel', 'apparent_skymodel',
-                       'regroup_input_skymodel', 'input_h5parm', 'data_fraction']
+                       'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
+                       'final_data_fraction']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [global] section of the '

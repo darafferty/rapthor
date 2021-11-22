@@ -195,6 +195,7 @@ class Operation(object):
             args.extend(['--disableCaching'])
             args.extend(['--defaultCores', str(self.cpus_per_task)])
             args.extend(['--defaultMemory', self.mem_per_node_gb])
+            self.toil_env_variables['TOIL_SLURM_ARGS'] = "--export=ALL"
         args.extend(['--maxLocalJobs', str(self.max_nodes)])
         args.extend(['--jobStore', self.jobstore])
         if os.path.exists(self.jobstore):

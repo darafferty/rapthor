@@ -82,7 +82,7 @@ class Field(object):
             self.define_imaging_sectors()
 
             # Chunk the observations into smaller parts if needed
-            self.chunk_observations(self.parset['data_fraction'])
+            self.chunk_observations(self.parset['selfcal_data_fraction'])
 
     def scan_observations(self):
         """
@@ -93,16 +93,17 @@ class Field(object):
         else:
             infix = ''
         self.log.debug('Scanning input MS file{}...'.format(infix))
-        self.observations = []
+        self.full_observations = []
         for ms_filename in self.ms_filenames:
-            self.observations.append(Observation(ms_filename))
+            self.full_observations.append(Observation(ms_filename))
+        self.observations = self.full_observations[:]  # make copy so we don't alter originals
 
         # Define a reference observation for the comparisons below
-        obs0 = self.observations[0]
+        obs0 = self.full_observations[0]
 
         # Check that all observations have the same antenna type
         self.antenna = obs0.antenna
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.antenna != obs.antenna:
                 self.log.critical('Antenna type for MS {0} differs from the one for MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -112,7 +113,7 @@ class Field(object):
         # NOTE: this may not be necessary and is disabled for now
         enforce_uniform_frequency_structure = False
         if enforce_uniform_frequency_structure:
-            for obs in self.observations:
+            for obs in self.full_observations:
                 if (obs0.numchannels != obs.numchannels or
                         obs0.startfreq != obs.startfreq or
                         obs0.endfreq != obs.endfreq or
@@ -124,7 +125,7 @@ class Field(object):
         # Check that all observations have the same pointing
         self.ra = obs0.ra
         self.dec = obs0.dec
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
                 self.log.critical('Pointing for MS {0} differs from the one for MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -132,7 +133,7 @@ class Field(object):
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.diam != obs.diam:
                 self.log.critical('Station diameter for MS {0} differs from the one for MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -140,7 +141,7 @@ class Field(object):
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
-        for obs in self.observations:
+        for obs in self.full_observations:
             if self.stations != obs.stations:
                 self.log.critical('Stations in MS {0} differ from those in MS {1}! '
                                   'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
@@ -149,7 +150,7 @@ class Field(object):
         # Find mean elevation and FOV over all observations
         el_rad_list = []
         ref_freq_list = []
-        for obs in self.observations:
+        for obs in self.full_observations:
             el_rad_list.append(obs.mean_el_rad)
             ref_freq_list.append(obs.referencefreq)
         sec_el = 1.0 / np.sin(np.mean(el_rad_list))
@@ -170,11 +171,11 @@ class Field(object):
         # Set the MS file to use for beam model in sky model correction.
         # This should be the observation that best matches the weighted average
         # beam, so we use that closest to the mid point
-        times = [(obs.endtime+obs.starttime)/2.0 for obs in self.observations]
-        weights = [(obs.endtime-obs.starttime) for obs in self.observations]
+        times = [(obs.endtime+obs.starttime)/2.0 for obs in self.full_observations]
+        weights = [(obs.endtime-obs.starttime) for obs in self.full_observations]
         mid_time = np.average(times, weights=weights)
         mid_index = np.argmin(np.abs(np.array(times)-mid_time))
-        self.beam_ms_filename = self.observations[mid_index].ms_filename
+        self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
     def chunk_observations(self, data_fraction=1.0):
         """
@@ -193,7 +194,6 @@ class Field(object):
             Fraction of data to use during processing
         """
         if data_fraction < 1.0:
-            self.full_observations = self.observations[:]
             self.observations = []
             for obs in self.full_observations:
                 mintime = self.parset['calibration_specific']['slow_timestep_sec']
@@ -226,6 +226,9 @@ class Field(object):
                             endtime = obs.endtime
                         self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                              endtime=endtime))
+        else:
+            self.observations = self.full_observations[:]
+
         minnobs = self.parset['cluster_specific']['max_nodes']
         if len(self.imaging_sectors)*len(self.observations) < minnobs:
             # To ensure all the nodes are used efficiently, try to divide up the observations
@@ -547,7 +550,7 @@ class Field(object):
         self.bright_source_skymodel = bright_source_skymodel
 
     def update_skymodels(self, index, regroup, target_flux=None,
-                         target_number=None):
+                         target_number=None, final=False):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -561,6 +564,8 @@ class Field(object):
             Target flux in Jy for grouping
         target_number : int, optional
             Target number of patches for grouping
+        final : bool, optional
+            If True, process as the final pass (combine initial and new sky models)
         """
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
@@ -641,6 +646,19 @@ class Field(object):
                 skymodel_apparent_sky._updateGroups()
                 skymodel_apparent_sky.setPatchPositions(method='wmean')
             else:
+                skymodel_apparent_sky = None
+
+            # If this is set as a final pass, concatenate the starting sky model with
+            # the new one (to allow subtraction of sources outside the imaged area)
+            if final:
+                # Load starting sky model
+                skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
+
+                # Concatenate
+                matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
+                skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
+                                              radius=matching_radius_deg,
+                                              keep='from1', inheritPatches=True)
                 skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
@@ -1111,8 +1129,8 @@ class Field(object):
             divergence_ratio = 1.0
 
         if self.field_image_filename_prev is None:
-            # No previous iteration, so report nonconvergence
-            return False
+            # No previous iteration, so report not converged and not diverged
+            return False, False
 
         # Get noise from previous and current images
         image = FITSImage(self.field_image_filename_prev)
@@ -1134,15 +1152,33 @@ class Field(object):
             # Report converged (and not diverged)
             return True, False
 
-    def update(self, step_dict, index):
+    def update(self, step_dict, index, final=False):
         """
         Updates parameters, sky models, etc. for current step
+
+        Parameters
+        ----------
+        step_dict : dict
+            Dict of parameter values for given iteration
+        index : int
+            Index of iteration
+        final : bool, optional
+            If True, process as the final pass (combine initial and new sky models and
+            rechunk the input datasets)
         """
+        # If this is set as a final pass, rechunk the input datasets
+        # and set some peeling/calibration options to the defaults
+        if final:
+            self.chunk_observations(self.parset['final_data_fraction'])
+            self.imaged_sources_only = False
+
+        # Update field and sector dicts with the parameters for this iteration
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
         self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=step_dict['target_flux'])
+                              target_flux=step_dict['target_flux'],
+                              final=final)
 
         # Check whether outliers and bright sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
