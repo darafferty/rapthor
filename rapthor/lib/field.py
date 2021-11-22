@@ -82,7 +82,7 @@ class Field(object):
             self.define_imaging_sectors()
 
             # Chunk the observations into smaller parts if needed
-            self.chunk_observations(self.parset['data_fraction'])
+            self.chunk_observations(self.parset['selfcal_data_fraction'])
 
     def scan_observations(self):
         """

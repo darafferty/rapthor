@@ -82,7 +82,7 @@ def run(parset_file, logging_level='info'):
                 break
 
     # Run with the final data fraction if needed
-    if not np.isclose(parset['final_data_fraction'], parset['data_fraction']):
+    if not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']):
         log.info("Starting final iteration with a data fraction of "
                  "{0:.2f}".format(parset['final_data_fraction']))
 
