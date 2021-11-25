@@ -860,33 +860,54 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned nr_polarizations) {
 
   // Force plan (re-)creation if subgrid size changed
   if (size != m_fft_subgrid_size) {
-    m_fft_subgrid_bulk = m_fft_subgrid_bulk_default;
+    m_fft_subgrid_batch = m_fft_subgrid_batch_default;
     m_fft_plan_subgrid.reset();
     m_fft_subgrid_size = size;
   }
 
   while (!m_fft_plan_subgrid) {
+    size_t sizeof_subgrids;
+
+    // Do not try the current batch size if the required amount of memory
+    // exceeds the amount of free device memory.
+    size_t bytes_free = get_free_memory();
+    size_t bytes_fft;
+    do {
+      sizeof_subgrids = auxiliary::sizeof_subgrids(
+          m_fft_subgrid_batch, m_fft_subgrid_size, nr_polarizations);
+      bytes_fft = 2 * sizeof_subgrids;  // 1x FFT plan, 1x d_fft_subgrid
+      if (bytes_fft > bytes_free && m_fft_subgrid_batch > 0) {
+        std::clog << __func__ << ": reducing subgrid-fft batch size to: "
+                  << m_fft_subgrid_batch << std::endl;
+        m_fft_subgrid_batch /= 2;
+      }
+    } while (bytes_fft > bytes_free);
+
+    // Plan fft
+    unsigned stride = 1;
+    unsigned dist = size * size;
+
     try {
-      // Plan bulk fft
-      unsigned stride = 1;
-      unsigned dist = size * size;
       m_fft_plan_subgrid.reset(
           new cufft::C2C_2D(*context, size, size, stride, dist,
-                            m_fft_subgrid_bulk * nr_polarizations));
+                            m_fft_subgrid_batch * nr_polarizations));
       m_fft_plan_subgrid->setStream(*executestream);
-      auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-          m_fft_subgrid_bulk, m_fft_subgrid_size, nr_polarizations);
       d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
-    } catch (cufft::Error& e) {
-      // bulk might be too large, try again using half the bulk size
-      m_fft_subgrid_bulk /= 2;
-      if (m_fft_subgrid_bulk > 0) {
-        std::clog << __func__ << ": reducing subgrid-fft bulk size to: "
-                  << m_fft_subgrid_bulk << std::endl;
+    } catch (std::exception& e) {
+      // Try again using half the batch size
+      m_fft_subgrid_batch /= 2;
+      if (m_fft_subgrid_batch > 0) {
+        std::clog << __func__ << ": reducing subgrid-fft batch size to: "
+                  << m_fft_subgrid_batch << std::endl;
         d_fft_subgrid.reset();
       } else {
-        std::cerr << __func__ << ": could not plan subgrid-fft." << std::endl;
-        throw e;
+        std::stringstream message;
+        message << __func__
+                << ": could not plan subgrid-fft for size = " << size
+                << ", with " << bytes_free
+                << " bytes of device memory available."
+                << "(" << e.what() << ")" << std::endl;
+        throw std::runtime_error(message.str());
       }
     }
   }
@@ -918,16 +939,16 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
                                      Report::subgrid_fft);
   start_measurement(data);
 
-  // Execute bulk subgrid fft
+  // Execute fft in batches
   unsigned s = 0;
-  for (; (s + m_fft_subgrid_bulk) <= nr_subgrids; s += m_fft_subgrid_bulk) {
+  for (; (s + m_fft_subgrid_batch) <= nr_subgrids; s += m_fft_subgrid_batch) {
     m_fft_plan_subgrid->execute(data_ptr, data_ptr, sign);
     data_ptr += m_fft_subgrid_size * m_fft_subgrid_size * nr_polarizations *
-                m_fft_subgrid_bulk;
+                m_fft_subgrid_batch;
   }
 
   // Check for remainder
-  unsigned int fft_subgrid_remainder = nr_subgrids % m_fft_subgrid_bulk;
+  unsigned int fft_subgrid_remainder = nr_subgrids % m_fft_subgrid_batch;
   if (fft_subgrid_remainder > 0) {
     auto sizeof_subgrids = auxiliary::sizeof_subgrids(
         fft_subgrid_remainder, m_fft_subgrid_size, nr_polarizations);
@@ -1296,7 +1317,7 @@ void InstanceCUDA::free_events() { events.clear(); }
 void InstanceCUDA::free_fft_plans() {
   m_fft_grid_size = 0;
   m_fft_plan_grid.reset();
-  m_fft_subgrid_bulk = 0;
+  m_fft_subgrid_batch = 0;
   m_fft_subgrid_size = 0;
   m_fft_plan_subgrid.reset();
   d_fft_subgrid.reset();

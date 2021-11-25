@@ -246,8 +246,8 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cufft::C2C_2D> m_fft_plan_grid;
 
   // Subgrid FFT
-  const unsigned m_fft_subgrid_bulk_default = 1024;
-  unsigned m_fft_subgrid_bulk = m_fft_subgrid_bulk_default;
+  const unsigned m_fft_subgrid_batch_default = 1024;
+  unsigned m_fft_subgrid_batch = m_fft_subgrid_batch_default;
   unsigned m_fft_subgrid_size = 0;
   std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid;
   std::unique_ptr<cu::DeviceMemory> d_fft_subgrid;
