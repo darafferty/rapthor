@@ -61,10 +61,23 @@ void Generic::run_gridding(
   auto w_step = plan.get_w_step();
   auto& shift = plan.get_shift();
 
+  // Convert frequencies to wavenumbers
+  Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+  // Aterm indices
+  size_t sizeof_aterms_indices =
+      auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+  auto aterms_indices = plan.get_aterm_indices_ptr();
+
+  // Average aterm correction
+  size_t sizeof_avg_aterm_correction =
+      m_avg_aterm_correction.size() > 0
+          ? auxiliary::sizeof_avg_aterm_correction(subgrid_size)
+          : 0;
+
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
-  int jobsize = m_gridding_state.jobsize[device_id];
 
   // Page-locked host memory
   cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(),
@@ -76,28 +89,69 @@ void Generic::run_gridding(
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
-  // Events
-  std::vector<std::unique_ptr<cu::Event>> inputCopied;
-  std::vector<std::unique_ptr<cu::Event>> gpuFinished;
-  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(std::unique_ptr<cu::Event>(
-        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
-    gpuFinished.push_back(std::unique_ptr<cu::Event>(
-        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
-  }
-
   // Load memory objects
   cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
-  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
-  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
-  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
-  cu::DeviceMemory& d_avg_aterm = *m_buffers.d_avg_aterm;
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
+
+  // Allocate device memory
+  cu::DeviceMemory d_wavenumbers(context, wavenumbers.bytes());
+  cu::DeviceMemory d_spheroidal(context, spheroidal.bytes());
+  cu::DeviceMemory d_aterms(context, aterms.bytes());
+  cu::DeviceMemory d_aterms_indices(context, sizeof_aterms_indices);
+  cu::DeviceMemory d_avg_aterm(context, sizeof_avg_aterm_correction);
+
+  // Initialize device memory
+  htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
+                             wavenumbers.bytes());
+  htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(),
+                             spheroidal.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms_indices, aterms_indices,
+                             sizeof_aterms_indices);
+  htodstream.memcpyHtoDAsync(d_avg_aterm, m_avg_aterm_correction.data(),
+                             sizeof_avg_aterm_correction);
+
+  // Plan subgrid fft
+  device.plan_subgrid_fft(subgrid_size, nr_polarizations);
+
+  // Initialize jobs
+  std::vector<JobData> jobs;
+  int jobsize =
+      initialize_jobs(nr_baselines, nr_timesteps, nr_channels, subgrid_size,
+                      device.get_free_memory(), plan, visibilities, uvw, jobs);
+
+  // Allocate device memory for jobs
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
+
+  for (int i = 0; i < 2; i++) {
+    int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
+    size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
+        jobsize, nr_timesteps, nr_channels, nr_correlations);
+    size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+    size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+        max_nr_subgrids, subgrid_size, nr_correlations);
+    size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
+    d_visibilities_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_visibilities));
+    d_uvw_.emplace_back(new cu::DeviceMemory(context, sizeof_uvw));
+    d_subgrids_.emplace_back(new cu::DeviceMemory(context, sizeof_subgrids));
+    d_metadata_.emplace_back(new cu::DeviceMemory(context, sizeof_metadata));
+  }
+
+  // Events
+  std::vector<std::unique_ptr<cu::Event>> inputCopied;
+  std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+    inputCopied.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
+    gpuFinished.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
+  }
 
   // Start performance measurement
   startStates[device_id] = device.measure();
@@ -119,10 +173,10 @@ void Generic::run_gridding(
     auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
-    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
-    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
-    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
+    cu::DeviceMemory& d_visibilities = *d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -141,10 +195,9 @@ void Generic::run_gridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_visibilities_next =
-          *m_buffers.d_visibilities_[local_id_next];
-      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
-      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
+      cu::DeviceMemory& d_visibilities_next = *d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -225,6 +278,9 @@ void Generic::run_gridding(
   auto total_nr_visibilities = plan.get_nr_visibilities();
   m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_gridding, total_nr_visibilities);
+
+  // Cleanup
+  device.free_subgrid_fft();
 }  // end run_gridding
 
 void Generic::do_gridding(
@@ -239,22 +295,9 @@ void Generic::do_gridding(
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
-#if defined(DEBUG)
-  std::clog << "### Initialize gridding" << std::endl;
-#endif
-  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
-                   aterms_offsets, spheroidal);
-
-#if defined(DEBUG)
-  std::clog << "### Run gridding" << std::endl;
-#endif
   run_gridding(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
                aterms_offsets, spheroidal);
-
-#if defined(DEBUG)
-  std::clog << "### Finish gridding" << std::endl;
-#endif
-}
+}  // end do_gridding
 
 void Generic::run_degridding(
     const Plan& plan, const Array1D<float>& frequencies,
@@ -288,10 +331,17 @@ void Generic::run_degridding(
   auto w_step = plan.get_w_step();
   auto& shift = plan.get_shift();
 
+  // Convert frequencies to wavenumbers
+  Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+
+  // Aterm indices
+  size_t sizeof_aterms_indices =
+      auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+  auto aterms_indices = plan.get_aterm_indices_ptr();
+
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
-  int jobsize = m_gridding_state.jobsize[device_id];
 
   // Page-locked host memory
   cu::RegisteredMemory h_metadata(context, plan.get_metadata_ptr(),
@@ -303,30 +353,68 @@ void Generic::run_degridding(
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
-  // Events
-  std::vector<std::unique_ptr<cu::Event>> inputCopied;
-  std::vector<std::unique_ptr<cu::Event>> gpuFinished;
-  std::vector<std::unique_ptr<cu::Event>> outputCopied;
-  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(std::unique_ptr<cu::Event>(
-        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
-    gpuFinished.push_back(std::unique_ptr<cu::Event>(
-        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
-    outputCopied.push_back(std::unique_ptr<cu::Event>(
-        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
-  }
-
   // Load memory objects
   cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
-  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
-  cu::DeviceMemory& d_spheroidal = *m_buffers.d_spheroidal;
-  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  cu::DeviceMemory& d_aterms_indices = *m_buffers.d_aterms_indices_[0];
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
   cu::Stream& htodstream = device.get_htod_stream();
   cu::Stream& dtohstream = device.get_dtoh_stream();
+
+  // Allocate device memory
+  cu::DeviceMemory d_wavenumbers(context, wavenumbers.bytes());
+  cu::DeviceMemory d_spheroidal(context, spheroidal.bytes());
+  cu::DeviceMemory d_aterms(context, aterms.bytes());
+  cu::DeviceMemory d_aterms_indices(context, sizeof_aterms_indices);
+
+  // Initialize device memory
+  htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
+                             wavenumbers.bytes());
+  htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(),
+                             spheroidal.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
+  htodstream.memcpyHtoDAsync(d_aterms_indices, aterms_indices,
+                             sizeof_aterms_indices);
+
+  // Plan subgrid fft
+  device.plan_subgrid_fft(subgrid_size, nr_polarizations);
+
+  // Initialize jobs
+  std::vector<JobData> jobs;
+  int jobsize =
+      initialize_jobs(nr_baselines, nr_timesteps, nr_channels, subgrid_size,
+                      device.get_free_memory(), plan, visibilities, uvw, jobs);
+
+  // Allocate device memory for jobs
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
+
+  for (int i = 0; i < 2; i++) {
+    int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
+    size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
+        jobsize, nr_timesteps, nr_channels, nr_correlations);
+    size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+    size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+        max_nr_subgrids, subgrid_size, nr_correlations);
+    size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
+    d_visibilities_.emplace_back(
+        new cu::DeviceMemory(context, sizeof_visibilities));
+    d_uvw_.emplace_back(new cu::DeviceMemory(context, sizeof_uvw));
+    d_subgrids_.emplace_back(new cu::DeviceMemory(context, sizeof_subgrids));
+    d_metadata_.emplace_back(new cu::DeviceMemory(context, sizeof_metadata));
+  }
+
+  // Events
+  std::vector<std::unique_ptr<cu::Event>> inputCopied;
+  std::vector<std::unique_ptr<cu::Event>> gpuFinished;
+  std::vector<std::unique_ptr<cu::Event>> outputCopied;
+  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+    inputCopied.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
+    gpuFinished.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
+    outputCopied.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
+  }
 
   // Start performance measurement
   startStates[device_id] = device.measure();
@@ -348,10 +436,10 @@ void Generic::run_degridding(
     auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[local_id];
-    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
-    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[local_id];
-    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[local_id];
+    cu::DeviceMemory& d_visibilities = *d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = *d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = *d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -366,8 +454,8 @@ void Generic::run_degridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
-      cu::DeviceMemory& d_metadata_next = *m_buffers.d_metadata_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = *d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
@@ -453,6 +541,9 @@ void Generic::run_degridding(
   m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_degridding,
                                total_nr_visibilities);
+
+  // Cleanup
+  device.free_subgrid_fft();
 }  // end run_degridding
 
 void Generic::do_degridding(
@@ -466,22 +557,9 @@ void Generic::do_degridding(
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
-#if defined(DEBUG)
-  std::clog << "### Initialize degridding" << std::endl;
-#endif
-  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
-                   aterms_offsets, spheroidal);
-
-#if defined(DEBUG)
-  std::clog << "### Run degridding" << std::endl;
-#endif
   run_degridding(plan, frequencies, visibilities, uvw, baselines, *m_grid,
                  aterms, aterms_offsets, spheroidal);
-
-#if defined(DEBUG)
-  std::clog << "### Finish degridding" << std::endl;
-#endif
-}  // end degridding
+}  // end do_degridding
 
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;

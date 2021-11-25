@@ -49,15 +49,6 @@ void Unified::do_gridding(
     throw std::runtime_error("Unified memory needs to be enabled!");
   }
 
-#if defined(DEBUG)
-  std::clog << "### Initialize gridding" << std::endl;
-#endif
-  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
-                   aterms_offsets, spheroidal);
-
-#if defined(DEBUG)
-  std::clog << "### Run gridding" << std::endl;
-#endif
   auto grid_ptr = m_grid.get();
   if (m_enable_tiling) {
     auto nr_polarizations = m_grid->get_z_dim();
@@ -84,15 +75,6 @@ void Unified::do_degridding(
     throw std::runtime_error("Unified memory needs to be enabled!");
   }
 
-#if defined(DEBUG)
-  std::clog << "### Initialize degridding" << std::endl;
-#endif
-  CUDA::initialize(plan, frequencies, visibilities, uvw, baselines, aterms,
-                   aterms_offsets, spheroidal);
-
-#if defined(DEBUG)
-  std::clog << "### Run degridding" << std::endl;
-#endif
   auto grid_ptr = m_grid.get();
   if (m_enable_tiling) {
     auto nr_polarizations = m_grid->get_z_dim();
