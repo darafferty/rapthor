@@ -94,15 +94,12 @@ class CUDA : public Proxy {
     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
     std::unique_ptr<cu::DeviceMemory> d_aterms;
     std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
-    std::unique_ptr<cu::DeviceMemory> d_lmnp;
 
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_sums_;
 
     std::unique_ptr<cu::HostMemory> h_subgrids;
   } m_buffers;
