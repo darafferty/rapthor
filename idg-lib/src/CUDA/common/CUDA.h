@@ -71,11 +71,6 @@ class CUDA : public Proxy {
       const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam) override;
 
-  /*
-   * FFT
-   */
-  virtual void do_transform(DomainAtoDomainB direction) override;
-
  protected:
   void init_devices();
   void free_devices();

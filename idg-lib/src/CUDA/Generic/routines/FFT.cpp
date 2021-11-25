@@ -1,5 +1,5 @@
-#include "../CUDA.h"
-#include "../InstanceCUDA.h"
+#include "../Generic.h"
+#include "InstanceCUDA.h"
 
 using namespace idg::kernel::cuda;
 
@@ -7,7 +7,7 @@ namespace idg {
 namespace proxy {
 namespace cuda {
 
-void CUDA::do_transform(DomainAtoDomainB direction) {
+void Generic::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif

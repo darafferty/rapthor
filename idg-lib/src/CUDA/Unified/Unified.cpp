@@ -105,6 +105,25 @@ void Unified::do_degridding(
                           *grid_ptr, aterms, aterms_offsets, spheroidal);
 }  // end degridding
 
+
+void Unified::do_transform(idg::DomainAtoDomainB direction) {
+  InstanceCUDA& device = get_device(0);
+  auto nr_polarizations = m_grid->get_z_dim();
+  auto grid_size = m_grid->get_x_dim();
+  auto tile_size = device.get_tile_size_grid();
+  if (m_enable_tiling) {
+    device.tile_backward(nr_polarizations, grid_size, tile_size, *m_grid_tiled,
+                         *m_grid);
+  }
+  Generic::set_grid(m_grid);
+  Generic::do_transform(direction);
+  m_grid = Generic::get_final_grid();
+  if (m_enable_tiling) {
+    device.tile_forward(nr_polarizations, grid_size, tile_size, *m_grid,
+                        *m_grid_tiled);
+  }
+}
+
 void Unified::set_grid(std::shared_ptr<Grid> grid) {
   m_grid = grid;
 

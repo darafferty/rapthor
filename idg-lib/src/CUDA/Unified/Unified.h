@@ -44,6 +44,8 @@ class Unified : public Generic {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
+  void do_transform(DomainAtoDomainB direction) override;
+
   void set_grid(std::shared_ptr<Grid> grid) override;
 
   std::shared_ptr<Grid> get_final_grid() override;
