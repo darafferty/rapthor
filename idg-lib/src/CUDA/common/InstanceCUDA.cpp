@@ -850,12 +850,10 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int batch,
   end_measurement(data);
 }
 
-void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned batch,
-                                    unsigned nr_polarizations) {
+void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned nr_polarizations) {
 #if USE_CUSTOM_FFT
   if (size == 32) {
     m_fft_subgrid_size = size;
-    m_fft_subgrid_bulk = batch;
     return;
   }
 #endif
@@ -907,7 +905,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   if (fft_subgrid_size == 32) {
     const void* parameters[] = {&data_ptr, &data_ptr, &sign};
     dim3 block(128);
-    dim3 grid(NR_CORRELATIONS * fft_subgrid_batch);
+    dim3 grid(NR_CORRELATIONS * nr_subgrids);
     executestream->launchKernel(*function_fft, grid, block, 0, parameters);
     return;
   }

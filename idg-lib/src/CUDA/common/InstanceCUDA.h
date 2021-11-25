@@ -78,8 +78,7 @@ class InstanceCUDA : public KernelsInstance {
   void launch_grid_fft(cu::DeviceMemory& d_data, int batch, long size,
                        DomainAtoDomainB direction);
 
-  void plan_subgrid_fft(unsigned size, unsigned batch,
-                        unsigned nr_polarizations);
+  void plan_subgrid_fft(unsigned size, unsigned nr_polarizations);
 
   void launch_subgrid_fft(cu::DeviceMemory& d_data, unsigned nr_subgrids,
                           unsigned nr_polarizations,

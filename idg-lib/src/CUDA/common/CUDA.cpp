@@ -480,7 +480,7 @@ void CUDA::initialize(
       }
 
       // Plan subgrid fft
-      device.plan_subgrid_fft(subgrid_size, max_nr_subgrids, nr_polarizations);
+      device.plan_subgrid_fft(subgrid_size, nr_polarizations);
 
       // Wait for memory copies
       htodstream.synchronize();
