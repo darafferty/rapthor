@@ -68,6 +68,10 @@ class Generic : public CUDA {
 
   std::shared_ptr<Grid> get_final_grid() override;
 
+ private:
+  void check_grid();
+  std::unique_ptr<cu::DeviceMemory> d_grid;
+
 };  // class Generic
 
 }  // namespace cuda

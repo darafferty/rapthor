@@ -105,7 +105,6 @@ void Unified::do_degridding(
                           *grid_ptr, aterms, aterms_offsets, spheroidal);
 }  // end degridding
 
-
 void Unified::do_transform(idg::DomainAtoDomainB direction) {
   InstanceCUDA& device = get_device(0);
   auto nr_polarizations = m_grid->get_z_dim();

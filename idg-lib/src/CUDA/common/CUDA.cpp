@@ -38,7 +38,6 @@ CUDA::CUDA(ProxyInfo info)
 CUDA::~CUDA() {
   cuProfilerStop();
   free_buffers();
-  m_buffers.d_grid.reset();
   free_devices();
 }
 
@@ -124,7 +123,6 @@ void CUDA::initialize_buffers() {
   m_buffers.d_spheroidal.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
   m_buffers.d_avg_aterm.reset(new cu::DeviceMemory(context, 0));
-  // d_grid is handled seperately
   // d_lmnp is handled in GenericOptimized
 
   for (unsigned t = 0; t < m_max_nr_streams; t++) {
@@ -152,7 +150,6 @@ void CUDA::free_buffers() {
   m_buffers.d_spheroidal.reset();
   m_buffers.d_aterms.reset();
   m_buffers.d_avg_aterm.reset();
-  // d_grid is handled seperately
   m_buffers.d_lmnp.reset();
 
   m_buffers.d_visibilities_.resize(0);

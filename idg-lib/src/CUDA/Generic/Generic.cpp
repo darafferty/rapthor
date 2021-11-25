@@ -40,6 +40,10 @@ void Generic::run_gridding(
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
+  if (!m_use_unified_memory) {
+    check_grid();
+  }
+
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
 
@@ -190,9 +194,8 @@ void Generic::run_gridding(
       device.launch_adder_unified(current_nr_subgrids, grid_size, subgrid_size,
                                   d_metadata, d_subgrids, u_grid);
     } else {
-      cu::DeviceMemory& d_grid = *m_buffers.d_grid;
       device.launch_adder(current_nr_subgrids, nr_polarizations, grid_size,
-                          subgrid_size, d_metadata, d_subgrids, d_grid);
+                          subgrid_size, d_metadata, d_subgrids, *d_grid);
     }
     executestream.record(*gpuFinished[job_id]);
 
@@ -263,6 +266,10 @@ void Generic::run_degridding(
 #if defined(DEBUG)
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
+
+  if (!m_use_unified_memory) {
+    check_grid();
+  }
 
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
@@ -392,9 +399,8 @@ void Generic::run_degridding(
                                      subgrid_size, d_metadata, d_subgrids,
                                      u_grid);
     } else {
-      cu::DeviceMemory& d_grid = *m_buffers.d_grid;
       device.launch_splitter(current_nr_subgrids, nr_polarizations, grid_size,
-                             subgrid_size, d_metadata, d_subgrids, d_grid);
+                             subgrid_size, d_metadata, d_subgrids, *d_grid);
     }
 
     // Initialize visibilities to zero
@@ -482,18 +488,23 @@ void Generic::set_grid(std::shared_ptr<Grid> grid) {
   InstanceCUDA& device = get_device(0);
   cu::Stream& htodstream = device.get_htod_stream();
   cu::Context& context = get_device(0).get_context();
-  m_buffers.d_grid.reset(new cu::DeviceMemory(context, grid->bytes()));
-  device.copy_htod(htodstream, *m_buffers.d_grid, grid->data(), grid->bytes());
+  d_grid.reset(new cu::DeviceMemory(context, grid->bytes()));
+  device.copy_htod(htodstream, *d_grid, grid->data(), grid->bytes());
   htodstream.synchronize();
 }
 
 std::shared_ptr<Grid> Generic::get_final_grid() {
   InstanceCUDA& device = get_device(0);
   cu::Stream& dtohstream = device.get_dtoh_stream();
-  device.copy_dtoh(dtohstream, m_grid->data(), *m_buffers.d_grid,
-                   m_grid->bytes());
+  device.copy_dtoh(dtohstream, m_grid->data(), *d_grid, m_grid->bytes());
   dtohstream.synchronize();
   return m_grid;
+}
+
+void Generic::check_grid() {
+  if (!d_grid) {
+    throw std::runtime_error("device grid is not set, call set_grid first.");
+  }
 }
 
 }  // namespace cuda
