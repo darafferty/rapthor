@@ -32,12 +32,17 @@ void CUDA::do_compute_avg_beam(
   device.set_report(m_report);
 
   // Allocate static device memory
-  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  d_aterms.resize(aterms.bytes());
+  cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_baselines(context, baselines.bytes());
   cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
   cu::DeviceMemory d_average_beam(
       context, average_beam.bytes() * 2);  // double-precision!
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
+  std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
+  for (unsigned int i = 0; i < 2; i++) {
+    d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
+    d_weights_.emplace_back(new cu::DeviceMemory(context, 0));
+  }
 
   // Set jobsize and allocate dynamic memory (per thread)
   int jobsize = baselines.size() / 2;
@@ -51,9 +56,8 @@ void CUDA::do_compute_avg_beam(
     // Try to allocate memory
     if (bytes_free > bytes_required) {
       for (unsigned int i = 0; i < 2; i++) {
-        m_buffers.d_uvw_[i]->resize(sizeof_uvw);
-        m_buffers.d_visibilities_[i]->resize(
-            sizeof_weights);  // visibilities buffer!
+        d_uvw_[i]->resize(sizeof_uvw);
+        d_weights_[i]->resize(sizeof_weights);
       }
       break;
     } else {
@@ -113,8 +117,8 @@ void CUDA::do_compute_avg_beam(
     unsigned local_id_next = (local_id + 1) % 2;
 
     auto& job = jobs[job_id];
-    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[local_id];
-    cu::DeviceMemory& d_weights = *m_buffers.d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = *d_uvw_[local_id];
+    cu::DeviceMemory& d_weights = *d_weights_[local_id];
 
     // Copy input for first job
     if (job_id == 0) {
@@ -130,9 +134,8 @@ void CUDA::do_compute_avg_beam(
     // Copy input for next job (if any)
     if (job_id_next < jobs.size()) {
       auto& job_next = jobs[job_id_next];
-      cu::DeviceMemory& d_uvw_next = *m_buffers.d_uvw_[local_id_next];
-      cu::DeviceMemory& d_weights_next =
-          *m_buffers.d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
+      cu::DeviceMemory& d_weights_next = *d_weights_[local_id_next];
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(job_next.current_nr_baselines, nr_timesteps);
       auto sizeof_weights = auxiliary::sizeof_weights(
