@@ -499,7 +499,7 @@ void CUDA::initialize(
       for (unsigned d = 0; d < get_num_devices(); d++) {
         InstanceCUDA& device = get_device(d);
         initialize_buffers();
-        device.free_fft_plans();
+        device.free_subgrid_fft();
       }
 
       // Try again to allocate device memory
@@ -525,7 +525,7 @@ void CUDA::cleanup() {
 
   for (unsigned d = 0; d < get_num_devices(); d++) {
     InstanceCUDA& device = get_device(d);
-    device.free_fft_plans();
+    device.free_subgrid_fft();
   }
 
   marker.end();

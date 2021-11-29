@@ -60,7 +60,7 @@ InstanceCUDA::~InstanceCUDA() {
   std::cout << __func__ << std::endl;
 #endif
 
-  free_fft_plans();
+  free_subgrid_fft();
   free_events();
   m_modules.clear();
   executestream.reset();
@@ -816,14 +816,8 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int batch,
       (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
 
   // Plan FFT
-  if (grid_size != m_fft_grid_size) {
-    if (m_fft_plan_grid) {
-      m_fft_plan_grid.reset();
-    }
-    m_fft_grid_size = grid_size;
-    m_fft_plan_grid.reset(new cufft::C2C_2D(*context, grid_size, grid_size));
-    m_fft_plan_grid->setStream(*executestream);
-  }
+  cufft::C2C_2D plan(*context, grid_size, grid_size);
+  plan.setStream(*executestream);
 
   // Enqueue start of measurement
   UpdateData* data =
@@ -839,7 +833,7 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int batch,
       cufftComplex* data_ptr =
           reinterpret_cast<cufftComplex*>(static_cast<CUdeviceptr>(d_data));
       data_ptr += i * grid_size * grid_size;
-      m_fft_plan_grid->execute(data_ptr, data_ptr, sign);
+      plan.execute(data_ptr, data_ptr, sign);
     }
 
 #if ENABLE_REPEAT_KERNELS
@@ -1306,9 +1300,7 @@ void InstanceCUDA::free_events() { events.clear(); }
 /*
  * FFT plan destructor
  */
-void InstanceCUDA::free_fft_plans() {
-  m_fft_grid_size = 0;
-  m_fft_plan_grid.reset();
+void InstanceCUDA::free_subgrid_fft() {
   m_fft_subgrid_batch = 0;
   m_fft_subgrid_size = 0;
   m_fft_plan_subgrid.reset();

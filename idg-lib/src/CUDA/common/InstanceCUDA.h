@@ -172,7 +172,7 @@ class InstanceCUDA : public KernelsInstance {
       cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch);
 
   // Misc
-  void free_fft_plans();
+  void free_subgrid_fft();
   int get_tile_size_grid() const { return tile_size_grid; };
   void free_events();
 
@@ -240,10 +240,6 @@ class InstanceCUDA : public KernelsInstance {
   int batch_gridder;
   int batch_degridder;
   int tile_size_grid;
-
-  // Grid FFT
-  int m_fft_grid_size = 0;
-  std::unique_ptr<cufft::C2C_2D> m_fft_plan_grid;
 
   // Subgrid FFT
   const unsigned m_fft_subgrid_batch_default = 1024;
