@@ -49,8 +49,8 @@ void find_patches_for_tiles(long grid_size, int tile_size, int padded_tile_size,
                grid_size / 2;
       int x_start = std::max(0, x0);
       int y_start = std::max(0, y0);
-      int x_end = x_start + padded_tile_size;
-      int y_end = y_start + padded_tile_size;
+      int x_end = x0 + padded_tile_size;
+      int y_end = y0 + padded_tile_size;
 
       // Check whether the tile (partially) falls in the patch
       if (!(x_start > patch_x_end || y_start > patch_y_end ||
