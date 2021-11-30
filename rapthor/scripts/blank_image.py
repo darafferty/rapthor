@@ -1,4 +1,4 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 """
 Script to blank regions (with zeros or NaNs) in a fits image. Can also be used to make
 a clean mask

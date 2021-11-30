@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 Script to concatenate the MS files from Prefactor for input to Rapthor
 """
@@ -23,7 +23,9 @@ def main(input_path, output_file):
     output_file : str
         Filename of output file
     """
-    msfiles = glob.glob(os.path.join(input_path, '*.ms'))
+    msfiles = []
+    for pattern in ['*.ms', '*.MS']:
+        msfiles.extend(glob.glob(os.path.join(input_path, pattern)))
 
     # Order the files by frequency, filling any gaps with dummy files
     first = True
@@ -33,6 +35,7 @@ def main(input_path, output_file):
         # Get the frequency info
         sw = pt.table(ms+'::SPECTRAL_WINDOW', ack=False)
         freq = sw.col('REF_FREQUENCY')[0]
+        sw.close()
         if first:
             file_bandwidth = sw.col('TOTAL_BANDWIDTH')[0]
             nchans = sw.col('CHAN_WIDTH')[0].shape[0]
@@ -43,8 +46,7 @@ def main(input_path, output_file):
             assert nchans == sw.col('CHAN_WIDTH')[0].shape[0]
             assert chwidth == sw.col('CHAN_WIDTH')[0][0]
         freqs.append(freq)
-        sw.close()
-    freqlist = np.array(list(freqs))
+    freqlist = np.array(freqs)
     mslist = np.array(msfiles)
     sorted_ind = np.argsort(freqlist)
     freqlist = freqlist[sorted_ind]
