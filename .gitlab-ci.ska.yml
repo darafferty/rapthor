@@ -16,30 +16,6 @@ cache:
   paths:
     - public
 
-# The SKA repo does not have a docker cache.
-# We need to push the base image to the gitlab registry which requires docker:dind
-prepare-base:
-  stage: prepare
-  image: docker:stable
-  services:
-    - docker:dind
-  script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base -f ./docker/ubuntu_20_04_base .
-    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
-
-# The SKA repo does not have a docker cache
-# We need to push the integration image to the gitlab registry which requires docker:dind
-prepare-integration:
-  stage: prepare
-  image: docker:stable
-  services:
-    - docker:dind
-  script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
-    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
-
 prepare-gpu:
   stage: prepare
   needs: []
@@ -47,7 +23,7 @@ prepare-gpu:
   services:
     - docker:dind
   script:
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu -f ./docker/ubuntu_20_04_gpu .
     - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
 
@@ -93,7 +69,7 @@ deploy-package:
 deploy-docker:
   stage: publish
   # Only deploy if the tests pass
-  needs: ["versions","test-unit","test-integration","test-gpu"]
+  needs: ["versioning","test-unit","test-integration","test-gpu"]
   image: docker:stable
   services:
     - docker:dind
@@ -116,8 +92,8 @@ deploy-docker:
 
 pages:
   stage: pages
-  needs: ["test-unit"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","test-unit"]
+  image: $BASE_IMAGE
   script:
     - echo Deploying GitLab pages to $CI_PAGES_URL/$CI_COMMIT_REF_SLUG
     - mkdir -p public/$CI_COMMIT_REF_SLUG

@@ -12,7 +12,7 @@ workflow:
     - when: always
 
 stages:
-  - versions
+  - versioning
   - prepare
   - build
   - linting
@@ -26,11 +26,12 @@ stages:
 
 # This job stores creates environment variables that are used in other jobs,
 # including their definitions, via a 'dotenv' report artifact.
-# The 'IMAGE' variables allow reusing docker images between different
-# pipelines. In AST-668 we will roll out this new strategy.
+# A job that uses these variables has to include "versioning" in its "needs",
+# even if it indirectly depends on "versioning" via another job!
+# The 'IMAGE' variables allow reusing docker images between different pipelines.
 # Since the GPU image also depends on IDG itself, reusing it makes no sense.
-versions:
-  stage: versions
+versioning:
+  stage: versioning
   image: bitnami/git
   script:
     # Unshallowing ensures that 'git describe' works
@@ -43,17 +44,46 @@ versions:
     reports:
       dotenv: versions.env
 
+.prepare:
+  stage: prepare
+  needs: ["versioning"]
+  image: docker:20.10
+  services:
+    - docker:20.10-dind
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+# Create and push the base image to the gitlab registry, if it does not exist.
+prepare-base:
+  extends: .prepare
+  script:
+    - |
+      if ! docker manifest inspect $BASE_IMAGE > /dev/null; then
+        docker build --tag $BASE_IMAGE -f ./docker/ubuntu_20_04_base .
+        docker push $BASE_IMAGE
+      fi
+
+# Create and push the integration image to the gitlab registry, if it does not exist.
+prepare-integration:
+  extends: .prepare
+  script:
+    - |
+      if ! docker manifest inspect $INTEGRATION_IMAGE > /dev/null; then
+        docker build --tag $INTEGRATION_IMAGE -f ./docker/ubuntu_20_04_integration .
+        docker push $INTEGRATION_IMAGE
+      fi
+
 format:
   stage: linting
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   script:
     - ./scripts/run-format.sh
 
 build-python:
   stage: build
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   script:
     - mkdir build
     - cd build
@@ -62,8 +92,8 @@ build-python:
 
 build-release:
   stage: build
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   script:
     - mkdir build
     - cd build
@@ -72,8 +102,8 @@ build-release:
 
 build-debug:
   stage: build
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   script:
     - mkdir build
     - cd build
@@ -82,8 +112,8 @@ build-debug:
 
 build-package:
   stage: build
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   script:
     - mkdir idg_package
     - mkdir build
@@ -106,8 +136,8 @@ build-package:
 
 test-unit:
   stage: test
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   before_script:
     - pip3 install pytest h5py
   script:
@@ -143,8 +173,9 @@ test-unit:
 #   DP3, we want to run these jobs elsewhere in the future. See AST-653.
 test-integration:
   stage: test
+  needs: ["versioning","prepare-integration"]
   allow_failure: true
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration
+  image: $INTEGRATION_IMAGE
   before_script:
     # Install IDG
     - mkdir /opt/idg && mkdir -p build
@@ -183,8 +214,8 @@ test-integration:
 # Publishing documentation only happens for the master branch on the Astron repo.
 documentation-build:
   stage: documentation
-  needs: ["prepare-base"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","prepare-base"]
+  image: $BASE_IMAGE
   script:
     - apt update && apt install -y doxygen
     - python3 -m pip install numpy sphinx breathe sphinx-rtd-theme myst-parser
