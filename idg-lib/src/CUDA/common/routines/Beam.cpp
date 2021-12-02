@@ -40,11 +40,11 @@ void CUDA::do_compute_avg_beam(
   // the data is copied to the host and there converted to single-precision.
   cu::DeviceMemory d_average_beam(
       context, average_beam.size() * sizeof(std::complex<double>));
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
-  std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
+  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_uvw_;
+  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_weights_;
   for (unsigned int i = 0; i < 2; i++) {
-    d_uvw_.emplace_back(new cu::DeviceMemory(context, 0));
-    d_weights_.emplace_back(new cu::DeviceMemory(context, 0));
+    d_uvw_[i].reset(new cu::DeviceMemory(context, 0));
+    d_weights_[i].reset(new cu::DeviceMemory(context, 0));
   }
 
   // Set jobsize and allocate dynamic memory (per thread)
