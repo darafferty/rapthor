@@ -107,9 +107,9 @@ void Unified::do_degridding(
 
 void Unified::do_transform(idg::DomainAtoDomainB direction) {
   InstanceCUDA& device = get_device(0);
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_x_dim();
-  auto tile_size = device.get_tile_size_grid();
+  int nr_polarizations = m_grid->get_z_dim();
+  int grid_size = m_grid->get_x_dim();
+  int tile_size = device.get_tile_size_grid();
   if (m_enable_tiling) {
     device.tile_backward(nr_polarizations, grid_size, tile_size, *m_grid_tiled,
                          *m_grid);
