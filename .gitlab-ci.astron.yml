@@ -6,18 +6,6 @@
 
 include: .gitlab-ci.common.yml
 
-prepare-base:
-  stage: prepare
-  image: docker:stable
-  script:
-    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base -f ./docker/ubuntu_20_04_base .
-
-prepare-integration:
-  stage: prepare
-  image: docker:stable
-  script:
-    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_integration -f ./docker/ubuntu_20_04_integration .
-
 # See the idg-integration-docker job in .gitlab-ci.common.yml for notes about
 # integration test jobs.
 test-integration-das:
@@ -77,8 +65,8 @@ test-integration-das:
 
 deploy-package:
   stage: publish
-  needs: ["build-package"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","build-package"]
+  image: $BASE_IMAGE
   script:
     - pip3 install aptly-api-client
     - chmod -R 700 external/schaap-packaging
@@ -112,8 +100,8 @@ check-stack:
 
 documentation-publish:
   stage: documentation-publish
-  needs: ["documentation-build"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_base
+  needs: ["versioning","documentation-build"]
+  image: $BASE_IMAGE
   before_script:
     - apt-get install -y openssh-client
     - eval $(ssh-agent -s)
