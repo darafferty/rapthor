@@ -35,8 +35,11 @@ void CUDA::do_compute_avg_beam(
   cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_baselines(context, baselines.bytes());
   cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
+  // The average beam is constructed in double-precision on the device.
+  // After all baselines are processed (i.e. all contributions are added),
+  // the data is copied to the host and there converted to single-precision.
   cu::DeviceMemory d_average_beam(
-      context, average_beam.bytes() * 2);  // double-precision!
+      context, average_beam.size() * sizeof(std::complex<double>));
   std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
   std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
   for (unsigned int i = 0; i < 2; i++) {
