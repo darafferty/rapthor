@@ -70,7 +70,7 @@ class Generic : public CUDA {
 
  private:
   void check_grid();
-  std::unique_ptr<cu::DeviceMemory> d_grid;
+  std::unique_ptr<cu::DeviceMemory> d_grid_;
 
 };  // class Generic
 
