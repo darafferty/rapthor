@@ -210,7 +210,7 @@ void GenericOptimized::do_calibrate_init(
   auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps *
                      nr_channels * sizeof(std::complex<float>);
   for (unsigned int i = 0; i < 2; i++) {
-    m_calibrate_state.d_sums_.emplace_back(
+    m_calibrate_state.d_sums_[i].reset(
         new cu::DeviceMemory(context, sizeof_sums));
   }
 }
@@ -350,7 +350,8 @@ void GenericOptimized::do_calibrate_finish() {
   m_report->print_visibilities(auxiliary::name_calibrate);
   m_calibrate_state.d_wavenumbers.reset();
   m_calibrate_state.d_lmnp.reset();
-  m_calibrate_state.d_sums_.clear();
+  m_calibrate_state.d_sums_[0].reset();
+  m_calibrate_state.d_sums_[1].reset();
   m_calibrate_state.d_metadata_.clear();
   m_calibrate_state.d_subgrids_.clear();
   m_calibrate_state.d_visibilities_.clear();
