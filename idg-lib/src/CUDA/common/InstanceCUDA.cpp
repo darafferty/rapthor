@@ -940,8 +940,8 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   start_measurement(data);
 
   // Execute fft in batches
-  unsigned s = 0;
-  for (; (s + m_fft_subgrid_batch) <= nr_subgrids; s += m_fft_subgrid_batch) {
+  for (unsigned s = 0; (s + m_fft_subgrid_batch) <= nr_subgrids;
+       s += m_fft_subgrid_batch) {
     m_fft_plan_subgrid->execute(data_ptr, data_ptr, sign);
     data_ptr += m_fft_subgrid_size * m_fft_subgrid_size * nr_polarizations *
                 m_fft_subgrid_batch;
