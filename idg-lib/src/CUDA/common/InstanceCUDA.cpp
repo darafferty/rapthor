@@ -859,57 +859,49 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned nr_polarizations) {
 #endif
 
   // Force plan (re-)creation if subgrid size changed
-  if (size != m_fft_subgrid_size) {
+  if (!m_fft_plan_subgrid || size != m_fft_subgrid_size) {
     m_fft_subgrid_batch = m_fft_subgrid_batch_default;
     m_fft_plan_subgrid.reset();
     m_fft_subgrid_size = size;
+  } else {
+    // The subgrid fft was initialized before
+    return;
   }
 
-  while (!m_fft_plan_subgrid) {
-    size_t sizeof_subgrids;
+  // Amount of device memory free (with a small safety margin)
+  size_t bytes_free = get_free_memory() * 0.95;
 
-    // Do not try the current batch size if the required amount of memory
-    // exceeds the amount of free device memory.
-    size_t bytes_free = get_free_memory();
-    size_t bytes_fft;
-    do {
-      sizeof_subgrids = auxiliary::sizeof_subgrids(
-          m_fft_subgrid_batch, m_fft_subgrid_size, nr_polarizations);
-      bytes_fft = 2 * sizeof_subgrids;  // 1x FFT plan, 1x d_fft_subgrid
-      if (bytes_fft > bytes_free && m_fft_subgrid_batch > 0) {
-        std::clog << __func__ << ": reducing subgrid-fft batch size to: "
-                  << m_fft_subgrid_batch << std::endl;
-        m_fft_subgrid_batch /= 2;
-      }
-    } while (bytes_fft > bytes_free);
+  // Amount of device memory required for temporary subgrids buffer and the FFT
+  // plan
+  size_t bytes_required =
+      2 * auxiliary::sizeof_subgrids(m_fft_subgrid_batch, m_fft_subgrid_size,
+                                     nr_polarizations);
 
+  // Compute the actual subgrid batch size to use
+  unsigned int fft_subgrid_batch_max = bytes_free / bytes_required;
+  m_fft_subgrid_batch = std::min(m_fft_subgrid_batch, fft_subgrid_batch_max);
+
+  try {
     // Plan fft
     unsigned stride = 1;
     unsigned dist = size * size;
+    m_fft_plan_subgrid.reset(
+        new cufft::C2C_2D(*context, size, size, stride, dist,
+                          m_fft_subgrid_batch * nr_polarizations));
+    m_fft_plan_subgrid->setStream(*executestream);
 
-    try {
-      m_fft_plan_subgrid.reset(
-          new cufft::C2C_2D(*context, size, size, stride, dist,
-                            m_fft_subgrid_batch * nr_polarizations));
-      m_fft_plan_subgrid->setStream(*executestream);
-      d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
-    } catch (std::exception& e) {
-      // Try again using half the batch size
-      m_fft_subgrid_batch /= 2;
-      if (m_fft_subgrid_batch > 0) {
-        std::clog << __func__ << ": reducing subgrid-fft batch size to: "
-                  << m_fft_subgrid_batch << std::endl;
-        d_fft_subgrid.reset();
-      } else {
-        std::stringstream message;
-        message << __func__
-                << ": could not plan subgrid-fft for size = " << size
-                << ", with " << bytes_free
-                << " bytes of device memory available."
-                << "(" << e.what() << ")" << std::endl;
-        throw std::runtime_error(message.str());
-      }
-    }
+    // Allocate temporary subgrid buffer
+    size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+        m_fft_subgrid_batch, m_fft_subgrid_size, nr_polarizations);
+    d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
+  } catch (std::exception& e) {
+    // Even though we tried to stay within the amount of available device
+    // memory, allocating the fft plan or temoprary subgrids buffer failed.
+    std::stringstream message;
+    message << __func__ << ": could not plan subgrid-fft for size = " << size
+            << ", with " << bytes_free << " bytes of device memory available."
+            << "(" << e.what() << ")" << std::endl;
+    throw std::runtime_error(message.str());
   }
 }
 
