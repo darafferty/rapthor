@@ -95,8 +95,7 @@ void CUDA::do_compute_avg_beam(
   // Events
   std::vector<std::unique_ptr<cu::Event>> inputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(std::unique_ptr<cu::Event>(
-        new cu::Event(context, CU_EVENT_BLOCKING_SYNC)));
+    inputCopied.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
   }
 
   // Load streams
