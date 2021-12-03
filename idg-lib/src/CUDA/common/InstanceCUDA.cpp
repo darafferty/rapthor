@@ -896,7 +896,7 @@ void InstanceCUDA::plan_subgrid_fft(unsigned size, unsigned nr_polarizations) {
     d_fft_subgrid.reset(new cu::DeviceMemory(*context, sizeof_subgrids));
   } catch (std::exception& e) {
     // Even though we tried to stay within the amount of available device
-    // memory, allocating the fft plan or temoprary subgrids buffer failed.
+    // memory, allocating the fft plan or temporary subgrids buffer failed.
     std::stringstream message;
     message << __func__ << ": could not plan subgrid-fft for size = " << size
             << ", with " << bytes_free << " bytes of device memory available."
