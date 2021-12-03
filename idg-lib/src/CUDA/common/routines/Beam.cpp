@@ -31,7 +31,7 @@ void CUDA::do_compute_avg_beam(
   m_report->initialize();
   device.set_report(m_report);
 
-  // Allocate static device memory
+  // Allocate device memory
   cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_baselines(context, baselines.bytes());
   cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
