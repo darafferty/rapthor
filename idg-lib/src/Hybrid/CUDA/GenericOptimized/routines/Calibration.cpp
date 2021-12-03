@@ -127,7 +127,7 @@ void GenericOptimized::do_calibrate_init(
           plans[antenna_nr]->get_wtile_initialize_set();
       if (!m_disable_wtiling_gpu) {
         // Initialize subgrid FFT
-        device.plan_subgrid_fft(subgrid_size, nr_subgrids, nr_polarizations);
+        device.plan_subgrid_fft(subgrid_size, nr_polarizations);
 
         // Wait for metadata to be copied
         htodstream.synchronize();
