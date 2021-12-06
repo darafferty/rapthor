@@ -43,6 +43,8 @@ class Generic : public CUDA {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& spheroidal) override;
 
+  void do_transform(DomainAtoDomainB direction) override;
+
   void run_gridding(
       const Plan& plan, const Array1D<float>& frequencies,
       const Array4D<std::complex<float>>& visibilities,
@@ -65,6 +67,10 @@ class Generic : public CUDA {
   void set_grid(std::shared_ptr<Grid> grid) override;
 
   std::shared_ptr<Grid> get_final_grid() override;
+
+ private:
+  void check_grid();
+  std::unique_ptr<cu::DeviceMemory> d_grid_;
 
 };  // class Generic
 

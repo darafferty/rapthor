@@ -71,11 +71,6 @@ class CUDA : public Proxy {
       const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam) override;
 
-  /*
-   * FFT
-   */
-  virtual void do_transform(DomainAtoDomainB direction) override;
-
  protected:
   void init_devices();
   void free_devices();
@@ -99,7 +94,6 @@ class CUDA : public Proxy {
     std::unique_ptr<cu::DeviceMemory> d_spheroidal;
     std::unique_ptr<cu::DeviceMemory> d_aterms;
     std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
-    std::unique_ptr<cu::DeviceMemory> d_grid;
     std::unique_ptr<cu::DeviceMemory> d_lmnp;
 
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;

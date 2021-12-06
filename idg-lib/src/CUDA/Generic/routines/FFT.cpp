@@ -1,5 +1,5 @@
-#include "../CUDA.h"
-#include "../InstanceCUDA.h"
+#include "../Generic.h"
+#include "InstanceCUDA.h"
 
 using namespace idg::kernel::cuda;
 
@@ -7,10 +7,12 @@ namespace idg {
 namespace proxy {
 namespace cuda {
 
-void CUDA::do_transform(DomainAtoDomainB direction) {
+void Generic::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
+
+  check_grid();
 
   // Constants
   unsigned int grid_size = m_grid->get_x_dim();
@@ -24,9 +26,6 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   // Initialize
   cu::Stream& stream = device.get_execute_stream();
 
-  // Device memory
-  cu::DeviceMemory& d_grid = *m_buffers.d_grid;
-
   // Performance measurements
   m_report->initialize(0, 0, grid_size);
   device.set_report(m_report);
@@ -35,17 +34,17 @@ void CUDA::do_transform(DomainAtoDomainB direction) {
   powerStates[2] = device.measure();
 
   // Perform fft shift
-  device.launch_fft_shift(d_grid, nr_polarizations, grid_size);
+  device.launch_fft_shift(*d_grid_, nr_polarizations, grid_size);
 
   // Execute fft
-  device.launch_grid_fft(d_grid, nr_polarizations, grid_size, direction);
+  device.launch_grid_fft(*d_grid_, nr_polarizations, grid_size, direction);
 
   // Perform fft shift and scaling
   std::complex<float> scale =
       (direction == FourierDomainToImageDomain)
           ? std::complex<float>(2.0 / (grid_size * grid_size), 0)
           : std::complex<float>(1.0, 1.0);
-  device.launch_fft_shift(d_grid, nr_polarizations, grid_size, scale);
+  device.launch_fft_shift(*d_grid_, nr_polarizations, grid_size, scale);
 
   // End measurements
   stream.synchronize();

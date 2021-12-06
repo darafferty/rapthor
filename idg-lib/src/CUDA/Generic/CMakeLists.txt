@@ -10,7 +10,7 @@ include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
 set(${PROJECT_NAME}_headers Generic.h GenericC.h)
 
 # Set sources
-set(${PROJECT_NAME}_sources Generic.cpp GenericC.cpp)
+set(${PROJECT_NAME}_sources Generic.cpp GenericC.cpp routines/FFT.cpp)
 
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
