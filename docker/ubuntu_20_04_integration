@@ -1,5 +1,10 @@
 FROM ubuntu:20.04
 
+# Use specific versions of aoflagger and everybeam. When changing the version,
+# this docker file changes and CI will update the docker image.
+ENV AOFLAGGER_VERSION_TAG 71ab10cd15d04dd3997cd5d12bfe0655f013a907
+ENV EVERYBEAM_VERSION_TAG 9e36d2a86c496abda63f82b262dcbc3665e6b512
+
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     apt-get install -y \
     g++ cmake libfftw3-dev liblapack-dev libblas-dev python3 python3-pip \
@@ -15,11 +20,14 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
 # Build aoflagger3
     && mkdir /aoflagger && cd /aoflagger \
     && git clone https://gitlab.com/aroffringa/aoflagger.git src \
+    && (cd src && git checkout $AOFLAGGER_VERSION_TAG) \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr ../src && make install -j4 \
     && cd / && rm -rf aoflagger \
-# Build everybeam, checked-out at tag given by $EVERYBEAM_VERSION_TAG
-    && mkdir /everybeam && cd /everybeam && git clone https://git.astron.nl/RD/EveryBeam.git src \
+# Build everybeam
+    && mkdir /everybeam && cd /everybeam \
+    && git clone https://git.astron.nl/RD/EveryBeam.git src \
+    && (cd src && git checkout $EVERYBEAM_VERSION_TAG) \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_WITH_PYTHON=ON ../src -DPYTHON_EXECUTABLE=/usr/bin/python3 \
     && make install -j4 \
