@@ -137,9 +137,9 @@ void GenericOptimized::run_imaging(
   std::vector<std::unique_ptr<cu::Event>> gpuFinished;
   std::vector<std::unique_ptr<cu::Event>> outputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
-    gpuFinished.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
-    outputCopied.push_back(std::unique_ptr<cu::Event>(new cu::Event(context)));
+    inputCopied.emplace_back(new cu::Event(context));
+    gpuFinished.emplace_back(new cu::Event(context));
+    outputCopied.emplace_back(new cu::Event(context));
   }
 
   // Start performance measurement
