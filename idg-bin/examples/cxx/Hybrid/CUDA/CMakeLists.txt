@@ -9,4 +9,3 @@ set(CMAKE_INSTALL_RPATH ${CUDA_LIB_DIR})
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_subdirectory(GenericOptimized)
-add_subdirectory(UnifiedOptimized)
