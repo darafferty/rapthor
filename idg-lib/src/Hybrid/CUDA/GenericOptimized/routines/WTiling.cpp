@@ -85,9 +85,6 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-  nr_tiles_batch =
-      plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
-                    context, device.get_free_memory(), fft);
 
   // Create jobs
   struct JobData {
@@ -122,18 +119,11 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
+    int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
-      // Initialize FFT for w_padded_tiles
-      unsigned stride = 1;
-      unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * nr_polarizations;
-
-      fft.reset();
-      fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
-                                  current_w_padded_tile_size, stride, dist,
-                                  batch));
-      fft->setStream(executestream);
-
+      current_nr_patches =
+          plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
+                        context, device.get_free_memory(), fft);
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
 
@@ -182,8 +172,6 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
     // Iterate patches in batches (note: reusing h_padded_tiles for patches)
     size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
-    unsigned int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
-    unsigned int current_nr_patches = max_nr_patches;
 
     // Events
     std::vector<std::unique_ptr<cu::Event>> gpuFinished;
@@ -198,12 +186,12 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       current_nr_patches =
           min(current_nr_patches, total_nr_patches - patch_offset);
 
-      for (unsigned int i = 0; i < current_nr_patches; i++) {
+      for (int i = 0; i < current_nr_patches; i++) {
         int id = i % m_nr_patches_batch;
         cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
         // Wait for previous patch to be computed
-        if (i > m_nr_patches_batch) {
+        if ((unsigned int)i > m_nr_patches_batch) {
           gpuFinished[id]->synchronize();
         }
 
@@ -258,7 +246,7 @@ void GenericOptimized::run_subgrids_to_wtiles(
     float w_step, const idg::Array1D<float>& shift,
     WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
     cu::DeviceMemory& d_metadata) {
-  // Load GenericOptimized objects
+  // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
@@ -339,7 +327,7 @@ void GenericOptimized::run_wtiles_from_grid(
       wtile_initialize_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_initialize_info.wtile_ids;
 
-  // Sort wtile_flush_info
+  // Sort wtile_initialize_info
   sort_by_patches(grid_size, tile_size, padded_tile_size, m_patch_size,
                   nr_tiles, wtile_initialize_info);
 
@@ -391,9 +379,6 @@ void GenericOptimized::run_wtiles_from_grid(
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-  nr_tiles_batch =
-      plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
-                    context, device.get_free_memory(), fft);
 
   // Create jobs
   std::vector<JobData> jobs;
@@ -423,18 +408,11 @@ void GenericOptimized::run_wtiles_from_grid(
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
+    int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
-      // Initialize FFT for w_padded_tiles
-      unsigned stride = 1;
-      unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * nr_polarizations;
-
-      fft.reset();
-      fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
-                                  current_w_padded_tile_size, stride, dist,
-                                  batch));
-      fft->setStream(executestream);
-
+      current_nr_patches =
+          plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
+                        context, device.get_free_memory(), fft);
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
 
@@ -462,8 +440,6 @@ void GenericOptimized::run_wtiles_from_grid(
 
     // Iterate patches in batches (note: reusing h_padded_tiles for patches)
     size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
-    unsigned int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
-    unsigned int current_nr_patches = max_nr_patches;
 
     // Events
     std::vector<std::unique_ptr<cu::Event>> inputCopied;
@@ -487,15 +463,14 @@ void GenericOptimized::run_wtiles_from_grid(
       run_splitter_patch_from_grid(
           nr_polarizations, grid_size, m_patch_size, current_nr_patches,
           &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
-
       marker.end();
 
-      for (unsigned int i = 0; i < current_nr_patches; i++) {
+      for (int i = 0; i < current_nr_patches; i++) {
         int id = i % m_nr_patches_batch;
         cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
         // Wait for previous patch to be computed
-        if (i > m_nr_patches_batch) {
+        if ((unsigned int)i > m_nr_patches_batch) {
           gpuFinished[id]->synchronize();
         }
 
@@ -560,7 +535,7 @@ void GenericOptimized::run_subgrids_from_wtiles(
     float w_step, const Array1D<float>& shift,
     WTileUpdateSet& wtile_initialize_set, cu::DeviceMemory& d_subgrids,
     cu::DeviceMemory& d_metadata) {
-  // Load GenericOptimized objects
+  // Load CUDA objects
   InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
 
