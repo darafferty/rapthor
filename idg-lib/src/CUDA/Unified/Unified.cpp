@@ -57,8 +57,9 @@ void Unified::do_gridding(
     grid_ptr =
         new idg::Grid(m_grid_tiled->data(), 1, nr_polarizations, height, width);
   }
-  Generic::run_gridding(plan, frequencies, visibilities, uvw, baselines,
-                        *grid_ptr, aterms, aterms_offsets, spheroidal);
+  Generic::run_imaging(plan, frequencies, visibilities, uvw, baselines,
+                       *grid_ptr, aterms, aterms_offsets, spheroidal,
+                       ImagingMode::mode_gridding);
 }  // end gridding
 
 void Unified::do_degridding(
@@ -83,8 +84,9 @@ void Unified::do_degridding(
     grid_ptr =
         new idg::Grid(m_grid_tiled->data(), 1, nr_polarizations, height, width);
   }
-  Generic::run_degridding(plan, frequencies, visibilities, uvw, baselines,
-                          *grid_ptr, aterms, aterms_offsets, spheroidal);
+  Generic::run_imaging(plan, frequencies, visibilities, uvw, baselines,
+                       *grid_ptr, aterms, aterms_offsets, spheroidal,
+                       ImagingMode::mode_degridding);
 }  // end degridding
 
 void Unified::do_transform(idg::DomainAtoDomainB direction) {
