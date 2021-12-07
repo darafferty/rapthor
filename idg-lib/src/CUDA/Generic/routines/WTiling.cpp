@@ -71,11 +71,11 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
   // Get information on what wtiles to flush
   const int tile_size = m_tile_size;
+  const int padded_tile_size = tile_size + subgrid_size;
   const unsigned int nr_tiles = wtile_flush_info.wtile_ids.size();
   std::vector<idg::Coordinate>& tile_coordinates =
       wtile_flush_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_flush_info.wtile_ids;
-  const int padded_tile_size = tile_size + subgrid_size;
 
   // Compute w_padded_tile_size for all tiles
   const float image_size_shift =
@@ -87,12 +87,6 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
   // Find the maximum tile size for all padded tiles
   int w_padded_tile_size =
       *std::max_element(w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
-
-#if defined(DEBUG)
-  std::cout << "tile_size: " << tile_size << std::endl;
-  std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
-  std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
-#endif
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
@@ -121,6 +115,9 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
   cu::DeviceMemory d_shift(context, shift.bytes());
   executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
 
+  // FFT plan
+  std::unique_ptr<cufft::C2C_2D> fft;
+
   // Create jobs
   struct JobData {
     int tile_offset;
@@ -139,9 +136,6 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
     job.tile_offset = tile_offset;
     jobs.push_back(std::move(job));
   }
-
-  // FFT plan
-  std::unique_ptr<cufft::C2C_2D> fft;
 
   // Iterate all jobs
   int last_w_padded_tile_size = w_padded_tile_size;
@@ -270,7 +264,7 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
           // Copy patch to the host
           void* patch_ptr =
-              static_cast<char*>(h_padded_tiles) + patch_id * sizeof_patch;
+              static_cast<char*>(h_padded_tiles) + i * sizeof_patch;
           dtohstream.waitEvent(*gpuFinished[id]);
           dtohstream.memcpyDtoHAsync(patch_ptr, d_patch, sizeof_patch);
           dtohstream.record(*outputCopied[id]);
@@ -293,7 +287,7 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 }
 
 void Generic::run_subgrids_to_wtiles(
-    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned nr_polarizations, unsigned int subgrid_offset,
     unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
     float w_step, const idg::Array1D<float>& shift,
     WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
@@ -375,13 +369,17 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
 
   // Get information on what wtiles to flush
   const int tile_size = m_tile_size;
+  const int padded_tile_size = tile_size + subgrid_size;
   const unsigned int nr_tiles = wtile_initialize_info.wtile_ids.size();
   std::vector<idg::Coordinate>& tile_coordinates =
       wtile_initialize_info.wtile_coordinates;
   std::vector<int>& tile_ids = wtile_initialize_info.wtile_ids;
 
+  // Sort wtile_initialize_info
+  sort_by_patches(grid_size, tile_size, padded_tile_size, m_patch_size,
+                  nr_tiles, wtile_initialize_info);
+
   // Compute w_padded_tile_size for all tiles
-  const int padded_tile_size = tile_size + subgrid_size;
   const float image_size_shift =
       image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
   std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
@@ -391,12 +389,6 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
   // Find the maximum tile size for all padded tiles
   int w_padded_tile_size =
       *std::max_element(w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
-
-#if defined(DEBUG)
-  std::cout << "tile_size: " << tile_size << std::endl;
-  std::cout << "padded_tile_size: " << padded_tile_size << std::endl;
-  std::cout << "w_padded_tile_size: " << w_padded_tile_size << std::endl;
-#endif
 
   // Compute the number of padded tiles
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
@@ -433,6 +425,10 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
     int current_nr_tiles;
   };
 
+  // FFT plan
+  std::unique_ptr<cufft::C2C_2D> fft;
+
+  // Create jobs
   std::vector<JobData> jobs;
 
   unsigned int current_nr_tiles = nr_tiles_batch;
@@ -445,9 +441,6 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
     job.tile_offset = tile_offset;
     jobs.push_back(std::move(job));
   }
-
-  // FFT plan
-  std::unique_ptr<cufft::C2C_2D> fft;
 
   // Iterate all jobs
   int last_w_padded_tile_size = w_padded_tile_size;
@@ -474,6 +467,8 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
     // Copy tile metadata to GPU
     sizeof_tile_ids = current_nr_tiles * sizeof(int);
     executestream.memcpyHtoDAsync(d_tile_ids, &tile_ids[tile_offset],
+                                  sizeof_tile_ids);
+    executestream.memcpyHtoDAsync(d_padded_tile_ids, padded_tile_ids.data(),
                                   sizeof_tile_ids);
     sizeof_tile_coordinates = current_nr_tiles * sizeof(idg::Coordinate);
     executestream.memcpyHtoDAsync(d_tile_coordinates,
@@ -521,11 +516,9 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
         // Split patch from grid
         cu::Marker marker("patch_from_grid", cu::Marker::red);
         marker.start();
-
         run_splitter_patch_from_grid(
             nr_polarizations, grid_size, m_patch_size, current_nr_patches,
             &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
-
         marker.end();
 
         for (int i = 0; i < current_nr_patches; i++) {
@@ -551,7 +544,7 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
 
           // Copy patch to the GPU
           void* patch_ptr =
-              static_cast<char*>(h_padded_tiles) + patch_id * sizeof_patch;
+              static_cast<char*>(h_padded_tiles) + i * sizeof_patch;
           htodstream.waitEvent(*gpuFinished[id]);
           htodstream.memcpyHtoDAsync(d_patch, patch_ptr, sizeof_patch);
           htodstream.record(*inputCopied[id]);
@@ -588,6 +581,8 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
                              w_padded_tile_size, padded_tile_size,
                              d_padded_tile_ids, d_tile_ids, d_padded_tiles,
                              d_tiles);
+    // Wait for tiles to be copied
+    executestream.synchronize();
   }  // end for tile_offset
 }
 
@@ -631,7 +626,7 @@ void Generic::run_subgrids_from_wtiles(
     // Check whether initialization needs to happen before the end of the job
     if (!wtile_initialize_set.empty() &&
         wtile_initialize_set.front().subgrid_index -
-                (int)(subgrid_index - subgrid_offset) <
+                (int)(subgrid_index + subgrid_offset) <
             nr_subgrids_to_process) {
       // Reduce the number of subgrids to process to just before the next
       // initialization event
