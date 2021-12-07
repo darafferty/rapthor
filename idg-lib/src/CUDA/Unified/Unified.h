@@ -54,6 +54,8 @@ class Unified : public Generic {
 
   std::shared_ptr<Grid> get_final_grid() override;
 
+  virtual bool do_supports_wtiling() override { return false; }
+
  private:
   // The m_grid member defined in Proxy
   // may not reside in Unified Memory.
