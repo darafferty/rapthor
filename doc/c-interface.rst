@@ -20,14 +20,10 @@ Afterwards the proxy need to be destroyed by a call to :cpp:func:`Proxy_destroy`
    :maxdepth: 2
 
    ProxyC.h.rst
-   Hybrid-GenericOptimizedC.h.rst
-   Hybrid-UnifiedOptimizedC.h.rst
    CPU-ReferenceC.h.rst
    CPU-OptimizedC.h.rst
    CUDA-GenericC.h.rst
    CUDA-UnifiedC.h.rst
+   Hybrid-GenericOptimizedC.h.rst
+   Hybrid-UnifiedOptimizedC.h.rst
 
-  
-
-
- 

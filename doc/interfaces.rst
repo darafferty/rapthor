@@ -2,8 +2,6 @@
 Interfaces Overview
 ===================
 
-:py:class:`idg.Proxy.Proxy`
-
 There are two levels of interfaces. The lower level Proxy in idg-lib, 
 and a higher level BufferSet in idg-api. 
 
@@ -18,3 +16,12 @@ The BufferSet is the interface that `WSClean <https://wsclean.readthedocs.io/en/
 
 Both interfaces are written in C++, but for the Proxy there are C-bindings and Python
 bindings available.
+
+.. toctree::
+   :maxdepth: 2
+   :titlesonly:
+
+   c++-interface
+   c-interface
+   python-proxy
+

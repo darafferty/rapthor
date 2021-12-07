@@ -10,6 +10,10 @@ namespace idg {
 namespace proxy {
 namespace cpu {
 
+/**
+ * @brief Reference CPU implementation, not optimized for speed
+ *
+ */
 class Reference : public CPU {
  public:
   // Constructor

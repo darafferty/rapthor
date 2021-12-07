@@ -17,16 +17,45 @@ namespace idg {
 template <class T>
 class Array1D {
  public:
+  /**
+   * @brief Construct an empty Array1D object
+   *
+   */
   Array1D() : m_x_dim(0), m_memory(), m_buffer(nullptr) {}
 
+  /**
+   * @brief Construct a new Array1D object
+   *
+   * The memory is allocated through an auxiliary::AlignedMemory object
+   *
+   * @param size Size of the new array in number of elements
+   */
   Array1D(size_t size)
       : m_x_dim(size),
         m_memory(new auxiliary::AlignedMemory(size * sizeof(T))),
         m_buffer((T*)m_memory->get()) {}
 
+  /**
+   * @brief Construct a new Array1D object from a raw pointer
+   *
+   * @param data Pointer to the memory that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   *
+   * @param size Size of the Array in number of elements
+   */
   Array1D(T* data, size_t size)
       : m_x_dim(size), m_memory(nullptr), m_buffer(data) {}
 
+  /**
+   * @brief Construct a new Array 1 D object from a Memory object
+   *
+   * @param memory Unique pointer to the Memory object that will hold the data.
+   *               Must be large enough to hold all elements.
+   *               The Array class will take ownership of the unique_ptr by
+   * moving it.
+   * @param size
+   */
   Array1D(std::unique_ptr<auxiliary::Memory> memory, size_t size)
       : m_x_dim(size),
         m_memory(std::move(memory)),
@@ -35,6 +64,14 @@ class Array1D {
   Array1D(const Array1D& other) = delete;
   Array1D& operator=(const Array1D& rhs) = delete;
 
+  /**
+   * @brief Move constructor
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   */
   Array1D(Array1D&& other)
       : m_x_dim(other.m_x_dim),
         m_memory(std::move(other.m_memory)),
@@ -42,6 +79,15 @@ class Array1D {
     other.m_buffer = nullptr;
   }
 
+  /**
+   * @brief Move assignment operator
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   * @return Reference to the newly constructed Array\\
+   */
   Array1D& operator=(Array1D&& other) {
     m_x_dim = other.m_x_dim;
     m_memory = std::move(other.m_memory);
@@ -50,14 +96,40 @@ class Array1D {
     return *this;
   }
 
+  /**
+   * @brief Get the size of the Array in number of elements
+   *
+   * @return Size of the Array in number of elements
+   */
   virtual size_t size() const { return m_x_dim; }
 
+  /**
+   * @brief Get the size of the Array in number of bytes
+   *
+   * @return Size of the Array in number of bytes
+   */
   virtual size_t bytes() const { return size() * sizeof(T); }
 
+  /**
+   * @brief Get the length of the x dimension
+   *
+   * @return Length of the x dimension
+   */
   size_t get_x_dim() const { return m_x_dim; }
 
+  /**
+   * @brief Get a pointer to the data
+   *
+   * @param index Optional offset
+   * @return Pointer to the data
+   */
   T* data(size_t index = 0) const { return &m_buffer[index]; }
 
+  /**
+   * @brief Check whether the Array contains NaN values
+   *
+   * @return true if the Array contains at least one NaN value
+   */
   bool contains_nan() const {
     volatile bool contains_nan = false;
 #pragma omp parallel for
@@ -73,6 +145,11 @@ class Array1D {
     return contains_nan;
   };
 
+  /**
+   * @brief Check whether the Array contains Inf values
+   *
+   * @return true if the Array contains at least one non finite value
+   */
   bool contains_inf() const {
     volatile bool contains_inf = false;
 #pragma omp parallel
@@ -89,6 +166,11 @@ class Array1D {
     return contains_inf;
   }
 
+  /**
+   * @brief Initialize all elements to some value
+   *
+   * @param a Value to initialize the elements to
+   */
   void init(const T& a) {
 #pragma omp parallel
     {
@@ -98,20 +180,42 @@ class Array1D {
     }
   }
 
+  /**
+   * @brief Free memory, reset Array to zero length
+   *
+   * Do not call on Arrays with unmanaged memory, created from raw pointers
+   *
+   */
   virtual void free() {
     m_x_dim = 0;
     m_memory.reset();
     m_buffer = nullptr;
   }
 
+  /**
+   * @brief Set all elements to zero
+   *
+   */
   void zero() {
     T zero;
     memset(static_cast<void*>(&zero), 0, sizeof(T));
     init(zero);
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param i Index of element
+   * @return Reference to the value of the i-th element
+   */
   T& operator()(size_t i) { return m_buffer[i]; }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param i Index of element
+   * @return Const reference to the value of the i-th element
+   */
   const T& operator()(size_t i) const { return m_buffer[i]; }
 
  private:
@@ -136,17 +240,52 @@ class Array1D {
 template <class T>
 class Array2D : public Array1D<T> {
  public:
+  /**
+   * @brief Construct a new Array2D object
+   *
+   * The memory is allocated through an auxiliary::AlignedMemory object
+   *
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array2D(size_t y_dim = 0, size_t x_dim = 0)
       : Array1D<T>(y_dim * x_dim), m_y_dim(y_dim), m_x_dim(x_dim) {}
 
+  /**
+   * @brief Construct a new Array2D object from a raw pointer
+   *
+   * @param data Pointer to the memory that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array2D(T* data, size_t y_dim, size_t x_dim)
       : Array1D<T>(data, y_dim * x_dim), m_y_dim(y_dim), m_x_dim(x_dim) {}
 
+  /**
+   * @brief Construct a new Array2D object from a Memory object
+   *
+   * @param memory Unique pointer to the Memory object that will hold the data.
+   *               Must be large enough to hold all elements.
+   *               The Array class will take ownership of the unique_ptr by
+   * moving it.
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array2D(std::unique_ptr<auxiliary::Memory> memory, size_t y_dim, size_t x_dim)
       : Array1D<T>(std::move(memory), y_dim * x_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Move constructor
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   */
   Array2D(Array2D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -155,6 +294,15 @@ class Array2D : public Array1D<T> {
     m_x_dim = other.m_x_dim;
   }
 
+  /**
+   * @brief Move assignment operator
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   * @return Reference to the newly constructed Array\\
+   */
   Array2D& operator=(Array2D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -170,21 +318,60 @@ class Array2D : public Array1D<T> {
     m_y_dim = 0;
   }
 
+  /**
+   * @brief Get the length of the x dimension
+   *
+   * @return Length of the x dimension
+   */
   size_t get_x_dim() const { return m_x_dim; }
+
+  /**
+   * @brief Get the length of the y dimension
+   *
+   * @return Length of the y dimension
+   */
   size_t get_y_dim() const { return m_y_dim; }
 
-  virtual size_t size() const override { return m_y_dim * m_x_dim; }
+  size_t size() const override { return m_y_dim * m_x_dim; }
 
+  /**
+   * @brief Compute the linear index from multi dimensional indices
+   *
+   * @param y Index along the y-axis
+   * @param x Index along the x-axis (fastest changing index)
+   * @return linear index of element at y,x
+   */
   inline size_t index(size_t y, size_t x) const { return y * m_x_dim + x; }
 
+  /**
+   * @brief Get a pointer to the data at position y, x
+   *
+   * @param y Index along the y-axis
+   * @param x Index along the x-axis (fastest changing index)
+   * @return T*
+   */
   T* data(size_t y = 0, size_t x = 0) const {
     return &this->m_buffer[index(y, x)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param y Index along the y-axis.
+   * @param x Index along the x-axis (fastest changing index).
+   * @return A const reference to the element at y,x.
+   */
   const T& operator()(size_t y, size_t x) const {
     return this->m_buffer[index(y, x)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param y Index along the y-axis.
+   * @param x Index along the x-axis (fastest changing index).
+   * @return A reference to the element at y,x.
+   */
   T& operator()(size_t y, size_t x) { return this->m_buffer[index(y, x)]; }
 
  protected:
@@ -195,18 +382,48 @@ class Array2D : public Array1D<T> {
 template <class T>
 class Array3D : public Array1D<T> {
  public:
+  /**
+   * @brief Construct a new Array3D object
+   *
+   * The memory is allocated through an auxiliary::AlignedMemory object
+   *
+   * @param z_dim Size of the z dimension
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array3D(size_t z_dim = 0, size_t y_dim = 0, size_t x_dim = 0)
       : Array1D<T>(z_dim * y_dim * x_dim),
         m_z_dim(z_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Construct a new Array3D object from a raw pointer
+   *
+   * @param data Pointer to the memory that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   * @param z_dim Size of the z dimension
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array3D(T* data, size_t z_dim, size_t y_dim, size_t x_dim)
       : Array1D<T>(data, z_dim * y_dim * x_dim),
         m_z_dim(z_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Construct a new Array3D object from a Memory object
+   *
+   * @param memory Unique pointer to the Memory object that will hold the data.
+   *               Must be large enough to hold all elements.
+   *               The Array class will take ownership of the unique_ptr by
+   * moving it.
+   * @param z_dim Size of the z dimension
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array3D(std::unique_ptr<auxiliary::Memory> memory, size_t z_dim, size_t y_dim,
           size_t x_dim)
       : Array1D<T>(std::move(memory), z_dim * y_dim * x_dim),
@@ -214,6 +431,14 @@ class Array3D : public Array1D<T> {
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Move constructor
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   */
   Array3D(Array3D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -223,6 +448,15 @@ class Array3D : public Array1D<T> {
     m_x_dim = other.m_x_dim;
   }
 
+  /**
+   * @brief Move assignment operator
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   * @return Reference to the newly constructed Array
+   */
   Array3D& operator=(Array3D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -240,24 +474,73 @@ class Array3D : public Array1D<T> {
     m_z_dim = 0;
   }
 
+  /**
+   * @brief Get the length of the x dimension
+   *
+   * @return Length of the x dimension
+   */
   size_t get_x_dim() const { return m_x_dim; }
+
+  /**
+   * @brief Get the length of the y dimension
+   *
+   * @return Length of the y dimension
+   */
   size_t get_y_dim() const { return m_y_dim; }
+
+  /**
+   * @brief Get the length of the z dimension
+   *
+   * @return Length of the z dimension
+   */
   size_t get_z_dim() const { return m_z_dim; }
 
-  virtual size_t size() const override { return m_z_dim * m_y_dim * m_x_dim; }
+  size_t size() const override { return m_z_dim * m_y_dim * m_x_dim; }
 
+  /**
+   * @brief Compute the linear index from multi dimensional indices
+   *
+   * @param z Index along the z-axis
+   * @param y Index along the y-axis
+   * @param x Index along the x-axis (fastest changing index)
+   * @return linear index of element at z,y,x
+   */
   inline size_t index(size_t z, size_t y, size_t x) const {
     return z * m_y_dim * m_x_dim + y * m_x_dim + x;
   }
 
+  /**
+   * @brief Get a pointer to the data at position z, y, x
+   *
+   * @param z Index along the z-axis
+   * @param y Index along the y-axis
+   * @param x Index along the x-axis (fastest changing index)
+   * @return T*
+   */
   T* data(size_t z = 0, size_t y = 0, size_t x = 0) const {
     return &this->m_buffer[index(z, y, x)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param z Index along the z-axis.
+   * @param y Index along the y-axis.
+   * @param x Index along the x-axis (fastest changing index).
+   * @return A const reference to the element at z,y,x.
+   */
   const T& operator()(size_t z, size_t y, size_t x) const {
     return this->m_buffer[index(z, y, x)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param z Index along the z-axis.
+   * @param y Index along the y-axis.
+   * @param x Index along the x-axis (fastest changing index).
+   * @return A reference to the element at z,y,x.
+   */
   T& operator()(size_t z, size_t y, size_t x) {
     return this->m_buffer[index(z, y, x)];
   }
@@ -271,6 +554,16 @@ class Array3D : public Array1D<T> {
 template <class T>
 class Array4D : public Array1D<T> {
  public:
+  /**
+   * @brief Construct a new Array4D object
+   *
+   * The memory is allocated through an auxiliary::AlignedMemory object
+   *
+   * @param w_dim Size of the w dimension
+   * @param z_dim Size of the z dimension
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array4D(size_t w_dim = 0, size_t z_dim = 0, size_t y_dim = 0,
           size_t x_dim = 0)
       : Array1D<T>(w_dim * z_dim * y_dim * x_dim),
@@ -279,6 +572,17 @@ class Array4D : public Array1D<T> {
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Construct a new Array4D object from a raw pointer
+   *
+   * @param data Pointer to the memory that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   * @param w_dim Size of the w dimension
+   * @param z_dim Size of the z dimension
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array4D(T* data, size_t w_dim, size_t z_dim, size_t y_dim, size_t x_dim)
       : Array1D<T>(data, w_dim * z_dim * y_dim * x_dim),
         m_w_dim(w_dim),
@@ -286,6 +590,18 @@ class Array4D : public Array1D<T> {
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Construct a new Array4D object from a Memory object
+   *
+   * @param memory Unique pointer to the Memory object that will hold the data.
+   *               Must be large enough to hold all elements.
+   *               The Array class will take ownership of the unique_ptr by
+   * moving it.
+   * @param w_dim Size of the w dimension
+   * @param z_dim Size of the z dimension
+   * @param y_dim Size of the y dimension
+   * @param x_dim Size of the x dimension (fastest changing index)
+   */
   Array4D(std::unique_ptr<auxiliary::Memory> memory, size_t w_dim, size_t z_dim,
           size_t y_dim, size_t x_dim)
       : Array1D<T>(std::move(memory), w_dim * z_dim * y_dim * x_dim),
@@ -294,6 +610,14 @@ class Array4D : public Array1D<T> {
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
 
+  /**
+   * @brief Move constructor
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   */
   Array4D(Array4D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -304,6 +628,15 @@ class Array4D : public Array1D<T> {
     m_x_dim = other.m_x_dim;
   }
 
+  /**
+   * @brief Move assignment operator
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   * @return Reference to the newly constructed Array\\
+   */
   Array4D& operator=(Array4D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -323,28 +656,85 @@ class Array4D : public Array1D<T> {
     m_w_dim = 0;
   }
 
+  /**
+   * @brief Get the length of the x dimension
+   *
+   * @return Length of the x dimension
+   */
   size_t get_x_dim() const { return m_x_dim; }
+
+  /**
+   * @brief Get the length of the y dimension
+   *
+   * @return Length of the y dimension
+   */
   size_t get_y_dim() const { return m_y_dim; }
+
+  /**
+   * @brief Get the length of the z dimension
+   *
+   * @return Length of the z dimension
+   */
   size_t get_z_dim() const { return m_z_dim; }
+
+  /**
+   * @brief Get the length of the w dimension
+   *
+   * @return Length of the w dimension
+   */
   size_t get_w_dim() const { return m_w_dim; }
 
-  virtual size_t size() const override {
-    return m_w_dim * m_z_dim * m_y_dim * m_x_dim;
-  }
+  size_t size() const override { return m_w_dim * m_z_dim * m_y_dim * m_x_dim; }
 
+  /**
+   * @brief Compute the linear index from multi dimensional indices
+   *
+   * @param w Index along the w-axis
+   * @param z Index along the z-axis
+   * @param y Index along the y-axis
+   * @param x Index along the x-axis (fastest changing index)
+   * @return linear index of element at w,z,y,x
+   */
   inline size_t index(size_t w, size_t z, size_t y, size_t x) const {
     return w * m_z_dim * m_y_dim * m_x_dim + z * m_y_dim * m_x_dim +
            y * m_x_dim + x;
   }
 
+  /**
+   * @brief Get a pointer to the data at position w, z, y, x
+   *
+   * @param w Index along the z-axis
+   * @param z Index along the z-axis
+   * @param y Index along the y-axis
+   * @param x Index along the x-axis (fastest changing index)
+   * @return T*
+   */
   T* data(size_t w = 0, size_t z = 0, size_t y = 0, size_t x = 0) const {
     return &this->m_buffer[index(w, z, y, x)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param w Index along the w-axis.
+   * @param z Index along the z-axis.
+   * @param y Index along the y-axis.
+   * @param x Index along the x-axis (fastest changing index).
+   * @return A const reference to the element at w,z,y,x.
+   */
   const T& operator()(size_t w, size_t z, size_t y, size_t x) const {
     return this->m_buffer[index(w, z, y, x)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param w Index along the w-axis.
+   * @param z Index along the z-axis.
+   * @param y Index along the y-axis.
+   * @param x Index along the x-axis (fastest changing index).
+   * @return A reference to the element at w,z,y,x.
+   */
   T& operator()(size_t w, size_t z, size_t y, size_t x) {
     return this->m_buffer[index(w, z, y, x)];
   }
@@ -359,6 +749,17 @@ class Array4D : public Array1D<T> {
 template <class T>
 class Array5D : public Array1D<T> {
  public:
+  /**
+   * @brief Construct a new Array5D object
+   *
+   * The memory is allocated through an auxiliary::AlignedMemory object
+   *
+   * @param e_dim Size of the e dimension
+   * @param d_dim Size of the d dimension
+   * @param c_dim Size of the c dimension
+   * @param b_dim Size of the b dimension
+   * @param a_dim Size of the a dimension (fastest changing index)
+   */
   Array5D(size_t e_dim = 0, size_t d_dim = 0, size_t c_dim = 0,
           size_t b_dim = 0, size_t a_dim = 0)
       : Array1D<T>(e_dim * d_dim * c_dim * b_dim * a_dim),
@@ -368,6 +769,18 @@ class Array5D : public Array1D<T> {
         m_b_dim(b_dim),
         m_a_dim(a_dim) {}
 
+  /**
+   * @brief Construct a new Array4D object from a raw pointer
+   *
+   * @param data Pointer to the memory that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   * @param e_dim Size of the e dimension
+   * @param d_dim Size of the d dimension
+   * @param c_dim Size of the c dimension
+   * @param b_dim Size of the b dimension
+   * @param a_dim Size of the a dimension (fastest changing index)
+   */
   Array5D(T* data, size_t e_dim, size_t d_dim, size_t c_dim, size_t b_dim,
           size_t a_dim)
       : Array1D<T>(data, e_dim * d_dim * c_dim * b_dim * a_dim),
@@ -377,6 +790,19 @@ class Array5D : public Array1D<T> {
         m_b_dim(b_dim),
         m_a_dim(a_dim) {}
 
+  /**
+   * @brief Construct a new Array5D object from a Memory object
+   *
+   * @param memory Unique pointer to the Memory object that will hold the data.
+   *               Must be large enough to hold all elements.
+   *               The Array class will take ownership of the unique_ptr by
+   * moving it.
+   * @param e_dim Size of the e dimension
+   * @param d_dim Size of the d dimension
+   * @param c_dim Size of the c dimension
+   * @param b_dim Size of the b dimension
+   * @param a_dim Size of the a dimension (fastest changing index)
+   */
   Array5D(std::unique_ptr<auxiliary::Memory> memory, size_t e_dim, size_t d_dim,
           size_t z_dim, size_t c_dim, size_t b_dim, size_t a_dim)
       : Array1D<T>(std::move(memory), e_dim * d_dim * c_dim * b_dim * a_dim),
@@ -386,6 +812,14 @@ class Array5D : public Array1D<T> {
         m_b_dim(b_dim),
         m_a_dim(a_dim) {}
 
+  /**
+   * @brief Move constructor
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   */
   Array5D(Array5D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -397,6 +831,15 @@ class Array5D : public Array1D<T> {
     m_a_dim = other.m_a_dim;
   }
 
+  /**
+   * @brief Move assignment operator
+   *
+   * If the memory was managed by the other Array, the new
+   * Array will take over ownership.
+   *
+   * @param other Pointer to the other Array
+   * @return Reference to the newly constructed Array\\
+   */
   Array5D& operator=(Array5D&& other) {
     this->m_memory = std::move(other.m_memory);
     this->m_buffer = other.m_buffer;
@@ -418,32 +861,101 @@ class Array5D : public Array1D<T> {
     m_e_dim = 0;
   }
 
+  /**
+   * @brief Get the length of the a dimension
+   *
+   * @return Length of the a dimension
+   */
   size_t get_a_dim() const { return m_a_dim; }
+
+  /**
+   * @brief Get the length of the b dimension
+   *
+   * @return Length of the b dimension
+   */
   size_t get_b_dim() const { return m_b_dim; }
+
+  /**
+   * @brief Get the c dim object
+   *
+   * @return size_t
+   */
   size_t get_c_dim() const { return m_c_dim; }
+
+  /**
+   * @brief Get the d dim object
+   *
+   * @return size_t
+   */
   size_t get_d_dim() const { return m_d_dim; }
+
+  /**
+   * @brief Get the e dim object
+   *
+   * @return size_t
+   */
   size_t get_e_dim() const { return m_e_dim; }
 
-  virtual size_t size() const override {
+  size_t size() const override {
     return m_e_dim * m_d_dim * m_c_dim * m_b_dim * m_a_dim;
   }
 
+  /**
+   * @brief Compute the linear index from multi dimensional indices
+   *
+   * @param e Index along the e-axis
+   * @param d Index along the d-axis
+   * @param c Index along the c-axis
+   * @param b Index along the b-axis
+   * @param a Index along the a-axis (fastest changing index)
+   * @return linear index of element at e,d,c,b,a
+   */
   inline size_t index(size_t e, size_t d, size_t c, size_t b, size_t a) const {
     return e * m_d_dim * m_c_dim * m_b_dim * m_a_dim +
            d * m_c_dim * m_b_dim * m_a_dim + c * m_b_dim * m_a_dim +
            b * m_a_dim + a;
   }
 
+  /**
+   * @brief Get a pointer to the data at position e, d, c, b, a
+   *
+   * @param e Index along the z-axis
+   * @param d Index along the z-axis
+   * @param c Index along the z-axis
+   * @param b Index along the y-axis
+   * @param a Index along the x-axis (fastest changing index)
+   * @return T*
+   */
   T* data(size_t e = 0, size_t d = 0, size_t c = 0, size_t b = 0,
           size_t a = 0) const {
     return &this->m_buffer[index(e, d, c, b, a)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param e Index along the e-axis.
+   * @param d Index along the d-axis.
+   * @param c Index along the c-axis.
+   * @param b Index along the b-axis.
+   * @param a Index along the a-axis (fastest changing index).
+   * @return A const reference to the element at e,d,c,b,a.
+   */
   const T& operator()(size_t e = 0, size_t d = 0, size_t c = 0, size_t b = 0,
                       size_t a = 0) const {
     return this->m_buffer[index(e, d, c, b, a)];
   }
 
+  /**
+   * @brief Indexing operator
+   *
+   * @param e Index along the e-axis.
+   * @param d Index along the d-axis.
+   * @param c Index along the c-axis.
+   * @param b Index along the b-axis.
+   * @param a Index along the a-axis (fastest changing index).
+   * @return A reference to the element at e,d,c,b,a.
+   */
   T& operator()(size_t e = 0, size_t d = 0, size_t c = 0, size_t b = 0,
                 size_t a = 0) {
     return this->m_buffer[index(e, d, c, b, a)];

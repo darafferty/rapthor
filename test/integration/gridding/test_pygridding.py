@@ -168,7 +168,8 @@ def run_degridding(
             nr_timeslots, nr_stations, subgrid_size, nr_correlations
         )
 
-    proxy.init_cache(subgrid_size, cell_size, wstep, np.zeros(3, dtype=np.float32))
+    shift = np.zeros(2, np.float32)
+    proxy.init_cache(subgrid_size, cell_size, wstep, shift)
 
     proxy.degridding(
         kernel_size,
@@ -258,7 +259,7 @@ def run_gridding(
     taper = idg.util.get_example_spheroidal(subgrid_size)
     taper_grid = idg.util.get_example_spheroidal(grid_size)
 
-    shift = np.zeros(3, np.float32)
+    shift = np.zeros(2, np.float32)
     proxy.set_grid(grid)
     proxy.init_cache(subgrid_size, cell_size, wstep, shift)
 
