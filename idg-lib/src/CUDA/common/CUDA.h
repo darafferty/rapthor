@@ -80,6 +80,10 @@ class CUDA : public Proxy {
   void enable_unified_memory() { m_use_unified_memory = true; }
 
  protected:
+
+  /*
+   * Gridding/degridding
+   */
   enum ImagingMode { mode_gridding, mode_degridding };
 
   struct JobData {
@@ -99,6 +103,22 @@ class CUDA : public Proxy {
                       const Array4D<std::complex<float>>& visibilities,
                       const Array2D<UVW<float>>& uvw,
                       std::vector<JobData>& jobs) const;
+
+  /*
+   * W-Tiling state
+   */
+  WTiles m_wtiles;
+  unsigned int m_nr_tiles = 0;  // configured in init_cache
+  const unsigned int m_tile_size = 128;
+  const unsigned int m_patch_size = 512;
+  const unsigned int m_nr_patches_batch = 3;
+
+  struct {
+    std::unique_ptr<cu::DeviceMemory> d_tiles;
+    std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
+    std::unique_ptr<cu::HostMemory> h_tiles;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
+  } m_buffers_wtiling;
 
  private:
   ProxyInfo& mInfo;
