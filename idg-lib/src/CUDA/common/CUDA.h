@@ -11,7 +11,12 @@
 namespace cu {
 class DeviceMemory;
 class HostMemory;
+class Context;
 };  // namespace cu
+
+namespace cufft {
+class C2C_2D;
+};  // namespace cufft
 
 namespace idg {
 namespace kernel {
@@ -80,7 +85,6 @@ class CUDA : public Proxy {
   void enable_unified_memory() { m_use_unified_memory = true; }
 
  protected:
-
   /*
    * Gridding/degridding
    */
@@ -105,7 +109,7 @@ class CUDA : public Proxy {
                       std::vector<JobData>& jobs) const;
 
   /*
-   * W-Tiling state
+   * W-Tiling
    */
   WTiles m_wtiles;
   unsigned int m_nr_tiles = 0;  // configured in init_cache
@@ -119,6 +123,13 @@ class CUDA : public Proxy {
     std::unique_ptr<cu::HostMemory> h_tiles;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
   } m_buffers_wtiling;
+
+  unsigned int plan_tile_fft(unsigned int nr_polarizations,
+                             unsigned int nr_tiles_batch,
+                             const unsigned int w_padded_tile_size,
+                             const cu::Context& context,
+                             const size_t free_memory,
+                             std::unique_ptr<cufft::C2C_2D>& fft) const;
 
  private:
   ProxyInfo& mInfo;
