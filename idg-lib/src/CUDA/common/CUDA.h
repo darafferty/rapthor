@@ -124,6 +124,8 @@ class CUDA : public Proxy {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
   } m_buffers_wtiling;
 
+  void free_buffers_wtiling();
+
   unsigned int plan_tile_fft(unsigned int nr_polarizations,
                              unsigned int nr_tiles_batch,
                              const unsigned int w_padded_tile_size,

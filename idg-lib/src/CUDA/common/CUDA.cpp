@@ -31,6 +31,7 @@ CUDA::CUDA(ProxyInfo info)
 
 CUDA::~CUDA() {
   cuProfilerStop();
+  free_buffers_wtiling();
   free_devices();
 }
 
@@ -159,6 +160,13 @@ int CUDA::initialize_jobs(const int nr_baselines, const int nr_timesteps,
   }
 
   return jobsize;
+}
+
+void CUDA::free_buffers_wtiling() {
+  m_buffers_wtiling.d_tiles.reset();
+  m_buffers_wtiling.d_padded_tiles.reset();
+  m_buffers_wtiling.h_tiles.reset();
+  m_buffers_wtiling.d_patches.clear();
 }
 
 }  // end namespace cuda
