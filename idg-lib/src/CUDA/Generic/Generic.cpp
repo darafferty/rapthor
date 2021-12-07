@@ -60,9 +60,8 @@ void Generic::do_degridding(
 }
 
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
-  if (!m_disable_wtiling) {
-    CUDA::set_grid(grid);
-  } else {
+  CUDA::set_grid(grid);
+  if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& htodstream = device.get_htod_stream();
     cu::Context& context = get_device(0).get_context();
