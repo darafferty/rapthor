@@ -13,6 +13,11 @@ namespace idg {
 namespace proxy {
 namespace hybrid {
 
+/**
+ * @brief Hybrid Proxy, combines functionality from CPU Optimized and CUDA
+ * Generic proxies
+ *
+ */
 class GenericOptimized : public cuda::CUDA {
  public:
   GenericOptimized();

@@ -41,7 +41,7 @@ def set_parameters(request):
     params["nr_phase_terms"] = 3
 
     params["w_step"] = 400.0
-    params["shift"] = np.array((0.0, 0.0, 0.0), dtype=np.float32)
+    params["shift"] = np.array((0.0, 0.0), dtype=np.float32)
     yield params
 
 

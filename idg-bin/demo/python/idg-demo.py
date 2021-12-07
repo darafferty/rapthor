@@ -101,7 +101,7 @@ else:
     proxy = idg.CPU.Optimized()
 
 w_step = 0.0
-shift = np.zeros(3, np.float32)
+shift = np.zeros(2, np.float32)
 proxy.set_grid(grid)
 proxy.init_cache(subgrid_size, cell_size, w_step, shift)
 

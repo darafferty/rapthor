@@ -38,19 +38,39 @@ class Proxy {
   /*
       High level routines
   */
-  /*! Add visibilities to a grid, applying A-terms.
+
+  /**
+   * @brief Add visibilities to a grid, applying A-terms.
    *
-   *  set_grid()
-   *  Proxy::set_grid()
-   *  idg::proxy::Proxy::set_grid()
-   *  \verbatim embed:rst:leading-asterisk
-   *  Before calling this function, the grid needs to have been set
-   *  by a call to the set_grid function.
-   *  The plan can be obtained by a call to the make_plan function.
+   * Before calling this function, the grid needs to have been set
+   * by a call to the set_grid function and the cache needs to be initialized
+   * by a call to the init_cache function.
+   * On return the results might still be in a cache, and to
+   * obtain the final grid a call to get_final_grid() is needed.
    *
-   *  :py:class:`idg.Proxy.Proxy`
-   * :cpp:class:`Proxy <idg::proxy::Proxy>`
-   *  \endverbatim
+   * @param[in] plan A Plan object, previously created by a call to the
+   * make_plan() member function. The Plan contains the partitioning of the
+   * visibilities in subgrids.
+   * @param[in] frequencies A one dimensional array of floats, containing the
+   * frequency per channel
+   * @param[in] visibilities A four dimensional array of complex floats. The
+   * axes are baseline, time, channel, and correlation (XX,XY,YX,XX). Note that
+   * the baseline and time axis are transposed compared to the ordering in a
+   * Measurement Set.
+   * @param[in] uvw A two dimensional array of UVW coordinates (triplet of
+   * floats). The axes are baseline and time.
+   * @param[in] baselines A one dimensional array of pairs station indices
+   * (integers) comprising a baseline.
+   * @param[in] aterms Four dimensional array of 2x2 (Jones) matrices of complex
+   * floats. The axes are time slot, station, subgrid x, subgrid y. A time slot
+   * is a range of time samples over which the aterms are constant The time
+   * slots are defined by the aterm_offsets parameters.
+   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * that represent the time ranges of time slots. The array is one longer than
+   * the number of time slots. Time slot k is valid from aterm_offsets[k] until
+   * aterm_offsets[k+1].
+   * @param[in] taper A two dimensional array of floats of the size of a
+   * subgrid.
    */
 
   void gridding(const Plan& plan, const Array1D<float>& frequencies,
@@ -59,34 +79,125 @@ class Proxy {
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
                 const Array1D<unsigned int>& aterms_offsets,
-                const Array2D<float>& spheroidal);
+                const Array2D<float>& taper);
 
+  /**
+   * @brief Degrid (predict) visibilities, applying A-terms.
+   *
+   * Before calling this function, the grid needs to have been set
+   * by a call to the set_grid function, and the cache needs to be initialized
+   * by a call to the init_cache function.
+   *
+   * @param[in] plan A Plan object, previously created by a call to the
+   * make_plan() member function. The Plan contains the partitioning of the
+   * visibilities in subgrids.
+   * @param[in] frequencies A one dimensional array of floats, containing the
+   * frequency per channel
+   * @param[out] visibilities A four dimensional array of complex floats. The
+   * axes are baseline, time, channel, and correlation (XX,XY,YX,XX). Note that
+   * the baseline and time axis are transposed compared to the ordering in a
+   * Measurement Set.
+   * @param[in] uvw A two dimensional array of UVW coordinates (triplet of
+   * floats). The axes are baseline and time.
+   * @param[in] baselines A one dimensional array of pairs station indices
+   * (integers) comprising a baseline.
+   * @param[in] aterms Four dimensional array of 2x2 (Jones) matrices of complex
+   * floats. The axes are time slot, station, subgrid x, subgrid y. A time slot
+   * is a range of time samples over which the aterms are constant The time
+   * slots are defined by the aterm_offsets parameters.
+   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * that represent the time ranges of time slots. The array is one longer than
+   * the number of time slots. Time slot k is valid from aterm_offsets[k] until
+   * aterm_offsets[k+1].
+   * @param[in] taper A two dimensional array of floats of the size of a
+   * subgrid.
+   */
   void degridding(
       const Plan& plan, const Array1D<float>& frequencies,
       Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal);
+      const Array1D<unsigned int>& aterms_offsets, const Array2D<float>& taper);
 
-  // Prepare a calibration cycle
+  /**
+   * @brief Prepare a calibration cycle
+   *
+   * @param kernel_size Size of the kernel, see
+   * \verbatim embed:rst:leading-asterisk
+   * :doc:`kernelsize`
+   * \endverbatim
+   * @param[in] frequencies A one dimensional array of floats, containing the
+   * frequency per channel
+   * @param[out] visibilities A four dimensional array of complex floats. The
+   * axes are baseline, time, channel, and correlation (XX,XY,YX,XX). Note that
+   * the baseline and time axis are transposed compared to the ordering in a
+   * Measurement Set.
+   * @param weights Visibility weights, should have same dimension as \c
+   * visibilities.
+   * @param[in] uvw A two dimensional array of UVW coordinates (triplet of
+   * floats). The axes are baseline and time.
+   * @param[in] baselines A one dimensional array of pairs station indices
+   * (integers) comprising a baseline.
+   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * that represent the time ranges of time slots. The array is one longer than
+   * the number of time slots. Time slot k is valid from aterm_offsets[k] until
+   * aterm_offsets[k+1].
+   * @param[in] taper A two dimensional array of floats of the size of a
+   * subgrid.
+   */
   void calibrate_init(
       const unsigned int kernel_size, const Array1D<float>& frequencies,
       Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal);
+      const Array1D<unsigned int>& aterms_offsets, const Array2D<float>& taper);
 
-  // Compute a hessian, gradient and residual, for the station with number
-  // station_nr, given the current aterms and derivative aterms
+  /**
+   * @brief Compute a hessian, gradient and residual per time slot for station
+   * station_nr, given the current aterms and derivative aterms.
+   *
+   * The calibration functions provided by the Proxy do not implement a full
+   * solving strategy. They are intended to be called by an iterative solver to
+   * compute the Hessian, derivative and residual in some working point.
+   *
+   * It is assumed that the solver updates the aterm of a single station at a
+   * time, and iterates over the stations. The aterm is assumed to be described
+   * by a model with a number of unknown parameters.
+   *
+   * The aterm_derivatives are the derivatives of the aterm of station
+   * station_nr with respect to the unknowns.
+   *
+   * The values returned are
+   * 1) the residual, the root mean square (TODO check, maybe it is the sum
+   * of squares) of
+   * the difference between the predicted (degridded) visibilities and the
+   * visibilities provided in the calibrate_init() call. 2) the gradient, the
+   * derivative of the residual with respect to the unknowns 3) the derivative
+   * of the gradient with respect to the unknowns
+   *
+   * @param[in] station_nr
+   * @param[in] aterms Four dimensional array of 2x2 (Jones) matrices of complex
+   * floats. The axes are time slot, station, subgrid x, subgrid y. A time slot
+   * is a range of time samples over which the aterms are constant The time
+   * slots are defined by the aterm_offsets parameters.
+   * @param[in] derivative_aterms Four dimensional array of 2x2 (Jones) matrices
+   * of complex floats. The axes are time slot, terms, subgrid x, subgrid y.
+   *
+   *
+   * @param[out] hessian
+   * @param[out] gradient
+   * @param[out] residual
+   */
   void calibrate_update(
       const int station_nr,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
       Array3D<double>& hessian, Array2D<double>& gradient, double& residual);
 
+  /**
+   * @brief Clean up after calibration cycle.
+   */
   void calibrate_finish();
 
   //! Applies (inverse) Fourier transform to grid
@@ -96,7 +207,20 @@ class Proxy {
                  unsigned int grid_nr_correlations, unsigned int grid_height,
                  unsigned int grid_width);
 
-  //! Computes the average beam term
+  /**
+   * @brief Computes the average beam term
+   *
+   * @param[in] nr_antennas
+   * @param[in] nr_channels
+   * @param[in] uvw
+   * @param[in] baselines
+   * @param[in] aterms
+   * @param[in] aterms_offsets
+   * @param[in] weights
+   * @param[out] average_beam Four dimensional array of complex floats.
+   *                          The axes are subgrid x, subgrid y, mueller matrix
+   * row, mueller matrix col
+   */
   virtual void compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
       const Array2D<UVW<float>>& uvw,
@@ -163,17 +287,37 @@ class Proxy {
   virtual void free_grid();
 
   /**
-   * Flush all pending operations and return the current grid.
+   * @brief Flush all pending operations and return the final grid.
    */
   virtual std::shared_ptr<Grid> get_final_grid();
 
   /**
-   * Get the current grid without flushing pending operations.
-   * Use this function for reading the grid dimensions, and not the grid data.
+   * @brief Get the current grid without flushing pending operations.
+   *
+   * Use this function for reading the grid dimensions, and not the grid
+   * data.
+   *
+   * @return const Grid&
    */
   const Grid& get_grid() const { return *m_grid; }
 
   //! Methods for cache management
+
+  /**
+   * @brief Initialize cache
+   *
+   * Sets the configuration for subsequent gridding, degridding or calibrate
+   * calls This allows the Proxy to set up a caching strategy
+   *
+   * @param subgrid_size Size of the subgrid, see
+   * \verbatim embed:rst:leading-asterisk
+   * :doc:`kernelsize`
+   * \endverbatim
+
+   * @param cell_size
+   * @param w_step
+   * @param shift
+   */
   virtual void init_cache(int subgrid_size, float cell_size, float w_step,
                           const Array1D<float>& shift) {
     m_cache_state.subgrid_size = subgrid_size;
@@ -183,8 +327,28 @@ class Proxy {
     m_cache_state.shift(1) = shift(1);
   };
 
-  // Create a plan
   // The cache needs to have been initialized by call to init_cache first
+  /**
+   * @brief Create a plan that can be used for calls to the gridding or
+   * degridding functions
+   *
+   * @param kernel_size Size of the kernel, see
+   * \verbatim embed:rst:leading-asterisk
+   * :doc:`kernelsize`
+   * \endverbatim
+   * @param[in] frequencies A one dimensional array of floats, containing the
+   * frequency per channel
+   * @param[in] uvw A two dimensional array of UVW coordinates (triplet of
+   * floats). The axes are baseline and time.
+   * @param[in] baselines A one dimensional array of pairs station indices
+   * (integers) comprising a baseline.
+   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * that represent the time ranges of time slots. The array is one longer than
+   * the number of time slots. Time slot k is valid from aterm_offsets[k] until
+   * aterm_offsets[k+1].
+   * @param options
+   * @return std::unique_ptr<Plan>
+   */
   virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
@@ -207,7 +371,7 @@ class Proxy {
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal) = 0;
+      const Array2D<float>& taper) = 0;
 
   virtual void do_degridding(
       const Plan& plan, const Array1D<float>& frequencies,
@@ -216,7 +380,7 @@ class Proxy {
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal) = 0;
+      const Array2D<float>& taper) = 0;
 
   // Uses rvalue references (&&) for all containers do_calibrate_init will take
   // ownership of. Call with std::move(...)
@@ -226,7 +390,7 @@ class Proxy {
       Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
       Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Array2D<float>& spheroidal) {}
+      const Array2D<float>& taper) {}
 
   virtual void do_calibrate_update(
       const int station_nr,
@@ -263,7 +427,7 @@ class Proxy {
       unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
       unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
       unsigned int aterms_offsets_nr_timeslots_plus_one,
-      unsigned int spheroidal_height, unsigned int spheroidal_width) const;
+      unsigned int taper_height, unsigned int taper_width) const;
 
   void check_dimensions(
       const Plan::Options& options, unsigned int subgrid_size,
@@ -273,7 +437,7 @@ class Proxy {
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal) const;
+      const Array2D<float>& taper) const;
 
   Array1D<float> compute_wavenumbers(const Array1D<float>& frequencies) const;
 

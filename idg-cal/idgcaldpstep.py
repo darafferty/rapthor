@@ -117,7 +117,7 @@ class IDGCalDPStep(dp3.Step):
         self.w_step = parset.getFloat(prefix + "wstep", 400.0)
         ## END: read parset
 
-        self.shift = np.array((0.0, 0.0, 0.0), dtype=np.float32)
+        self.shift = np.array((0.0, 0.0), dtype=np.float32)
 
         # Number of phase updates per amplitude interval
         self.nr_phase_updates = self.ampl_interval // self.phase_interval

@@ -14,6 +14,10 @@ class PowerSensor;
 namespace idg {
 namespace proxy {
 namespace cuda {
+/**
+ * @brief Generic CUDA Proxy
+ *
+ */
 class Generic : public CUDA {
   friend class Unified;
 

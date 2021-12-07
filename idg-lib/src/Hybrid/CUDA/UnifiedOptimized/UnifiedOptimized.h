@@ -15,6 +15,11 @@ namespace idg {
 namespace proxy {
 namespace hybrid {
 
+/**
+ * @brief Hybrid Proxy, combines functionality from CPU Optimized and CUDA
+ * Unified Memory proxies
+ *
+ */
 class UnifiedOptimized : public cuda::CUDA {
  public:
   UnifiedOptimized();

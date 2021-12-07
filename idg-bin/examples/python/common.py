@@ -201,7 +201,7 @@ def main(proxyname):
     visibilities   = util.get_example_visibilities(
                         nr_baselines, nr_timesteps, nr_channels, nr_correlations,
                         image_size, grid_size, uvw, frequencies)
-    shift          = numpy.zeros(3, dtype=numpy.float32)
+    shift          = numpy.zeros(2, dtype=numpy.float32)
 
     ######################################################################
     # plot data

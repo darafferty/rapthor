@@ -5,9 +5,6 @@ Python IDG Module
 .. automodule:: idg
    :members:
 
-Submodules
-==========
-
 .. toctree::
    :maxdepth: 2
    
@@ -16,9 +13,6 @@ Submodules
    python-idg-hybrid-cuda
    python-idg-opencl
    
-
-Classes
-=======
 
 .. autoclass:: idg.Proxy.Proxy
    :members:

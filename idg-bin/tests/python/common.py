@@ -175,7 +175,7 @@ def main(proxyname, plot=True):
     )
     aterms_offsets = util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
     spheroidal = util.get_identity_spheroidal(subgrid_size)
-    shift = np.zeros(3, dtype=np.float32)
+    shift = np.zeros(2, dtype=np.float32)
 
     # set w to zero
     uvw[...,-1] = 0

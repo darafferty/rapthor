@@ -22,11 +22,6 @@
    :caption: Interfaces
 
    interfaces
-   arraytypes
-   c++-proxy
-   c++-bufferset
-   c-interface
-   python-proxy
 
 .. toctree::
    :maxdepth: 2
@@ -34,10 +29,10 @@
    :titlesonly:
    :caption: Background
 
-   aterms
-   taper
-   kernelsize
 
+   kernelsize
+   w-kernel-support-size
+   wstacking-wtiling.md
 
 .. toctree::
    :maxdepth: 2

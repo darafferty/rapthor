@@ -18,6 +18,10 @@ namespace idg {
 namespace proxy {
 namespace cuda {
 
+/**
+ * @brief CUDA Proxy using Unified Memory
+ *
+ */
 class Unified : public Generic {
  public:
   // Constructor
