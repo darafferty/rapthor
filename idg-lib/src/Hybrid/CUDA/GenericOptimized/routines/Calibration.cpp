@@ -209,10 +209,8 @@ void GenericOptimized::do_calibrate_init(
   auto total_nr_timesteps = nr_baselines * nr_timesteps;
   auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps *
                      nr_channels * sizeof(std::complex<float>);
-  for (unsigned int i = 0; i < 2; i++) {
-    m_calibrate_state.d_sums[i].reset(
-        new cu::DeviceMemory(context, sizeof_sums));
-  }
+  m_calibrate_state.d_sums_x.reset(new cu::DeviceMemory(context, sizeof_sums));
+  m_calibrate_state.d_sums_y.reset(new cu::DeviceMemory(context, sizeof_sums));
 }
 
 void GenericOptimized::do_calibrate_update(
@@ -271,8 +269,8 @@ void GenericOptimized::do_calibrate_update(
       *m_calibrate_state.d_visibilities[antenna_nr];
   cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights[antenna_nr];
   cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw[antenna_nr];
-  cu::DeviceMemory& d_sums1 = *m_calibrate_state.d_sums[0];
-  cu::DeviceMemory& d_sums2 = *m_calibrate_state.d_sums[1];
+  cu::DeviceMemory& d_sums_x = *m_calibrate_state.d_sums_x;
+  cu::DeviceMemory& d_sums_y = *m_calibrate_state.d_sums_y;
   cu::DeviceMemory& d_lmnp = *m_calibrate_state.d_lmnp;
   cu::DeviceMemory& d_aterms_idx =
       *m_calibrate_state.d_aterms_indices[antenna_nr];
@@ -309,7 +307,7 @@ void GenericOptimized::do_calibrate_update(
                           w_step, total_nr_timesteps, nr_channels, nr_stations,
                           nr_terms, d_uvw, d_wavenumbers, d_visibilities,
                           d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                          d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp,
+                          d_metadata, d_subgrids, d_sums_x, d_sums_y, d_lmnp,
                           d_hessian, d_gradient, d_residual);
   executestream.record(executeFinished);
 
@@ -350,8 +348,8 @@ void GenericOptimized::do_calibrate_finish() {
   m_report->print_visibilities(auxiliary::name_calibrate);
   m_calibrate_state.d_wavenumbers.reset();
   m_calibrate_state.d_lmnp.reset();
-  m_calibrate_state.d_sums[0].reset();
-  m_calibrate_state.d_sums[1].reset();
+  m_calibrate_state.d_sums_x.reset();
+  m_calibrate_state.d_sums_y.reset();
   m_calibrate_state.d_metadata.clear();
   m_calibrate_state.d_subgrids.clear();
   m_calibrate_state.d_visibilities.clear();

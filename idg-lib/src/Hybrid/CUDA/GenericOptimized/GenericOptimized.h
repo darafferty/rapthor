@@ -182,7 +182,8 @@ class GenericOptimized : public cuda::CUDA {
     unsigned int nr_channels;
     std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
     std::unique_ptr<cu::DeviceMemory> d_lmnp;
-    std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_sums;
+    std::unique_ptr<cu::DeviceMemory> d_sums_x;
+    std::unique_ptr<cu::DeviceMemory> d_sums_y;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities;
