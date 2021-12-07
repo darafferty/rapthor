@@ -182,13 +182,13 @@ class GenericOptimized : public cuda::CUDA {
     unsigned int nr_channels;
     std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
     std::unique_ptr<cu::DeviceMemory> d_lmnp;
-    std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_sums_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices_;
+    std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_sums;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices;
   } m_calibrate_state;
 
   // Note:

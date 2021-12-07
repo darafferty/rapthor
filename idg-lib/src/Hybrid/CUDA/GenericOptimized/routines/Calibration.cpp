@@ -90,26 +90,26 @@ void GenericOptimized::do_calibrate_init(
     auto sizeof_uvw = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
     auto sizeof_aterm_idx =
         auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-    m_calibrate_state.d_metadata_.emplace_back(
+    m_calibrate_state.d_metadata.emplace_back(
         new cu::DeviceMemory(context, sizeof_metadata));
-    m_calibrate_state.d_subgrids_.emplace_back(
+    m_calibrate_state.d_subgrids.emplace_back(
         new cu::DeviceMemory(context, sizeof_subgrids));
-    m_calibrate_state.d_visibilities_.emplace_back(
+    m_calibrate_state.d_visibilities.emplace_back(
         new cu::DeviceMemory(context, sizeof_visibilities));
-    m_calibrate_state.d_weights_.emplace_back(
+    m_calibrate_state.d_weights.emplace_back(
         new cu::DeviceMemory(context, sizeof_weights));
-    m_calibrate_state.d_uvw_.emplace_back(
+    m_calibrate_state.d_uvw.emplace_back(
         new cu::DeviceMemory(context, sizeof_uvw));
-    m_calibrate_state.d_aterms_indices_.emplace_back(
+    m_calibrate_state.d_aterms_indices.emplace_back(
         new cu::DeviceMemory(context, sizeof_aterm_idx));
-    cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata_[antenna_nr];
-    cu::DeviceMemory& d_subgrids = *m_calibrate_state.d_subgrids_[antenna_nr];
+    cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata[antenna_nr];
+    cu::DeviceMemory& d_subgrids = *m_calibrate_state.d_subgrids[antenna_nr];
     cu::DeviceMemory& d_visibilities =
-        *m_calibrate_state.d_visibilities_[antenna_nr];
-    cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights_[antenna_nr];
-    cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw_[antenna_nr];
+        *m_calibrate_state.d_visibilities[antenna_nr];
+    cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights[antenna_nr];
+    cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw[antenna_nr];
     cu::DeviceMemory& d_aterm_idx =
-        *m_calibrate_state.d_aterms_indices_[antenna_nr];
+        *m_calibrate_state.d_aterms_indices[antenna_nr];
 
     // Copy metadata to device
     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
@@ -210,7 +210,7 @@ void GenericOptimized::do_calibrate_init(
   auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps *
                      nr_channels * sizeof(std::complex<float>);
   for (unsigned int i = 0; i < 2; i++) {
-    m_calibrate_state.d_sums_[i].reset(
+    m_calibrate_state.d_sums[i].reset(
         new cu::DeviceMemory(context, sizeof_sums));
   }
 }
@@ -265,17 +265,17 @@ void GenericOptimized::do_calibrate_update(
 
   // Load memory objects
   cu::DeviceMemory& d_wavenumbers = *m_calibrate_state.d_wavenumbers;
-  cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata_[antenna_nr];
-  cu::DeviceMemory& d_subgrids = *m_calibrate_state.d_subgrids_[antenna_nr];
+  cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata[antenna_nr];
+  cu::DeviceMemory& d_subgrids = *m_calibrate_state.d_subgrids[antenna_nr];
   cu::DeviceMemory& d_visibilities =
-      *m_calibrate_state.d_visibilities_[antenna_nr];
-  cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights_[antenna_nr];
-  cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw_[antenna_nr];
-  cu::DeviceMemory& d_sums1 = *m_calibrate_state.d_sums_[0];
-  cu::DeviceMemory& d_sums2 = *m_calibrate_state.d_sums_[1];
+      *m_calibrate_state.d_visibilities[antenna_nr];
+  cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights[antenna_nr];
+  cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw[antenna_nr];
+  cu::DeviceMemory& d_sums1 = *m_calibrate_state.d_sums[0];
+  cu::DeviceMemory& d_sums2 = *m_calibrate_state.d_sums[1];
   cu::DeviceMemory& d_lmnp = *m_calibrate_state.d_lmnp;
   cu::DeviceMemory& d_aterms_idx =
-      *m_calibrate_state.d_aterms_indices_[antenna_nr];
+      *m_calibrate_state.d_aterms_indices[antenna_nr];
 
   // Allocate additional data structures
   cu::DeviceMemory d_aterms(context, aterms.bytes());
@@ -350,14 +350,14 @@ void GenericOptimized::do_calibrate_finish() {
   m_report->print_visibilities(auxiliary::name_calibrate);
   m_calibrate_state.d_wavenumbers.reset();
   m_calibrate_state.d_lmnp.reset();
-  m_calibrate_state.d_sums_[0].reset();
-  m_calibrate_state.d_sums_[1].reset();
-  m_calibrate_state.d_metadata_.clear();
-  m_calibrate_state.d_subgrids_.clear();
-  m_calibrate_state.d_visibilities_.clear();
-  m_calibrate_state.d_weights_.clear();
-  m_calibrate_state.d_uvw_.clear();
-  m_calibrate_state.d_aterms_indices_.clear();
+  m_calibrate_state.d_sums[0].reset();
+  m_calibrate_state.d_sums[1].reset();
+  m_calibrate_state.d_metadata.clear();
+  m_calibrate_state.d_subgrids.clear();
+  m_calibrate_state.d_visibilities.clear();
+  m_calibrate_state.d_weights.clear();
+  m_calibrate_state.d_uvw.clear();
+  m_calibrate_state.d_aterms_indices.clear();
   get_device(0).free_subgrid_fft();
 }
 
