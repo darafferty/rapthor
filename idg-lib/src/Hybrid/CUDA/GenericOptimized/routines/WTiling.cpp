@@ -61,7 +61,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
                                 nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
-  nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
+  nr_tiles_batch = std::min(nr_tiles_batch, nr_tiles);
 
   // Allocate coordinates buffer
   size_t sizeof_tile_coordinates = nr_tiles_batch * sizeof(idg::Coordinate);
@@ -119,7 +119,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
-    int current_nr_patches = m_nr_patches_batch;
+    unsigned int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       current_nr_patches =
           plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
@@ -184,9 +184,9 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     for (unsigned int patch_offset = 0; patch_offset < total_nr_patches;
          patch_offset += current_nr_patches) {
       current_nr_patches =
-          min(current_nr_patches, total_nr_patches - patch_offset);
+          std::min(current_nr_patches, total_nr_patches - patch_offset);
 
-      for (int i = 0; i < current_nr_patches; i++) {
+      for (unsigned int i = 0; i < current_nr_patches; i++) {
         int id = i % m_nr_patches_batch;
         cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
@@ -347,7 +347,7 @@ void GenericOptimized::run_wtiles_from_grid(
                                 nr_polarizations * sizeof(std::complex<float>);
   unsigned int nr_tiles_batch =
       (d_padded_tiles.size() / sizeof_w_padded_tile) / 2;
-  nr_tiles_batch = min(nr_tiles_batch, nr_tiles);
+  nr_tiles_batch = std::min(nr_tiles_batch, nr_tiles);
 
   // Allocate coordinates buffer
   size_t sizeof_tile_coordinates = nr_tiles_batch * sizeof(idg::Coordinate);
@@ -408,7 +408,7 @@ void GenericOptimized::run_wtiles_from_grid(
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
-    int current_nr_patches = m_nr_patches_batch;
+    unsigned int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       current_nr_patches =
           plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
@@ -455,7 +455,7 @@ void GenericOptimized::run_wtiles_from_grid(
     for (unsigned int patch_offset = 0; patch_offset < total_nr_patches;
          patch_offset += current_nr_patches) {
       current_nr_patches =
-          min(current_nr_patches, total_nr_patches - patch_offset);
+          std::min(current_nr_patches, total_nr_patches - patch_offset);
 
       // Split patch from grid
       cu::Marker marker("patch_from_grid", cu::Marker::red);
@@ -465,7 +465,7 @@ void GenericOptimized::run_wtiles_from_grid(
           &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
       marker.end();
 
-      for (int i = 0; i < current_nr_patches; i++) {
+      for (unsigned int i = 0; i < current_nr_patches; i++) {
         int id = i % m_nr_patches_batch;
         cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
