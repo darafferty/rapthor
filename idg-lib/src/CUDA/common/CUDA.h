@@ -38,25 +38,6 @@ class CUDA : public Proxy {
   unsigned int get_num_devices() const;
   idg::kernel::cuda::InstanceCUDA& get_device(unsigned int i) const;
 
-  std::vector<int> compute_jobsize(const Plan& plan,
-                                   const unsigned int nr_stations,
-                                   const unsigned int nr_timeslots,
-                                   const unsigned int nr_timesteps,
-                                   const unsigned int nr_channels,
-                                   const unsigned int nr_polarizations,
-                                   const unsigned int subgrid_size);
-
-  void initialize(
-      const Plan& plan, const Array1D<float>& frequencies,
-      const Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal);
-
-  void cleanup();
-
   static ProxyInfo default_info();
 
   /*
@@ -77,36 +58,6 @@ class CUDA : public Proxy {
 
   std::unique_ptr<powersensor::PowerSensor> hostPowerSensor;
 
-  struct {
-    unsigned int nr_stations = 0;
-    unsigned int nr_timeslots = 0;
-    unsigned int nr_timesteps = 0;
-    unsigned int nr_channels = 0;
-    unsigned int nr_polarizations = 0;
-    unsigned int subgrid_size = 0;
-    unsigned int nr_baselines = 0;
-    std::vector<int> jobsize;
-    std::vector<int> max_nr_subgrids;
-  } m_gridding_state;
-
-  struct {
-    std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
-    std::unique_ptr<cu::DeviceMemory> d_spheroidal;
-    std::unique_ptr<cu::DeviceMemory> d_aterms;
-    std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
-
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata_;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices_;
-
-    std::unique_ptr<cu::HostMemory> h_subgrids;
-  } m_buffers;
-
-  void initialize_buffers();
-  void free_buffers();
-
   /*
    * Options used internally by the CUDA proxies
    */
@@ -124,10 +75,6 @@ class CUDA : public Proxy {
   // format used in the adder and splitter kernels.
   bool m_enable_tiling = true;
 
-  // Maximum number of streams used to implement
-  // multi-buffering to overlap I/O and computation
-  unsigned int m_max_nr_streams = 2;
-
  public:
   void set_fraction_reserved(float f) { m_fraction_reserved = f; }
   void enable_unified_memory() { m_use_unified_memory = true; }
@@ -144,7 +91,12 @@ class CUDA : public Proxy {
     std::complex<float>* visibilities_ptr;
   };
 
-  std::vector<JobData> jobs;
+  int initialize_jobs(const int nr_baselines, const int nr_timesteps,
+                      const int nr_channels, const int subgrid_size,
+                      const size_t bytes_free, const Plan& plan,
+                      const Array4D<std::complex<float>>& visibilities,
+                      const Array2D<UVW<float>>& uvw,
+                      std::vector<JobData>& jobs) const;
 
  private:
   ProxyInfo& mInfo;
