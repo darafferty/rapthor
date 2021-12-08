@@ -59,12 +59,6 @@ void GenericOptimized::do_calibrate_init(
   // Find max number of subgrids
   unsigned int max_nr_subgrids = 0;
 
-  // Free buffers and clear the gridding state
-  free_buffers();
-  m_gridding_state.nr_stations = 0;
-
-  m_buffers.d_aterms.reset(new cu::DeviceMemory(context, 0));
-
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     // Allocate subgrids for current antenna
@@ -96,23 +90,26 @@ void GenericOptimized::do_calibrate_init(
     auto sizeof_uvw = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
     auto sizeof_aterm_idx =
         auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-    m_buffers.d_metadata_.emplace_back(
+    m_calibrate_state.d_metadata.emplace_back(
         new cu::DeviceMemory(context, sizeof_metadata));
-    m_buffers.d_subgrids_.emplace_back(
+    m_calibrate_state.d_subgrids.emplace_back(
         new cu::DeviceMemory(context, sizeof_subgrids));
-    m_buffers.d_visibilities_.emplace_back(
+    m_calibrate_state.d_visibilities.emplace_back(
         new cu::DeviceMemory(context, sizeof_visibilities));
-    m_buffers.d_weights_.emplace_back(
+    m_calibrate_state.d_weights.emplace_back(
         new cu::DeviceMemory(context, sizeof_weights));
-    m_buffers.d_uvw_.emplace_back(new cu::DeviceMemory(context, sizeof_uvw));
-    m_buffers.d_aterms_indices_.emplace_back(
+    m_calibrate_state.d_uvw.emplace_back(
+        new cu::DeviceMemory(context, sizeof_uvw));
+    m_calibrate_state.d_aterms_indices.emplace_back(
         new cu::DeviceMemory(context, sizeof_aterm_idx));
-    cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[antenna_nr];
-    cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[antenna_nr];
-    cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[antenna_nr];
-    cu::DeviceMemory& d_weights = *m_buffers.d_weights_[antenna_nr];
-    cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[antenna_nr];
-    cu::DeviceMemory& d_aterm_idx = *m_buffers.d_aterms_indices_[antenna_nr];
+    cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata[antenna_nr];
+    cu::DeviceMemory& d_subgrids = *m_calibrate_state.d_subgrids[antenna_nr];
+    cu::DeviceMemory& d_visibilities =
+        *m_calibrate_state.d_visibilities[antenna_nr];
+    cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights[antenna_nr];
+    cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw[antenna_nr];
+    cu::DeviceMemory& d_aterm_idx =
+        *m_calibrate_state.d_aterms_indices[antenna_nr];
 
     // Copy metadata to device
     htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
@@ -197,38 +194,29 @@ void GenericOptimized::do_calibrate_init(
   m_calibrate_state.nr_channels = nr_channels;
 
   // Initialize wavenumbers
-  m_buffers.d_wavenumbers.reset(
+  m_calibrate_state.d_wavenumbers.reset(
       new cu::DeviceMemory(context, wavenumbers.bytes()));
-  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
+  cu::DeviceMemory& d_wavenumbers = *m_calibrate_state.d_wavenumbers;
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
                              wavenumbers.bytes());
 
   // Allocate device memory for l,m,n and phase offset
   auto sizeof_lmnp =
       max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
-  m_buffers.d_lmnp.reset(new cu::DeviceMemory(context, sizeof_lmnp));
+  m_calibrate_state.d_lmnp.reset(new cu::DeviceMemory(context, sizeof_lmnp));
 
   // Allocate memory for sums (horizontal and vertical)
   auto total_nr_timesteps = nr_baselines * nr_timesteps;
   auto sizeof_sums = max_nr_terms * nr_correlations * total_nr_timesteps *
                      nr_channels * sizeof(std::complex<float>);
-  for (unsigned int i = 0; i < 2; i++) {
-    m_buffers.d_sums_.emplace_back(new cu::DeviceMemory(context, sizeof_sums));
-  }
+  m_calibrate_state.d_sums_x.reset(new cu::DeviceMemory(context, sizeof_sums));
+  m_calibrate_state.d_sums_y.reset(new cu::DeviceMemory(context, sizeof_sums));
 }
 
 void GenericOptimized::do_calibrate_update(
     const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array4D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
     Array3D<double>& hessian, Array2D<double>& gradient, double& residual) {
-  // Check if the proxy is still in calibrate state
-  // A calibrate_init call brings the proxy in calibrate state
-  // A (de)gridding call brings the proxy in gridding state
-  // If the proxy is gridding state here, an exception is thrown
-  if (m_gridding_state.nr_stations) {
-    throw std::runtime_error(
-        "calibrate_update() was called while the proxy is in gridding state");
-  }
   // Arguments
   auto nr_subgrids = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
   auto nr_baselines = m_calibrate_state.nr_baselines;
@@ -274,20 +262,21 @@ void GenericOptimized::do_calibrate_update(
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Load memory objects
-  cu::DeviceMemory& d_wavenumbers = *m_buffers.d_wavenumbers;
-  m_buffers.d_aterms->resize(aterms.bytes());
-  cu::DeviceMemory& d_aterms = *m_buffers.d_aterms;
-  cu::DeviceMemory& d_metadata = *m_buffers.d_metadata_[antenna_nr];
-  cu::DeviceMemory& d_subgrids = *m_buffers.d_subgrids_[antenna_nr];
-  cu::DeviceMemory& d_visibilities = *m_buffers.d_visibilities_[antenna_nr];
-  cu::DeviceMemory& d_weights = *m_buffers.d_weights_[antenna_nr];
-  cu::DeviceMemory& d_uvw = *m_buffers.d_uvw_[antenna_nr];
-  cu::DeviceMemory& d_sums1 = *m_buffers.d_sums_[0];
-  cu::DeviceMemory& d_sums2 = *m_buffers.d_sums_[1];
-  cu::DeviceMemory& d_lmnp = *m_buffers.d_lmnp;
-  cu::DeviceMemory& d_aterms_idx = *m_buffers.d_aterms_indices_[antenna_nr];
+  cu::DeviceMemory& d_wavenumbers = *m_calibrate_state.d_wavenumbers;
+  cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata[antenna_nr];
+  cu::DeviceMemory& d_subgrids = *m_calibrate_state.d_subgrids[antenna_nr];
+  cu::DeviceMemory& d_visibilities =
+      *m_calibrate_state.d_visibilities[antenna_nr];
+  cu::DeviceMemory& d_weights = *m_calibrate_state.d_weights[antenna_nr];
+  cu::DeviceMemory& d_uvw = *m_calibrate_state.d_uvw[antenna_nr];
+  cu::DeviceMemory& d_sums_x = *m_calibrate_state.d_sums_x;
+  cu::DeviceMemory& d_sums_y = *m_calibrate_state.d_sums_y;
+  cu::DeviceMemory& d_lmnp = *m_calibrate_state.d_lmnp;
+  cu::DeviceMemory& d_aterms_idx =
+      *m_calibrate_state.d_aterms_indices[antenna_nr];
 
   // Allocate additional data structures
+  cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_aterms_deriv(context, aterm_derivatives.bytes());
   cu::DeviceMemory d_hessian(context, hessian.bytes());
   cu::DeviceMemory d_gradient(context, gradient.bytes());
@@ -318,7 +307,7 @@ void GenericOptimized::do_calibrate_update(
                           w_step, total_nr_timesteps, nr_channels, nr_stations,
                           nr_terms, d_uvw, d_wavenumbers, d_visibilities,
                           d_weights, d_aterms, d_aterms_deriv, d_aterms_idx,
-                          d_metadata, d_subgrids, d_sums1, d_sums2, d_lmnp,
+                          d_metadata, d_subgrids, d_sums_x, d_sums_y, d_lmnp,
                           d_hessian, d_gradient, d_residual);
   executestream.record(executeFinished);
 
@@ -357,6 +346,17 @@ void GenericOptimized::do_calibrate_finish() {
   }
   m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_calibrate);
+  m_calibrate_state.d_wavenumbers.reset();
+  m_calibrate_state.d_lmnp.reset();
+  m_calibrate_state.d_sums_x.reset();
+  m_calibrate_state.d_sums_y.reset();
+  m_calibrate_state.d_metadata.clear();
+  m_calibrate_state.d_subgrids.clear();
+  m_calibrate_state.d_visibilities.clear();
+  m_calibrate_state.d_weights.clear();
+  m_calibrate_state.d_uvw.clear();
+  m_calibrate_state.d_aterms_indices.clear();
+  get_device(0).free_subgrid_fft();
 }
 
 }  // namespace hybrid

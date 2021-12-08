@@ -180,7 +180,16 @@ class GenericOptimized : public cuda::CUDA {
     unsigned int nr_baselines;
     unsigned int nr_timesteps;
     unsigned int nr_channels;
-    Array3D<UVW<float>> uvw;
+    std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
+    std::unique_ptr<cu::DeviceMemory> d_lmnp;
+    std::unique_ptr<cu::DeviceMemory> d_sums_x;
+    std::unique_ptr<cu::DeviceMemory> d_sums_y;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_metadata;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_subgrids;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices;
   } m_calibrate_state;
 
   // Note:
