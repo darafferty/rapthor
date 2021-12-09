@@ -70,9 +70,9 @@ deploy-docker:
   stage: publish
   # Only deploy if the tests pass
   needs: ["versioning","test-unit","test-integration","test-gpu"]
-  image: docker:stable
+  image: docker:20.10
   services:
-    - docker:dind
+    - docker:20.10-dind
   variables:
     PIPELINE_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
     CAR_IMAGE: ${CAR_OCI_REGISTRY_HOST}/${CI_PROJECT_NAME}/idg-cuda:${IDG_VERSION}
@@ -80,9 +80,14 @@ deploy-docker:
     - echo Deploying GPU docker image to ${CAR_IMAGE}
     - echo ${CI_REGISTRY_PASSWORD} | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo ${CAR_OCI_REGISTRY_PASSWORD} | docker login --username ${CAR_OCI_REGISTRY_USERNAME} --password-stdin ${CAR_OCI_REGISTRY_HOST}
-    - docker pull ${PIPELINE_IMAGE}
-    - docker tag ${PIPELINE_IMAGE} ${CAR_IMAGE}
-    - docker push ${CAR_IMAGE}
+    - |
+      if ! docker manifest inspect $CAR_IMAGE > /dev/null; then
+        docker pull ${PIPELINE_IMAGE}
+        docker tag ${PIPELINE_IMAGE} ${CAR_IMAGE}
+        docker push ${CAR_IMAGE}
+      else
+        echo Skipping deploy, ${CAR_IMAGE} already exists
+      fi
   rules:
     # Only deploy for the master branch, builds for tags, or when UPLOAD_PACKAGE
     # is explicitly set.
