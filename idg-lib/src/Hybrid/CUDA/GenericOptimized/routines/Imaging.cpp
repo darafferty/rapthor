@@ -223,7 +223,7 @@ void GenericOptimized::run_imaging(
     // Initialize output buffer to zero
     if (mode == ImagingMode::mode_gridding) {
       d_subgrids.zero(executestream);
-    } else {
+    } else if (mode == ImagingMode::mode_degridding) {
       d_visibilities.zero(executestream);
     }
 
