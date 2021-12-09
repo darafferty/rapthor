@@ -1,5 +1,3 @@
-#include <mutex>
-
 #include "../GenericOptimized.h"
 #include "InstanceCUDA.h"
 
@@ -13,17 +11,14 @@ namespace idg {
 namespace proxy {
 namespace hybrid {
 
-void GenericOptimized::run_degridding(
+void GenericOptimized::run_imaging(
     const Plan& plan, const Array1D<float>& frequencies,
-    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array4D<std::complex<float>>& visibilities,
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
-    const Array2D<float>& spheroidal) {
-#if defined(DEBUG)
-  std::cout << "GenericOptimized::" << __func__ << std::endl;
-#endif
-
+    const Array2D<float>& spheroidal, ImagingMode mode) {
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
 
@@ -43,7 +38,12 @@ void GenericOptimized::run_degridding(
   auto w_step = plan.get_w_step();
   auto& shift = plan.get_shift();
 
-  WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
+  WTileUpdateSet wtile_set;
+  if (mode == ImagingMode::mode_gridding) {
+    wtile_set = plan.get_wtile_flush_set();
+  } else if (mode == ImagingMode::mode_degridding) {
+    wtile_set = plan.get_wtile_initialize_set();
+  }
 
   // Convert frequencies to wavenumbers
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
@@ -52,6 +52,12 @@ void GenericOptimized::run_degridding(
   size_t sizeof_aterms_indices =
       auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
   auto aterms_indices = plan.get_aterm_indices_ptr();
+
+  // Average aterm correction
+  size_t sizeof_avg_aterm_correction =
+      mode == ImagingMode::mode_gridding && m_avg_aterm_correction.size() > 0
+          ? auxiliary::sizeof_avg_aterm_correction(subgrid_size)
+          : 0;
 
   // Configuration
   const unsigned nr_devices = get_num_devices();
@@ -74,6 +80,7 @@ void GenericOptimized::run_degridding(
   cu::DeviceMemory d_spheroidal(context, spheroidal.bytes());
   cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_aterms_indices(context, sizeof_aterms_indices);
+  cu::DeviceMemory d_avg_aterm(context, sizeof_avg_aterm_correction);
 
   // Initialize device memory
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
@@ -83,6 +90,8 @@ void GenericOptimized::run_degridding(
   htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
   htodstream.memcpyHtoDAsync(d_aterms_indices, aterms_indices,
                              sizeof_aterms_indices);
+  htodstream.memcpyHtoDAsync(d_avg_aterm, m_avg_aterm_correction.data(),
+                             sizeof_avg_aterm_correction);
 
   // Plan subgrid fft
   device.plan_subgrid_fft(subgrid_size, nr_polarizations);
@@ -162,9 +171,15 @@ void GenericOptimized::run_degridding(
 
     // Copy input data for first job to device
     if (job_id == 0) {
+      auto sizeof_visibilities = auxiliary::sizeof_visibilities(
+          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
       auto sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
+      if (mode == ImagingMode::mode_gridding) {
+        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
+                                   sizeof_visibilities);
+      }
       htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
       htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
       htodstream.record(*inputCopied[job_id]);
@@ -173,6 +188,7 @@ void GenericOptimized::run_degridding(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
+      cu::DeviceMemory& d_visibilities_next = *d_visibilities_[local_id_next];
       cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
       cu::DeviceMemory& d_metadata_next = *d_metadata_[local_id_next];
 
@@ -181,99 +197,172 @@ void GenericOptimized::run_degridding(
       auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
       auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
       auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      auto visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
 
       // Copy input data to device
+      auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
+          nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
       auto sizeof_uvw_next =
           auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
       auto sizeof_metadata_next = auxiliary::sizeof_metadata(nr_subgrids_next);
+      if (mode == ImagingMode::mode_gridding) {
+        htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next,
+                                   sizeof_visibilities_next);
+      }
       htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
       htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next,
                                  sizeof_metadata_next);
       htodstream.record(*inputCopied[job_id_next]);
     }
 
-    // Wait for input to be copied
-    executestream.waitEvent(*inputCopied[job_id]);
-
     // Wait for output buffer to be free
-    if (job_id > 1) {
+    if (mode == ImagingMode::mode_degridding && job_id > 1) {
       executestream.waitEvent(*outputCopied[job_id - 2]);
     }
 
-    // Initialize visibilities to zero
-    d_visibilities.zero(executestream);
+    // Initialize output buffer to zero
+    if (mode == ImagingMode::mode_gridding) {
+      d_subgrids.zero(executestream);
+    } else if (mode == ImagingMode::mode_degridding) {
+      d_visibilities.zero(executestream);
+    }
 
-    // Run splitter kernel
-    cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
-    marker_splitter.start();
+    // Wait for input to be copied
+    executestream.waitEvent(*inputCopied[job_id]);
 
-    if (plan.get_use_wtiles()) {
-      auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+    if (mode == ImagingMode::mode_gridding) {
+      // Launch gridder kernel
+      device.launch_gridder(
+          current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+          subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+          shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+          d_aterms, d_aterms_indices, d_avg_aterm, d_metadata, d_subgrids);
 
-      if (!m_disable_wtiling_gpu) {
-        run_subgrids_from_wtiles(nr_polarizations, subgrid_offset,
-                                 current_nr_subgrids, subgrid_size, image_size,
-                                 w_step, shift, wtile_initialize_set,
-                                 d_subgrids, d_metadata);
-      } else {
-        cpuKernels->run_splitter_wtiles(
-            current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
-            image_size, w_step, shift.data(), subgrid_offset,
-            wtile_initialize_set, metadata_ptr, h_subgrids, m_grid->data());
+      // Launch FFT
+      device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+                                nr_polarizations, FourierDomainToImageDomain);
+
+      // Launch scaler
+      device.launch_scaler(current_nr_subgrids, nr_polarizations, subgrid_size,
+                           d_subgrids);
+      executestream.record(*gpuFinished[job_id]);
+
+      // Copy subgrid to host
+      if (m_disable_wtiling || m_disable_wtiling_gpu) {
+        dtohstream.waitEvent(*gpuFinished[job_id]);
+        auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+            current_nr_subgrids, subgrid_size, nr_polarizations);
+        dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
+        dtohstream.record(*outputCopied[job_id]);
+
+        // Wait for subgrids to be copied
+        outputCopied[job_id]->synchronize();
       }
-    } else if (w_step != 0.0) {
-      cpuKernels->run_splitter_wstack(current_nr_subgrids, nr_polarizations,
-                                      grid_size, subgrid_size, metadata_ptr,
-                                      h_subgrids, m_grid->data());
-    } else {
-      cpuKernels->run_splitter(current_nr_subgrids, nr_polarizations, grid_size,
-                               subgrid_size, metadata_ptr, h_subgrids,
-                               m_grid->data());
+
+      // Run adder kernel
+      cu::Marker marker_adder("run_adder", cu::Marker::blue);
+      marker_adder.start();
+
+      if (plan.get_use_wtiles()) {
+        auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+
+        if (!m_disable_wtiling_gpu) {
+          run_subgrids_to_wtiles(nr_polarizations, subgrid_offset,
+                                 current_nr_subgrids, subgrid_size, image_size,
+                                 w_step, shift, wtile_set, d_subgrids,
+                                 d_metadata);
+        } else {
+          cpuKernels->run_adder_wtiles(
+              current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+              image_size, w_step, shift.data(), subgrid_offset, wtile_set,
+              metadata_ptr, h_subgrids, m_grid->data());
+        }
+      } else if (w_step != 0.0) {
+        cpuKernels->run_adder_wstack(current_nr_subgrids, nr_polarizations,
+                                     grid_size, subgrid_size, metadata_ptr,
+                                     h_subgrids, m_grid->data());
+      } else {
+        cpuKernels->run_adder(current_nr_subgrids, nr_polarizations, grid_size,
+                              subgrid_size, metadata_ptr, h_subgrids,
+                              m_grid->data());
+      }
+
+      marker_adder.end();
+    } else if (mode == ImagingMode::mode_degridding) {
+      // Run splitter kernel
+      cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
+      marker_splitter.start();
+
+      if (plan.get_use_wtiles()) {
+        auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+
+        if (!m_disable_wtiling_gpu) {
+          run_subgrids_from_wtiles(nr_polarizations, subgrid_offset,
+                                   current_nr_subgrids, subgrid_size,
+                                   image_size, w_step, shift, wtile_set,
+                                   d_subgrids, d_metadata);
+        } else {
+          cpuKernels->run_splitter_wtiles(
+              current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+              image_size, w_step, shift.data(), subgrid_offset, wtile_set,
+              metadata_ptr, h_subgrids, m_grid->data());
+        }
+      } else if (w_step != 0.0) {
+        cpuKernels->run_splitter_wstack(current_nr_subgrids, nr_polarizations,
+                                        grid_size, subgrid_size, metadata_ptr,
+                                        h_subgrids, m_grid->data());
+      } else {
+        cpuKernels->run_splitter(current_nr_subgrids, nr_polarizations,
+                                 grid_size, subgrid_size, metadata_ptr,
+                                 h_subgrids, m_grid->data());
+      }
+
+      if (m_disable_wtiling || m_disable_wtiling_gpu) {
+        // Copy subgrids to device
+        auto sizeof_subgrids = auxiliary::sizeof_subgrids(
+            current_nr_subgrids, subgrid_size, nr_polarizations);
+        htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
+
+        // Wait for subgrids to be copied
+        htodstream.synchronize();
+      }
+
+      marker_splitter.end();
+
+      // Launch FFT
+      device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+                                nr_polarizations, ImageDomainToFourierDomain);
+
+      // Launch degridder kernel
+      device.launch_degridder(
+          current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+          subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
+          shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+          d_aterms, d_aterms_indices, d_metadata, d_subgrids);
+      executestream.record(*gpuFinished[job_id]);
+
+      // Wait for degridder to finish
+      gpuFinished[job_id]->synchronize();
+
+      // Copy visibilities to host
+      dtohstream.waitEvent(*gpuFinished[job_id]);
+      auto sizeof_visibilities = auxiliary::sizeof_visibilities(
+          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+      dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
+                                 sizeof_visibilities);
+      dtohstream.record(*outputCopied[job_id]);
     }
-
-    if (m_disable_wtiling || m_disable_wtiling_gpu) {
-      // Copy subgrids to device
-      auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-          current_nr_subgrids, subgrid_size, nr_polarizations);
-      htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
-
-      // Wait for subgrids to be copied
-      htodstream.synchronize();
-    }
-
-    marker_splitter.end();
-
-    // Launch FFT
-    device.launch_subgrid_fft(d_subgrids, current_nr_subgrids, nr_polarizations,
-                              ImageDomainToFourierDomain);
-
-    // Launch degridder kernel
-    device.launch_degridder(
-        current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
-        subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
-        shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal, d_aterms,
-        d_aterms_indices, d_metadata, d_subgrids);
-    executestream.record(*gpuFinished[job_id]);
-
-    // Wait for degridder to finish
-    gpuFinished[job_id]->synchronize();
-
-    // Copy visibilities to host
-    dtohstream.waitEvent(*gpuFinished[job_id]);
-    auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-        current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
-    dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
-                               sizeof_visibilities);
-    dtohstream.record(*outputCopied[job_id]);
 
     // Report performance
-    device.enqueue_report(executestream, nr_polarizations,
+    device.enqueue_report(dtohstream, nr_polarizations,
                           jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
-  // Wait for all visibilities to be copied
-  dtohstream.synchronize();
+  if (mode == ImagingMode::mode_degridding) {
+    // Wait for all visibilities to be copied
+    dtohstream.synchronize();
+  }
 
   // End performance measurement
   endStates[device_id] = device.measure();
@@ -286,27 +375,17 @@ void GenericOptimized::run_degridding(
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
   m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
-  m_report->print_visibilities(auxiliary::name_degridding,
-                               total_nr_visibilities);
+  std::string name = "";
+  if (mode == ImagingMode::mode_gridding) {
+    name = auxiliary::name_gridding;
+  } else if (mode == ImagingMode::mode_degridding) {
+    name = auxiliary::name_degridding;
+  }
+  m_report->print_visibilities(name, total_nr_visibilities);
 
   // Cleanup
   device.free_subgrid_fft();
-}  // end run_degridding
-
-void GenericOptimized::do_degridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
-    const Array2D<float>& spheroidal) {
-#if defined(DEBUG)
-  std::cout << "GenericOptimized::" << __func__ << std::endl;
-#endif
-
-  run_degridding(plan, frequencies, visibilities, uvw, baselines, *m_grid,
-                 aterms, aterms_offsets, spheroidal);
-}  // end do_degridding
+}
 
 }  // namespace hybrid
 }  // namespace proxy
