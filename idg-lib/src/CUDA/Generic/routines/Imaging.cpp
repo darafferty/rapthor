@@ -203,8 +203,12 @@ void Generic::run_imaging(
     }
 
     // Wait for output buffer to be free
-    if (mode == ImagingMode::mode_degridding && job_id > 1) {
-      executestream.waitEvent(*gpuFinished[job_id - 2]);
+    if (job_id > 1) {
+      if (mode == ImagingMode::mode_gridding) {
+        executestream.waitEvent(*gpuFinished[job_id - 2]);
+      } else if (mode == ImagingMode::mode_degridding) {
+        executestream.waitEvent(*outputCopied[job_id - 2]);
+      }
     }
 
     // Initialize output buffer to zero
