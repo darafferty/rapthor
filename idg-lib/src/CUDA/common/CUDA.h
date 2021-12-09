@@ -80,6 +80,8 @@ class CUDA : public Proxy {
   void enable_unified_memory() { m_use_unified_memory = true; }
 
  protected:
+  enum ImagingMode { mode_gridding, mode_degridding };
+
   struct JobData {
     unsigned first_bl;
     unsigned current_time_offset;
