@@ -359,6 +359,11 @@ void GenericOptimized::run_imaging(
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
+  if (mode == ImagingMode::mode_degridding) {
+    // Wait for all visibilities to be copied
+    dtohstream.synchronize();
+  }
+
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
