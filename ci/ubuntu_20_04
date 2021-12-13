@@ -1,0 +1,150 @@
+FROM ubuntu:20.04
+
+# This Docker image builds the dependencies for the Rapthor pipeline.
+# It lives on the head of its dependencies.
+
+# The Docker image is cached and not updated on every build.
+# When this file changes it forces an update of the Docker image.
+# Increment this value to get a fresh build.
+# Note decrementing may give an older cached value, therefore only
+# increment the value.
+ENV DOCKER_BUILD_FORCE_GENERATION=0
+
+# Install the required Debian packages.
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt-get install -y \
+	bison \
+	build-essential \
+	casacore-data \
+	casacore-dev \
+	casacore-tools \
+	cmake \
+	flex \
+	g++-10 \
+	gfortran \
+	gfortran-10 \
+	git \
+	libarmadillo-dev \
+	libboost-date-time-dev \
+	libboost-filesystem-dev \
+	libboost-numpy-dev \
+	libboost-program-options-dev \
+	libboost-python-dev \
+	libboost-system-dev \
+	libboost-test-dev \
+	libcfitsio-dev \
+	libfftw3-dev \
+	libgsl-dev \
+	libgtkmm-3.0-dev \
+	libhdf5-serial-dev \
+	liblua5.3-dev \
+	libpng-dev \
+	ninja-build \
+	pkg-config \
+	pybind11-dev \
+	python3-casacore \
+	python3-dev \
+	python3-pip \
+	vim \
+	wcslib-dev \
+	wget
+
+RUN apt-get clean
+
+# Prepare the environment for installing the Rapthor source dependencies.
+ENV CC=/usr/bin/gcc-10
+ENV CXX=/usr/bin/g++-10
+RUN git config --global alias.shallow-clone "!git clone --depth 1 --recurse-submodules --shallow-submodules"
+RUN mkdir /src
+
+# Install IDG
+# A shallow clone of IDG breaks its version number. This is an issue for DP3
+# since it has a minimal version requirement.
+RUN cd /src && git clone https://git.astron.nl/RD/idg.git
+RUN cmake \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt \
+	-DBUILD_WITH_PYTHON=OFF \
+	-DBUILD_TESTING=OFF \
+	-H/src/idg \
+	-B/src/idg/build \
+	-G Ninja
+RUN ninja -C /src/idg/build install
+
+# Install EveryBeam
+RUN cd /src && git shallow-clone https://git.astron.nl/RD/EveryBeam.git
+RUN cmake \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt \
+	-DBUILD_WITH_PYTHON=OFF \
+	-DBUILD_TESTING=OFF \
+	-H/src/EveryBeam \
+	-B/src/EveryBeam/build \
+	-G Ninja
+RUN ninja -C /src/EveryBeam/build install
+
+# Install Dysco
+RUN cd /src && git shallow-clone https://github.com/aroffringa/dysco.git
+RUN cmake \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt \
+	-H/src/dysco \
+	-B/src/dysco/build \
+	-G Ninja
+RUN ninja -C /src/dysco/build install
+
+# Install AOFlagger
+RUN cd /src && git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
+RUN cmake \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt \
+	-H/src/aoflagger \
+	-B/src/aoflagger/build \
+	-G Ninja
+RUN ninja -C /src/aoflagger/build install
+
+# Install WSClean
+RUN cd /src && git shallow-clone https://gitlab.com/aroffringa/wsclean.git
+RUN cmake \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt \
+	-DBUILD_TESTING=OFF \
+	-H/src/wsclean \
+	-B/src/wsclean/build \
+	-DCMAKE_INCLUDE_PATH=/opt/include \
+	-DCMAKE_LIBRARY_PATH=/opt/lib \
+	-G Ninja
+RUN ninja -C /src/wsclean/build install
+
+# Install DP3
+RUN cd /src && git shallow-clone https://github.com/lofar-astron/DP3.git
+RUN cmake \
+	-DCMAKE_BUILD_TYPE:STRING=Release \
+	-DCMAKE_INSTALL_PREFIX=/opt \
+	-DBUILD_TESTING=OFF \
+	-H/src/DP3 \
+	-B/src/DP3/build \
+	-DCMAKE_INCLUDE_PATH=/opt/include \
+	-DCMAKE_LIBRARY_PATH=/opt/lib \
+	-G Ninja
+RUN ninja -C /src/DP3/build install
+
+# Install LSMTool
+# Astropy requires a newer numpy which conflicts with the installed casacore.
+# Manually installing an older version of Astropy resolves that issue.
+RUN pip install astropy==4.0.6
+RUN cd /src && git shallow-clone https://github.com/darafferty/LSMTool.git
+RUN cd /src/LSMTool && python3 setup.py install --build_c_extentions
+
+# Install LoSoTo
+RUN cd /src && git shallow-clone https://github.com/revoltek/losoto.git
+RUN cd /src/losoto && python3 setup.py install
+
+# Install pyBSF
+RUN cd /src && git shallow-clone https://github.com/lofar-astron/PyBDSF.git
+RUN cd /src/PyBDSF && pip install .
+
+# Remove the sources and build artefacts to reduce the size of the image.
+# For debugging it can be useful to disable this step.
+RUN rm -r /src
