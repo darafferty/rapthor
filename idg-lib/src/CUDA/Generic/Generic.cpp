@@ -61,7 +61,7 @@ void Generic::do_degridding(
 
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   CUDA::set_grid(grid);
-  if (m_disable_wtiling) {
+  if (!do_supports_wtiling() || m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& htodstream = device.get_htod_stream();
     cu::Context& context = get_device(0).get_context();
@@ -72,7 +72,7 @@ void Generic::set_grid(std::shared_ptr<Grid> grid) {
 }
 
 std::shared_ptr<Grid> Generic::get_final_grid() {
-  if (!m_disable_wtiling) {
+  if (do_supports_wtiling() && !m_disable_wtiling) {
     flush_wtiles();
   } else {
     InstanceCUDA& device = get_device(0);
@@ -84,7 +84,7 @@ std::shared_ptr<Grid> Generic::get_final_grid() {
 }
 
 void Generic::check_grid() {
-  if (m_disable_wtiling && !d_grid_) {
+  if ((!do_supports_wtiling() || m_disable_wtiling) && !d_grid_) {
     throw std::runtime_error("device grid is not set, call set_grid first.");
   }
 }

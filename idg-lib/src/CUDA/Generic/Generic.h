@@ -59,7 +59,7 @@ class Generic : public CUDA {
       const Array2D<float>& spheroidal, ImagingMode mode);
 
  public:
-  virtual bool do_supports_wtiling() override { return true; }
+  virtual bool do_supports_wtiling() override { return false; }
 
   void set_grid(std::shared_ptr<Grid> grid) override;
 
