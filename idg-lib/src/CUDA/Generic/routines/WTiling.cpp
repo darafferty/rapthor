@@ -289,7 +289,7 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 }
 
 void Generic::run_subgrids_to_wtiles(
-    unsigned nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
     unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
     float w_step, const idg::Array1D<float>& shift,
     WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
