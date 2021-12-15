@@ -52,12 +52,6 @@ void GenericOptimized::run_imaging(
       auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
   auto aterms_indices = plan.get_aterm_indices_ptr();
 
-  // Average aterm correction
-  size_t sizeof_avg_aterm_correction =
-      mode == ImagingMode::mode_gridding && m_avg_aterm_correction.size() > 0
-          ? auxiliary::sizeof_avg_aterm_correction(subgrid_size)
-          : 0;
-
   // Configuration
   const unsigned nr_devices = get_num_devices();
   int device_id = 0;  // only one GPU is used
@@ -79,7 +73,6 @@ void GenericOptimized::run_imaging(
   cu::DeviceMemory d_spheroidal(context, spheroidal.bytes());
   cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_aterms_indices(context, sizeof_aterms_indices);
-  cu::DeviceMemory d_avg_aterm(context, sizeof_avg_aterm_correction);
 
   // Initialize device memory
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
@@ -89,8 +82,16 @@ void GenericOptimized::run_imaging(
   htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
   htodstream.memcpyHtoDAsync(d_aterms_indices, aterms_indices,
                              sizeof_aterms_indices);
-  htodstream.memcpyHtoDAsync(d_avg_aterm, m_avg_aterm_correction.data(),
-                             sizeof_avg_aterm_correction);
+
+  // Average aterm correction
+  cu::DeviceMemory d_avg_aterm(context, 0);
+  if (mode == ImagingMode::mode_gridding && m_avg_aterm_correction.size() > 0) {
+    size_t sizeof_avg_aterm_correction =
+        auxiliary::sizeof_avg_aterm_correction(subgrid_size);
+    d_avg_aterm.resize(sizeof_avg_aterm_correction);
+    htodstream.memcpyHtoDAsync(d_avg_aterm, m_avg_aterm_correction.data(),
+                               sizeof_avg_aterm_correction);
+  }
 
   // Plan subgrid fft
   device.plan_subgrid_fft(subgrid_size, nr_polarizations);
