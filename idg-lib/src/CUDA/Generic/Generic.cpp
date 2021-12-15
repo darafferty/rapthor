@@ -96,7 +96,7 @@ std::unique_ptr<Plan> Generic::make_plan(
     const Array1D<unsigned int>& aterms_offsets, Plan::Options options) {
   if (do_supports_wtiling() && !m_disable_wtiling) {
     options.w_step = m_cache_state.w_step;
-    options.nr_w_layers = INT_MAX;
+    options.nr_w_layers = std::numeric_limits<int>::max();
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
