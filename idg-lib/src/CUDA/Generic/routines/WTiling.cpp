@@ -236,7 +236,7 @@ void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
           cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
           // Wait for previous patch to be computed
-          if ((unsigned int)i > m_nr_patches_batch) {
+          if (i > int(m_nr_patches_batch)) {
             gpuFinished[id]->synchronize();
           }
 
@@ -528,7 +528,7 @@ void Generic::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
           cu::DeviceMemory& d_patch = *(m_buffers_wtiling.d_patches[id]);
 
           // Wait for previous patch to be computed
-          if ((unsigned int)i > m_nr_patches_batch) {
+          if (i > int(m_nr_patches_batch)) {
             gpuFinished[id]->synchronize();
           }
 
