@@ -369,13 +369,13 @@ void GenericOptimized::run_imaging(
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
   m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
-  std::string name = "";
+  const std::string* name;
   if (mode == ImagingMode::mode_gridding) {
-    name = auxiliary::name_gridding;
+    name = &auxiliary::name_gridding;
   } else if (mode == ImagingMode::mode_degridding) {
-    name = auxiliary::name_degridding;
+    name = &auxiliary::name_degridding;
   }
-  m_report->print_visibilities(name, total_nr_visibilities);
+  m_report->print_visibilities(*name, total_nr_visibilities);
 
   // Cleanup
   device.free_subgrid_fft();
