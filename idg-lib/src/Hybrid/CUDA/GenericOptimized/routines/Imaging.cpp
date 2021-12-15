@@ -103,33 +103,29 @@ void GenericOptimized::run_imaging(
                       device.get_free_memory(), plan, visibilities, uvw, jobs);
 
   // Allocate device memory for jobs
-  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_visibilities_;
-  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_uvw_;
-  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_subgrids_;
-  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_metadata_;
-
   int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
       jobsize, nr_timesteps, nr_channels, nr_correlations);
   size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-  size_t sizeof_subgrids =
-      m_disable_wtiling || m_disable_wtiling_gpu
-          ? auxiliary::sizeof_subgrids(max_nr_subgrids, subgrid_size,
-                                       nr_correlations)
-          : 0;
+  size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+      max_nr_subgrids, subgrid_size, nr_correlations);
   size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
 
-  for (int i = 0; i < 2; i++) {
-    d_visibilities_[i].reset(
-        new cu::DeviceMemory(context, sizeof_visibilities));
-    d_uvw_[i].reset(new cu::DeviceMemory(context, sizeof_uvw));
-    d_subgrids_[i].reset(new cu::DeviceMemory(context, sizeof_subgrids));
-    d_metadata_[i].reset(new cu::DeviceMemory(context, sizeof_metadata));
-  }
+  std::array<cu::DeviceMemory, 2> d_visibilities_{
+      {{context, sizeof_visibilities}, {context, sizeof_visibilities}}};
+  std::array<cu::DeviceMemory, 2> d_uvw_{
+      {{context, sizeof_uvw}, {context, sizeof_uvw}}};
+  std::array<cu::DeviceMemory, 2> d_subgrids_{
+      {{context, sizeof_subgrids}, {context, sizeof_subgrids}}};
+  std::array<cu::DeviceMemory, 2> d_metadata_{
+      {{context, sizeof_metadata}, {context, sizeof_metadata}}};
 
   // Page-locked host memory
   cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
                                   plan.get_sizeof_metadata());
+  if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
+    sizeof_subgrids = 0;
+  }
   cu::HostMemory h_subgrids(context, sizeof_subgrids);
 
   // Events
@@ -162,10 +158,10 @@ void GenericOptimized::run_imaging(
     auto visibilities_ptr = jobs[job_id].visibilities_ptr;
 
     // Load memory objects
-    cu::DeviceMemory& d_visibilities = *d_visibilities_[local_id];
-    cu::DeviceMemory& d_uvw = *d_uvw_[local_id];
-    cu::DeviceMemory& d_subgrids = *d_subgrids_[local_id];
-    cu::DeviceMemory& d_metadata = *d_metadata_[local_id];
+    cu::DeviceMemory& d_visibilities = d_visibilities_[local_id];
+    cu::DeviceMemory& d_uvw = d_uvw_[local_id];
+    cu::DeviceMemory& d_subgrids = d_subgrids_[local_id];
+    cu::DeviceMemory& d_metadata = d_metadata_[local_id];
 
     // Copy input data for first job to device
     if (job_id == 0) {
@@ -186,9 +182,9 @@ void GenericOptimized::run_imaging(
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
       // Load memory objects
-      cu::DeviceMemory& d_visibilities_next = *d_visibilities_[local_id_next];
-      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
-      cu::DeviceMemory& d_metadata_next = *d_metadata_[local_id_next];
+      cu::DeviceMemory& d_visibilities_next = d_visibilities_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = d_uvw_[local_id_next];
+      cu::DeviceMemory& d_metadata_next = d_metadata_[local_id_next];
 
       // Get parameters for next job
       auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
