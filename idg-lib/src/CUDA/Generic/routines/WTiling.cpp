@@ -7,10 +7,7 @@
 using namespace idg::kernel::cuda;
 using namespace powersensor;
 
-namespace idg {
-namespace proxy {
-namespace cuda {
-
+namespace {
 unsigned int plan_tile_fft(unsigned int nr_polarizations,
                            unsigned int nr_tiles_batch,
                            const unsigned int w_padded_tile_size,
@@ -50,6 +47,11 @@ unsigned int plan_tile_fft(unsigned int nr_polarizations,
   // The new batch size
   return nr_tiles_batch;
 }
+}  // namespace
+
+namespace idg {
+namespace proxy {
+namespace cuda {
 
 void Generic::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
                                  float w_step, const Array1D<float>& shift,
