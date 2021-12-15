@@ -86,8 +86,16 @@ void GenericOptimized::do_gridding(
   std::cout << "GenericOptimized::" << __func__ << std::endl;
 #endif
 
-  run_imaging(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
-              aterms_offsets, spheroidal, ImagingMode::mode_gridding);
+  int nr_baselines = visibilities.get_w_dim();
+  int nr_timesteps = visibilities.get_z_dim();
+  int nr_channels = visibilities.get_y_dim();
+  int nr_polarizations = visibilities.get_x_dim();
+  Array4D<std::complex<float>> visibilities_ptr(visibilities.data(),
+                                                nr_baselines, nr_timesteps,
+                                                nr_channels, nr_polarizations);
+
+  run_imaging(plan, frequencies, visibilities_ptr, uvw, baselines, *m_grid,
+              aterms, aterms_offsets, spheroidal, ImagingMode::mode_gridding);
 }  // end do_gridding
 
 void GenericOptimized::do_degridding(
