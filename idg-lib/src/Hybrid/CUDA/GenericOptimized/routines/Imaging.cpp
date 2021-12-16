@@ -150,9 +150,9 @@ void GenericOptimized::run_imaging(
     unsigned local_id_next = (local_id + 1) % 2;
 
     // Get parameters for current job
-    auto current_time_offset = jobs[job_id].current_time_offset;
-    auto current_nr_baselines = jobs[job_id].current_nr_baselines;
-    auto current_nr_subgrids = jobs[job_id].current_nr_subgrids;
+    unsigned int time_offset_current = jobs[job_id].current_time_offset;
+    unsigned int nr_baselines_current = jobs[job_id].current_nr_baselines;
+    unsigned int nr_subgrids_current = jobs[job_id].current_nr_subgrids;
     auto metadata_ptr = jobs[job_id].metadata_ptr;
     auto uvw_ptr = jobs[job_id].uvw_ptr;
     auto visibilities_ptr = jobs[job_id].visibilities_ptr;
@@ -167,14 +167,14 @@ void GenericOptimized::run_imaging(
     if (job_id == 0) {
       if (mode == ImagingMode::mode_gridding) {
         size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
-            current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+            nr_baselines_current, nr_timesteps, nr_channels, nr_correlations);
         htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
                                    sizeof_visibilities);
       }
       size_t sizeof_uvw =
-          auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
+          auxiliary::sizeof_uvw(nr_baselines_current, nr_timesteps);
       htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-      size_t sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
+      size_t sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids_current);
       htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
       htodstream.record(inputCopied[job_id]);
     }
@@ -187,8 +187,8 @@ void GenericOptimized::run_imaging(
       cu::DeviceMemory& d_metadata_next = d_metadata_[local_id_next];
 
       // Get parameters for next job
-      auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
-      auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
+      unsigned int nr_baselines_next = jobs[job_id_next].current_nr_baselines;
+      unsigned int nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
       auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
       auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
       auto visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
@@ -228,17 +228,17 @@ void GenericOptimized::run_imaging(
     if (mode == ImagingMode::mode_gridding) {
       // Launch gridder kernel
       device.launch_gridder(
-          current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+          time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
           subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
           shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
           d_aterms, d_aterms_indices, d_avg_aterm, d_metadata, d_subgrids);
 
       // Launch FFT
-      device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+      device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
                                 nr_polarizations, FourierDomainToImageDomain);
 
       // Launch scaler
-      device.launch_scaler(current_nr_subgrids, nr_polarizations, subgrid_size,
+      device.launch_scaler(nr_subgrids_current, nr_polarizations, subgrid_size,
                            d_subgrids);
       executestream.record(gpuFinished[job_id]);
 
@@ -246,7 +246,7 @@ void GenericOptimized::run_imaging(
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         dtohstream.waitEvent(gpuFinished[job_id]);
         auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-            current_nr_subgrids, subgrid_size, nr_polarizations);
+            nr_subgrids_current, subgrid_size, nr_polarizations);
         dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
         dtohstream.record(outputCopied[job_id]);
 
@@ -263,21 +263,21 @@ void GenericOptimized::run_imaging(
 
         if (!m_disable_wtiling_gpu) {
           run_subgrids_to_wtiles(nr_polarizations, subgrid_offset,
-                                 current_nr_subgrids, subgrid_size, image_size,
+                                 nr_subgrids_current, subgrid_size, image_size,
                                  w_step, shift, wtile_set, d_subgrids,
                                  d_metadata);
         } else {
           cpuKernels->run_adder_wtiles(
-              current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+              nr_subgrids_current, nr_polarizations, grid_size, subgrid_size,
               image_size, w_step, shift.data(), subgrid_offset, wtile_set,
               metadata_ptr, h_subgrids, m_grid->data());
         }
       } else if (w_step != 0.0) {
-        cpuKernels->run_adder_wstack(current_nr_subgrids, nr_polarizations,
+        cpuKernels->run_adder_wstack(nr_subgrids_current, nr_polarizations,
                                      grid_size, subgrid_size, metadata_ptr,
                                      h_subgrids, m_grid->data());
       } else {
-        cpuKernels->run_adder(current_nr_subgrids, nr_polarizations, grid_size,
+        cpuKernels->run_adder(nr_subgrids_current, nr_polarizations, grid_size,
                               subgrid_size, metadata_ptr, h_subgrids,
                               m_grid->data());
       }
@@ -293,21 +293,21 @@ void GenericOptimized::run_imaging(
 
         if (!m_disable_wtiling_gpu) {
           run_subgrids_from_wtiles(nr_polarizations, subgrid_offset,
-                                   current_nr_subgrids, subgrid_size,
+                                   nr_subgrids_current, subgrid_size,
                                    image_size, w_step, shift, wtile_set,
                                    d_subgrids, d_metadata);
         } else {
           cpuKernels->run_splitter_wtiles(
-              current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+              nr_subgrids_current, nr_polarizations, grid_size, subgrid_size,
               image_size, w_step, shift.data(), subgrid_offset, wtile_set,
               metadata_ptr, h_subgrids, m_grid->data());
         }
       } else if (w_step != 0.0) {
-        cpuKernels->run_splitter_wstack(current_nr_subgrids, nr_polarizations,
+        cpuKernels->run_splitter_wstack(nr_subgrids_current, nr_polarizations,
                                         grid_size, subgrid_size, metadata_ptr,
                                         h_subgrids, m_grid->data());
       } else {
-        cpuKernels->run_splitter(current_nr_subgrids, nr_polarizations,
+        cpuKernels->run_splitter(nr_subgrids_current, nr_polarizations,
                                  grid_size, subgrid_size, metadata_ptr,
                                  h_subgrids, m_grid->data());
       }
@@ -315,7 +315,7 @@ void GenericOptimized::run_imaging(
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         // Copy subgrids to device
         auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-            current_nr_subgrids, subgrid_size, nr_polarizations);
+            nr_subgrids_current, subgrid_size, nr_polarizations);
         htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
 
         // Wait for subgrids to be copied
@@ -325,12 +325,12 @@ void GenericOptimized::run_imaging(
       marker_splitter.end();
 
       // Launch FFT
-      device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
+      device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
                                 nr_polarizations, ImageDomainToFourierDomain);
 
       // Launch degridder kernel
       device.launch_degridder(
-          current_time_offset, current_nr_subgrids, nr_polarizations, grid_size,
+          time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
           subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
           shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
           d_aterms, d_aterms_indices, d_metadata, d_subgrids);
@@ -341,10 +341,10 @@ void GenericOptimized::run_imaging(
 
       // Copy visibilities to host
       dtohstream.waitEvent(gpuFinished[job_id]);
-      auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+      size_t sizeof_visibilities_current = auxiliary::sizeof_visibilities(
+          nr_baselines_current, nr_timesteps, nr_channels, nr_correlations);
       dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
-                                 sizeof_visibilities);
+                                 sizeof_visibilities_current);
       dtohstream.record(outputCopied[job_id]);
     }
 
