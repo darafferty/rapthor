@@ -31,6 +31,7 @@ CUDA::CUDA(ProxyInfo info)
 
 CUDA::~CUDA() {
   cuProfilerStop();
+  free_buffers_wtiling();
   free_devices();
 }
 
@@ -121,17 +122,14 @@ int CUDA::initialize_jobs(const int nr_baselines, const int nr_timesteps,
   do {
     jobsize = jobsize == 0 ? nr_baselines : jobsize * 0.9;
     int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
-    size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
-        jobsize, nr_timesteps, nr_channels, nr_correlations);
-    size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-    size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
-        max_nr_subgrids, subgrid_size, nr_correlations);
-    size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
     bytes_required = 0;
-    bytes_required += 2 * sizeof_visibilities;
-    bytes_required += 2 * sizeof_uvw;
-    bytes_required += 2 * sizeof_subgrids;
-    bytes_required += 2 * sizeof_metadata;
+    bytes_required +=
+        2 * auxiliary::sizeof_visibilities(jobsize, nr_timesteps, nr_channels,
+                                           nr_correlations);
+    bytes_required += 2 * auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+    bytes_required += 2 * auxiliary::sizeof_subgrids(
+                              max_nr_subgrids, subgrid_size, nr_correlations);
+    bytes_required += 2 * auxiliary::sizeof_metadata(max_nr_subgrids);
   } while (bytes_required > bytes_free);
 #if defined(DEBUG)
   std::cout << "jobsize = " << jobsize << std::endl;
@@ -159,6 +157,13 @@ int CUDA::initialize_jobs(const int nr_baselines, const int nr_timesteps,
   }
 
   return jobsize;
+}
+
+void CUDA::free_buffers_wtiling() {
+  m_buffers_wtiling.d_tiles.reset();
+  m_buffers_wtiling.d_padded_tiles.reset();
+  m_buffers_wtiling.h_tiles.reset();
+  m_buffers_wtiling.d_patches.clear();
 }
 
 }  // end namespace cuda
