@@ -166,16 +166,17 @@ void GenericOptimized::run_imaging(
     // Copy input data for first job to device
     if (job_id == 0) {
       if (mode == ImagingMode::mode_gridding) {
-        size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
-            nr_baselines_current, nr_timesteps, nr_channels, nr_correlations);
-        htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
-                                   sizeof_visibilities);
+        htodstream.memcpyHtoDAsync(
+            d_visibilities, visibilities_ptr,
+            auxiliary::sizeof_visibilities(nr_baselines_current, nr_timesteps,
+                                           nr_channels, nr_correlations));
       }
-      size_t sizeof_uvw =
-          auxiliary::sizeof_uvw(nr_baselines_current, nr_timesteps);
-      htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
-      size_t sizeof_metadata = auxiliary::sizeof_metadata(nr_subgrids_current);
-      htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+      htodstream.memcpyHtoDAsync(
+          d_uvw, uvw_ptr,
+          auxiliary::sizeof_uvw(nr_baselines_current, nr_timesteps));
+      htodstream.memcpyHtoDAsync(
+          d_metadata, metadata_ptr,
+          auxiliary::sizeof_metadata(nr_subgrids_current));
       htodstream.record(inputCopied[job_id]);
     }
 
@@ -200,13 +201,11 @@ void GenericOptimized::run_imaging(
         htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next,
                                    sizeof_visibilities_next);
       }
-      size_t sizeof_uvw_next =
-          auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
-      htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
-      size_t sizeof_metadata_next =
-          auxiliary::sizeof_metadata(nr_subgrids_next);
+      htodstream.memcpyHtoDAsync(
+          d_uvw_next, uvw_ptr_next,
+          auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps));
       htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next,
-                                 sizeof_metadata_next);
+                                 auxiliary::sizeof_metadata(nr_subgrids_next));
       htodstream.record(inputCopied[job_id_next]);
     }
 
@@ -245,9 +244,10 @@ void GenericOptimized::run_imaging(
       // Copy subgrid to host
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         dtohstream.waitEvent(gpuFinished[job_id]);
-        auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-            nr_subgrids_current, subgrid_size, nr_polarizations);
-        dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
+        dtohstream.memcpyDtoHAsync(
+            h_subgrids, d_subgrids,
+            auxiliary::sizeof_subgrids(nr_subgrids_current, subgrid_size,
+                                       nr_polarizations));
         dtohstream.record(outputCopied[job_id]);
 
         // Wait for subgrids to be copied
@@ -314,9 +314,10 @@ void GenericOptimized::run_imaging(
 
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         // Copy subgrids to device
-        auto sizeof_subgrids = auxiliary::sizeof_subgrids(
-            nr_subgrids_current, subgrid_size, nr_polarizations);
-        htodstream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
+        htodstream.memcpyHtoDAsync(
+            d_subgrids, h_subgrids,
+            auxiliary::sizeof_subgrids(nr_subgrids_current, subgrid_size,
+                                       nr_polarizations));
 
         // Wait for subgrids to be copied
         htodstream.synchronize();
@@ -341,10 +342,10 @@ void GenericOptimized::run_imaging(
 
       // Copy visibilities to host
       dtohstream.waitEvent(gpuFinished[job_id]);
-      size_t sizeof_visibilities_current = auxiliary::sizeof_visibilities(
-          nr_baselines_current, nr_timesteps, nr_channels, nr_correlations);
-      dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
-                                 sizeof_visibilities_current);
+      dtohstream.memcpyDtoHAsync(
+          visibilities_ptr, d_visibilities,
+          auxiliary::sizeof_visibilities(nr_baselines_current, nr_timesteps,
+                                         nr_channels, nr_correlations));
       dtohstream.record(outputCopied[job_id]);
     }
 
