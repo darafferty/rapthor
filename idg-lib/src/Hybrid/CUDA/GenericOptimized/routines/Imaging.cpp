@@ -129,13 +129,13 @@ void GenericOptimized::run_imaging(
   cu::HostMemory h_subgrids(context, sizeof_subgrids);
 
   // Events
-  std::vector<std::unique_ptr<cu::Event>> inputCopied;
-  std::vector<std::unique_ptr<cu::Event>> gpuFinished;
-  std::vector<std::unique_ptr<cu::Event>> outputCopied;
+  std::vector<cu::Event> inputCopied;
+  std::vector<cu::Event> gpuFinished;
+  std::vector<cu::Event> outputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.emplace_back(new cu::Event(context));
-    gpuFinished.emplace_back(new cu::Event(context));
-    outputCopied.emplace_back(new cu::Event(context));
+    inputCopied.emplace_back(context);
+    gpuFinished.emplace_back(context);
+    outputCopied.emplace_back(context);
   }
 
   // Start performance measurement
@@ -176,7 +176,7 @@ void GenericOptimized::run_imaging(
       htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
       size_t sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
       htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
-      htodstream.record(*inputCopied[job_id]);
+      htodstream.record(inputCopied[job_id]);
     }
 
     // Copy input data for next job
@@ -207,12 +207,12 @@ void GenericOptimized::run_imaging(
           auxiliary::sizeof_metadata(nr_subgrids_next);
       htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next,
                                  sizeof_metadata_next);
-      htodstream.record(*inputCopied[job_id_next]);
+      htodstream.record(inputCopied[job_id_next]);
     }
 
     // Wait for output buffer to be free
     if (mode == ImagingMode::mode_degridding && job_id > 1) {
-      executestream.waitEvent(*outputCopied[job_id - 2]);
+      executestream.waitEvent(outputCopied[job_id - 2]);
     }
 
     // Initialize output buffer to zero
@@ -223,7 +223,7 @@ void GenericOptimized::run_imaging(
     }
 
     // Wait for input to be copied
-    executestream.waitEvent(*inputCopied[job_id]);
+    executestream.waitEvent(inputCopied[job_id]);
 
     if (mode == ImagingMode::mode_gridding) {
       // Launch gridder kernel
@@ -240,18 +240,18 @@ void GenericOptimized::run_imaging(
       // Launch scaler
       device.launch_scaler(current_nr_subgrids, nr_polarizations, subgrid_size,
                            d_subgrids);
-      executestream.record(*gpuFinished[job_id]);
+      executestream.record(gpuFinished[job_id]);
 
       // Copy subgrid to host
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
-        dtohstream.waitEvent(*gpuFinished[job_id]);
+        dtohstream.waitEvent(gpuFinished[job_id]);
         auto sizeof_subgrids = auxiliary::sizeof_subgrids(
             current_nr_subgrids, subgrid_size, nr_polarizations);
         dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
-        dtohstream.record(*outputCopied[job_id]);
+        dtohstream.record(outputCopied[job_id]);
 
         // Wait for subgrids to be copied
-        outputCopied[job_id]->synchronize();
+        outputCopied[job_id].synchronize();
       }
 
       // Run adder kernel
@@ -334,18 +334,18 @@ void GenericOptimized::run_imaging(
           subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
           shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
           d_aterms, d_aterms_indices, d_metadata, d_subgrids);
-      executestream.record(*gpuFinished[job_id]);
+      executestream.record(gpuFinished[job_id]);
 
       // Wait for degridder to finish
-      gpuFinished[job_id]->synchronize();
+      gpuFinished[job_id].synchronize();
 
       // Copy visibilities to host
-      dtohstream.waitEvent(*gpuFinished[job_id]);
+      dtohstream.waitEvent(gpuFinished[job_id]);
       auto sizeof_visibilities = auxiliary::sizeof_visibilities(
           current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
       dtohstream.memcpyDtoHAsync(visibilities_ptr, d_visibilities,
                                  sizeof_visibilities);
-      dtohstream.record(*outputCopied[job_id]);
+      dtohstream.record(outputCopied[job_id]);
     }
 
     // Report performance
