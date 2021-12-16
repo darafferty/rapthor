@@ -125,6 +125,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
       current_nr_patches =
           plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
                         context, device.get_free_memory(), fft);
+      fft->setStream(executestream);
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
 
@@ -415,6 +416,7 @@ void GenericOptimized::run_wtiles_from_grid(
       current_nr_patches =
           plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
                         context, device.get_free_memory(), fft);
+      fft->setStream(executestream);
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
 
