@@ -86,14 +86,12 @@ void GenericOptimized::do_gridding(
   std::cout << "GenericOptimized::" << __func__ << std::endl;
 #endif
 
-  int nr_baselines = visibilities.get_w_dim();
-  int nr_timesteps = visibilities.get_z_dim();
-  int nr_channels = visibilities.get_y_dim();
-  int nr_polarizations = visibilities.get_x_dim();
-  Array4D<std::complex<float>> visibilities_ptr(visibilities.data(),
-                                                nr_baselines, nr_timesteps,
-                                                nr_channels, nr_polarizations);
-
+  // Since run_imaging supports both gridding and degridding, it expects
+  // visibilities as non-const since degridding updates the visibilities.
+  // We therefore need to const_cast it although it is used read-only during
+  // gridding.
+  auto& visibilities_ptr =
+      const_cast<Array4D<std::complex<float>>&>(visibilities);
   run_imaging(plan, frequencies, visibilities_ptr, uvw, baselines, *m_grid,
               aterms, aterms_offsets, spheroidal, ImagingMode::mode_gridding);
 }  // end do_gridding
