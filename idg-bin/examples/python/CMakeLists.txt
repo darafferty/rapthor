@@ -9,7 +9,6 @@ install(
         cuda-unified.py
         opencl-generic.py
         hybrid-cuda-generic-optimized.py
-        hybrid-cuda-unified-optimized.py
         coverage.py
         tiles.py
   PERMISSIONS

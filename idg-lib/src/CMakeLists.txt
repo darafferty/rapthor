@@ -162,8 +162,7 @@ endif(BUILD_LIB_CUDA)
 ##############################################################
 if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
-  add_library(idg-hybrid-cuda $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>
-                              $<TARGET_OBJECTS:hybrid-cuda-unified-optimized>)
+  add_library(idg-hybrid-cuda $<TARGET_OBJECTS:hybrid-cuda-generic-optimized>)
 
   set(LINK_LIBRARIES idg-cpu idg-cuda)
 

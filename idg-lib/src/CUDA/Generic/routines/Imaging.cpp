@@ -37,6 +37,13 @@ void Generic::run_imaging(
   auto w_step = plan.get_w_step();
   auto& shift = plan.get_shift();
 
+  WTileUpdateSet wtile_set;
+  if (mode == ImagingMode::mode_gridding) {
+    wtile_set = plan.get_wtile_flush_set();
+  } else if (mode == ImagingMode::mode_degridding) {
+    wtile_set = plan.get_wtile_initialize_set();
+  }
+
   // Convert frequencies to wavenumbers
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
@@ -158,47 +165,58 @@ void Generic::run_imaging(
 
     // Copy input data for first job to device
     if (job_id == 0) {
-      auto sizeof_visibilities = auxiliary::sizeof_visibilities(
-          current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
-      auto sizeof_uvw =
-          auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
-      auto sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
+      // Visibilities
       if (mode == ImagingMode::mode_gridding) {
+        size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
+            current_nr_baselines, nr_timesteps, nr_channels, nr_correlations);
         htodstream.memcpyHtoDAsync(d_visibilities, visibilities_ptr,
                                    sizeof_visibilities);
       }
+
+      // UVW
+      size_t sizeof_uvw =
+          auxiliary::sizeof_uvw(current_nr_baselines, nr_timesteps);
       htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
+
+      // Metadata
+      size_t sizeof_metadata = auxiliary::sizeof_metadata(current_nr_subgrids);
       htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata);
+
+      // Synchronization
       htodstream.record(*inputCopied[job_id]);
     }
 
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
-      // Load memory objects
-      cu::DeviceMemory& d_visibilities_next = *d_visibilities_[local_id_next];
-      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
-      cu::DeviceMemory& d_metadata_next = *d_metadata_[local_id_next];
+      unsigned int nr_baselines_next = jobs[job_id_next].current_nr_baselines;
 
-      // Get parameters for next job
-      auto nr_baselines_next = jobs[job_id_next].current_nr_baselines;
-      auto nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
-      auto visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
-
-      // Copy input data to device
-      auto sizeof_visibilities_next = auxiliary::sizeof_visibilities(
-          nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
-      auto sizeof_uvw_next =
-          auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
-      auto sizeof_metadata_next = auxiliary::sizeof_metadata(nr_subgrids_next);
+      // Visibilities (gridding only)
       if (mode == ImagingMode::mode_gridding) {
+        const void* visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+        cu::DeviceMemory& d_visibilities_next = *d_visibilities_[local_id_next];
+        size_t sizeof_visibilities_next = auxiliary::sizeof_visibilities(
+            nr_baselines_next, nr_timesteps, nr_channels, nr_correlations);
         htodstream.memcpyHtoDAsync(d_visibilities_next, visibilities_ptr_next,
                                    sizeof_visibilities_next);
       }
+
+      // UVW
+      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
+      const void* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      size_t sizeof_uvw_next =
+          auxiliary::sizeof_uvw(nr_baselines_next, nr_timesteps);
       htodstream.memcpyHtoDAsync(d_uvw_next, uvw_ptr_next, sizeof_uvw_next);
+
+      // Metadata
+      cu::DeviceMemory& d_metadata_next = *d_metadata_[local_id_next];
+      const void* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      unsigned int nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
+      size_t sizeof_metadata_next =
+          auxiliary::sizeof_metadata(nr_subgrids_next);
       htodstream.memcpyHtoDAsync(d_metadata_next, metadata_ptr_next,
                                  sizeof_metadata_next);
+
+      // Synchronization
       htodstream.record(*inputCopied[job_id_next]);
     }
 
@@ -233,26 +251,41 @@ void Generic::run_imaging(
       device.launch_subgrid_fft(d_subgrids, current_nr_subgrids,
                                 nr_polarizations, FourierDomainToImageDomain);
 
-      // Launch adder kernel
-      if (m_use_unified_memory) {
-        device.launch_adder_unified(current_nr_subgrids, grid_size,
-                                    subgrid_size, d_metadata, d_subgrids,
-                                    u_grid);
+      // Launch adder
+      if (plan.get_use_wtiles()) {
+        auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+        run_subgrids_to_wtiles(
+            nr_polarizations, subgrid_offset, current_nr_subgrids, subgrid_size,
+            image_size, w_step, shift, wtile_set, d_subgrids, d_metadata);
       } else {
-        device.launch_adder(current_nr_subgrids, nr_polarizations, grid_size,
-                            subgrid_size, d_metadata, d_subgrids, *d_grid_);
+        if (m_use_unified_memory) {
+          device.launch_adder_unified(current_nr_subgrids, grid_size,
+                                      subgrid_size, d_metadata, d_subgrids,
+                                      u_grid);
+        } else {
+          device.launch_adder(current_nr_subgrids, nr_polarizations, grid_size,
+                              subgrid_size, d_metadata, d_subgrids, *d_grid_);
+        }
       }
 
       executestream.record(*gpuFinished[job_id]);
     } else if (mode == ImagingMode::mode_degridding) {
-      // Launch splitter kernel
-      if (m_use_unified_memory) {
-        device.launch_splitter_unified(current_nr_subgrids, grid_size,
-                                       subgrid_size, d_metadata, d_subgrids,
-                                       u_grid);
+      // Launch splitter
+      if (plan.get_use_wtiles()) {
+        auto subgrid_offset = plan.get_subgrid_offset(jobs[job_id].first_bl);
+        run_subgrids_from_wtiles(
+            nr_polarizations, subgrid_offset, current_nr_subgrids, subgrid_size,
+            image_size, w_step, shift, wtile_set, d_subgrids, d_metadata);
       } else {
-        device.launch_splitter(current_nr_subgrids, nr_polarizations, grid_size,
-                               subgrid_size, d_metadata, d_subgrids, *d_grid_);
+        if (m_use_unified_memory) {
+          device.launch_splitter_unified(current_nr_subgrids, grid_size,
+                                         subgrid_size, d_metadata, d_subgrids,
+                                         u_grid);
+        } else {
+          device.launch_splitter(current_nr_subgrids, nr_polarizations,
+                                 grid_size, subgrid_size, d_metadata,
+                                 d_subgrids, *d_grid_);
+        }
       }
 
       // Launch FFT
