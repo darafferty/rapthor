@@ -119,6 +119,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
+    // Initialize FFT for w_padded_tiles
     unsigned int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       current_nr_patches =
@@ -408,6 +409,7 @@ void GenericOptimized::run_wtiles_from_grid(
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
+    // Initialize FFT for w_padded_tiles
     unsigned int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       current_nr_patches =
