@@ -1,5 +1,12 @@
+workflow:
+  rules:
+    # Don't create a pipeline if it's a commit pipeline on a branch and that branch has open merge requests
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    - when: always
+
 # This step determines the SHA1 of the Docker file used. It's stored in
-# versions.env artiface. The environment variables are available for all steps
+# versions.env artifact. The environment variables are available for all steps
 # depending on this step.
 versioning:
   stage: .pre
@@ -34,3 +41,42 @@ build-ubuntu-20.04:
   image: $BASE_IMAGE
   script:
     - ci/run.sh
+
+# Builds the documentation
+build-doc:
+  stage: build
+  needs: ["versioning", "build-docker-ubuntu-20.04"]
+  image: $BASE_IMAGE
+  script:
+    - cd docs
+    - make html
+  artifacts:
+    paths:
+      - docs/build/html
+  rules:
+    # Only add job for commits to master or on merge request events
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - changes:
+        - docs/**/*
+
+# Deploys the documentation to astron.nl/citt/rapthor
+deploy-doc:
+  stage: deploy
+  needs: ["build-doc"]
+  image: docker:latest
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | base64 -d | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan -H dop810 > ~/.ssh/known_hosts
+  script:
+    - scp -r docs/build/html/* citt@dop810:rapthor
+  rules:
+    # Only run on master
+    - if: '$CI_COMMIT_BRANCH != "master"'
+      when: never
+    - changes:
+        - docs/**/*

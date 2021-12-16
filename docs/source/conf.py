@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'Rapthor'
-copyright = '2020, David Rafferty'
+copyright = '2021, David Rafferty'
 author = 'David Rafferty'
 
 
