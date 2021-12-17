@@ -224,7 +224,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
           &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
       marker.end();
     }  // end for patch_offset
-  }    // end for jobs
+  }    // end for tile_offset
 }
 
 void GenericOptimized::run_subgrids_to_wtiles(
@@ -358,17 +358,8 @@ void GenericOptimized::run_wtiles_from_grid(
   cu::DeviceMemory d_shift(context, shift.bytes());
   executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
 
-  // Create jobs
-  struct JobData {
-    int tile_offset;
-    int current_nr_tiles;
-  };
-
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-
-  // Create jobs
-  std::vector<JobData> jobs;
 
   // Iterate all tiles
   unsigned int last_w_padded_tile_size = w_padded_tile_size;
