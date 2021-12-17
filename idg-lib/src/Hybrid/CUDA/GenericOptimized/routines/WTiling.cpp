@@ -86,46 +86,29 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
 
-  // Create jobs
-  struct JobData {
-    int tile_offset;
-    int current_nr_tiles;
-  };
-
-  std::vector<JobData> jobs;
-
+  // Iterate all tiles
+  unsigned int last_w_padded_tile_size = w_padded_tile_size;
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
-    current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
+    current_nr_tiles = std::min(nr_tiles_batch, nr_tiles - tile_offset);
 
-    JobData job;
-    job.current_nr_tiles = current_nr_tiles;
-    job.tile_offset = tile_offset;
-    jobs.push_back(std::move(job));
-  }
-
-  // Iterate all jobs
-  int last_w_padded_tile_size = w_padded_tile_size;
-  for (auto& job : jobs) {
-    int tile_offset = job.tile_offset;
-    int current_nr_tiles = job.current_nr_tiles;
-
-    // Set w_padded_tile_size for current job
-    int current_w_padded_tile_size = *std::max_element(
+    // Set w_padded_tile_size for current batch of tiles
+    unsigned int current_w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
-    // Initialize FFT for w_padded_tiles
-    unsigned int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
-      current_nr_patches =
-          plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
-                        context, device.get_free_memory(), fft);
+      // Initialize FFT for w_padded_tiles
+      fft.reset();
+      current_nr_tiles = plan_tile_fft(nr_polarizations, current_nr_tiles,
+                                       current_w_padded_tile_size, context,
+                                       device.get_free_memory(), fft);
       fft->setStream(executestream);
+
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
 
@@ -174,6 +157,8 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
     // Iterate patches in batches (note: reusing h_padded_tiles for patches)
     size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
+    unsigned int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
+    unsigned int current_nr_patches = max_nr_patches;
 
     // Events
     std::vector<std::unique_ptr<cu::Event>> gpuFinished;
@@ -239,7 +224,7 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
           &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
       marker.end();
     }  // end for patch_offset
-  }    // end for jobs
+  }    // end for tile_offset
 }
 
 void GenericOptimized::run_subgrids_to_wtiles(
@@ -373,50 +358,32 @@ void GenericOptimized::run_wtiles_from_grid(
   cu::DeviceMemory d_shift(context, shift.bytes());
   executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
 
-  // Create jobs
-  struct JobData {
-    int tile_offset;
-    int current_nr_tiles;
-  };
-
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
 
-  // Create jobs
-  std::vector<JobData> jobs;
-
+  // Iterate all tiles
+  unsigned int last_w_padded_tile_size = w_padded_tile_size;
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
-    current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
-
-    JobData job;
-    job.current_nr_tiles = current_nr_tiles;
-    job.tile_offset = tile_offset;
-    jobs.push_back(std::move(job));
-  }
-
-  // Iterate all jobs
-  int last_w_padded_tile_size = w_padded_tile_size;
-  for (auto& job : jobs) {
-    int tile_offset = job.tile_offset;
-    int current_nr_tiles = job.current_nr_tiles;
+    current_nr_tiles = std::min(nr_tiles_batch, nr_tiles - tile_offset);
 
     // Set w_padded_tile_size for current job
-    int current_w_padded_tile_size = *std::max_element(
+    unsigned int current_w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
     cufftComplex* tile_ptr = reinterpret_cast<cufftComplex*>(
         static_cast<CUdeviceptr>(d_padded_tiles));
 
-    // Initialize FFT for w_padded_tiles
-    unsigned int current_nr_patches = m_nr_patches_batch;
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
-      current_nr_patches =
-          plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
-                        context, device.get_free_memory(), fft);
+      // Initialize FFT for w_padded_tiles
+      fft.reset();
+      current_nr_tiles = plan_tile_fft(nr_polarizations, current_nr_tiles,
+                                       current_w_padded_tile_size, context,
+                                       device.get_free_memory(), fft);
       fft->setStream(executestream);
+
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
 
@@ -444,6 +411,8 @@ void GenericOptimized::run_wtiles_from_grid(
 
     // Iterate patches in batches (note: reusing h_padded_tiles for patches)
     size_t sizeof_patch = m_buffers_wtiling.d_patches[0]->size();
+    unsigned int max_nr_patches = h_padded_tiles.size() / sizeof_patch;
+    unsigned int current_nr_patches = max_nr_patches;
 
     // Events
     std::vector<std::unique_ptr<cu::Event>> inputCopied;
