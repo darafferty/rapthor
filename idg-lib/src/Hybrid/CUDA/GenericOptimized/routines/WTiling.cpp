@@ -85,37 +85,16 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-  nr_tiles_batch =
-      plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
-                    context, device.get_free_memory(), fft);
 
-  // Create jobs
-  struct JobData {
-    int tile_offset;
-    int current_nr_tiles;
-  };
-
-  std::vector<JobData> jobs;
-
+  // Iterate all tiles
+  unsigned int last_w_padded_tile_size = w_padded_tile_size;
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
-    current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
+    current_nr_tiles = std::min(nr_tiles_batch, nr_tiles - tile_offset);
 
-    JobData job;
-    job.current_nr_tiles = current_nr_tiles;
-    job.tile_offset = tile_offset;
-    jobs.push_back(std::move(job));
-  }
-
-  // Iterate all jobs
-  int last_w_padded_tile_size = w_padded_tile_size;
-  for (auto& job : jobs) {
-    int tile_offset = job.tile_offset;
-    int current_nr_tiles = job.current_nr_tiles;
-
-    // Set w_padded_tile_size for current job
-    int current_w_padded_tile_size = *std::max_element(
+    // Set w_padded_tile_size for current batch of tiles
+    unsigned int current_w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
@@ -125,9 +104,9 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       // Initialize FFT for w_padded_tiles
       fft.reset();
-      plan_tile_fft(nr_polarizations, nr_tiles_batch,
-                    current_w_padded_tile_size, context,
-                    device.get_free_memory(), fft);
+      current_nr_tiles = plan_tile_fft(nr_polarizations, current_nr_tiles,
+                                       current_w_padded_tile_size, context,
+                                       device.get_free_memory(), fft);
 
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
@@ -386,32 +365,19 @@ void GenericOptimized::run_wtiles_from_grid(
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
-  nr_tiles_batch =
-      plan_tile_fft(nr_polarizations, nr_tiles_batch, w_padded_tile_size,
-                    context, device.get_free_memory(), fft);
 
   // Create jobs
   std::vector<JobData> jobs;
 
+  // Iterate all tiles
+  unsigned int last_w_padded_tile_size = w_padded_tile_size;
   unsigned int current_nr_tiles = nr_tiles_batch;
   for (unsigned int tile_offset = 0; tile_offset < nr_tiles;
        tile_offset += current_nr_tiles) {
-    current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
-
-    JobData job;
-    job.current_nr_tiles = current_nr_tiles;
-    job.tile_offset = tile_offset;
-    jobs.push_back(std::move(job));
-  }
-
-  // Iterate all jobs
-  int last_w_padded_tile_size = w_padded_tile_size;
-  for (auto& job : jobs) {
-    int tile_offset = job.tile_offset;
-    int current_nr_tiles = job.current_nr_tiles;
+    current_nr_tiles = std::min(nr_tiles_batch, nr_tiles - tile_offset);
 
     // Set w_padded_tile_size for current job
-    int current_w_padded_tile_size = *std::max_element(
+    unsigned int current_w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
@@ -421,9 +387,9 @@ void GenericOptimized::run_wtiles_from_grid(
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       // Initialize FFT for w_padded_tiles
       fft.reset();
-      plan_tile_fft(nr_polarizations, nr_tiles_batch,
-                    current_w_padded_tile_size, context,
-                    device.get_free_memory(), fft);
+      current_nr_tiles = plan_tile_fft(nr_polarizations, current_nr_tiles,
+                                       current_w_padded_tile_size, context,
+                                       device.get_free_memory(), fft);
 
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
