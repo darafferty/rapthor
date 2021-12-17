@@ -124,15 +124,10 @@ void GenericOptimized::run_wtiles_to_grid(unsigned int subgrid_size,
 
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       // Initialize FFT for w_padded_tiles
-      unsigned stride = 1;
-      unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * nr_polarizations;
-
       fft.reset();
-      fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
-                                  current_w_padded_tile_size, stride, dist,
-                                  batch));
-      fft->setStream(executestream);
+      plan_tile_fft(nr_polarizations, nr_tiles_batch,
+                    current_w_padded_tile_size, context,
+                    device.get_free_memory(), fft);
 
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
@@ -425,15 +420,10 @@ void GenericOptimized::run_wtiles_from_grid(
 
     if (!fft || current_w_padded_tile_size != last_w_padded_tile_size) {
       // Initialize FFT for w_padded_tiles
-      unsigned stride = 1;
-      unsigned dist = current_w_padded_tile_size * current_w_padded_tile_size;
-      unsigned batch = nr_tiles_batch * nr_polarizations;
-
       fft.reset();
-      fft.reset(new cufft::C2C_2D(context, current_w_padded_tile_size,
-                                  current_w_padded_tile_size, stride, dist,
-                                  batch));
-      fft->setStream(executestream);
+      plan_tile_fft(nr_polarizations, nr_tiles_batch,
+                    current_w_padded_tile_size, context,
+                    device.get_free_memory(), fft);
 
       last_w_padded_tile_size = current_w_padded_tile_size;
     }
