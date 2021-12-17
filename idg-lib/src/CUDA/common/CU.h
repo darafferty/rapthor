@@ -233,6 +233,10 @@ class Function {
 class Event {
  public:
   Event(const Context &context, int flags = CU_EVENT_DEFAULT);
+  Event(const Event &event) = delete;
+  Event(Event &&event);
+  Event &operator=(const Event &event) = delete;
+  Event &operator=(Event &&event);
   ~Event();
 
   void synchronize();
@@ -241,7 +245,7 @@ class Event {
   operator CUevent();
 
  private:
-  const Context &_context;
+  const Context *_context;
   CUevent _event;
 };
 

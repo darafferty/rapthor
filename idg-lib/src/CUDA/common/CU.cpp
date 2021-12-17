@@ -384,26 +384,45 @@ Function::operator CUfunction() { return _function; }
 /*
     Event
 */
-Event::Event(const Context &context, int flags) : _context(context) {
-  ScopedContext scc(_context);
+Event::Event(const Context &context, int flags) : _context(&context) {
+  ScopedContext scc(*_context);
   assertCudaCall(cuEventCreate(&_event, flags));
 }
 
+Event::Event(Event &&event) : _context(event._context), _event(event._event) {
+  event._context = nullptr;
+}
+
+Event &Event::operator=(Event &&event) {
+  _context = event._context;
+  _event = event._event;
+  event._context = nullptr;
+  return *this;
+}
+
 Event::~Event() {
-  ScopedContext scc(_context);
-  assertCudaCall(cuEventDestroy(_event));
+  if (_context) {
+    ScopedContext scc(*_context);
+    assertCudaCall(cuEventDestroy(_event));
+  }
 }
 
 void Event::synchronize() {
-  ScopedContext scc(_context);
-  assertCudaCall(cuEventSynchronize(_event));
+  if (_context) {
+    ScopedContext scc(*_context);
+    assertCudaCall(cuEventSynchronize(_event));
+  }
 }
 
 float Event::elapsedTime(Event &second) {
-  ScopedContext scc(_context);
-  float ms;
-  assertCudaCall(cuEventElapsedTime(&ms, second, _event));
-  return ms;
+  if (_context) {
+    ScopedContext scc(*_context);
+    float ms;
+    assertCudaCall(cuEventElapsedTime(&ms, second, _event));
+    return ms;
+  } else {
+    return 0;
+  }
 }
 
 Event::operator CUevent() { return _event; }
