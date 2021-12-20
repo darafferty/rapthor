@@ -71,7 +71,7 @@ deploy-docker:
   services:
     - docker:20.10-dind
   variables:
-    CAR_IMAGE: ${CAR_OCI_REGISTRY_HOST}/${CI_PROJECT_NAME}/idg-cuda:${IDG_VERSION}
+    CAR_IMAGE: ${CAR_OCI_REGISTRY_HOST}/${CI_PROJECT_NAME}-cuda:${IDG_VERSION}
   script:
     - echo Deploying GPU docker image to ${CAR_IMAGE}
     - echo ${CI_REGISTRY_PASSWORD} | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
