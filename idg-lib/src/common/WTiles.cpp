@@ -1,6 +1,8 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
+
 #include "WTiles.h"
 #include "Math.h"
 
@@ -109,6 +111,32 @@ std::vector<int> compute_w_padded_tile_sizes(const idg::Coordinate* coordinates,
   }
 
   return w_padded_tile_sizes;
+}
+
+int compute_w_padded_tile_size_max(const WTileUpdateSet& wtile_set,
+                                   const int tile_size, const int subgrid_size,
+                                   const float image_size, const float w_step,
+                                   const float shift_l, const float shift_m) {
+  int w_padded_tile_size_max = 0;
+
+  for (unsigned int i = 0; i < wtile_set.size(); i++) {
+    const WTileUpdateInfo& wtile_info = wtile_set[i];
+    const unsigned int nr_tiles = wtile_info.wtile_ids.size();
+    const std::vector<Coordinate>& tile_coordinates =
+        wtile_info.wtile_coordinates;
+    const int padded_tile_size = tile_size + subgrid_size;
+    const float image_size_shift =
+        image_size + 2 * std::max(std::abs(shift_l), std::abs(shift_m));
+    const std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
+        tile_coordinates.data(), nr_tiles, w_step, image_size, image_size_shift,
+        padded_tile_size);
+    const int w_padded_tile_size = *std::max_element(
+        w_padded_tile_sizes.begin(), w_padded_tile_sizes.end());
+    w_padded_tile_size_max =
+        std::max(w_padded_tile_size_max, w_padded_tile_size);
+  }
+
+  return w_padded_tile_size_max;
 }
 
 }  // namespace idg

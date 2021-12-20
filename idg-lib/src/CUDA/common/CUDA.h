@@ -111,6 +111,7 @@ class CUDA : public Proxy {
   /*
    * W-Tiling
    */
+  void init_buffers_wtiling(unsigned int subgrid_size);
   void free_buffers_wtiling();
 
   unsigned int plan_tile_fft(unsigned int nr_polarizations,
@@ -119,6 +120,13 @@ class CUDA : public Proxy {
                              const cu::Context& context,
                              const size_t free_memory,
                              std::unique_ptr<cufft::C2C_2D>& fft) const;
+
+  size_t bytes_required_wtiling(const WTileUpdateSet& wtile_set,
+                                const int nr_polarizations,
+                                const int subgrid_size, const float image_size,
+                                const float w_step,
+                                const idg::Array1D<float>& shift,
+                                const size_t bytes_free) const;
 
   WTiles m_wtiles;
   unsigned int m_nr_tiles = 0;  // configured in init_cache
