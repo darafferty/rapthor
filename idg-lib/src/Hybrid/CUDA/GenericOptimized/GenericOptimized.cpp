@@ -153,47 +153,7 @@ void GenericOptimized::init_cache(int subgrid_size, float cell_size,
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
 
   if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
-    // Allocate wtiles on GPU
-    InstanceCUDA& device = get_device(0);
-    const cu::Context& context = get_device(0).get_context();
-
-    // Compute the size of one tile
-    const int nr_polarizations = m_grid->get_z_dim();
-    int tile_size = m_tile_size + subgrid_size;
-    size_t sizeof_tile =
-        nr_polarizations * tile_size * tile_size * sizeof(std::complex<float>);
-
-    // Initialize patches
-    m_buffers_wtiling.d_patches.resize(m_nr_patches_batch);
-    for (unsigned int i = 0; i < m_nr_patches_batch; i++) {
-      size_t sizeof_patch = nr_polarizations * m_patch_size * m_patch_size *
-                            sizeof(std::complex<float>);
-      m_buffers_wtiling.d_patches[i].reset(
-          new cu::DeviceMemory(context, sizeof_patch));
-    }
-
-    // First, get the amount of free device memory
-    size_t free_memory = device.get_free_memory();
-    // Second, keep a safety margin
-    free_memory *= 0.80;
-    // Reserve 20% of the available GPU memory for each one of:
-    // - The tiles: d_tiles (tile_size + subgrid_size)
-    // - A subset of padded tiles: d_padded_tiles (tile_size + subgrid_size +
-    // w_size)
-    // - An FFT plan for the padded tiles
-    m_nr_tiles = (free_memory * 0.2) / sizeof_tile;
-    // The remainder should be enough for miscellaneous buffers:
-    // - tile ids, tile coordinates, etc.
-
-    // Allocate the tile buffers
-    size_t sizeof_tiles = m_nr_tiles * sizeof_tile;
-    m_buffers_wtiling.d_tiles.reset(
-        new cu::DeviceMemory(context, sizeof_tiles));
-    m_buffers_wtiling.d_padded_tiles.reset(
-        new cu::DeviceMemory(context, sizeof_tiles));
-    m_buffers_wtiling.h_tiles.reset(new cu::HostMemory(context, sizeof_tiles));
-
-    // Initialize wtiles metadata
+    init_buffers_wtiling(subgrid_size);
     m_wtiles = WTiles(m_nr_tiles, m_tile_size);
   } else {
     cpuProxy->init_cache(subgrid_size, cell_size, w_step, shift);

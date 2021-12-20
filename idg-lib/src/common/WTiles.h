@@ -185,6 +185,13 @@ std::vector<int> compute_w_padded_tile_sizes(const idg::Coordinate* coordinates,
                                              const float image_size,
                                              const float image_size_shift,
                                              const int padded_tile_size);
+
+// Helper function to compute the maximum w_padded tile size
+// for a WTileUpdateSet.
+int compute_w_padded_tile_size_max(const WTileUpdateSet& wtile_set,
+                                   const int tile_size, const int subgrid_size,
+                                   const float image_size, const float w_step,
+                                   const float shift_l, const float shift_m);
 }  // namespace idg
 
 #endif

@@ -96,11 +96,21 @@ void GenericOptimized::run_imaging(
   // Plan subgrid fft
   device.plan_subgrid_fft(subgrid_size, nr_polarizations);
 
+  // Get the available device memory, reserving some
+  // space for the w-padded tile FFT plan which is allocated
+  // in run_wtiles_to_grid and run_wtiles_from_grid.
+  size_t bytes_free = device.get_free_memory();
+  if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
+    bytes_free -= bytes_required_wtiling(plan.get_wtile_initialize_set(),
+                                         nr_polarizations, subgrid_size,
+                                         image_size, w_step, shift, bytes_free);
+  }
+
   // Initialize jobs
   std::vector<JobData> jobs;
   int jobsize =
       initialize_jobs(nr_baselines, nr_timesteps, nr_channels, subgrid_size,
-                      device.get_free_memory(), plan, visibilities, uvw, jobs);
+                      bytes_free, plan, visibilities, uvw, jobs);
 
   // Allocate device memory for jobs
   int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
@@ -132,7 +142,11 @@ void GenericOptimized::run_imaging(
   std::vector<cu::Event> inputCopied;
   std::vector<cu::Event> gpuFinished;
   std::vector<cu::Event> outputCopied;
-  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
+  unsigned int nr_jobs = (nr_baselines + jobsize - 1) / jobsize;
+  inputCopied.reserve(nr_jobs);
+  gpuFinished.reserve(nr_jobs);
+  outputCopied.reserve(nr_jobs);
+  for (unsigned int i = 0; i < nr_jobs; i++) {
     inputCopied.emplace_back(context);
     gpuFinished.emplace_back(context);
     outputCopied.emplace_back(context);
