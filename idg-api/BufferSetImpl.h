@@ -73,6 +73,9 @@ class BufferSetImpl : public virtual BufferSet {
 
   void report_runtime();
 
+  int get_nr_correlations() const { return m_nr_correlations; }
+  int get_nr_polarizations() const { return m_nr_polarizations; }
+
   float get_cell_size() const { return m_cell_size; }
   float get_w_step() const { return m_w_step; }
   const idg::Array1D<float>& get_shift() const { return m_shift; }
@@ -112,6 +115,8 @@ class BufferSetImpl : public virtual BufferSet {
   std::shared_ptr<std::vector<std::complex<float>>> m_matrix_inverse_beam;
   Array4D<std::complex<float>> m_default_aterm_correction;
   Array4D<std::complex<float>> m_avg_aterm_correction;
+  bool m_stokes_I_only;
+  int m_nr_correlations;
   int m_nr_polarizations;
   size_t m_subgridsize;
   float m_image_size;

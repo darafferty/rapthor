@@ -24,9 +24,10 @@ std::vector<double> image_ref;
 
 std::unique_ptr<idg::api::BufferSet> CreateBufferset(
     idg::api::Type architecture, const WMode wmode,
-    const std::array<int, 2> shift) {
+    const std::array<int, 2> shift, const bool stokes_i_only = false) {
   idg::api::options_type options;
   AddWModeToOptions(wmode, options);
+  options["stokes_I_only"] = stokes_i_only;
   std::unique_ptr<idg::api::BufferSet> bufferset(
       idg::api::BufferSet::create(architecture));
 
@@ -45,9 +46,10 @@ std::unique_ptr<idg::api::BufferSet> CreateBufferset(
 }
 
 std::vector<double> GridImage(idg::api::Type arch, const WMode wmode,
-                              const std::array<int, 2> shift = {0, 0}) {
+                              const std::array<int, 2> shift = {0, 0},
+                              const bool stokes_i_only = false) {
   std::unique_ptr<idg::api::BufferSet> bufferset =
-      CreateBufferset(arch, wmode, shift);
+      CreateBufferset(arch, wmode, shift, stokes_i_only);
 
   const std::vector<double> uvw = {100.0, 200.0, 30.0};
   const std::vector<float> weights(kBands[0].size() * kNrCorrelations, 1.0f);
@@ -176,10 +178,19 @@ BOOST_AUTO_TEST_CASE(architectures, *utf::depends_on("gridder/reference")) {
 
   for (idg::api::Type architecture : architectures) {
     std::vector<double> image_arch = GridImage(architecture, WMode::kNeither);
-    // CUDA images require higher tolerance values.
-    if (architecture == idg::api::Type::CUDA_GENERIC ||
-        architecture == idg::api::Type::HYBRID_CUDA_CPU_OPTIMIZED) {
-    }
+    CompareImages(image_ref, image_arch, kPixelTolerance);
+  }
+}
+
+// Test that in Stokes I only and WTiling mode
+// all architectures produce similar results.
+BOOST_AUTO_TEST_CASE(stokes_I_only, *utf::depends_on("gridder/reference")) {
+  std::set<idg::api::Type> architectures = GetArchitectures();
+  architectures.erase(idg::api::Type::CPU_REFERENCE);
+
+  for (idg::api::Type architecture : architectures) {
+    std::vector<double> image_arch =
+        GridImage(architecture, WMode::kWTiling, {0, 0}, true);
     CompareImages(image_ref, image_arch, kPixelTolerance);
   }
 }

@@ -37,7 +37,8 @@ class BufferSet {
 
   virtual ~BufferSet(){};
 
-  static uint64_t get_memory_per_timestep(size_t nStations, size_t nChannels);
+  static uint64_t get_memory_per_timestep(size_t nStations, size_t nChannels,
+                                          size_t nCorrelations = 4);
 
   /**
    * @brief Initialize bufferset for the image properties

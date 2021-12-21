@@ -54,8 +54,6 @@ class BufferImpl : public virtual Buffer {
   void set_stations(size_t nrStations);
   size_t get_stations() const;
 
-  size_t get_nr_correlations() const;
-
   void set_image(double* image) {}
 
   // Bake the plan after parameters are set
@@ -104,7 +102,6 @@ class BufferImpl : public virtual Buffer {
   size_t m_nrStations;
   size_t m_nr_channels;
   size_t m_nr_baselines;
-  size_t m_nrPolarizations;
   Array1D<float> m_shift;
   std::vector<unsigned int> m_default_aterm_offsets;
   std::vector<unsigned int> m_aterm_offsets;
