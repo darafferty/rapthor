@@ -7,7 +7,7 @@ from rapthor.lib.parset import parset_read
 class TestField(unittest.TestCase):
     @classmethod
     def downloadms(self, filename):
-        url = 'https://www.astron.nl/citt/ci_data/prefactor/tDDECal.in_MS.tgz'
+        url = 'https://www.astron.nl/citt/ci_data/rapthor/tDDECal.in_MS.tgz'
         r = requests.get(url)
         f = open('downloaded.tgz', 'wb')
         f.write(r.content)
