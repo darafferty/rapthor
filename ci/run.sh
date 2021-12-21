@@ -11,8 +11,7 @@ python3 setup.py install
 # At the moment only one tests passes. After fixing the other two the single
 # test should be removed and the commented out code should be enabled.
 cd test
-python3 test_context.py
-#for f in *.py; do
-#	python3 $f
-#done
+for f in *.py; do
+	python3 $f
+done
 
