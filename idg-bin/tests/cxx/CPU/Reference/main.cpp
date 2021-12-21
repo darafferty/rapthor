@@ -30,10 +30,11 @@ int test01() {
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
   unsigned int nr_w_layers = 1;
   float integration_time = 1.0f;
+  const char *layout_file = "LOFAR_lba.txt";
 
   // Initialize Data object
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
-                                         integration_time, nr_channels);
+  idg::Data data = idg::get_example_data(
+      nr_baselines, grid_size, integration_time, nr_channels, layout_file);
 
   // Print data info
   data.print_info();

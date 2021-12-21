@@ -15,14 +15,6 @@ void utils_init_example_spheroidal(void *ptr, int subgrid_size) {
   memcpy(ptr, spheroidal.data(), spheroidal.bytes());
 }
 
-void utils_init_example_uvw(void *ptr, int nr_stations, int nr_baselines,
-                            int nr_timesteps, float integration_time) {
-  idg::Array2D<idg::UVW<float>> uvw((idg::UVW<float> *)ptr, nr_baselines,
-                                    nr_timesteps);
-  idg::Data data;
-  data.get_uvw(uvw, 0, 0, integration_time);
-}
-
 void utils_init_example_frequencies(void *ptr, int nr_channels) {
   idg::Array1D<float> frequencies = idg::get_example_frequencies(nr_channels);
   memcpy(ptr, frequencies.data(), frequencies.bytes());

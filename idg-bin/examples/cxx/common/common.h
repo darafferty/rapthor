@@ -26,7 +26,7 @@
 using namespace std;
 
 std::tuple<int, int, int, int, int, int, int, int, int, int, int, float, bool,
-           bool>
+           bool, const char *>
 read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;      // all LOFAR LBA stations
   const unsigned int DEFAULT_NR_CHANNELS = 16 * 4;  // 16 channels, 4 subbands
@@ -40,6 +40,7 @@ read_parameters() {
   const float DEFAULT_GRID_PADDING = 1.0;
   const bool DEFAULT_USE_WTILES = false;
   const bool DEFAULT_STOKES_I_ONLY = false;
+  const char *DEFAULT_LAYOUT_FILE = "LOFAR_lba.txt";
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
@@ -95,10 +96,15 @@ read_parameters() {
   auto stokes_i_only =
       cstr_stokes_i_only ? atoi(cstr_stokes_i_only) : DEFAULT_STOKES_I_ONLY;
 
-  return std::make_tuple(
-      total_nr_stations, total_nr_channels, total_nr_timesteps, nr_stations,
-      nr_channels, nr_timesteps, nr_timeslots, grid_size, subgrid_size,
-      kernel_size, nr_cycles, grid_padding, use_wtiles, stokes_i_only);
+  char *cstr_layout_file = getenv("LAYOUT_FILE");
+  const char *layout_file =
+      cstr_layout_file ? cstr_layout_file : DEFAULT_LAYOUT_FILE;
+
+  return std::make_tuple(total_nr_stations, total_nr_channels,
+                         total_nr_timesteps, nr_stations, nr_channels,
+                         nr_timesteps, nr_timeslots, grid_size, subgrid_size,
+                         kernel_size, nr_cycles, grid_padding, use_wtiles,
+                         stokes_i_only, layout_file);
 }
 
 void print_parameters(unsigned int total_nr_stations,
@@ -183,12 +189,13 @@ void run() {
   float grid_padding;
   bool use_wtiles;
   bool stokes_i_only;
+  const char *layout_file;
 
   // Read parameters from environment
   std::tie(total_nr_stations, total_nr_channels, total_nr_timesteps,
            nr_stations, nr_channels, nr_timesteps, nr_timeslots, grid_size,
            subgrid_size, kernel_size, nr_cycles, grid_padding, use_wtiles,
-           stokes_i_only) = read_parameters();
+           stokes_i_only, layout_file) = read_parameters();
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
 
   // Update parameters for Stokes-I only mode
@@ -199,8 +206,8 @@ void run() {
 
   // Initialize Data object
   clog << ">>> Initialize data" << endl;
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
-                                         integration_time, nr_channels);
+  idg::Data data = idg::get_example_data(
+      nr_baselines, grid_size, integration_time, nr_channels, layout_file);
 
   // Print data info
   data.print_info();

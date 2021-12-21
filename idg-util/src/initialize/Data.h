@@ -18,7 +18,7 @@ class Data {
   /*
    * Constructor
    */
-  Data(std::string layout_file = "LOFAR_lba.txt");
+  Data(std::string layout_file);
 
   /*
    * Parameters
@@ -71,7 +71,7 @@ class Data {
   /*
    * Set station_coordinates
    */
-  void set_station_coordinates(std::string layout_file);
+  void set_station_coordinates(const std::string& layout_file);
 
   std::vector<StationCoordinate> m_station_coordinates;
 

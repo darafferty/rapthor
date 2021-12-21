@@ -165,6 +165,20 @@ void receive_bytes(int src, void *buf, size_t bytes) {
   MPI_Recv(buf, bytes, MPI_BYTE, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
+void send_string(int dst, const std::string &value) {
+  MPI_Send(&value[0], value.size() + 1, MPI_CHAR, dst, 0, MPI_COMM_WORLD);
+}
+
+std::string receive_string(int src = 0) {
+  MPI_Status status;
+  MPI_Probe(src, 0, MPI_COMM_WORLD, &status);
+  int count;
+  MPI_Get_count(&status, MPI_CHAR, &count);
+  char value[count];
+  MPI_Recv(&value, count, MPI_CHAR, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+  return value;
+}
+
 class MPIRequest {
  public:
   MPIRequest(bool blocking = false) : m_blocking(blocking) {}
@@ -232,6 +246,7 @@ idg::Plan::Options get_plan_options() {
 void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
                   unsigned int world_size) {
   unsigned int w = 0;  // W-stacking is handled by the workers
+  unsigned int nr_polarizations = grid->get_z_dim();
   unsigned int grid_size = grid->get_y_dim();
 
   idg::Array2D<std::complex<float>> tmp(grid_size, grid_size);
@@ -239,7 +254,7 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
 
 #pragma omp parallel
   {
-    for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
+    for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
       for (unsigned int i = (world_size + 1) / 2; i > 0; i /= 2) {
         if ((unsigned int)rank < i) {
           if (omp_get_thread_num() == 0) {
@@ -270,10 +285,11 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
 }
 
 void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
+  unsigned int nr_polarizations = grid->get_z_dim();
   unsigned int grid_size = grid->get_y_dim();
   unsigned int w = 0;  // W-stacking is handled by the workers
   for (unsigned int y = 0; y < grid_size; y++) {
-    for (unsigned int pol = 0; pol < NR_CORRELATIONS; pol++) {
+    for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
       std::complex<float> *row_ptr = grid->data(w, pol, y, 0);
       size_t sizeof_row = grid_size * sizeof(std::complex<float>);
       MPI_Bcast(row_ptr, sizeof_row, MPI_BYTE, root, MPI_COMM_WORLD);
@@ -313,6 +329,7 @@ void run_master() {
   unsigned int kernel_size;
   unsigned int nr_cycles;
   bool use_wtiles = false;
+  const std::string layout_file = "LOFAR_lba.txt";
 
   // Read parameters from environment
   std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
@@ -321,8 +338,9 @@ void run_master() {
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
 
   // Initialize Data object
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
-                                         integration_time, nr_channels);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time,
+                            nr_channels, layout_file.c_str());
 
   // Print data info
   data.print_info();
@@ -362,6 +380,7 @@ void run_master() {
     send_int(dst, kernel_size);
     send_float(dst, cell_size);
     send_int(dst, nr_cycles);
+    send_string(dst, layout_file);
   }
 
   // Initialize frequency data for master
@@ -613,6 +632,7 @@ void run_worker() {
   unsigned int kernel_size = receive_int();
   float cell_size = receive_float();
   unsigned int nr_cycles = receive_int();
+  const std::string layout_file = receive_string();
 
   // Initialize proxy
   ProxyType proxy;
@@ -636,8 +656,9 @@ void run_worker() {
   receive_array(0, frequencies);
 
   // Receive data
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
-                                         integration_time, nr_channels);
+  idg::Data data =
+      idg::get_example_data(nr_baselines, grid_size, integration_time,
+                            nr_channels, layout_file.c_str());
 
   // Plan options
   idg::Plan::Options options = get_plan_options();

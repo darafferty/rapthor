@@ -852,22 +852,6 @@ def get_zero_visibilities(nr_baselines,
 ##### BEGIN: INITIALZE EXAMPLE DATA #####
 
 
-def init_example_uvw(uvw, integration_time=10):
-    """Initialize uvw for test case defined in utility/initialize"""
-    nr_baselines = uvw.shape[0]
-    nr_stations = nr_baselines_to_nr_stations(nr_baselines)
-    nr_time = uvw.shape[1]
-    lib.utils_init_example_uvw.argtypes = [
-        ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-        ctypes.c_float
-    ]
-    lib.utils_init_example_uvw(uvw.ctypes.data_as(ctypes.c_void_p),
-                               ctypes.c_int(nr_stations),
-                               ctypes.c_int(nr_baselines),
-                               ctypes.c_int(nr_time),
-                               ctypes.c_float(integration_time))
-
-
 def init_example_frequencies(frequencies):
     """Initialize frequencies for test case defined in utility/initialize"""
     nr_channels = frequencies.shape[0]
@@ -953,20 +937,6 @@ def init_example_baselines(baselines, nr_stations):
     lib.utils_init_example_baselines(baselines.ctypes.data_as(ctypes.c_void_p),
                                      ctypes.c_int(nr_stations),
                                      ctypes.c_int(nr_baselines))
-
-
-def get_example_uvw(nr_baselines,
-                    nr_time,
-                    integration_time,
-                    dtype=uvwtype,
-                    info=False):
-    """Initialize and return example UVW array"""
-    uvw = np.zeros((nr_baselines, nr_time), dtype=uvwtype)
-    init_example_uvw(uvw, integration_time)
-    if info == True:
-        print("uvw: np.ndarray(shape = (nr_baselines, nr_time), " + \
-                                 "dtype = " + str(dtype) + ")")
-    return uvw.astype(dtype=dtype)
 
 
 def get_example_frequencies(nr_channels, dtype=frequenciestype, info=False):

@@ -12,7 +12,8 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
-std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
+std::tuple<int, int, int, int, int, int, int, bool, bool, const char *>
+read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;
   const unsigned int DEFAULT_NR_CHANNELS = 16;
   const unsigned int DEFAULT_NR_TIMESTEPS = 3600 * 4;
@@ -21,6 +22,7 @@ std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
   const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const bool DEFAULT_USE_WTILES = false;
   const bool DEFAULT_PRINT_METADATA = false;
+  const char *DEFAULT_LAYOUT_FILE = "LOFAR_lba.txt";
 
   char *cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
@@ -57,9 +59,13 @@ std::tuple<int, int, int, int, int, int, int, bool, bool> read_parameters() {
   auto print_metadata =
       cstr_print_metadata ? atoi(cstr_print_metadata) : DEFAULT_PRINT_METADATA;
 
+  char *cstr_layout_file = getenv("LAYOUT_FILE");
+  const char *layout_file =
+      cstr_layout_file ? cstr_layout_file : DEFAULT_LAYOUT_FILE;
+
   return std::make_tuple(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
                          grid_size, subgrid_size, kernel_size, use_wtiles,
-                         print_metadata);
+                         print_metadata, layout_file);
 }
 
 void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
@@ -125,10 +131,11 @@ int main(int argc, char **argv) {
   bool print_metadata;
   float integration_time = 1.0f;
   unsigned int nr_polarizations = 4;
+  std::string layout_file;
 
   // Read parameters from environment
   std::tie(nr_stations, nr_channels, nr_timesteps, nr_timeslots, grid_size,
-           subgrid_size, kernel_size, use_wtiles, print_metadata) =
+           subgrid_size, kernel_size, use_wtiles, print_metadata, layout_file) =
       read_parameters();
 
   // Compute nr_baselines
@@ -136,8 +143,8 @@ int main(int argc, char **argv) {
 
   // Initialize Data object
   std::clog << ">>> Initialize data" << std::endl;
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
-                                         integration_time, nr_channels);
+  idg::Data data = idg::get_example_data(
+      nr_baselines, grid_size, integration_time, nr_channels, layout_file);
 
   // Print data info
   data.print_info();
