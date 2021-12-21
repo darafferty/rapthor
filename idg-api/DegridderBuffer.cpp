@@ -109,6 +109,9 @@ void DegridderBufferImpl::flush() {
   Plan::Options options;
   options.nr_w_layers = proxy.get_grid().get_w_dim();
   options.plan_strict = false;
+  options.mode = (m_bufferset.get_nr_polarizations() == 4)
+                     ? Plan::Mode::FULL_POLARIZATION
+                     : Plan::Mode::STOKES_I_ONLY;
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
@@ -158,6 +161,18 @@ std::vector<std::pair<size_t, std::complex<float>*>>
 DegridderBufferImpl::compute() {
   flush();
   m_buffer_full = false;
+  if (m_bufferset.get_nr_correlations() == 2) {
+    m_bufferVisibilities2.zero();
+    for (int row_id = 0; row_id < m_row_ids_to_data.size(); ++row_id) {
+      for (int i = 0; i < m_nr_channels; ++i) {
+        m_bufferVisibilities2(row_id, i, 0) =
+            *(m_row_ids_to_data[row_id].second + i * 2);
+        m_bufferVisibilities2(row_id, i, 3) =
+            *(m_row_ids_to_data[row_id].second + i * 2 + 1);
+      }
+      m_row_ids_to_data[row_id].second = m_bufferVisibilities2.data(row_id);
+    }
+  }
   return std::move(m_row_ids_to_data);
 }
 
@@ -170,7 +185,14 @@ void DegridderBufferImpl::finished_reading() {
   m_data_read = true;
 }
 
-void DegridderBufferImpl::malloc_buffers() { BufferImpl::malloc_buffers(); }
+void DegridderBufferImpl::malloc_buffers() {
+  BufferImpl::malloc_buffers();
+
+  if (m_bufferset.get_nr_correlations() == 2) {
+    m_bufferVisibilities2 = Array3D<std::complex<float>>(
+        m_nr_baselines * m_bufferTimesteps, m_nr_channels, 4);
+  }
+}
 
 }  // namespace api
 }  // namespace idg

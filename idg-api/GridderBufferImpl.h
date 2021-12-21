@@ -93,17 +93,6 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
   /** \brief Explicitly flush the buffer */
   virtual void flush() override;
 
-  /** \brief Transform the grid; normal use without arguments
-   * No arguments => perform on grid set by set_grid()
-   * Paremeters are need as transform is done on an external grid
-   * i.e. on a copy
-   * param crop_tolerance [in] ...
-   * param nr_correlations [in] number of correlations (normally 4)
-   * param height [in] width in pixel
-   * param width [in] width in pixel
-   * param grid [in] complex<double>[nr_correlations][height][width]
-   */
-
   /** reset_aterm() Resets the new aterm for the next time chunk */
   virtual void reset_aterm();
 

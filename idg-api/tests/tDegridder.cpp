@@ -9,9 +9,18 @@
 
 namespace {
 
+enum class StokesMode {
+  kStokesIQUV,        // Use full stokes in model image and processing.
+  kStokesI,           // Use stokes I only in model image an processing.
+  kStokesIZeroPadded  // Fill only the Stokes I plane of the model image,
+                      // the others (QUV) are all zeros,
+                      // but do use full stokes in processing
+};
+
 const std::size_t kNrTimesteps = 9;
 const std::size_t kNrStations = 4;
 const std::size_t kNrCorrelations = 4;
+const std::size_t kNrPolarisations = 4;
 const std::vector<std::vector<double>> kBands = {
     {100.e6, 101.e6, 102.e6, 103.e6, 104.e6}};
 const std::size_t kNrBaselines = (kNrStations + 1) * kNrStations / 2;
@@ -24,9 +33,11 @@ std::unique_ptr<idg::api::BufferSet> CreateBufferset(
     idg::api::BufferSetType type,
     idg::api::Type architecture = idg::api::Type::CPU_OPTIMIZED,
     const std::array<int, 2> shift = {0, 0},
-    const WMode wmode = WMode::kNeither) {
+    const WMode wmode = WMode::kNeither,
+    const StokesMode stokesmode = StokesMode::kStokesIQUV) {
   idg::api::options_type options;
   AddWModeToOptions(wmode, options);
+  options["stokes_I_only"] = stokesmode == (StokesMode::kStokesI);
   std::unique_ptr<idg::api::BufferSet> bufferset(
       idg::api::BufferSet::create(architecture));
 
@@ -36,7 +47,12 @@ std::unique_ptr<idg::api::BufferSet> CreateBufferset(
   unsigned int imagesize = 256;
   float max_w = 5;
 
-  std::vector<double> image(kNrCorrelations * imagesize * imagesize, 0.0);
+  int nr_polarisations =
+      (stokesmode == StokesMode::kStokesI) ? 1 : kNrPolarisations;
+  int nr_polarisations_model =
+      (stokesmode == StokesMode::kStokesIQUV) ? kNrPolarisations : 1;
+
+  std::vector<double> image(nr_polarisations * imagesize * imagesize, 0.0);
 
 #if 1
   // Create a few very artificial sources.
@@ -48,7 +64,7 @@ std::unique_ptr<idg::api::BufferSet> CreateBufferset(
       std::size_t y2 = 142 + y - shift[1];
       std::size_t x3 = 200 + x - shift[0];
       std::size_t y3 = 200 + y - shift[1];
-      for (int c = 0; c < kNrCorrelations; c++) {
+      for (int c = 0; c < nr_polarisations_model; c++) {
         std::size_t c_offset = c * imagesize * imagesize;
         image[c_offset + imagesize * y1 + x1] += 42 - std::abs(x * y) + c;
         image[c_offset + imagesize * y2 + x2] += 16 + 36 - x * x - y * y + c;
@@ -355,15 +371,19 @@ BOOST_AUTO_TEST_CASE(shift) {
     ptrs_shift.push_back(data_shift.data() + t * kNrBaselines * kRowSize);
   }
 
-  for (idg::api::Type architecture : GetArchitectures()) {
-    // Create reference output data.
-    std::unique_ptr<idg::api::BufferSet> bs_ref =
-        CreateBufferset(idg::api::BufferSetType::kBulkDegridding, architecture);
-    const idg::api::BulkDegridder* dg_ref = bs_ref->get_bulk_degridder(0);
-    dg_ref->compute_visibilities(antennas.first, antennas.second, uvws,
-                                 ptrs_ref);
-    bs_ref.reset();
+  // Create reference output data.
+  std::unique_ptr<idg::api::BufferSet> bs_ref = CreateBufferset(
+      idg::api::BufferSetType::kBulkDegridding, idg::api::Type::CPU_OPTIMIZED);
+  const idg::api::BulkDegridder* dg_ref = bs_ref->get_bulk_degridder(0);
+  dg_ref->compute_visibilities(antennas.first, antennas.second, uvws, ptrs_ref);
+  bs_ref.reset();
 
+  std::set<idg::api::Type> architectures = GetArchitectures();
+  // CUDA Generic produces zeros when degridding
+  // see bug ticket https://jira.skatelescope.org/browse/AST-760
+  architectures.erase(idg::api::Type::CUDA_GENERIC);
+
+  for (idg::api::Type architecture : architectures) {
     for (WMode wmode : kWModes) {
       std::unique_ptr<idg::api::BufferSet> bs_shift =
           CreateBufferset(idg::api::BufferSetType::kBulkDegridding,
@@ -373,16 +393,55 @@ BOOST_AUTO_TEST_CASE(shift) {
       std::fill(data_shift.begin(), data_shift.end(), kDummyData);
       dg_shift->compute_visibilities(antennas.first, antennas.second, uvws,
                                      ptrs_shift);
-
       float tolerance = 3e-3;
-      if (architecture == idg::api::Type::CUDA_GENERIC) {
-        tolerance = 1e-10;
-      } else if (architecture == idg::api::Type::HYBRID_CUDA_CPU_OPTIMIZED) {
-        tolerance = 3.0;
-      }
-
       CompareResults(data_ref.data(), data_shift.data(), tolerance);
     }
+  }
+}
+
+BOOST_AUTO_TEST_CASE(stokes_I_only) {
+  // This test tests all architectures
+
+  const std::array<int, 2> kShift{10, 20};
+
+  const auto antennas = CreateAntennas();
+  const std::vector<double> uvw = CreateUVW(10.0, 20.0, 3.0);
+  const std::vector<const double*> uvws(kNrTimesteps, uvw.data());
+
+  std::vector<std::complex<float>> data_ref(kNrRows * kRowSize, kDummyData);
+  std::vector<std::complex<float>> data_test(kNrRows * kRowSize, kDummyData);
+  std::vector<std::complex<float>*> ptrs_ref;
+  std::vector<std::complex<float>*> ptrs_test;
+  for (std::size_t t = 0; t < kNrTimesteps; ++t) {
+    ptrs_ref.push_back(data_ref.data() + t * kNrBaselines * kRowSize);
+    ptrs_test.push_back(data_test.data() + t * kNrBaselines * kRowSize);
+  }
+
+  // Create reference output data.
+  std::unique_ptr<idg::api::BufferSet> bs_ref = CreateBufferset(
+      idg::api::BufferSetType::kBulkDegridding, idg::api::Type::CPU_OPTIMIZED,
+      {0, 0}, WMode::kNeither, StokesMode::kStokesIZeroPadded);
+  const idg::api::BulkDegridder* dg_ref = bs_ref->get_bulk_degridder(0);
+  dg_ref->compute_visibilities(antennas.first, antennas.second, uvws, ptrs_ref);
+  bs_ref.reset();
+  std::set<idg::api::Type> architectures = GetArchitectures();
+
+  // CUDA Generic produces zeros when degridding
+  // see bug ticket https://jira.skatelescope.org/browse/AST-760
+  // This problem is unrelated to Stokes_I_only mode
+  architectures.erase(idg::api::Type::CUDA_GENERIC);
+
+  for (idg::api::Type architecture : architectures) {
+    std::unique_ptr<idg::api::BufferSet> bs_test =
+        CreateBufferset(idg::api::BufferSetType::kBulkDegridding, architecture,
+                        kShift, WMode::kWTiling, StokesMode::kStokesI);
+    const idg::api::BulkDegridder* dg_test = bs_test->get_bulk_degridder(0);
+
+    std::fill(data_test.begin(), data_test.end(), kDummyData);
+    dg_test->compute_visibilities(antennas.first, antennas.second, uvws,
+                                  ptrs_test);
+    float tolerance = 3e-3;
+    CompareResults(data_ref.data(), data_test.data(), tolerance);
   }
 }
 

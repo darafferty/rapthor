@@ -53,6 +53,7 @@ void BulkDegridderImpl::compute_visibilities(
 
   const size_t subgridsize = bufferset_.get_subgridsize();
   proxy::Proxy& proxy = bufferset_.get_proxy();
+  const int nr_correlations = bufferset_.get_nr_correlations();
 
   static const double kDefaultUVWFactors[3] = {1.0, 1.0, 1.0};
   if (!uvw_factors) uvw_factors = kDefaultUVWFactors;
@@ -64,7 +65,7 @@ void BulkDegridderImpl::compute_visibilities(
   auto bufferUVW =
       proxy.allocate_array2d<UVW<float>>(nr_baselines, nr_timesteps);
   auto bufferVisibilities = proxy.allocate_array4d<std::complex<float>>(
-      nr_baselines, nr_timesteps, frequencies_.size(), 4);
+      nr_baselines, nr_timesteps, frequencies_.size(), nr_correlations);
   // The proxy does not touch visibilities for out-of-bound uvw coordinates.
   // Since we copy all visibilities to the caller, initialize them to zero.
   bufferVisibilities.zero();
@@ -119,6 +120,9 @@ void BulkDegridderImpl::compute_visibilities(
   Plan::Options options;
   options.nr_w_layers = proxy.get_grid().get_w_dim();
   options.plan_strict = false;
+  options.mode = (bufferset_.get_nr_polarizations() == 4)
+                     ? Plan::Mode::FULL_POLARIZATION
+                     : Plan::Mode::STOKES_I_ONLY;
 
   // Create plan
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Start();
@@ -135,17 +139,41 @@ void BulkDegridderImpl::compute_visibilities(
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 
   // Transpose bufferVisibilities into visibilities.
-  const unsigned int nr_correlations = 4;
 
-  const size_t baseline_size = frequencies_.size() * nr_correlations;
-  for (size_t t = 0; t < nr_timesteps; ++t) {
-    for (size_t bl = 0; bl < nr_baselines; ++bl) {
-      const int local_bl = baseline_map[bl];
-      if (local_bl != -1) {
-        const auto* in = reinterpret_cast<std::complex<float>*>(
-            bufferVisibilities.data(local_bl, t));
-        std::complex<float>* out = visibilities[t] + bl * baseline_size;
-        std::copy_n(in, baseline_size, out);
+  const size_t nr_correlations_out = 4;
+  const size_t baseline_size = frequencies_.size() * nr_correlations_out;
+
+  if (nr_correlations == nr_correlations_out) {
+    for (size_t t = 0; t < nr_timesteps; ++t) {
+      for (size_t bl = 0; bl < nr_baselines; ++bl) {
+        const int local_bl = baseline_map[bl];
+        if (local_bl != -1) {
+          const auto* in = reinterpret_cast<std::complex<float>*>(
+              bufferVisibilities.data(local_bl, t));
+          std::complex<float>* out = visibilities[t] + bl * baseline_size;
+          std::copy_n(in, baseline_size, out);
+        }
+      }
+    }
+  } else {
+    assert(nr_correlations == 2);
+    assert(nr_correlations_out == 4);
+    const size_t nr_channels = frequencies_.size();
+
+    for (size_t t = 0; t < nr_timesteps; ++t) {
+      for (size_t bl = 0; bl < nr_baselines; ++bl) {
+        const int local_bl = baseline_map[bl];
+        if (local_bl != -1) {
+          const auto* in = reinterpret_cast<std::complex<float>*>(
+              bufferVisibilities.data(local_bl, t));
+          std::complex<float>* out = visibilities[t] + bl * baseline_size;
+          for (size_t i = 0; i < nr_channels; ++i) {
+            out[i * nr_correlations_out] = in[i * nr_correlations];
+            out[i * nr_correlations_out + 1] = 0;
+            out[i * nr_correlations_out + 2] = 0;
+            out[i * nr_correlations_out + 3] = in[i * nr_correlations + 1];
+          }
+        }
       }
     }
   }

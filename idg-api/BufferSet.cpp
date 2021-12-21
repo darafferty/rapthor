@@ -32,8 +32,6 @@
 
 #define ENABLE_VERBOSE_TIMING 0
 
-#define NR_CORRELATIONS 4
-
 extern "C" void cgetrf_(int* m, int* n, std::complex<float>* a, int* lda,
                         int* ipiv, int* info);
 
@@ -49,12 +47,12 @@ BufferSet* BufferSet::create(Type architecture) {
   return new BufferSetImpl(architecture);
 }
 
-uint64_t BufferSet::get_memory_per_timestep(size_t nStations,
-                                            size_t nChannels) {
+uint64_t BufferSet::get_memory_per_timestep(size_t nStations, size_t nChannels,
+                                            size_t nCorrelations) {
   size_t nBaselines = ((nStations - 1) * nStations) / 2;
   size_t sizeof_timestep = 0;
   sizeof_timestep +=
-      auxiliary::sizeof_visibilities(nBaselines, 1, nChannels, NR_CORRELATIONS);
+      auxiliary::sizeof_visibilities(nBaselines, 1, nChannels, nCorrelations);
   sizeof_timestep += auxiliary::sizeof_uvw(nBaselines, 1);
   return sizeof_timestep;
 }
@@ -74,7 +72,9 @@ int nextcomposite(int n) {
 BufferSetImpl::BufferSetImpl(Type architecture)
     : m_default_aterm_correction(0, 0, 0, 0),
       m_avg_aterm_correction(0, 0, 0, 0),
-      m_nr_polarizations(1),
+      m_stokes_I_only(false),
+      m_nr_correlations(4),
+      m_nr_polarizations(4),
       m_proxy(create_proxy(architecture)),
       m_shift(2),
       m_get_image_watch(Stopwatch::create()),
@@ -167,8 +167,8 @@ std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
 
 std::shared_ptr<idg::Grid> BufferSetImpl::allocate_grid() {
   m_proxy->free_grid();
-  std::shared_ptr<idg::Grid> grid =
-      m_proxy->allocate_grid(m_nr_w_layers, 4, m_padded_size, m_padded_size);
+  std::shared_ptr<idg::Grid> grid = m_proxy->allocate_grid(
+      m_nr_w_layers, m_nr_polarizations, m_padded_size, m_padded_size);
   grid->zero();
   m_proxy->set_grid(grid);
   return grid;
@@ -177,6 +177,19 @@ std::shared_ptr<idg::Grid> BufferSetImpl::allocate_grid() {
 void BufferSetImpl::init(size_t size, float cell_size, float max_w,
                          float shiftl, float shiftm, options_type& options) {
   m_average_beam.clear();
+
+  m_stokes_I_only = false;
+  if (options.count("stokes_I_only")) {
+    m_stokes_I_only = options["stokes_I_only"];
+  }
+
+  if (m_stokes_I_only) {
+    m_nr_correlations = 2;
+    m_nr_polarizations = 1;
+  } else {
+    m_nr_correlations = 4;
+    m_nr_polarizations = 4;
+  }
 
   const float taper_kernel_size = 7.0;
   const float a_term_kernel_size = (options.count("a_term_kernel_size"))
@@ -400,7 +413,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 #pragma omp parallel
   {
     typedef float arr_float_1D_t[m_size];
-    typedef float arr_float_2D_t[NR_CORRELATIONS][m_size];
+    typedef float arr_float_2D_t[m_nr_polarizations][m_size];
     const size_t size_1D = (sizeof(arr_float_1D_t) + 63) & ~size_t(63);
     const size_t size_2D = (sizeof(arr_float_2D_t) + 63) & ~size_t(63);
 
@@ -421,40 +434,62 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
-      memset(w0_row_real, 0, NR_CORRELATIONS * m_size * sizeof(float));
-      memset(w0_row_imag, 0, NR_CORRELATIONS * m_size * sizeof(float));
+      memset(w0_row_real, 0, m_nr_polarizations * m_size * sizeof(float));
+      memset(w0_row_imag, 0, m_nr_polarizations * m_size * sizeof(float));
 
       const Array3D<double> image_array(const_cast<double*>(image),
-                                        NR_CORRELATIONS, m_size, m_size);
+                                        m_nr_polarizations, m_size, m_size);
 
       // Copy row of image and convert stokes to polarizations
-      for (int x = 0; x < m_size; x++) {
-        float scale = do_scale ? (*m_scalar_beam)[m_size * y + x] : 1.0f;
-        // Stokes I
-        w0_row_real[0][x] = image_array(0, y, x) / scale;
-        w0_row_real[3][x] = image_array(0, y, x) / scale;
-        // Stokes Q
-        w0_row_real[0][x] += image_array(1, y, x) / scale;
-        w0_row_real[3][x] -= image_array(1, y, x) / scale;
-        // Stokes U
-        w0_row_real[1][x] = image_array(2, y, x) / scale;
-        w0_row_real[2][x] = image_array(2, y, x) / scale;
-        // Stokes V
-        w0_row_imag[1][x] = -image_array(3, y, x) / scale;
-        w0_row_imag[2][x] = image_array(3, y, x) / scale;
+      if (m_stokes_I_only) {
+        for (int x = 0; x < m_size; x++) {
+          float scale = do_scale ? (*m_scalar_beam)[m_size * y + x] : 1.0f;
+          // Stokes I
+          constexpr int pol = 0;
 
-        // Check whether the beam response was so small (or zero) that the
-        // result was non-finite. This test is done after having divided the
-        // image by the beam, instead of testing the beam itself for zero,
-        // because the beam can be unequal to zero and still cause an overflow.
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          w0_row_real[pol][x] = image_array(0, y, x) / scale;
+
+          // Check whether the beam response was so small (or zero) that the
+          // result was non-finite. This test is done after having divided the
+          // image by the beam, instead of testing the beam itself for zero,
+          // because the beam can be unequal to zero and still cause an
+          // overflow.
           if (!std::isfinite(w0_row_real[pol][x]) ||
               !std::isfinite(w0_row_imag[pol][x])) {
             w0_row_real[pol][x] = 0.0;
             w0_row_imag[pol][x] = 0.0;
           }
         }
-      }  // end for x
+      } else {
+        for (int x = 0; x < m_size; x++) {
+          float scale = do_scale ? (*m_scalar_beam)[m_size * y + x] : 1.0f;
+          // Stokes I
+          w0_row_real[0][x] = image_array(0, y, x) / scale;
+          w0_row_real[3][x] = image_array(0, y, x) / scale;
+          // Stokes Q
+          w0_row_real[0][x] += image_array(1, y, x) / scale;
+          w0_row_real[3][x] -= image_array(1, y, x) / scale;
+          // Stokes U
+          w0_row_real[1][x] = image_array(2, y, x) / scale;
+          w0_row_real[2][x] = image_array(2, y, x) / scale;
+          // Stokes V
+          w0_row_imag[1][x] = -image_array(3, y, x) / scale;
+          w0_row_imag[2][x] = image_array(3, y, x) / scale;
+
+          // Check whether the beam response was so small (or zero) that the
+          // result was non-finite. This test is done after having divided the
+          // image by the beam, instead of testing the beam itself for zero,
+          // because the beam can be unequal to zero and still cause an
+          // overflow.
+          for (int pol = 0; pol < m_nr_polarizations; pol++) {
+            if (!std::isfinite(w0_row_real[pol][x]) ||
+                !std::isfinite(w0_row_imag[pol][x])) {
+              w0_row_real[pol][x] = 0.0;
+              w0_row_imag[pol][x] = 0.0;
+            }
+          }
+        }  // end for x
+      }
 
       // Compute inverse spheroidal
       for (int x = 0; x < m_size; x++) {
@@ -466,7 +501,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
         // Compute current row of w-plane
 
         if (!m_apply_wstack_correction) {
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < m_nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
               w_row_real[pol][x] = w0_row_real[pol][x] * inv_tapers[x];
               w_row_imag[pol][x] = w0_row_imag[pol][x] * inv_tapers[x];
@@ -486,7 +521,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
           }
 
           // Compute current row of w-plane
-          for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+          for (int pol = 0; pol < m_nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
               float value_real = w0_row_real[pol][x] * inv_tapers[x];
               float value_imag = w0_row_imag[pol][x] * inv_tapers[x];
@@ -501,7 +536,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
         }
 
         // Set m_grid
-        for (int pol = 0; pol < NR_CORRELATIONS; pol++) {
+        for (int pol = 0; pol < m_nr_polarizations; pol++) {
           for (int x = 0; x < m_size; x++) {
             float value_real = w_row_real[pol][x];
             float value_imag = w_row_imag[pol][x];
@@ -528,7 +563,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 #if ENABLE_VERBOSE_TIMING
   std::cout << "fft w_layers";
 #endif
-  int batch = nr_w_layers * 4;
+  int batch = nr_w_layers * m_nr_polarizations;
   double runtime_fft = -omp_get_wtime();
   fft2f(batch, m_padded_size, m_padded_size, grid.data(0, 0, 0, 0));
   runtime_fft += omp_get_wtime();
@@ -547,21 +582,20 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 
 void BufferSetImpl::write_grid(idg::Grid& grid) {
   size_t nr_w_layers = grid.get_w_dim();
-  size_t nr_correlations = grid.get_z_dim();
+  size_t nr_polarizations = grid.get_z_dim();
   size_t grid_size = grid.get_y_dim();
-  assert(nr_correlations == 4);
   assert(grid_size == grid.get_x_dim());
 
-  std::vector<float> grid_real(nr_w_layers * nr_correlations * grid_size *
+  std::vector<float> grid_real(nr_w_layers * nr_polarizations * grid_size *
                                grid_size * sizeof(float));
-  std::vector<float> grid_imag(nr_w_layers * nr_correlations * grid_size *
+  std::vector<float> grid_imag(nr_w_layers * nr_polarizations * grid_size *
                                grid_size * sizeof(float));
   for (int w = 0; w < nr_w_layers; w++) {
 #pragma omp parallel for
     for (int y = 0; y < grid_size; y++) {
       for (int x = 0; x < grid_size; x++) {
-        for (int pol = 0; pol < nr_correlations; pol++) {
-          size_t idx = w * nr_correlations * grid_size * grid_size +
+        for (int pol = 0; pol < nr_polarizations; pol++) {
+          size_t idx = w * nr_polarizations * grid_size * grid_size +
                        pol * grid_size * grid_size + y * grid_size + x;
           grid_real[idx] = grid(w, pol, y, x).real();
           grid_imag[idx] = grid(w, pol, y, x).imag();
@@ -570,8 +604,8 @@ void BufferSetImpl::write_grid(idg::Grid& grid) {
     }
   }
   std::cout << "writing grid to grid_real.npy and grid_imag.npy" << std::endl;
-  const long unsigned leshape[] = {(long unsigned int)nr_w_layers, 4, grid_size,
-                                   grid_size};
+  const long unsigned leshape[] = {(long unsigned int)nr_w_layers,
+                                   nr_polarizations, grid_size, grid_size};
   npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape, grid_real);
   npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
 }
@@ -610,7 +644,7 @@ void BufferSetImpl::get_image(double* image) {
 #pragma omp parallel
   {
     typedef float arr_float_1D_t[m_size];
-    typedef float arr_float_2D_t[NR_CORRELATIONS][m_size];
+    typedef float arr_float_2D_t[m_nr_polarizations][m_size];
     const size_t size_1D = (sizeof(arr_float_1D_t) + 63) & ~size_t(63);
     const size_t size_2D = (sizeof(arr_float_2D_t) + 63) & ~size_t(63);
 
@@ -631,7 +665,7 @@ void BufferSetImpl::get_image(double* image) {
 
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
-      Array3D<double> image_array((double*)image, NR_CORRELATIONS, m_size,
+      Array3D<double> image_array((double*)image, m_nr_polarizations, m_size,
                                   m_size);
 
       // Compute inverse spheroidal

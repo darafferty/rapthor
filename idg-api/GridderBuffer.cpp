@@ -76,10 +76,23 @@ void GridderBufferImpl::grid_visibilities(
   m_bufferStationPairs(local_bl) = {static_cast<int>(antenna1),
                                     static_cast<int>(antenna2)};
 
-  std::copy_n(visibilities, m_nr_channels * m_nrPolarizations,
-              reinterpret_cast<std::complex<float> *>(
-                  &m_bufferVisibilities(local_bl, local_time, 0, 0)));
-  std::copy_n(weights, m_nr_channels * 4,
+  int nr_correlations = m_bufferset.get_nr_correlations();
+
+  if (nr_correlations == 2) {
+    for (int i = 0; i < m_nr_channels; ++i) {
+      const int nr_correlations_in = 4;
+      m_bufferVisibilities(local_bl, local_time, i, 0) =
+          visibilities[i * nr_correlations_in];
+      m_bufferVisibilities(local_bl, local_time, i, 1) =
+          visibilities[i * nr_correlations_in + 3];
+    }
+  } else {
+    std::copy_n(visibilities, m_nr_channels * nr_correlations,
+                reinterpret_cast<std::complex<float> *>(
+                    &m_bufferVisibilities(local_bl, local_time, 0, 0)));
+  }
+  int nr_correlations_weights = 4;
+  std::copy_n(weights, m_nr_channels * nr_correlations_weights,
               &m_buffer_weights(local_bl, local_time, 0, 0));
 }
 
@@ -87,9 +100,11 @@ void GridderBufferImpl::compute_avg_beam() {
   m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Start();
 
   const unsigned int subgrid_size = m_bufferset.get_subgridsize();
-  const unsigned int nr_correlations = 4;
   const unsigned int nr_aterms = m_aterm_offsets2.size() - 1;
   const unsigned int nr_antennas = m_nrStations;
+
+  // average beam is always computed for all polarizations (for now)
+  const int nr_correlations = 4;
 
   Array4D<Matrix2x2<std::complex<float>>> aterms(
       m_aterms2.data(), nr_aterms, nr_antennas, subgrid_size, subgrid_size);
@@ -130,6 +145,9 @@ void GridderBufferImpl::flush_thread_worker() {
   Plan::Options options;
   options.nr_w_layers = proxy.get_grid().get_w_dim();
   options.plan_strict = false;
+  options.mode = (m_bufferset.get_nr_polarizations() == 4)
+                     ? Plan::Mode::FULL_POLARIZATION
+                     : Plan::Mode::STOKES_I_ONLY;
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
@@ -217,18 +235,22 @@ void GridderBufferImpl::finished() {
 void GridderBufferImpl::malloc_buffers() {
   BufferImpl::malloc_buffers();
 
+  int nr_correlations = m_bufferset.get_nr_correlations();
   proxy::Proxy &proxy = m_bufferset.get_proxy();
   m_bufferUVW2 =
       proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
   m_bufferVisibilities2 = proxy.allocate_array4d<std::complex<float>>(
-      m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
+      m_nr_baselines, m_bufferTimesteps, m_nr_channels, nr_correlations);
   m_bufferStationPairs2 =
       proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
           m_nr_baselines);
-  m_buffer_weights = proxy.allocate_array4d<float>(
-      m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
-  m_buffer_weights2 = proxy.allocate_array4d<float>(
-      m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4);
+  int nr_correlations_weights = 4;
+  m_buffer_weights =
+      proxy.allocate_array4d<float>(m_nr_baselines, m_bufferTimesteps,
+                                    m_nr_channels, nr_correlations_weights);
+  m_buffer_weights2 =
+      proxy.allocate_array4d<float>(m_nr_baselines, m_bufferTimesteps,
+                                    m_nr_channels, nr_correlations_weights);
 }
 
 }  // namespace api
