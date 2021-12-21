@@ -124,9 +124,10 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   unsigned int kernel_size = 9;
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
   float integration_time = 1.0f;
+  const char *layout_file = "LOFAR_lba.txt";
 
-  idg::Data data = idg::get_example_data(nr_baselines, grid_size,
-                                         integration_time, nr_channels);
+  idg::Data data = idg::get_example_data(
+      nr_baselines, grid_size, integration_time, nr_channels, layout_file);
 
   // Get remaining parameters
   float image_size = data.compute_image_size(grid_size, nr_channels);

@@ -22,15 +22,21 @@ Data::Data(std::string layout_file) {
   set_baselines(m_station_coordinates);
 }
 
-void Data::set_station_coordinates(std::string layout_file = "SKA1_low_ecef") {
-  // Check whether layout file exists
-  const char* data_dir = std::getenv("IDG_DATA_DIR");
-  data_dir = data_dir ? data_dir : IDG_DATA_DIR;
-  std::string filename = std::string(data_dir) + "/" + layout_file;
-  if (!uvwsim_file_exists(filename.c_str())) {
-    std::cerr << "Failed to find specified layout file: " << filename
-              << std::endl;
-    exit(EXIT_FAILURE);
+void Data::set_station_coordinates(const std::string& layout_file) {
+  // Set the filename of the layout file
+  std::string filename;
+
+  // Check whether layout_file is a valid path
+  if (uvwsim_file_exists(layout_file.c_str())) {
+    filename = layout_file;
+  } else {
+    // Try to find the layout file in the IDG_DATA_DIR prefix
+    filename = std::string(IDG_DATA_DIR) + "/" + layout_file;
+    if (!uvwsim_file_exists(filename.c_str())) {
+      std::cerr << "Failed to find specified layout file: " << filename
+                << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
   // Get number of stations
