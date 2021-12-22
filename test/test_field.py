@@ -7,16 +7,13 @@ from rapthor.lib.parset import parset_read
 class TestField(unittest.TestCase):
     @classmethod
     def downloadms(self, filename):
-        url = 'https://git.astron.nl/RD/DP3/-/raw/f2a8afd677f2bff3937bb1c350d1b0ad340bb514/DDECal/test/integration/tDDECal.in_MS.tgz?inline=false'
-
+        url = 'https://www.astron.nl/citt/ci_data/rapthor/tDDECal.in_MS.tgz'
         r = requests.get(url)
-
         f = open('downloaded.tgz', 'wb')
         f.write(r.content)
         f.close()
 
         os.system('tar xvf downloaded.tgz')
-
         os.system('rm downloaded.tgz')
         os.system('mv tDDECal.MS ' + filename)
 
@@ -49,7 +46,7 @@ class TestField(unittest.TestCase):
 
 
     def test_imaging_sectors(self):
-        self.assertEqual(self.field.sector_bounds_deg, '[258.558431;57.961675;259.103519;56.885818]')        
+        self.assertEqual(self.field.sector_bounds_deg, '[258.558431;57.961675;259.103519;56.885818]')
 
 
     def test_outlier_sectors(self):
@@ -87,7 +84,7 @@ class TestField(unittest.TestCase):
         self.assertEqual(iss[0].area, 18.37996802132365)
 
     def test_check_selfcal_progress(self):
-        self.assertEqual(self.field.check_selfcal_progress(), False)
+        self.assertEqual(self.field.check_selfcal_progress(), (False, False))
 
 
 def suite():

@@ -6,7 +6,7 @@ from rapthor.lib.screen import KLScreen
 class TestScreen(unittest.TestCase):
     @classmethod
     def downloadms(self, filename):
-        url = 'https://www.astron.nl/citt/rapthor/' + filename
+        url = 'https://www.astron.nl/citt/ci_data/rapthor/' + filename
         r = requests.get(url)
         f = open('resources/' + filename, 'wb')
         f.write(r.content)
@@ -25,7 +25,7 @@ class TestScreen(unittest.TestCase):
             print('h5 file found')
 
         self.screen = KLScreen('testscreen', 'resources/split_solutions_0.h5', 'resources/calibration_skymodel.txt', 0.0, 0.0, 1.0, 1.0)
-    
+
     @classmethod
     def tearDownClass(self):
         pass
@@ -35,6 +35,7 @@ class TestScreen(unittest.TestCase):
         self.assertEqual(self.screen.width_ra, 1.0)
 
     def test_fit(self):
+        self.screen.ncpu = 1
         self.screen.fit()
         self.assertAlmostEqual(self.screen.midDec, 57.2615, delta=1.0E-4)
 
