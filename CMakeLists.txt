@@ -4,6 +4,8 @@
 cmake_minimum_required(VERSION 3.7)
 project(idg)
 
+set(IDG_VERSION "0.8.1")
+
 option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
 option(BUILD_STATIC_LIBS "Build static libraries" OFF)
 option(BUILD_WITH_DEMOS "Build with demos" OFF)
