@@ -21,6 +21,7 @@ prepare-gpu:
   variables:
     DOCKER_IMAGE: $GPU_IMAGE
     DOCKER_FILE: ./docker/ubuntu_20_04_gpu
+    DOCKER_BUILD_ARG: --build-arg IDG_VERSION=${IDG_VERSION}
   rules:
     - when: always # Override the 'changes' rule from .prepare
 
