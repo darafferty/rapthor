@@ -17,6 +17,8 @@ RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     gfortran flex bison wcslib-dev \
     libboost-numpy-dev liblua5.3-dev \
     casacore-dev casacore-tools pybind11-dev \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* \
 # Build aoflagger3
     && mkdir /aoflagger && cd /aoflagger \
     && git clone https://gitlab.com/aroffringa/aoflagger.git src \
