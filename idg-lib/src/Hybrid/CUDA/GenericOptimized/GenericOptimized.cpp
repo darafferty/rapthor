@@ -31,6 +31,19 @@ GenericOptimized::GenericOptimized() : CUDA(default_info()) {
   // Initialize cpu proxy
   cpuProxy = new idg::proxy::cpu::Optimized();
 
+  // This proxy supports two modes:
+  //  1) CPU-only W-Tiling
+  //   This mode offloads the W-Tiling to the CPU proxy:
+  //    - GPU: compute subgrids
+  //    -  IO: copy subgrids to/from host
+  //    - CPU: add/extract sugrids to/from grid using tiles
+  //   It can be enabled by setting the environment flag DISABLE_WTILING_GPU.
+  //  2) GPU-accelerated W-Tiling
+  //   This mode performs most of the W-Tiling operations on the GPU:
+  //    - GPU: compute subgrids, compute tiles, compute patches
+  //    -  IO: copy patches to/from host
+  //    - CPU: add/extract patches to/from grid
+
   // Set W-Tiling GPU
   set_disable_wtiling_gpu(getenv("DISABLE_WTILING_GPU"));
 

@@ -353,12 +353,12 @@ void print_version() {
 
 DefaultMemory::DefaultMemory(size_t bytes) : Memory(malloc(bytes)) {}
 
-DefaultMemory::~DefaultMemory() { free(get()); };
+DefaultMemory::~DefaultMemory() { free(data()); };
 
 AlignedMemory::AlignedMemory(size_t bytes)
     : Memory(allocate_memory<char>(bytes, m_alignment)) {}
 
-AlignedMemory::~AlignedMemory() { free(get()); };
+AlignedMemory::~AlignedMemory() { free(data()); };
 
 }  // namespace auxiliary
 }  // namespace idg

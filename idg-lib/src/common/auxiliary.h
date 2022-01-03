@@ -132,7 +132,7 @@ class Memory {
   Memory &operator=(const Memory &) = delete;
   Memory &operator=(Memory &&) = delete;
 
-  void *get() { return m_ptr; };
+  void *data() { return m_ptr; };
 
  protected:
   Memory(void *ptr) : m_ptr(ptr) {}

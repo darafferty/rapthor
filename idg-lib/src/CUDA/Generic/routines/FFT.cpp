@@ -9,10 +9,8 @@ namespace cuda {
 
 void Generic::do_transform(DomainAtoDomainB direction) {
 #if defined(DEBUG)
-  std::cout << "CUDA::" << __func__ << std::endl;
+  std::cout << "Generic::" << __func__ << std::endl;
 #endif
-
-  check_grid();
 
   // Constants
   unsigned int grid_size = m_grid->get_x_dim();
@@ -20,11 +18,22 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   assert(nr_w_layers == 1);
   unsigned int nr_polarizations = m_grid->get_z_dim();
 
-  // Load device
+  // Load CUDA objects
   InstanceCUDA& device = get_device(0);
-
-  // Initialize
   cu::Stream& stream = device.get_execute_stream();
+  const cu::Context& context = device.get_context();
+
+  // In case W-Tiling is disabled, d_grid_ is not allocated yet
+  if (!m_disable_wtiling) {
+    assert(!d_grid_);
+    d_grid_.reset(new cu::DeviceMemory(context, m_grid->bytes()));
+    if (m_use_unified_memory) {
+      cu::UnifiedMemory& u_grid = get_unified_grid();
+      device.copy_htod(stream, *d_grid_, u_grid.data(), u_grid.size());
+    } else {
+      device.copy_htod(stream, *d_grid_, m_grid->data(), m_grid->bytes());
+    }
+  }
 
   // Performance measurements
   m_report->initialize(0, 0, grid_size);
@@ -46,6 +55,16 @@ void Generic::do_transform(DomainAtoDomainB direction) {
           : std::complex<float>(1.0, 1.0);
   device.launch_fft_shift(*d_grid_, nr_polarizations, grid_size, scale);
 
+  // Copy grid back to the host
+  if (!m_disable_wtiling) {
+    if (m_use_unified_memory) {
+      cu::UnifiedMemory& u_grid = get_unified_grid();
+      device.copy_dtoh(stream, u_grid.data(), *d_grid_, u_grid.size());
+    } else {
+      device.copy_dtoh(stream, m_grid->data(), *d_grid_, m_grid->bytes());
+    }
+  }
+
   // End measurements
   stream.synchronize();
   powerStates[1] = hostPowerSensor->read();
@@ -55,6 +74,11 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   m_report->update<Report::host>(powerStates[0], powerStates[1]);
   m_report->update<Report::device>(powerStates[2], powerStates[3]);
   m_report->print_total(nr_polarizations);
+
+  // Free device grid
+  if (!m_disable_wtiling) {
+    d_grid_.reset();
+  }
 }
 
 }  // end namespace cuda

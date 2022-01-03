@@ -91,12 +91,11 @@ class Memory : public idg::auxiliary::Memory {
 
  public:
   size_t capacity() { return m_capacity; }
-  void *ptr() { return get(); }
   size_t size() { return m_bytes; }
   virtual void resize(size_t size) = 0;
   template <typename T>
   operator T *() {
-    return static_cast<T *>(get());
+    return static_cast<T *>(data());
   }
 
  protected:
@@ -178,7 +177,7 @@ class UnifiedMemory : public Memory {
                 unsigned flags = CU_MEM_ATTACH_GLOBAL);
   ~UnifiedMemory() override;
 
-  operator CUdeviceptr() { return reinterpret_cast<CUdeviceptr>(get()); }
+  operator CUdeviceptr() { return reinterpret_cast<CUdeviceptr>(data()); }
 
   void resize(size_t size) override;
 

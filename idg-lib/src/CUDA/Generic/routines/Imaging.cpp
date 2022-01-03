@@ -16,10 +16,6 @@ void Generic::run_imaging(
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterms_offsets,
     const Array2D<float>& spheroidal, ImagingMode mode) {
-  if (!m_use_unified_memory) {
-    check_grid();
-  }
-
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
 
@@ -71,9 +67,6 @@ void Generic::run_imaging(
   device.set_report(m_report);
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
-
-  // Load memory objects
-  cu::UnifiedMemory u_grid(context, grid.data(), grid.bytes());
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -271,7 +264,7 @@ void Generic::run_imaging(
         if (m_use_unified_memory) {
           device.launch_adder_unified(current_nr_subgrids, grid_size,
                                       subgrid_size, d_metadata, d_subgrids,
-                                      u_grid);
+                                      get_unified_grid());
         } else {
           device.launch_adder(current_nr_subgrids, nr_polarizations, grid_size,
                               subgrid_size, d_metadata, d_subgrids, *d_grid_);
@@ -290,7 +283,7 @@ void Generic::run_imaging(
         if (m_use_unified_memory) {
           device.launch_splitter_unified(current_nr_subgrids, grid_size,
                                          subgrid_size, d_metadata, d_subgrids,
-                                         u_grid);
+                                         get_unified_grid());
         } else {
           device.launch_splitter(current_nr_subgrids, nr_polarizations,
                                  grid_size, subgrid_size, d_metadata,

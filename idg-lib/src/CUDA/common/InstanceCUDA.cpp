@@ -884,14 +884,14 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
   for (unsigned i = 0; i < batch; i++) {
     // Execute 1D FFT over all columns
     for (unsigned col = 0; col < size; col++) {
-      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.get());
+      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.data());
       ptr += i * size * size + col;
       fft_plan_row.execute(ptr, ptr, sign);
     }
 
     // Execute 1D FFT over all rows
     for (unsigned row = 0; row < size; row++) {
-      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.get());
+      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.data());
       ptr += i * size * size + row * size;
       fft_plan_col.execute(ptr, ptr, sign);
     }
@@ -1065,11 +1065,10 @@ void InstanceCUDA::launch_adder_wtiles_to_grid(
 void InstanceCUDA::launch_splitter_subgrids_from_wtiles(
     int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
     int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
-    cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
-    std::complex<float> scale) {
+    cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles) {
   const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
                               &tile_size,        &subgrid_offset, d_metadata,
-                              d_subgrid,         d_tiles,         &scale};
+                              d_subgrid,         d_tiles};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[4], grid, block, 0,

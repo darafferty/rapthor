@@ -18,6 +18,35 @@ Generic::Generic(ProxyInfo info) : CUDA(info) {
 #if defined(DEBUG)
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
+
+  // This proxy supports three modes:
+  //  1) Legacy: no W-Tiling, no Unified Memory
+  //    This is the legacy mode, 'simple' GPU-only gridding/degridding.
+  //  2) CUDA W-Tiling v1: W-Tiling, Unified Memory
+  //    This is the first CUDA W-Tiling implementation. For simplicity,
+  //    Unified Memory is used to go from tiles to the grid or vice versa.
+  //  3) CUDA W-Tiling v2: W-Tiling, no Unified Memory
+  //    This is the latest CUDA W-Tiling code, with explicit copies of patches
+  //    between host and device for better use of PCIe bandwidth and therefore
+  //    higher overall throughput.
+  // All modes work correctly, but CUDA W-Tiling v2 is the best and therefore
+  // the default setting. This mode is identicial to W-Tiling in
+  // GenericOptimized.
+
+  // Mode 1 (legacy)
+  // m_disable_wtiling = true;
+  // m_use_unified_memory = false;
+
+  // Mode 2 (CUDA W-Tiling v1)
+  // m_disable_wtiling = false;
+  // m_use_unified_memory = true;
+
+  // Mode 3 (CUDA W-Tiling v2)
+  m_disable_wtiling = false;
+  m_use_unified_memory = false;
+
+  // There exists another legacy mode, without W-Tiling but with Unified Memory,
+  // and another form of tiling. This mode is provided by the Unified proxy.
 }
 
 // Destructor
@@ -61,32 +90,38 @@ void Generic::do_degridding(
 
 void Generic::set_grid(std::shared_ptr<Grid> grid) {
   CUDA::set_grid(grid);
-  if (!do_supports_wtiling() || m_disable_wtiling) {
+  cu::Context& context = get_device(0).get_context();
+  if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& htodstream = device.get_htod_stream();
-    cu::Context& context = get_device(0).get_context();
     d_grid_.reset(new cu::DeviceMemory(context, grid->bytes()));
     device.copy_htod(htodstream, *d_grid_, grid->data(), grid->bytes());
     htodstream.synchronize();
   }
+  if (m_use_unified_memory) {
+    cu::UnifiedMemory& u_grid = allocate_unified_grid(context, grid->bytes());
+    char* first = reinterpret_cast<char*>(grid->data());
+    char* result = reinterpret_cast<char*>(u_grid.data());
+    std::copy_n(first, grid->bytes(), result);
+  }
 }
 
 std::shared_ptr<Grid> Generic::get_final_grid() {
-  if (do_supports_wtiling() && !m_disable_wtiling) {
+  if (!m_disable_wtiling) {
     flush_wtiles();
-  } else {
+  }
+  if (m_use_unified_memory) {
+    cu::UnifiedMemory& u_grid = get_unified_grid();
+    char* first = reinterpret_cast<char*>(u_grid.data());
+    char* result = reinterpret_cast<char*>(m_grid->data());
+    std::copy_n(first, m_grid->bytes(), result);
+  } else if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& dtohstream = device.get_dtoh_stream();
     device.copy_dtoh(dtohstream, m_grid->data(), *d_grid_, m_grid->bytes());
     dtohstream.synchronize();
   }
   return m_grid;
-}
-
-void Generic::check_grid() {
-  if ((!do_supports_wtiling() || m_disable_wtiling) && !d_grid_) {
-    throw std::runtime_error("device grid is not set, call set_grid first.");
-  }
 }
 
 std::unique_ptr<Plan> Generic::make_plan(

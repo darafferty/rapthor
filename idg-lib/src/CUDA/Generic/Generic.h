@@ -19,8 +19,6 @@ namespace cuda {
  *
  */
 class Generic : public CUDA {
-  friend class Unified;
-
  public:
   // Constructor
   Generic(ProxyInfo info = default_info());
@@ -59,7 +57,7 @@ class Generic : public CUDA {
       const Array2D<float>& spheroidal, ImagingMode mode);
 
  public:
-  bool do_supports_wtiling() override { return false; }
+  bool do_supports_wtiling() override { return true; }
 
   void set_grid(std::shared_ptr<Grid> grid) override;
 
@@ -76,49 +74,7 @@ class Generic : public CUDA {
                   const Array1D<float>& shift) override;
 
  private:
-  void check_grid();
   std::unique_ptr<cu::DeviceMemory> d_grid_;
-
-  // W-Tiling
-  void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
-                          float w_step, const Array1D<float>& shift,
-                          WTileUpdateInfo& wtile_flush_info);
-
-  void run_subgrids_to_wtiles(unsigned int nr_polarizations,
-                              unsigned int subgrid_offset,
-                              unsigned int nr_subgrids,
-                              unsigned int subgrid_size, float image_size,
-                              float w_step, const Array1D<float>& shift,
-                              WTileUpdateSet& wtile_flush_set,
-                              cu::DeviceMemory& d_subgrids,
-                              cu::DeviceMemory& d_metadata);
-
-  void run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
-                            float w_step, const Array1D<float>& shift,
-                            WTileUpdateInfo& wtile_initialize_info);
-
-  void run_subgrids_from_wtiles(unsigned int nr_polarizations,
-                                unsigned int subgrid_offset,
-                                unsigned int nr_subgrids,
-                                unsigned int subgrid_size, float image_size,
-                                float w_step, const Array1D<float>& shift,
-                                WTileUpdateSet& wtile_initialize_set,
-                                cu::DeviceMemory& d_subgrids,
-                                cu::DeviceMemory& d_metadata);
-
-  void flush_wtiles();
-
-  WTiles m_wtiles;
-  unsigned int m_nr_tiles = 0;  // configured in init_cache
-  const unsigned int m_tile_size = 128;
-  const unsigned int m_patch_size = 512;
-  const unsigned int m_nr_patches_batch = 3;
-  struct {
-    std::unique_ptr<cu::DeviceMemory> d_tiles;
-    std::unique_ptr<cu::DeviceMemory> d_padded_tiles;
-    std::unique_ptr<cu::HostMemory> h_tiles;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
-  } m_buffers_wtiling;
 };  // class Generic
 
 }  // namespace cuda
