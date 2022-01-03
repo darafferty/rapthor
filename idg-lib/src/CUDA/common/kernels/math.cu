@@ -45,6 +45,14 @@ inline __device__ void operator+=(double2 &a, double2 b) {
     a.y += b.y;
 }
 
+inline __device__ void operator+=(float4 &a, float4 b)
+{
+    a.x += b.x;
+    a.y += b.y;
+    a.z += b.z;
+    a.w += b.w;
+}
+
 #if __CUDA_ARCH__ < 600
 __device__ double atomicAdd(double* address, double val)
 {
@@ -107,6 +115,27 @@ inline __device__ void cmac(float2 &a, float2 b, float2 c)
     asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.y), "f"(c.x), "f"(a.y));
 }
 
+template <typename T>
+inline __device__ void apply_avg_aterm_correction_(
+    const T C[16], T pixels[4]) {
+
+  const T p[4] = {pixels[0], pixels[2], pixels[1], pixels[3]};
+
+  #pragma unroll 1
+  for (int i = 0; i < 4; i++)
+  {
+    int offset = 0;
+    switch (i) {
+        case 1: offset = 8; break;
+        case 2: offset = 4; break;
+        case 3: offset = 12; break;
+    }
+    pixels[i]  = p[0] * C[offset + 0];
+    pixels[i] += p[1] * C[offset + 1];
+    pixels[i] += p[2] * C[offset + 2];
+    pixels[i] += p[3] * C[offset + 3];
+  }
+}
 
 /*
     Common math functions
