@@ -6,41 +6,40 @@
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
-#define MAX_NR_CHANNELS 8
-#define UNROLL_PIXELS   4
-
-__shared__ float4 visibilities_[BATCH_SIZE][2];
-__shared__ float4 uvw_[BATCH_SIZE];
-__shared__ float wavenumbers_[MAX_NR_CHANNELS];
 
 /*
-    Kernel
+    Parameters
+*/
+#ifndef BATCH_SIZE
+#define BATCH_SIZE 128
+#endif
+#define UNROLL_PIXELS 4
+
+
+/*
+    Shared memory
+*/
+__shared__ float4 visibilities_[BATCH_SIZE][2];
+__shared__ float4 uvw_[BATCH_SIZE];
+
+
+/*
+    Kernels
 */
 template<unsigned nr_polarizations>
-__device__ void update_subgrid(
+__device__ void update_pixel(
     const unsigned             subgrid_size,
     const unsigned             nr_stations,
-    const unsigned             tid,
-    const unsigned             nr_threads,
     const unsigned             s,
     const unsigned             y,
     const unsigned             x,
     const unsigned             aterm_index,
     const unsigned             station1,
     const unsigned             station2,
-    float2                     pixelXX,
-    float2                     pixelXY,
-    float2                     pixelYX,
-    float2                     pixelYY,
     const float2* __restrict__ aterms,
-          float2* __restrict__ subgrid)
+          float2* __restrict   pixel,
+          float2* __restrict__ pixel_sum)
 {
-    float2 pixel[4] = {pixelXX, pixelXY, pixelYX, pixelYY};
-
-    // Compute shifted position in subgrid
-    int x_dst = (x + (subgrid_size/2)) % subgrid_size;
-    int y_dst = (y + (subgrid_size/2)) % subgrid_size;
-
     // Apply aterm
     int station1_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_index, station1, y, x, 0);
     int station2_idx = index_aterm(subgrid_size, 4, nr_stations, aterm_index, station2, y, x, 0);
@@ -48,107 +47,60 @@ __device__ void update_subgrid(
     float2 *aterm2 = (float2 *) &aterms[station2_idx];
     apply_aterm_gridder(pixel, aterm1, aterm2);
 
-    // Update subgrid
+    // Update pixel
     if (nr_polarizations == 4) {
         // Full Stokes
         for (unsigned pol = 0; pol < nr_polarizations; pol++) {
-            int idx = index_subgrid(4, subgrid_size, s, pol, y_dst, x_dst);
-            subgrid[idx] += pixel[pol];
+            pixel_sum[pol] += pixel[pol];
         }
     } else if (nr_polarizations == 1) {
         // Stokes-I only
-        int idx_xx = index_subgrid(1, subgrid_size, s, 0, y_dst, x_dst);
-        int nr_subgrids = gridDim.x;
-        int idx_yy = idx_xx + (nr_subgrids * subgrid_size * subgrid_size);
-        subgrid[idx_xx] += pixel[0];
-        subgrid[idx_yy] += pixel[3];
+        pixel_sum[0] += pixel[0];
+        pixel_sum[3] += pixel[3];
     }
 }
 
-__device__ void finalize_subgrid(
-    const unsigned                      nr_polarizations,
-    const unsigned                      subgrid_size,
-    const float*           __restrict__ spheroidal,
-    const float2*          __restrict__ avg_aterm_correction,
-    const Metadata*        __restrict__ metadata,
-          float2*          __restrict__ subgrid)
-
+template<unsigned nr_polarizations>
+__device__ void update_subgrid(
+    const unsigned             subgrid_size,
+    const unsigned             s,
+    const unsigned             y,
+    const unsigned             x,
+    const float*  __restrict__ spheroidal,
+    const float2* __restrict__ avg_aterm_correction,
+          float2* __restrict__ pixel,
+          float2* __restrict__ subgrid)
 {
-    unsigned tid = threadIdx.y * blockDim.x + threadIdx.x;
-    unsigned nr_threads = blockDim.x * blockDim.y;
-    unsigned s = blockIdx.x;
-    unsigned nr_subgrids = gridDim.x;
+    // Compute shifted position in subgrid
+    int x_dst = (x + (subgrid_size/2)) % subgrid_size;
+    int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
-    __syncthreads();
+    // Pixel index
+    int i = y * subgrid_size + x;
 
-    // Apply average aterm correction and spheroidal
-    for (int i = tid; i < (subgrid_size * subgrid_size); i += nr_threads) {
-        unsigned y = i / subgrid_size;
-        unsigned x = i % subgrid_size;
+    // Apply average aterm correction
+    if (avg_aterm_correction) {
+        apply_avg_aterm_correction_(
+            avg_aterm_correction + i*16,
+            pixel);
+    }
 
-        if (y < subgrid_size) {
-            // Compute shifted position in subgrid
-            int x_src = (x + (subgrid_size/2)) % subgrid_size;
-            int y_src = (y + (subgrid_size/2)) % subgrid_size;
+    // Load spheroidal
+    float spheroidal_ = spheroidal[i];
 
-            // Pixels
-            float2 pixelXX = make_float2(0, 0);
-            float2 pixelXY = make_float2(0, 0);
-            float2 pixelYX = make_float2(0, 0);
-            float2 pixelYY = make_float2(0, 0);
-
-            // Pixel indices
-            int idx_xx = 0;
-            int idx_xy = 0;
-            int idx_yx = 0;
-            int idx_yy = 0;
-
-            if (nr_polarizations == 4) {
-                // Compute pixel indices
-                idx_xx = index_subgrid(nr_polarizations, subgrid_size, s, 0, y_src, x_src);
-                idx_xy = index_subgrid(nr_polarizations, subgrid_size, s, 1, y_src, x_src);
-                idx_yx = index_subgrid(nr_polarizations, subgrid_size, s, 2, y_src, x_src);
-                idx_yy = index_subgrid(nr_polarizations, subgrid_size, s, 3, y_src, x_src);
-
-                // Load pixels
-                pixelXX = subgrid[idx_xx];
-                pixelXY = subgrid[idx_xy];
-                pixelYX = subgrid[idx_yx];
-                pixelYY = subgrid[idx_yy];
-            } else if (nr_polarizations == 1) {
-                // Compute pixel indices
-                idx_xx = index_subgrid(1, subgrid_size, s, 0, y_src, x_src);
-                idx_yy = idx_xx + (nr_subgrids * subgrid_size * subgrid_size);
-
-                // Load pixels
-                pixelXX = subgrid[idx_xx];
-                pixelYY = subgrid[idx_yy];
-            }
-
-            // Apply average aterm correction
-            if (avg_aterm_correction) {
-                apply_avg_aterm_correction(
-                    avg_aterm_correction + i*16,
-                    pixelXX, pixelXY, pixelYX, pixelYY);
-            }
-
-            // Load spheroidal
-            float spheroidal_ = spheroidal[i];
-
-            // Update subgrid
-            if (nr_polarizations == 4) {
-                subgrid[idx_xx] = pixelXX * spheroidal_;
-                subgrid[idx_xy] = pixelXY * spheroidal_;
-                subgrid[idx_yx] = pixelYX * spheroidal_;
-                subgrid[idx_yy] = pixelYY * spheroidal_;
-            } else if (nr_polarizations == 1) {
-                subgrid[idx_xx] = (pixelXX + pixelYY) * spheroidal_ * 0.5f;
-            }
+    // Update subgrid
+    if (nr_polarizations == 4) {
+        for (int pol = 0; pol < 4; pol++) {
+            int idx = index_subgrid(4, subgrid_size, s, pol, y_dst, x_dst);
+            subgrid[idx] = pixel[pol] * spheroidal_;
         }
-    } // end for i (pixels)
+    } else if (nr_polarizations == 1) {
+        int idx = index_subgrid(1, subgrid_size, s, 0, y_dst, x_dst);
+        subgrid[idx] = (pixel[0] + pixel[3]) * spheroidal_ * 0.5f;
+    }
 }
 
-template<int current_nr_channels, int nr_polarizations>
+template<int nr_polarizations>
 __device__ void
     kernel_gridder_(
     const int                           time_offset_job,
@@ -159,20 +111,21 @@ __device__ void
     const float                         shift_l,
     const float                         shift_m,
     const int                           nr_channels,
+    const int                           current_nr_channels,
     const int                           channel_offset,
     const int                           nr_stations,
     const UVW<float>*      __restrict__ uvw,
     const float*           __restrict__ wavenumbers,
     const float2*          __restrict__ visibilities,
+    const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterms,
     const int*             __restrict__ aterms_indices,
+    const float2*          __restrict__ avg_aterm_correction,
     const Metadata*        __restrict__ metadata,
           float2*          __restrict__ subgrid)
 {
-    int tidx = threadIdx.x;
-    int tidy = threadIdx.y;
-    int tid = tidx + tidy * blockDim.x;
-    int nr_threads = blockDim.x * blockDim.y;
+    int tid = threadIdx.x;
+    int nr_threads = blockDim.x;
     int s = blockIdx.x;
 
 	// Load metadata for current subgrid
@@ -189,24 +142,16 @@ __device__ void
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
-	// Load wavenumbers
-	for (int chan = tid; chan < current_nr_channels; chan += nr_threads) {
-		wavenumbers_[chan] = wavenumbers[channel_offset + chan];
-	}
-
     // Iterate all pixels in subgrid
     for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, nr_threads); i += nr_threads * UNROLL_PIXELS) {
-        // Private pixels
-        float2 pixelsXX[UNROLL_PIXELS];
-        float2 pixelsXY[UNROLL_PIXELS];
-        float2 pixelsYX[UNROLL_PIXELS];
-        float2 pixelsYY[UNROLL_PIXELS];
+        float2 pixel_cur[UNROLL_PIXELS][4];
+        float2 pixel_sum[UNROLL_PIXELS][4];
 
         for (int j = 0; j < UNROLL_PIXELS; j++) {
-            pixelsXX[j] = make_float2(0, 0);
-            pixelsXY[j] = make_float2(0, 0);
-            pixelsYX[j] = make_float2(0, 0);
-            pixelsYY[j] = make_float2(0, 0);
+            for (int k = 0; k < 4; k++) {
+                pixel_cur[j][k] = make_float2(0, 0);
+                pixel_sum[j][k] = make_float2(0, 0);
+            }
         }
 
         // Initialize aterm index to first timestep
@@ -286,18 +231,16 @@ __device__ void
 
                         // Update subgrid
                         if (y < subgrid_size) {
-                            update_subgrid<nr_polarizations>(
-                                subgrid_size, nr_stations, tid, nr_threads, s, y, x,
-                                aterm_idx_previous, station1, station2,
-                                pixelsXX[j], pixelsXY[j], pixelsYX[j], pixelsYY[j],
-                                aterms, subgrid);
+                            update_pixel<nr_polarizations>(
+                                subgrid_size, nr_stations, s, y, x,
+                                aterm_idx_previous, station1, station2, aterms,
+                                &pixel_cur[j][0], &pixel_sum[j][0]);
                         }
 
                         // Reset pixel
-                        pixelsXX[j] = make_float2(0, 0);
-                        pixelsXY[j] = make_float2(0, 0);
-                        pixelsYX[j] = make_float2(0, 0);
-                        pixelsYY[j] = make_float2(0, 0);
+                        for (int pol = 0; pol < 4; pol++) {
+                            pixel_cur[j][pol] = make_float2(0, 0);
+                        }
                     }
 
                     // Update aterm index
@@ -313,12 +256,12 @@ __device__ void
                 float phase_index[UNROLL_PIXELS];
 
                 for (int j = 0; j < UNROLL_PIXELS; j++) {
-                    phase_index[j]  = u*l_index[j] + v*m_index[j] + w*n[j];
+                    phase_index[j] = u*l_index[j] + v*m_index[j] + w*n[j];
                 }
 
                 #pragma unroll
                 for (int chan = 0; chan < current_nr_channels; chan++) {
-                    float wavenumber = wavenumbers_[chan];
+                    float wavenumber = wavenumbers[channel_offset + chan];
 
                     // Load visibilities from shared memory
                     float4 a = visibilities_[time*current_nr_channels+chan][0];
@@ -331,16 +274,16 @@ __device__ void
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         // Compute phasor
                         float phase = phase_offset[j] - (phase_index[j] * wavenumber);
-                        float2 phasor = make_float2(cosf(phase), sinf(phase));
+                        float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
                         // Multiply visibility by phasor
-                        cmac(pixelsXX[j], phasor, visXX);
+                        cmac(pixel_cur[j][0], phasor, visXX);
                         if (nr_polarizations == 4) {
-                            cmac(pixelsXY[j], phasor, visXY);
-                            cmac(pixelsYX[j], phasor, visYX);
-                            cmac(pixelsYY[j], phasor, visYY);
+                            cmac(pixel_cur[j][1], phasor, visXY);
+                            cmac(pixel_cur[j][2], phasor, visYX);
+                            cmac(pixel_cur[j][3], phasor, visYY);
                         } else if (nr_polarizations == 1) {
-                            cmac(pixelsYY[j], phasor, visXY);
+                            cmac(pixel_cur[j][3], phasor, visXY);
                         }
                     }
                 } // end for chan
@@ -353,79 +296,62 @@ __device__ void
             int x = i_ % subgrid_size;
 
             if (y < subgrid_size) {
+                update_pixel<nr_polarizations>(
+                    subgrid_size, nr_stations, s, y, x,
+                    aterm_idx_previous, station1, station2, aterms,
+                    &pixel_cur[j][0], &pixel_sum[j][0]);
                 update_subgrid<nr_polarizations>(
-                    subgrid_size, nr_stations, tid, nr_threads, s, y, x,
-                    aterm_idx_previous, station1, station2,
-                    pixelsXX[j], pixelsXY[j], pixelsYX[j], pixelsYY[j],
-                    aterms, subgrid);
+                    subgrid_size, s, y, x,
+                    spheroidal, avg_aterm_correction,
+                    &pixel_sum[j][0], subgrid);
             }
         }
     } // end for i (pixels)
-
-    __syncthreads();
 } // end kernel_gridder_
-
-#define LOAD_METADATA \
-    int s                   = blockIdx.x; \
-    const Metadata &m       = metadata[s]; \
-    const int channel_begin = m.channel_begin; \
-    const int channel_end   = m.channel_end;
-
-#define KERNEL_GRIDDER(current_nr_channels) \
-    for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
-        if (nr_polarizations == 1) { \
-            kernel_gridder_<current_nr_channels, 1>( \
-                time_offset, grid_size, subgrid_size, image_size, w_step, \
-                shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
-                uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
-        }  else { \
-            kernel_gridder_<current_nr_channels, 4>( \
-                time_offset, grid_size, subgrid_size, image_size, w_step, \
-                shift_l, shift_m, nr_channels, channel_offset, nr_stations, \
-                uvw, wavenumbers, visibilities, aterms, aterms_indices, metadata, subgrid); \
-        } \
-    }
-
-#define FINALIZE_SUBGRID \
-    finalize_subgrid( \
-    nr_polarizations, subgrid_size, spheroidal, avg_aterm_correction, metadata, subgrid);
-
-
-#define GLOBAL_ARGUMENTS \
-    const int                         time_offset,      \
-    const int                         nr_polarizations, \
-    const int                         grid_size,    \
-    const int                         subgrid_size, \
-    const float                       image_size,   \
-    const float                       w_step,       \
-    const float                       shift_l,      \
-    const float                       shift_m,      \
-    const int                         nr_channels,  \
-    const int                         nr_stations,  \
-    const UVW<float>*    __restrict__ uvw,          \
-    const float*         __restrict__ wavenumbers,  \
-          float2*        __restrict__ visibilities, \
-    const float*         __restrict__ spheroidal,   \
-    const float2*        __restrict__ aterms,       \
-    const int*           __restrict__ aterms_indices,       \
-    const float2*        __restrict__ avg_aterm_correction, \
-    const Metadata*      __restrict__ metadata,             \
-          float2*        __restrict__ subgrid
 
 extern "C" {
 __global__ void
-    kernel_gridder(GLOBAL_ARGUMENTS)
+    kernel_gridder(
+        const int                      time_offset,
+        const int                      nr_polarizations,
+        const int                      grid_size,
+        const int                      subgrid_size,
+        const float                    image_size,
+        const float                    w_step,
+        const float                    shift_l,
+        const float                    shift_m,
+        const int                      nr_channels,
+        const int                      nr_stations,
+        const UVW<float>* __restrict__ uvw,
+        const float*      __restrict__ wavenumbers,
+              float2*     __restrict__ visibilities,
+        const float*      __restrict__ spheroidal,
+        const float2*     __restrict__ aterms,
+        const int*        __restrict__ aterms_indices,
+        const float2*     __restrict__ avg_aterm_correction,
+        const Metadata*   __restrict__ metadata,
+              float2*     __restrict__ subgrid)
 {
-    LOAD_METADATA
-    int channel_offset = channel_begin;
-    KERNEL_GRIDDER(8)
-    KERNEL_GRIDDER(7)
-    KERNEL_GRIDDER(6)
-    KERNEL_GRIDDER(5)
-    KERNEL_GRIDDER(4)
-    KERNEL_GRIDDER(3)
-    KERNEL_GRIDDER(2)
-    KERNEL_GRIDDER(1)
-    FINALIZE_SUBGRID
+    int s                   = blockIdx.x;
+    const Metadata &m       = metadata[s];
+    const int channel_begin = m.channel_begin;
+    const int channel_end   = m.channel_end;
+
+    const int channel_offset      = channel_begin;
+    const int current_nr_channels = channel_end - channel_begin;
+
+    if (nr_polarizations == 1) {
+        kernel_gridder_<1>(
+            time_offset, grid_size, subgrid_size, image_size, w_step,
+            shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices,
+            avg_aterm_correction, metadata, subgrid);
+    }  else {
+        kernel_gridder_<4>(
+            time_offset, grid_size, subgrid_size, image_size, w_step,
+            shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations,
+            uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices,
+            avg_aterm_correction, metadata, subgrid);
+    }
 }
 } // end extern "C"

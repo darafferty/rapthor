@@ -173,7 +173,7 @@ class InstanceCUDA : public KernelsInstance {
 
   // Misc
   void free_subgrid_fft();
-  int get_tile_size_grid() const { return tile_size_grid; };
+  int get_tile_size_grid() const { return m_tile_size_grid; };
   void free_events();
 
   // Device interface
@@ -199,11 +199,6 @@ class InstanceCUDA : public KernelsInstance {
   void load_kernels();
   void set_parameters();
   void set_parameters_default();
-  void set_parameters_kepler();
-  void set_parameters_maxwell();
-  void set_parameters_gp100();
-  void set_parameters_pascal();
-  void set_parameters_volta();
 
  protected:
   // Variables shared by all InstanceCUDA instances
@@ -230,16 +225,7 @@ class InstanceCUDA : public KernelsInstance {
   std::vector<std::unique_ptr<cu::Module>> m_modules;
 
  protected:
-  dim3 block_gridder;
-  dim3 block_degridder;
-  dim3 block_calibrate;
-  dim3 block_adder;
-  dim3 block_splitter;
-  dim3 block_scaler;
-
-  int batch_gridder;
-  int batch_degridder;
-  int tile_size_grid;
+  int m_tile_size_grid = 128;
 
   // Subgrid FFT
   const unsigned m_fft_subgrid_batch_default = 1024;

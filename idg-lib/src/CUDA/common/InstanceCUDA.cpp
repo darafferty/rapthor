@@ -44,9 +44,6 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_id)
   m_powersensor.reset(
       powersensor::get_power_sensor(powersensor::sensor_device, device_id));
 
-  // Set kernel parameters
-  set_parameters();
-
   // Compile kernels
   compile_kernels();
 
@@ -149,18 +146,12 @@ void InstanceCUDA::compile_kernels() {
   // Gridder
   src.push_back("KernelGridder.cu");
   cubin.push_back("Gridder.cubin");
-  std::stringstream flags_gridder;
-  flags_gridder << flags_common;
-  flags_gridder << " -DBATCH_SIZE=" << batch_gridder;
-  flags.push_back(flags_gridder.str());
+  flags.push_back(flags_common);
 
   // Degridder
   src.push_back("KernelDegridder.cu");
   cubin.push_back("Degridder.cubin");
-  std::stringstream flags_degridder;
-  flags_degridder << flags_common;
-  flags_degridder << " -DBATCH_SIZE=" << batch_degridder;
-  flags.push_back(flags_degridder.str());
+  flags.push_back(flags_common);
 
   // Scaler
   src.push_back("KernelScaler.cu");
@@ -172,7 +163,7 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("Adder.cubin");
   std::stringstream flags_adder;
   flags_adder << flags_common;
-  flags_adder << " -DTILE_SIZE_GRID=" << tile_size_grid;
+  flags_adder << " -DTILE_SIZE_GRID=" << m_tile_size_grid;
   flags.push_back(flags_adder.str());
 
   // Splitter
@@ -180,7 +171,7 @@ void InstanceCUDA::compile_kernels() {
   cubin.push_back("Splitter.cubin");
   std::stringstream flags_splitter;
   flags_splitter << flags_common;
-  flags_splitter << " -DTILE_SIZE_GRID=" << tile_size_grid;
+  flags_splitter << " -DTILE_SIZE_GRID=" << m_tile_size_grid;
   flags.push_back(flags_splitter.str());
 
   // Calibrate
@@ -344,80 +335,6 @@ void InstanceCUDA::load_kernels() {
   }
 }
 
-void InstanceCUDA::set_parameters_kepler() {
-  batch_gridder = 192;
-  batch_degridder = 192;
-}
-
-void InstanceCUDA::set_parameters_maxwell() {
-  batch_gridder = 384;
-  batch_degridder = 512;
-}
-
-void InstanceCUDA::set_parameters_gp100() {
-  batch_gridder = 256;
-  batch_degridder = 128;
-}
-
-void InstanceCUDA::set_parameters_pascal() {
-  batch_gridder = 384;
-  batch_degridder = 512;
-}
-
-void InstanceCUDA::set_parameters_volta() {
-  batch_gridder = 128;
-  batch_degridder = 256;
-}
-
-void InstanceCUDA::set_parameters_default() {
-  block_gridder = dim3(128);
-  block_degridder = dim3(128);
-  block_calibrate = dim3(128);
-  block_adder = dim3(128);
-  block_splitter = dim3(128);
-  block_scaler = dim3(128);
-  tile_size_grid = 128;
-}
-
-void InstanceCUDA::set_parameters() {
-#if defined(DEBUG)
-  std::cout << __func__ << std::endl;
-#endif
-
-  int capability = (*device).get_capability();
-
-  set_parameters_default();
-
-  if (capability >= 70) {
-    set_parameters_volta();
-  } else if (capability >= 61) {
-    set_parameters_pascal();
-  } else if (capability == 60) {
-    set_parameters_gp100();
-  } else if (capability >= 50) {
-    set_parameters_maxwell();
-  } else if (capability >= 30) {
-    set_parameters_kepler();
-  } else {
-    // IDG has never been tested with pre-Kepler GPUs
-    set_parameters_kepler();
-  }
-
-  // Override parameters from environment
-  char* cstr_batch_size = getenv("BATCHSIZE");
-  if (cstr_batch_size) {
-    auto batch_size = atoi(cstr_batch_size);
-    batch_gridder = batch_size;
-    batch_degridder = batch_size;
-  }
-  char* cstr_block_size = getenv("BLOCKSIZE");
-  if (cstr_block_size) {
-    auto block_size = atoi(cstr_block_size);
-    block_gridder = dim3(block_size);
-    block_degridder = dim3(block_size);
-  }
-}
-
 std::ostream& operator<<(std::ostream& os, InstanceCUDA& d) {
   cu::ScopedContext scc(d.get_context());
 
@@ -575,7 +492,7 @@ void InstanceCUDA::launch_gridder(
                               d_subgrid};
 
   dim3 grid(nr_subgrids);
-  dim3 block(block_gridder);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
   start_measurement(data);
@@ -602,7 +519,7 @@ void InstanceCUDA::launch_degridder(
       d_metadata,     d_subgrid};
 
   dim3 grid(nr_subgrids);
-  dim3 block(block_degridder);
+  dim3 block(32);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::degridder);
   start_measurement(data);
@@ -648,7 +565,7 @@ void InstanceCUDA::launch_calibrate(
     cu::DeviceMemory& d_hessian, cu::DeviceMemory& d_gradient,
     cu::DeviceMemory& d_residual) {
   dim3 grid(nr_subgrids);
-  dim3 block(block_calibrate);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::calibrate);
   start_measurement(data);
@@ -1005,14 +922,14 @@ void InstanceCUDA::launch_adder(int nr_subgrids, int nr_polarizations,
                               d_metadata,        d_subgrid,  d_grid,
                               &enable_tiling};
   dim3 grid(nr_subgrids);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::adder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
 #endif
-    executestream->launchKernel(*function_adder, grid, block_adder, 0,
-                                parameters);
+    executestream->launchKernel(*function_adder, grid, block, 0, parameters);
   end_measurement(data);
 }
 
@@ -1028,11 +945,11 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
                               d_metadata,        d_subgrid,  &grid_ptr,
                               &enable_tiling};
   dim3 grid(nr_subgrids);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::adder);
   start_measurement(data);
-  executestream->launchKernel(*function_adder, grid, block_adder, 0,
-                              parameters);
+  executestream->launchKernel(*function_adder, grid, block, 0, parameters);
   end_measurement(data);
 }
 
@@ -1046,14 +963,14 @@ void InstanceCUDA::launch_splitter(int nr_subgrids, int nr_polarizations,
                               d_metadata,        d_subgrid,  d_grid,
                               &enable_tiling};
   dim3 grid(nr_subgrids);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
 #endif
-    executestream->launchKernel(*function_splitter, grid, block_splitter, 0,
-                                parameters);
+    executestream->launchKernel(*function_splitter, grid, block, 0, parameters);
   end_measurement(data);
 }
 
@@ -1069,11 +986,11 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
                               d_metadata,        d_subgrid,  &grid_ptr,
                               &enable_tiling};
   dim3 grid(nr_subgrids);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
   start_measurement(data);
-  executestream->launchKernel(*function_splitter, grid, block_splitter, 0,
-                              parameters);
+  executestream->launchKernel(*function_splitter, grid, block, 0, parameters);
   end_measurement(data);
 }
 
@@ -1082,11 +999,11 @@ void InstanceCUDA::launch_scaler(int nr_subgrids, int nr_polarizations,
                                  cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {&nr_polarizations, &subgrid_size, d_subgrid};
   dim3 grid(nr_subgrids);
+  dim3 block(128);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::fft_scale);
   start_measurement(data);
-  executestream->launchKernel(*function_scaler, grid, block_scaler, 0,
-                              parameters);
+  executestream->launchKernel(*function_scaler, grid, block, 0, parameters);
   end_measurement(data);
 }
 
@@ -1125,7 +1042,8 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(
                               &tile_size,        &subgrid_offset, d_metadata,
                               d_subgrid,         d_tiles,         &scale};
   dim3 grid(nr_subgrids);
-  executestream->launchKernel(*functions_wtiling[2], grid, block_adder, 0,
+  dim3 block(128);
+  executestream->launchKernel(*functions_wtiling[2], grid, block, 0,
                               parameters);
 }
 
@@ -1153,7 +1071,8 @@ void InstanceCUDA::launch_splitter_subgrids_from_wtiles(
                               &tile_size,        &subgrid_offset, d_metadata,
                               d_subgrid,         d_tiles,         &scale};
   dim3 grid(nr_subgrids);
-  executestream->launchKernel(*functions_wtiling[4], grid, block_adder, 0,
+  dim3 block(128);
+  executestream->launchKernel(*functions_wtiling[4], grid, block, 0,
                               parameters);
 }
 
