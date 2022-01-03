@@ -152,14 +152,14 @@ void HostMemory::resize(size_t size) {
 void HostMemory::release() {
   ScopedContext scc(_context);
 
-  void *ptr = get();
+  void *ptr = data();
   if (ptr) {
     assertCudaCall(cuMemFreeHost(ptr));
     set(nullptr);
   }
 }
 
-void HostMemory::zero() { memset(get(), 0, m_bytes); }
+void HostMemory::zero() { memset(data(), 0, m_bytes); }
 
 /*
     RegisteredMemory
@@ -173,7 +173,7 @@ RegisteredMemory::RegisteredMemory(const Context &context, const void *ptr,
   _flags = flags;
   assert(ptr != nullptr);
   set(const_cast<void *>(ptr));
-  checkCudaCall(cuMemHostRegister(get(), size, _flags));
+  checkCudaCall(cuMemHostRegister(data(), size, _flags));
 }
 
 RegisteredMemory::~RegisteredMemory() { release(); }
@@ -184,10 +184,10 @@ void RegisteredMemory::resize(size_t size) {
 
 void RegisteredMemory::release() {
   ScopedContext scc(_context);
-  checkCudaCall(cuMemHostUnregister(get()));
+  checkCudaCall(cuMemHostUnregister(data()));
 }
 
-void RegisteredMemory::zero() { memset(get(), 0, m_bytes); }
+void RegisteredMemory::zero() { memset(data(), 0, m_bytes); }
 
 /*
     DeviceMemory
@@ -284,12 +284,12 @@ void UnifiedMemory::resize(size_t size) {
 }
 
 void UnifiedMemory::set_advice(CUmem_advise advice) {
-  CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(get());
+  CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(data());
   assertCudaCall(cuMemAdvise(ptr, m_bytes, advice, CU_DEVICE_CPU));
 }
 
 void UnifiedMemory::set_advice(CUmem_advise advice, Device &device) {
-  CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(get());
+  CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(data());
   assertCudaCall(cuMemAdvise(ptr, m_bytes, advice, device));
 }
 
@@ -297,7 +297,7 @@ void UnifiedMemory::release() {
   ScopedContext scc(_context);
 
   if (m_free) {
-    CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(get());
+    CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(data());
     assertCudaCall(cuMemFree(ptr));
     m_free = false;
   }

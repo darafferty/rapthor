@@ -250,9 +250,12 @@ void GenericOptimized::run_imaging(
       device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
                                 nr_polarizations, FourierDomainToImageDomain);
 
-      // Launch scaler
-      device.launch_scaler(nr_subgrids_current, nr_polarizations, subgrid_size,
-                           d_subgrids);
+      // In case of W-Tiling, adder_subgrids_to_wtiles performs scaling of the
+      // subgrids, otherwise the scaler kernel needs to be called here.
+      if (!plan.get_use_wtiles()) {
+        device.launch_scaler(nr_subgrids_current, nr_polarizations,
+                             subgrid_size, d_subgrids);
+      }
       executestream.record(gpuFinished[job_id]);
 
       // Copy subgrid to host

@@ -33,7 +33,7 @@ class Array1D {
   Array1D(size_t size)
       : m_x_dim(size),
         m_memory(new auxiliary::AlignedMemory(size * sizeof(T))),
-        m_buffer((T*)m_memory->get()) {}
+        m_buffer((T*)m_memory->data()) {}
 
   /**
    * @brief Construct a new Array1D object from a raw pointer
@@ -59,7 +59,7 @@ class Array1D {
   Array1D(std::unique_ptr<auxiliary::Memory> memory, size_t size)
       : m_x_dim(size),
         m_memory(std::move(memory)),
-        m_buffer((T*)m_memory->get()) {}
+        m_buffer((T*)m_memory->data()) {}
 
   Array1D(const Array1D& other) = delete;
   Array1D& operator=(const Array1D& rhs) = delete;

@@ -130,37 +130,6 @@ class GenericOptimized : public cuda::CUDA {
 
   void do_calibrate_finish() override;
 
-  /*
-   * W-Tiling
-   */
-  void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
-                          float w_step, const Array1D<float>& shift,
-                          WTileUpdateInfo& wtile_flush_info);
-
-  void run_subgrids_to_wtiles(unsigned int nr_polarizations,
-                              unsigned int subgrid_offset,
-                              unsigned int nr_subgrids,
-                              unsigned int subgrid_size, float image_size,
-                              float w_step, const Array1D<float>& shift,
-                              WTileUpdateSet& wtile_flush_set,
-                              cu::DeviceMemory& d_subgrids,
-                              cu::DeviceMemory& d_metadata);
-
-  void run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
-                            float w_step, const Array1D<float>& shift,
-                            WTileUpdateInfo& wtile_initialize_info);
-
-  void run_subgrids_from_wtiles(unsigned int nr_polarizations,
-                                unsigned int subgrid_offset,
-                                unsigned int nr_subgrids,
-                                unsigned int subgrid_size, float image_size,
-                                float w_step, const Array1D<float>& shift,
-                                WTileUpdateSet& wtile_initialize_set,
-                                cu::DeviceMemory& d_subgrids,
-                                cu::DeviceMemory& d_metadata);
-
-  void flush_wtiles();
-
  protected:
   idg::proxy::cpu::CPU* cpuProxy;
 

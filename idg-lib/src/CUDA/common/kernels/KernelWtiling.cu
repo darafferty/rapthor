@@ -270,8 +270,7 @@ __global__ void kernel_subgrids_from_wtiles(
     const int                    subgrid_offset,
     const Metadata* __restrict__ metadata,
           float2*   __restrict__ subgrid,
-    const float2*   __restrict__ tiles,
-          float2                 scale)
+    const float2*   __restrict__ tiles)
 {
     // Map blockIdx.x to subgrids
     int s = blockIdx.x + subgrid_offset;
@@ -302,8 +301,7 @@ __global__ void kernel_subgrids_from_wtiles(
         int x = i % subgrid_size;
         float pi = (float) M_PI;
         float phase = -pi * (x+y-subgrid_size)/subgrid_size;
-        float2 phasor = make_float2(cosf(phase) * scale.x,
-                                    sinf(phase) * scale.y);
+        float2 phasor = make_float2(cosf(phase), sinf(phase));
 
         if (y < subgrid_size)
         {

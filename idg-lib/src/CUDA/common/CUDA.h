@@ -11,6 +11,7 @@
 namespace cu {
 class DeviceMemory;
 class HostMemory;
+class UnifiedMemory;
 class Context;
 };  // namespace cu
 
@@ -75,11 +76,6 @@ class CUDA : public Proxy {
   // a copy on the grid on the device.
   bool m_use_unified_memory = false;
 
-  // Option to enable/disable reordering of the grid
-  // to the host grid format, rather than the tiled
-  // format used in the adder and splitter kernels.
-  bool m_enable_tiling = true;
-
  public:
   void set_fraction_reserved(float f) { m_fraction_reserved = f; }
   void enable_unified_memory() { m_use_unified_memory = true; }
@@ -128,6 +124,34 @@ class CUDA : public Proxy {
                                 const idg::Array1D<float>& shift,
                                 const size_t bytes_free) const;
 
+  void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
+                          float w_step, const Array1D<float>& shift,
+                          WTileUpdateInfo& wtile_flush_info);
+
+  void run_subgrids_to_wtiles(unsigned int nr_polarizations,
+                              unsigned int subgrid_offset,
+                              unsigned int nr_subgrids,
+                              unsigned int subgrid_size, float image_size,
+                              float w_step, const Array1D<float>& shift,
+                              WTileUpdateSet& wtile_flush_set,
+                              cu::DeviceMemory& d_subgrids,
+                              cu::DeviceMemory& d_metadata);
+
+  void run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
+                            float w_step, const Array1D<float>& shift,
+                            WTileUpdateInfo& wtile_initialize_info);
+
+  void run_subgrids_from_wtiles(unsigned int nr_polarizations,
+                                unsigned int subgrid_offset,
+                                unsigned int nr_subgrids,
+                                unsigned int subgrid_size, float image_size,
+                                float w_step, const Array1D<float>& shift,
+                                WTileUpdateSet& wtile_initialize_set,
+                                cu::DeviceMemory& d_subgrids,
+                                cu::DeviceMemory& d_metadata);
+
+  void flush_wtiles();
+
   WTiles m_wtiles;
   unsigned int m_nr_tiles = 0;  // configured in init_cache
   const unsigned int m_tile_size = 128;
@@ -141,9 +165,23 @@ class CUDA : public Proxy {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
   } m_buffers_wtiling;
 
+  /*
+   * Unified Memory
+   */
+  cu::UnifiedMemory& get_unified_grid() { return *u_grid_; }
+  cu::UnifiedMemory& allocate_unified_grid(const cu::Context& context,
+                                           size_t size);
+  void free_unified_grid();
+
  private:
   ProxyInfo& mInfo;
   std::vector<idg::kernel::cuda::InstanceCUDA*> devices;
+
+  /**
+   * Copy of the grid in CUDA Unified Memory used by the Generic and Unified
+   * proxies.
+   */
+  std::unique_ptr<cu::UnifiedMemory> u_grid_;
 };
 }  // namespace cuda
 }  // end namespace proxy

@@ -30,24 +30,6 @@ class Unified : public Generic {
   // Destructor
   ~Unified();
 
-  void do_gridding(
-      const Plan& plan, const Array1D<float>& frequencies,
-      const Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal) override;
-
-  void do_degridding(
-      const Plan& plan, const Array1D<float>& frequencies,
-      Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array2D<float>& spheroidal) override;
-
   void do_transform(DomainAtoDomainB direction) override;
 
   void set_grid(std::shared_ptr<Grid> grid) override;
@@ -57,14 +39,17 @@ class Unified : public Generic {
   bool do_supports_wtiling() override { return false; }
 
  private:
-  // The m_grid member defined in Proxy
-  // may not reside in Unified Memory.
-  // This m_grid_tiled is initialized as a copy
-  // of m_grid and (optionally) tiled to match the
-  // data access pattern in the unified_adder
-  // and unified_splitter kernels.
-  std::unique_ptr<Array5D<std::complex<float>>> m_grid_tiled = nullptr;
-
+  /**
+   * Option to enable/disable reordering of the grid
+   * to the host grid format, rather than the tiled
+   * format used in the adder and splitter kernels.
+   * Also set enable_tiling = false in
+   * InstanceCUDA::launch_adder_unified and
+   * InstanceCUDA::launch_splitter_unified to get
+   * correct results.
+   */
+  bool m_enable_tiling = true;
+  bool m_grid_is_tiled = false;
 };  // class Unified
 
 }  // namespace cuda

@@ -148,8 +148,7 @@ class InstanceCUDA : public KernelsInstance {
   void launch_splitter_subgrids_from_wtiles(
       int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
       int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
-      cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
-      std::complex<float> scale = {1.0, 1.0});
+      cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles);
 
   void launch_splitter_wtiles_from_grid(int nr_polarizations, int nr_tiles,
                                         long grid_size, int tile_size,
