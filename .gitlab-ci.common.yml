@@ -39,6 +39,7 @@ versioning:
     - echo IDG_VERSION=$(git describe --tags --dirty) > versions.env
     - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_20_04_base) >> versions.env
     - echo INTEGRATION_IMAGE=${CI_REGISTRY_IMAGE}/integration:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_20_04_integration) >> versions.env
+    - echo GPU_IMAGE=${CI_REGISTRY_IMAGE}/gpu:${CI_COMMIT_SHORT_SHA} >> versions.env
     - cat versions.env
   artifacts:
     reports:
@@ -52,38 +53,50 @@ versioning:
     - docker:20.10-dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+  script:
+    - |
+      if ! docker manifest inspect $DOCKER_IMAGE > /dev/null; then
+        docker build $DOCKER_BUILD_ARG --tag $DOCKER_IMAGE -f $DOCKER_FILE .
+        docker push $DOCKER_IMAGE
+      fi
+  # Skip the job if there are no changes to the Docker file. This shortcut only
+  # works for push and merge request jobs.
+  # A manual pipeline run will thus create missing docker images.
+  rules:
+    - changes:
+      - $DOCKER_FILE
 
 # Create and push the base image to the gitlab registry, if it does not exist.
 prepare-base:
   extends: .prepare
-  script:
-    - |
-      if ! docker manifest inspect $BASE_IMAGE > /dev/null; then
-        docker build --tag $BASE_IMAGE -f ./docker/ubuntu_20_04_base .
-        docker push $BASE_IMAGE
-      fi
+  variables:
+    DOCKER_IMAGE: $BASE_IMAGE
+    DOCKER_FILE: ./docker/ubuntu_20_04_base
+
+# Template for jobs that depend on the optional prepare-base job.
+.needs-base:
+  needs:
+    - job: versioning
+    - job: prepare-base
+      optional: true
+  image: $BASE_IMAGE
 
 # Create and push the integration image to the gitlab registry, if it does not exist.
 prepare-integration:
   extends: .prepare
-  script:
-    - |
-      if ! docker manifest inspect $INTEGRATION_IMAGE > /dev/null; then
-        docker build --tag $INTEGRATION_IMAGE -f ./docker/ubuntu_20_04_integration .
-        docker push $INTEGRATION_IMAGE
-      fi
+  variables:
+    DOCKER_IMAGE: $INTEGRATION_IMAGE
+    DOCKER_FILE: ./docker/ubuntu_20_04_integration
 
 format:
+  extends: .needs-base
   stage: linting
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   script:
     - ./scripts/run-format.sh
 
 build-python:
+  extends: .needs-base
   stage: build
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   script:
     - mkdir build
     - cd build
@@ -91,9 +104,8 @@ build-python:
     - make install -j4
 
 build-release:
+  extends: .needs-base
   stage: build
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   script:
     - mkdir build
     - cd build
@@ -101,9 +113,8 @@ build-release:
     - make install -j4
 
 build-debug:
+  extends: .needs-base
   stage: build
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   script:
     - mkdir build
     - cd build
@@ -111,9 +122,8 @@ build-debug:
     - make install -j4
 
 build-package:
+  extends: .needs-base
   stage: build
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   script:
     - mkdir idg_package
     - mkdir build
@@ -135,9 +145,8 @@ build-package:
     - if: '$UPLOAD_PACKAGE'
 
 test-unit:
+  extends: .needs-base
   stage: test
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   before_script:
     - pip3 install pytest h5py
   script:
@@ -173,7 +182,10 @@ test-unit:
 #   DP3, we want to run these jobs elsewhere in the future. See AST-653.
 test-integration:
   stage: test
-  needs: ["versioning","prepare-integration"]
+  needs:
+    - job: versioning
+    - job: prepare-integration
+      optional: true
   allow_failure: true
   image: $INTEGRATION_IMAGE
   before_script:
@@ -213,9 +225,8 @@ test-integration:
 # Building documentation happens for all branches, which allows browsing.
 # Publishing documentation only happens for the master branch on the Astron repo.
 documentation-build:
+  extends: .needs-base
   stage: documentation
-  needs: ["versioning","prepare-base"]
-  image: $BASE_IMAGE
   script:
     - apt update && apt install -y doxygen
     - python3 -m pip install numpy sphinx breathe sphinx-rtd-theme myst-parser
