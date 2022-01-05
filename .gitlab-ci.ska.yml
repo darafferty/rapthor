@@ -17,24 +17,21 @@ cache:
     - public
 
 prepare-gpu:
-  stage: prepare
-  needs: []
-  image: docker:stable
-  services:
-    - docker:dind
-  script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-    - docker build --tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu -f ./docker/ubuntu_20_04_gpu .
-    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
+  extends: .prepare
+  variables:
+    DOCKER_IMAGE: $GPU_IMAGE
+    DOCKER_FILE: ./docker/ubuntu_20_04_gpu
+  rules:
+    - when: always # Override the 'changes' rule from .prepare
 
 test-gpu:
   stage: test
-  needs: ["prepare-gpu"]
+  needs: ["versioning","prepare-gpu"]
   # This job may fail, since the k8srunner-gpu node is still experimental.
   allow_failure: true
   timeout: 10 minutes
   tags: [k8srunner-gpu]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
+  image: $GPU_IMAGE
   script:
     - nvidia-smi
     - cd /idg/bin
@@ -43,8 +40,8 @@ test-gpu:
 deploy-package:
   stage: publish
   # Only deploy if the tests pass
-  needs: ["prepare-gpu","test-unit","test-integration","test-gpu"]
-  image: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
+  needs: ["versioning","prepare-gpu","test-unit","test-integration","test-gpu"]
+  image: $GPU_IMAGE
   before_script:
     - apt-get update
     - apt-get install -y curl
@@ -74,7 +71,6 @@ deploy-docker:
   services:
     - docker:20.10-dind
   variables:
-    PIPELINE_IMAGE: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}_gpu
     CAR_IMAGE: ${CAR_OCI_REGISTRY_HOST}/${CI_PROJECT_NAME}/idg-cuda:${IDG_VERSION}
   script:
     - echo Deploying GPU docker image to ${CAR_IMAGE}
@@ -82,8 +78,8 @@ deploy-docker:
     - echo ${CAR_OCI_REGISTRY_PASSWORD} | docker login --username ${CAR_OCI_REGISTRY_USERNAME} --password-stdin ${CAR_OCI_REGISTRY_HOST}
     - |
       if ! docker manifest inspect $CAR_IMAGE > /dev/null; then
-        docker pull ${PIPELINE_IMAGE}
-        docker tag ${PIPELINE_IMAGE} ${CAR_IMAGE}
+        docker pull ${GPU_IMAGE}
+        docker tag ${GPU_IMAGE} ${CAR_IMAGE}
         docker push ${CAR_IMAGE}
       else
         echo Skipping deploy, ${CAR_IMAGE} already exists
