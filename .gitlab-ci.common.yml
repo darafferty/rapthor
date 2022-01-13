@@ -61,7 +61,8 @@ versioning:
           content=$(eval "echo \"\$${label}\"")
           DOCKER_BUILD_ARG="${DOCKER_BUILD_ARG} --label ${label}=\"${content}\""
         done
-        docker build "$DOCKER_BUILD_ARG" --tag $DOCKER_IMAGE -f $DOCKER_FILE .
+        # sh -c "xxx" properly expands $DOCKER_BUILD_ARG.
+        sh -c "docker build $DOCKER_BUILD_ARG --tag $DOCKER_IMAGE -f $DOCKER_FILE ."
         docker push $DOCKER_IMAGE
       fi
   # Skip the job if there are no changes to the Docker file. This shortcut only
