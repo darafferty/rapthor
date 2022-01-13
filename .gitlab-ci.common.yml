@@ -56,7 +56,12 @@ versioning:
   script:
     - |
       if ! docker manifest inspect $DOCKER_IMAGE > /dev/null; then
-        docker build $DOCKER_BUILD_ARG --tag $DOCKER_IMAGE -f $DOCKER_FILE .
+        for label in $DOCKER_ENV_LABELS; do
+          # This image has sh, not bash, so ${!label} and '+=' don't work.
+          content=$(eval "echo \"\$${label}\"")
+          DOCKER_BUILD_ARG="${DOCKER_BUILD_ARG} --label ${label}=\"${content}\""
+        done
+        docker build "$DOCKER_BUILD_ARG" --tag $DOCKER_IMAGE -f $DOCKER_FILE .
         docker push $DOCKER_IMAGE
       fi
   # Skip the job if there are no changes to the Docker file. This shortcut only
