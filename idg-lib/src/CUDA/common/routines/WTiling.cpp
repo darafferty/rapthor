@@ -333,7 +333,7 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
           // Wait for previous patch to be computed
           if (i > m_nr_patches_batch) {
-            gpuFinished[id].synchronize();
+            executestream.waitEvent(outputCopied[id]);
           }
 
           // Get patch metadata
@@ -360,7 +360,7 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
           // Copy patch to the host
           void* patch_ptr =
-              static_cast<char*>(h_padded_tiles) + i * sizeof_patch;
+              static_cast<char*>(h_padded_tiles.data()) + i * sizeof_patch;
           dtohstream.waitEvent(gpuFinished[id]);
           dtohstream.memcpyDtoHAsync(patch_ptr, d_patch, sizeof_patch);
           dtohstream.record(outputCopied[id]);
@@ -375,7 +375,8 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
         run_adder_patch_to_grid(
             nr_polarizations, grid_size, m_patch_size, current_nr_patches,
-            &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
+            &patch_coordinates[patch_offset], m_grid->data(),
+            static_cast<std::complex<float>*>(h_padded_tiles.data()));
         marker.end();
       }  // end for patch_offset
     }    // end if m_use_unified_memory
@@ -604,7 +605,8 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
         marker.start();
         run_splitter_patch_from_grid(
             nr_polarizations, grid_size, m_patch_size, current_nr_patches,
-            &patch_coordinates[patch_offset], m_grid->data(), h_padded_tiles);
+            &patch_coordinates[patch_offset], m_grid->data(),
+            static_cast<std::complex<float>*>(h_padded_tiles.data()));
         marker.end();
 
         for (unsigned int i = 0; i < current_nr_patches; i++) {
@@ -629,7 +631,7 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
 
           // Copy patch to the GPU
           void* patch_ptr =
-              static_cast<char*>(h_padded_tiles) + i * sizeof_patch;
+              static_cast<char*>(h_padded_tiles.data()) + i * sizeof_patch;
           htodstream.waitEvent(gpuFinished[id]);
           htodstream.memcpyHtoDAsync(d_patch, patch_ptr, sizeof_patch);
           htodstream.record(inputCopied[id]);

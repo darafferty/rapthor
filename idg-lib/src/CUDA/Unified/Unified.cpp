@@ -75,7 +75,7 @@ void Unified::do_transform(idg::DomainAtoDomainB direction) {
 
   // Copy grid to device
   cu::DeviceMemory d_grid(context, m_grid->bytes());
-  device.copy_htod(stream, d_grid, m_grid->data(), m_grid->bytes());
+  stream.memcpyHtoDAsync(d_grid, m_grid->data(), m_grid->bytes());
 
   // Perform fft shift
   device.launch_fft_shift(d_grid, nr_polarizations, grid_size);
@@ -91,7 +91,7 @@ void Unified::do_transform(idg::DomainAtoDomainB direction) {
   device.launch_fft_shift(d_grid, nr_polarizations, grid_size, scale);
 
   // Copy grid back to the host
-  device.copy_dtoh(stream, m_grid->data(), d_grid, m_grid->bytes());
+  stream.memcpyDtoHAsync(m_grid->data(), d_grid, m_grid->bytes());
 
   // Remember that the m_grid is not (or no longer) tiled. Since we did not
   // alter u_grid_, there is no need to perform forward tiling here.

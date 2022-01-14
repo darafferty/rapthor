@@ -29,9 +29,9 @@ void Generic::do_transform(DomainAtoDomainB direction) {
     d_grid_.reset(new cu::DeviceMemory(context, m_grid->bytes()));
     if (m_use_unified_memory) {
       cu::UnifiedMemory& u_grid = get_unified_grid();
-      device.copy_htod(stream, *d_grid_, u_grid.data(), u_grid.size());
+      stream.memcpyHtoDAsync(*d_grid_, u_grid.data(), u_grid.size());
     } else {
-      device.copy_htod(stream, *d_grid_, m_grid->data(), m_grid->bytes());
+      stream.memcpyHtoDAsync(*d_grid_, m_grid->data(), m_grid->bytes());
     }
   }
 
@@ -59,9 +59,9 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   if (!m_disable_wtiling) {
     if (m_use_unified_memory) {
       cu::UnifiedMemory& u_grid = get_unified_grid();
-      device.copy_dtoh(stream, u_grid.data(), *d_grid_, u_grid.size());
+      stream.memcpyDtoHAsync(u_grid.data(), *d_grid_, u_grid.size());
     } else {
-      device.copy_dtoh(stream, m_grid->data(), *d_grid_, m_grid->bytes());
+      stream.memcpyDtoHAsync(m_grid->data(), *d_grid_, m_grid->bytes());
     }
   }
 

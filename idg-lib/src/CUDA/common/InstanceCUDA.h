@@ -41,9 +41,8 @@ class InstanceCUDA : public KernelsInstance {
       int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
       cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
       cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
-      cu::DeviceMemory& d_aterm_indices,
-      cu::DeviceMemory& d_avg_aterm_correction, cu::DeviceMemory& d_metadata,
-      cu::DeviceMemory& d_subgrid);
+      cu::DeviceMemory& d_aterm_indices, cu::DeviceMemory& d_metadata,
+      cu::DeviceMemory& d_avg_aterm, cu::DeviceMemory& d_subgrid);
 
   void launch_degridder(
       int time_offset, int nr_subgrids, int nr_polarizations, int grid_size,
@@ -236,14 +235,6 @@ class InstanceCUDA : public KernelsInstance {
  public:
   void enqueue_report(cu::Stream& stream, int nr_polarizations,
                       int nr_timesteps, int nr_subgrids);
-
-  void copy_htoh(void* dst, void* src, size_t bytes);
-
-  void copy_dtoh(cu::Stream& stream, void* dst, cu::DeviceMemory& src,
-                 size_t bytes);
-
-  void copy_htod(cu::Stream& stream, cu::DeviceMemory& dst, void* src,
-                 size_t bytes);
 
  private:
   void start_measurement(void* data);

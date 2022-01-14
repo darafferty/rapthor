@@ -351,12 +351,12 @@ void print_version() {
   cout << GIT_BRANCH << ":" << GIT_REV << endl;
 }
 
-DefaultMemory::DefaultMemory(size_t bytes) : Memory(malloc(bytes)) {}
+DefaultMemory::DefaultMemory(size_t size) : Memory(malloc(size), size) {}
 
 DefaultMemory::~DefaultMemory() { free(data()); };
 
-AlignedMemory::AlignedMemory(size_t bytes)
-    : Memory(allocate_memory<char>(bytes, m_alignment)) {}
+AlignedMemory::AlignedMemory(size_t size)
+    : Memory(allocate_memory<char>(size, alignment_), size) {}
 
 AlignedMemory::~AlignedMemory() { free(data()); };
 

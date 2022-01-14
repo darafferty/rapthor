@@ -67,7 +67,7 @@ __device__ void update_subgrid(
     const unsigned             y,
     const unsigned             x,
     const float*  __restrict__ spheroidal,
-    const float2* __restrict__ avg_aterm_correction,
+    const float2* __restrict__ avg_aterm,
           float2* __restrict__ pixel,
           float2* __restrict__ subgrid)
 {
@@ -79,10 +79,9 @@ __device__ void update_subgrid(
     int i = y * subgrid_size + x;
 
     // Apply average aterm correction
-    if (avg_aterm_correction) {
+    if (avg_aterm) {
         apply_avg_aterm_correction_(
-            avg_aterm_correction + i*16,
-            pixel);
+            avg_aterm + i*16, pixel);
     }
 
     // Load spheroidal
@@ -120,8 +119,8 @@ __device__ void
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterms,
     const int*             __restrict__ aterms_indices,
-    const float2*          __restrict__ avg_aterm_correction,
     const Metadata*        __restrict__ metadata,
+    const float2*          __restrict__ avg_aterm,
           float2*          __restrict__ subgrid)
 {
     int tid = threadIdx.x;
@@ -302,8 +301,7 @@ __device__ void
                     &pixel_cur[j][0], &pixel_sum[j][0]);
                 update_subgrid<nr_polarizations>(
                     subgrid_size, s, y, x,
-                    spheroidal, avg_aterm_correction,
-                    &pixel_sum[j][0], subgrid);
+                    spheroidal, avg_aterm, &pixel_sum[j][0], subgrid);
             }
         }
     } // end for i (pixels)
@@ -328,8 +326,8 @@ __global__ void
         const float*      __restrict__ spheroidal,
         const float2*     __restrict__ aterms,
         const int*        __restrict__ aterms_indices,
-        const float2*     __restrict__ avg_aterm_correction,
         const Metadata*   __restrict__ metadata,
+        const float2*     __restrict__ avg_aterm,
               float2*     __restrict__ subgrid)
 {
     int s                   = blockIdx.x;
@@ -345,13 +343,13 @@ __global__ void
             time_offset, grid_size, subgrid_size, image_size, w_step,
             shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices,
-            avg_aterm_correction, metadata, subgrid);
+            metadata, avg_aterm, subgrid);
     }  else {
         kernel_gridder_<4>(
             time_offset, grid_size, subgrid_size, image_size, w_step,
             shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations,
             uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices,
-            avg_aterm_correction, metadata, subgrid);
+            metadata, avg_aterm, subgrid);
     }
 }
 } // end extern "C"

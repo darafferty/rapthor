@@ -1,6 +1,7 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <algorithm>
 #include <iomanip>  // setprecision
 
 #include "InstanceCUDA.h"
@@ -468,9 +469,8 @@ void InstanceCUDA::launch_gridder(
     int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
     cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
-    cu::DeviceMemory& d_aterms_indices,
-    cu::DeviceMemory& d_avg_aterm_correction, cu::DeviceMemory& d_metadata,
-    cu::DeviceMemory& d_subgrid) {
+    cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_avg_aterm, cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {&time_offset,
                               &nr_polarizations,
                               &grid_size,
@@ -481,15 +481,15 @@ void InstanceCUDA::launch_gridder(
                               &shift_m,
                               &nr_channels,
                               &nr_stations,
-                              d_uvw,
-                              d_wavenumbers,
-                              d_visibilities,
-                              d_spheroidal,
-                              d_aterms,
-                              d_aterms_indices,
-                              d_avg_aterm_correction,
-                              d_metadata,
-                              d_subgrid};
+                              d_uvw.data(),
+                              d_wavenumbers.data(),
+                              d_visibilities.data(),
+                              d_spheroidal.data(),
+                              d_aterms.data(),
+                              d_aterms_indices.data(),
+                              d_metadata.data(),
+                              d_avg_aterm.data(),
+                              d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
   dim3 block(128);
@@ -511,12 +511,24 @@ void InstanceCUDA::launch_degridder(
     cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
     cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid) {
-  const void* parameters[] = {
-      &time_offset,   &nr_polarizations, &grid_size, &subgrid_size,
-      &image_size,    &w_step,           &shift_l,   &shift_m,
-      &nr_channels,   &nr_stations,      d_uvw,      d_wavenumbers,
-      d_visibilities, d_spheroidal,      d_aterms,   d_aterms_indices,
-      d_metadata,     d_subgrid};
+  const void* parameters[] = {&time_offset,
+                              &nr_polarizations,
+                              &grid_size,
+                              &subgrid_size,
+                              &image_size,
+                              &w_step,
+                              &shift_l,
+                              &shift_m,
+                              &nr_channels,
+                              &nr_stations,
+                              d_uvw.data(),
+                              d_wavenumbers.data(),
+                              d_visibilities.data(),
+                              d_spheroidal.data(),
+                              d_aterms.data(),
+                              d_aterms_indices.data(),
+                              d_metadata.data(),
+                              d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
   dim3 block(32);
@@ -537,10 +549,11 @@ void InstanceCUDA::launch_average_beam(
     cu::DeviceMemory& d_baselines, cu::DeviceMemory& d_aterms,
     cu::DeviceMemory& d_aterms_offsets, cu::DeviceMemory& d_weights,
     cu::DeviceMemory& d_average_beam) {
-  const void* parameters[] = {&nr_antennas, &nr_timesteps, &nr_channels,
-                              &nr_aterms,   &subgrid_size, d_uvw,
-                              d_baselines,  d_aterms,      d_aterms_offsets,
-                              d_weights,    d_average_beam};
+  const void* parameters[] = {
+      &nr_antennas,       &nr_timesteps,        &nr_channels,
+      &nr_aterms,         &subgrid_size,        d_uvw.data(),
+      d_baselines.data(), d_aterms.data(),      d_aterms_offsets.data(),
+      d_weights.data(),   d_average_beam.data()};
 
   dim3 grid(nr_baselines);
   dim3 block(128);
@@ -577,8 +590,9 @@ void InstanceCUDA::launch_calibrate(
   std::unique_ptr<cu::Function>& function_hessian = functions_calibrate[3];
 
   // Precompute l,m,n and phase offset
-  const void* parameters_lmnp[] = {&grid_size, &subgrid_size, &image_size,
-                                   &w_step,    d_metadata,    d_lmnp};
+  const void* parameters_lmnp[] = {&grid_size,        &subgrid_size,
+                                   &image_size,       &w_step,
+                                   d_metadata.data(), d_lmnp.data()};
   executestream->launchKernel(*function_lmnp, grid, block, 0, parameters_lmnp);
 
   const unsigned int nr_polarizations = 4;
@@ -600,15 +614,15 @@ void InstanceCUDA::launch_calibrate(
                                      &term_offset_y,
                                      &current_nr_terms_y,
                                      &nr_terms,
-                                     d_uvw,
-                                     d_wavenumbers,
-                                     d_aterm,
-                                     d_aterm_derivatives,
-                                     d_aterm_indices,
-                                     d_metadata,
-                                     d_subgrid,
-                                     d_sums1,
-                                     d_lmnp};
+                                     d_uvw.data(),
+                                     d_wavenumbers.data(),
+                                     d_aterm.data(),
+                                     d_aterm_derivatives.data(),
+                                     d_aterm_indices.data(),
+                                     d_metadata.data(),
+                                     d_subgrid.data(),
+                                     d_sums1.data(),
+                                     d_lmnp.data()};
     executestream->launchKernel(*function_sums, grid, block, 0,
                                 parameters_sums);
 
@@ -623,30 +637,29 @@ void InstanceCUDA::launch_calibrate(
                                            &term_offset_y,
                                            &current_nr_terms_y,
                                            &nr_terms,
-                                           d_uvw,
-                                           d_wavenumbers,
-                                           d_visibilities,
-                                           d_weights,
-                                           d_aterm,
-                                           d_aterm_derivatives,
-                                           d_aterm_indices,
-                                           d_metadata,
-                                           d_subgrid,
-                                           d_sums1,
-                                           d_lmnp,
-                                           d_gradient,
-                                           d_residual};
+                                           d_uvw.data(),
+                                           d_wavenumbers.data(),
+                                           d_visibilities.data(),
+                                           d_weights.data(),
+                                           d_aterm.data(),
+                                           d_aterm_derivatives.data(),
+                                           d_aterm_indices.data(),
+                                           d_metadata.data(),
+                                           d_subgrid.data(),
+                                           d_sums1.data(),
+                                           d_lmnp.data(),
+                                           d_gradient.data(),
+                                           d_residual.data()};
       executestream->launchKernel(*function_gradient, grid, block, 0,
                                   parameters_gradient);
     }
 
     // Compute hessian (diagonal)
-    const void* parameters_hessian1[] = {&nr_polarizations, &total_nr_timesteps,
-                                         &nr_channels,      &term_offset_y,
-                                         &term_offset_y,    &nr_terms,
-                                         d_weights,         d_aterm_indices,
-                                         d_metadata,        d_sums1,
-                                         d_sums1,           d_hessian};
+    const void* parameters_hessian1[] = {
+        &nr_polarizations, &total_nr_timesteps,    &nr_channels,
+        &term_offset_y,    &term_offset_y,         &nr_terms,
+        d_weights.data(),  d_aterm_indices.data(), d_metadata.data(),
+        d_sums1.data(),    d_sums1.data(),         d_hessian.data()};
     dim3 block_hessian(current_nr_terms_y, current_nr_terms_y);
     executestream->launchKernel(*function_hessian, grid, block_hessian, 0,
                                 parameters_hessian1);
@@ -669,15 +682,15 @@ void InstanceCUDA::launch_calibrate(
                                        &term_offset_x,
                                        &current_nr_terms_x,
                                        &nr_terms,
-                                       d_uvw,
-                                       d_wavenumbers,
-                                       d_aterm,
-                                       d_aterm_derivatives,
-                                       d_aterm_indices,
-                                       d_metadata,
-                                       d_subgrid,
-                                       d_sums2,
-                                       d_lmnp};
+                                       d_uvw.data(),
+                                       d_wavenumbers.data(),
+                                       d_aterm.data(),
+                                       d_aterm_derivatives.data(),
+                                       d_aterm_indices.data(),
+                                       d_metadata.data(),
+                                       d_subgrid.data(),
+                                       d_sums2.data(),
+                                       d_lmnp.data()};
       executestream->launchKernel(*function_sums, grid, block, 0,
                                   parameters_sums);
 
@@ -692,31 +705,29 @@ void InstanceCUDA::launch_calibrate(
                                              &term_offset_x,
                                              &current_nr_terms_x,
                                              &nr_terms,
-                                             d_uvw,
-                                             d_wavenumbers,
-                                             d_visibilities,
-                                             d_weights,
-                                             d_aterm,
-                                             d_aterm_derivatives,
-                                             d_aterm_indices,
-                                             d_metadata,
-                                             d_subgrid,
-                                             d_sums2,
-                                             d_lmnp,
-                                             d_gradient,
-                                             d_residual};
+                                             d_uvw.data(),
+                                             d_wavenumbers.data(),
+                                             d_visibilities.data(),
+                                             d_weights.data(),
+                                             d_aterm.data(),
+                                             d_aterm_derivatives.data(),
+                                             d_aterm_indices.data(),
+                                             d_metadata.data(),
+                                             d_subgrid.data(),
+                                             d_sums2.data(),
+                                             d_lmnp.data(),
+                                             d_gradient.data(),
+                                             d_residual.data()};
         executestream->launchKernel(*function_gradient, grid, block, 0,
                                     parameters_gradient);
       }
 
       // Compute hessian (horizontal offset)
       const void* parameters_hessian2[] = {
-          &nr_polarizations, &total_nr_timesteps,
-          &nr_channels,      &term_offset_y,
-          &term_offset_x,    &nr_terms,
-          d_weights,         d_aterm_indices,
-          d_metadata,        d_sums1,
-          d_sums2,           d_hessian};
+          &nr_polarizations, &total_nr_timesteps,    &nr_channels,
+          &term_offset_y,    &term_offset_x,         &nr_terms,
+          d_weights.data(),  d_aterm_indices.data(), d_metadata.data(),
+          d_sums1.data(),    d_sums2.data(),         d_hessian.data()};
       dim3 block_hessian(current_nr_terms_x, current_nr_terms_y);
       executestream->launchKernel(*function_hessian, grid, block_hessian, 0,
                                   parameters_hessian2);
@@ -863,7 +874,6 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
     executestream->memcpyDtoDAsync((CUdeviceptr)data_ptr, (CUdeviceptr)tmp_ptr,
                                    sizeof_subgrids);
   }
-  executestream->synchronize();
 
   // Enqueue end of measurement
   end_measurement(data);
@@ -900,7 +910,7 @@ void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
 
 void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
                                     long size, std::complex<float> scale) {
-  const void* parameters[] = {&size, d_data, &scale};
+  const void* parameters[] = {&size, d_data.data(), &scale};
 
   dim3 grid(batch, ceil(size / 2.0));
   dim3 block(128);
@@ -918,9 +928,9 @@ void InstanceCUDA::launch_adder(int nr_subgrids, int nr_polarizations,
                                 cu::DeviceMemory& d_subgrid,
                                 cu::DeviceMemory& d_grid) {
   const bool enable_tiling = false;
-  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
-                              d_metadata,        d_subgrid,  d_grid,
-                              &enable_tiling};
+  const void* parameters[] = {
+      &nr_polarizations, &grid_size,    &subgrid_size, d_metadata.data(),
+      d_subgrid.data(),  d_grid.data(), &enable_tiling};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -941,9 +951,9 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
   CUdeviceptr grid_ptr = u_grid;
   bool enable_tiling = true;
   const int nr_polarizations = 4;
-  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
-                              d_metadata,        d_subgrid,  &grid_ptr,
-                              &enable_tiling};
+  const void* parameters[] = {
+      &nr_polarizations, &grid_size, &subgrid_size, d_metadata.data(),
+      d_subgrid.data(),  &grid_ptr,  &enable_tiling};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -959,9 +969,9 @@ void InstanceCUDA::launch_splitter(int nr_subgrids, int nr_polarizations,
                                    cu::DeviceMemory& d_subgrid,
                                    cu::DeviceMemory& d_grid) {
   const bool enable_tiling = false;
-  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
-                              d_metadata,        d_subgrid,  d_grid,
-                              &enable_tiling};
+  const void* parameters[] = {
+      &nr_polarizations, &grid_size,    &subgrid_size, d_metadata.data(),
+      d_subgrid.data(),  d_grid.data(), &enable_tiling};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -982,9 +992,9 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
   CUdeviceptr grid_ptr = u_grid;
   const bool enable_tiling = true;
   const int nr_polarizations = 4;
-  const void* parameters[] = {&nr_polarizations, &grid_size, &subgrid_size,
-                              d_metadata,        d_subgrid,  &grid_ptr,
-                              &enable_tiling};
+  const void* parameters[] = {
+      &nr_polarizations, &grid_size, &subgrid_size, d_metadata.data(),
+      d_subgrid.data(),  &grid_ptr,  &enable_tiling};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -997,7 +1007,8 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
 void InstanceCUDA::launch_scaler(int nr_subgrids, int nr_polarizations,
                                  int subgrid_size,
                                  cu::DeviceMemory& d_subgrid) {
-  const void* parameters[] = {&nr_polarizations, &subgrid_size, d_subgrid};
+  const void* parameters[] = {&nr_polarizations, &subgrid_size,
+                              d_subgrid.data()};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -1012,8 +1023,9 @@ void InstanceCUDA::launch_copy_tiles(
     unsigned int src_tile_size, unsigned int dst_tile_size,
     cu::DeviceMemory& d_src_tile_ids, cu::DeviceMemory& d_dst_tile_ids,
     cu::DeviceMemory& d_src_tiles, cu::DeviceMemory& d_dst_tiles) {
-  const void* parameters[] = {&src_tile_size, &dst_tile_size, d_src_tile_ids,
-                              d_dst_tile_ids, d_src_tiles,    d_dst_tiles};
+  const void* parameters[] = {&src_tile_size,        &dst_tile_size,
+                              d_src_tile_ids.data(), d_dst_tile_ids.data(),
+                              d_src_tiles.data(),    d_dst_tiles.data()};
   dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[0], grid, block, 0,
@@ -1024,8 +1036,9 @@ void InstanceCUDA::launch_apply_phasor_to_wtiles(
     unsigned int nr_polarizations, unsigned int nr_tiles, float image_size,
     float w_step, unsigned int tile_size, cu::DeviceMemory& d_tiles,
     cu::DeviceMemory& d_shift, cu::DeviceMemory& d_tile_coordinates, int sign) {
-  const void* parameters[] = {&image_size, &w_step, &tile_size,
-                              d_tiles,     d_shift, d_tile_coordinates,
+  const void* parameters[] = {&image_size,    &w_step,
+                              &tile_size,     d_tiles.data(),
+                              d_shift.data(), d_tile_coordinates.data(),
                               &sign};
   dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
@@ -1038,9 +1051,10 @@ void InstanceCUDA::launch_adder_subgrids_to_wtiles(
     int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles,
     std::complex<float> scale) {
-  const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
-                              &tile_size,        &subgrid_offset, d_metadata,
-                              d_subgrid,         d_tiles,         &scale};
+  const void* parameters[] = {
+      &nr_polarizations, &grid_size,      &subgrid_size,
+      &tile_size,        &subgrid_offset, d_metadata.data(),
+      d_subgrid.data(),  d_tiles.data(),  &scale};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[2], grid, block, 0,
@@ -1053,8 +1067,12 @@ void InstanceCUDA::launch_adder_wtiles_to_grid(
     cu::DeviceMemory& d_tile_coordinates, cu::DeviceMemory& d_tiles,
     cu::UnifiedMemory& u_grid) {
   CUdeviceptr grid_ptr = u_grid;
-  const void* parameters[] = {&grid_size, &tile_size,         &padded_tile_size,
-                              d_tile_ids, d_tile_coordinates, d_tiles,
+  const void* parameters[] = {&grid_size,
+                              &tile_size,
+                              &padded_tile_size,
+                              d_tile_ids.data(),
+                              d_tile_coordinates.data(),
+                              d_tiles.data(),
                               &grid_ptr};
   dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
@@ -1066,9 +1084,9 @@ void InstanceCUDA::launch_splitter_subgrids_from_wtiles(
     int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
     int tile_size, int subgrid_offset, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_tiles) {
-  const void* parameters[] = {&nr_polarizations, &grid_size,      &subgrid_size,
-                              &tile_size,        &subgrid_offset, d_metadata,
-                              d_subgrid,         d_tiles};
+  const void* parameters[] = {
+      &nr_polarizations, &grid_size,        &subgrid_size,    &tile_size,
+      &subgrid_offset,   d_metadata.data(), d_subgrid.data(), d_tiles.data()};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[4], grid, block, 0,
@@ -1081,8 +1099,12 @@ void InstanceCUDA::launch_splitter_wtiles_from_grid(
     cu::DeviceMemory& d_tile_coordinates, cu::DeviceMemory& d_tiles,
     cu::UnifiedMemory& u_grid) {
   CUdeviceptr grid_ptr = u_grid;
-  const void* parameters[] = {&grid_size, &tile_size,         &padded_tile_size,
-                              d_tile_ids, d_tile_coordinates, d_tiles,
+  const void* parameters[] = {&grid_size,
+                              &tile_size,
+                              &padded_tile_size,
+                              d_tile_ids.data(),
+                              d_tile_coordinates.data(),
+                              d_tiles.data(),
                               &grid_ptr};
   dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
@@ -1095,11 +1117,11 @@ void InstanceCUDA::launch_adder_wtiles_to_patch(
     int padded_tile_size, int patch_size, idg::Coordinate patch_coordinate,
     cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
     cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch) {
-  const void* parameters[] = {&nr_tiles,   &grid_size,
-                              &tile_size,  &padded_tile_size,
-                              &patch_size, &patch_coordinate,
-                              d_tile_ids,  d_tile_coordinates,
-                              d_tiles,     d_patch};
+  const void* parameters[] = {&nr_tiles,         &grid_size,
+                              &tile_size,        &padded_tile_size,
+                              &patch_size,       &patch_coordinate,
+                              d_tile_ids.data(), d_tile_coordinates.data(),
+                              d_tiles.data(),    d_patch.data()};
   dim3 grid(nr_polarizations, patch_size);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[6], grid, block, 0,
@@ -1111,11 +1133,11 @@ void InstanceCUDA::launch_splitter_wtiles_from_patch(
     int padded_tile_size, int patch_size, idg::Coordinate patch_coordinate,
     cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
     cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch) {
-  const void* parameters[] = {&nr_tiles,   &grid_size,
-                              &tile_size,  &padded_tile_size,
-                              &patch_size, &patch_coordinate,
-                              d_tile_ids,  d_tile_coordinates,
-                              d_tiles,     d_patch};
+  const void* parameters[] = {&nr_tiles,         &grid_size,
+                              &tile_size,        &padded_tile_size,
+                              &patch_size,       &patch_coordinate,
+                              d_tile_ids.data(), d_tile_coordinates.data(),
+                              d_tiles.data(),    d_patch.data()};
   dim3 grid(nr_polarizations, patch_size);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[7], grid, block, 0,
@@ -1154,60 +1176,6 @@ void InstanceCUDA::enqueue_report(cu::Stream& stream, int nr_polarizations,
   ReportData* data =
       get_report_data(nr_polarizations, nr_timesteps, nr_subgrids, m_report);
   stream.addCallback((CUstreamCallback)&report_job, data);
-}
-
-void InstanceCUDA::copy_htoh(void* dst, void* src, size_t bytes) {
-  char message[80];
-  snprintf(message, 80, "copy_htoh(%lu)", bytes);
-  cu::Marker marker(message, cu::Marker::red);
-  marker.start();
-  size_t batch = 1024 * 1024 * 1024;  // 1024 Mb
-#pragma omp parallel for
-  for (size_t i = 0; i < bytes; i += batch) {
-    size_t n = i + batch < bytes ? batch : bytes - i;
-    size_t src_ptr = (size_t)src + i;
-    size_t dst_ptr = (size_t)dst + i;
-    memcpy((void*)dst_ptr, (void*)src_ptr, n);
-  }
-  marker.end();
-}
-
-void InstanceCUDA::copy_dtoh(cu::Stream& stream, void* dst,
-                             cu::DeviceMemory& src, size_t bytes) {
-  char message[80];
-  snprintf(message, 80, "copy_dtoh(%lu)", bytes);
-  cu::Marker marker(message, cu::Marker::red);
-  marker.start();
-  size_t batch = 1024 * 1024 * 1024;  // 1024 Mb
-  cu::HostMemory tmp(*context, batch);
-  for (size_t i = 0; i < bytes; i += batch) {
-    size_t n = i + batch < bytes ? batch : bytes - i;
-    size_t src_ptr = (size_t)src + i;
-    size_t dst_ptr = (size_t)dst + i;
-    stream.memcpyDtoHAsync((void*)tmp, (CUdeviceptr)src_ptr, n);
-    stream.synchronize();
-    memcpy((void*)dst_ptr, tmp, n);
-  }
-  marker.end();
-}
-
-void InstanceCUDA::copy_htod(cu::Stream& stream, cu::DeviceMemory& dst,
-                             void* src, size_t bytes) {
-  char message[80];
-  snprintf(message, 80, "copy_htod(%lu)", bytes);
-  cu::Marker marker(message, cu::Marker::red);
-  marker.start();
-  size_t batch = 1024 * 1024 * 1024;  // 1024 Mb
-  cu::HostMemory tmp(*context, batch);
-  for (size_t i = 0; i < bytes; i += batch) {
-    size_t n = i + batch < bytes ? batch : bytes - i;
-    size_t src_ptr = (size_t)src + i;
-    size_t dst_ptr = (size_t)dst + i;
-    memcpy(tmp, (void*)src_ptr, n);
-    stream.memcpyHtoDAsync((CUdeviceptr)dst_ptr, tmp, n);
-    stream.synchronize();
-  }
-  marker.end();
 }
 
 /*

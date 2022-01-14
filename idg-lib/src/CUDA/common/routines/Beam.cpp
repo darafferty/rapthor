@@ -40,28 +40,18 @@ void CUDA::do_compute_avg_beam(
   // the data is copied to the host and there converted to single-precision.
   cu::DeviceMemory d_average_beam(
       context, average_beam.size() * sizeof(std::complex<double>));
-  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_uvw_;
-  std::array<std::unique_ptr<cu::DeviceMemory>, 2> d_weights_;
-  for (unsigned int i = 0; i < 2; i++) {
-    d_uvw_[i].reset(new cu::DeviceMemory(context, 0));
-    d_weights_[i].reset(new cu::DeviceMemory(context, 0));
-  }
 
-  // Set jobsize and allocate dynamic memory (per thread)
+  // Find jobsize given the memory requirements for uvw and weights
   int jobsize = baselines.size() / 2;
+  size_t sizeof_uvw;
+  size_t sizeof_weights;
   do {
     size_t bytes_free = device.get_free_memory();
-    size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
-    size_t sizeof_weights =
+    sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
+    sizeof_weights =
         auxiliary::sizeof_weights(jobsize, nr_timesteps, nr_channels);
     size_t bytes_required = 2 * sizeof_uvw + 2 * sizeof_weights;
-
-    // Try to allocate memory
     if (bytes_free > bytes_required) {
-      for (unsigned int i = 0; i < 2; i++) {
-        d_uvw_[i]->resize(sizeof_uvw);
-        d_weights_[i]->resize(sizeof_weights);
-      }
       break;
     } else {
       jobsize /= 2;
@@ -72,6 +62,12 @@ void CUDA::do_compute_avg_beam(
     throw std::runtime_error(
         "Could not allocate memory for average beam kernel.");
   }
+
+  // Allocate device memory for uvw and weights
+  std::array<cu::DeviceMemory, 2> d_uvw_{
+      {{context, sizeof_uvw}, {context, sizeof_uvw}}};
+  std::array<cu::DeviceMemory, 2> d_weights_{
+      {{context, sizeof_weights}, {context, sizeof_weights}}};
 
   // Initialize job data
   struct JobData {
@@ -95,7 +91,7 @@ void CUDA::do_compute_avg_beam(
   // Events
   std::vector<std::unique_ptr<cu::Event>> inputCopied;
   for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.emplace_back(new cu::Event(context, CU_EVENT_BLOCKING_SYNC));
+    inputCopied.emplace_back(new cu::Event(context));
   }
 
   // Load streams
@@ -119,8 +115,8 @@ void CUDA::do_compute_avg_beam(
     unsigned local_id_next = (local_id + 1) % 2;
 
     auto& job = jobs[job_id];
-    cu::DeviceMemory& d_uvw = *d_uvw_[local_id];
-    cu::DeviceMemory& d_weights = *d_weights_[local_id];
+    cu::DeviceMemory& d_uvw = d_uvw_[local_id];
+    cu::DeviceMemory& d_weights = d_weights_[local_id];
 
     // Copy input for first job
     if (job_id == 0) {
@@ -136,8 +132,8 @@ void CUDA::do_compute_avg_beam(
     // Copy input for next job (if any)
     if (job_id_next < jobs.size()) {
       auto& job_next = jobs[job_id_next];
-      cu::DeviceMemory& d_uvw_next = *d_uvw_[local_id_next];
-      cu::DeviceMemory& d_weights_next = *d_weights_[local_id_next];
+      cu::DeviceMemory& d_uvw_next = d_uvw_[local_id_next];
+      cu::DeviceMemory& d_weights_next = d_weights_[local_id_next];
       auto sizeof_uvw =
           auxiliary::sizeof_uvw(job_next.current_nr_baselines, nr_timesteps);
       auto sizeof_weights = auxiliary::sizeof_weights(

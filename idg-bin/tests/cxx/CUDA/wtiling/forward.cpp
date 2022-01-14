@@ -23,8 +23,7 @@ void init_ids(int* ids, unsigned int n) {
 // data[][n][m][size][size]
 void init_data(std::complex<float>* data, int* ids, unsigned int n,
                unsigned int m, unsigned int size) {
-  size_t sizeof_tiles = n * m * size * size * sizeof(std::complex<float>);
-  memset((void*)data, 0, sizeof_tiles);
+  std::fill_n(data, n * m * size * size, 0);
   for (unsigned int tile = 0; tile < n; tile++) {
     float scale = (float)(tile + 1) / n;
 
@@ -362,17 +361,22 @@ int main(int argc, char* argv[]) {
   init_ids(subgrid_ids.data(), nr_subgrids);
 
   // Initialize tile ids
-  init_ids(h_padded_tile_ids, nr_tiles);
+  init_ids(static_cast<int*>(h_padded_tile_ids.data()), nr_tiles);
   stream.memcpyHtoDAsync(d_tile_ids, tile_ids.data(), sizeof_tile_ids);
-  stream.memcpyHtoDAsync(d_padded_tile_ids, h_padded_tile_ids, sizeof_tile_ids);
+  stream.memcpyHtoDAsync(d_padded_tile_ids,
+                         static_cast<int*>(h_padded_tile_ids.data()),
+                         sizeof_tile_ids);
 
   // Initalize tile coordinates
   stream.memcpyHtoDAsync(d_tile_coordinates, tile_coordinates.data(),
                          sizeof_tile_coordinates);
 
   // Initialize tiles
-  init_data(h_tiles, tile_ids.data(), nr_tiles, nr_polarizations, tile_size);
-  stream.memcpyHtoDAsync(d_tiles, h_tiles, h_tiles.size());
+  init_data(static_cast<std::complex<float>*>(h_tiles.data()), tile_ids.data(),
+            nr_tiles, nr_polarizations, tile_size);
+  stream.memcpyHtoDAsync(d_tiles,
+                         static_cast<std::complex<float>*>(h_tiles.data()),
+                         h_tiles.size());
 
   // Init shift
   stream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
@@ -390,12 +394,14 @@ int main(int argc, char* argv[]) {
   cuda.launch_copy_tiles(nr_polarizations, nr_tiles, tile_size,
                          padded_tile_size, d_tile_ids, d_padded_tile_ids,
                          d_tiles, d_padded_tiles);
-  stream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_padded_tiles);
+  stream.memcpyDtoHAsync(h_padded_tiles.data(), d_padded_tiles,
+                         sizeof_padded_tiles);
   stream.synchronize();
-  nr_errors = compare_tiles(static_cast<std::complex<float>*>(h_tiles),
-                            static_cast<std::complex<float>*>(h_padded_tiles),
-                            tile_ids.data(), h_padded_tile_ids, nr_tiles,
-                            nr_polarizations, tile_size, padded_tile_size);
+  nr_errors = compare_tiles(
+      static_cast<std::complex<float>*>(h_tiles.data()),
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), tile_ids.data(),
+      static_cast<int*>(h_padded_tile_ids.data()), nr_tiles, nr_polarizations,
+      tile_size, padded_tile_size);
   if (nr_errors == 0) {
     std::cout << "Passed." << std::endl;
   } else {
@@ -410,12 +416,14 @@ int main(int argc, char* argv[]) {
   cuda.launch_copy_tiles(nr_polarizations, nr_tiles, padded_tile_size,
                          tile_size, d_padded_tile_ids, d_tile_ids,
                          d_padded_tiles, d_tiles);
-  stream.memcpyDtoHAsync(h_tiles, d_tiles, sizeof_tiles);
+  stream.memcpyDtoHAsync(static_cast<std::complex<float>*>(h_tiles.data()),
+                         d_tiles, sizeof_tiles);
   stream.synchronize();
-  nr_errors = compare_tiles(static_cast<std::complex<float>*>(h_tiles),
-                            static_cast<std::complex<float>*>(h_padded_tiles),
-                            tile_ids.data(), h_padded_tile_ids, nr_tiles,
-                            nr_polarizations, tile_size, padded_tile_size);
+  nr_errors = compare_tiles(
+      static_cast<std::complex<float>*>(h_tiles.data()),
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), tile_ids.data(),
+      static_cast<int*>(h_padded_tile_ids.data()), nr_tiles, nr_polarizations,
+      tile_size, padded_tile_size);
   if (nr_errors == 0) {
     std::cout << "Passed." << std::endl;
   } else {
@@ -430,9 +438,12 @@ int main(int argc, char* argv[]) {
   std::cout << ">> Testing FFT + apply_phasor" << std::endl;
 
   // Initialize padded tiles
-  init_data(h_padded_tiles, h_padded_tile_ids, nr_tiles, nr_polarizations,
-            padded_tile_size);
-  stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
+  init_data(static_cast<std::complex<float>*>(h_padded_tiles.data()),
+            static_cast<int*>(h_padded_tile_ids.data()), nr_tiles,
+            nr_polarizations, padded_tile_size);
+  stream.memcpyHtoDAsync(
+      d_padded_tiles, static_cast<std::complex<float>*>(h_padded_tiles.data()),
+      h_padded_tiles.size());
 
   // Initialize FFT for padded_tiles
   unsigned stride = 1;
@@ -450,15 +461,17 @@ int main(int argc, char* argv[]) {
                                      w_step, padded_tile_size, d_padded_tiles,
                                      d_shift, d_tile_coordinates);
   fft.execute(d_padded_tiles_ptr, d_padded_tiles_ptr, CUFFT_FORWARD);
-  stream.memcpyDtoHAsync(h_padded_tiles, d_padded_tiles, sizeof_padded_tiles);
+  stream.memcpyDtoHAsync(
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), d_padded_tiles,
+      sizeof_padded_tiles);
   stream.synchronize();
 
   // Run apply_phasor on host
   unsigned int n =
       nr_tiles * nr_polarizations * padded_tile_size * padded_tile_size;
   std::vector<std::complex<float>> padded_tiles(n);
-  init_data(padded_tiles.data(), h_padded_tile_ids, nr_tiles, nr_polarizations,
-            padded_tile_size);
+  init_data(padded_tiles.data(), static_cast<int*>(h_padded_tile_ids.data()),
+            nr_tiles, nr_polarizations, padded_tile_size);
   idg::ifft2f(nr_tiles * nr_polarizations, padded_tile_size, padded_tile_size,
               padded_tiles.data());
   apply_phasor(padded_tiles.data(), tile_coordinates.data(), shift.data(),
@@ -466,7 +479,9 @@ int main(int argc, char* argv[]) {
                w_step);
   idg::fft2f(nr_tiles * nr_polarizations, padded_tile_size, padded_tile_size,
              padded_tiles.data());
-  accuracy = compare_arrays(n, h_padded_tiles, padded_tiles.data());
+  accuracy = compare_arrays(
+      n, static_cast<std::complex<float>*>(h_padded_tiles.data()),
+      padded_tiles.data());
   if (accuracy < TOLERANCE) {
     std::cout << "Passed." << std::endl;
   } else {
@@ -479,9 +494,9 @@ int main(int argc, char* argv[]) {
    * Test subgrids to wtiles
    ********************************************************************************/
   std::cout << ">> Testing subgrids_to_wtiles" << std::endl;
-  init_data(h_subgrids, subgrid_ids.data(), nr_subgrids, nr_polarizations,
-            subgrid_size);
-  stream.memcpyHtoDAsync(d_subgrids, h_subgrids, sizeof_subgrids);
+  init_data(static_cast<std::complex<float>*>(h_subgrids.data()),
+            subgrid_ids.data(), nr_subgrids, nr_polarizations, subgrid_size);
+  stream.memcpyHtoDAsync(d_subgrids, h_subgrids.data(), sizeof_subgrids);
   stream.memcpyHtoDAsync(d_metadata, plan.get_metadata_ptr(), sizeof_metadata);
 
   // Run subgrids_to_wtiles on GPU
@@ -489,7 +504,7 @@ int main(int argc, char* argv[]) {
   cuda.launch_adder_subgrids_to_wtiles(nr_subgrids, nr_polarizations, grid_size,
                                        subgrid_size, tile_size - subgrid_size,
                                        0, d_metadata, d_subgrids, d_tiles);
-  stream.memcpyDtoHAsync(h_tiles, d_tiles, sizeof_tiles);
+  stream.memcpyDtoHAsync(h_tiles.data(), d_tiles, sizeof_tiles);
   stream.synchronize();
 
   // Run subgrids_to_wtiles on host
@@ -499,8 +514,10 @@ int main(int argc, char* argv[]) {
   stream.synchronize();
   subgrids_to_wtiles(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                      tile_size - subgrid_size, plan.get_metadata_ptr(),
-                     h_subgrids, tiles.data());
-  accuracy = compare_arrays(n, h_tiles, tiles.data());
+                     static_cast<std::complex<float>*>(h_subgrids.data()),
+                     tiles.data());
+  accuracy = compare_arrays(
+      n, static_cast<std::complex<float>*>(h_tiles.data()), tiles.data());
   if (accuracy < TOLERANCE) {
     std::cout << "Passed." << std::endl;
   } else {
@@ -515,9 +532,12 @@ int main(int argc, char* argv[]) {
   std::cout << ">> Testing wtiles_to_grid" << std::endl;
 
   // Initialize tiles
-  init_data(h_padded_tiles, h_padded_tile_ids, nr_tiles, nr_polarizations,
-            padded_tile_size);
-  stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
+  init_data(static_cast<std::complex<float>*>(h_padded_tiles.data()),
+            static_cast<int*>(h_padded_tile_ids.data()), nr_tiles,
+            nr_polarizations, padded_tile_size);
+  stream.memcpyHtoDAsync(
+      d_padded_tiles, static_cast<std::complex<float>*>(h_padded_tiles.data()),
+      h_padded_tiles.size());
 
   // Run adder_wtiles_to_grid on GPU
   cuda.launch_adder_wtiles_to_grid(nr_polarizations, nr_tiles, grid_size,
@@ -529,12 +549,15 @@ int main(int argc, char* argv[]) {
   idg::Array3D<std::complex<float>> grid(nr_polarizations, grid_size,
                                          grid_size);
   grid.zero();
-  wtiles_to_grid(nr_tiles, nr_polarizations, grid_size,
-                 tile_size - subgrid_size, padded_tile_size, h_padded_tile_ids,
-                 tile_coordinates.data(), h_padded_tiles, grid.data());
+  wtiles_to_grid(
+      nr_tiles, nr_polarizations, grid_size, tile_size - subgrid_size,
+      padded_tile_size, static_cast<int*>(h_padded_tile_ids.data()),
+      tile_coordinates.data(),
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), grid.data());
 
   n = nr_polarizations * grid_size * grid_size;
-  accuracy = compare_arrays(n, u_grid, grid.data());
+  accuracy = compare_arrays(n, static_cast<std::complex<float>*>(u_grid.data()),
+                            grid.data());
   if (accuracy < TOLERANCE) {
     std::cout << "Passed." << std::endl;
   } else {
@@ -550,9 +573,11 @@ int main(int argc, char* argv[]) {
 
   // Initialize tiles
   nr_tiles = 2;
-  init_data(h_padded_tiles, h_padded_tile_ids, nr_tiles, nr_polarizations,
-            padded_tile_size);
-  stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles, h_padded_tiles.size());
+  init_data(static_cast<std::complex<float>*>(h_padded_tiles.data()),
+            static_cast<int*>(h_padded_tile_ids.data()), nr_tiles,
+            nr_polarizations, padded_tile_size);
+  stream.memcpyHtoDAsync(d_padded_tiles, h_padded_tiles.data(),
+                         h_padded_tiles.size());
 
   // Allocate patch
   int patch_size = grid_size / 2;
@@ -562,7 +587,7 @@ int main(int argc, char* argv[]) {
   cu::DeviceMemory d_patch(context, sizeof_patch);
 
   // Reset grid
-  memset(u_grid, 0, u_grid.size());
+  u_grid.zero();
 
   // Add tiles to patch
   for (unsigned int y = 0; y < grid_size; y += patch_size) {
@@ -580,7 +605,7 @@ int main(int argc, char* argv[]) {
 
       // Copy patch to the host
       stream.synchronize();
-      stream.memcpyDtoHAsync(h_patch, d_patch, sizeof_patch);
+      stream.memcpyDtoHAsync(h_patch.data(), d_patch, sizeof_patch);
 
       // Wait for patch to be copied
       stream.synchronize();
@@ -590,9 +615,10 @@ int main(int argc, char* argv[]) {
       for (int y_ = 0; y_ < patch_size; y_++) {
         for (int x_ = 0; x_ < patch_size; x_++) {
           for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
-            std::complex<float>* dst_ptr = u_grid;
+            std::complex<float>* dst_ptr =
+                static_cast<std::complex<float>*>(u_grid.data());
             std::complex<float>* src_ptr =
-                static_cast<std::complex<float>*>(h_patch);
+                static_cast<std::complex<float>*>(h_patch.data());
             size_t dst_idx = index_grid_3d(grid_size, pol, y + y_, x + x_);
             size_t src_idx = index_grid_3d(patch_size, pol, y_, x_);
             dst_ptr[dst_idx] += src_ptr[src_idx];
@@ -604,12 +630,15 @@ int main(int argc, char* argv[]) {
 
   // Create reference grid
   grid.zero();
-  wtiles_to_grid(nr_tiles, nr_polarizations, grid_size,
-                 tile_size - subgrid_size, padded_tile_size, h_padded_tile_ids,
-                 tile_coordinates.data(), h_padded_tiles, grid.data());
+  wtiles_to_grid(
+      nr_tiles, nr_polarizations, grid_size, tile_size - subgrid_size,
+      padded_tile_size, static_cast<int*>(h_padded_tile_ids.data()),
+      tile_coordinates.data(),
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), grid.data());
 
   n = nr_polarizations * grid_size * grid_size;
-  accuracy = compare_arrays(n, u_grid, grid.data());
+  accuracy = compare_arrays(n, static_cast<std::complex<float>*>(u_grid.data()),
+                            grid.data());
   if (accuracy < TOLERANCE) {
     std::cout << "Passed." << std::endl;
   } else {

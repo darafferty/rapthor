@@ -83,13 +83,18 @@ void GenericOptimized::run_imaging(
   htodstream.memcpyHtoDAsync(d_aterms_indices, aterms_indices,
                              sizeof_aterms_indices);
 
-  // Average aterm correction
-  cu::DeviceMemory d_avg_aterm(context, 0);
-  if (mode == ImagingMode::mode_gridding && m_avg_aterm_correction.size() > 0) {
+  // When degridding, d_avg_aterm is not used and remains a null pointer.
+  // When gridding, d_avg_aterm always holds a cu::DeviceMemory object. When
+  // average aterm correction is disabled, the cu::DeviceMemory object contains
+  // a null pointer, such that the gridder kernel can detect that it should not
+  // apply average aterm corrections.
+  std::unique_ptr<cu::DeviceMemory> d_avg_aterm;
+  if (mode == ImagingMode::mode_gridding) {
     size_t sizeof_avg_aterm_correction =
-        auxiliary::sizeof_avg_aterm_correction(subgrid_size);
-    d_avg_aterm.resize(sizeof_avg_aterm_correction);
-    htodstream.memcpyHtoDAsync(d_avg_aterm, m_avg_aterm_correction.data(),
+        m_avg_aterm_correction.size() * sizeof(std::complex<float>);
+    d_avg_aterm.reset(
+        new cu::DeviceMemory(context, sizeof_avg_aterm_correction));
+    htodstream.memcpyHtoDAsync(*d_avg_aterm, m_avg_aterm_correction.data(),
                                sizeof_avg_aterm_correction);
   }
 
@@ -141,7 +146,7 @@ void GenericOptimized::run_imaging(
   // Events
   std::vector<cu::Event> inputCopied;
   std::vector<cu::Event> gpuFinished;
-  std::vector<cu::Event> outputCopied;
+  std::vector<cu::Event> outputCopied;  // Only used when degridding.
   unsigned int nr_jobs = (nr_baselines + jobsize - 1) / jobsize;
   inputCopied.reserve(nr_jobs);
   gpuFinished.reserve(nr_jobs);
@@ -170,6 +175,7 @@ void GenericOptimized::run_imaging(
     auto metadata_ptr = jobs[job_id].metadata_ptr;
     auto uvw_ptr = jobs[job_id].uvw_ptr;
     auto visibilities_ptr = jobs[job_id].visibilities_ptr;
+    auto subgrids_ptr = static_cast<std::complex<float>*>(h_subgrids.data());
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = d_visibilities_[local_id];
@@ -196,6 +202,12 @@ void GenericOptimized::run_imaging(
 
     // Copy input data for next job
     if (job_id_next < jobs.size()) {
+      // Wait for previous job to finish before
+      // overwriting its input buffers.
+      if (job_id_next > 1) {
+        htodstream.waitEvent(gpuFinished[job_id_next - 2]);
+      }
+
       // Load memory objects
       cu::DeviceMemory& d_visibilities_next = d_visibilities_[local_id_next];
       cu::DeviceMemory& d_uvw_next = d_uvw_[local_id_next];
@@ -223,15 +235,13 @@ void GenericOptimized::run_imaging(
       htodstream.record(inputCopied[job_id_next]);
     }
 
-    // Wait for output buffer to be free
-    if (mode == ImagingMode::mode_degridding && job_id > 1) {
-      executestream.waitEvent(outputCopied[job_id - 2]);
-    }
-
     // Initialize output buffer to zero
     if (mode == ImagingMode::mode_gridding) {
       d_subgrids.zero(executestream);
     } else if (mode == ImagingMode::mode_degridding) {
+      if (job_id > 1) {
+        executestream.waitEvent(outputCopied[job_id - 2]);
+      }
       d_visibilities.zero(executestream);
     }
 
@@ -244,7 +254,7 @@ void GenericOptimized::run_imaging(
           time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
           subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
           shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
-          d_aterms, d_aterms_indices, d_avg_aterm, d_metadata, d_subgrids);
+          d_aterms, d_aterms_indices, d_metadata, *d_avg_aterm, d_subgrids);
 
       // Launch FFT
       device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
@@ -261,14 +271,10 @@ void GenericOptimized::run_imaging(
       // Copy subgrid to host
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         dtohstream.waitEvent(gpuFinished[job_id]);
-        dtohstream.memcpyDtoHAsync(
-            h_subgrids, d_subgrids,
+        dtohstream.memcpyDtoH(
+            h_subgrids.data(), d_subgrids,
             auxiliary::sizeof_subgrids(nr_subgrids_current, subgrid_size,
                                        nr_polarizations));
-        dtohstream.record(outputCopied[job_id]);
-
-        // Wait for subgrids to be copied
-        outputCopied[job_id].synchronize();
       }
 
       // Run adder kernel
@@ -287,15 +293,15 @@ void GenericOptimized::run_imaging(
           cpuKernels->run_adder_wtiles(
               nr_subgrids_current, nr_polarizations, grid_size, subgrid_size,
               image_size, w_step, shift.data(), subgrid_offset, wtile_set,
-              metadata_ptr, h_subgrids, m_grid->data());
+              metadata_ptr, subgrids_ptr, m_grid->data());
         }
       } else if (w_step != 0.0) {
         cpuKernels->run_adder_wstack(nr_subgrids_current, nr_polarizations,
                                      grid_size, subgrid_size, metadata_ptr,
-                                     h_subgrids, m_grid->data());
+                                     subgrids_ptr, m_grid->data());
       } else {
         cpuKernels->run_adder(nr_subgrids_current, nr_polarizations, grid_size,
-                              subgrid_size, metadata_ptr, h_subgrids,
+                              subgrid_size, metadata_ptr, subgrids_ptr,
                               m_grid->data());
       }
 
@@ -317,27 +323,24 @@ void GenericOptimized::run_imaging(
           cpuKernels->run_splitter_wtiles(
               nr_subgrids_current, nr_polarizations, grid_size, subgrid_size,
               image_size, w_step, shift.data(), subgrid_offset, wtile_set,
-              metadata_ptr, h_subgrids, m_grid->data());
+              metadata_ptr, subgrids_ptr, m_grid->data());
         }
       } else if (w_step != 0.0) {
         cpuKernels->run_splitter_wstack(nr_subgrids_current, nr_polarizations,
                                         grid_size, subgrid_size, metadata_ptr,
-                                        h_subgrids, m_grid->data());
+                                        subgrids_ptr, m_grid->data());
       } else {
         cpuKernels->run_splitter(nr_subgrids_current, nr_polarizations,
                                  grid_size, subgrid_size, metadata_ptr,
-                                 h_subgrids, m_grid->data());
+                                 subgrids_ptr, m_grid->data());
       }
 
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         // Copy subgrids to device
-        htodstream.memcpyHtoDAsync(
-            d_subgrids, h_subgrids,
+        htodstream.memcpyHtoD(
+            d_subgrids, subgrids_ptr,
             auxiliary::sizeof_subgrids(nr_subgrids_current, subgrid_size,
                                        nr_polarizations));
-
-        // Wait for subgrids to be copied
-        htodstream.synchronize();
       }
 
       marker_splitter.end();
@@ -354,9 +357,6 @@ void GenericOptimized::run_imaging(
           d_aterms, d_aterms_indices, d_metadata, d_subgrids);
       executestream.record(gpuFinished[job_id]);
 
-      // Wait for degridder to finish
-      gpuFinished[job_id].synchronize();
-
       // Copy visibilities to host
       dtohstream.waitEvent(gpuFinished[job_id]);
       dtohstream.memcpyDtoHAsync(
@@ -367,19 +367,24 @@ void GenericOptimized::run_imaging(
     }
 
     // Report performance
-    device.enqueue_report(dtohstream, nr_polarizations,
+    device.enqueue_report(executestream, nr_polarizations,
                           jobs[job_id].current_nr_timesteps,
                           jobs[job_id].current_nr_subgrids);
   }  // end for bl
 
+  // Wait for all visibilities to be copied
   if (mode == ImagingMode::mode_degridding) {
-    // Wait for all visibilities to be copied
     dtohstream.synchronize();
   }
+
+  // Wait for all reports to be printed
+  executestream.synchronize();
 
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
+  m_report->update(Report::device, startStates[device_id],
+                   endStates[device_id]);
   m_report->update(Report::host, startStates[nr_devices],
                    endStates[nr_devices]);
 
@@ -400,6 +405,6 @@ void GenericOptimized::run_imaging(
   device.free_subgrid_fft();
 }
 
-}  // namespace hybrid
-}  // namespace proxy
-}  // namespace idg
+}  // end namespace hybrid
+}  // end namespace proxy
+}  // end namespace idg

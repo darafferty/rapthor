@@ -119,38 +119,20 @@ ScopedContext::~ScopedContext() { _context.freeCurrent(); }
     HostMemory
 */
 HostMemory::HostMemory(const Context &context, size_t size, int flags)
-    : _context(context) {
+    : Memory(size), context_(context), flags_(flags) {
   ScopedContext scc(context);
 
-  m_capacity = size;
-  m_bytes = size;
-  _flags = flags;
   if (size != 0) {
     void *ptr;
-    assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
+    assertCudaCall(cuMemHostAlloc(&ptr, size, flags_));
     set(ptr);
   }
 }
 
 HostMemory::~HostMemory() { release(); }
 
-void HostMemory::resize(size_t size) {
-  assert(size > 0);
-  if (size < m_capacity) {
-    m_bytes = size;
-  } else if (size > m_capacity) {
-    release();
-    void *ptr;
-    ScopedContext scc(_context);
-    assertCudaCall(cuMemHostAlloc(&ptr, size, _flags));
-    m_bytes = size;
-    m_capacity = size;
-    set(ptr);
-  }
-}
-
 void HostMemory::release() {
-  ScopedContext scc(_context);
+  ScopedContext scc(context_);
 
   void *ptr = data();
   if (ptr) {
@@ -159,147 +141,95 @@ void HostMemory::release() {
   }
 }
 
-void HostMemory::zero() { memset(data(), 0, m_bytes); }
-
 /*
     RegisteredMemory
 */
-RegisteredMemory::RegisteredMemory(const Context &context, const void *ptr,
+RegisteredMemory::RegisteredMemory(const Context &context, void *ptr,
                                    size_t size, int flags)
-    : _context(context) {
+    : Memory(ptr, size), context_(context), flags_(flags) {
   ScopedContext scc(context);
 
-  m_bytes = size;
-  _flags = flags;
   assert(ptr != nullptr);
-  set(const_cast<void *>(ptr));
-  checkCudaCall(cuMemHostRegister(data(), size, _flags));
+  checkCudaCall(cuMemHostRegister(data(), size, flags_));
 }
 
 RegisteredMemory::~RegisteredMemory() { release(); }
 
-void RegisteredMemory::resize(size_t size) {
-  throw std::runtime_error("RegisteredMemory can not be resized!");
-}
-
 void RegisteredMemory::release() {
-  ScopedContext scc(_context);
+  ScopedContext scc(context_);
   checkCudaCall(cuMemHostUnregister(data()));
 }
-
-void RegisteredMemory::zero() { memset(data(), 0, m_bytes); }
 
 /*
     DeviceMemory
 */
-
-// Ensure the static const member _nullptr is not only declared but also defined
-// otherwise it has no address
-
-const CUdeviceptr DeviceMemory::_nullptr;
-
 DeviceMemory::DeviceMemory(const Context &context, size_t size)
-    : _context(context) {
-  ScopedContext scc(_context);
-  _capacity = size;
-  _size = size;
+    : Memory(size), context_(context) {
+  ScopedContext scc(context_);
   if (size) {
-    assertCudaCall(cuMemAlloc(&_ptr, size));
+    assertCudaCall(cuMemAlloc(&device_ptr_, size));
+  } else {
+    device_ptr_ = 0;
   }
+  set(reinterpret_cast<void *>(&device_ptr_));
 }
 
 DeviceMemory::~DeviceMemory() { release(); }
 
-size_t DeviceMemory::capacity() { return _capacity; }
-
-size_t DeviceMemory::size() { return _size; }
-
-void DeviceMemory::resize(size_t size) {
-  ScopedContext scc(_context);
-  _size = size;
-  if (size > _capacity) {
-    if (_capacity) assertCudaCall(cuMemFree(_ptr));
-    assertCudaCall(cuMemAlloc(&_ptr, size));
-    _capacity = size;
+void DeviceMemory::zero() {
+  ScopedContext scc(context_);
+  if (device_ptr_) {
+    cuMemsetD8(device_ptr_, 0, size());
   }
 }
 
 void DeviceMemory::zero(CUstream stream) {
-  ScopedContext scc(_context);
-  if (_size) {
-    if (stream != nullptr) {
-      cuMemsetD8Async(_ptr, 0, _size, stream);
-    } else {
-      cuMemsetD8(_ptr, 0, _size);
-    }
+  ScopedContext scc(context_);
+  if (device_ptr_) {
+    cuMemsetD8Async(device_ptr_, 0, size(), stream);
   }
 }
 
 void DeviceMemory::release() {
-  ScopedContext scc(_context);
-  if (_capacity) assertCudaCall(cuMemFree(_ptr));
+  ScopedContext scc(context_);
+  if (device_ptr_) {
+    assertCudaCall(cuMemFree(device_ptr_));
+  }
 }
 
 /*
     UnifiedMemory
  */
-UnifiedMemory::UnifiedMemory(const Context &context, void *ptr, size_t size)
-    : _context(context) {
-  ScopedContext scc(context);
-
-  set(ptr);
-  m_capacity = size;
-  m_bytes = size;
-}
-
-UnifiedMemory::UnifiedMemory(const Context &context, size_t size,
+UnifiedMemory::UnifiedMemory(const Context &context, size_t size_,
                              unsigned flags)
-    : _context(context) {
+    : Memory(size_), context_(context), flags_(flags) {
   ScopedContext scc(context);
 
-  m_capacity = size;
-  m_bytes = size;
-  m_flags = flags;
-  m_free = true;
-  CUdeviceptr ptr;
-  assertCudaCall(cuMemAllocManaged(&ptr, m_bytes, flags));
+  CUdeviceptr ptr = 0;
+  if (size() > 0) {
+    assertCudaCall(cuMemAllocManaged(&ptr, size(), flags));
+  }
   set(reinterpret_cast<void *>(ptr));
 }
 
 UnifiedMemory::~UnifiedMemory() { release(); }
 
-void UnifiedMemory::resize(size_t size) {
-  assert(size > 0);
-  if (size < m_capacity) {
-    m_bytes = size;
-  } else if (size > m_capacity) {
-    release();
-    ScopedContext scc(_context);
-    CUdeviceptr ptr;
-    assertCudaCall(cuMemAllocManaged(&ptr, size, m_flags));
-    set(reinterpret_cast<void *>(ptr));
-    m_capacity = size;
-    m_bytes = size;
-  }
-}
-
 void UnifiedMemory::set_advice(CUmem_advise advice) {
-  CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(data());
-  assertCudaCall(cuMemAdvise(ptr, m_bytes, advice, CU_DEVICE_CPU));
+  CUdeviceptr ptr = *this;
+  assertCudaCall(cuMemAdvise(ptr, size(), advice, CU_DEVICE_CPU));
 }
 
 void UnifiedMemory::set_advice(CUmem_advise advice, Device &device) {
-  CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(data());
-  assertCudaCall(cuMemAdvise(ptr, m_bytes, advice, device));
+  CUdeviceptr ptr = *this;
+  assertCudaCall(cuMemAdvise(ptr, size(), advice, device));
 }
 
 void UnifiedMemory::release() {
-  ScopedContext scc(_context);
+  ScopedContext scc(context_);
 
-  if (m_free) {
-    CUdeviceptr ptr = reinterpret_cast<CUdeviceptr>(data());
+  CUdeviceptr ptr = *this;
+  if (ptr) {
     assertCudaCall(cuMemFree(ptr));
-    m_free = false;
   }
 }
 
@@ -438,6 +368,24 @@ Stream::Stream(const Context &context, int flags) : _context(context) {
 Stream::~Stream() {
   ScopedContext scc(_context);
   assertCudaCall(cuStreamDestroy(_stream));
+}
+
+void Stream::memcpyHtoD(CUdeviceptr devPtr, const void *hostPtr, size_t size) {
+  ScopedContext scc(_context);
+  assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, size, _stream));
+  assertCudaCall(cuStreamSynchronize(_stream));
+}
+
+void Stream::memcpyDtoH(void *hostPtr, CUdeviceptr devPtr, size_t size) {
+  ScopedContext scc(_context);
+  assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
+  assertCudaCall(cuStreamSynchronize(_stream));
+}
+
+void Stream::memcpyDtoD(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size) {
+  ScopedContext scc(_context);
+  assertCudaCall(cuMemcpyDtoDAsync(dstPtr, srcPtr, size, _stream));
+  assertCudaCall(cuStreamSynchronize(_stream));
 }
 
 void Stream::memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr,

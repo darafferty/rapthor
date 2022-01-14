@@ -60,7 +60,6 @@ class CUDA : public Proxy {
 
  protected:
   void init_devices();
-  void free_devices();
 
   std::unique_ptr<powersensor::PowerSensor> hostPowerSensor;
 
@@ -175,7 +174,7 @@ class CUDA : public Proxy {
 
  private:
   ProxyInfo& mInfo;
-  std::vector<idg::kernel::cuda::InstanceCUDA*> devices;
+  std::vector<std::unique_ptr<kernel::cuda::InstanceCUDA>> devices;
 
   /**
    * Copy of the grid in CUDA Unified Memory used by the Generic and Unified
