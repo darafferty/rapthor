@@ -29,9 +29,27 @@ FROM nvidia/cuda:${NVIDIA_VERSION}-devel-ubuntu20.04
 # Installing Boost in Ubuntu 20.04 requires the version number.
 ARG BOOST_VERSION=1.71.0
 
+# The metadata should include the IDG version.
+ARG IDG_VERSION
+
+# Do not hardcode a specific author. Let a --build-arg supply it, instead.
+ARG AUTHOR
+
+# https://developer.skao.int/en/latest/tools/containers/containerisation-standards.html#labels
+# has a list that contains the required labels.
+LABEL \
+    author="${AUTHOR}" \
+    description="IDG library with CUDA support" \
+    license="GPL3.0" \
+    int.skao.team="Team Schaap" \
+    int.skao.application="idg" \
+    int.skao.version=${IDG_VERSION} \
+    int.skao.repository="https://gitlab.com/ska-telescope/sdp/ska-sdp-func-idg"
+
 COPY --from=build /idg/build/idg-*.deb /idg/
 COPY --from=build /idg/build/bin/* /idg/bin/
 RUN apt-get update && \
     apt-get install -y --no-install-recommends libboost-test${BOOST_VERSION} && \
     apt install -y /idg/*.deb && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
