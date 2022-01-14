@@ -85,110 +85,61 @@ class ScopedContext {
   const Context &_context;
 };
 
-class Memory : public idg::auxiliary::Memory {
- protected:
-  Memory() : idg::auxiliary::Memory(nullptr) {}
-
- public:
-  size_t capacity() { return m_capacity; }
-  size_t size() { return m_bytes; }
-  virtual void resize(size_t size) = 0;
-  template <typename T>
-  operator T *() {
-    return static_cast<T *>(data());
-  }
-
- protected:
-  size_t m_bytes;
-  size_t m_capacity = 0;
-};
-
-class HostMemory : public Memory {
+class HostMemory : public idg::auxiliary::Memory {
  public:
   HostMemory(const Context &context, size_t size = 0,
              int flags = CU_MEMHOSTALLOC_PORTABLE);
   ~HostMemory() override;
 
-  void resize(size_t size) override;
-  void zero();
-
  private:
   void release();
-  const Context &_context;
-  int _flags;
+  const Context &context_;
+  int flags_;
 };
 
-class RegisteredMemory : public Memory {
+class RegisteredMemory : public idg::auxiliary::Memory {
  public:
-  RegisteredMemory(const Context &context, const void *ptr, size_t size,
+  RegisteredMemory(const Context &context, void *ptr, size_t size,
                    int flags = CU_MEMHOSTREGISTER_PORTABLE);
   ~RegisteredMemory() override;
 
-  void resize(size_t size) override;
-  void zero();
-
  private:
   void release();
-  const Context &_context;
-  int _flags;
+  const Context &context_;
+  int flags_;
 };
 
-class DeviceMemory {
+class DeviceMemory : public idg::auxiliary::Memory {
  public:
   DeviceMemory(const Context &context, size_t size);
   ~DeviceMemory();
 
-  size_t capacity();
-  size_t size();
-  void resize(size_t size);
-  void zero(CUstream stream = nullptr);
+  void zero() override;
+  void zero(CUstream stream);
 
-  template <typename T>
-  operator T *() {
-    if (_size) {
-      return static_cast<T *>(&_ptr);
-    } else {
-      return static_cast<T *>(&_nullptr);
-    }
-  }
-
-  template <typename T>
-  operator T() {
-    if (_size) {
-      return static_cast<T>(_ptr);
-    } else {
-      return static_cast<T>(_nullptr);
-    }
-  }
+  operator CUdeviceptr() { return device_ptr_; }
 
  private:
   void release();
-  const Context &_context;
-  CUdeviceptr _ptr;
-  size_t _capacity;
-  size_t _size;
-  static const CUdeviceptr _nullptr = 0;
+  const Context &context_;
+  CUdeviceptr device_ptr_;
 };
 
-class UnifiedMemory : public Memory {
+class UnifiedMemory : public idg::auxiliary::Memory {
  public:
-  UnifiedMemory(const Context &context, void *ptr, size_t size);
   UnifiedMemory(const Context &context, size_t size,
                 unsigned flags = CU_MEM_ATTACH_GLOBAL);
   ~UnifiedMemory() override;
 
   operator CUdeviceptr() { return reinterpret_cast<CUdeviceptr>(data()); }
 
-  void resize(size_t size) override;
-
   void set_advice(CUmem_advise advise);
   void set_advice(CUmem_advise advise, Device &device);
 
  private:
   void release();
-  const Context &_context;
-  int m_flags = 0;
-  bool m_free = false;
+  const Context &context_;
+  int flags_ = 0;
 };
 
 class Source {
@@ -253,6 +204,9 @@ class Stream {
   Stream(const Context &context, int flags = CU_STREAM_DEFAULT);
   ~Stream();
 
+  void memcpyHtoD(CUdeviceptr devPtr, const void *hostPtr, size_t size);
+  void memcpyDtoH(void *hostPtr, CUdeviceptr devPtr, size_t size);
+  void memcpyDtoD(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size);
   void memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr, size_t size);
   void memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size);
   void memcpyDtoDAsync(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size);

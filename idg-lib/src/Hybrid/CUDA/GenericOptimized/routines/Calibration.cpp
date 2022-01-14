@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "../GenericOptimized.h"
 #include "InstanceCUDA.h"
 
@@ -313,18 +315,20 @@ void GenericOptimized::do_calibrate_update(
 
   // Copy output to host
   dtohstream.waitEvent(executeFinished);
-  dtohstream.memcpyDtoHAsync(h_hessian, d_hessian, d_hessian.size());
-  dtohstream.memcpyDtoHAsync(h_gradient, d_gradient, d_gradient.size());
-  dtohstream.memcpyDtoHAsync(h_residual, d_residual, d_residual.size());
+  dtohstream.memcpyDtoHAsync(h_hessian.data(), d_hessian, d_hessian.size());
+  dtohstream.memcpyDtoHAsync(h_gradient.data(), d_gradient, d_gradient.size());
+  dtohstream.memcpyDtoHAsync(h_residual.data(), d_residual, d_residual.size());
   dtohstream.record(outputCopied);
 
   // Wait for output to finish
   outputCopied.synchronize();
 
   // Copy output on host
-  memcpy(hessian.data(), h_hessian, hessian.bytes());
-  memcpy(gradient.data(), h_gradient, gradient.bytes());
-  memcpy(&residual, h_residual, sizeof(double));
+  std::copy_n(static_cast<double*>(h_hessian.data()), hessian.size(),
+              hessian.data());
+  std::copy_n(static_cast<double*>(h_gradient.data()), gradient.size(),
+              gradient.data());
+  std::copy_n(static_cast<double*>(h_residual.data()), 1, &residual);
 
   // End marker
   marker.end();

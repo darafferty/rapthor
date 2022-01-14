@@ -35,7 +35,6 @@ CUDA::~CUDA() {
   // contexts are free'ed, hence the explicit calls here.
   free_unified_grid();
   free_buffers_wtiling();
-  free_devices();
 }
 
 void CUDA::init_devices() {
@@ -51,20 +50,13 @@ void CUDA::init_devices() {
 
   // Create a device instance for every device
   for (unsigned i = 0; i < device_numbers.size(); i++) {
-    InstanceCUDA* device = new InstanceCUDA(mInfo, device_numbers[i]);
-    devices.push_back(device);
-  }
-}
-
-void CUDA::free_devices() {
-  for (InstanceCUDA* device : devices) {
-    delete device;
+    devices.emplace_back(new InstanceCUDA(mInfo, device_numbers[i]));
   }
 }
 
 void CUDA::print_devices() {
   std::cout << "Devices: " << std::endl;
-  for (InstanceCUDA* device : devices) {
+  for (std::unique_ptr<InstanceCUDA>& device : devices) {
     std::cout << *device;
   }
   std::cout << std::endl;
@@ -72,7 +64,7 @@ void CUDA::print_devices() {
 
 void CUDA::print_compiler_flags() {
   std::cout << "Compiler flags: " << std::endl;
-  for (InstanceCUDA* device : devices) {
+  for (std::unique_ptr<InstanceCUDA>& device : devices) {
     std::cout << device->get_compiler_flags() << std::endl;
   }
   std::cout << std::endl;

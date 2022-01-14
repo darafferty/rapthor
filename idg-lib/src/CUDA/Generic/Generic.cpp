@@ -95,8 +95,7 @@ void Generic::set_grid(std::shared_ptr<Grid> grid) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& htodstream = device.get_htod_stream();
     d_grid_.reset(new cu::DeviceMemory(context, grid->bytes()));
-    device.copy_htod(htodstream, *d_grid_, grid->data(), grid->bytes());
-    htodstream.synchronize();
+    htodstream.memcpyHtoD(*d_grid_, grid->data(), grid->bytes());
   }
   if (m_use_unified_memory) {
     cu::UnifiedMemory& u_grid = allocate_unified_grid(context, grid->bytes());
@@ -118,8 +117,7 @@ std::shared_ptr<Grid> Generic::get_final_grid() {
   } else if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& dtohstream = device.get_dtoh_stream();
-    device.copy_dtoh(dtohstream, m_grid->data(), *d_grid_, m_grid->bytes());
-    dtohstream.synchronize();
+    dtohstream.memcpyDtoH(m_grid->data(), *d_grid_, m_grid->bytes());
   }
   return m_grid;
 }

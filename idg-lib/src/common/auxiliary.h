@@ -132,29 +132,33 @@ class Memory {
   Memory &operator=(const Memory &) = delete;
   Memory &operator=(Memory &&) = delete;
 
-  void *data() { return m_ptr; };
+  void *data() { return ptr_; };
+  size_t size() { return size_; };
+  virtual void zero() { std::fill_n(static_cast<char *>(data()), size(), 0); };
 
  protected:
-  Memory(void *ptr) : m_ptr(ptr) {}
-  void set(void *ptr) { m_ptr = ptr; }
+  explicit Memory(size_t size) : size_(size) {}
+  Memory(void *ptr, size_t size) : ptr_(ptr) {}
+  void set(void *ptr) { ptr_ = ptr; }
 
  private:
-  void *m_ptr = nullptr;
+  void *ptr_ = nullptr;
+  size_t size_ = 0;
 };
 
 class DefaultMemory : public Memory {
  public:
-  DefaultMemory(size_t bytes = 0);
+  DefaultMemory(size_t size);
   ~DefaultMemory() override;
 };
 
 class AlignedMemory : public Memory {
  public:
-  AlignedMemory(size_t bytes = 0);
+  AlignedMemory(size_t size);
   ~AlignedMemory() override;
 
  private:
-  static const size_t m_alignment = 64;
+  static const unsigned int alignment_ = 64;
 };
 
 }  // namespace auxiliary
