@@ -16,11 +16,21 @@ if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")
   add_compile_options("-mkl")
   link_libraries(${MKL_LIBRARIES})
 else()
-  if(POWER_ARCHITECTURE)
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/)
-    add_compile_options("-mcpu=native")
+  if(PORTABLE)
+    message(
+      WARNING
+        "Building Optimized CPU kernels non-natively may negatively impact performance."
+    )
   else()
-    add_compile_options("-march=native")
+    # Enable optimizations for the current CPU architecture
+    if(POWER_ARCHITECTURE)
+      # e.g. Power 8, Power 9
+      include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/)
+      add_compile_options("-mcpu=native")
+    else()
+      # x86_64
+      add_compile_options("-march=native")
+    endif()
   endif()
   add_compile_options("-fopenmp")
   if(BUILD_WITH_MKL)
