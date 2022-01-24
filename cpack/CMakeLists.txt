@@ -64,9 +64,7 @@ if(Git_FOUND)
     OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
 endif()
 if(NOT VERSION_STRING)
-  set(VERSION_STRING "0.0")
-  message(WARNING "[CPack] Could not find tag to create version string, "
-                  "using ${VERSION_STRING} instead.")
+  set(VERSION_STRING ${IDG_VERSION})
 endif()
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/DetermineTargetCPU.cmake)

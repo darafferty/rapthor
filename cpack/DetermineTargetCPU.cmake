@@ -60,6 +60,7 @@ set(KNOWN_TARGET_CPUS
     westmere
     x86-64
     znver1
+    znver2
     CACHE INTERNAL "Known target CPUs")
 
 if(NOT PORTABLE)

@@ -1,10 +1,17 @@
-// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// Copyright (C) 2022 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #ifndef IDG_CONFIG_H_
 #define IDG_CONFIG_H_
 
-#define IDG_VERSION "@VERSION@"
+#define IDG_VERSION "@IDG_VERSION@"
+#define IDG_VERSION_MAJOR @IDG_VERSION_MAJOR@
+#define IDG_VERSION_MINOR @IDG_VERSION_MINOR@
+#define IDG_VERSION_PATCH @IDG_VERSION_PATCH@
+
+#define IDG_GIT_REV "@GIT_REV@"
+#define IDG_GIT_TAG "@GIT_TAG@"
+#define IDG_GIT_BRANCH "@GIT_BRANCH@"
 
 #define IDG_SOURCE_DIR "@CMAKE_SOURCE_DIR@"
 #define IDG_BINARY_DIR "@CMAKE_BINARY_DIR@"
