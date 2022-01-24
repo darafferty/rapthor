@@ -1,4 +1,4 @@
-# Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+# Copyright (C) 2022 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Based on the following blog post:
@@ -17,54 +17,48 @@ execute_process(
 # always the case, e.g. when someone downloaded a zip
 # file from Github instead of a checkout)
 if("${GIT_REV}" STREQUAL "")
-  set(GIT_REV "N/A")
-  set(GIT_DIFF "")
-  set(GIT_TAG "N/A")
-  set(GIT_BRANCH "N/A")
+  set(GIT_TAG "")
+  set(GIT_BRANCH "")
 else()
-  execute_process(
-    COMMAND bash -c "${GIT_COMMAND} diff --quiet --exit-code && echo +"
-    OUTPUT_VARIABLE GIT_DIFF)
+  # Update GIT_REV.
+  string(STRIP "${GIT_REV}" GIT_REV)
+  string(SUBSTRING "${GIT_REV}" 0 8 GIT_REV)
+  # Add '-dirty' if there are local changes.
+  execute_process(COMMAND bash -c "${GIT_COMMAND} diff --quiet"
+                  RESULT_VARIABLE GIT_DIFF_RESULT)
+  if(GIT_DIFF_RESULT)
+    string(APPEND GIT_REV "-dirty")
+  endif()
+
+  # Set GIT_TAG.
   execute_process(
     # No need to do an --exact-match, most recent tag should be OK
     COMMAND bash -c "${GIT_COMMAND} describe --tags"
     OUTPUT_VARIABLE GIT_TAG
     ERROR_QUIET)
-  execute_process(COMMAND bash -c "${GIT_COMMAND} rev-parse --abbrev-ref HEAD"
-                  OUTPUT_VARIABLE GIT_BRANCH)
-
-  string(STRIP "${GIT_REV}" GIT_REV)
-  string(SUBSTRING "${GIT_REV}" 0 8 GIT_REV)
-  string(STRIP "${GIT_DIFF}" GIT_DIFF)
   string(STRIP "${GIT_TAG}" GIT_TAG)
-  string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
 
-  if(GIT_TAG MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+).*" OR GIT_TAG MATCHES
-                                                        "^([0-9]+\\.[0-9]+).*")
-    # Regexp GIT_TAG on major.minor.match or major.minor, strip any commit info
+  # Regexp GIT_TAG on major.minor.match or major.minor, strip any commit info
+  # Do not use 'OR' between the match conditions, since CMAKE_MATCH_1 becomes the last match.
+  if(GIT_TAG MATCHES "^([0-9]+\\.[0-9]+\\.[0-9]+).*")
+    set(GIT_TAG "${CMAKE_MATCH_1}")
+  elseif(GIT_TAG MATCHES "^([0-9]+\\.[0-9]+).*")
     set(GIT_TAG "${CMAKE_MATCH_1}")
   elseif("${GIT_TAG}" STREQUAL "")
     message(
       WARNING
         "Could NOT find a matching (git) version tag. This is not an error, but only indicates that "
-        "applications link against IDG might have troubles in retrieving VERSION info from IDG"
-    )
+        "there may be a mismatch between the git tag and the IDG version.")
   else()
     message(FATAL_ERROR "Unrecognized (git) version tag ${GIT_TAG}")
   endif()
-endif()
 
-set(GIT_VERSION
-    "const char* GIT_REV=\"${GIT_REV}${GIT_DIFF}\";
-const char* GIT_TAG=\"${GIT_TAG}\";
-const char* GIT_BRANCH=\"${GIT_BRANCH}\";\n")
-
-if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/${GIT_VERSION_HEADER})
-  file(READ ${CMAKE_CURRENT_BINARY_DIR}/${GIT_VERSION_HEADER} GIT_VERSION_)
-else()
-  set(GIT_VERSION_ "")
-endif()
-
-if(NOT "${GIT_VERSION}" STREQUAL "${GIT_VERSION_}")
-  file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/${GIT_VERSION_HEADER} "${GIT_VERSION}")
+  # Set GIT_BRANCH.
+  execute_process(COMMAND bash -c "${GIT_COMMAND} rev-parse --abbrev-ref HEAD"
+                  OUTPUT_VARIABLE GIT_BRANCH)
+  string(STRIP "${GIT_BRANCH}" GIT_BRANCH)
+  if(${GIT_BRANCH} STREQUAL "HEAD")
+    # HEAD is detached / does not point to a branch.
+    set(GIT_BRANCH "")
+  endif()
 endif()

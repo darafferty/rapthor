@@ -2,9 +2,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 cmake_minimum_required(VERSION 3.7)
-project(idg)
 
 set(IDG_VERSION "0.8.1")
+if(IDG_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
+  set(IDG_VERSION_MAJOR "${CMAKE_MATCH_1}")
+  set(IDG_VERSION_MINOR "${CMAKE_MATCH_2}")
+  set(IDG_VERSION_PATCH "${CMAKE_MATCH_3}")
+else()
+  message(FATAL_ERROR "Failed to parse IDG_VERSION='${IDG_VERSION}'")
+endif()
+
+project(idg VERSION ${IDG_VERSION})
 
 option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
 option(BUILD_STATIC_LIBS "Build static libraries" OFF)
@@ -40,10 +48,26 @@ set(IDG_UTIL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/idg-util/src
                          ${CMAKE_BINARY_DIR}/idg-util/src)
 set(IDG_LIBRARY idg)
 
-# Version
-set(GIT_VERSION_HEADER "idg-version.h")
+# Version. idg-lib puts the version info in idg-config.h.in.
 include(cmake/version.cmake)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+if(GIT_TAG)
+  if(${IDG_VERSION} VERSION_LESS ${GIT_TAG})
+    message(
+      FATAL_ERROR
+        "The IDG version is less than the most recent git tag ${GIT_TAG}. Please check the version and the tag."
+    )
+  endif()
+
+  # For tag pipelines on CI, the version should always match the tag.
+  if(DEFINED ENV{CI_COMMIT_TAG})
+    if(NOT $ENV{CI_COMMIT_TAG} VERSION_EQUAL ${IDG_VERSION})
+      message(
+        FATAL_ERROR
+          "Git tag $ENV{CI_COMMIT_TAG} does not match the IDG version ${IDG_VERSION}. Please create a matching tag for the master branch."
+      )
+    endif()
+  endif()
+endif()
 
 option(PORTABLE "Build portable binaries" OFF)
 if(PORTABLE)

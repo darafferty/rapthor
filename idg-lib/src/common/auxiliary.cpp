@@ -12,12 +12,9 @@
 
 #include "idg-config.h"
 #include "idg-common.h"
-#include "idg-version.h"
 #include "auxiliary.h"
 #include "memory.h"
 #include "PowerSensor.h"
-
-using namespace std;
 
 namespace idg {
 namespace auxiliary {
@@ -344,11 +341,14 @@ size_t get_nr_threads() {
 }
 
 void print_version() {
-  cout << "IDG version ";
-  if (!string(GIT_TAG).empty()) {
-    cout << " " << GIT_TAG << ":";
+  std::cout << "IDG version " << IDG_VERSION;
+  if (!std::string(IDG_GIT_BRANCH).empty()) {
+    std::cout << " branch:" << IDG_GIT_BRANCH;
   }
-  cout << GIT_BRANCH << ":" << GIT_REV << endl;
+  if (!std::string(IDG_GIT_REV).empty()) {
+    std::cout << " rev:" << IDG_GIT_REV;
+  }
+  std::cout << '\n';
 }
 
 DefaultMemory::DefaultMemory(size_t size) : Memory(malloc(size), size) {}
