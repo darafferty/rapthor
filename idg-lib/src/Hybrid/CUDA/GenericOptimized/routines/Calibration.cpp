@@ -61,6 +61,13 @@ void GenericOptimized::do_calibrate_init(
   // Find max number of subgrids
   unsigned int max_nr_subgrids = 0;
 
+  m_calibrate_state.d_metadata.clear();
+  m_calibrate_state.d_subgrids.clear();
+  m_calibrate_state.d_visibilities.clear();
+  m_calibrate_state.d_weights.clear();
+  m_calibrate_state.d_uvw.clear();
+  m_calibrate_state.d_aterms_indices.clear();
+
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     // Allocate subgrids for current antenna

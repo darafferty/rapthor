@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import dp3
+import everybeam as eb
 import numpy as np
 import idg
 from idg.h5parmwriter import H5ParmWriter
@@ -11,7 +12,7 @@ import astropy.io.fits as fits
 import scipy.linalg
 import time
 import logging
-
+import textwrap
 
 class IDGCalDPStep(dp3.Step):
     def __init__(self, parset, prefix):
@@ -20,9 +21,25 @@ class IDGCalDPStep(dp3.Step):
         self.dpbuffers = []
         self.is_initialized = False
 
+    def __str__(self):
+        return textwrap.dedent(f"""
+            IDGCalDPStep
+                usebeammodel:  {self.usebeammodel}\
+            """ 
+            f"""
+                beammode:      {self.beammode}
+            """ if self.usebeammodel else ""
+        )
+
     def show(self):
-        print()
-        print("IDGCalDPStep")
+        """
+            DP3 calls this function when the configuration of the steps is complete.
+            It captures stdout and sends it to the log stream.
+            This function will be removed once the trampoline class in the python interface
+            of DP3 calls __str__() directly.
+        """
+        # TODO Remove once no longer called from DP3 python interface trampoline class
+        print(self)
 
     def process(self, dpbuffer):
         # Accumulate buffers
@@ -53,6 +70,10 @@ class IDGCalDPStep(dp3.Step):
         self.info().set_need_vis_data()
         self.fetch_uvw = True
         self.fetch_weights = True
+        self.ms_name = dpinfo.ms_name()
+        if (self.usebeammodel):
+            self.telescope = eb.load_telescope(self.ms_name, use_differential_beam=True)
+
 
     def read_parset(self, parset, prefix):
         """
@@ -68,6 +89,11 @@ class IDGCalDPStep(dp3.Step):
 
         ## BEGIN: read parset
         self.proxytype = parset.getString(prefix + "proxytype", "CPU")
+
+        self.usebeammodel = parset.getBool(prefix + "usebeammodel", False)
+        self.beammode = parset.getString(prefix + "beammode", "default")
+        self.beamnormalisationmode = eb.parse_beam_normalisation_mode(
+            parset.getString(prefix + "beamnormalisationmode", "full"))
 
         solint = parset.getInt(prefix + "solint", 0)
         if solint:
@@ -199,16 +225,19 @@ class IDGCalDPStep(dp3.Step):
         )
 
         if self.proxytype.lower() == "gpu":
-            self.proxy = idg.HybridCUDA.GenericOptimized(
-                self.nr_correlations, self.subgrid_size
-            )
+            self.proxy = idg.HybridCUDA.GenericOptimized()
         else:
             self.proxy = idg.CPU.Optimized()
 
         # read image dimensions from fits header
         h = fits.getheader(self.imagename)
         N0 = h["NAXIS1"]
-        self.cell_size = abs(h["CDELT1"]) / 180 * np.pi
+        self.cell_size = np.deg2rad(abs(h["CDELT1"]))
+
+        # Pointing of image
+        # TODO This should be checked against the pointing in the MS
+        self.ra = np.deg2rad(h["CRVAL1"])
+        self.dec = np.deg2rad(h["CRVAL2"])
 
         # compute padded image size
         N = next_composite(int(N0 * self.padding))
@@ -293,6 +322,15 @@ class IDGCalDPStep(dp3.Step):
             self.phase_poly, self.subgrid_size, self.image_size
         )
 
+        gs = eb.GridSettings()
+        gs.width = gs.height = self.subgrid_size
+        gs.ra = self.ra
+        gs.dec = self.dec
+        gs.dl = -self.image_size / self.subgrid_size
+        gs.dm = -self.image_size / self.subgrid_size
+        gs.l_shift = -0.5 * gs.dl
+        gs.m_shift = 0.5 * gs.dm
+        self.gs = gs
 
     def process_buffers(self):
         """
@@ -314,6 +352,8 @@ class IDGCalDPStep(dp3.Step):
         uvw[..., 1] = -uvw_[self.auto_corr_mask, :, 1]
         uvw[..., 2] = -uvw_[self.auto_corr_mask, :, 2]
 
+        time_in_mjd_seconds = np.array([dpbuffer.get_time() for dpbuffer in self.dpbuffers])
+
         # Flag NaNs
         flags[np.isnan(visibilities)] = True
 
@@ -322,6 +362,13 @@ class IDGCalDPStep(dp3.Step):
 
         # Even with weight=0, NaNs still propagate, so set NaN visiblities to zero
         visibilities[np.isnan(visibilities)] = 0.0
+
+        if self.usebeammodel:
+            # TODO Pass self.beammode here once
+            # the gridded_response function from the EveryBeam python interface supports this
+            aterms_beam = self.telescope.gridded_response(self.gs, np.mean(time_in_mjd_seconds), np.mean(self.frequencies))
+        else:
+            aterms_beam = None
 
         self.proxy.calibrate_init(
             self.kernel_size,
@@ -369,20 +416,14 @@ class IDGCalDPStep(dp3.Step):
                 axes=((2,), (0,)),
             )
         )
-
-        # aterms will have shape (nr_phase_updates, nr_stations, subgrid size, subgrid size, nr polarizations)
-        aterms = np.ascontiguousarray(
-            (aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl).astype(
-                idg.idgtypes.atermtype
-            )
-        )
+        aterms = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
+        aterms = apply_beam(aterms_beam, aterms)
+        aterms = np.ascontiguousarray(aterms.astype(idg.idgtypes.atermtype))
 
         nr_iterations = 0
         converged = False
         previous_residual = 0.0
-
         max_dx = 0.0
-
         timer = -time.time()
         timer0 = 0
         timer1 = 0
@@ -410,8 +451,11 @@ class IDGCalDPStep(dp3.Step):
 
                 aterm_ampl = self.__compute_amplitude(i, parameters)
                 aterm_phase = self.__compute_phase(i, parameters)
+
                 aterm_derivatives = compute_aterm_derivatives(
-                    aterm_ampl, aterm_phase, self.Bampl, self.Bphase
+                    aterm_ampl, aterm_phase, 
+                    aterms_beam[i] if aterms_beam is not None else None, 
+                    self.Bampl, self.Bphase
                 )
 
                 timer0 -= time.time()
@@ -474,8 +518,13 @@ class IDGCalDPStep(dp3.Step):
                 # Recompute aterms with updated parameters
                 aterm_ampl = self.__compute_amplitude(i, parameters)
                 aterm_phase = self.__compute_phase(i, parameters)
-                aterms[:, i] = aterm_ampl * aterm_phase
 
+                aterms_i = aterm_ampl * aterm_phase
+
+                if aterms_beam is not None:
+                    aterms_i = apply_beam(aterms_beam[i], aterms_i)
+
+                aterms[:,i] = aterms_i
                 timer1 += time.time()
 
             dresidual = previous_residual - residual_sum
@@ -485,8 +534,7 @@ class IDGCalDPStep(dp3.Step):
 
             previous_residual = residual_sum
 
-            # converged = (nr_iterations > 1) and (fractional_dresidual < 1e-2)
-            converged = (nr_iterations > 1) and (max_dx < 1e-2)
+            converged = (nr_iterations > 1) and (fractional_dresidual < 1e-5)
 
             if converged:
                 print(f"Converged after {nr_iterations} iterations - {max_dx}")
@@ -623,7 +671,7 @@ class IDGCalDPStep(dp3.Step):
         )
 
 
-def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
+def compute_aterm_derivatives(aterm_ampl, aterm_phase, aterm_beam, B_a, B_p):
     """
     Compute the partial derivatives of g = B_a*x_a * exp(j*B_p*x_p):
     - \partial g / \partial x_a = B_a * exp(j*B_p*x_p)
@@ -637,6 +685,8 @@ def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
         Amplitude tensor product B_a * x_a, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
     aterm_phase : np.ndarray
         Phase tensor product B_p * x_p, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
+    aterm_beam : None or np.ndarray
+        Beam to apply, should have shape (subgrid_size, subgrid_size, nr_correlations)
     B_a : np.ndarray
         Expanded (amplitude) basis functions, should have shape (nr_ampl_coeffs, subgrid_size, subgrid_size, nr_correlations)
     B_p : np.ndarray
@@ -664,8 +714,40 @@ def compute_aterm_derivatives(aterm_ampl, aterm_phase, B_a, B_p):
     aterm_derivatives = np.concatenate(
         (aterm_derivatives_ampl, aterm_derivatives_phase), axis=1
     )
+
+    aterm_derivatives = apply_beam(aterm_beam, aterm_derivatives)
+
     aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
     return aterm_derivatives
+
+def apply_beam(beam, aterms):
+    """
+    Apply a beam (Jones matrices) to aterms
+
+    Parameters
+    ----------
+    beam : None or np.ndarray
+        shape should be ...,2,2
+    aterms: np.ndarray
+        shape should be ...,4
+
+    Returns
+    -------
+    Array of the same shape as aterms, matrix multiplied by beam.    
+    """
+    if beam is None:
+        return aterms
+
+    # reshape last axis (4,) to two axes (2,2)
+    aterms = np.reshape(aterms, aterms.shape[:-1] + (2,2))
+
+    # Use Einstein summation to compute the matrix product over the last two axes
+    aterms[:] = np.einsum('...ij,...jk->...ik', beam, aterms)
+
+    # reshape two last axes (2,2) to one axis (4,)
+    aterms = np.reshape(aterms, aterms.shape[:-2] + (4,))
+
+    return aterms
 
 
 def transform_parameters(
