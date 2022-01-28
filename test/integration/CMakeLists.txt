@@ -16,6 +16,8 @@ foreach(TEST ${INTEGRATION_TESTS})
       LABELS
       "integration"
       ENVIRONMENT
-      "IDG_INC_DIR=${CMAKE_BINARY_DIR}/include;IDG_LIB_DIR=${CMAKE_BINARY_DIR}/lib"
+      "IDG_INC_DIR=${CMAKE_BINARY_DIR}/include;IDG_LIB_DIR=${CMAKE_BINARY_DIR}/lib;IDG_PYTHONPATH=${CMAKE_INSTALL_PREFIX}/${PYTHON_INSTALL_DIR}/.."
+      RUN_SERIAL
+      TRUE # Parallel runs fail, for unknown reasons. :-(
   )
 endforeach()

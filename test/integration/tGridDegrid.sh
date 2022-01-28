@@ -11,19 +11,9 @@ export DATADIR=${DIR}/tmp/data
 export WORKDIR=${DIR}/tmp/workdir
 export MSNAME="LOFAR_MOCK.ms"
 export PATH="$PATH:${DIR}/common"
-export PYTHONPATH="${DIR}/common:$PYTHONPATH"
+export LD_LIBRARY_PATH="${IDG_LIB_DIR}:${LD_LIBRARY_PATH}"
+export PYTHONPATH="${IDG_PYTHONPATH}:${DIR}/common:$PYTHONPATH"
 export COMMON=${DIR}/common
-
-# Get the python path to the idg pybindings
-if [ -z "${IDG_LIB}" ] ;
-then
-      echo "\$IDG_LIB not in environment variables. Please do so!"
-      exit 1;
-fi
-
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-IDG_PYTHON_PATH=${IDG_LIB}/python${PYTHON_VERSION}/site-packages
-export PYTHONPATH=${IDG_PYTHON_PATH}:${PYTHONPATH}
 
 # Download measurement set into test/tmp/data directory (if needed)
 cd $DIR
@@ -40,5 +30,4 @@ cd $WORKDIR
 # before test_pygridding.py, since test_pygridding assumes
 # certain (fits) files to be present.
 # TODO: this needs to be setup a bit more generic
-PYTEST=$(which pytest-3 || echo "pytest")
-${PYTEST} -s -v --exitfirst --junitxml=${ORIG_DIR}/test_griddegrid.xml ${DIR}/gridding/test_*.py
+python3 -m pytest -s -v --exitfirst --junitxml=${ORIG_DIR}/test_griddegrid.xml ${DIR}/gridding/test_*.py

@@ -14,30 +14,10 @@ export MODELIMAGE="modelimage.fits"
 export MSNAME="LOFAR_MOCK_15STATIONS.ms"
 export PATH="$PATH:${DIR}/common"
 export COMMON=${DIR}/common
+export PYTHONPATH="${IDG_PYTHONPATH}:$PYTHONPATH"
 
 export MODELIMAGE_PATH=${DATADIR}/${MODELIMAGE}
 export MS_PATH=${DATADIR}/${MSNAME}
-
-# Get the python path to DP3 pybindings
-if [ -z "${DP3_LIB}" ] ;
-then
-      echo "\$DP3_LIB not in environment variables. Please do so!"
-      exit 1;
-fi
-
-PYTHON_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-DP3_PYTHON_PATH=${DP3_LIB}/python${PYTHON_VERSION}/site-packages
-
-# Get the python path to the idg pybindings
-if [ -z "${IDG_LIB}" ] ;
-then
-      echo "\$IDG_LIB not in environment variables. Please do so!"
-      exit 1;
-fi
-IDG_PYTHON_PATH=${IDG_LIB}/python${PYTHON_VERSION}/site-packages
-
-# Set python path
-export PYTHONPATH=${IDG_PYTHON_PATH}:${DP3_PYTHON_PATH}:${PYTHONPATH}
 
 # Download measurement set into test/tmp/data directory (if needed)
 cd $DIR
@@ -70,10 +50,6 @@ cd $WORKDIR
 # Disable warnings due to HDF5 version mismatches
 export HDF5_DISABLE_VERSION_CHECK=2
 
-echo ${PYTHONPATH}
-echo ${DP3_PYTHON_PATH}
-ls ${DP3_PYTHON_PATH}
-
 # Run the test
 # pytest -s captures the print() statements
-pytest -s --exitfirst --junitxml ${ORIG_DIR}/test_idgcalstep.xml ${DIR}/idgcaldpstep/test_idgcalstep.py
+python3 -m pytest -s --exitfirst --junitxml ${ORIG_DIR}/test_idgcalstep.xml ${DIR}/idgcaldpstep/test_idgcalstep.py
