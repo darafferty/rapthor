@@ -133,8 +133,9 @@ if(BUILD_TESTING)
     add_test(NAME build-${TEST_NAME}
              COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target
                      ${TEST_NAME})
-    set_tests_properties(build-${TEST_NAME} PROPERTIES FIXTURES_SETUP
-                                                       ${TEST_NAME})
+    # Running multiple build commands in parallel yields race conditions.
+    set_tests_properties(build-${TEST_NAME}
+                         PROPERTIES FIXTURES_SETUP ${TEST_NAME} RUN_SERIAL true)
     set(JUNIT_ARG)
     if(ARG_LABEL STREQUAL "unit")
       set(JUNIT_ARG -f JUNIT -k unittest_${TEST_NAME}.xml)
