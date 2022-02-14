@@ -13,7 +13,9 @@
 #ifndef BATCH_SIZE
 #define BATCH_SIZE 128
 #endif
+#ifndef UNROLL_PIXELS
 #define UNROLL_PIXELS 4
+#endif
 
 
 /*
