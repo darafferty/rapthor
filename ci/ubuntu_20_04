@@ -3,13 +3,6 @@ FROM ubuntu:20.04
 # This Docker image builds the dependencies for the Rapthor pipeline.
 # It lives on the head of its dependencies.
 
-# The Docker image is cached and not updated on every build.
-# When this file changes it forces an update of the Docker image.
-# Increment this value to get a fresh build.
-# Note decrementing may give an older cached value, therefore only
-# increment the value.
-ENV DOCKER_BUILD_FORCE_GENERATION=0
-
 # Install the required Debian packages.
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
@@ -141,6 +134,8 @@ RUN cd /src && git shallow-clone https://github.com/darafferty/LSMTool.git
 RUN cd /src/LSMTool && python3 setup.py install --build_c_extentions
 
 # Install LoSoTo
+# Tables 3.7.0 requires a newer numpy which conflicts with the installed casacore.
+RUN pip install tables==3.6.1
 RUN cd /src && git shallow-clone https://github.com/revoltek/losoto.git
 RUN cd /src/losoto && python3 setup.py install
 
