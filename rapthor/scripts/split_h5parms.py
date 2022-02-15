@@ -60,9 +60,12 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
     if 'gain' in soltabname:
         times_slow = soltab_amp.time
 
-    # Identify any gaps in time and put initial breaks there
+    # Identify any gaps in time and put initial breaks there. We use median()
+    # instead of min() to find the solution interval (timewidth) because the
+    # division in time used during calibration to allow processing on multiple
+    # nodes can occasionally result in a few smaller solution intervals
     delta_times = times_fast[1:] - times_fast[:-1]  # time at center of solution interval
-    timewidth = np.min(delta_times)
+    timewidth = np.median(delta_times)
     gaps = np.where(delta_times > timewidth*1.2)
     gaps_ind = gaps[0] + 1
     gaps_ind = np.append(gaps_ind, np.array([len(times_fast)]))
