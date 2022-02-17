@@ -203,7 +203,8 @@ class Operation(object):
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
-        args.extend(['--logLevel', 'DEBUG'])
+#        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
+        args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         args.extend(['--preserve-entire-environment'])
 #         args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         if self.scratch_dir is not None:
