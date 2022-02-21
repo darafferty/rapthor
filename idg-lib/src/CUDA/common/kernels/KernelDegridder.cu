@@ -6,12 +6,49 @@
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
-/*
-    Parameters
-*/
-#ifndef BATCH_SIZE
-#define BATCH_SIZE 256
+
+/**
+ * Tuning parameters:
+ *  - BLOCK_SIZE_X
+ *  - NUM_BLOCKS
+ *
+ * This kernel is tuned for these
+ *  architectures (__CUDA_ARCH__):
+ *  - Ampere (800, 860)
+ *  - Turing (750)
+ *  - Volta (700)
+ *  - Pascal (610)
+ *  - Maxwell (520)
+ *  - Kepler (350)
+ *
+ *  Derived parameters:
+ *  - NUM_THREADS = BLOCK_SIZE_X
+ *    -> the thread block is 1D
+ *  - BATCH_SIZE = NUM_THREADS
+ *    -> setting BATCH_SIZE as a multiple of
+ *       NUM_THREADS does not improve performance
+**/
+#ifndef BLOCK_SIZE_X
+#define BLOCK_SIZE_X 64
 #endif
+#define NUM_THREADS BLOCK_SIZE_X
+
+#ifndef NUM_BLOCKS
+#if __CUDA_ARCH__ == 800
+#define NUM_BLOCKS 5
+#elif __CUDA_ARCH__ == 520 || \
+      __CUDA_ARCH__ == 750 || \
+      __CUDA_ARCH__ == 700
+#define NUM_BLOCKS 6
+#else // 350, 610, 800
+#define NUM_BLOCKS 0
+#endif
+#endif
+
+#ifndef BATCH_SIZE
+#define BATCH_SIZE NUM_THREADS
+#endif
+
 
 /*
     Shared memory
@@ -40,7 +77,6 @@ __device__ void prepare_shared(
 {
     int s = blockIdx.x;
     int tid = threadIdx.x;
-    int nr_threads = blockDim.x;
 
     // Load metadata for current subgrid
     const int x_coordinate = metadata.coordinate.x;
@@ -53,7 +89,7 @@ __device__ void prepare_shared(
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) metadata.coordinate.z + 0.5) * 2 * M_PI;
 
-    for (int j = tid; j < current_nr_pixels; j += nr_threads) {
+    for (int j = tid; j < current_nr_pixels; j += NUM_THREADS) {
         int y = (pixel_offset + j) / subgrid_size;
         int x = (pixel_offset + j) % subgrid_size;
 
@@ -230,7 +266,6 @@ __device__ void kernel_degridder_tp(
 {
     int s          = blockIdx.x;
     int tid        = threadIdx.x;
-    int nr_threads = blockDim.x;
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
@@ -259,7 +294,7 @@ __device__ void kernel_degridder_tp(
         int time_start = time_offset_global + time_offset_local;
         int time_end = time_start + current_nr_timesteps;
 
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, nr_threads); i += nr_threads) {
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, NUM_THREADS); i += NUM_THREADS) {
             int time = time_start + (i / nr_channels_parallel);
             int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
             int channel = channel_offset + channel_offset_local;
@@ -286,8 +321,8 @@ __device__ void kernel_degridder_tp(
             const int nr_pixels = subgrid_size * subgrid_size;
             int current_nr_pixels = BATCH_SIZE;
             for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += current_nr_pixels) {
-                current_nr_pixels = nr_pixels - pixel_offset < min(nr_threads, BATCH_SIZE) ?
-                                    nr_pixels - pixel_offset : min(nr_threads, BATCH_SIZE);
+                current_nr_pixels = nr_pixels - pixel_offset < min(NUM_THREADS, BATCH_SIZE) ?
+                                    nr_pixels - pixel_offset : min(NUM_THREADS, BATCH_SIZE);
 
                 __syncthreads();
 
@@ -339,7 +374,6 @@ __device__ void kernel_degridder_pt(
 {
     int s          = blockIdx.x;
     int tid        = threadIdx.x;
-    int nr_threads = blockDim.x;
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
@@ -353,8 +387,8 @@ __device__ void kernel_degridder_pt(
     const int nr_pixels = subgrid_size * subgrid_size;
     int current_nr_pixels = BATCH_SIZE;
     for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += current_nr_pixels) {
-        current_nr_pixels = nr_pixels - pixel_offset < min(nr_threads, BATCH_SIZE) ?
-                            nr_pixels - pixel_offset : min(nr_threads, BATCH_SIZE);
+        current_nr_pixels = nr_pixels - pixel_offset < min(NUM_THREADS, BATCH_SIZE) ?
+                            nr_pixels - pixel_offset : min(NUM_THREADS, BATCH_SIZE);
 
         // Iterate timesteps
         int current_nr_timesteps = 0;
@@ -385,7 +419,7 @@ __device__ void kernel_degridder_pt(
             int time_start = time_offset_global + time_offset_local;
             int time_end = time_start + current_nr_timesteps;
 
-            for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, nr_threads); i += nr_threads) {
+            for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, NUM_THREADS); i += NUM_THREADS) {
                 int time = time_start + (i / nr_channels_parallel);
                 int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
                 int channel = channel_offset + channel_offset_local;
@@ -431,7 +465,7 @@ __device__ void kernel_degridder_pt(
     const int nr_aterms     = m.nr_aterms;
 
 #define KERNEL_DEGRIDDER(current_nr_channels) \
-    if ((nr_timesteps / nr_aterms) >= nr_threads) { \
+    if ((nr_timesteps / nr_aterms) >= NUM_THREADS) { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_tp<current_nr_channels>( \
                 time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
@@ -448,8 +482,12 @@ __device__ void kernel_degridder_pt(
     }
 
 extern "C" {
-__global__ void
-    kernel_degridder(
+
+__global__
+#if NUM_BLOCKS > 0
+__launch_bounds__(NUM_THREADS, NUM_BLOCKS)
+#endif
+void kernel_degridder(
     const int                      time_offset,
     const int                      nr_polarizations,
     const int                      grid_size,
@@ -470,7 +508,6 @@ __global__ void
           float2*     __restrict__ subgrid)
 {
     int s                   = blockIdx.x;
-    int nr_threads          = blockDim.x * blockDim.y;
     const Metadata &m       = metadata[s];
     const int channel_begin = m.channel_begin;
     const int channel_end   = m.channel_end;

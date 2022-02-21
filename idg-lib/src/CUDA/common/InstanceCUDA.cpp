@@ -492,7 +492,7 @@ void InstanceCUDA::launch_gridder(
                               d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
-  dim3 block;
+  dim3 block(256);  // This should match BLOCK_SIZE_X in KernelGridder.cu
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
   start_measurement(data);
@@ -531,7 +531,8 @@ void InstanceCUDA::launch_degridder(
                               d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
-  dim3 block(32);
+  dim3 block(64);  // This should match BLOCK_SIZE_X in KernelDegridder.cu
+
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::degridder);
   start_measurement(data);
