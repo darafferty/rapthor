@@ -492,7 +492,7 @@ void InstanceCUDA::launch_gridder(
                               d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
-  dim3 block(128);
+  dim3 block;
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
   start_measurement(data);
