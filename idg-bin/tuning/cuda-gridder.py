@@ -20,6 +20,7 @@ def tune():
     # Parse command line arguments
     parser = helper.get_default_parser()
     parser.add_argument("--block-size", nargs="+", default=[32 * i for i in range(1,9)])
+    parser.add_argument("--num-blocks", nargs="+", default=range(9))
     parser.add_argument("--unroll-pixels", nargs="+", default=[1, 2, 4])
     args = parser.parse_args()
 
@@ -27,6 +28,7 @@ def tune():
     tune_params = OrderedDict()
     tune_params["BLOCK_SIZE_X"] = args.block_size
     tune_params["UNROLL_PIXELS"] = args.unroll_pixels
+    tune_params["NUM_BLOCKS"] = args.num_blocks
 
     # IDG parameters
     grid_size = 8192

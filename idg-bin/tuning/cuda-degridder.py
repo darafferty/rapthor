@@ -20,11 +20,13 @@ def tune():
     # Parse command line arguments
     parser = helper.get_default_parser()
     parser.add_argument("--block-size", nargs="+", default=[32 * i for i in range(1,9)])
+    parser.add_argument("--num-blocks", nargs="+", default=range(9))
     args = parser.parse_args()
 
     # Tuning parameters
     tune_params = OrderedDict()
     tune_params["BLOCK_SIZE_X"] = args.block_size
+    tune_params["NUM_BLOCKS"] = args.num_blocks
 
     # IDG parameters
     grid_size = 8192
