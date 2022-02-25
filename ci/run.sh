@@ -4,7 +4,7 @@
 
 set -e
 
-python3 setup.py install
+python3 -m pip install .
 
 cd test
 for f in *.py; do

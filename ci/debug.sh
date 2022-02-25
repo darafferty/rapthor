@@ -10,6 +10,9 @@ ROOT="$(git rev-parse --show-toplevel)"
 if [[ ! -f "${ROOT}/ci/debug.sh" ]]; then
     echo "The script needs to be executed in the repository."
     exit 1
+else
+    cd ${ROOT}
 fi
-docker build --tag rapthor/ubuntu_20_04  -f "${ROOT}/ci/ubuntu_20_04" .
+
+docker build --tag rapthor/ubuntu_20_04  -f "${ROOT}/ci/ubuntu_20_04-base" .
 docker run -it --volume "${ROOT}:/rapthor" --workdir "/rapthor" rapthor/ubuntu_20_04 bash
