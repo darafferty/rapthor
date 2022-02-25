@@ -1,0 +1,8 @@
+ARG BASE_TAG=latest
+FROM $BASE_TAG
+
+# Install Rapthor
+COPY . /tmp/rapthor
+
+RUN python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
+    rm -rf /tmp/rapthor
