@@ -10,19 +10,19 @@ import idg
 
 
 def tune():
-    # The kernel to tune
-    kernel_name = "kernel_gridder"
-    kernel_string = helper.get_kernel_string("KernelGridder.cu")
-    kernel_source = f"{kernel_name}.cu"
-    with open(kernel_source, "w") as f:
-        f.write(kernel_string)
-
     # Parse command line arguments
     parser = helper.get_default_parser()
     parser.add_argument("--block-size", nargs="+", default=[32 * i for i in range(1,9)])
     parser.add_argument("--num-blocks", nargs="+", default=range(9))
     parser.add_argument("--unroll-pixels", nargs="+", default=[1, 2, 4])
     args = parser.parse_args()
+
+    # The kernel to tune
+    kernel_name = "kernel_gridder"
+    kernel_string = helper.get_kernel_string(args.file)
+    kernel_source = f"{kernel_name}.cu"
+    with open(kernel_source, "w") as f:
+        f.write(kernel_string)
 
     # Tuning parameters
     tune_params = OrderedDict()

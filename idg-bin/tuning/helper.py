@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+import os
 import pynvml
 import re
 
@@ -9,6 +10,7 @@ from kernel_tuner.nvml import NVMLObserver
 
 def get_default_parser():
     parser = argparse.ArgumentParser(description='Tune kernel.')
+    parser.add_argument("--file", required=True, help="Path to kernel source file")
     parser.add_argument("--store-json", action="store_true")
     parser.add_argument("--tune-power-limit", action="store_true")
     parser.add_argument("--power-limit-steps", nargs="?")
@@ -20,10 +22,20 @@ def get_default_parser():
 
 
 def get_kernel_string(filename):
+    # Helper function to recursively get a parent directory
+    def get_parent_dir(dirname, level=1):
+        if (level == 0):
+            return dirname
+        else:
+            parentdir = os.path.abspath(os.path.join(dirname, os.pardir))
+            return get_parent_dir(parentdir, level -1)
+
     # All the directories to look for kernel sources and header files
     prefixes = []
-    prefixes.append("../../idg-lib/src/CUDA/common/kernels/")
-    prefixes.append("../../idg-lib/src/")
+    dirname_kernel = os.path.dirname(filename) # e.g. idg-lib/src/CUDA/common/kernels
+    prefixes.append(dirname_kernel)
+    dirname_src = get_parent_dir(dirname_kernel, 3) # e.g. idg-lib/src
+    prefixes.append(dirname_src)
 
     # Helper function to recursively get file contents with local includes
     def add_file(filename, level=1):
@@ -35,7 +47,6 @@ def get_kernel_string(filename):
                     for line in lines:
                         # Match lines where a local header file is included
                         if line.startswith('#include "'):
-
                             # Extract the name of the header file
                             m = re.findall(r'"(.*?)"', line)
 
@@ -58,7 +69,8 @@ def get_kernel_string(filename):
         return result
 
     # Start gathering all the source lines
-    source_lines = add_file(filename)
+    filename_kernel = os.path.basename(filename) # e.g. KernelGridder.cu
+    source_lines = add_file(filename_kernel)
 
     # Return the result as a string
     return "".join(source_lines)
