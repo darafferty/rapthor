@@ -6,6 +6,7 @@
 
 #include "InstanceCUDA.h"
 #include "PowerRecord.h"
+#include "kernels/KernelGridder.cuh"
 
 using namespace idg::kernel;
 using namespace powersensor;
@@ -492,7 +493,7 @@ void InstanceCUDA::launch_gridder(
                               d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
-  dim3 block(256);  // This should match BLOCK_SIZE_X in KernelGridder.cu
+  dim3 block(KernelGridder::block_size_x);
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
   start_measurement(data);
