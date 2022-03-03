@@ -104,8 +104,8 @@ class Calibrate(Operation):
 
         # Set the constraints used in the calibrations
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
-        slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint1
-        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint2
+        slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint_joint
+        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint_separate
         antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
         antennaconstraint_all = "'[[{}]]'".format(','.join(self.field.stations))
 
