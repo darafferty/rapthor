@@ -308,10 +308,14 @@ def get_calibration_options(parset):
         parset_dict['fast_smoothnessconstraint'] = parset.getfloat('calibration', 'fast_smoothnessconstraint')
     else:
         parset_dict['fast_smoothnessconstraint'] = 6e6
-    if 'slow_smoothnessconstraint' in parset_dict:
-        parset_dict['slow_smoothnessconstraint'] = parset.getfloat('calibration', 'slow_smoothnessconstraint')
+    if 'slow_smoothnessconstraint1' in parset_dict:
+        parset_dict['slow_smoothnessconstraint1'] = parset.getfloat('calibration', 'slow_smoothnessconstraint1')
     else:
-        parset_dict['slow_smoothnessconstraint'] = 3e6
+        parset_dict['slow_smoothnessconstraint1'] = 3e6
+    if 'slow_smoothnessconstraint2' in parset_dict:
+        parset_dict['slow_smoothnessconstraint2'] = parset.getfloat('calibration', 'slow_smoothnessconstraint2')
+    else:
+        parset_dict['slow_smoothnessconstraint2'] = 3e6
 
     # Solver parameters
     if 'llssolver' not in parset_dict:
@@ -361,8 +365,9 @@ def get_calibration_options(parset):
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug',
-                       'llsstarttolerance', 'llstolerance', 'solveralgorithm']
+                       'slow_smoothnessconstraint1', 'slow_smoothnessconstraint2',
+                       'use_idg_predict', 'debug', 'llsstarttolerance', 'llstolerance',
+                       'solveralgorithm']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '

@@ -104,10 +104,10 @@ class Calibrate(Operation):
 
         # Set the constraints used in the calibrations
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
-        slow_smoothnessconstraint = self.field.slow_smoothnessconstraint
+        slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint1
+        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint2
         antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
         antennaconstraint_all = "'[[{}]]'".format(','.join(self.field.stations))
-        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint * 2.0
 
         # Get various DDECal solver parameters
         llssolver = self.field.llssolver
@@ -166,7 +166,7 @@ class Calibrate(Operation):
                             'calibration_skymodel_file': calibration_skymodel_file,
                             'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
-                            'slow_smoothnessconstraint': slow_smoothnessconstraint,
+                            'slow_smoothnessconstraint1': slow_smoothnessconstraint1,
                             'llssolver': llssolver,
                             'maxiter': maxiter,
                             'propagatesolutions': propagatesolutions,
