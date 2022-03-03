@@ -7,6 +7,7 @@
 #include "InstanceCUDA.h"
 #include "PowerRecord.h"
 #include "kernels/KernelGridder.cuh"
+#include "kernels/KernelDegridder.cuh"
 
 using namespace idg::kernel;
 using namespace powersensor;
@@ -532,7 +533,7 @@ void InstanceCUDA::launch_degridder(
                               d_subgrid.data()};
 
   dim3 grid(nr_subgrids);
-  dim3 block(64);  // This should match BLOCK_SIZE_X in KernelDegridder.cu
+  dim3 block(KernelDegridder::block_size_x);
 
   UpdateData* data =
       get_update_data(get_event(), *m_powersensor, m_report, Report::degridder);

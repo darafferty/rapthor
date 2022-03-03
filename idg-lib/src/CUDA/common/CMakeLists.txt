@@ -28,7 +28,8 @@ if(NOT BUILD_STATIC_LIBS)
 endif()
 
 install(
-  FILES kernels/KernelDegridder.cu
+  FILES kernels/KernelDegridder.cuh
+        kernels/KernelDegridder.cu
         kernels/KernelFFT.cu
         kernels/KernelGridder.cuh
         kernels/KernelGridder.cu

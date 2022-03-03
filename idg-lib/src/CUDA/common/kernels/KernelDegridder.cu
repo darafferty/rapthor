@@ -3,6 +3,7 @@
 
 #include "Types.h"
 #include "math.cu"
+#include "KernelDegridder.cuh"
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
@@ -29,7 +30,7 @@
  *       NUM_THREADS does not improve performance
 **/
 #ifndef BLOCK_SIZE_X
-#define BLOCK_SIZE_X 64
+#define BLOCK_SIZE_X KernelDegridder::block_size_x
 #endif
 #define NUM_THREADS BLOCK_SIZE_X
 
