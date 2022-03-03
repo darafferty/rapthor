@@ -308,14 +308,14 @@ def get_calibration_options(parset):
         parset_dict['fast_smoothnessconstraint'] = parset.getfloat('calibration', 'fast_smoothnessconstraint')
     else:
         parset_dict['fast_smoothnessconstraint'] = 6e6
-    if 'slow_smoothnessconstraint1' in parset_dict:
-        parset_dict['slow_smoothnessconstraint1'] = parset.getfloat('calibration', 'slow_smoothnessconstraint1')
+    if 'slow_smoothnessconstraint_joint' in parset_dict:
+        parset_dict['slow_smoothnessconstraint_joint'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_joint')
     else:
-        parset_dict['slow_smoothnessconstraint1'] = 3e6
-    if 'slow_smoothnessconstraint2' in parset_dict:
-        parset_dict['slow_smoothnessconstraint2'] = parset.getfloat('calibration', 'slow_smoothnessconstraint2')
+        parset_dict['slow_smoothnessconstraint_joint'] = 3e6
+    if 'slow_smoothnessconstraint_separate' in parset_dict:
+        parset_dict['slow_smoothnessconstraint_separate'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_separate')
     else:
-        parset_dict['slow_smoothnessconstraint2'] = 3e6
+        parset_dict['slow_smoothnessconstraint_separate'] = 3e6
 
     # Solver parameters
     if 'llssolver' not in parset_dict:
@@ -365,7 +365,7 @@ def get_calibration_options(parset):
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'slow_smoothnessconstraint1', 'slow_smoothnessconstraint2',
+                       'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
                        'use_idg_predict', 'debug', 'llsstarttolerance', 'llstolerance',
                        'solveralgorithm']
     for option in given_options:
