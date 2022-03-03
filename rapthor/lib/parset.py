@@ -120,9 +120,6 @@ def get_global_options(parset):
     # Fraction of data to use (default = 1.0). If less than one, the input data are divided
     # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
     # fraction, spaced out evenly over the full time range
-    if 'data_fraction' in parset_dict:
-        parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'data_fraction')
-        log.warning('The data_fraction parameter has been deprecated. Please use selfcal_data_fraction instead.')
     if 'selfcal_data_fraction' in parset_dict:
         parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'selfcal_data_fraction')
     else:
