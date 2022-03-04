@@ -266,7 +266,7 @@ inputs:
       (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: slow_smoothnessconstraint
+  - id: slow_smoothnessconstraint1
     label: Slow 1 smoothnessconstraint
     doc: |
       The smoothnessconstraint kernel size in Hz for the first slow-gain solve (length = 1).
@@ -281,7 +281,7 @@ inputs:
   - id: slow_antennaconstraint
     label: Slow antenna constraint
     doc: |
-      The antenna constraint for the slow-gain solve (length = 1).
+      The antenna constraint for the first slow-gain solve (length = 1).
     type: string
 
   - id: output_slow_h5parm
@@ -498,7 +498,7 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint
-        source: slow_smoothnessconstraint
+        source: slow_smoothnessconstraint1
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads

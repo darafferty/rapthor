@@ -140,21 +140,25 @@ The available options are described below under their respective sections.
         Time step used during fast phase calibration, in seconds (default = 8).
 
     fast_freqstep_hz
-        Frequency step used during fast phase calibration, in MHz (default = 1e6).
+        Frequency step used during fast phase calibration, in Hz (default = 1e6).
 
     fast_smoothnessconstraint
         Smoothness constraint bandwidth used during fast phase calibration, in
-        MHz (default = 6e6).
+        Hz (default = 6e6).
 
     slow_timestep_sec
         Time step used during slow amplitude calibration, in seconds (default = 600).
 
     slow_freqstep_hz
-        Frequency step used during slow amplitude calibration, in MHz (default = 1e6).
+        Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
 
-    slow_smoothnessconstraint
-        Smoothness constraint bandwidth used during slow amplitude calibration,
-        in MHz (default = 3e6).
+    slow_smoothnessconstraint_joint
+        Smoothness constraint bandwidth used during the first slow gain calibration,
+        where a joint solution is found for all stations, in Hz (default = 3e6).
+
+    slow_smoothnessconstraint_separate
+        Smoothness constraint bandwidth used during the second slow gain calibration,
+        where separate solutions are found for each station, in Hz (default = 3e6).
 
     use_idg_predict
        Use IDG for predict during calibration (default = ``False``)?

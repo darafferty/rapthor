@@ -70,7 +70,8 @@ input_skymodel = /data/skymodel.txt
 # Slow solve parameters (defaults shown):
 # slow_timestep_sec = 600.0
 # slow_freqstep_hz = 1e6
-# slow_smoothnessconstraint = 3e6
+# slow_smoothnessconstraint_joint = 3e6
+# slow_smoothnessconstraint_separate = 3e6
 
 # Use the IDG for predict during calibration (default = False)?
 # use_idg_predict = False
