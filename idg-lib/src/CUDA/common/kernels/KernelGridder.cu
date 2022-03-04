@@ -3,17 +3,53 @@
 
 #include "math.cu"
 #include "Types.h"
+#include "KernelGridder.cuh"
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
 
-/*
-    Parameters
-*/
-#ifndef BATCH_SIZE
-#define BATCH_SIZE 128
+/**
+ * Tuning parameters:
+ *  - BLOCK_SIZE_X
+ *  - NUM_BLOCKS
+ *  - UNROLL_PIXELS
+ *
+ * This kernel is tuned for these
+ * architectures (__CUDA_ARCH__):
+ *  - Ampere (800, 860)
+ *  - Turing (750)
+ *  - Volta (700)
+ *  - Pascal (610)
+ *  - Maxwell (520)
+ *  - Kepler (350)
+ *
+ *  Derived parameters:
+ *  - NUM_THREADS = BLOCK_SIZE_X
+ *    -> the thread block is 1D
+ *  - BATCH_SIZE = NUM_THREADS
+ *    -> setting BATCH_SIZE as a multiple of
+ *       NUM_THREADS does not improve performance
+**/
+#ifndef BLOCK_SIZE_X
+#define BLOCK_SIZE_X KernelGridder::block_size_x
 #endif
+#define NUM_THREADS BLOCK_SIZE_X
+
+#ifndef NUM_BLOCKS
+#if __CUDA_ARCH__ >= 800
+#define NUM_BLOCKS 2
+#else
+#define NUM_BLOCKS 4
+#endif
+#endif
+
+#ifndef UNROLL_PIXELS
 #define UNROLL_PIXELS 4
+#endif
+
+#ifndef BATCH_SIZE
+#define BATCH_SIZE NUM_THREADS
+#endif
 
 
 /*
@@ -124,7 +160,6 @@ __device__ void
           float2*          __restrict__ subgrid)
 {
     int tid = threadIdx.x;
-    int nr_threads = blockDim.x;
     int s = blockIdx.x;
 
 	// Load metadata for current subgrid
@@ -142,7 +177,7 @@ __device__ void
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Iterate all pixels in subgrid
-    for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, nr_threads); i += nr_threads * UNROLL_PIXELS) {
+    for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, NUM_THREADS); i += NUM_THREADS * UNROLL_PIXELS) {
         float2 pixel_cur[UNROLL_PIXELS][4];
         float2 pixel_sum[UNROLL_PIXELS][4];
 
@@ -163,7 +198,7 @@ __device__ void
         float phase_offset[UNROLL_PIXELS];
 
         for (int j = 0; j < UNROLL_PIXELS; j++) {
-            int i_ = i + j * nr_threads;
+            int i_ = i + j * NUM_THREADS;
             int y = i_ / subgrid_size;
             int x = i_ % subgrid_size;
             float l_offset = compute_l(x, subgrid_size, image_size);
@@ -183,14 +218,14 @@ __device__ void
             __syncthreads();
 
             // Load UVW
-            for (int time = tid; time < current_nr_timesteps; time += nr_threads) {
+            for (int time = tid; time < current_nr_timesteps; time += NUM_THREADS) {
                 UVW<float> a = uvw[time_offset_global + time_offset_local + time];
                 uvw_[time] = make_float4(a.u, a.v, a.w, 0);
             }
 
             // Load visibilities
             if (nr_polarizations == 4) {
-                for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += nr_threads) {
+                for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += NUM_THREADS) {
                     int j = v % 2; // one thread loads either upper or lower float4 part of visibility
                     int k = v / 2;
                     int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
@@ -201,7 +236,7 @@ __device__ void
                 }
             } else if (nr_polarizations == 1) {
                 // Use only visibilities_[*][0].
-                for (int k = tid; k < current_nr_timesteps*current_nr_channels; k += nr_threads) {
+                for (int k = tid; k < current_nr_timesteps*current_nr_channels; k += NUM_THREADS) {
                     int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
                     int idx_chan = channel_offset + (k % current_nr_channels);
                     long idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
@@ -224,7 +259,7 @@ __device__ void
 
                 if (aterm_changed) {
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
-                        int i_ = i + j * nr_threads;
+                        int i_ = i + j * NUM_THREADS;
                         int y = i_ / subgrid_size;
                         int x = i_ % subgrid_size;
 
@@ -290,7 +325,7 @@ __device__ void
         } // end for time_offset_local
 
         for (int j = 0; j < UNROLL_PIXELS; j++) {
-            int i_ = i + j * nr_threads;
+            int i_ = i + j * NUM_THREADS;
             int y = i_ / subgrid_size;
             int x = i_ % subgrid_size;
 
@@ -308,8 +343,11 @@ __device__ void
 } // end kernel_gridder_
 
 extern "C" {
-__global__ void
-    kernel_gridder(
+__global__
+#if NUM_BLOCKS > 0
+__launch_bounds__(NUM_THREADS, NUM_BLOCKS)
+#endif
+void kernel_gridder(
         const int                      time_offset,
         const int                      nr_polarizations,
         const int                      grid_size,
