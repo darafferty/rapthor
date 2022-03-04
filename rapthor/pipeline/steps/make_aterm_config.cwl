@@ -35,3 +35,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.outfile)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

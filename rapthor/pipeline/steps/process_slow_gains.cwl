@@ -38,3 +38,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.slowh5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

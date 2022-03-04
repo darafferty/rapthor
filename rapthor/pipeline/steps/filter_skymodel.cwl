@@ -81,3 +81,6 @@ inputs:
       separate: false
 
 outputs: []
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

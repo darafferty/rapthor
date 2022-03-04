@@ -84,3 +84,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.maskfile)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

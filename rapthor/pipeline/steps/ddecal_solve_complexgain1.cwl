@@ -149,3 +149,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.h5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

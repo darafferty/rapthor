@@ -97,3 +97,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.msout)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

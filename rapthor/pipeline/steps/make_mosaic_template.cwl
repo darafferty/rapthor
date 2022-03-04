@@ -52,3 +52,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.output_image)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

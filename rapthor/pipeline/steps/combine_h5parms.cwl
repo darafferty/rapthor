@@ -82,3 +82,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.outh5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

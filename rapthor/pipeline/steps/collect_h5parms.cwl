@@ -36,3 +36,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.outputh5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

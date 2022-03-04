@@ -160,3 +160,6 @@ outputs:
     type: string
     outputBinding:
       outputEval: $(inputs.name)-sources-pb.txt
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'
