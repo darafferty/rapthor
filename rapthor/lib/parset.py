@@ -120,9 +120,6 @@ def get_global_options(parset):
     # Fraction of data to use (default = 1.0). If less than one, the input data are divided
     # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
     # fraction, spaced out evenly over the full time range
-    if 'data_fraction' in parset_dict:
-        parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'data_fraction')
-        log.warning('The data_fraction parameter has been deprecated. Please use selfcal_data_fraction instead.')
     if 'selfcal_data_fraction' in parset_dict:
         parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'selfcal_data_fraction')
     else:
@@ -308,10 +305,14 @@ def get_calibration_options(parset):
         parset_dict['fast_smoothnessconstraint'] = parset.getfloat('calibration', 'fast_smoothnessconstraint')
     else:
         parset_dict['fast_smoothnessconstraint'] = 6e6
-    if 'slow_smoothnessconstraint' in parset_dict:
-        parset_dict['slow_smoothnessconstraint'] = parset.getfloat('calibration', 'slow_smoothnessconstraint')
+    if 'slow_smoothnessconstraint_joint' in parset_dict:
+        parset_dict['slow_smoothnessconstraint_joint'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_joint')
     else:
-        parset_dict['slow_smoothnessconstraint'] = 3e6
+        parset_dict['slow_smoothnessconstraint_joint'] = 3e6
+    if 'slow_smoothnessconstraint_separate' in parset_dict:
+        parset_dict['slow_smoothnessconstraint_separate'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_separate')
+    else:
+        parset_dict['slow_smoothnessconstraint_separate'] = 3e6
 
     # Solver parameters
     if 'llssolver' not in parset_dict:
@@ -361,8 +362,9 @@ def get_calibration_options(parset):
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'slow_smoothnessconstraint', 'use_idg_predict', 'debug',
-                       'llsstarttolerance', 'llstolerance', 'solveralgorithm']
+                       'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
+                       'use_idg_predict', 'debug', 'llsstarttolerance', 'llstolerance',
+                       'solveralgorithm']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '
