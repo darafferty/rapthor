@@ -190,6 +190,7 @@ class Operation(object):
         """
         # Build the args list
         args = []
+        args.extend(['--singularity'])
         args.extend(['--batchSystem', self.batch_system])
         if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
