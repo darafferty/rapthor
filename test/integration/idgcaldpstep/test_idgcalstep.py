@@ -151,7 +151,7 @@ def create_model_image():
             for j in range(N):
                 img[0].data[0, 0, step // 2 + i * step, step // 2 + j * step] = 1.0
 
-        img.writeto("wsclean-model.fits", overwrite=True)
+        img.writeto("wsclean-model-pb.fits", overwrite=True)
 
 
 def run_wsclean_predict():

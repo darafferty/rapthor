@@ -81,7 +81,8 @@ def run_degridding(
     nr_timeslots=1,
     nr_correlations=4,
 ):
-    image_path = imagename + "-I-model.fits"
+    suffix = "model-pb.fits" if grid_with_beam else "model.fits"
+    image_path = imagename + "-I-" + suffix
 
     fits_settings = read_fits_parameters(image_path)
     cell_size = fits_settings["cell_size"]
@@ -361,8 +362,6 @@ def test_degridding(proxy, grid_with_beam, differential_beam=True):
         NCHAN,
     )
 
-    # Assumes test_gridding.py was run before, so that pointsource-I-I-model.fits is available
-    # TODO: avoid this assumption
     image = f"pointsource-{STOKES}"
     visibilities = run_degridding(
         proxy,
@@ -438,7 +437,8 @@ def test_gridding(proxy, grid_with_beam, differential_beam=True, plot=False):
         PHASE_CENTRE_DEC,
     )
 
-    # Compare with Q-I image, generated in test_gridding.py
+    # This test assumes test_gridding.py was run before: It compares the result
+    # against a Q-I image, generated in test_gridding.py.
     if grid_with_beam:
         # TODO: check this. Beam doesn't seem to make much difference right now.
         wsclean_fits = fits.getdata(

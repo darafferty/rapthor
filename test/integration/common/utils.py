@@ -36,6 +36,7 @@ def preparetestset(
     """
     offset = (int(ny), int(nx))
     template = os.path.join(datadir, "template.fits")
+    suffix = "model-pb.fits" if grid_with_beam else "model.fits"
 
     stokes1 = stokes
     with fits.open(template) as img:
@@ -45,20 +46,20 @@ def preparetestset(
         for stokes2 in ["Q", "U", "V"]:
             if stokes1 != stokes2:
                 img.writeto(
-                    f"pointsource-{stokes1}-{stokes2}-model.fits", overwrite=True,
+                    f"pointsource-{stokes1}-{stokes2}-{suffix}", overwrite=True,
                 )
 
         img[0].data[0, 0, int(N / 2 + offset[0]), int(N / 2 + offset[1])] = 1.0
 
-        img.writeto(f"pointsource-{stokes1}-I-model.fits", overwrite=True)
+        img.writeto(f"pointsource-{stokes1}-I-{suffix}", overwrite=True)
         if stokes1 != "I":
-            img.writeto(f"pointsource-{stokes1}-{stokes1}-model.fits", overwrite=True)
+            img.writeto(f"pointsource-{stokes1}-{stokes1}-{suffix}", overwrite=True)
 
     check_call(
         [
             "casapy2bbs.py",
             "--no-patches",
-            f"pointsource-{stokes1}-{stokes1}-model.fits",
+            f"pointsource-{stokes1}-{stokes1}-{suffix}",
             "temp.cat",
         ]
     )
