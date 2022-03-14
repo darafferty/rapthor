@@ -13,49 +13,37 @@ test-integration-das:
   needs: []
   allow_failure: true
   tags:
-    - ci_gpu
+    - das6
   before_script:
-    # Clean and generate reports folder in CI_PROJECT_DIR for storing the junit test reports
-    - rm -rf reports/* && mkdir -p reports
-    - source scripts/load_modules.sh
-    - python3 -m pip install --user --upgrade pip
-    # Make sure h5py is build against the hdf5 library loaded by load_modules.sh
-    # This is important when h5py is imported in embedded python code
-    # and the main executable is also linked against the hdf5 library.
-    # This happens for example when DPPP is running a PythonDPStep that is
-    # importing h5py
-    - HDF5_DIR=${HDF5_ROOT} python3 -m pip install h5py --user --no-binary=h5py --force-reinstall --no-deps
-    - python3 -m pip install --user astropy scipy pytest pytest-lazy-fixture h5py matplotlib
-    # pytest executable is installed in local/bin. Add to PATH
-    - export PATH=$PATH:/home/gitlab-runner/.local/bin
-    # Install idg
-    - mkdir -p ~/opt/idg && cd ~/opt/idg  && rm -rf *
-    # Copy source code to src
-    - mkdir src && cp -r $CI_PROJECT_DIR/. src/.
+    - source scripts/load_modules_das6.sh
+    - python3 -m pip install --user pytest-lazy-fixture
     - mkdir build && cd build
     # Build with GPU libs
-    - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j4
+    - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ..
+    - make install -j`nproc`
     # Install WSclean (needs libgsl)
-    - mkdir -p ~/opt/wsclean && cd ~/opt/wsclean && rm -rf *
+    - cd $CI_PROJECT_DIR
+    - mkdir wsclean && cd wsclean
     - git clone https://gitlab.com/aroffringa/wsclean.git src
     - mkdir build && cd build
     - export OPENBLAS_NUM_THREADS=1
-    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT_DIR} -DCASACORE_ROOT_DIR=${CASACORE_ROOT_DIR} -DCMAKE_PREFIX_PATH="~/opt/idg;${EVERYBEAM_ROOT_DIR};${FFTW3_ROOT_DIR}" -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j4
-    - export PATH=$PATH:~/opt/wsclean/bin
+    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT} -DCASACORE_ROOT_DIR=${CASACORE_ROOT} -DCMAKE_PREFIX_PATH="${CI_PROJECT_DIR};${EVERYBEAM_ROOT};${FFTW_ROOT}" -DCMAKE_INSTALL_PREFIX=.. ../src
+    - make install -j`nproc`
+    - export PATH=$PATH:$CI_PROJECT_DIR/wsclean/bin
   script:
-    - cd ~/opt/idg/build
+    - cd $CI_PROJECT_DIR/build
     # Run unit tests (more precisely: the non-integration tests)
-    - ctest -j8 --output-on-failure -LE integration
+    - ctest -j16 --output-on-failure -LE integration
     - echo "Finished unit tests"
     # Run integration tests
-    - CFLAGS="-I${WCSLIB_INCLUDE} -I${CFITSIO_INCLUDE}" python3 -m pip install --user --no-binary python-casacore python-casacore
     - ctest --output-on-failure -L integration
   after_script:
+    # Generate reports folder for storing the junit test reports
+    - mkdir reports
     # Collect junit xml reports
-    - cd ~/opt/idg/build
-    - mv $(find . -name test_*.xml) $CI_PROJECT_DIR/reports/
+    - cd build
+    - XML_FILES="$(find . -name test_*.xml)"
+    - if [ -n "$XML_FILES" ]; then mv $XML_FILES $CI_PROJECT_DIR/reports/; fi
   artifacts:
     reports:
       junit: reports/test_*.xml
@@ -63,18 +51,17 @@ test-integration-das:
 test-tuning-das:
   stage: test
   needs: []
-  allow_failure: true
   tags:
-    - ci_gpu
+    - das6
   before_script:
     # Prepare environment to run kernel_tuner
-    - source idg-bin/tuning/load_modules.sh
+    - source idg-bin/tuning/load_modules_das6.sh
     # Install the latest kernel_tuner directly from the repository
     - python -m pip install --user --upgrade git+https://github.com/benvanwerkhoven/kernel_tuner.git@master
   script:
     # There is no need to install IDG, run the tests directly
-    - ${CI_PROJECT_DIR}/idg-bin/tuning/tTuneCUDAGridder
-    - ${CI_PROJECT_DIR}/idg-bin/tuning/tTuneCUDADegridder
+    - idg-bin/tuning/tTuneCUDAGridder
+    - idg-bin/tuning/tTuneCUDADegridder
 
 deploy-package:
   stage: publish
