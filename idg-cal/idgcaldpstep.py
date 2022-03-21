@@ -1,6 +1,7 @@
 # Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from re import S
 import dp3
 import everybeam as eb
 import numpy as np
@@ -12,7 +13,7 @@ import astropy.io.fits as fits
 import scipy.linalg
 import time
 import logging
-import textwrap
+
 
 class IDGCalDPStep(dp3.Step):
     def __init__(self, parset, prefix):
@@ -21,25 +22,13 @@ class IDGCalDPStep(dp3.Step):
         self.dpbuffers = []
         self.is_initialized = False
 
-    def __str__(self):
-        return textwrap.dedent(f"""
-            IDGCalDPStep
-                usebeammodel:  {self.usebeammodel}\
-            """ 
-            f"""
-                beammode:      {self.beammode}
-            """ if self.usebeammodel else ""
-        )
-
     def show(self):
-        """
-            DP3 calls this function when the configuration of the steps is complete.
-            It captures stdout and sends it to the log stream.
-            This function will be removed once the trampoline class in the python interface
-            of DP3 calls __str__() directly.
-        """
-        # TODO Remove once no longer called from DP3 python interface trampoline class
-        print(self)
+        print()
+        print("IDGCalDPStep")
+        print("  usebeammodel:  ", self.usebeammodel)
+        if self.usebeammodel:
+            print("  beammode:      ", self.beammode)
+        print()
 
     def process(self, dpbuffer):
         # Accumulate buffers
@@ -72,7 +61,7 @@ class IDGCalDPStep(dp3.Step):
         self.fetch_weights = True
         self.ms_name = dpinfo.ms_name()
         if (self.usebeammodel):
-            self.telescope = eb.load_telescope(self.ms_name, use_differential_beam=True)
+            self.telescope = eb.load_telescope(self.ms_name, beam_normalisation_mode = self.beamnormalisationmode)
 
 
     def read_parset(self, parset, prefix):
@@ -157,6 +146,9 @@ class IDGCalDPStep(dp3.Step):
             self.ampl_poly.nr_coeffs + self.phase_poly.nr_coeffs * self.nr_phase_updates
         )
 
+        self.nr_channels_per_block = parset.getInt(prefix + "nr_channels_per_block", 0)
+        self.apply_phase_constraint = parset.getBool(prefix + "apply_phase_constraint", False)
+
     def initialize(self):
         self.is_initialized = True
 
@@ -185,6 +177,15 @@ class IDGCalDPStep(dp3.Step):
             self.info().get_channel_frequencies(), dtype=np.float32
         )
         self.nr_channels = len(self.frequencies)
+
+        if self.nr_channels_per_block == 0:
+            self.nr_channels_per_block = self.nr_channels
+        self.nr_channel_blocks = self.nr_channels // self.nr_channels_per_block
+        assert self.nr_channel_blocks * self.nr_channels_per_block == self.nr_channels
+
+        self.frequencies = self.frequencies.reshape((self.nr_channel_blocks, self.nr_channels_per_block))
+        self.freq_array = np.mean(self.frequencies, axis=-1)
+
         self.baselines = np.zeros(shape=(self.nr_baselines,2 ), dtype=np.int32)
 
         station1 = np.array(self.info().get_antenna1())
@@ -194,17 +195,23 @@ class IDGCalDPStep(dp3.Step):
         self.baselines[:,1] = station2[self.auto_corr_mask]
 
         # Axes data
-        axes_labels = ["ant", "time", "dir"]
+        axes_labels = ["freq", "ant", "time", "dir"]
         axes_data_amplitude = dict(
             zip(
                 axes_labels,
-                (self.nr_stations, self.time_array_ampl.size, self.ampl_poly.nr_coeffs),
+                (
+                    self.nr_channel_blocks,
+                    self.nr_stations,
+                    self.time_array_ampl.size,
+                    self.ampl_poly.nr_coeffs
+                ),
             )
         )
         axes_data_phase = dict(
             zip(
                 axes_labels,
                 (
+                    self.nr_channel_blocks, 
                     self.nr_stations,
                     self.time_array_phase.size,
                     self.phase_poly.nr_coeffs,
@@ -252,6 +259,7 @@ class IDGCalDPStep(dp3.Step):
             axes_data_amplitude,
             self.info().antenna_names(),
             self.time_array_ampl,
+            self.freq_array,
             self.image_size,
             self.subgrid_size,
         )
@@ -261,6 +269,7 @@ class IDGCalDPStep(dp3.Step):
             axes_data_phase,
             self.info().antenna_names(),
             self.time_array_phase,
+            self.freq_array,
             self.image_size,
             self.subgrid_size,
         )
@@ -332,6 +341,11 @@ class IDGCalDPStep(dp3.Step):
         gs.m_shift = 0.5 * gs.dm
         self.gs = gs
 
+        freqs = np.mean(self.frequencies, axis=-1)
+        A = np.array((np.ones(self.nr_channel_blocks), 1/freqs)).T
+        if self.apply_phase_constraint:
+            self.constraint_matrix = np.dot(A, np.dot(np.linalg.inv(np.dot(A.T, A)), A.T))
+
     def process_buffers(self):
         """
         Processing the buffers. This is the central method within any class that
@@ -352,7 +366,7 @@ class IDGCalDPStep(dp3.Step):
         uvw[..., 1] = -uvw_[self.auto_corr_mask, :, 1]
         uvw[..., 2] = -uvw_[self.auto_corr_mask, :, 2]
 
-        time_in_mjd_seconds = np.array([dpbuffer.get_time() for dpbuffer in self.dpbuffers])
+        times = np.array([dpbuffer.get_time() for dpbuffer in self.dpbuffers])
 
         # Flag NaNs
         flags[np.isnan(visibilities)] = True
@@ -364,9 +378,9 @@ class IDGCalDPStep(dp3.Step):
         visibilities[np.isnan(visibilities)] = 0.0
 
         if self.usebeammodel:
-            # TODO Pass self.beammode here once
-            # the gridded_response function from the EveryBeam python interface supports this
-            aterms_beam = self.telescope.gridded_response(self.gs, np.mean(time_in_mjd_seconds), np.mean(self.frequencies))
+            # TODO Pass self.beammode here once the gridded_response function
+            # from the EveryBeam python interface supports that
+            aterms_beam = self.telescope.gridded_response(self.gs, np.mean(times), np.mean(self.frequencies))
         else:
             aterms_beam = None
 
@@ -384,11 +398,11 @@ class IDGCalDPStep(dp3.Step):
         # Initialize coefficients, both for amplitude and phase
         # The amplitude coefficients are initialized with ones for the constant in the polynomial expansion (X0)
         # and zeros otherwise (X1). The parameters for the phases are initialized with zeros (X2).
-        X0 = np.ones((self.nr_stations, 1))
-        X1 = np.zeros((self.nr_stations, self.ampl_poly.nr_coeffs - 1))
-        X2 = np.zeros((self.nr_stations, self.nr_parameters - self.ampl_poly.nr_coeffs))
+        X0 = np.ones((self.nr_channel_blocks, self.nr_stations, 1))
+        X1 = np.zeros((self.nr_channel_blocks, self.nr_stations, self.ampl_poly.nr_coeffs - 1))
+        X2 = np.zeros((self.nr_channel_blocks, self.nr_stations, self.nr_parameters - self.ampl_poly.nr_coeffs))
 
-        parameters = np.concatenate((X0, X1, X2), axis=1)
+        parameters = np.concatenate((X0, X1, X2), axis=-1)
         # Map parameters to orthonormal basis
         parameters = transform_parameters(
             np.linalg.inv(self.Tampl),
@@ -400,30 +414,37 @@ class IDGCalDPStep(dp3.Step):
             self.nr_phase_updates,
         )
 
-        # parameters has shape (nr_stations, nr_coeffs) for amplitude and (nr_stations, nr_phase_updates, nr_coeffs)
-        # for amplitude
-        # amplitude/phase basis (Bampl/Bphase) (nr_coeffs, subgridsize, subgridzise, nr_correlations)
+        # Compute amplitude and phase aterms from parameters
+        # The first :self.ampl_poly.nr_coeffs of the last axis of parameters
+        # contain the coefficients for the amplitude
+        # the remaining entries are the coefficients for the phase
         aterm_ampl = np.tensordot(
-            parameters[:, : self.ampl_poly.nr_coeffs], self.Bampl, axes=((1,), (0,))
+            parameters[:, :, :self.ampl_poly.nr_coeffs], self.Bampl, axes=((2,), (0,))
         )
         aterm_phase = np.exp(
             1j
             * np.tensordot(
-                parameters[:, self.ampl_poly.nr_coeffs :].reshape(
-                    (self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
+                parameters[:, :, self.ampl_poly.nr_coeffs:].reshape(
+                    (self.nr_channel_blocks, self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
                 ),
                 self.Bphase,
-                axes=((2,), (0,)),
+                axes=((3,), (0,)),
             )
         )
-        aterms = aterm_phase.transpose((1, 0, 2, 3, 4)) * aterm_ampl
+
+        # Transpose swaps the station and phase_update axes
+        aterms = aterm_phase.transpose((0, 2, 1, 3, 4, 5)) * aterm_ampl[:,np.newaxis,:,:,:,:]
+
         aterms = apply_beam(aterms_beam, aterms)
+
         aterms = np.ascontiguousarray(aterms.astype(idg.idgtypes.atermtype))
 
         nr_iterations = 0
         converged = False
         previous_residual = 0.0
+
         max_dx = 0.0
+
         timer = -time.time()
         timer0 = 0
         timer1 = 0
@@ -441,22 +462,25 @@ class IDGCalDPStep(dp3.Step):
 
                 # Predict visibilities for current solution
                 hessian = np.zeros(
-                    (self.nr_phase_updates, self.nr_parameters0, self.nr_parameters0),
+                    (self.nr_channel_blocks, self.nr_phase_updates, self.nr_parameters0, self.nr_parameters0),
                     dtype=np.float64,
                 )
                 gradient = np.zeros(
-                    (self.nr_phase_updates, self.nr_parameters0), dtype=np.float64
+                    (self.nr_channel_blocks, self.nr_phase_updates, self.nr_parameters0), dtype=np.float64
                 )
-                residual = np.zeros((1,), dtype=np.float64)
+                residual = np.zeros((self.nr_channel_blocks,), dtype=np.float64)
 
                 aterm_ampl = self.__compute_amplitude(i, parameters)
                 aterm_phase = self.__compute_phase(i, parameters)
 
-                aterm_derivatives = compute_aterm_derivatives(
-                    aterm_ampl, aterm_phase, 
-                    aterms_beam[i] if aterms_beam is not None else None, 
-                    self.Bampl, self.Bphase
-                )
+                if aterms_beam is not None:
+                    aterm_derivatives = compute_aterm_derivatives(
+                        aterm_ampl, aterm_phase, aterms_beam[i], self.Bampl, self.Bphase
+                    )
+                else:
+                    aterm_derivatives = compute_aterm_derivatives(
+                        aterm_ampl, aterm_phase, None, self.Bampl, self.Bphase
+                    )
 
                 timer0 -= time.time()
                 self.proxy.calibrate_update(
@@ -469,51 +493,61 @@ class IDGCalDPStep(dp3.Step):
 
                 gradient = np.concatenate(
                     (
-                        np.sum(gradient[:, : self.ampl_poly.nr_coeffs], axis=0),
-                        gradient[:, self.ampl_poly.nr_coeffs :].flatten(),
-                    )
+                        np.sum(gradient[:, :, :self.ampl_poly.nr_coeffs], axis=1),
+                        gradient[:, :, self.ampl_poly.nr_coeffs :].reshape((self.nr_channel_blocks,-1)),
+                    ),
+                    axis=1
                 )
 
                 H00 = hessian[
-                    :, : self.ampl_poly.nr_coeffs, : self.ampl_poly.nr_coeffs
-                ].sum(axis=0)
+                    :, :, : self.ampl_poly.nr_coeffs, : self.ampl_poly.nr_coeffs
+                ].sum(axis=1)
                 H01 = np.concatenate(
                     [
                         hessian[
-                            t, : self.ampl_poly.nr_coeffs, self.ampl_poly.nr_coeffs :
+                            :, t, : self.ampl_poly.nr_coeffs, self.ampl_poly.nr_coeffs :
+                        ]
+                        for t in range(self.nr_phase_updates)
+                    ],
+                    axis=2,
+                )
+                H10 = np.concatenate(
+                    [
+                        hessian[
+                            :,t, self.ampl_poly.nr_coeffs :, : self.ampl_poly.nr_coeffs
                         ]
                         for t in range(self.nr_phase_updates)
                     ],
                     axis=1,
                 )
-                H10 = np.concatenate(
-                    [
-                        hessian[
-                            t, self.ampl_poly.nr_coeffs :, : self.ampl_poly.nr_coeffs
+                H11 = np.concatenate([
+                    scipy.linalg.block_diag(
+                        *[
+                            hessian[
+                                sb, t, self.ampl_poly.nr_coeffs :, self.ampl_poly.nr_coeffs :
+                            ]
+                            for t in range(self.nr_phase_updates)
                         ]
-                        for t in range(self.nr_phase_updates)
-                    ],
-                    axis=0,
-                )
-                H11 = scipy.linalg.block_diag(
-                    *[
-                        hessian[
-                            t, self.ampl_poly.nr_coeffs :, self.ampl_poly.nr_coeffs :
-                        ]
-                        for t in range(self.nr_phase_updates)
-                    ]
-                )
+                    )[np.newaxis,:,:]
+                    for sb in range(self.nr_channel_blocks)
+                ])
 
-                hessian = np.block([[H00, H01], [H10, H11]])
+                hessian = np.concatenate([np.block([[H00[sb], H01[sb]], [H10[sb], H11[sb]]])[np.newaxis,:,:] for sb in range(self.nr_channel_blocks)])
                 hessian0 = hessian
 
-                dx = np.dot(np.linalg.pinv(hessian, self.pinv_tol), gradient)
+                # Per channel_group, apply the inverse of the Hessian to the gradient
+                # s is the channel_group index, ij are the rows and columns of the Hessian
+                dx = np.einsum('sij,sj->si', np.linalg.pinv(hessian, self.pinv_tol), gradient)
 
                 if max_dx < np.amax(abs(dx)):
                     max_dx = np.amax(abs(dx))
                     i_max = i
 
-                parameters[i] += self.solver_update_gain * dx
+                parameters[:, i] += self.solver_update_gain * dx
+
+                # If requested, apply constraint to phase parameters
+                if self.apply_phase_constraint:
+                    parameters[:, i, self.ampl_poly.nr_coeffs:] = np.dot(self.constraint_matrix, parameters[:, i, self.ampl_poly.nr_coeffs:])
 
                 # Recompute aterms with updated parameters
                 aterm_ampl = self.__compute_amplitude(i, parameters)
@@ -524,7 +558,7 @@ class IDGCalDPStep(dp3.Step):
                 if aterms_beam is not None:
                     aterms_i = apply_beam(aterms_beam[i], aterms_i)
 
-                aterms[:,i] = aterms_i
+                aterms[:,:,i] = aterms_i
                 timer1 += time.time()
 
             dresidual = previous_residual - residual_sum
@@ -535,6 +569,7 @@ class IDGCalDPStep(dp3.Step):
             previous_residual = residual_sum
 
             converged = (nr_iterations > 1) and (fractional_dresidual < 1e-5)
+            # converged = (nr_iterations > 1) and (max_dx < 1e-2)
 
             if converged:
                 print(f"Converged after {nr_iterations} iterations - {max_dx}")
@@ -560,15 +595,15 @@ class IDGCalDPStep(dp3.Step):
         # Reshape amplitude/parameters coefficient to match desired shape
         # amplitude parameters: reshaped into (nr_stations, 1, nr_parameters_ampl) array
         amplitude_coefficients = parameters_polynomial[
-            :, : self.ampl_poly.nr_coeffs
-        ].reshape(self.nr_stations, 1, self.ampl_poly.nr_coeffs)
+            :, :, : self.ampl_poly.nr_coeffs
+        ].reshape(self.nr_channel_blocks, self.nr_stations, 1, self.ampl_poly.nr_coeffs)
         # phase parameters: reshaped into (nr_stations, nr_phase_updates, nr_parameters_phase) array
         phase_coefficients = parameters_polynomial[
-            :, self.ampl_poly.nr_coeffs : :
-        ].reshape(self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
+            :, :, self.ampl_poly.nr_coeffs : :
+        ].reshape(self.nr_channel_blocks, self.nr_stations, self.nr_phase_updates, self.phase_poly.nr_coeffs)
 
-        offset_amplitude = (0, self.count_process_buffer_calls, 0)
-        offset_phase = (0, self.count_process_buffer_calls * self.nr_phase_updates, 0)
+        offset_amplitude = (0, 0, self.count_process_buffer_calls, 0)
+        offset_phase = (0, 0, self.count_process_buffer_calls * self.nr_phase_updates, 0)
         self.h5writer.fill_solution_table(
             "amplitude_coefficients", amplitude_coefficients, offset_amplitude
         )
@@ -635,12 +670,12 @@ class IDGCalDPStep(dp3.Step):
         # Result is repeated nr_phase_updates times to match complex exponential term
         return np.repeat(
             np.tensordot(
-                parameters[i, : self.ampl_poly.nr_coeffs],
+                parameters[:, i, : self.ampl_poly.nr_coeffs],
                 self.Bampl,
-                axes=((0,), (0,)),
-            )[np.newaxis, :],
+                axes=((1,), (0,)),
+            )[:, np.newaxis, :],
             self.nr_phase_updates,
-            axis=0,
+            axis=1,
         )
 
     def __compute_phase(self, i, parameters):
@@ -662,11 +697,11 @@ class IDGCalDPStep(dp3.Step):
         return np.exp(
             1j
             * np.tensordot(
-                parameters[i, self.ampl_poly.nr_coeffs :].reshape(
-                    (self.nr_phase_updates, self.phase_poly.nr_coeffs)
+                parameters[:, i, self.ampl_poly.nr_coeffs :].reshape(
+                    (self.nr_channel_blocks, self.nr_phase_updates, self.phase_poly.nr_coeffs)
                 ),
                 self.Bphase,
-                axes=((1,), (0,)),
+                axes=((2,), (0,)),
             )
         )
 
@@ -701,18 +736,18 @@ def compute_aterm_derivatives(aterm_ampl, aterm_phase, aterm_beam, B_a, B_p):
     """
     # new-axis is introduced at "stations" axis
     aterm_derivatives_ampl = (
-        aterm_phase[:, np.newaxis, :, :, :] * B_a[np.newaxis, :, :, :, :]
+        aterm_phase[:, :, np.newaxis, :, :, :] * B_a[np.newaxis, np.newaxis, :, :, :, :]
     )
 
     aterm_derivatives_phase = (
         1j
-        * aterm_ampl[:, np.newaxis, :, :, :]
-        * aterm_phase[:, np.newaxis, :, :, :]
-        * B_p[np.newaxis, :, :, :, :]
+        * aterm_ampl[:, :, np.newaxis, :, :, :]
+        * aterm_phase[:, :, np.newaxis, :, :, :]
+        * B_p[np.newaxis, np.newaxis, :, :, :, :]
     )
 
     aterm_derivatives = np.concatenate(
-        (aterm_derivatives_ampl, aterm_derivatives_phase), axis=1
+        (aterm_derivatives_ampl, aterm_derivatives_phase), axis=2
     )
 
     aterm_derivatives = apply_beam(aterm_beam, aterm_derivatives)
@@ -726,7 +761,7 @@ def apply_beam(beam, aterms):
 
     Parameters
     ----------
-    beam : None or np.ndarray
+    beam : np.ndarray
         shape should be ...,2,2
     aterms: np.ndarray
         shape should be ...,4
@@ -735,17 +770,15 @@ def apply_beam(beam, aterms):
     -------
     Array of the same shape as aterms, matrix multiplied by beam.    
     """
-    if beam is None:
-        return aterms
+    if beam is not None:
+        # reshape last axis (4,) to two axes (2,2)
+        aterms = np.reshape(aterms, aterms.shape[:-1] + (2,2))
 
-    # reshape last axis (4,) to two axes (2,2)
-    aterms = np.reshape(aterms, aterms.shape[:-1] + (2,2))
+        # Use Einstein summation to compute the matrix product over the last two axes
+        aterms[:] = np.einsum('...ij,...jk->...ik', beam, aterms)
 
-    # Use Einstein summation to compute the matrix product over the last two axes
-    aterms[:] = np.einsum('...ij,...jk->...ik', beam, aterms)
-
-    # reshape two last axes (2,2) to one axis (4,)
-    aterms = np.reshape(aterms, aterms.shape[:-2] + (4,))
+        # reshape two last axes (2,2) to one axis (4,)
+        aterms = np.reshape(aterms, aterms.shape[:-2] + (4,))
 
     return aterms
 
@@ -781,8 +814,8 @@ def transform_parameters(
     """
 
     # Map the amplitudes
-    parameters[:, :nr_amplitude_params] = np.dot(
-        parameters[:, :nr_amplitude_params], tmat_amplitude.T
+    parameters[:, :, :nr_amplitude_params] = np.dot(
+        parameters[:, :, :nr_amplitude_params], tmat_amplitude.T
     )
 
     # Map the phases
@@ -791,7 +824,7 @@ def transform_parameters(
             nr_amplitude_params + j * nr_phase_params,
             nr_amplitude_params + (j + 1) * nr_phase_params,
         )
-        parameters[:, slicer] = np.dot(parameters[:, slicer], tmat_phase.T)
+        parameters[:, :, slicer] = np.dot(parameters[:, :, slicer], tmat_phase.T)
     return parameters
 
 

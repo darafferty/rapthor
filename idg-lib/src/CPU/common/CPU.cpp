@@ -408,12 +408,12 @@ void CPU::do_degridding(
 }  // end degridding
 
 void CPU::do_calibrate_init(
-    std::vector<std::unique_ptr<Plan>> &&plans,
-    const Array1D<float> &frequencies,
-    Array5D<std::complex<float>> &&visibilities, Array5D<float> &&weights,
+    std::vector<std::vector<std::unique_ptr<Plan>>> &&plans,
+    const Array2D<float> &frequencies,
+    Array6D<std::complex<float>> &&visibilities, Array6D<float> &&weights,
     Array3D<UVW<float>> &&uvw,
     Array2D<std::pair<unsigned int, unsigned int>> &&baselines,
-    const Array2D<float> &spheroidal) {
+    const Array2D<float> &taper) {
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
@@ -423,11 +423,17 @@ void CPU::do_calibrate_init(
   auto image_size = m_cache_state.cell_size * grid_size;
   auto w_step = m_cache_state.w_step;
   auto subgrid_size = m_cache_state.subgrid_size;
+  auto nr_channel_blocks = visibilities.get_e_dim();
   auto nr_baselines = visibilities.get_d_dim();
   auto nr_timesteps = visibilities.get_c_dim();
   auto nr_channels = visibilities.get_b_dim();
   auto nr_correlations = visibilities.get_a_dim();
   assert(nr_correlations == 4);
+
+  if (nr_channel_blocks > 1) {
+    throw std::runtime_error(
+        "nr_channel_blocks>1 in calibration is not supported by CPU Proxy.");
+  }
 
   // Allocate subgrids for all antennas
   std::vector<Array4D<std::complex<float>>> subgrids;
@@ -448,17 +454,17 @@ void CPU::do_calibrate_init(
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     // Allocate subgrids for current antenna
-    int nr_subgrids = plans[antenna_nr]->get_nr_subgrids();
+    int nr_subgrids = plans[antenna_nr][0]->get_nr_subgrids();
     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_correlations,
                                            m_cache_state.subgrid_size,
                                            m_cache_state.subgrid_size);
 
     WTileUpdateSet wtile_initialize_set =
-        plans[antenna_nr]->get_wtile_initialize_set();
+        plans[antenna_nr][0]->get_wtile_initialize_set();
 
     // Get data pointers
     auto *shift_ptr = m_cache_state.shift.data();
-    auto *metadata_ptr = plans[antenna_nr]->get_metadata_ptr();
+    auto *metadata_ptr = plans[antenna_nr][0]->get_metadata_ptr();
     auto *subgrids_ptr = subgrids_.data();
     std::complex<float> *grid_ptr = m_grid->data();
 
@@ -467,7 +473,7 @@ void CPU::do_calibrate_init(
       m_kernels->run_splitter(nr_subgrids, nr_polarizations, grid_size,
                               subgrid_size, metadata_ptr, subgrids_ptr,
                               grid_ptr);
-    } else if (plans[antenna_nr]->get_use_wtiles()) {
+    } else if (plans[antenna_nr][0]->get_use_wtiles()) {
       m_kernels->run_splitter_wtiles(
           nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
           w_step, shift_ptr, 0 /* subgrid_offset */, wtile_initialize_set,
@@ -490,7 +496,7 @@ void CPU::do_calibrate_init(
           for (int k = 0; k < subgrid_size; k++) {
             int y = (j + (subgrid_size / 2)) % subgrid_size;
             int x = (k + (subgrid_size / 2)) % subgrid_size;
-            subgrids_(i, pol, y, x) *= spheroidal(j, k);
+            subgrids_(i, pol, y, x) *= taper(j, k);
           }
         }
       }
@@ -500,7 +506,8 @@ void CPU::do_calibrate_init(
     subgrids.push_back(std::move(subgrids_));
 
     // Get max number of timesteps for any subgrid
-    auto max_nr_timesteps_ = plans[antenna_nr]->get_max_nr_timesteps_subgrid();
+    auto max_nr_timesteps_ =
+        plans[antenna_nr][0]->get_max_nr_timesteps_subgrid();
     max_nr_timesteps.push_back(max_nr_timesteps_);
 
     // Allocate phasors for current antenna
@@ -533,16 +540,21 @@ void CPU::do_calibrate_init(
 }
 
 void CPU::do_calibrate_update(
-    const int antenna_nr, const Array4D<Matrix2x2<std::complex<float>>> &aterms,
-    const Array4D<Matrix2x2<std::complex<float>>> &aterm_derivatives,
-    Array3D<double> &hessian, Array2D<double> &gradient, double &residual) {
+    const int antenna_nr, const Array5D<Matrix2x2<std::complex<float>>> &aterms,
+    const Array5D<Matrix2x2<std::complex<float>>> &aterm_derivatives,
+    Array4D<double> &hessian, Array3D<double> &gradient,
+    Array1D<double> &residual) {
+  if (m_calibrate_state.plans.empty()) {
+    throw std::runtime_error("Calibration was not initialized. Can not update");
+  }
+
   // Arguments
-  auto nr_subgrids = m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+  auto nr_subgrids = m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
   auto nr_channels = m_calibrate_state.wavenumbers.get_x_dim();
-  auto nr_terms = aterm_derivatives.get_z_dim();
-  auto subgrid_size = aterms.get_y_dim();
-  auto nr_stations = aterms.get_z_dim();
-  auto nr_timeslots = aterms.get_w_dim();
+  auto nr_terms = aterm_derivatives.get_c_dim();
+  auto subgrid_size = aterms.get_a_dim();
+  auto nr_stations = aterms.get_c_dim();
+  auto nr_timeslots = aterms.get_d_dim();
   auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_y_dim();
   auto image_size = grid_size * m_cache_state.cell_size;
@@ -560,8 +572,9 @@ void CPU::do_calibrate_update(
   auto aterm_derivative_ptr =
       reinterpret_cast<std::complex<float> *>(aterm_derivatives.data());
   auto aterm_idx_ptr =
-      m_calibrate_state.plans[antenna_nr]->get_aterm_indices_ptr();
-  auto metadata_ptr = m_calibrate_state.plans[antenna_nr]->get_metadata_ptr();
+      m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
+  auto metadata_ptr =
+      m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
   auto uvw_ptr = m_calibrate_state.uvw.data(antenna_nr);
   auto visibilities_ptr = reinterpret_cast<std::complex<float> *>(
       m_calibrate_state.visibilities.data(antenna_nr));
@@ -570,7 +583,7 @@ void CPU::do_calibrate_update(
   auto *phasors_ptr = m_calibrate_state.phasors[antenna_nr].data();
   double *hessian_ptr = hessian.data();
   double *gradient_ptr = gradient.data();
-  double *residual_ptr = &residual;
+  double *residual_ptr = residual.data();
 
   int max_nr_timesteps = m_calibrate_state.max_nr_timesteps[antenna_nr];
 
@@ -585,7 +598,7 @@ void CPU::do_calibrate_update(
   // Performance reporting
   auto current_nr_subgrids = nr_subgrids;
   auto current_nr_timesteps =
-      m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
+      m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
   auto current_nr_visibilities = current_nr_timesteps * nr_channels;
   m_report->update_total(current_nr_subgrids, current_nr_timesteps,
                          current_nr_visibilities);
@@ -598,8 +611,9 @@ void CPU::do_calibrate_finish() {
   auto total_nr_subgrids = 0;
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     total_nr_timesteps +=
-        m_calibrate_state.plans[antenna_nr]->get_nr_timesteps();
-    total_nr_subgrids += m_calibrate_state.plans[antenna_nr]->get_nr_subgrids();
+        m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
+    total_nr_subgrids +=
+        m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
   }
   m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
   m_report->print_visibilities(auxiliary::name_calibrate);

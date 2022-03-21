@@ -47,9 +47,11 @@ def run_dp3():
 def create_input_h5parm(h5parm_in):
 
     antenna_table = casacore.tables.table(f"{MS}::ANTENNA")
+    spw_table = casacore.tables.table(f"{MS}::SPECTRAL_WINDOW")
     antenna_names = np.array(antenna_table.getcol("NAME"))
     antenna_positions = antenna_table.getcol("POSITION")
 
+    nr_channel_groups = 1
     nr_stations = len(antenna_names)
 
     time_table = casacore.tables.taql(f"SELECT UNIQUE TIME FROM {MS}")
@@ -62,17 +64,20 @@ def create_input_h5parm(h5parm_in):
     time_array_ampl = time_array[::AMPLINTERVAL] + (AMPLINTERVAL - 1) * dt / 2.0
     time_array_phase = time_array[::PHASEINTERVAL] + (PHASEINTERVAL - 1) * dt / 2.0
 
+    # Get frequency centroid
+    freq_array = np.array([np.mean(spw_table[0]['CHAN_FREQ'])])
+
     # Initialize amplitude and phase polynomial
     ampl_poly = LagrangePolynomial(order=AMPLORDER)
     phase_poly = LagrangePolynomial(order=PHASEORDER)
 
     # Axes data
-    axes_labels = ["ant", "time", "dir"]
+    axes_labels = ["freq", "ant", "time", "dir"]
     axes_data_amplitude = dict(
-        zip(axes_labels, (nr_stations, time_array_ampl.size, ampl_poly.nr_coeffs),)
+        zip(axes_labels, (nr_channel_groups, nr_stations, time_array_ampl.size, ampl_poly.nr_coeffs),)
     )
     axes_data_phase = dict(
-        zip(axes_labels, (nr_stations, time_array_phase.size, phase_poly.nr_coeffs,),)
+        zip(axes_labels, (nr_channel_groups, nr_stations, time_array_phase.size, phase_poly.nr_coeffs,),)
     )
 
     # Initialize h5parm file
@@ -89,25 +94,26 @@ def create_input_h5parm(h5parm_in):
         axes_data_amplitude,
         antenna_names,
         time_array_ampl,
+        freq_array,
         0.0,
         0,
     )
     init_h5parm_solution_table(
-        h5writer, "phase", axes_data_phase, antenna_names, time_array_phase, 0.0, 0,
+        h5writer, "phase", axes_data_phase, antenna_names, time_array_phase, freq_array, 0.0, 0,
     )
 
     rng = np.random.default_rng(1234)
     amplitude_coefficients = rng.uniform(
-        low=0.5, high=2.0, size=(nr_stations, time_array_ampl.size, ampl_poly.nr_coeffs)
+        low=0.5, high=2.0, size=(nr_channel_groups, nr_stations, time_array_ampl.size, ampl_poly.nr_coeffs)
     )
 
     image_size = GRIDSIZE * CELLSIZE / 3600 / 180 * np.pi
     phase_coefficients = np.zeros(
-        (nr_stations, time_array_phase.size, phase_poly.nr_coeffs)
+        (nr_channel_groups, nr_stations, time_array_phase.size, phase_poly.nr_coeffs)
     )
     low = -np.pi / 4
     high = np.pi / 4
-    shape = phase_coefficients.shape[:2]
+    shape = phase_coefficients.shape[:3]
 
     for i in range(3):
         phase_coefficients[..., i] = rng.uniform(low=low, high=high, size=shape) / (
@@ -171,14 +177,14 @@ def run_compare_h5parm(h5parm_in, h5parm_out):
     f_in = h5py.File(h5parm_in)
     f_out = h5py.File(h5parm_out)
 
-    amplitude_values_in = f_in["coefficients000"]["amplitude_coefficients"]["val"][:]
-    amplitude_values_out = f_out["coefficients000"]["amplitude_coefficients"]["val"][:]
+    amplitude_values_in = f_in["coefficients000"]["amplitude_coefficients"]["val"][:][0]
+    amplitude_values_out = f_out["coefficients000"]["amplitude_coefficients"]["val"][:][0]
 
     ampl_err = np.amax(np.abs(amplitude_values_in - amplitude_values_out))
     assert ampl_err < TOLERANCE
 
-    phase_values_in = f_in["coefficients000"]["phase_coefficients"]["val"][:]
-    phase_values_out = f_out["coefficients000"]["phase_coefficients"]["val"][:]
+    phase_values_in = f_in["coefficients000"]["phase_coefficients"]["val"][:][0]
+    phase_values_out = f_out["coefficients000"]["phase_coefficients"]["val"][:][0]
 
     phase_values_in -= np.mean(phase_values_in, axis=0, keepdims=True)
     phase_values_out -= np.mean(phase_values_out, axis=0, keepdims=True)

@@ -114,19 +114,19 @@ class GenericOptimized : public cuda::CUDA {
    * Calibration
    */
   void do_calibrate_init(
-      std::vector<std::unique_ptr<Plan>>&& plans,
-      const Array1D<float>& frequencies,
-      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
+      const Array2D<float>& frequencies,
+      Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
       Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
       const Array2D<float>& spheroidal) override;
 
   void do_calibrate_update(
       const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array3D<double>& hessian, Array2D<double>& gradient,
-      double& residual) override;
+      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+      Array4D<double>& hessian, Array3D<double>& gradient,
+      Array1D<double>& residual) override;
 
   void do_calibrate_finish() override;
 
@@ -142,10 +142,16 @@ class GenericOptimized : public cuda::CUDA {
    * Calibration state
    */
   struct {
-    std::vector<std::unique_ptr<Plan>> plans;
+    std::vector<std::vector<std::unique_ptr<Plan>>> plans;
+    std::vector<std::vector<Array4D<std::complex<float>>>> subgrids;
+    std::vector<Array1D<float>> wavenumbers;
+    Array6D<std::complex<float>> visibilities;
+    Array6D<float> weights;
+    Array3D<UVW<float>> uvw;
     unsigned int nr_baselines;
     unsigned int nr_timesteps;
-    unsigned int nr_channels;
+    unsigned int nr_channels_per_block;
+    unsigned int nr_channel_blocks;
     std::unique_ptr<cu::DeviceMemory> d_wavenumbers;
     std::unique_ptr<cu::DeviceMemory> d_lmnp;
     std::unique_ptr<cu::DeviceMemory> d_sums_x;

@@ -127,9 +127,9 @@ class Proxy {
    * \verbatim embed:rst:leading-asterisk
    * :doc:`kernelsize`
    * \endverbatim
-   * @param[in] frequencies A one dimensional array of floats, containing the
-   * frequency per channel
-   * @param[out] visibilities A four dimensional array of complex floats. The
+   * @param[in] frequencies A nr_channel_blocks x nr_channels_per_block array
+   * of floats, containing the frequency per channel.
+   * @param[in] visibilities A four dimensional array of complex floats. The
    * axes are baseline, time, channel, and correlation (XX,XY,YX,XX). Note that
    * the baseline and time axis are transposed compared to the ordering in a
    * Measurement Set.
@@ -147,7 +147,7 @@ class Proxy {
    * subgrid.
    */
   void calibrate_init(
-      const unsigned int kernel_size, const Array1D<float>& frequencies,
+      const unsigned int kernel_size, const Array2D<float>& frequencies,
       Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -177,12 +177,13 @@ class Proxy {
    * of the gradient with respect to the unknowns
    *
    * @param[in] station_nr
-   * @param[in] aterms Four dimensional array of 2x2 (Jones) matrices of complex
-   * floats. The axes are time slot, station, subgrid x, subgrid y. A time slot
-   * is a range of time samples over which the aterms are constant The time
-   * slots are defined by the aterm_offsets parameters.
-   * @param[in] derivative_aterms Four dimensional array of 2x2 (Jones) matrices
-   * of complex floats. The axes are time slot, terms, subgrid x, subgrid y.
+   * @param[in] aterms Five dimensional array of 2x2 (Jones) matrices of complex
+   * floats. The axes are channel block, time slot, station, subgrid x, subgrid
+   * y. A time slot is a range of time samples over which the aterms are
+   * constant The time slots are defined by the aterm_offsets parameters.
+   * @param[in] derivative_aterms Five dimensional array of 2x2 (Jones) matrices
+   * of complex floats. The axes are channel block, time slot, terms, subgrid x,
+   * subgrid y.
    *
    *
    * @param[out] hessian
@@ -191,9 +192,10 @@ class Proxy {
    */
   void calibrate_update(
       const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array3D<double>& hessian, Array2D<double>& gradient, double& residual);
+      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+      Array4D<double>& hessian, Array3D<double>& gradient,
+      Array1D<double>& residual);
 
   /**
    * @brief Clean up after calibration cycle.
@@ -382,21 +384,28 @@ class Proxy {
       const Array1D<unsigned int>& aterms_offsets,
       const Array2D<float>& taper) = 0;
 
-  // Uses rvalue references (&&) for all containers do_calibrate_init will take
+  // Using rvalue references (&&) for all containers do_calibrate_init will take
   // ownership of. Call with std::move(...)
   virtual void do_calibrate_init(
-      std::vector<std::unique_ptr<Plan>>&& plans,
-      const Array1D<float>& frequencies,
-      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
+      const Array2D<float>& frequencies,
+      Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
       Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Array2D<float>& taper) {}
+      const Array2D<float>& taper) {
+    throw std::runtime_error(
+        "do_calibrate_init is not implemented by this proxy");
+  }
 
   virtual void do_calibrate_update(
       const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array3D<double>& hessian, Array2D<double>& gradient, double& residual) {}
+      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+      Array4D<double>& hessian, Array3D<double>& gradient,
+      Array1D<double>& residual) {
+    throw std::runtime_error(
+        "do_calibrate_update is not implemented by this proxy");
+  }
 
   virtual void do_calibrate_finish() {}
 

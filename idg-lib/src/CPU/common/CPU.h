@@ -76,19 +76,19 @@ class CPU : public Proxy {
       const Array2D<float>& spheroidal) override;
 
   void do_calibrate_init(
-      std::vector<std::unique_ptr<Plan>>&& plans,
-      const Array1D<float>& frequencies,
-      Array5D<std::complex<float>>&& visibilities, Array5D<float>&& weights,
+      std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
+      const Array2D<float>& frequencies,
+      Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
       Array3D<UVW<float>>&& uvw,
       Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Array2D<float>& spheroidal) override;
+      const Array2D<float>& taper) override;
 
-  void do_calibrate_update(
+  virtual void do_calibrate_update(
       const int station_nr,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array3D<double>& hessian, Array2D<double>& gradient,
-      double& residual) override;
+      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
+      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+      Array4D<double>& hessian, Array3D<double>& gradient,
+      Array1D<double>& residual) override;
 
   void do_calibrate_finish() override;
 
@@ -128,13 +128,13 @@ class CPU : public Proxy {
   WTiles m_wtiles;
 
   struct {
-    std::vector<std::unique_ptr<Plan>> plans;
+    std::vector<std::vector<std::unique_ptr<Plan>>> plans;
     unsigned int nr_baselines;
     unsigned int nr_timesteps;
     unsigned int nr_channels;
     Array1D<float> wavenumbers;
-    Array5D<std::complex<float>> visibilities;  // ANTxANTxTIMExCHANxCOR
-    Array5D<float> weights;                     // ANTxANTxTIMExCHANxCOR
+    Array6D<std::complex<float>> visibilities;  // ANTxANTxTIMExCHANxCOR
+    Array6D<float> weights;                     // ANTxANTxTIMExCHANxCOR
     Array3D<UVW<float>> uvw;
     Array2D<std::pair<unsigned int, unsigned int>> baselines;
     std::vector<Array4D<std::complex<float>>> subgrids;
