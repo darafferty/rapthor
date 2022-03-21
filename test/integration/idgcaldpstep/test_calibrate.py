@@ -292,7 +292,7 @@ def test_idgcal(params):
 
     proxy.calibrate_init(
         kernel_size,
-        frequencies,
+        frequencies.reshape((1,-1)),
         visibilities,
         weights,
         uvw,
@@ -346,7 +346,8 @@ def test_idgcal(params):
         aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
 
         proxy.calibrate_update(
-            i, aterms, aterm_derivatives, hessian, gradient, residual
+            i, aterms[np.newaxis,...], aterm_derivatives[np.newaxis,...], 
+            hessian[np.newaxis,...], gradient[np.newaxis,...], residual
         )
 
         # Predict visibilities for current solution

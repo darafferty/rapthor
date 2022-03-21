@@ -149,7 +149,9 @@ void Proxy_init_cache(struct Proxy* p, unsigned int subgrid_size,
  * @verbatim embed:rst:inline :doc:`taper` @endverbatim
  */
 void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
-                          unsigned int subgrid_size, unsigned int nr_channels,
+                          unsigned int subgrid_size,
+                          unsigned int nr_channel_blocks,
+                          unsigned int nr_channels_per_block,
                           unsigned int nr_baselines, unsigned int nr_timesteps,
                           unsigned int nr_timeslots, float* frequencies,
                           float complex* visibilities, float* weights,
@@ -186,6 +188,7 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
  * @param[out] residual
  */
 void Proxy_calibrate_update(struct Proxy* p, const unsigned int station_nr,
+                            const unsigned int nr_channel_blocks,
                             const unsigned int subgrid_size,
                             const unsigned int nr_stations,
                             const unsigned int nr_time_slots,

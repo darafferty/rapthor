@@ -128,6 +128,7 @@ def init_h5parm_solution_table(
     axes_info,
     antenna_names,
     time_array,
+    freq_array,
     image_size,
     subgrid_size,
     basisfunction_type="lagrange",
@@ -148,6 +149,8 @@ def init_h5parm_solution_table(
         Array of strings containing antenna names
     time_array : np.ndarray
         Array of times
+    freq_array : np.ndarray
+        Array of frequencies
     image_size : float
         Pixel size
     subgrid_size : int
@@ -191,3 +194,6 @@ def init_h5parm_solution_table(
 
     # Set info for the "time" axis
     h5parm_object.create_axis_meta_data(soltab_name, "time", meta_data=time_array)
+
+    # Set info for the "freq" axis
+    h5parm_object.create_axis_meta_data(soltab_name, "freq", meta_data=freq_array)

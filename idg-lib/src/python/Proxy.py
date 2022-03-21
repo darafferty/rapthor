@@ -294,7 +294,7 @@ class Proxy(object):
 
         :param kernel_size: int, see :doc:`kernelsize`
         :param frequencies: np.ndarray(
-                shape = (nr_channels,)
+                shape = (nr_channel_blocks, nr_channels)
                 dtype = np.float32)
         :param visibilities: np.ndarray(
                 shape=(nr_baselines, nr_timesteps, nr_channels, nr_correlations),
@@ -316,7 +316,9 @@ class Proxy(object):
         """
         # extract dimensions
         subgrid_size    = taper.shape[0]
-        nr_channels     = frequencies.shape[0]
+        nr_channel_blocks     = frequencies.shape[0]
+        nr_channels_per_block = frequencies.shape[1]
+        nr_channels = frequencies.size
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
         nr_correlations = visibilities.shape[3]
@@ -328,13 +330,14 @@ class Proxy(object):
             ctypes.c_void_p,             #Proxy* p,
             ctypes.c_uint,               #unsigned int kernel_size,
             ctypes.c_uint,               #unsigned int subgrid_size,
-            ctypes.c_uint,               #unsigned int nr_channels,
+            ctypes.c_uint,               #unsigned int nr_channel_blocks,
+            ctypes.c_uint,               #unsigned int nr_channels_per_block,
             ctypes.c_uint,               #unsigned int nr_baselines,
             ctypes.c_uint,               #unsigned int nr_timesteps,
             ctypes.c_uint,               #unsigned int nr_timeslots,
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
-                shape=(nr_channels,),
+                shape=(nr_channel_blocks, nr_channels_per_block),
                 flags='C_CONTIGUOUS'),   #float* frequencies,
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
@@ -368,7 +371,8 @@ class Proxy(object):
             self.obj,
             kernel_size,
             subgrid_size,
-            nr_channels,
+            nr_channel_blocks,
+            nr_channels_per_block,
             nr_baselines,
             nr_timesteps,
             nr_timeslots,
@@ -387,62 +391,65 @@ class Proxy(object):
 
         :param antenna_nr: int
         :param aterms: np.ndarray(
-                shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
+                shape=(nr_channel_blocks, nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
                 dtype = np.complex64)
         :param aterm_derivatives: np.ndarray(
-                shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, 4),
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, subgrid_size, subgrid_size, 4),
                 dtype = np.complex64)
         :param hessian: np.ndarray(
-                shape=shape=(nr_timeslots, nr_terms, nr_terms),,
+                shape=shape=(nr_channel_blocks, nr_timeslots, nr_terms, nr_terms),
                 dtype = np.float64)
         :param gradient: np.ndarray(
-                shape=shape=(nr_timeslots, nr_terms),,
+                shape=shape=(nr_channel_blocks, nr_timeslots, nr_terms),,
                 dtype = np.float64)
         :param residual: np.ndarray(
-                shape=shape=(1, ),,
+                shape=shape=(nr_channel_blocks, ),
                 dtype = np.float64)
 
         Update step for calibration. Computes Hessian, gradient and residual for the current working point.
         This call is forwarded to C++ member function :cpp:func:`idg::proxy::Proxy::calibrate_update`.
         """
-        nr_timeslots = aterms.shape[0]
-        nr_antennas = aterms.shape[1]
-        subgrid_size = aterms.shape[2]
-        nr_terms = gradient.shape[1]
+        nr_channel_blocks = aterms.shape[0]
+        nr_timeslots = aterms.shape[1]
+        nr_antennas = aterms.shape[2]
+        subgrid_size = aterms.shape[3]
+        nr_terms = gradient.shape[2]
         nr_correlations = 4
 
         self.lib.Proxy_calibrate_update.argtypes = [
             ctypes.c_void_p,             #Proxy* p,
             ctypes.c_uint,               #unsigned int antenna_nr
+            ctypes.c_uint,               #unsigned int nr_channel_blocks
             ctypes.c_uint,               #unsigned int subgrid_size
             ctypes.c_uint,               #unsigned int nr_antennas
             ctypes.c_uint,               #unsigned int nr_timeslots
             ctypes.c_uint,               #unsigned int nr_terms
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                shape=(nr_channel_blocks, nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
             np.ctypeslib.ndpointer(
                 dtype=np.complex64,
-                shape=(nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
                 flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
             np.ctypeslib.ndpointer(
                 dtype=np.float64,
-                shape=(nr_timeslots, nr_terms, nr_terms),
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, nr_terms),
                 flags='C_CONTIGUOUS'),   #double* hessian
             np.ctypeslib.ndpointer(
                 dtype=np.float64,
-                shape=(nr_timeslots, nr_terms),
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms),
                 flags='C_CONTIGUOUS'),   #double* gradient
             np.ctypeslib.ndpointer(
                 dtype=np.float64,
-                shape=(1, ),
+                shape=(nr_channel_blocks, ),
                 flags='C_CONTIGUOUS'),   #double* residual
             ]
 
         self.lib.Proxy_calibrate_update(
             self.obj,
             antenna_nr,
+            nr_channel_blocks,
             subgrid_size,
             nr_antennas,
             nr_timeslots,

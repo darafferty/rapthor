@@ -61,7 +61,7 @@ void Proxy::degridding(
 }
 
 void Proxy::calibrate_init(
-    const unsigned int kernel_size, const Array1D<float>& frequencies,
+    const unsigned int kernel_size, const Array2D<float>& frequencies,
     Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
@@ -97,7 +97,8 @@ void Proxy::calibrate_init(
   auto nr_correlations = visibilities.get_x_dim();
   assert(nr_correlations == 4);
   auto nr_baselines = baselines.get_x_dim();
-  auto nr_channels = frequencies.get_x_dim();
+  auto nr_channel_blocks = frequencies.get_y_dim();
+  auto nr_channels_per_block = frequencies.get_x_dim();
 
   // Initialize
   unsigned int nr_antennas = 0;
@@ -108,10 +109,11 @@ void Proxy::calibrate_init(
 
   // New buffers for data grouped by station
   Array3D<UVW<float>> uvw1(nr_antennas, nr_antennas - 1, nr_timesteps);
-  Array5D<std::complex<float>> visibilities1(
-      nr_antennas, nr_antennas - 1, nr_timesteps, nr_channels, nr_correlations);
-  Array5D<float> weights1(nr_antennas, nr_antennas - 1, nr_timesteps,
-                          nr_channels, nr_correlations);
+  Array6D<std::complex<float>> visibilities1(
+      nr_antennas, nr_channel_blocks, nr_antennas - 1, nr_timesteps,
+      nr_channels_per_block, nr_correlations);
+  Array6D<float> weights1(nr_antennas, nr_channel_blocks, nr_antennas - 1,
+                          nr_timesteps, nr_channels_per_block, nr_correlations);
   Array2D<std::pair<unsigned int, unsigned int>> baselines1(nr_antennas,
                                                             nr_antennas - 1);
 
@@ -124,14 +126,21 @@ void Proxy::calibrate_init(
 
     baselines1(antenna1, bl1) = {antenna1, antenna2};
 
-    for (unsigned int time = 0; time < nr_timesteps; time++) {
-      uvw1(antenna1, bl1, time) = uvw(bl, time);
-      for (unsigned int channel = 0; channel < nr_channels; channel++) {
-        for (unsigned int cor = 0; cor < nr_correlations; cor++) {
-          visibilities1(antenna1, bl1, time, channel, cor) =
-              visibilities(bl, time, channel, cor);
-          weights1(antenna1, bl1, time, channel, cor) =
-              weights(bl, time, channel, cor);
+    for (unsigned int channel_block = 0; channel_block < nr_channel_blocks;
+         channel_block++) {
+      for (unsigned int time = 0; time < nr_timesteps; time++) {
+        uvw1(antenna1, bl1, time) = uvw(bl, time);
+        for (unsigned int channel = 0; channel < nr_channels_per_block;
+             channel++) {
+          for (unsigned int cor = 0; cor < nr_correlations; cor++) {
+            visibilities1(antenna1, channel_block, bl1, time, channel, cor) =
+                visibilities(bl, time,
+                             channel_block * nr_channels_per_block + channel,
+                             cor);
+            weights1(antenna1, channel_block, bl1, time, channel, cor) =
+                weights(bl, time,
+                        channel_block * nr_channels_per_block + channel, cor);
+          }
         }
       }
     }
@@ -144,38 +153,50 @@ void Proxy::calibrate_init(
     bl1 = antenna2 - (antenna2 > antenna1);
     baselines1(antenna1, bl1) = {antenna1, antenna2};
 
-    for (unsigned int time = 0; time < nr_timesteps; time++) {
-      uvw1(antenna1, bl1, time).u = -uvw(bl, time).u;
-      uvw1(antenna1, bl1, time).v = -uvw(bl, time).v;
-      uvw1(antenna1, bl1, time).w = -uvw(bl, time).w;
+    for (unsigned int channel_block = 0; channel_block < nr_channel_blocks;
+         channel_block++) {
+      for (unsigned int time = 0; time < nr_timesteps; time++) {
+        uvw1(antenna1, bl1, time).u = -uvw(bl, time).u;
+        uvw1(antenna1, bl1, time).v = -uvw(bl, time).v;
+        uvw1(antenna1, bl1, time).w = -uvw(bl, time).w;
 
-      for (unsigned int channel = 0; channel < nr_channels; channel++) {
-        unsigned int index_cor_transposed[4] = {0, 2, 1, 3};
-        for (unsigned int cor = 0; cor < nr_correlations; cor++) {
-          visibilities1(antenna1, bl1, time, channel, cor) =
-              conj(visibilities(bl, time, channel, cor));
-          weights1(antenna1, bl1, time, channel, cor) =
-              weights(bl, time, channel, index_cor_transposed[cor]);
-        }
-      }  // end for channel
-    }    // end for time
-  }      // end for baseline
+        for (unsigned int channel = 0; channel < nr_channels_per_block;
+             channel++) {
+          unsigned int index_cor_transposed[4] = {0, 2, 1, 3};
+          for (unsigned int cor = 0; cor < nr_correlations; cor++) {
+            visibilities1(antenna1, channel_block, bl1, time, channel, cor) =
+                conj(visibilities(
+                    bl, time, channel_block * nr_channels_per_block + channel,
+                    index_cor_transposed[cor]));
+            weights1(antenna1, channel_block, bl1, time, channel, cor) =
+                weights(bl, time,
+                        channel_block * nr_channels_per_block + channel,
+                        index_cor_transposed[cor]);
+          }
+        }  // end for channel
+      }    // end for time
+    }
+  }  // end for baseline
 
   // Set Plan options
   Plan::Options options;
   options.nr_w_layers = nr_w_layers;
 
   // Create one plan per antenna
-  std::vector<std::unique_ptr<Plan>> plans;
-  plans.reserve(nr_antennas);
-
+  std::vector<std::vector<std::unique_ptr<Plan>>> plans(nr_antennas);
   for (unsigned int i = 0; i < nr_antennas; i++) {
-    plans.push_back(make_plan(
-        kernel_size, frequencies,
-        Array2D<UVW<float>>(uvw1.data(i), nr_antennas - 1, nr_timesteps),
-        Array1D<std::pair<unsigned int, unsigned int>>(baselines1.data(i),
-                                                       nr_antennas - 1),
-        aterms_offsets, options));
+    plans[i].reserve(nr_channel_blocks);
+    for (unsigned int channel_block = 0; channel_block < nr_channel_blocks;
+         channel_block++) {
+      Array1D<float> frequencies_channel_block(frequencies.data(channel_block),
+                                               nr_channels_per_block);
+      plans[i].push_back(make_plan(
+          kernel_size, frequencies_channel_block,
+          Array2D<UVW<float>>(uvw1.data(i), nr_antennas - 1, nr_timesteps),
+          Array1D<std::pair<unsigned int, unsigned int>>(baselines1.data(i),
+                                                         nr_antennas - 1),
+          aterms_offsets, options));
+    }
   }
 
   // Initialize calibration
@@ -185,9 +206,10 @@ void Proxy::calibrate_init(
 }
 
 void Proxy::calibrate_update(
-    const int station_nr, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array4D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    Array3D<double>& hessian, Array2D<double>& gradient, double& residual) {
+    const int station_nr, const Array5D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
+    Array4D<double>& hessian, Array3D<double>& gradient,
+    Array1D<double>& residual) {
   do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient,
                       residual);
 }
