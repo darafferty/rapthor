@@ -300,7 +300,7 @@ __device__ void
                 float phase_index[UNROLL_PIXELS];
 
                 for (int j = 0; j < UNROLL_PIXELS; j++) {
-                    phase_index[j] = u*l_index[j] + v*m_index[j] + w*n[j];
+                    phase_index[j] = -(u*l_index[j] + v*m_index[j] + w*n[j]);
                 }
 
                 #pragma unroll
@@ -320,7 +320,7 @@ __device__ void
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         float wavenumber = wavenumbers[channel_offset + chan];
-                        float phase = fma(wavenumber, -phase_index[j], phase_offset[j]);
+                        float phase = fma(wavenumber, phase_index[j], phase_offset[j]);
                         float2 phasor;
                         __sincosf(phase, &phasor.y, &phasor.x);
 

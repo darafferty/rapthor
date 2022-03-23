@@ -133,7 +133,7 @@ __device__ void prepare_shared(
         const float l_index = l_offset + shift_l;
         const float m_index = m_offset - shift_m;
         const float n = compute_n(l_index, m_index);
-        const float phase_offset = u_offset*l_offset + v_offset*m_offset + w_offset*n;
+        const float phase_offset = -(u_offset*l_offset + v_offset*m_offset + w_offset*n);
 
         // Store l_index,m_index,n and phase offset in shared memory
         shared[2][j] = make_float4(l_index, m_index, n, phase_offset);
@@ -165,7 +165,7 @@ __device__ void compute_visibility(
 
         for (int chan = 0; chan < unroll_channels; chan++) {
             float wavenumber = wavenumbers[channel_offset + chan];
-            float phase = fma(wavenumber, phase_index, -phase_offset);
+            float phase = fma(wavenumber, phase_index, phase_offset);
             float2 phasor;
             __sincosf(phase, &phasor.y, &phasor.x);
 
