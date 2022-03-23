@@ -112,6 +112,36 @@ inline __device__ void apply_avg_aterm_correction_(
   }
 }
 
+inline __device__ void compute_reduction(
+    int n, int m, int nr_polarizations,
+    const float* wavenumbers,
+    const float* phase_index,
+    const float* phase_offset,
+    const float4* input_ptr1,
+    const float4* input_ptr2,
+    float2* output,
+    int input_stride,    // gridder: 1, degridder: 0
+    int output_index)  { // gridder: 1, degridder: 0
+    for (int i = 0; i < n; i++) {
+        const float4 a = input_ptr1[i * input_stride];
+        const float4 b = input_ptr2[i * input_stride];
+
+        for (int j = 0; j < m; j++) {
+            float phase = fma(wavenumbers[i], phase_index[j], phase_offset[j]);
+            float2 phasor;
+            __sincosf(phase, &phasor.y, &phasor.x);
+
+            int idx = 4 * (output_index ? j : i);
+            cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
+            if (nr_polarizations == 4) {
+                cmac(output[idx + 1], phasor, make_float2(a.z, a.w));
+                cmac(output[idx + 2], phasor, make_float2(b.x, b.y));
+            }
+            cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
+        }
+    }
+}
+
 /*
     Common math functions
 */

@@ -296,38 +296,20 @@ __device__ void
                 float v = uvw_[time].y;
                 float w = uvw_[time].z;
 
-                // Compute phase index and phase offset
+                // Compute phase index
                 float phase_index[UNROLL_PIXELS];
 
                 for (int j = 0; j < UNROLL_PIXELS; j++) {
                     phase_index[j] = -(u*l_index[j] + v*m_index[j] + w*n[j]);
                 }
 
-                const float4* a_ptr = &visibilities_[0][time*current_nr_channels];
-                const float4* b_ptr = &visibilities_[1][time*current_nr_channels];
-                int stride = 1;
-                int index = 1; // use second iterator as index
-                float2 *sums = (float2 *) pixel_cur;
-
-                for (int chan = 0; chan < current_nr_channels; chan++) {
-                    const float4 a = a_ptr[chan * stride];
-                    const float4 b = b_ptr[chan * stride];
-
-                    for (int j = 0; j < UNROLL_PIXELS; j++) {
-                        float wavenumber = wavenumbers[channel_offset + chan];
-                        float phase = fma(wavenumber, phase_index[j], phase_offset[j]);
-                        float2 phasor;
-                        __sincosf(phase, &phasor.y, &phasor.x);
-
-                        int idx = index ? j * 4: chan * 4;
-                        cmac(sums[idx + 0], phasor, make_float2(a.x, a.y));
-                        if (nr_polarizations == 4) {
-                            cmac(sums[idx + 1], phasor, make_float2(a.z, a.w));
-                            cmac(sums[idx + 2], phasor, make_float2(b.x, b.y));
-                        }
-                        cmac(sums[idx + 3], phasor, make_float2(b.z, b.w));
-                    }
-                } // end for chan
+                // Compute pixel
+                compute_reduction(
+                    current_nr_channels, UNROLL_PIXELS, nr_polarizations,
+                    wavenumbers + channel_offset, phase_index, phase_offset,
+                    &visibilities_[0][time*current_nr_channels],
+                    &visibilities_[1][time*current_nr_channels],
+                    reinterpret_cast<float2*>(pixel_cur), 1, 1);
             } // end for time
         } // end for time_offset_local
 

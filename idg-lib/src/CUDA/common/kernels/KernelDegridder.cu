@@ -153,8 +153,10 @@ __device__ void compute_visibility(
 {
     for (int i = 0; i < current_nr_pixels; i++) {
         const int unroll_pixels = 1;
-        float phase_index[unroll_pixels];
+
+        // Compute phase_offset and phase index
         float phase_offset[unroll_pixels];
+        float phase_index[unroll_pixels];
 
         for (int j = 0; j < unroll_pixels; j++) {
             const float l_index = shared[2][i].x;
@@ -164,31 +166,13 @@ __device__ void compute_visibility(
             phase_index[j] = u * l_index + v * m_index + w * n;
         }
 
-        const float4* a_ptr = &shared[0][i];
-        const float4* b_ptr = &shared[1][i];
-        int stride = 0;
-        int index = 0; // use first iterator as index
-        float2 *sums = (float2 *) visibility;
-
-        for (int chan = 0; chan < unroll_channels; chan++) {
-            const float4 a = a_ptr[chan * stride];
-            const float4 b = b_ptr[chan * stride];
-
-            for (int j = 0; j < unroll_pixels; j++) {
-                float wavenumber = wavenumbers[channel_offset + chan];
-                float phase = fma(wavenumber, phase_index[j], phase_offset[j]);
-                float2 phasor;
-                __sincosf(phase, &phasor.y, &phasor.x);
-
-                int idx = index ? j * 4: chan * 4;
-                cmac(sums[idx + 0], phasor, make_float2(a.x, a.y));
-                if (nr_polarizations == 4) {
-                    cmac(sums[idx + 1], phasor, make_float2(a.z, a.w));
-                    cmac(sums[idx + 2], phasor, make_float2(b.x, b.y));
-                }
-                cmac(sums[idx + 3], phasor, make_float2(b.z, b.w));
-            } // end for unroll_pixels
-        } // end for chan
+        // Compute visibility
+        compute_reduction(
+            unroll_channels, unroll_pixels, nr_polarizations,
+            wavenumbers + channel_offset, phase_index, phase_offset,
+            &shared[0][i],
+            &shared[1][i],
+            reinterpret_cast<float2*>(visibility), 0, 0);
     } // end for k (batch)
 }
 
