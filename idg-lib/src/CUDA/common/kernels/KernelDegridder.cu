@@ -149,7 +149,7 @@ __device__ void compute_visibility(
     const float               v,
     const float               w,
     const float* __restrict__ wavenumbers,
-          float2 __restrict__ visibility[4][unroll_channels])
+          float2 __restrict__ visibility[unroll_channels][4])
 {
     for (int k = 0; k < current_nr_pixels; k++) {
         float2 apXX = make_float2(shared[0][k].x, shared[0][k].y);
@@ -170,12 +170,12 @@ __device__ void compute_visibility(
             float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
             // Multiply pixels by phasor
-            cmac(visibility[0][chan], phasor, apXX);
+            cmac(visibility[chan][0], phasor, apXX);
             if (nr_polarizations == 4) {
-                cmac(visibility[1][chan], phasor, apXY);
-                cmac(visibility[2][chan], phasor, apYX);
+                cmac(visibility[chan][1], phasor, apXY);
+                cmac(visibility[chan][2], phasor, apYX);
             }
-            cmac(visibility[3][chan], phasor, apYY);
+            cmac(visibility[chan][3], phasor, apYY);
         } // end for chan
     } // end for k (batch)
 }
@@ -187,7 +187,7 @@ __device__ void store_visibility(
     const int nr_channels,
     const int channel_offset,
     const int time,
-    const float2  __restrict__ visibility[4][unroll_channels],
+    const float2  __restrict__ visibility[unroll_channels][4],
           float2* __restrict__ visibilities)
 {
     for (int chan = 0; chan < unroll_channels; chan++) {
@@ -197,14 +197,14 @@ __device__ void store_visibility(
         int idx_chan = channel_offset + chan;
         if (nr_polarizations == 4) {
             int idx_vis = index_visibility(nr_polarizations, nr_channels, idx_time, idx_chan, 0);
-            float4 visA = make_float4(visibility[0][chan].x, visibility[0][chan].y, visibility[1][chan].x, visibility[1][chan].y);
-            float4 visB = make_float4(visibility[2][chan].x, visibility[2][chan].y, visibility[3][chan].x, visibility[3][chan].y);
+            float4 visA = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][1].x, visibility[chan][1].y);
+            float4 visB = make_float4(visibility[chan][2].x, visibility[chan][2].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             vis_ptr[0] = visA * scale;
             vis_ptr[1] = visB * scale;
         } else if (nr_polarizations == 1) {
             int idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
-            float4 vis = make_float4(visibility[0][chan].x, visibility[0][chan].y, visibility[3][chan].x, visibility[3][chan].y);
+            float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             *vis_ptr = vis * scale;
         }
@@ -218,7 +218,7 @@ __device__ void update_visibility(
     const int nr_channels,
     const int channel_offset,
     const int time,
-    const float2  __restrict__ visibility[4][unroll_channels],
+    const float2  __restrict__ visibility[unroll_channels][4],
           float2* __restrict__ visibilities)
 {
     for (int chan = 0; chan < unroll_channels; chan++) {
@@ -228,14 +228,14 @@ __device__ void update_visibility(
         int idx_chan = channel_offset + chan;
         if (nr_polarizations == 4) {
             int idx_vis = index_visibility(nr_polarizations, nr_channels, idx_time, idx_chan, 0);
-            float4 visA = make_float4(visibility[0][chan].x, visibility[0][chan].y, visibility[1][chan].x, visibility[1][chan].y);
-            float4 visB = make_float4(visibility[2][chan].x, visibility[2][chan].y, visibility[3][chan].x, visibility[3][chan].y);
+            float4 visA = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][1].x, visibility[chan][1].y);
+            float4 visB = make_float4(visibility[chan][2].x, visibility[chan][2].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             vis_ptr[0] += visA * scale;
             vis_ptr[1] += visB * scale;
         } else if (nr_polarizations == 1) {
             int idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
-            float4 vis = make_float4(visibility[0][chan].x, visibility[0][chan].y, visibility[3][chan].x, visibility[3][chan].y);
+            float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             *vis_ptr += vis * scale;
         }
@@ -300,11 +300,11 @@ __device__ void kernel_degridder_tp(
             int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
             int channel = channel_offset + channel_offset_local;
 
-            float2 visibility[4][unroll_channels];
+            float2 visibility[unroll_channels][4];
 
-            for (int pol = 0; pol < 4; pol++) {
-                for (int chan = 0; chan < unroll_channels; chan++) {
-                    visibility[pol][chan] = make_float2(0, 0);
+            for (int chan = 0; chan < unroll_channels; chan++) {
+                for (int pol = 0; pol < 4; pol++) {
+                    visibility[chan][pol] = make_float2(0, 0);
                 }
             }
 
@@ -425,11 +425,11 @@ __device__ void kernel_degridder_pt(
                 int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
                 int channel = channel_offset + channel_offset_local;
 
-                float2 visibility[4][unroll_channels];
+                float2 visibility[unroll_channels][4];
 
                 for (int pol = 0; pol < 4; pol++) {
                     for (int chan = 0; chan < unroll_channels; chan++) {
-                        visibility[pol][chan] = make_float2(0, 0);
+                        visibility[chan][pol] = make_float2(0, 0);
                     }
                 }
 
