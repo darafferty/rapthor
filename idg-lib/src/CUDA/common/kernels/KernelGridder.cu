@@ -308,12 +308,17 @@ __device__ void
                     float wavenumber = wavenumbers[channel_offset + chan];
 
                     // Load visibilities from shared memory
+                    float2 visXX, visXY, visYX, visYY;
                     float4 a = visibilities_[time*current_nr_channels+chan][0];
-                    float4 b = visibilities_[time*current_nr_channels+chan][1];
-                    float2 visXX = make_float2(a.x, a.y);
-                    float2 visXY = make_float2(a.z, a.w);
-                    float2 visYX = make_float2(b.x, b.y);
-                    float2 visYY = make_float2(b.z, b.w);
+                    visXX = make_float2(a.x, a.y);
+                    if (nr_polarizations == 4) {
+                        float4 b = visibilities_[time*current_nr_channels+chan][1];
+                        visXY = make_float2(a.z, a.w);
+                        visYX = make_float2(b.x, b.y);
+                        visYY = make_float2(b.z, b.w);
+                    } else if (nr_polarizations == 1) {
+                        visYY = make_float2(a.z, a.w);
+                    }
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         // Compute phasor
@@ -325,10 +330,8 @@ __device__ void
                         if (nr_polarizations == 4) {
                             cmac(pixel_cur[j][1], phasor, visXY);
                             cmac(pixel_cur[j][2], phasor, visYX);
-                            cmac(pixel_cur[j][3], phasor, visYY);
-                        } else if (nr_polarizations == 1) {
-                            cmac(pixel_cur[j][3], phasor, visXY);
                         }
+                        cmac(pixel_cur[j][3], phasor, visYY);
                     }
                 } // end for chan
             } // end for time
