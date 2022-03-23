@@ -303,7 +303,6 @@ __device__ void
                     phase_index[j] = -(u*l_index[j] + v*m_index[j] + w*n[j]);
                 }
 
-                #pragma unroll
                 for (int chan = 0; chan < current_nr_channels; chan++) {
                     // Load visibilities from shared memory
                     float2 visXX, visXY, visYX, visYY;
