@@ -81,13 +81,16 @@ std::string InstanceCUDA::get_compiler_flags() {
 
   // CUDA specific flags
   std::stringstream flags_cuda;
-  flags_cuda << "-use_fast_math ";
+  flags_cuda << "-use_fast_math";
 #if defined(CUDA_KERNEL_DEBUG)
   flags_cuda << " -G ";
 #else
-  flags_cuda << "-lineinfo ";
+  flags_cuda << " -lineinfo";
 #endif
-  flags_cuda << "-src-in-ptx";
+  flags_cuda << " -src-in-ptx";
+#if defined(USE_EXTRAPOLATE)
+  flags_cuda << " -DUSE_EXTRAPOLATE";
+#endif
 
   // Device specific flags
   int capability = (*device).get_capability();
