@@ -306,6 +306,8 @@ __device__ void
                 const float4* a_ptr = &visibilities_[0][time*current_nr_channels];
                 const float4* b_ptr = &visibilities_[1][time*current_nr_channels];
                 int stride = 1;
+                int index = 1; // use second iterator as index
+                float2 *sums = (float2 *) pixel_cur;
 
                 for (int chan = 0; chan < current_nr_channels; chan++) {
                     const float4 a = a_ptr[chan * stride];
@@ -317,13 +319,13 @@ __device__ void
                         float2 phasor;
                         __sincosf(phase, &phasor.y, &phasor.x);
 
-                        // Multiply visibility by phasor
-                        cmac(pixel_cur[j][0], phasor, make_float2(a.x, a.y));
+                        int idx = index ? j * 4: chan * 4;
+                        cmac(sums[idx + 0], phasor, make_float2(a.x, a.y));
                         if (nr_polarizations == 4) {
-                            cmac(pixel_cur[j][1], phasor, make_float2(a.z, a.w));
-                            cmac(pixel_cur[j][2], phasor, make_float2(b.x, b.y));
+                            cmac(sums[idx + 1], phasor, make_float2(a.z, a.w));
+                            cmac(sums[idx + 2], phasor, make_float2(b.x, b.y));
                         }
-                        cmac(pixel_cur[j][3], phasor, make_float2(b.z, b.w));
+                        cmac(sums[idx + 3], phasor, make_float2(b.z, b.w));
                     }
                 } // end for chan
             } // end for time

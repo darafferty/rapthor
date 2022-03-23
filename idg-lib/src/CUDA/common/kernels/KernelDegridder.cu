@@ -167,6 +167,8 @@ __device__ void compute_visibility(
         const float4* a_ptr = &shared[0][i];
         const float4* b_ptr = &shared[1][i];
         int stride = 0;
+        int index = 0; // use first iterator as index
+        float2 *sums = (float2 *) visibility;
 
         for (int chan = 0; chan < unroll_channels; chan++) {
             const float4 a = a_ptr[chan * stride];
@@ -178,13 +180,13 @@ __device__ void compute_visibility(
                 float2 phasor;
                 __sincosf(phase, &phasor.y, &phasor.x);
 
-                // Multiply pixels by phasor
-                cmac(visibility[chan][0], phasor, make_float2(a.x, a.y));
+                int idx = index ? j * 4: chan * 4;
+                cmac(sums[idx + 0], phasor, make_float2(a.x, a.y));
                 if (nr_polarizations == 4) {
-                    cmac(visibility[chan][1], phasor, make_float2(a.z, a.w));
-                    cmac(visibility[chan][2], phasor, make_float2(b.x, b.y));
+                    cmac(sums[idx + 1], phasor, make_float2(a.z, a.w));
+                    cmac(sums[idx + 2], phasor, make_float2(b.x, b.y));
                 }
-                cmac(visibility[chan][3], phasor, make_float2(b.z, b.w));
+                cmac(sums[idx + 3], phasor, make_float2(b.z, b.w));
             } // end for unroll_pixels
         } // end for chan
     } // end for k (batch)
