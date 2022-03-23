@@ -164,10 +164,14 @@ __device__ void compute_visibility(
             phase_index[j] = u * l_index + v * m_index + w * n;
         }
 
-        const float4 a = shared[0][i];
-        const float4 b = shared[1][i];
+        const float4* a_ptr = &shared[0][i];
+        const float4* b_ptr = &shared[1][i];
+        int stride = 0;
 
         for (int chan = 0; chan < unroll_channels; chan++) {
+            const float4 a = a_ptr[chan * stride];
+            const float4 b = b_ptr[chan * stride];
+
             for (int j = 0; j < unroll_pixels; j++) {
                 float wavenumber = wavenumbers[channel_offset + chan];
                 float phase = fma(wavenumber, phase_index[j], phase_offset[j]);

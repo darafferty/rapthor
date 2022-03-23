@@ -303,9 +303,13 @@ __device__ void
                     phase_index[j] = -(u*l_index[j] + v*m_index[j] + w*n[j]);
                 }
 
+                const float4* a_ptr = &visibilities_[0][time*current_nr_channels];
+                const float4* b_ptr = &visibilities_[1][time*current_nr_channels];
+                int stride = 1;
+
                 for (int chan = 0; chan < current_nr_channels; chan++) {
-                    const float4 a = visibilities_[0][time*current_nr_channels+chan];
-                    const float4 b = visibilities_[1][time*current_nr_channels+chan];
+                    const float4 a = a_ptr[chan * stride];
+                    const float4 b = b_ptr[chan * stride];
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         float wavenumber = wavenumbers[channel_offset + chan];
