@@ -29,6 +29,7 @@ def tune():
     tune_params["BLOCK_SIZE_X"] = args.block_size
     tune_params["UNROLL_PIXELS"] = args.unroll_pixels
     tune_params["NUM_BLOCKS"] = args.num_blocks
+    tune_params["USE_EXTRAPOLATE"] = [0, 1]
 
     # IDG parameters
     grid_size = 8192
