@@ -165,9 +165,9 @@ __device__ void compute_visibility(
 
         for (int chan = 0; chan < unroll_channels; chan++) {
             float wavenumber = wavenumbers[channel_offset + chan];
-
-            float  phase  = (phase_index * wavenumber) - phase_offset;
-            float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+            float phase = fma(wavenumber, phase_index, -phase_offset);
+            float2 phasor;
+            __sincosf(phase, &phasor.y, &phasor.x);
 
             // Multiply pixels by phasor
             cmac(visibility[chan][0], phasor, apXX);

@@ -231,7 +231,8 @@ __global__ void kernel_calibrate_sums(
 
                     // Compute phasor
                     float  phase  = (phase_index * wavenumber) - phase_offset;
-                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                    float2 phasor;
+                    __sincosf(phase, &phasor.y, &phasor.x);
 
                     // Update sum
                     for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
@@ -419,8 +420,9 @@ __global__ void kernel_calibrate_gradient(
                     float phase_index = u*l + v*m + w*n;
 
                     // Compute phasor
-                    float  phase  = (phase_index * wavenumber) - phase_offset;
-                    float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                    float phase = (phase_index * wavenumber) - phase_offset;
+                    float2 phasor;
+                    __sincosf(phase, &phasor.y, &phasor.x);
 
                     // Update sum
                     for (unsigned int pol = 0; pol < nr_polarizations; pol++) {

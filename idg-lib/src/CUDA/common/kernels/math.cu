@@ -82,20 +82,6 @@ inline  __device__ void atomicAdd(double2 &a, double2 b) {
     atomicAdd(&(a.y), b.y);
 }
 
-inline __device__ float raw_sin(float a)
-{
-    float r;
-    asm ("sin.approx.ftz.f32 %0,%1;" : "=f"(r) : "f"(a));
-    return r;
-}
-
-inline __device__ float raw_cos(float a)
-{
-    float r;
-    asm ("cos.approx.ftz.f32 %0,%1;" : "=f"(r) : "f"(a));
-    return r;
-}
-
 inline __device__ void cmac(float2 &a, float2 b, float2 c)
 {
     a.x = fma(b.x, c.x, a.x);

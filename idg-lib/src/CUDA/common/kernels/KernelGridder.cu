@@ -320,9 +320,9 @@ __device__ void
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         float wavenumber = wavenumbers[channel_offset + chan];
-
-                        float phase = phase_offset[j] - (phase_index[j] * wavenumber);
-                        float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
+                        float phase = fma(wavenumber, -phase_index[j], phase_offset[j]);
+                        float2 phasor;
+                        __sincosf(phase, &phasor.y, &phasor.x);
 
                         // Multiply visibility by phasor
                         cmac(pixel_cur[j][0], phasor, visXX);
