@@ -304,12 +304,21 @@ __device__ void
                 }
 
                 // Compute pixel
+                #if USE_EXTRAPOLATE
+                compute_reduction_extrapolate<UNROLL_PIXELS>(
+                    current_nr_channels, nr_polarizations,
+                    wavenumbers + channel_offset, phase_index, phase_offset,
+                    &visibilities_[0][time*current_nr_channels],
+                    &visibilities_[1][time*current_nr_channels],
+                    reinterpret_cast<float2*>(pixel_cur), 1, 1);
+                #else
                 compute_reduction(
                     current_nr_channels, UNROLL_PIXELS, nr_polarizations,
                     wavenumbers + channel_offset, phase_index, phase_offset,
                     &visibilities_[0][time*current_nr_channels],
                     &visibilities_[1][time*current_nr_channels],
                     reinterpret_cast<float2*>(pixel_cur), 1, 1);
+                #endif
             } // end for time
         } // end for time_offset_local
 

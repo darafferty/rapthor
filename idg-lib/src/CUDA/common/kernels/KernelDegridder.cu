@@ -167,12 +167,21 @@ __device__ void compute_visibility(
         }
 
         // Compute visibility
+        #if USE_EXTRAPOLATE
+        compute_reduction_extrapolate<unroll_pixels>(
+            unroll_channels, nr_polarizations,
+            wavenumbers + channel_offset, phase_index, phase_offset,
+            &shared[0][i],
+            &shared[1][i],
+            reinterpret_cast<float2*>(visibility), 0, 0);
+        #else
         compute_reduction(
             unroll_channels, unroll_pixels, nr_polarizations,
             wavenumbers + channel_offset, phase_index, phase_offset,
             &shared[0][i],
             &shared[1][i],
             reinterpret_cast<float2*>(visibility), 0, 0);
+        #endif
     } // end for k (batch)
 }
 

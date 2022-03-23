@@ -40,6 +40,11 @@ inline __device__ void operator+=(float2 &a, float2 b) {
     a.y += b.y;
 }
 
+inline __device__ void operator*=(float2 &a, float2 b)
+{
+    a = a * b;
+}
+
 inline __device__ void operator+=(double2 &a, double2 b) {
     a.x += b.x;
     a.y += b.y;
@@ -110,6 +115,56 @@ inline __device__ void apply_avg_aterm_correction_(
     pixels[i] += p[2] * C[offset + 2];
     pixels[i] += p[3] * C[offset + 3];
   }
+}
+
+template<int m>
+inline __device__ void compute_reduction_extrapolate(
+    int n,
+    int nr_polarizations,
+    const float* wavenumbers,
+    const float* phase_index,
+    const float* phase_offset,
+    const float4* input_ptr1,
+    const float4* input_ptr2,
+    float2* output,
+    int input_stride,    // gridder: 1, degridder: 0
+    int output_index)  { // gridder: 1, degridder: 0
+
+    float2 phasor_c[m];
+    float2 phasor_d[m];
+
+    for (int j = 0; j < m; j++) {
+        float phase_0 = fma(wavenumbers[0], phase_index[j], phase_offset[j]);
+        float phase_1 = fma(wavenumbers[n-1], phase_index[j], phase_offset[j]);
+        float phase_d = phase_1 - phase_0;
+        if (n > 1) {
+            phase_d *= 1.0f / (n - 1);
+        }
+        __sincosf(phase_0, &phasor_c[j].y, &phasor_c[j].x);
+        __sincosf(phase_d, &phasor_d[j].y, &phasor_d[j].x);
+    }
+
+    for (int i = 0; i < n; i++) {
+        const float4 a = input_ptr1[i * input_stride];
+        const float4 b = input_ptr2[i * input_stride];
+
+        for (int j = 0; j < m; j++) {
+            float phase = fma(wavenumbers[i], phase_index[j], phase_offset[j]);
+            float2 phasor = phasor_c[j];
+
+            int idx = 4 * (output_index ? j : i);
+            cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
+            if (nr_polarizations == 4) {
+                cmac(output[idx + 1], phasor, make_float2(a.z, a.w));
+                cmac(output[idx + 2], phasor, make_float2(b.x, b.y));
+            }
+            cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
+
+            if (i < n - 1) {
+                phasor_c[j] *= phasor_d[j];
+            }
+        }
+    }
 }
 
 inline __device__ void compute_reduction(
