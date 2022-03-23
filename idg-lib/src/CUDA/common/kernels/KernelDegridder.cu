@@ -151,31 +151,37 @@ __device__ void compute_visibility(
     const float* __restrict__ wavenumbers,
           float2 __restrict__ visibility[unroll_channels][4])
 {
-    for (int k = 0; k < current_nr_pixels; k++) {
-        float2 apXX = make_float2(shared[0][k].x, shared[0][k].y);
-        float2 apXY = make_float2(shared[0][k].z, shared[0][k].w);
-        float2 apYX = make_float2(shared[1][k].x, shared[1][k].y);
-        float2 apYY = make_float2(shared[1][k].z, shared[1][k].w);
+    for (int i = 0; i < current_nr_pixels; i++) {
+        const int unroll_pixels = 1;
+        float phase_index[unroll_pixels];
+        float phase_offset[unroll_pixels];
 
-        const float l_index = shared[2][k].x;
-        const float m_index = shared[2][k].y;
-        const float n = shared[2][k].z;
-        const float phase_offset = shared[2][k].w;
-        const float phase_index = u * l_index + v * m_index + w * n;
+        for (int j = 0; j < unroll_pixels; j++) {
+            const float l_index = shared[2][i].x;
+            const float m_index = shared[2][i].y;
+            const float n = shared[2][i].z;
+            phase_offset[j] = shared[2][i].w;
+            phase_index[j] = u * l_index + v * m_index + w * n;
+        }
+
+        const float4 a = shared[0][i];
+        const float4 b = shared[1][i];
 
         for (int chan = 0; chan < unroll_channels; chan++) {
-            float wavenumber = wavenumbers[channel_offset + chan];
-            float phase = fma(wavenumber, phase_index, phase_offset);
-            float2 phasor;
-            __sincosf(phase, &phasor.y, &phasor.x);
+            for (int j = 0; j < unroll_pixels; j++) {
+                float wavenumber = wavenumbers[channel_offset + chan];
+                float phase = fma(wavenumber, phase_index[j], phase_offset[j]);
+                float2 phasor;
+                __sincosf(phase, &phasor.y, &phasor.x);
 
-            // Multiply pixels by phasor
-            cmac(visibility[chan][0], phasor, apXX);
-            if (nr_polarizations == 4) {
-                cmac(visibility[chan][1], phasor, apXY);
-                cmac(visibility[chan][2], phasor, apYX);
-            }
-            cmac(visibility[chan][3], phasor, apYY);
+                // Multiply pixels by phasor
+                cmac(visibility[chan][0], phasor, make_float2(a.x, a.y));
+                if (nr_polarizations == 4) {
+                    cmac(visibility[chan][1], phasor, make_float2(a.z, a.w));
+                    cmac(visibility[chan][2], phasor, make_float2(b.x, b.y));
+                }
+                cmac(visibility[chan][3], phasor, make_float2(b.z, b.w));
+            } // end for unroll_pixels
         } // end for chan
     } // end for k (batch)
 }

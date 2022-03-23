@@ -304,18 +304,8 @@ __device__ void
                 }
 
                 for (int chan = 0; chan < current_nr_channels; chan++) {
-                    // Load visibilities from shared memory
-                    float2 visXX, visXY, visYX, visYY;
-                    float4 a = visibilities_[time*current_nr_channels+chan][0];
-                    visXX = make_float2(a.x, a.y);
-                    if (nr_polarizations == 4) {
-                        float4 b = visibilities_[time*current_nr_channels+chan][1];
-                        visXY = make_float2(a.z, a.w);
-                        visYX = make_float2(b.x, b.y);
-                        visYY = make_float2(b.z, b.w);
-                    } else if (nr_polarizations == 1) {
-                        visYY = make_float2(a.z, a.w);
-                    }
+                    const float4 a = visibilities_[time*current_nr_channels+chan][0];
+                    const float4 b = visibilities_[time*current_nr_channels+chan][1];
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         float wavenumber = wavenumbers[channel_offset + chan];
@@ -324,12 +314,12 @@ __device__ void
                         __sincosf(phase, &phasor.y, &phasor.x);
 
                         // Multiply visibility by phasor
-                        cmac(pixel_cur[j][0], phasor, visXX);
+                        cmac(pixel_cur[j][0], phasor, make_float2(a.x, a.y));
                         if (nr_polarizations == 4) {
-                            cmac(pixel_cur[j][1], phasor, visXY);
-                            cmac(pixel_cur[j][2], phasor, visYX);
+                            cmac(pixel_cur[j][1], phasor, make_float2(a.x, a.y));
+                            cmac(pixel_cur[j][2], phasor, make_float2(b.x, b.y));
                         }
-                        cmac(pixel_cur[j][3], phasor, visYY);
+                        cmac(pixel_cur[j][3], phasor, make_float2(b.z, b.w));
                     }
                 } // end for chan
             } // end for time
