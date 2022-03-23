@@ -55,7 +55,7 @@
 /*
     Shared memory
 */
-__shared__ float4 visibilities_[BATCH_SIZE][2];
+__shared__ float4 visibilities_[2][BATCH_SIZE];
 __shared__ float4 uvw_[BATCH_SIZE];
 
 
@@ -238,7 +238,7 @@ __device__ void
                     long idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
                     if (time < nr_timesteps) {
                         float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                        visibilities_[k][j] = vis_ptr[j];
+                        visibilities_[j][k] = vis_ptr[j];
                     }
                 }
             } else if (nr_polarizations == 1) {
@@ -250,7 +250,7 @@ __device__ void
                     long idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
                     if (time < nr_timesteps) {
                         float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                        visibilities_[k][0] = vis_ptr[0];
+                        visibilities_[0][k] = vis_ptr[0];
                     }
                 }
             }
@@ -304,8 +304,8 @@ __device__ void
                 }
 
                 for (int chan = 0; chan < current_nr_channels; chan++) {
-                    const float4 a = visibilities_[time*current_nr_channels+chan][0];
-                    const float4 b = visibilities_[time*current_nr_channels+chan][1];
+                    const float4 a = visibilities_[0][time*current_nr_channels+chan];
+                    const float4 b = visibilities_[1][time*current_nr_channels+chan];
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
                         float wavenumber = wavenumbers[channel_offset + chan];
@@ -316,7 +316,7 @@ __device__ void
                         // Multiply visibility by phasor
                         cmac(pixel_cur[j][0], phasor, make_float2(a.x, a.y));
                         if (nr_polarizations == 4) {
-                            cmac(pixel_cur[j][1], phasor, make_float2(a.x, a.y));
+                            cmac(pixel_cur[j][1], phasor, make_float2(a.z, a.w));
                             cmac(pixel_cur[j][2], phasor, make_float2(b.x, b.y));
                         }
                         cmac(pixel_cur[j][3], phasor, make_float2(b.z, b.w));
