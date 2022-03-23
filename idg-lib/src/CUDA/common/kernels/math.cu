@@ -23,8 +23,8 @@ inline __device__ float2 operator*(float a, float2 b) {
 }
 
 inline __device__ float2 operator*(float2 a, float2 b) {
-    return make_float2(a.x * b.x - a.y * b.y,
-                       a.x * b.y + a.y * b.x);
+    return make_float2(fma(a.x, b.x, -a.y * b.y),
+                       fma(a.x, b.y, a.y * b.x));
 }
 
 inline __device__ float4 operator*(float4 a, float b) {
@@ -96,23 +96,12 @@ inline __device__ float raw_cos(float a)
     return r;
 }
 
-
-/*
-    Multiply accumulate: a = a + (b * c)
-*/
-// scalar
-inline __device__ void mac(float &a, float b, float c)
-{
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a) : "f"(b), "f"(c), "f"(a));
-}
-
-// complex
 inline __device__ void cmac(float2 &a, float2 b, float2 c)
 {
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.x) : "f"(b.x), "f"(c.x), "f"(a.x));
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.x), "f"(c.y), "f"(a.y));
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.x) : "f"(-b.y), "f"(c.y), "f"(a.x));
-    asm ("fma.rn.ftz.f32 %0,%1,%2,%3;" : "=f"(a.y) : "f"(b.y), "f"(c.x), "f"(a.y));
+    a.x = fma(b.x, c.x, a.x);
+    a.y = fma(b.x, c.y, a.y);
+    a.x = fma(-b.y, c.y, a.x);
+    a.y = fma(b.y, c.x, a.y);
 }
 
 template <typename T>
