@@ -305,8 +305,6 @@ __device__ void
 
                 #pragma unroll
                 for (int chan = 0; chan < current_nr_channels; chan++) {
-                    float wavenumber = wavenumbers[channel_offset + chan];
-
                     // Load visibilities from shared memory
                     float2 visXX, visXY, visYX, visYY;
                     float4 a = visibilities_[time*current_nr_channels+chan][0];
@@ -321,7 +319,8 @@ __device__ void
                     }
 
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
-                        // Compute phasor
+                        float wavenumber = wavenumbers[channel_offset + chan];
+
                         float phase = phase_offset[j] - (phase_index[j] * wavenumber);
                         float2 phasor = make_float2(raw_cos(phase), raw_sin(phase));
 
