@@ -111,7 +111,7 @@ RUN ninja -C /src/DP3/build install
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
-# Install current version of Rapthor, and then uninstall it again.
+# Install current version of Rapthor
 COPY . rapthor
 RUN python3 -m pip install --upgrade ./rapthor
 
