@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [split_h5parms.py]
 label: Splits an h5parm
@@ -14,7 +14,7 @@ inputs:
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 0
   - id: outh5parms

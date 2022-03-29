@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
@@ -54,7 +54,7 @@ inputs:
     doc: |
       The filename of the input solution table containing the fast-phase solutions.
       These solutions are preapplied before the solve is done.
-    type: string
+    type: File
     inputBinding:
       prefix: solve.applycal.parmdb=
       separate: False
@@ -74,7 +74,7 @@ inputs:
       prefix: solve.nchan=
       separate: False
   - id: sourcedb
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
@@ -146,7 +146,7 @@ inputs:
 
 outputs:
   - id: slow_gains_h5parm
-    type: string
+    type: File
     outputBinding:
       outputEval: $(inputs.h5parm)
 hints:

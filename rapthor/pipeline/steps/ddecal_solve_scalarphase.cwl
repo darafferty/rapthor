@@ -1,6 +1,7 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [DP3]
+id: ddecal_solve_scalarphase
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for scalar phases in multiple directions simultaneously
@@ -8,7 +9,13 @@ doc: |
   table in h5parm format.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+#  - class: InitialWorkDirRequirement
+#    listing:
+#      - entry: $(inputs.msin)
+#        writable: true
+#  - class: InplaceUpdateRequirement
+#    inplaceUpdate: true
 
 arguments:
   - msin.datacolumn=DATA
@@ -21,10 +28,10 @@ arguments:
 
 inputs:
   - id: msin
-    label: Input MS filename
+    label: Input MS directory name
     doc: |
-      The filename of the input MS file.
-    type: string
+      The name of the input MS directory.
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -78,7 +85,7 @@ inputs:
     label: Sky model
     doc: |
       The sourcedb sky model to use for the solve.
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
@@ -208,7 +215,7 @@ outputs:
     doc: |
       The filename of the output solution table. The value is taken from the input
       parameter "h5parm"
-    type: string
+    type: File
     outputBinding:
       outputEval: $(inputs.h5parm)
 hints:

@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [make_aterm_images.py]
 label: Make a-term images
@@ -48,7 +48,7 @@ inputs:
     label: Input sky model
     doc: |
       The filename of the input sky model file.
-    type: string
+    type: File
     inputBinding:
       prefix: --skymodel=
       separate: false
