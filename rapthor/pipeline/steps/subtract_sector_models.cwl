@@ -92,7 +92,7 @@ inputs:
     label: Outlier flag
     doc: |
       The flag that sets peeling of outlier sources.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --peel_outliers=
       separate: False
@@ -108,7 +108,7 @@ inputs:
     label: Bright-source flag
     doc: |
       The flag that sets peeling of bright-source sources.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --peel_bright=
       separate: False

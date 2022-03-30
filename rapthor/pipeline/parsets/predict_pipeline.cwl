@@ -145,7 +145,7 @@ inputs:
     label: Outlier flag
     doc: |
       The flag that sets peeling of outlier sources (length = 1).
-    type: string
+    type: boolean
 
   - id: nr_bright
     label: Number bright-source sectors
@@ -157,7 +157,7 @@ inputs:
     label: Bright-source flag
     doc: |
       The flag that sets peeling of bright sources (length = 1).
-    type: string
+    type: boolean
 
   - id: reweight
     label: Reweight flag

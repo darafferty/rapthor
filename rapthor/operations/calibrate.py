@@ -5,6 +5,7 @@ import os
 import logging
 from rapthor.lib.operation import Operation
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.cwl import CWLFile, CWLDir
 
 log = logging.getLogger('rapthor:calibrate')
 
@@ -145,8 +146,8 @@ class Calibrate(Operation):
         # Set the type of screen to make
         screen_type = self.field.screen_type
 
-        self.input_parms = {'timechunk_filename': timechunk_filename,
-                            'freqchunk_filename': freqchunk_filename,
+        self.input_parms = {'timechunk_filename': timechunk_filename,  # CWLDir(timechunk_filename).to_json(),
+                            'freqchunk_filename': freqchunk_filename,  # CWLDir(freqchunk_filename).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'slow_starttime': slow_starttime,
@@ -163,7 +164,7 @@ class Calibrate(Operation):
                             'combined_fast_h5parm': self.combined_fast_h5parm,
                             'output_slow_h5parm': output_slow_h5parm,
                             'combined_slow_h5parm': combined_slow_h5parm,
-                            'calibration_skymodel_file': calibration_skymodel_file,
+                            'calibration_skymodel_file': calibration_skymodel_file,  #CWLFile(calibration_skymodel_file).to_json(),
                             'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'slow_smoothnessconstraint1': slow_smoothnessconstraint1,

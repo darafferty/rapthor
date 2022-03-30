@@ -42,7 +42,7 @@ inputs:
     label: Flag to skip processing
     doc: |
       The flag that sets whether processing is skipped or not.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --skip=
       separate: false

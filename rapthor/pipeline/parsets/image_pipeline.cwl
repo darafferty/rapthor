@@ -285,7 +285,7 @@ inputs:
     doc: |
       The flag that sets whether peeling of bright sources was done in the predict
       pipeline (length = n_sectors).
-    type: string[]
+    type: boolean[]
 
 outputs: []
 

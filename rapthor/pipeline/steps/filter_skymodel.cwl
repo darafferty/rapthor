@@ -75,7 +75,7 @@ inputs:
     doc: |
       The flag that sets whether peeling of bright sources was done in the predict
       pipeline.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --peel_bright=
       separate: false

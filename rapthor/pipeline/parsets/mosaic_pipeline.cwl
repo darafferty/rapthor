@@ -51,7 +51,7 @@ inputs:
     label: Flag to skip processing
     doc: |
       The flag that sets whether processing is skipped or not (length = 1).
-    type: string
+    type: boolean
 
 outputs: []
 

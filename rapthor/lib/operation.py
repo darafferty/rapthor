@@ -4,6 +4,7 @@ Definition of the master Operation class
 import os
 import sys
 import logging
+import json
 from rapthor import _logging
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
@@ -11,6 +12,7 @@ from toil.leader import FailedJobsException
 from toil.cwl import cwltoil
 import toil.version as toil_version
 from rapthor.lib.context import Timer
+from rapthor.lib.cwl import NpEncoder
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
@@ -84,7 +86,7 @@ class Operation(object):
         self.subpipeline_parset_file = os.path.join(self.pipeline_working_dir,
                                                     'subpipeline_parset.cwl')
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
-                                                 'pipeline_inputs.yml')
+                                                 'pipeline_inputs.json')
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir,
@@ -162,19 +164,8 @@ class Operation(object):
 
         # Save the pipeline inputs to a file
         self.set_input_parameters()
-        keys = []
-        vals = []
-        for k, v in self.input_parms.items():
-            keys.append(k)
-            if type(v) is bool:
-                vals.append("'{}'".format(v))
-            elif type(v) is list and type(v[0]) is bool:
-                vals.append('[{}]'.format(','.join(["'{}'".format(ve) for ve in v])))
-            else:
-                vals.append(v)
-        tmp = '\n'.join(['{0}: {1}'.format(k, v) for k, v in zip(keys, vals)])
         with open(self.pipeline_inputs_file, 'w') as f:
-            f.write(tmp)
+            f.write(json.dumps(self.input_parms, cls=NpEncoder))
 
     def finalize(self):
         """
