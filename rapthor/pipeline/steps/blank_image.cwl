@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [blank_image.py]
 label: Make an image mask
@@ -15,7 +15,7 @@ inputs:
     doc: |
       The filenames of the input FITS image. If the file does not exist, a blank
       FITS image will be made.
-    type: string
+    type: File
     inputBinding:
       position: 0
   - id: maskfile
@@ -38,7 +38,7 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
-    type: string
+    type: File
     inputBinding:
       prefix: --vertices_file=
       separate: false
@@ -70,7 +70,7 @@ inputs:
     label: Filename of region file
     doc: |
       The filename of a user-supplied region file.
-    type: string
+    type: File
     inputBinding:
       prefix: --region_file=
       separate: false
@@ -81,7 +81,7 @@ outputs:
     doc: |
       The filename of the output FITS mask. The value is taken from the input
       parameter "maskfile".
-    type: string
+    type: File
     outputBinding:
       outputEval: $(inputs.maskfile)
 hints:

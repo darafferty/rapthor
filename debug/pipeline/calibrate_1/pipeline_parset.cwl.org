@@ -1,4 +1,4 @@
-cwlVersion: v1.2
+cwlVersion: v1.0
 class: Workflow
 label: Rapthor calibration pipeline
 doc: |
@@ -17,12 +17,7 @@ requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
 
-{% if max_cores is not none %}
-hints:
-  ResourceRequirement:
-    coresMin: 1
-    coresMax: {{ max_cores }}
-{% endif %}
+
 
 inputs:
   - id: timechunk_filename
@@ -202,7 +197,7 @@ inputs:
       The screen type to use to derive the a-term images (length = 1).
     type: string
 
-{% if do_slowgain_solve %}
+
   - id: freqchunk_filename
     label: Filename of input MS (frequency)
     doc: |
@@ -333,14 +328,8 @@ inputs:
       second slow-gain solves (length = 1).
     type: string
 
-{% if debug %}
-  - id: output_slow_h5parm_debug
-    type: string[]
 
-  - id: combined_slow_h5parm_debug
-    type: string
-{% endif %}
-{% endif %}
+
 
 outputs: []
 
@@ -350,7 +339,7 @@ steps:
     doc: |
       A sourcedb (defining the model) is required by DPPP for calibration. This
       step converts the input sky model into a sourcedb.
-    run: {{ rapthor_pipeline_dir }}/steps/make_sourcedb.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/make_sourcedb.cwl
     in:
       - id: in
         source: calibration_skymodel_file
@@ -365,17 +354,10 @@ steps:
       This step uses DDECal (in DPPP) to solve for phase corrections on short
       timescales (< 1 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for ionospheric effects.
-{% if use_scalarphase %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
-{% endif %}
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
+
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/ddecal_solve_scalarphase.cwl
+
+
     in:
       - id: msin
         source: timechunk_filename
@@ -416,7 +398,7 @@ steps:
       - id: antennaconstraint
         source: fast_antennaconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        valueFrom: '40'
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan]
     scatterMethod: dotproduct
     out:
@@ -429,7 +411,7 @@ steps:
       into a single solution table (h5parm file). If the slow gain solves are
       not done (i.e., the calibration is phase-only), the result is the final
       solution table, used to make a-term images.
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve_fast_phases/fast_phases_h5parm
@@ -438,7 +420,7 @@ steps:
     out:
       - id: outh5parm
 
-{% if do_slowgain_solve %}
+
 # Solve for slow gains
 
   - id: solve_slow_gains1
@@ -449,13 +431,8 @@ steps:
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/ddecal_solve_complexgain1.cwl
+
     in:
       - id: msin
         source: freqchunk_filename
@@ -502,7 +479,7 @@ steps:
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        valueFrom: '40'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -513,7 +490,7 @@ steps:
     doc: |
       This step combines all the gain solutions from the solve_slow_gains1 step
       into a single solution table (h5parm file).
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve_slow_gains1/slow_gains_h5parm
@@ -526,7 +503,7 @@ steps:
     label: Process slow-gain solutions 1
     doc: |
       This step processes the gain solutions, smoothing and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow_gains1/outh5parm
@@ -541,7 +518,7 @@ steps:
       This step combines the fast-phase solutions from the solve_fast_phases step
       and the slow-gain solutions from the solve_slow_gains1 into a single solution
       table (h5parm file).
-    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
         source: combine_fast_phases/outh5parm
@@ -569,13 +546,8 @@ steps:
       phase solutions and first slow-gain solutions are preapplied and stations
       are unconstrainted (so different stations are free to have different
       solutions).
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/ddecal_solve_complexgain2.cwl
+
     in:
       - id: msin
         source: freqchunk_filename
@@ -620,7 +592,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint2
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        valueFrom: '40'
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -631,7 +603,7 @@ steps:
     doc: |
       This step combines all the gain solutions from the solve_slow_gains2 step
       into a single solution table (h5parm file).
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
         source: solve_slow_gains2/slow_gains_h5parm
@@ -644,7 +616,7 @@ steps:
     label: Process slow-gain solutions 2
     doc: |
       This step processes the gain solutions, smoothing and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow_gains2/outh5parm
@@ -660,7 +632,7 @@ steps:
       solve_slow_gains2 steps into a single solution table (h5parm file).
       The phases and amplitudes from solve_slow_gains2 and the amplitudes from
       solve_slow_gains1 are used.
-    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
         source: process_slow_gains2/outh5parm
@@ -684,7 +656,7 @@ steps:
     doc: |
       This step processes the combined amplitude solutions from
       combine_slow1_and_slow2_h5parms, renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow1_and_slow2_h5parms/combinedh5parm
@@ -701,7 +673,7 @@ steps:
       (h5parm file). The phases from combine_fast_phases and the phases and
       amplitudes from normalize_slow_amplitudes are used. The result is the
       final solution table, used to make a-term images.
-    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
         source: combine_fast_phases/outh5parm
@@ -725,7 +697,7 @@ steps:
     doc: |
       This step splits the final solution table in time, to enable multi-node
       parallel processing of the a-term images.
-    run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/split_h5parms.cwl
     in:
       - id: inh5parm
         source: combine_fast_and_slow_h5parms2/combinedh5parm
@@ -740,7 +712,7 @@ steps:
     label: Make a-term images
     doc: |
       This step makes a-term images from the split final solution tables.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/make_aterm_images.cwl
     in:
       - id: h5parm
         source: split_h5parms/splith5parms
@@ -757,129 +729,10 @@ steps:
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
       - id: ncpu
-        valueFrom: '{{ max_threads }}'
+        valueFrom: '40'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
     out: []
 
-{% if debug %}
-# Solve for slow gains again, applying the first ones
 
-  - id: solve_slow_gains_debug
-    label: solve_slow_gains_debug
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_debug.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
-    in:
-      - id: msin
-        source: freqchunk_filename
-      - id: starttime
-        source: slow_starttime
-      - id: ntimes
-        source: slow_ntimes
-      - id: startchan
-        source: startchan
-      - id: nchan
-        source: nchan
-      - id: combined_h5parm
-        source: combine_fast_and_slow_h5parms2/combinedh5parm
-      - id: h5parm
-        source: output_slow_h5parm_debug
-      - id: solint
-        source: solint_slow_timestep
-      - id: solve_nchan
-        source: solint_slow_freqstep
-      - id: sourcedb
-        source: make_sourcedb/sourcedb
-      - id: llssolver
-        source: llssolver
-      - id: maxiter
-        source: maxiter
-      - id: propagatesolutions
-        source: propagatesolutions
-      - id: solveralgorithm
-        source: solveralgorithm
-      - id: onebeamperpatch
-        source: onebeamperpatch
-      - id: stepsize
-        source: stepsize
-      - id: tolerance
-        source: tolerance
-      - id: llsstarttolerance
-        source: llsstarttolerance
-      - id: llstolerance
-        source: llstolerance
-      - id: uvlambdamin
-        source: uvlambdamin
-      - id: smoothnessconstraint
-        source: slow_smoothnessconstraint
-      - id: numthreads
-        valueFrom: '{{ max_threads }}'
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
-    scatterMethod: dotproduct
-    out:
-      - id: slow_gains_h5parm
 
-  - id: combine_slow_gains_debug
-    label: combine_slow_gains_debug
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
-    in:
-      - id: inh5parms
-        source: solve_slow_gains_debug/slow_gains_h5parm
-      - id: outputh5parm
-        source: combined_slow_h5parm_debug
-    out:
-      - id: outh5parm
-
-{% endif %}
-
-{% else %}
-# Don't solve for slow gains
-
-  - id: split_h5parms
-    label: Split solution table
-    doc: |
-      This step splits the final solution table in time, to enable multi-node
-      parallel processing of the a-term images.
-    run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
-    in:
-      - id: inh5parm
-        source: combine_fast_phases/outh5parm
-      - id: outh5parms
-        source: split_outh5parm
-      - id: soltabname
-        valueFrom: 'phase000'
-    out:
-      - id: splith5parms
-
-  - id: make_aterms
-    label: Make a-term images
-    doc: |
-      This step makes a-term images from the split final solution tables.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_images.cwl
-    in:
-      - id: h5parm
-        source: split_h5parms/splith5parms
-      - id: soltabname
-        valueFrom: 'phase000'
-      - id: screen_type
-        source: screen_type
-      - id: skymodel
-        source: calibration_skymodel_file
-      - id: outroot
-        source: output_aterms_root
-      - id: sector_bounds_deg
-        source: sector_bounds_deg
-      - id: sector_bounds_mid_deg
-        source: sector_bounds_mid_deg
-      - id: ncpu
-        valueFrom: '{{ max_threads }}'
-    scatter: [h5parm, outroot]
-    scatterMethod: dotproduct
-    out: []
-
-{% endif %}

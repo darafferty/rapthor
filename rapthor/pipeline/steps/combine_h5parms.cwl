@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [combine_h5parms.py]
 label: Combines multiple h5parms
@@ -18,14 +18,14 @@ inputs:
     label: Input solution table 1
     doc: |
       The filename of the first input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 0
   - id: inh5parm2
     label: Input solution table 2
     doc: |
       The filename of the second input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 1
   - id: outh5parm
@@ -79,7 +79,7 @@ outputs:
     doc: |
       The filename of the output h5parm file. The value is taken from the input
       parameter "outh5parm".
-    type: string
+    type: File
     outputBinding:
       outputEval: $(inputs.outh5parm)
 hints:
