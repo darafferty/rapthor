@@ -165,7 +165,7 @@ class Operation(object):
         # Save the pipeline inputs to a file
         self.set_input_parameters()
         with open(self.pipeline_inputs_file, 'w') as f:
-            f.write(json.dumps(self.input_parms, cls=NpEncoder))
+            f.write(json.dumps(self.input_parms, cls=NpEncoder, indent=4, sort_keys=True))
 
     def finalize(self):
         """
