@@ -9,8 +9,8 @@
 #define ALIGNMENT 64
 
 template <class T>
-T *allocate_memory(size_t n, unsigned int alignment = ALIGNMENT) {
-  void *ptr = nullptr;
+T* allocate_memory(size_t n, unsigned int alignment = ALIGNMENT) {
+  void* ptr = nullptr;
   if (n > 0) {
     size_t bytes = n * sizeof(T);
     bytes = (((bytes - 1) / alignment) * alignment) + alignment;
@@ -34,5 +34,5 @@ T *allocate_memory(size_t n, unsigned int alignment = ALIGNMENT) {
       }
     }
   }
-  return (T *)ptr;
+  return (T*)ptr;
 }

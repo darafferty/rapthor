@@ -17,7 +17,7 @@
 namespace idg {
 namespace api {
 
-GridderBufferImpl::GridderBufferImpl(const BufferSetImpl &bufferset,
+GridderBufferImpl::GridderBufferImpl(const BufferSetImpl& bufferset,
                                      size_t bufferTimesteps)
     : BufferImpl(bufferset, bufferTimesteps),
       m_bufferUVW2(0, 0),
@@ -40,8 +40,8 @@ GridderBufferImpl::~GridderBufferImpl() {
 
 void GridderBufferImpl::grid_visibilities(
     size_t timeIndex, size_t antenna1, size_t antenna2,
-    const double *uvwInMeters, const std::complex<float> *visibilities,
-    const float *weights) {
+    const double* uvwInMeters, const std::complex<float>* visibilities,
+    const float* weights) {
   // exclude auto-correlations
   if (antenna1 == antenna2) return;
 
@@ -88,7 +88,7 @@ void GridderBufferImpl::grid_visibilities(
     }
   } else {
     std::copy_n(visibilities, m_nr_channels * nr_correlations,
-                reinterpret_cast<std::complex<float> *>(
+                reinterpret_cast<std::complex<float>*>(
                     &m_bufferVisibilities(local_bl, local_time, 0, 0)));
   }
   int nr_correlations_weights = 4;
@@ -113,7 +113,7 @@ void GridderBufferImpl::compute_avg_beam() {
                                                  subgrid_size, nr_correlations,
                                                  nr_correlations);
 
-  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy::Proxy& proxy = m_bufferset.get_proxy();
   proxy.compute_avg_beam(m_nrStations, get_frequencies_size(), m_bufferUVW2,
                          m_bufferStationPairs2, aterms, aterms_offsets,
                          m_buffer_weights2, average_beam);
@@ -139,7 +139,7 @@ void GridderBufferImpl::flush_thread_worker() {
         m_nrStations, subgridsize, subgridsize);
   }
 
-  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy::Proxy& proxy = m_bufferset.get_proxy();
 
   // Set Plan options
   Plan::Options options;
@@ -228,7 +228,7 @@ void GridderBufferImpl::finished() {
   // Retrieve the grid, this makes sure that any operations in the proxy
   // (e.g.) w-tiling, is finished and the grid passed in ::flush() can
   // be used again by the caller.
-  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy::Proxy& proxy = m_bufferset.get_proxy();
   proxy.get_final_grid();
 }
 
@@ -236,7 +236,7 @@ void GridderBufferImpl::malloc_buffers() {
   BufferImpl::malloc_buffers();
 
   int nr_correlations = m_bufferset.get_nr_correlations();
-  proxy::Proxy &proxy = m_bufferset.get_proxy();
+  proxy::Proxy& proxy = m_bufferset.get_proxy();
   m_bufferUVW2 =
       proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
   m_bufferVisibilities2 = proxy.allocate_array4d<std::complex<float>>(

@@ -16,39 +16,39 @@
 namespace idg {
 
 // in-place batched 2d-FFT for complex float  m-by-n arrays
-void fft2f(unsigned batch, int m, int n, std::complex<float> *data);
+void fft2f(unsigned batch, int m, int n, std::complex<float>* data);
 
 // in-place 2d-FFT for complex float m-by-n array
-void fft2f(int m, int n, std::complex<float> *data);
+void fft2f(int m, int n, std::complex<float>* data);
 
 // in-place 2d-FFT for complex float n-by-n array
-void fft2f(int n, std::complex<float> *data);
+void fft2f(int n, std::complex<float>* data);
 
 // in-place batched 2d-iFFT for complex float  m-b-n arrays
-void ifft2f(unsigned batch, int m, int n, std::complex<float> *data);
+void ifft2f(unsigned batch, int m, int n, std::complex<float>* data);
 
 // in-place 2d-iFFT for complex float m-by-n arrays
-void ifft2f(int m, int n, std::complex<float> *data);
+void ifft2f(int m, int n, std::complex<float>* data);
 
 // in-place 2d-iFFT for complex float n-by-n array
-void ifft2f(int n, std::complex<float> *data);
+void ifft2f(int n, std::complex<float>* data);
 
 // real-to-complex 2d-FFT for m-by-n array
-void fft2f_r2c(int m, int n, float *data_in, std::complex<float> *data_out);
+void fft2f_r2c(int m, int n, float* data_in, std::complex<float>* data_out);
 
 // real-to-complex 2d-FFT for n-by-n array
-void fft2f_r2c(int n, float *data_in, std::complex<float> *data_out);
+void fft2f_r2c(int n, float* data_in, std::complex<float>* data_out);
 
 // complex-to-real 2d-FFT for m-by-n array
-void ifft2f_c2r(int m, int n, std::complex<float> *data_in, float *data_out);
+void ifft2f_c2r(int m, int n, std::complex<float>* data_in, float* data_out);
 
 // complex-to-real 2d-FFT for n-by-n array
-void ifft2f_c2r(int n, std::complex<float> *data_in, float *data_out);
+void ifft2f_c2r(int n, std::complex<float>* data_in, float* data_out);
 
 // fftshift for m-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
-void fftshift(int m, int n, T *array) {
+void fftshift(int m, int n, T* array) {
   if (m % 2 != 0 || n % 2 != 0)
     throw std::invalid_argument(
         "Only grids with even height and width are supported.");
@@ -71,7 +71,7 @@ void fftshift(int m, int n, T *array) {
 // fftshift for m-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
-void fftshift(int batch, int m, int n, T *array) {
+void fftshift(int batch, int m, int n, T* array) {
   for (int i = 0; i < batch; i++) {
     fftshift(m, n, &array[size_t(i) * size_t(m) * size_t(n)]);
   }
@@ -80,40 +80,40 @@ void fftshift(int batch, int m, int n, T *array) {
 // fftshift for n-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
-void fftshift(int n, T *array) {
+void fftshift(int n, T* array) {
   fftshift(n, n, array);
 }
 
 // ifftshift for m-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
-void ifftshift(int batch, int m, int n, T *array) {
+void ifftshift(int batch, int m, int n, T* array) {
   fftshift(batch, m, n, array);
 }
 
 // ifftshift for m-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
-void ifftshift(int m, int n, T *array) {
+void ifftshift(int m, int n, T* array) {
   fftshift(m, n, array);
 }
 
 // ifftshift for n-by-n array of type T
 // TODO: make work for odd dimensions
 template <typename T>
-void ifftshift(int n, T *array) {
+void ifftshift(int n, T* array) {
   ifftshift(n, n, array);
 }
 
 // resize 2-dimensional array to (larger) size
-void resize2f(int m_in, int n_in, std::complex<float> *data_in, int m_out,
-              int n_out, std::complex<float> *data_out);
-void resize2f(int m_in, int n_in, float *data_in, int m_out, int n_out,
-              float *data_out);
-void resize2(int m_in, int n_in, std::complex<double> *data_in, int m_out,
-             int n_out, std::complex<double> *data_out);
-void resize2(int m_in, int n_in, double *data_in, int m_out, int n_out,
-             double *data_out);
+void resize2f(int m_in, int n_in, std::complex<float>* data_in, int m_out,
+              int n_out, std::complex<float>* data_out);
+void resize2f(int m_in, int n_in, float* data_in, int m_out, int n_out,
+              float* data_out);
+void resize2(int m_in, int n_in, std::complex<double>* data_in, int m_out,
+             int n_out, std::complex<double>* data_out);
+void resize2(int m_in, int n_in, double* data_in, int m_out, int n_out,
+             double* data_out);
 
 }  // namespace idg
 

@@ -200,7 +200,7 @@ void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
     if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index ==
                                         subgrid_index + subgrid_offset) {
       // Get information on what wtiles to flush
-      WTileUpdateInfo &wtile_flush_info = wtile_flush_set.front();
+      WTileUpdateInfo& wtile_flush_info = wtile_flush_set.front();
 
       // Project wtiles to master grid
       kernel_adder_wtiles_to_grid(nr_polarizations, grid_size, subgrid_size,
@@ -255,7 +255,7 @@ void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
         wtile_initialize_set.front().subgrid_index ==
             (int)(subgrid_index + subgrid_offset)) {
       // Get the information on what wtiles to initialize
-      WTileUpdateInfo &wtile_initialize_info = wtile_initialize_set.front();
+      WTileUpdateInfo& wtile_initialize_info = wtile_initialize_set.front();
       // Initialize the wtiles from the grid
       kernel_splitter_wtiles_from_grid(
           nr_polarizations, grid_size, subgrid_size, kWTileSize, image_size,

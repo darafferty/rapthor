@@ -25,12 +25,12 @@ class PowerSensor {
  public:
   virtual ~PowerSensor();
   virtual State read() = 0;
-  static double seconds(const State &firstState, const State &secondState);
-  static double Joules(const State &firstState, const State &secondState);
-  static double Watt(const State &firstState, const State &secondState);
+  static double seconds(const State& firstState, const State& secondState);
+  static double Joules(const State& firstState, const State& secondState);
+  static double Watt(const State& firstState, const State& secondState);
 };
 
-PowerSensor *get_power_sensor(const std::string name, const unsigned i = 0);
+PowerSensor* get_power_sensor(const std::string name, const unsigned i = 0);
 #endif
 
 }  // end namespace powersensor

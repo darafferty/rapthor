@@ -16,7 +16,7 @@ namespace kernel {
 namespace opencl {
 
 // Constructor
-InstanceOpenCL::InstanceOpenCL(cl::Context &context, int device_nr,
+InstanceOpenCL::InstanceOpenCL(cl::Context& context, int device_nr,
                                int device_id)
     : mContext(context), mPrograms(5) {
 #if defined(DEBUG)
@@ -80,7 +80,7 @@ InstanceOpenCL::~InstanceOpenCL() {
   if (fft_planned) {
     clfftDestroyPlan(&fft_plan);
   }
-  for (cl::Program *program : mPrograms) {
+  for (cl::Program* program : mPrograms) {
     delete program;
   }
   delete kernel_gridder;
@@ -145,13 +145,13 @@ void InstanceOpenCL::set_parameters() {
   }
 
   // Override parameters from environment
-  char *cstr_batch_size = getenv("BATCHSIZE");
+  char* cstr_batch_size = getenv("BATCHSIZE");
   if (cstr_batch_size) {
     auto batch_size = atoi(cstr_batch_size);
     batch_gridder = batch_size;
     batch_degridder = batch_size;
   }
-  char *cstr_block_size = getenv("BLOCKSIZE");
+  char* cstr_block_size = getenv("BLOCKSIZE");
   if (cstr_block_size) {
     auto block_size = atoi(cstr_block_size);
     block_gridder = cl::NDRange(block_size, 1);
@@ -182,7 +182,7 @@ std::string InstanceOpenCL::get_compiler_flags() {
   return flags;
 }
 
-cl::Kernel *InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
+cl::Kernel* InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
                                            std::string kernel_name,
                                            std::string flags_misc) {
 #if defined(DEBUG)
@@ -259,7 +259,7 @@ cl::Kernel *InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
   try {
     // Build the program
     mPrograms[kernel_id]->build(devices, flags.c_str());
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     const std::string name = device->getInfo<CL_DEVICE_NAME>();
     const std::string msg =
         mPrograms[kernel_id]->getBuildInfo<CL_PROGRAM_BUILD_LOG>(*device);
@@ -270,10 +270,10 @@ cl::Kernel *InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
   }
 
   // Create OpenCL kernel
-  cl::Kernel *kernel;
+  cl::Kernel* kernel;
   try {
     kernel = new cl::Kernel(*(mPrograms[kernel_id]), kernel_name.c_str());
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     std::cerr << "Loading kernel \"" << kernel_name
               << "\" failed: " << error.what() << std::endl;
     exit(EXIT_FAILURE);
@@ -282,7 +282,7 @@ cl::Kernel *InstanceOpenCL::compile_kernel(int kernel_id, std::string file_name,
   return kernel;
 }  // end compile_kernel
 
-std::ostream &operator<<(std::ostream &os, InstanceOpenCL &di) {
+std::ostream& operator<<(std::ostream& os, InstanceOpenCL& di) {
   cl::Device d = di.get_device();
 
   os << "Device: " << d.getInfo<CL_DEVICE_NAME>() << std::endl;
@@ -306,26 +306,26 @@ std::ostream &operator<<(std::ostream &os, InstanceOpenCL &di) {
  */
 State InstanceOpenCL::measure() { return powerSensor->read(); }
 
-void InstanceOpenCL::measure(PowerRecord &record, cl::CommandQueue &queue) {
+void InstanceOpenCL::measure(PowerRecord& record, cl::CommandQueue& queue) {
   record.sensor = powerSensor;
   record.enqueue(queue);
 }
 
 typedef struct {
-  PowerRecord *start;  // takes first measurement
-  PowerRecord *end;    // takes second measurement
-  cl::Event *event;    // used to update the Report
-  Report *report;
+  PowerRecord* start;  // takes first measurement
+  PowerRecord* end;    // takes second measurement
+  cl::Event* event;    // used to update the Report
+  Report* report;
 
   // Report member function pointer, used to select
   // which part of the report to update with start and
   // end when the callback for the update event is triggered.
-  void (Report::*update_report)(State &, State &);
+  void (Report::*update_report)(State&, State&);
 } UpdateData;
 
-UpdateData *get_update_data(PowerSensor *sensor, Report *report,
-                            void (Report::*update_report)(State &, State &)) {
-  UpdateData *data = new UpdateData();
+UpdateData* get_update_data(PowerSensor* sensor, Report* report,
+                            void (Report::*update_report)(State&, State&)) {
+  UpdateData* data = new UpdateData();
   data->start = new PowerRecord(sensor);
   data->end = new PowerRecord(sensor);
   data->event = new cl::Event();
@@ -334,11 +334,11 @@ UpdateData *get_update_data(PowerSensor *sensor, Report *report,
   return data;
 }
 
-void update_report_callback(cl_event, cl_int, void *userData) {
-  UpdateData *data = static_cast<UpdateData *>(userData);
-  PowerRecord *start = data->start;
-  PowerRecord *end = data->end;
-  Report *report = data->report;
+void update_report_callback(cl_event, cl_int, void* userData) {
+  UpdateData* data = static_cast<UpdateData*>(userData);
+  PowerRecord* start = data->start;
+  PowerRecord* end = data->end;
+  Report* report = data->report;
   (report->*data->update_report)(start->state, end->state);
   delete data->start;
   delete data->end;
@@ -346,15 +346,15 @@ void update_report_callback(cl_event, cl_int, void *userData) {
   delete data;
 }
 
-void InstanceOpenCL::start_measurement(void *ptr) {
-  UpdateData *data = (UpdateData *)ptr;
+void InstanceOpenCL::start_measurement(void* ptr) {
+  UpdateData* data = (UpdateData*)ptr;
 
   // Schedule the first measurement (prior to kernel execution)
   data->start->enqueue(*executequeue);
 }
 
-void InstanceOpenCL::end_measurement(void *ptr) {
-  UpdateData *data = (UpdateData *)ptr;
+void InstanceOpenCL::end_measurement(void* ptr) {
+  UpdateData* data = (UpdateData*)ptr;
 
   // Schedule the second measurement (after the kernel execution)
   data->end->enqueue(*executequeue);
@@ -367,12 +367,12 @@ void InstanceOpenCL::end_measurement(void *ptr) {
 typedef struct {
   int nr_timesteps;
   int nr_subgrids;
-  Report *report;
-  cl::Event *event;
+  Report* report;
+  cl::Event* event;
 } ReportData;
 
-ReportData *get_report_data(int nr_timesteps, int nr_subgrids, Report *report) {
-  ReportData *data = new ReportData();
+ReportData* get_report_data(int nr_timesteps, int nr_subgrids, Report* report) {
+  ReportData* data = new ReportData();
   data->nr_timesteps = nr_timesteps;
   data->nr_subgrids = nr_subgrids;
   data->report = report;
@@ -380,19 +380,19 @@ ReportData *get_report_data(int nr_timesteps, int nr_subgrids, Report *report) {
   return data;
 }
 
-void report_job_callback(cl_event, cl_int, void *userData) {
-  ReportData *data = static_cast<ReportData *>(userData);
+void report_job_callback(cl_event, cl_int, void* userData) {
+  ReportData* data = static_cast<ReportData*>(userData);
   int nr_timesteps = data->nr_timesteps;
   int nr_subgrids = data->nr_subgrids;
-  Report *report = data->report;
+  Report* report = data->report;
   report->print(nr_timesteps, nr_subgrids);
   delete data->event;
   delete data;
 }
 
-void InstanceOpenCL::enqueue_report(cl::CommandQueue &queue, int nr_timesteps,
+void InstanceOpenCL::enqueue_report(cl::CommandQueue& queue, int nr_timesteps,
                                     int nr_subgrids) {
-  ReportData *data = get_report_data(nr_timesteps, nr_subgrids, report);
+  ReportData* data = get_report_data(nr_timesteps, nr_subgrids, report);
   executequeue->enqueueMarkerWithWaitList(NULL, data->event);
   data->event->setCallback(CL_RUNNING, &report_job_callback, data);
 }
@@ -422,9 +422,9 @@ void InstanceOpenCL::compile_kernel_degridder(unsigned nr_channels) {
 void InstanceOpenCL::launch_gridder(
     int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
     float image_size, float w_step, int nr_channels, int nr_stations,
-    cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers, cl::Buffer &d_visibilities,
-    cl::Buffer &d_spheroidal, cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-    cl::Buffer &d_subgrid) {
+    cl::Buffer& d_uvw, cl::Buffer& d_wavenumbers, cl::Buffer& d_visibilities,
+    cl::Buffer& d_spheroidal, cl::Buffer& d_aterm, cl::Buffer& d_metadata,
+    cl::Buffer& d_subgrid) {
   if (nr_channels_gridder != nr_channels) {
     compile_kernel_gridder(nr_channels);
   }
@@ -446,13 +446,13 @@ void InstanceOpenCL::launch_gridder(
   kernel_gridder->setArg(11, d_metadata);
   kernel_gridder->setArg(12, d_subgrid);
   try {
-    UpdateData *data =
+    UpdateData* data =
         get_update_data(powerSensor, report, &Report::update_gridder);
     start_measurement(data);
     executequeue->enqueueNDRangeKernel(*kernel_gridder, cl::NullRange,
                                        global_size, block_gridder);
     end_measurement(data);
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     std::cerr << "Error launching gridder: " << error.what() << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -461,9 +461,9 @@ void InstanceOpenCL::launch_gridder(
 void InstanceOpenCL::launch_degridder(
     int time_offset, int nr_subgrids, int grid_size, int subgrid_size,
     float image_size, float w_step, int nr_channels, int nr_stations,
-    cl::Buffer &d_uvw, cl::Buffer &d_wavenumbers, cl::Buffer &d_visibilities,
-    cl::Buffer &d_spheroidal, cl::Buffer &d_aterm, cl::Buffer &d_metadata,
-    cl::Buffer &d_subgrid) {
+    cl::Buffer& d_uvw, cl::Buffer& d_wavenumbers, cl::Buffer& d_visibilities,
+    cl::Buffer& d_spheroidal, cl::Buffer& d_aterm, cl::Buffer& d_metadata,
+    cl::Buffer& d_subgrid) {
   if (nr_channels_degridder != nr_channels) {
     compile_kernel_degridder(nr_channels);
   }
@@ -485,13 +485,13 @@ void InstanceOpenCL::launch_degridder(
   kernel_degridder->setArg(11, d_metadata);
   kernel_degridder->setArg(12, d_subgrid);
   try {
-    UpdateData *data =
+    UpdateData* data =
         get_update_data(powerSensor, report, &Report::update_degridder);
     start_measurement(data);
     executequeue->enqueueNDRangeKernel(*kernel_degridder, cl::NullRange,
                                        global_size, block_degridder);
     end_measurement(data);
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     std::cerr << "Error launching degridder: " << error.what() << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -523,7 +523,7 @@ void InstanceOpenCL::plan_fft(unsigned size, unsigned batch) {
     fft_planned_batch = batch;
 
     // Bake plan
-    cl_command_queue *queue = &(*executequeue)();
+    cl_command_queue* queue = &(*executequeue)();
     clfftStatus status = clfftBakePlan(fft_plan, 1, queue, NULL, NULL);
     if (status != CL_SUCCESS) {
       std::cerr << "Error baking fft plan" << std::endl;
@@ -533,19 +533,19 @@ void InstanceOpenCL::plan_fft(unsigned size, unsigned batch) {
   fft_planned = true;
 }
 
-void InstanceOpenCL::launch_fft(cl::Buffer &d_data,
+void InstanceOpenCL::launch_fft(cl::Buffer& d_data,
                                 DomainAtoDomainB direction) {
   clfftDirection sign = (direction == FourierDomainToImageDomain)
                             ? CLFFT_BACKWARD
                             : CLFFT_FORWARD;
   size_t batch;
   clfftGetPlanBatchSize(fft_plan, &batch);
-  UpdateData *data =
+  UpdateData* data =
       batch > NR_CORRELATIONS
           ? get_update_data(powerSensor, report, &Report::update_subgrid_fft)
           : get_update_data(powerSensor, report, &Report::update_grid_fft);
   start_measurement(data);
-  cl_command_queue *queue = &(*executequeue)();
+  cl_command_queue* queue = &(*executequeue)();
   clfftStatus status = clfftEnqueueTransform(fft_plan, sign, 1, queue, 0, NULL,
                                              NULL, &d_data(), NULL, NULL);
   end_measurement(data);
@@ -556,8 +556,8 @@ void InstanceOpenCL::launch_fft(cl::Buffer &d_data,
 }
 
 void InstanceOpenCL::launch_adder(int nr_subgrids, int grid_size,
-                                  int subgrid_size, cl::Buffer &d_metadata,
-                                  cl::Buffer &d_subgrid, cl::Buffer &d_grid) {
+                                  int subgrid_size, cl::Buffer& d_metadata,
+                                  cl::Buffer& d_subgrid, cl::Buffer& d_grid) {
   int local_size_x = block_adder[0];
   int local_size_y = block_adder[1];
   cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
@@ -567,22 +567,22 @@ void InstanceOpenCL::launch_adder(int nr_subgrids, int grid_size,
   kernel_adder->setArg(3, d_subgrid);
   kernel_adder->setArg(4, d_grid);
   try {
-    UpdateData *data =
+    UpdateData* data =
         get_update_data(powerSensor, report, &Report::update_adder);
     start_measurement(data);
     executequeue->enqueueNDRangeKernel(*kernel_adder, cl::NullRange,
                                        global_size, block_adder);
     end_measurement(data);
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     std::cerr << "Error launching adder: " << error.what() << std::endl;
     exit(EXIT_FAILURE);
   }
 }
 
 void InstanceOpenCL::launch_splitter(int nr_subgrids, int grid_size,
-                                     int subgrid_size, cl::Buffer &d_metadata,
-                                     cl::Buffer &d_subgrid,
-                                     cl::Buffer &d_grid) {
+                                     int subgrid_size, cl::Buffer& d_metadata,
+                                     cl::Buffer& d_subgrid,
+                                     cl::Buffer& d_grid) {
   int local_size_x = block_splitter[0];
   int local_size_y = block_splitter[1];
   cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
@@ -592,40 +592,40 @@ void InstanceOpenCL::launch_splitter(int nr_subgrids, int grid_size,
   kernel_splitter->setArg(3, d_subgrid);
   kernel_splitter->setArg(4, d_grid);
   try {
-    UpdateData *data =
+    UpdateData* data =
         get_update_data(powerSensor, report, &Report::update_splitter);
     start_measurement(data);
     executequeue->enqueueNDRangeKernel(*kernel_splitter, cl::NullRange,
                                        global_size, block_splitter);
     end_measurement(data);
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     std::cerr << "Error launching splitter: " << error.what() << std::endl;
     exit(EXIT_FAILURE);
   }
 }
 
 void InstanceOpenCL::launch_scaler(int nr_subgrids, int subgrid_size,
-                                   cl::Buffer &d_subgrid) {
+                                   cl::Buffer& d_subgrid) {
   int local_size_x = block_scaler[0];
   int local_size_y = block_scaler[1];
   cl::NDRange global_size(local_size_x * nr_subgrids, local_size_y);
   kernel_scaler->setArg(0, subgrid_size);
   kernel_scaler->setArg(1, d_subgrid);
   try {
-    UpdateData *data =
+    UpdateData* data =
         get_update_data(powerSensor, report, &Report::update_scaler);
     start_measurement(data);
     executequeue->enqueueNDRangeKernel(*kernel_scaler, cl::NullRange,
                                        global_size, block_scaler);
     end_measurement(data);
-  } catch (cl::Error &error) {
+  } catch (cl::Error& error) {
     std::cerr << "Error launching scaler: " << error.what() << std::endl;
     exit(EXIT_FAILURE);
   }
 }
 
-cl::Buffer *InstanceOpenCL::reuse_memory(uint64_t size, cl::Buffer *buffer,
-                                         cl_mem_flags flags, void *ptr) {
+cl::Buffer* InstanceOpenCL::reuse_memory(uint64_t size, cl::Buffer* buffer,
+                                         cl_mem_flags flags, void* ptr) {
   if (buffer && size != buffer->getInfo<CL_MEM_SIZE>()) {
     delete buffer;
     buffer = new cl::Buffer(mContext, flags, size, ptr);
@@ -635,7 +635,7 @@ cl::Buffer *InstanceOpenCL::reuse_memory(uint64_t size, cl::Buffer *buffer,
   return buffer;
 }
 
-cl::Buffer &InstanceOpenCL::get_device_grid(unsigned int grid_size) {
+cl::Buffer& InstanceOpenCL::get_device_grid(unsigned int grid_size) {
   if (grid_size > 0) {
     auto size = auxiliary::sizeof_grid(grid_size);
     d_grid = reuse_memory(size, d_grid, CL_MEM_READ_WRITE);
@@ -643,7 +643,7 @@ cl::Buffer &InstanceOpenCL::get_device_grid(unsigned int grid_size) {
   return *d_grid;
 }
 
-cl::Buffer &InstanceOpenCL::get_device_wavenumbers(unsigned int nr_channels) {
+cl::Buffer& InstanceOpenCL::get_device_wavenumbers(unsigned int nr_channels) {
   if (nr_channels > 0) {
     auto size = auxiliary::sizeof_wavenumbers(nr_channels);
     d_wavenumbers = reuse_memory(size, d_wavenumbers, CL_MEM_READ_WRITE);
@@ -651,7 +651,7 @@ cl::Buffer &InstanceOpenCL::get_device_wavenumbers(unsigned int nr_channels) {
   return *d_wavenumbers;
 }
 
-cl::Buffer &InstanceOpenCL::get_device_aterms(unsigned int nr_stations,
+cl::Buffer& InstanceOpenCL::get_device_aterms(unsigned int nr_stations,
                                               unsigned int nr_timeslots,
                                               unsigned int subgrid_size) {
   if (nr_stations > 0 && nr_timeslots > 0 && subgrid_size > 0) {
@@ -662,7 +662,7 @@ cl::Buffer &InstanceOpenCL::get_device_aterms(unsigned int nr_stations,
   return *d_aterms;
 }
 
-cl::Buffer &InstanceOpenCL::get_device_spheroidal(unsigned int subgrid_size) {
+cl::Buffer& InstanceOpenCL::get_device_spheroidal(unsigned int subgrid_size) {
   if (subgrid_size > 0) {
     auto size = auxiliary::sizeof_spheroidal(subgrid_size);
     d_spheroidal = reuse_memory(size, d_spheroidal, CL_MEM_READ_WRITE);
@@ -670,7 +670,7 @@ cl::Buffer &InstanceOpenCL::get_device_spheroidal(unsigned int subgrid_size) {
   return *d_spheroidal;
 }
 
-cl::Buffer &InstanceOpenCL::get_host_grid(unsigned int grid_size) {
+cl::Buffer& InstanceOpenCL::get_host_grid(unsigned int grid_size) {
   if (grid_size > 0) {
     auto size = auxiliary::sizeof_grid(grid_size);
     h_grid = reuse_memory(size, h_grid, CL_MEM_ALLOC_HOST_PTR);
@@ -678,10 +678,10 @@ cl::Buffer &InstanceOpenCL::get_host_grid(unsigned int grid_size) {
   return *h_grid;
 }
 
-cl::Buffer &InstanceOpenCL::get_host_visibilities(unsigned int nr_baselines,
+cl::Buffer& InstanceOpenCL::get_host_visibilities(unsigned int nr_baselines,
                                                   unsigned int nr_timesteps,
                                                   unsigned int nr_channels,
-                                                  void *ptr) {
+                                                  void* ptr) {
   if (nr_baselines > 0 && nr_timesteps > 0 && nr_channels > 0) {
     auto size =
         auxiliary::sizeof_visibilities(nr_baselines, nr_timesteps, nr_channels);
@@ -696,8 +696,8 @@ cl::Buffer &InstanceOpenCL::get_host_visibilities(unsigned int nr_baselines,
   return *h_visibilities;
 }
 
-cl::Buffer &InstanceOpenCL::get_host_uvw(unsigned int nr_baselines,
-                                         unsigned int nr_timesteps, void *ptr) {
+cl::Buffer& InstanceOpenCL::get_host_uvw(unsigned int nr_baselines,
+                                         unsigned int nr_timesteps, void* ptr) {
   if (nr_baselines > 0 && nr_timesteps > 0) {
     auto size = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
     if (ptr) {

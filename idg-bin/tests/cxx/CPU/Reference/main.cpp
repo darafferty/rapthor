@@ -30,7 +30,7 @@ int test01() {
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
   unsigned int nr_w_layers = 1;
   float integration_time = 1.0f;
-  const char *layout_file = "LOFAR_lba.txt";
+  const char* layout_file = "LOFAR_lba.txt";
 
   // Initialize Data object
   idg::Data data = idg::get_example_data(
@@ -143,8 +143,8 @@ int test01() {
   // Compute error
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
-                   (std::complex<float> *)visibilities.data(),
-                   (std::complex<float> *)visibilities_ref.data());
+                   (std::complex<float>*)visibilities.data(),
+                   (std::complex<float>*)visibilities_ref.data());
 
   // Report error
   clog << "Grid error = " << std::scientific << grid_error << endl;
@@ -170,7 +170,7 @@ int test01() {
   return info;
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   int info = 0;
 
   info = test01();

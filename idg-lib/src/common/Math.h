@@ -34,7 +34,7 @@ inline float FUNCTION_ATTRIBUTES compute_n(float l, float m) {
  *        mshift is positive if the dec is larger than the dec at the center.
  */
 inline float FUNCTION_ATTRIBUTES compute_n(float l, float m,
-                                           const float *__restrict__ shift) {
+                                           const float* __restrict__ shift) {
   return compute_n(l - shift[0], m - shift[1]);
 }
 
@@ -66,8 +66,8 @@ FUNCTION_ATTRIBUTES inline void apply_avg_aterm_correction(
 
 template <typename T>
 inline FUNCTION_ATTRIBUTES void apply_avg_aterm_correction(const T C[16],
-                                                           T &uvXX, T &uvXY,
-                                                           T &uvYX, T &uvYY) {
+                                                           T& uvXX, T& uvXY,
+                                                           T& uvYX, T& uvYY) {
   T uv[NR_CORRELATIONS_ATERM] = {uvXX, uvXY, uvYX, uvYY};
 
   apply_avg_aterm_correction(C, uv);
@@ -79,7 +79,7 @@ inline FUNCTION_ATTRIBUTES void apply_avg_aterm_correction(const T C[16],
 }
 
 template <typename T>
-inline FUNCTION_ATTRIBUTES void matmul(const T *a, const T *b, T *c) {
+inline FUNCTION_ATTRIBUTES void matmul(const T* a, const T* b, T* c) {
   c[0] = a[0] * b[0];
   c[1] = a[0] * b[1];
   c[2] = a[2] * b[0];
@@ -91,10 +91,10 @@ inline FUNCTION_ATTRIBUTES void matmul(const T *a, const T *b, T *c) {
 }
 
 template <typename T>
-inline FUNCTION_ATTRIBUTES void conjugate(const T *a, T *b) {
+inline FUNCTION_ATTRIBUTES void conjugate(const T* a, T* b) {
   float s[8] = {1, -1, 1, -1, 1, -1, 1, -1};
-  float *a_ptr = (float *)a;
-  float *b_ptr = (float *)b;
+  float* a_ptr = (float*)a;
+  float* b_ptr = (float*)b;
 
   for (unsigned i = 0; i < 8; i++) {
     b_ptr[i] = s[i] * a_ptr[i];
@@ -114,7 +114,7 @@ FUNCTION_ATTRIBUTES inline int next_composite(int n) {
 }
 
 template <typename T>
-inline FUNCTION_ATTRIBUTES void transpose(const T *a, T *b) {
+inline FUNCTION_ATTRIBUTES void transpose(const T* a, T* b) {
   b[0] = a[0];
   b[1] = a[2];
   b[2] = a[1];
@@ -122,15 +122,15 @@ inline FUNCTION_ATTRIBUTES void transpose(const T *a, T *b) {
 }
 
 template <typename T>
-inline FUNCTION_ATTRIBUTES void hermitian(const T *a, T *b) {
+inline FUNCTION_ATTRIBUTES void hermitian(const T* a, T* b) {
   T temp[4];
   conjugate(a, temp);
   transpose(temp, b);
 }
 
 template <typename T>
-inline FUNCTION_ATTRIBUTES void apply_aterm_gridder(T *pixels, const T *aterm1,
-                                                    const T *aterm2) {
+inline FUNCTION_ATTRIBUTES void apply_aterm_gridder(T* pixels, const T* aterm1,
+                                                    const T* aterm2) {
   // Aterm 1 hermitian
   T aterm1_h[4];
   hermitian(aterm1, aterm1_h);
@@ -144,9 +144,9 @@ inline FUNCTION_ATTRIBUTES void apply_aterm_gridder(T *pixels, const T *aterm1,
 }
 
 template <typename T>
-inline FUNCTION_ATTRIBUTES void apply_aterm_degridder(T *pixels,
-                                                      const T *aterm1,
-                                                      const T *aterm2) {
+inline FUNCTION_ATTRIBUTES void apply_aterm_degridder(T* pixels,
+                                                      const T* aterm1,
+                                                      const T* aterm2) {
   // Apply aterm: P = A1 * P
   T temp[4];
   matmul(aterm1, pixels, temp);

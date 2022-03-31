@@ -19,11 +19,11 @@ namespace cu {
 /*
     Error checking
 */
-inline void __assertCudaCall(CUresult result, char const *const func,
-                             const char *const file, int const line) {
+inline void __assertCudaCall(CUresult result, char const* const func,
+                             const char* const file, int const line) {
   if (result != CUDA_SUCCESS) {
     std::stringstream message_stream;
-    const char *msg;
+    const char* msg;
     cuGetErrorString(result, &msg);
     message_stream << "CUDA Error at " << file;
     message_stream << ":" << line;
@@ -35,11 +35,11 @@ inline void __assertCudaCall(CUresult result, char const *const func,
   }
 }
 
-inline void __checkCudaCall(CUresult result, char const *const func,
-                            const char *const file, int const line) {
+inline void __checkCudaCall(CUresult result, char const* const func,
+                            const char* const file, int const line) {
   try {
     __assertCudaCall(result, func, file, line);
-  } catch (Error<CUresult> &error) {
+  } catch (Error<CUresult>& error) {
     // pass
   }
 }
@@ -92,7 +92,7 @@ size_t Device::get_total_memory() const {
 /*
     Context
 */
-Context::Context(Device &device, int flags) {
+Context::Context(Device& device, int flags) {
   _device = device;
   assertCudaCall(cuCtxCreate(&_context, flags, device));
 
@@ -109,7 +109,7 @@ void Context::freeCurrent() const { assertCudaCall(cuCtxPopCurrent(nullptr)); }
 /*
     ScopedContext
 */
-ScopedContext::ScopedContext(const Context &context) : _context(context) {
+ScopedContext::ScopedContext(const Context& context) : _context(context) {
   _context.setCurrent();
 }
 
@@ -118,12 +118,12 @@ ScopedContext::~ScopedContext() { _context.freeCurrent(); }
 /*
     HostMemory
 */
-HostMemory::HostMemory(const Context &context, size_t size, int flags)
+HostMemory::HostMemory(const Context& context, size_t size, int flags)
     : Memory(size), context_(context), flags_(flags) {
   ScopedContext scc(context);
 
   if (size != 0) {
-    void *ptr;
+    void* ptr;
     assertCudaCall(cuMemHostAlloc(&ptr, size, flags_));
     set(ptr);
   }
@@ -134,7 +134,7 @@ HostMemory::~HostMemory() { release(); }
 void HostMemory::release() {
   ScopedContext scc(context_);
 
-  void *ptr = data();
+  void* ptr = data();
   if (ptr) {
     assertCudaCall(cuMemFreeHost(ptr));
     set(nullptr);
@@ -144,7 +144,7 @@ void HostMemory::release() {
 /*
     RegisteredMemory
 */
-RegisteredMemory::RegisteredMemory(const Context &context, void *ptr,
+RegisteredMemory::RegisteredMemory(const Context& context, void* ptr,
                                    size_t size, int flags)
     : Memory(ptr, size), context_(context), flags_(flags) {
   ScopedContext scc(context);
@@ -163,7 +163,7 @@ void RegisteredMemory::release() {
 /*
     DeviceMemory
 */
-DeviceMemory::DeviceMemory(const Context &context, size_t size)
+DeviceMemory::DeviceMemory(const Context& context, size_t size)
     : Memory(size), context_(context) {
   ScopedContext scc(context_);
   if (size) {
@@ -171,7 +171,7 @@ DeviceMemory::DeviceMemory(const Context &context, size_t size)
   } else {
     device_ptr_ = 0;
   }
-  set(reinterpret_cast<void *>(&device_ptr_));
+  set(reinterpret_cast<void*>(&device_ptr_));
 }
 
 DeviceMemory::~DeviceMemory() { release(); }
@@ -200,7 +200,7 @@ void DeviceMemory::release() {
 /*
     UnifiedMemory
  */
-UnifiedMemory::UnifiedMemory(const Context &context, size_t size_,
+UnifiedMemory::UnifiedMemory(const Context& context, size_t size_,
                              unsigned flags)
     : Memory(size_), context_(context), flags_(flags) {
   ScopedContext scc(context);
@@ -209,7 +209,7 @@ UnifiedMemory::UnifiedMemory(const Context &context, size_t size_,
   if (size() > 0) {
     assertCudaCall(cuMemAllocManaged(&ptr, size(), flags));
   }
-  set(reinterpret_cast<void *>(ptr));
+  set(reinterpret_cast<void*>(ptr));
 }
 
 UnifiedMemory::~UnifiedMemory() { release(); }
@@ -219,7 +219,7 @@ void UnifiedMemory::set_advice(CUmem_advise advice) {
   assertCudaCall(cuMemAdvise(ptr, size(), advice, CU_DEVICE_CPU));
 }
 
-void UnifiedMemory::set_advice(CUmem_advise advice, Device &device) {
+void UnifiedMemory::set_advice(CUmem_advise advice, Device& device) {
   CUdeviceptr ptr = *this;
   assertCudaCall(cuMemAdvise(ptr, size(), advice, device));
 }
@@ -236,11 +236,11 @@ void UnifiedMemory::release() {
 /*
     Source
 */
-Source::Source(const char *input_file_name)
+Source::Source(const char* input_file_name)
     : input_file_name(input_file_name) {}
 
-void Source::compile(const char *output_file_name,
-                     const char *compiler_options) {
+void Source::compile(const char* output_file_name,
+                     const char* compiler_options) {
   std::stringstream command_line;
   command_line << NVCC;
   command_line << " -cubin ";
@@ -265,14 +265,14 @@ void Source::compile(const char *output_file_name,
 /*
    Module
 */
-Module::Module(const Context &context, const char *file_name)
+Module::Module(const Context& context, const char* file_name)
     : _context(context) {
   ScopedContext scc(_context);
 
   assertCudaCall(cuModuleLoad(&_module, file_name));
 }
 
-Module::Module(const Context &context, const void *data) : _context(context) {
+Module::Module(const Context& context, const void* data) : _context(context) {
   ScopedContext scc(_context);
 
   assertCudaCall(cuModuleLoadData(&_module, data));
@@ -289,12 +289,12 @@ Module::operator CUmodule() { return _module; }
 /*
     Function
 */
-Function::Function(const Context &context, Module &module, const char *name)
+Function::Function(const Context& context, Module& module, const char* name)
     : _context(context) {
   assertCudaCall(cuModuleGetFunction(&_function, module, name));
 }
 
-Function::Function(const Context &context, CUfunction function)
+Function::Function(const Context& context, CUfunction function)
     : _context(context) {
   _function = function;
 }
@@ -314,16 +314,16 @@ Function::operator CUfunction() { return _function; }
 /*
     Event
 */
-Event::Event(const Context &context, int flags) : _context(&context) {
+Event::Event(const Context& context, int flags) : _context(&context) {
   ScopedContext scc(*_context);
   assertCudaCall(cuEventCreate(&_event, flags));
 }
 
-Event::Event(Event &&event) : _context(event._context), _event(event._event) {
+Event::Event(Event&& event) : _context(event._context), _event(event._event) {
   event._context = nullptr;
 }
 
-Event &Event::operator=(Event &&event) {
+Event& Event::operator=(Event&& event) {
   _context = event._context;
   _event = event._event;
   event._context = nullptr;
@@ -344,7 +344,7 @@ void Event::synchronize() {
   }
 }
 
-float Event::elapsedTime(Event &second) {
+float Event::elapsedTime(Event& second) {
   if (_context) {
     ScopedContext scc(*_context);
     float ms;
@@ -360,7 +360,7 @@ Event::operator CUevent() { return _event; }
 /*
     Stream
 */
-Stream::Stream(const Context &context, int flags) : _context(context) {
+Stream::Stream(const Context& context, int flags) : _context(context) {
   ScopedContext scc(_context);
   assertCudaCall(cuStreamCreate(&_stream, flags));
 }
@@ -370,13 +370,13 @@ Stream::~Stream() {
   assertCudaCall(cuStreamDestroy(_stream));
 }
 
-void Stream::memcpyHtoD(CUdeviceptr devPtr, const void *hostPtr, size_t size) {
+void Stream::memcpyHtoD(CUdeviceptr devPtr, const void* hostPtr, size_t size) {
   ScopedContext scc(_context);
   assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, size, _stream));
   assertCudaCall(cuStreamSynchronize(_stream));
 }
 
-void Stream::memcpyDtoH(void *hostPtr, CUdeviceptr devPtr, size_t size) {
+void Stream::memcpyDtoH(void* hostPtr, CUdeviceptr devPtr, size_t size) {
   ScopedContext scc(_context);
   assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
   assertCudaCall(cuStreamSynchronize(_stream));
@@ -388,13 +388,13 @@ void Stream::memcpyDtoD(CUdeviceptr dstPtr, CUdeviceptr srcPtr, size_t size) {
   assertCudaCall(cuStreamSynchronize(_stream));
 }
 
-void Stream::memcpyHtoDAsync(CUdeviceptr devPtr, const void *hostPtr,
+void Stream::memcpyHtoDAsync(CUdeviceptr devPtr, const void* hostPtr,
                              size_t size) {
   ScopedContext scc(_context);
   assertCudaCall(cuMemcpyHtoDAsync(devPtr, hostPtr, size, _stream));
 }
 
-void Stream::memcpyDtoHAsync(void *hostPtr, CUdeviceptr devPtr, size_t size) {
+void Stream::memcpyDtoHAsync(void* hostPtr, CUdeviceptr devPtr, size_t size) {
   ScopedContext scc(_context);
   assertCudaCall(cuMemcpyDtoHAsync(hostPtr, devPtr, size, _stream));
 }
@@ -405,22 +405,22 @@ void Stream::memcpyDtoDAsync(CUdeviceptr dstPtr, CUdeviceptr srcPtr,
   assertCudaCall(cuMemcpyDtoDAsync(dstPtr, srcPtr, size, _stream));
 }
 
-void Stream::launchKernel(Function &function, unsigned gridX, unsigned gridY,
+void Stream::launchKernel(Function& function, unsigned gridX, unsigned gridY,
                           unsigned gridZ, unsigned blockX, unsigned blockY,
                           unsigned blockZ, unsigned sharedMemBytes,
-                          const void **parameters) {
+                          const void** parameters) {
   ScopedContext scc(_context);
   assertCudaCall(cuLaunchKernel(function, gridX, gridY, gridZ, blockX, blockY,
                                 blockZ, sharedMemBytes, _stream,
-                                const_cast<void **>(parameters), 0));
+                                const_cast<void**>(parameters), 0));
 }
 
-void Stream::launchKernel(Function &function, dim3 grid, dim3 block,
-                          unsigned sharedMemBytes, const void **parameters) {
+void Stream::launchKernel(Function& function, dim3 grid, dim3 block,
+                          unsigned sharedMemBytes, const void** parameters) {
   ScopedContext scc(_context);
   assertCudaCall(cuLaunchKernel(function, grid.x, grid.y, grid.z, block.x,
                                 block.y, block.z, sharedMemBytes, _stream,
-                                const_cast<void **>(parameters), 0));
+                                const_cast<void**>(parameters), 0));
 }
 
 void Stream::query() {
@@ -433,24 +433,24 @@ void Stream::synchronize() {
   assertCudaCall(cuStreamSynchronize(_stream));
 }
 
-void Stream::waitEvent(Event &event) {
+void Stream::waitEvent(Event& event) {
   ScopedContext scc(_context);
   assertCudaCall(cuStreamWaitEvent(_stream, event, 0));
 }
 
-void Stream::addCallback(CUstreamCallback callback, void *userData, int flags) {
+void Stream::addCallback(CUstreamCallback callback, void* userData, int flags) {
   ScopedContext scc(_context);
   assertCudaCall(cuStreamAddCallback(_stream, callback, userData, flags));
 }
 
-void Stream::record(Event &event) {
+void Stream::record(Event& event) {
   ScopedContext scc(_context);
   assertCudaCall(cuEventRecord(event, _stream));
 }
 
 Stream::operator CUstream() { return _stream; }
 
-Marker::Marker(const char *message, unsigned color) {
+Marker::Marker(const char* message, unsigned color) {
   _attributes = {0};
   _attributes.version = NVTX_VERSION;
   _attributes.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
@@ -460,7 +460,7 @@ Marker::Marker(const char *message, unsigned color) {
   _attributes.message.ascii = message;
 }
 
-Marker::Marker(const char *message, Color color)
+Marker::Marker(const char* message, Color color)
     : Marker(message, convert(color)) {}
 
 void Marker::start() { _id = nvtxRangeStartEx(&_attributes); }

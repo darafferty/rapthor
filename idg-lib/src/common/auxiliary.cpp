@@ -275,11 +275,11 @@ uint64_t sizeof_weights(unsigned int nr_baselines, unsigned int nr_timesteps,
 /*
     Misc
 */
-std::vector<int> split_int(const char *string, const char *delimiter) {
+std::vector<int> split_int(const char* string, const char* delimiter) {
   std::vector<int> splits;
-  char *string_buffer = new char[strlen(string) + 1];
+  char* string_buffer = new char[strlen(string) + 1];
   std::strcpy(string_buffer, string);
-  char *token = strtok(string_buffer, delimiter);
+  char* token = strtok(string_buffer, delimiter);
   if (token) splits.push_back(atoi(token));
   while (token) {
     token = strtok(NULL, delimiter);
@@ -289,12 +289,12 @@ std::vector<int> split_int(const char *string, const char *delimiter) {
   return splits;
 }
 
-std::vector<std::string> split_string(char *string, const char *delimiter) {
+std::vector<std::string> split_string(char* string, const char* delimiter) {
   std::vector<std::string> splits;
   if (!string) {
     return splits;
   }
-  char *token = strtok(string, delimiter);
+  char* token = strtok(string, delimiter);
   if (token) splits.push_back(token);
   while (token) {
     token = strtok(NULL, delimiter);
@@ -304,7 +304,7 @@ std::vector<std::string> split_string(char *string, const char *delimiter) {
 }
 
 std::string get_inc_dir() {
-  const char *inc_dir = std::getenv("IDG_INC_DIR");
+  const char* inc_dir = std::getenv("IDG_INC_DIR");
   if (inc_dir)
     return std::string(inc_dir);
   else
@@ -312,7 +312,7 @@ std::string get_inc_dir() {
 }
 
 std::string get_lib_dir() {
-  const char *lib_dir = std::getenv("IDG_LIB_DIR");
+  const char* lib_dir = std::getenv("IDG_LIB_DIR");
   if (lib_dir)
     return std::string(lib_dir);
   else

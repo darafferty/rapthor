@@ -50,8 +50,8 @@ float evaluate_spheroidal(float nu) {
 
 // TODO: make generic, not spheroidal specific
 // TODO: use real-to-complex and complex-to-real FFT
-void resize_spheroidal(float *__restrict__ spheroidal_in, unsigned int size_in,
-                       float *__restrict__ spheroidal_out,
+void resize_spheroidal(float* __restrict__ spheroidal_in, unsigned int size_in,
+                       float* __restrict__ spheroidal_out,
                        unsigned int size_out) {
   auto in_ft = new std::complex<float>[size_in * size_in];
   auto out_ft = new std::complex<float>[size_out * size_out];
@@ -83,7 +83,7 @@ void resize_spheroidal(float *__restrict__ spheroidal_in, unsigned int size_in,
   delete[] out_ft;
 }
 
-void init_example_aterms(Array4D<Matrix2x2<std::complex<float>>> &aterms) {
+void init_example_aterms(Array4D<Matrix2x2<std::complex<float>>>& aterms) {
   unsigned int nr_timeslots = aterms.get_w_dim();
   unsigned int nr_stations = aterms.get_z_dim();
   unsigned int height = aterms.get_y_dim();
@@ -110,7 +110,7 @@ void init_example_aterms(Array4D<Matrix2x2<std::complex<float>>> &aterms) {
 /*
  * Memory-allocation is handled by Proxy
  */
-Array1D<float> get_example_frequencies(proxy::Proxy &proxy,
+Array1D<float> get_example_frequencies(proxy::Proxy& proxy,
                                        unsigned int nr_channels,
                                        float start_frequency,
                                        float frequency_increment) {
@@ -125,7 +125,7 @@ Array1D<float> get_example_frequencies(proxy::Proxy &proxy,
 }
 
 Array4D<std::complex<float>> get_dummy_visibilities(
-    proxy::Proxy &proxy, unsigned int nr_baselines, unsigned int nr_timesteps,
+    proxy::Proxy& proxy, unsigned int nr_baselines, unsigned int nr_timesteps,
     unsigned int nr_channels, unsigned int nr_correlations) {
   assert(nr_correlations == 2 || nr_correlations == 4);
 
@@ -155,7 +155,7 @@ Array4D<std::complex<float>> get_dummy_visibilities(
 }
 
 Array4D<std::complex<float>> get_example_visibilities(
-    proxy::Proxy &proxy, Array2D<UVW<float>> &uvw, Array1D<float> &frequencies,
+    proxy::Proxy& proxy, Array2D<UVW<float>>& uvw, Array1D<float>& frequencies,
     float image_size, unsigned int nr_correlations, unsigned int grid_size,
     unsigned int nr_point_sources, int max_pixel_offset,
     unsigned int random_seed, float amplitude) {
@@ -187,7 +187,7 @@ Array4D<std::complex<float>> get_example_visibilities(
 }
 
 Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
-    proxy::Proxy &proxy, unsigned int nr_stations, unsigned int nr_baselines) {
+    proxy::Proxy& proxy, unsigned int nr_stations, unsigned int nr_baselines) {
   using T = std::pair<unsigned int, unsigned int>;
   Array1D<T> baselines = proxy.allocate_array1d<T>(nr_baselines);
 
@@ -207,7 +207,7 @@ Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
 }
 
 Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
-    proxy::Proxy &proxy, unsigned int nr_timeslots, unsigned int nr_stations,
+    proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_stations,
     unsigned int height, unsigned int width) {
   using T = Matrix2x2<std::complex<float>>;
   Array4D<T> aterms =
@@ -233,7 +233,7 @@ Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
 }
 
 Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
-    proxy::Proxy &proxy, unsigned int nr_timeslots, unsigned int nr_stations,
+    proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_stations,
     unsigned int height, unsigned int width) {
   using T = Matrix2x2<std::complex<float>>;
   Array4D<T> aterms =
@@ -259,7 +259,7 @@ Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
   return aterms;
 }
 
-Array1D<unsigned int> get_example_aterms_offsets(proxy::Proxy &proxy,
+Array1D<unsigned int> get_example_aterms_offsets(proxy::Proxy& proxy,
                                                  unsigned int nr_timeslots,
                                                  unsigned int nr_timesteps) {
   using T = unsigned int;
@@ -274,7 +274,7 @@ Array1D<unsigned int> get_example_aterms_offsets(proxy::Proxy &proxy,
   return aterms_offsets;
 }
 
-Array2D<float> get_example_spheroidal(proxy::Proxy &proxy, unsigned int height,
+Array2D<float> get_example_spheroidal(proxy::Proxy& proxy, unsigned int height,
                                       unsigned int width) {
   using T = float;
   Array2D<T> spheroidal = proxy.allocate_array2d<T>(height, width);
@@ -348,7 +348,7 @@ Array4D<std::complex<float>> get_dummy_visibilities(
 }
 
 Array4D<std::complex<float>> get_example_visibilities(
-    Array2D<UVW<float>> &uvw, Array1D<float> &frequencies, float image_size,
+    Array2D<UVW<float>>& uvw, Array1D<float>& frequencies, float image_size,
     unsigned int grid_size, unsigned int nr_correlations,
     unsigned int nr_point_sources, unsigned int max_pixel_offset,
     unsigned int random_seed, float amplitude) {
@@ -395,7 +395,7 @@ Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
 
 Data get_example_data(unsigned int max_nr_baselines, unsigned int grid_size,
                       float integration_time, unsigned int nr_channels,
-                      const std::string &layout_file) {
+                      const std::string& layout_file) {
   // Get data instance
   Data data(layout_file);
 
@@ -503,8 +503,8 @@ Array1D<float> get_zero_shift() {
   return shift;
 }
 
-void add_pt_src(Array4D<std::complex<float>> &visibilities,
-                Array2D<UVW<float>> &uvw, Array1D<float> &frequencies,
+void add_pt_src(Array4D<std::complex<float>>& visibilities,
+                Array2D<UVW<float>>& uvw, Array1D<float>& frequencies,
                 float image_size, unsigned int grid_size, float offset_x,
                 float offset_y, float amplitude) {
   auto nr_baselines = visibilities.get_w_dim();

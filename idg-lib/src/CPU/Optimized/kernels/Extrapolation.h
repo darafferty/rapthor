@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 inline void compute_extrapolation_scalar(
-    int *offset, const int outer_dim, const int inner_dim, float *input_real,
-    float *input_imag, const float *delta_real, const float *delta_imag,
-    float *output_real, float *output_imag) {
+    int* offset, const int outer_dim, const int inner_dim, float* input_real,
+    float* input_imag, const float* delta_real, const float* delta_imag,
+    float* output_real, float* output_imag) {
   for (int o = 0; o < outer_dim; o++) {
     for (int i = *offset; i < inner_dim; i++) {
       float value_current_real = input_real[i];
@@ -25,12 +25,12 @@ inline void compute_extrapolation_scalar(
   *offset = inner_dim;
 }  // compute_extrapolation_scalar
 
-inline void compute_extrapolation_avx(int *offset, const int outer_dim,
-                                      const int inner_dim, float *input_real,
-                                      float *input_imag,
-                                      const float *delta_real,
-                                      const float *delta_imag,
-                                      float *output_real, float *output_imag) {
+inline void compute_extrapolation_avx(int* offset, const int outer_dim,
+                                      const int inner_dim, float* input_real,
+                                      float* input_imag,
+                                      const float* delta_real,
+                                      const float* delta_imag,
+                                      float* output_real, float* output_imag) {
 #if defined(__AVX__)
   const int vector_length = 8;
 
@@ -60,9 +60,9 @@ inline void compute_extrapolation_avx(int *offset, const int outer_dim,
 }  // end compute_extrapolation_avx
 
 inline void compute_extrapolation_avx_fma(
-    int *offset, const int outer_dim, const int inner_dim, float *input_real,
-    float *input_imag, const float *delta_real, const float *delta_imag,
-    float *output_real, float *output_imag) {
+    int* offset, const int outer_dim, const int inner_dim, float* input_real,
+    float* input_imag, const float* delta_real, const float* delta_imag,
+    float* output_real, float* output_imag) {
 #if defined(__FMA__)
   const int vector_length = 8;
 
@@ -90,10 +90,10 @@ inline void compute_extrapolation_avx_fma(
 }  // end compute_extrapolation_avx_fma
 
 inline void compute_extrapolation(const int outer_dim, const int inner_dim,
-                                  float *input_real, float *input_imag,
-                                  const float *delta_real,
-                                  const float *delta_imag, float *output_real,
-                                  float *output_imag) {
+                                  float* input_real, float* input_imag,
+                                  const float* delta_real,
+                                  const float* delta_imag, float* output_real,
+                                  float* output_imag) {
   int offset = 0;
 
   // Vectorized loop, 8-elements, AVX FMA

@@ -14,11 +14,11 @@ namespace opencl {
 class PowerRecord {
  public:
   PowerRecord();
-  PowerRecord(powersensor::PowerSensor *sensor);
+  PowerRecord(powersensor::PowerSensor* sensor);
 
-  void enqueue(cl::CommandQueue &queue);
-  static void getPower(cl_event, cl_int, void *userData);
-  powersensor::PowerSensor *sensor;
+  void enqueue(cl::CommandQueue& queue);
+  static void getPower(cl_event, cl_int, void* userData);
+  powersensor::PowerSensor* sensor;
   powersensor::State state;
   cl::Event event;
 };

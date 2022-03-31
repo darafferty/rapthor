@@ -10,9 +10,9 @@ using namespace std;
 namespace idg {
 
 void kernel_fft_composite(unsigned batch, unsigned int m, unsigned int n,
-                          std::complex<float> *data, int sign) {
-  fftwf_complex *in_ptr = reinterpret_cast<fftwf_complex *>(data);
-  fftwf_complex *out_ptr = reinterpret_cast<fftwf_complex *>(data);
+                          std::complex<float>* data, int sign) {
+  fftwf_complex* in_ptr = reinterpret_cast<fftwf_complex*>(data);
+  fftwf_complex* out_ptr = reinterpret_cast<fftwf_complex*>(data);
 
   // Initialize FFT plans
   fftwf_plan plan_col = fftwf_plan_dft_1d(n, NULL, NULL, sign, FFTW_ESTIMATE);
@@ -45,7 +45,7 @@ void kernel_fft_composite(unsigned batch, unsigned int m, unsigned int n,
 
       // FFT column
       for (size_t j = 0; j < unroll; j++) {
-        fftwf_complex *tmp_ptr = reinterpret_cast<fftwf_complex *>(&tmp[j * m]);
+        fftwf_complex* tmp_ptr = reinterpret_cast<fftwf_complex*>(&tmp[j * m]);
         fftwf_execute_dft(plan_col, tmp_ptr, tmp_ptr);
       }
 
@@ -69,8 +69,8 @@ void kernel_fft_composite(unsigned batch, unsigned int m, unsigned int n,
 }
 
 void kernel_fft_coarse(int batch, int height, int width,
-                       std::complex<float> *data, int sign) {
-  fftwf_complex *data_ptr = reinterpret_cast<fftwf_complex *>(data);
+                       std::complex<float>* data, int sign) {
+  fftwf_complex* data_ptr = reinterpret_cast<fftwf_complex*>(data);
 
   // Create plan
   fftwf_plan plan;
@@ -79,7 +79,7 @@ void kernel_fft_coarse(int batch, int height, int width,
 
 #pragma omp parallel for private(data_ptr)
   for (int i = 0; i < batch; i++) {
-    data_ptr = reinterpret_cast<fftwf_complex *>(data) + (i * height * width);
+    data_ptr = reinterpret_cast<fftwf_complex*>(data) + (i * height * width);
 
     // Execute FFTs
     fftwf_execute_dft(plan, data_ptr, data_ptr);
@@ -90,7 +90,7 @@ void kernel_fft_coarse(int batch, int height, int width,
 }
 
 void kernel_fft(unsigned batch, int height, int width,
-                std::complex<float> *data, int sign) {
+                std::complex<float>* data, int sign) {
   int n = std::max(height, width);
 
   // Select FFT based on the size of the transformation
@@ -103,28 +103,28 @@ void kernel_fft(unsigned batch, int height, int width,
   }
 }
 
-void fft2f(unsigned batch, int m, int n, complex<float> *data) {
+void fft2f(unsigned batch, int m, int n, complex<float>* data) {
   ifftshift(batch, m, n, data);
   kernel_fft(batch, m, n, data, FFTW_FORWARD);
   fftshift(batch, m, n, data);
 }
 
-void fft2f(int m, int n, std::complex<float> *data) { fft2f(1, m, n, data); }
+void fft2f(int m, int n, std::complex<float>* data) { fft2f(1, m, n, data); }
 
-void fft2f(int n, std::complex<float> *data) { fft2f(n, n, data); }
+void fft2f(int n, std::complex<float>* data) { fft2f(n, n, data); }
 
-void ifft2f(unsigned batch, int m, int n, complex<float> *data) {
+void ifft2f(unsigned batch, int m, int n, complex<float>* data) {
   ifftshift(batch, m, n, data);
   kernel_fft(batch, m, n, data, FFTW_BACKWARD);
   fftshift(batch, m, n, data);
 }
 
-void ifft2f(int m, int n, std::complex<float> *data) { ifft2f(1, n, n, data); }
+void ifft2f(int m, int n, std::complex<float>* data) { ifft2f(1, n, n, data); }
 
-void ifft2f(int n, std::complex<float> *data) { ifft2f(n, n, data); }
+void ifft2f(int n, std::complex<float>* data) { ifft2f(n, n, data); }
 
-void fft2f_r2c(int m, int n, float *data_in, complex<float> *data_out) {
-  fftwf_complex *tmp = (fftwf_complex *)data_out;
+void fft2f_r2c(int m, int n, float* data_in, complex<float>* data_out) {
+  fftwf_complex* tmp = (fftwf_complex*)data_out;
   fftwf_plan plan;
 
 #pragma omp critical
@@ -135,12 +135,12 @@ void fft2f_r2c(int m, int n, float *data_in, complex<float> *data_out) {
   fftwf_destroy_plan(plan);
 }
 
-void fft2f_r2c(int n, float *data_in, complex<float> *data_out) {
+void fft2f_r2c(int n, float* data_in, complex<float>* data_out) {
   fft2f_r2c(n, n, data_in, data_out);
 }
 
-void ifft2f_c2r(int m, int n, complex<float> *data_in, float *data_out) {
-  fftwf_complex *tmp = (fftwf_complex *)data_in;
+void ifft2f_c2r(int m, int n, complex<float>* data_in, float* data_out) {
+  fftwf_complex* tmp = (fftwf_complex*)data_in;
   fftwf_plan plan;
 
 #pragma omp critical
@@ -151,12 +151,12 @@ void ifft2f_c2r(int m, int n, complex<float> *data_in, float *data_out) {
   fftwf_destroy_plan(plan);
 }
 
-void ifft2f_c2r(int n, complex<float> *data_in, float *data_out) {
+void ifft2f_c2r(int n, complex<float>* data_in, float* data_out) {
   ifft2f_c2r(n, n, data_in, data_out);
 }
 
-void resize2f(int m_in, int n_in, complex<float> *data_in, int m_out, int n_out,
-              complex<float> *data_out) {
+void resize2f(int m_in, int n_in, complex<float>* data_in, int m_out, int n_out,
+              complex<float>* data_out) {
   // scale before FFT
   float s = 1.0f / (m_in * n_in);
   for (int i = 0; i < m_in; i++) {
@@ -209,8 +209,8 @@ void resize2f(int m_in, int n_in, complex<float> *data_in, int m_out, int n_out,
   ifft2f(m_out, n_out, data_out);
 }
 
-void resize2f(int m_in, int n_in, float *data_in, int m_out, int n_out,
-              float *data_out) {
+void resize2f(int m_in, int n_in, float* data_in, int m_out, int n_out,
+              float* data_out) {
   auto copy_in = new std::complex<float>[m_in * n_in];
   auto copy_out = new std::complex<float>[m_out * n_out];
 
