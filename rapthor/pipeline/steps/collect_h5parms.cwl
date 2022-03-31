@@ -31,11 +31,11 @@ outputs:
   - id: outh5parm
     label: Output solution table
     doc: |
-      The filenames of the output h5parm files. The value are taken from the input
+      The filename of the output h5parm file. The value is taken from the input
       parameter "outputh5parm".
     type: File
     outputBinding:
-      outputEval: $(inputs.outputh5parm)
+      glob: $(inputs.outputh5parm)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

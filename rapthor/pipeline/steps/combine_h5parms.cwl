@@ -11,7 +11,7 @@ doc: |
   the solutions if needed.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
 
 inputs:
   - id: inh5parm1
@@ -81,7 +81,7 @@ outputs:
       parameter "outh5parm".
     type: File
     outputBinding:
-      outputEval: $(inputs.outh5parm)
+      glob: $(inputs.outh5parm)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

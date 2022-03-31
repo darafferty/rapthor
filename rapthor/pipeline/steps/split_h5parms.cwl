@@ -40,9 +40,9 @@ outputs:
     doc: |
       The filenames of the output h5parm files. The value is taken from the input
       parameter "outh5parms"
-    type: string[]
+    type: File[]
     outputBinding:
-      outputEval: $(inputs.outh5parms)
+      glob: $(inputs.outh5parms)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

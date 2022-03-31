@@ -26,7 +26,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: string
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -144,7 +144,7 @@ outputs:
   - id: slow_gains_h5parm
     type: File
     outputBinding:
-      outputEval: $(inputs.h5parm)
+      glob: $(inputs.h5parm)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

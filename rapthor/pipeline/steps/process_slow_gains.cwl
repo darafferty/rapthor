@@ -7,7 +7,11 @@ doc: |
   them.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.slowh5parm)
+        writable: true
 
 arguments:
   - '--normalize=True'
@@ -37,7 +41,7 @@ outputs:
       parameter "slowh5parm".
     type: File
     outputBinding:
-      outputEval: $(inputs.slowh5parm)
+      glob: $(inputs.slowh5parm.basename)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

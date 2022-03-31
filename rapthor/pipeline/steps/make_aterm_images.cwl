@@ -17,7 +17,7 @@ inputs:
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 0
   - id: soltabname
@@ -77,7 +77,12 @@ inputs:
       prefix: --ncpu=
       separate: false
 
-outputs: []
+outputs:
+  - id: output_images
+    type: File[]
+    outputBinding:
+      glob: '$(inputs.outroot)*'
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

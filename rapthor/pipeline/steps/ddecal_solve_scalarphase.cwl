@@ -217,7 +217,7 @@ outputs:
       parameter "h5parm"
     type: File
     outputBinding:
-      outputEval: $(inputs.h5parm)
+      glob: $(inputs.h5parm)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

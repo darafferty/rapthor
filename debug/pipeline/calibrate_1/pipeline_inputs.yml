@@ -1,7 +1,9 @@
 timechunk_filename: 
   - class: Directory
     path: /project/rapthor/Data/rapthor/HBA_short/allbands.ms
-freqchunk_filename: ['/project/rapthor/Data/rapthor/HBA_short/allbands.ms']
+freqchunk_filename: 
+  - class: Directory
+    path: /project/rapthor/Data/rapthor/HBA_short/allbands.ms
 starttime: ['21Dec2017/07:14:40.206']
 ntimes: [4]
 slow_starttime: ['21Dec2017/07:14:40.206']
@@ -15,9 +17,9 @@ solint_slow_freqstep: [10]
 calibrator_patch_names: ['Patch_16', 'Patch_19', 'Patch_42', 'Patch_43', 'Patch_49', 'Patch_77', 'Patch_84']
 calibrator_fluxes: [0.40096309185781037, 3.136864808544548, 3.52758957585813, 2.628998527242241, 1.3278241489560119, 0.45155136047585037, 1.1815416704870152]
 output_fast_h5parm: ['fast_phase_0.h5parm']
-combined_fast_h5parm: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/fast_phases.h5parm
-output_slow_h5parm: ['/project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/slow_gain_0.h5parm']
-combined_slow_h5parm: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/slow_gains.h5parm
+combined_fast_h5parm: fast_phases.h5parm
+output_slow_h5parm: ['slow_gain_0.h5parm']
+combined_slow_h5parm: slow_gains.h5parm
 calibration_skymodel_file: 
   class: File
   path: /project/rapthor/Share/rapthor.rap-423/HBA_short/skymodels/calibrate_1/calibration_skymodel.txt
@@ -36,17 +38,17 @@ llstolerance: 1e-07
 uvlambdamin: 80.0
 sector_bounds_deg: '[259.229353;57.200249;258.449510;57.620213]'
 sector_bounds_mid_deg: '[258.841667;57.410833]'
-split_outh5parm: ['/project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/split_solutions_0.h5']
-output_aterms_root: ['/project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/diagonal_aterms_0']
+split_outh5parm: ['split_solutions_0.h5']
+output_aterms_root: ['diagonal_aterms_0']
 screen_type: tessellated
-combined_h5parms: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/combined_solutions.h5
+combined_h5parms: combined_solutions.h5
 fast_antennaconstraint: '[[CS001HBA0,CS002HBA0,CS003HBA0,CS004HBA0,CS005HBA0,CS006HBA0,CS007HBA0,CS011HBA0,CS013HBA0,CS017HBA0,CS021HBA0,CS024HBA0,CS026HBA0,CS028HBA0,CS030HBA0,CS031HBA0,CS032HBA0,CS101HBA0,CS103HBA0,CS201HBA0,CS301HBA0,CS302HBA0,CS401HBA0,CS501HBA0,CS001HBA1,CS002HBA1,CS003HBA1,CS004HBA1,CS005HBA1,CS006HBA1,CS007HBA1,CS011HBA1,CS013HBA1,CS017HBA1,CS021HBA1,CS024HBA1,CS026HBA1,CS028HBA1,CS030HBA1,CS031HBA1,CS032HBA1,CS101HBA1,CS103HBA1,CS201HBA1,CS301HBA1,CS302HBA1,CS401HBA1,CS501HBA1]]'
 slow_antennaconstraint: '[[CS001HBA0,CS001HBA1,CS002HBA0,CS002HBA1,CS003HBA0,CS003HBA1,CS004HBA0,CS004HBA1,CS005HBA0,CS005HBA1,CS006HBA0,CS006HBA1,CS007HBA0,CS007HBA1,CS011HBA0,CS011HBA1,CS013HBA0,CS013HBA1,CS017HBA0,CS017HBA1,CS021HBA0,CS021HBA1,CS024HBA0,CS024HBA1,CS026HBA0,CS026HBA1,CS028HBA0,CS028HBA1,CS030HBA0,CS030HBA1,CS031HBA0,CS031HBA1,CS032HBA0,CS032HBA1,CS101HBA0,CS101HBA1,CS103HBA0,CS103HBA1,CS201HBA0,CS201HBA1,CS301HBA0,CS301HBA1,CS302HBA0,CS302HBA1,CS401HBA0,CS401HBA1,CS501HBA0,CS501HBA1,RS106HBA,RS205HBA,RS208HBA,RS210HBA,RS305HBA,RS306HBA,RS307HBA,RS310HBA,RS406HBA,RS407HBA,RS409HBA,RS503HBA,RS508HBA,RS509HBA]]'
 solint_slow_timestep2: [4]
 solint_slow_freqstep2: [10]
 slow_smoothnessconstraint2: 3000000.0
-output_slow_h5parm2: ['/project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/slow_gain2_0.h5parm']
-combined_slow_h5parm1: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/slow_gains1.h5parm
-combined_slow_h5parm2: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/slow_gains2.h5parm
-combined_h5parms1: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/combined_solutions1.h5
-combined_h5parms2: /project/rapthor/Share/rapthor.rap-423/HBA_short/pipelines/calibrate_1/combined_solutions2.h5
+output_slow_h5parm2: ['slow_gain2_0.h5parm']
+combined_slow_h5parm1: slow_gains1.h5parm
+combined_slow_h5parm2: slow_gains2.h5parm
+combined_h5parms1: combined_solutions1.h5
+combined_h5parms2: combined_solutions2.h5
