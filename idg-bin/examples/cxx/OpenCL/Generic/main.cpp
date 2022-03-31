@@ -7,4 +7,4 @@ using ProxyType = idg::proxy::opencl::Generic;
 
 #include "common.h"
 
-int main(int argc, char **argv) { run(); }
+int main(int argc, char** argv) { run(); }

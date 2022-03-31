@@ -12,7 +12,7 @@
 #include "idg-cpu.h"
 #include "idg-util.h"  // Data init routines
 
-std::tuple<int, int, int, int, int, int, int, bool, bool, const char *>
+std::tuple<int, int, int, int, int, int, int, bool, bool, const char*>
 read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;
   const unsigned int DEFAULT_NR_CHANNELS = 16;
@@ -22,45 +22,45 @@ read_parameters() {
   const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const bool DEFAULT_USE_WTILES = false;
   const bool DEFAULT_PRINT_METADATA = false;
-  const char *DEFAULT_LAYOUT_FILE = "LOFAR_lba.txt";
+  const char* DEFAULT_LAYOUT_FILE = "LOFAR_lba.txt";
 
-  char *cstr_nr_stations = getenv("NR_STATIONS");
+  char* cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
       cstr_nr_stations ? atoi(cstr_nr_stations) : DEFAULT_NR_STATIONS;
 
-  char *cstr_nr_channels = getenv("NR_CHANNELS");
+  char* cstr_nr_channels = getenv("NR_CHANNELS");
   auto nr_channels =
       cstr_nr_channels ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
 
-  char *cstr_nr_timesteps = getenv("NR_TIMESTEPS");
+  char* cstr_nr_timesteps = getenv("NR_TIMESTEPS");
   auto nr_timesteps =
       cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
 
-  char *cstr_nr_timeslots = getenv("NR_TIMESLOTS");
+  char* cstr_nr_timeslots = getenv("NR_TIMESLOTS");
   auto nr_timeslots =
       cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
-  char *cstr_grid_size = getenv("GRIDSIZE");
+  char* cstr_grid_size = getenv("GRIDSIZE");
   auto grid_size = cstr_grid_size ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
 
-  char *cstr_subgrid_size = getenv("SUBGRIDSIZE");
+  char* cstr_subgrid_size = getenv("SUBGRIDSIZE");
   auto subgrid_size =
       cstr_subgrid_size ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
 
-  char *cstr_kernel_size = getenv("KERNELSIZE");
+  char* cstr_kernel_size = getenv("KERNELSIZE");
   auto kernel_size =
       cstr_kernel_size ? atoi(cstr_kernel_size) : (subgrid_size / 4) + 1;
 
-  char *cstr_use_wtiles = getenv("USE_WTILES");
+  char* cstr_use_wtiles = getenv("USE_WTILES");
   auto use_wtiles =
       cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
 
-  char *cstr_print_metadata = getenv("PRINT_METADATA");
+  char* cstr_print_metadata = getenv("PRINT_METADATA");
   auto print_metadata =
       cstr_print_metadata ? atoi(cstr_print_metadata) : DEFAULT_PRINT_METADATA;
 
-  char *cstr_layout_file = getenv("LAYOUT_FILE");
-  const char *layout_file =
+  char* cstr_layout_file = getenv("LAYOUT_FILE");
+  const char* layout_file =
       cstr_layout_file ? cstr_layout_file : DEFAULT_LAYOUT_FILE;
 
   return std::make_tuple(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
@@ -74,7 +74,7 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
                       unsigned int subgrid_size, unsigned int kernel_size) {
   const int fw1 = 30;
   const int fw2 = 10;
-  std::ostream &os = std::clog;
+  std::ostream& os = std::clog;
 
   os << "-----------" << std::endl;
   os << "PARAMETERS:" << std::endl;
@@ -118,7 +118,7 @@ int next_composite(int n) {
   }
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   // Constants
   unsigned int nr_stations;
   unsigned int nr_channels;
@@ -213,7 +213,7 @@ int main(int argc, char **argv) {
 
   if (print_metadata) {
     unsigned int nr_subgrids = plan->get_nr_subgrids();
-    const idg::Metadata *metadata = plan->get_metadata_ptr();
+    const idg::Metadata* metadata = plan->get_metadata_ptr();
     for (unsigned i = 0; i < nr_subgrids; i++) {
       std::cout << metadata[i] << std::endl;
     }
@@ -227,9 +227,9 @@ int main(int argc, char **argv) {
     // Get a map with all the tile coordinates
     idg::WTileMap tile_map;
     unsigned int nr_subgrids = plan->get_nr_subgrids();
-    const idg::Metadata *metadata = plan->get_metadata_ptr();
+    const idg::Metadata* metadata = plan->get_metadata_ptr();
     for (unsigned i = 0; i < nr_subgrids; i++) {
-      idg::Metadata &m = const_cast<idg::Metadata &>(metadata[i]);
+      idg::Metadata& m = const_cast<idg::Metadata&>(metadata[i]);
       idg::WTileInfo tile_info;
       tile_map[m.wtile_coordinate] = tile_info;
     }
@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
     int nr_tiles = tile_coordinates.size();
     int wtile_size = 128;
     float max_abs_w = 0.0;
-    for (auto &tile_coordinate : tile_coordinates) {
+    for (auto& tile_coordinate : tile_coordinates) {
       float w = (tile_coordinate.z + 0.5f) * w_step;
       max_abs_w = std::max(max_abs_w, std::abs(w));
     }
@@ -283,7 +283,7 @@ int main(int argc, char **argv) {
     for (int y = 0; y < (int)grid_size; y++) {
       std::vector<int> row(grid_size);
 
-      for (const auto &tile_coordinate : tile_coordinates) {
+      for (const auto& tile_coordinate : tile_coordinates) {
         int x0 = tile_coordinate.x * wtile_size -
                  (padded_tile_size - wtile_size) / 2 + grid_size / 2;
         int y0 = tile_coordinate.y * wtile_size -

@@ -19,12 +19,12 @@ void kernel_average_beam(const unsigned int nr_baselines,
                          const unsigned int nr_aterms,
                          const unsigned int subgrid_size,
                          const unsigned int nr_polarizations,
-                         const idg::UVW<float> *__restrict__ uvw_,
-                         const idg::Baseline *__restrict__ baselines_,
-                         const std::complex<float> *__restrict__ aterms_,
-                         const unsigned int *__restrict__ aterms_offsets_,
-                         const float *__restrict__ weights_,
-                         std::complex<float> *__restrict__ average_beam_) {
+                         const idg::UVW<float>* __restrict__ uvw_,
+                         const idg::Baseline* __restrict__ baselines_,
+                         const std::complex<float>* __restrict__ aterms_,
+                         const unsigned int* __restrict__ aterms_offsets_,
+                         const float* __restrict__ weights_,
+                         std::complex<float>* __restrict__ average_beam_) {
   // Define multidimensional types
   typedef std::complex<float> AverageBeam[subgrid_size * subgrid_size]
                                          [nr_polarizations][nr_polarizations];
@@ -38,20 +38,19 @@ void kernel_average_beam(const unsigned int nr_baselines,
   typedef float SumOfWeights[nr_baselines][nr_aterms][nr_polarizations];
 
   // Cast class members to multidimensional types used in this method
-  const ATerms &aterms = *reinterpret_cast<const ATerms *>(aterms_);
-  AverageBeam &average_beam = *reinterpret_cast<AverageBeam *>(average_beam_);
-  const ATermOffsets &aterm_offsets =
-      *reinterpret_cast<const ATermOffsets *>(aterms_offsets_);
-  const StationPairs &station_pairs =
-      *reinterpret_cast<const StationPairs *>(baselines_);
-  const UVW &uvw = *reinterpret_cast<const UVW *>(uvw_);
-  const Weights &weights = *reinterpret_cast<const Weights *>(weights_);
+  const ATerms& aterms = *reinterpret_cast<const ATerms*>(aterms_);
+  AverageBeam& average_beam = *reinterpret_cast<AverageBeam*>(average_beam_);
+  const ATermOffsets& aterm_offsets =
+      *reinterpret_cast<const ATermOffsets*>(aterms_offsets_);
+  const StationPairs& station_pairs =
+      *reinterpret_cast<const StationPairs*>(baselines_);
+  const UVW& uvw = *reinterpret_cast<const UVW*>(uvw_);
+  const Weights& weights = *reinterpret_cast<const Weights*>(weights_);
 
   // Initialize sum of weights
   std::vector<float> sum_of_weights_buffer(
       nr_baselines * nr_aterms * nr_polarizations, 0.0);
-  SumOfWeights &sum_of_weights =
-      *((SumOfWeights *)sum_of_weights_buffer.data());
+  SumOfWeights& sum_of_weights = *((SumOfWeights*)sum_of_weights_buffer.data());
 
 // Compute sum of weights
 #pragma omp parallel for
@@ -124,7 +123,7 @@ void kernel_average_beam(const unsigned int nr_baselines,
         for (unsigned int ii = 0; ii < nr_polarizations; ii++) {
           for (unsigned int jj = 0; jj < nr_polarizations; jj++) {
             // Load weights for current baseline, aterm
-            float *weights = &sum_of_weights[bl][n][0];
+            float* weights = &sum_of_weights[bl][n][0];
 
             // Compute real and imaginary part of update separately
             float update_real = 0;

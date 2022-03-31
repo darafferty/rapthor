@@ -11,13 +11,13 @@ namespace opencl {
 
 PowerRecord::PowerRecord(){};
 
-PowerRecord::PowerRecord(powersensor::PowerSensor *sensor) : sensor(sensor) {}
+PowerRecord::PowerRecord(powersensor::PowerSensor* sensor) : sensor(sensor) {}
 
 void signal_handler(int sig) {
   // Ignore signal
 }
 
-void PowerRecord::enqueue(cl::CommandQueue &queue) {
+void PowerRecord::enqueue(cl::CommandQueue& queue) {
   // Hack to ignore signals that might occur
   // when using the Nvidia OpenCL runtime
   struct sigaction act;
@@ -31,8 +31,8 @@ void PowerRecord::enqueue(cl::CommandQueue &queue) {
   event.setCallback(CL_RUNNING, &PowerRecord::getPower, this);
 }
 
-void PowerRecord::getPower(cl_event event, cl_int, void *userData) {
-  PowerRecord *record = static_cast<PowerRecord *>(userData);
+void PowerRecord::getPower(cl_event event, cl_int, void* userData) {
+  PowerRecord* record = static_cast<PowerRecord*>(userData);
   record->state = record->sensor->read();
 }
 

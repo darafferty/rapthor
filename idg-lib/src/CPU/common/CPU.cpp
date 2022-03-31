@@ -43,10 +43,10 @@ std::unique_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes) {
 }
 
 std::unique_ptr<Plan> CPU::make_plan(
-    const int kernel_size, const Array1D<float> &frequencies,
-    const Array2D<UVW<float>> &uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
-    const Array1D<unsigned int> &aterms_offsets, Plan::Options options) {
+    const int kernel_size, const Array1D<float>& frequencies,
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array1D<unsigned int>& aterms_offsets, Plan::Options options) {
   if (supports_wtiling() && m_cache_state.w_step != 0.0 &&
       m_wtiles.get_wtile_buffer_size()) {
     options.w_step = m_cache_state.w_step;
@@ -62,7 +62,7 @@ std::unique_ptr<Plan> CPU::make_plan(
 }
 
 void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
-                     const Array1D<float> &shift) {
+                     const Array1D<float>& shift) {
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
   const int nr_polarizations = m_grid->get_z_dim();
   const size_t grid_size = m_grid->get_x_dim();
@@ -80,7 +80,7 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
     auto image_size = grid_size * m_cache_state.cell_size;
     auto subgrid_size = m_cache_state.subgrid_size;
     auto w_step = m_cache_state.w_step;
-    auto &shift = m_cache_state.shift;
+    auto& shift = m_cache_state.shift;
     State states[2];
     m_report->initialize(0, subgrid_size, grid_size);
     states[0] = m_powersensor->read();
@@ -96,7 +96,7 @@ std::shared_ptr<Grid> CPU::get_final_grid() {
   return m_grid;
 }
 
-unsigned int CPU::compute_jobsize(const Plan &plan,
+unsigned int CPU::compute_jobsize(const Plan& plan,
                                   const unsigned int nr_timesteps,
                                   const unsigned int nr_channels,
                                   const unsigned int nr_correlations,
@@ -149,13 +149,13 @@ unsigned int CPU::compute_jobsize(const Plan &plan,
     High level routines
 */
 void CPU::do_gridding(
-    const Plan &plan, const Array1D<float> &frequencies,
-    const Array4D<std::complex<float>> &visibilities,
-    const Array2D<UVW<float>> &uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
-    const Array4D<Matrix2x2<std::complex<float>>> &aterms,
-    const Array1D<unsigned int> &aterms_offsets,
-    const Array2D<float> &spheroidal) {
+    const Plan& plan, const Array1D<float>& frequencies,
+    const Array4D<std::complex<float>>& visibilities,
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array1D<unsigned int>& aterms_offsets,
+    const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
@@ -172,7 +172,7 @@ void CPU::do_gridding(
   auto nr_polarizations = m_grid->get_z_dim();
   auto grid_size = m_grid->get_x_dim();
   auto subgrid_size = plan.get_subgrid_size();
-  auto &shift = plan.get_shift();
+  auto& shift = plan.get_shift();
   auto w_step = plan.get_w_step();
   auto image_size = plan.get_cell_size() * grid_size;
   auto nr_stations = aterms.get_z_dim();
@@ -204,20 +204,20 @@ void CPU::do_gridding(
       // Initialize iteration
       auto current_nr_subgrids =
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
-      const float *shift_ptr = shift.data();
-      auto *wavenumbers_ptr = wavenumbers.data();
-      auto *spheroidal_ptr = spheroidal.data();
-      auto *aterm_ptr = reinterpret_cast<std::complex<float> *>(aterms.data());
-      auto *aterm_idx_ptr = plan.get_aterm_indices_ptr();
-      auto *avg_aterm_ptr = m_avg_aterm_correction.size()
+      const float* shift_ptr = shift.data();
+      auto* wavenumbers_ptr = wavenumbers.data();
+      auto* spheroidal_ptr = spheroidal.data();
+      auto* aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
+      auto* aterm_idx_ptr = plan.get_aterm_indices_ptr();
+      auto* avg_aterm_ptr = m_avg_aterm_correction.size()
                                 ? m_avg_aterm_correction.data()
                                 : nullptr;
-      auto *metadata_ptr = plan.get_metadata_ptr(first_bl);
-      auto *uvw_ptr = uvw.data(0, 0);
-      auto *visibilities_ptr =
-          reinterpret_cast<std::complex<float> *>(visibilities.data(0, 0, 0));
-      auto *subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      std::complex<float> *grid_ptr = m_grid->data();
+      auto* metadata_ptr = plan.get_metadata_ptr(first_bl);
+      auto* uvw_ptr = uvw.data(0, 0);
+      auto* visibilities_ptr =
+          reinterpret_cast<std::complex<float>*>(visibilities.data(0, 0, 0));
+      auto* subgrids_ptr = subgrids.data(0, 0, 0, 0);
+      std::complex<float>* grid_ptr = m_grid->data();
 
       // Gridder kernel
       m_kernels->run_gridder(current_nr_subgrids, nr_polarizations, grid_size,
@@ -268,10 +268,10 @@ void CPU::do_gridding(
     m_report->print_visibilities(auxiliary::name_gridding,
                                  total_nr_visibilities);
 
-  } catch (const std::invalid_argument &e) {
+  } catch (const std::invalid_argument& e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
     exit(1);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << __func__ << ": caught exception: " << e.what() << std::endl;
     exit(2);
   } catch (...) {
@@ -281,12 +281,12 @@ void CPU::do_gridding(
 }  // end gridding
 
 void CPU::do_degridding(
-    const Plan &plan, const Array1D<float> &frequencies,
-    Array4D<std::complex<float>> &visibilities, const Array2D<UVW<float>> &uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
-    const Array4D<Matrix2x2<std::complex<float>>> &aterms,
-    const Array1D<unsigned int> &aterms_offsets,
-    const Array2D<float> &spheroidal) {
+    const Plan& plan, const Array1D<float>& frequencies,
+    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array1D<unsigned int>& aterms_offsets,
+    const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
@@ -306,7 +306,7 @@ void CPU::do_degridding(
   auto subgrid_size = plan.get_subgrid_size();
   auto w_step = plan.get_w_step();
   auto nr_stations = aterms.get_z_dim();
-  auto &shift = plan.get_shift();
+  auto& shift = plan.get_shift();
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
@@ -335,17 +335,17 @@ void CPU::do_degridding(
       // Initialize iteration
       auto current_nr_subgrids =
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
-      const float *shift_ptr = shift.data();
-      auto *wavenumbers_ptr = wavenumbers.data();
-      auto *spheroidal_ptr = spheroidal.data();
-      auto *aterm_ptr = reinterpret_cast<std::complex<float> *>(aterms.data());
-      auto *aterm_idx_ptr = plan.get_aterm_indices_ptr();
-      auto *metadata_ptr = plan.get_metadata_ptr(first_bl);
-      auto *uvw_ptr = uvw.data(0, 0);
-      auto *visibilities_ptr =
-          reinterpret_cast<std::complex<float> *>(visibilities.data(0, 0, 0));
-      auto *subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      auto *grid_ptr = m_grid->data();
+      const float* shift_ptr = shift.data();
+      auto* wavenumbers_ptr = wavenumbers.data();
+      auto* spheroidal_ptr = spheroidal.data();
+      auto* aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
+      auto* aterm_idx_ptr = plan.get_aterm_indices_ptr();
+      auto* metadata_ptr = plan.get_metadata_ptr(first_bl);
+      auto* uvw_ptr = uvw.data(0, 0);
+      auto* visibilities_ptr =
+          reinterpret_cast<std::complex<float>*>(visibilities.data(0, 0, 0));
+      auto* subgrids_ptr = subgrids.data(0, 0, 0, 0);
+      auto* grid_ptr = m_grid->data();
 
       // Splitter kernel
       if (plan.get_use_wtiles()) {
@@ -395,10 +395,10 @@ void CPU::do_degridding(
     m_report->print_visibilities(auxiliary::name_degridding,
                                  total_nr_visibilities);
 
-  } catch (const std::invalid_argument &e) {
+  } catch (const std::invalid_argument& e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
     exit(1);
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << __func__ << ": caught exception: " << e.what() << std::endl;
     exit(2);
   } catch (...) {
@@ -408,12 +408,12 @@ void CPU::do_degridding(
 }  // end degridding
 
 void CPU::do_calibrate_init(
-    std::vector<std::vector<std::unique_ptr<Plan>>> &&plans,
-    const Array2D<float> &frequencies,
-    Array6D<std::complex<float>> &&visibilities, Array6D<float> &&weights,
-    Array3D<UVW<float>> &&uvw,
-    Array2D<std::pair<unsigned int, unsigned int>> &&baselines,
-    const Array2D<float> &taper) {
+    std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
+    const Array2D<float>& frequencies,
+    Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
+    Array3D<UVW<float>>&& uvw,
+    Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
+    const Array2D<float>& taper) {
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
@@ -463,10 +463,10 @@ void CPU::do_calibrate_init(
         plans[antenna_nr][0]->get_wtile_initialize_set();
 
     // Get data pointers
-    auto *shift_ptr = m_cache_state.shift.data();
-    auto *metadata_ptr = plans[antenna_nr][0]->get_metadata_ptr();
-    auto *subgrids_ptr = subgrids_.data();
-    std::complex<float> *grid_ptr = m_grid->data();
+    auto* shift_ptr = m_cache_state.shift.data();
+    auto* metadata_ptr = plans[antenna_nr][0]->get_metadata_ptr();
+    auto* subgrids_ptr = subgrids_.data();
+    std::complex<float>* grid_ptr = m_grid->data();
 
     // Splitter kernel
     if (w_step == 0.0) {
@@ -540,10 +540,10 @@ void CPU::do_calibrate_init(
 }
 
 void CPU::do_calibrate_update(
-    const int antenna_nr, const Array5D<Matrix2x2<std::complex<float>>> &aterms,
-    const Array5D<Matrix2x2<std::complex<float>>> &aterm_derivatives,
-    Array4D<double> &hessian, Array3D<double> &gradient,
-    Array1D<double> &residual) {
+    const int antenna_nr, const Array5D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array5D<Matrix2x2<std::complex<float>>>& aterm_derivatives,
+    Array4D<double>& hessian, Array3D<double>& gradient,
+    Array1D<double>& residual) {
   if (m_calibrate_state.plans.empty()) {
     throw std::runtime_error("Calibration was not initialized. Can not update");
   }
@@ -568,22 +568,22 @@ void CPU::do_calibrate_update(
   // Data pointers
   auto shift_ptr = m_cache_state.shift.data();
   auto wavenumbers_ptr = m_calibrate_state.wavenumbers.data();
-  auto aterm_ptr = reinterpret_cast<std::complex<float> *>(aterms.data());
+  auto aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
   auto aterm_derivative_ptr =
-      reinterpret_cast<std::complex<float> *>(aterm_derivatives.data());
+      reinterpret_cast<std::complex<float>*>(aterm_derivatives.data());
   auto aterm_idx_ptr =
       m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
   auto metadata_ptr =
       m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
   auto uvw_ptr = m_calibrate_state.uvw.data(antenna_nr);
-  auto visibilities_ptr = reinterpret_cast<std::complex<float> *>(
+  auto visibilities_ptr = reinterpret_cast<std::complex<float>*>(
       m_calibrate_state.visibilities.data(antenna_nr));
-  float *weights_ptr = (float *)m_calibrate_state.weights.data(antenna_nr);
-  auto *subgrids_ptr = m_calibrate_state.subgrids[antenna_nr].data();
-  auto *phasors_ptr = m_calibrate_state.phasors[antenna_nr].data();
-  double *hessian_ptr = hessian.data();
-  double *gradient_ptr = gradient.data();
-  double *residual_ptr = residual.data();
+  float* weights_ptr = (float*)m_calibrate_state.weights.data(antenna_nr);
+  auto* subgrids_ptr = m_calibrate_state.subgrids[antenna_nr].data();
+  auto* phasors_ptr = m_calibrate_state.phasors[antenna_nr].data();
+  double* hessian_ptr = hessian.data();
+  double* gradient_ptr = gradient.data();
+  double* residual_ptr = residual.data();
 
   int max_nr_timesteps = m_calibrate_state.max_nr_timesteps[antenna_nr];
 
@@ -626,7 +626,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
 #endif
 
   try {
-    const auto &grid = get_final_grid();
+    const auto& grid = get_final_grid();
 
     // Constants
     unsigned int nr_w_layers = grid->get_w_dim();
@@ -676,7 +676,7 @@ void CPU::do_transform(DomainAtoDomainB direction) {
     m_report->print_total(nr_correlations);
     std::clog << std::endl;
 
-  } catch (const std::exception &e) {
+  } catch (const std::exception& e) {
     std::cerr << __func__ << " caught exception: " << e.what() << std::endl;
   } catch (...) {
     std::cerr << __func__ << " caught unknown exception" << std::endl;
@@ -685,11 +685,11 @@ void CPU::do_transform(DomainAtoDomainB direction) {
 
 void CPU::do_compute_avg_beam(
     const unsigned int nr_antennas, const unsigned int nr_channels,
-    const Array2D<UVW<float>> &uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>> &baselines,
-    const Array4D<Matrix2x2<std::complex<float>>> &aterms,
-    const Array1D<unsigned int> &aterms_offsets, const Array4D<float> &weights,
-    idg::Array4D<std::complex<float>> &average_beam) {
+    const Array2D<UVW<float>>& uvw,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const Array1D<unsigned int>& aterms_offsets, const Array4D<float>& weights,
+    idg::Array4D<std::complex<float>>& average_beam) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
@@ -703,8 +703,8 @@ void CPU::do_compute_avg_beam(
   m_report->initialize();
   m_kernels->set_report(m_report);
 
-  auto *baselines_ptr = reinterpret_cast<idg::Baseline *>(baselines.data());
-  auto *aterms_ptr = reinterpret_cast<std::complex<float> *>(aterms.data());
+  auto* baselines_ptr = reinterpret_cast<idg::Baseline*>(baselines.data());
+  auto* aterms_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
 
   m_kernels->run_average_beam(
       nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,

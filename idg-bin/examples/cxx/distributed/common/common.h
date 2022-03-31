@@ -41,39 +41,39 @@ std::tuple<int, int, int, int, int, int, int, int, int> read_parameters() {
   const unsigned int DEFAULT_SUBGRIDSIZE = 32;
   const unsigned int DEFAULT_NR_CYCLES = 1;
 
-  char *cstr_nr_stations = getenv("NR_STATIONS");
+  char* cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
       cstr_nr_stations ? atoi(cstr_nr_stations) : DEFAULT_NR_STATIONS;
 
-  char *cstr_nr_channels = getenv("NR_CHANNELS");
+  char* cstr_nr_channels = getenv("NR_CHANNELS");
   auto nr_channels =
       cstr_nr_channels ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
 
-  char *cstr_nr_timesteps = getenv("NR_TIMESTEPS");
+  char* cstr_nr_timesteps = getenv("NR_TIMESTEPS");
   auto nr_timesteps =
       cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
 
-  char *cstr_nr_timeslots = getenv("NR_TIMESLOTS");
+  char* cstr_nr_timeslots = getenv("NR_TIMESLOTS");
   auto nr_timeslots =
       cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
-  char *cstr_total_nr_timesteps = getenv("TOTAL_NR_TIMESTEPS");
+  char* cstr_total_nr_timesteps = getenv("TOTAL_NR_TIMESTEPS");
   auto total_nr_timesteps = cstr_total_nr_timesteps
                                 ? atoi(cstr_total_nr_timesteps)
                                 : DEFAULT_TOTAL_NR_TIMESTEPS;
 
-  char *cstr_grid_size = getenv("GRIDSIZE");
+  char* cstr_grid_size = getenv("GRIDSIZE");
   auto grid_size = cstr_grid_size ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
 
-  char *cstr_subgrid_size = getenv("SUBGRIDSIZE");
+  char* cstr_subgrid_size = getenv("SUBGRIDSIZE");
   auto subgrid_size =
       cstr_subgrid_size ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
 
-  char *cstr_kernel_size = getenv("KERNELSIZE");
+  char* cstr_kernel_size = getenv("KERNELSIZE");
   auto kernel_size =
       cstr_kernel_size ? atoi(cstr_kernel_size) : (subgrid_size / 4) + 1;
 
-  char *cstr_nr_cycles = getenv("NR_CYCLES");
+  char* cstr_nr_cycles = getenv("NR_CYCLES");
   auto nr_cycles = cstr_nr_cycles ? atoi(cstr_nr_cycles) : DEFAULT_NR_CYCLES;
 
   return std::make_tuple(nr_stations, nr_channels, nr_timesteps, nr_timeslots,
@@ -88,7 +88,7 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
                       unsigned int kernel_size, float w_step) {
   const int fw1 = 30;
   const int fw2 = 10;
-  ostream &os = clog;
+  ostream& os = clog;
 
   os << "-----------" << endl;
   os << "PARAMETERS:" << endl;
@@ -147,25 +147,25 @@ float receive_float(int src = 0) {
 }
 
 template <typename T>
-void send_array(int dst, T &array) {
+void send_array(int dst, T& array) {
   MPI_Send(array.data(), array.bytes(), MPI_BYTE, dst, 0, MPI_COMM_WORLD);
 }
 
 template <typename T>
-void receive_array(int src, T &array) {
+void receive_array(int src, T& array) {
   MPI_Recv(array.data(), array.bytes(), MPI_BYTE, src, 0, MPI_COMM_WORLD,
            MPI_STATUS_IGNORE);
 }
 
-void send_bytes(int dst, void *buf, size_t bytes) {
+void send_bytes(int dst, void* buf, size_t bytes) {
   MPI_Send(buf, bytes, MPI_BYTE, dst, 0, MPI_COMM_WORLD);
 }
 
-void receive_bytes(int src, void *buf, size_t bytes) {
+void receive_bytes(int src, void* buf, size_t bytes) {
   MPI_Recv(buf, bytes, MPI_BYTE, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
-void send_string(int dst, const std::string &value) {
+void send_string(int dst, const std::string& value) {
   MPI_Send(&value[0], value.size() + 1, MPI_CHAR, dst, 0, MPI_COMM_WORLD);
 }
 
@@ -183,14 +183,14 @@ class MPIRequest {
  public:
   MPIRequest(bool blocking = false) : m_blocking(blocking) {}
 
-  void send(const void *buf, int bytes, int dest, int tag = 0) {
+  void send(const void* buf, int bytes, int dest, int tag = 0) {
     MPI_Isend(buf, bytes, MPI_BYTE, dest, tag, MPI_COMM_WORLD, &m_request);
     if (m_blocking) {
       wait();
     }
   }
 
-  void receive(void *buf, int bytes, int source, int tag = 0) {
+  void receive(void* buf, int bytes, int source, int tag = 0) {
     MPI_Irecv(buf, bytes, MPI_BYTE, source, tag, MPI_COMM_WORLD, &m_request);
     if (m_blocking) {
       wait();
@@ -216,7 +216,7 @@ class MPIRequestList {
   }
 
   void wait() {
-    for (auto &request : m_requests) {
+    for (auto& request : m_requests) {
       request->wait();
     }
   }
@@ -227,11 +227,11 @@ class MPIRequestList {
 
 void synchronize() { MPI_Barrier(MPI_COMM_WORLD); }
 
-void print(int rank, const char *message) {
+void print(int rank, const char* message) {
   std::clog << "[" << rank << "] " << message << std::endl;
 }
 
-void print(int rank, const std::string &message) {
+void print(int rank, const std::string& message) {
   print(rank, message.c_str());
 }
 
@@ -265,7 +265,7 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
             requests.wait();
           }
 
-          auto &grid_ = *grid;
+          auto& grid_ = *grid;
 
 #pragma omp barrier
 #pragma omp for
@@ -290,7 +290,7 @@ void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
   unsigned int w = 0;  // W-stacking is handled by the workers
   for (unsigned int y = 0; y < grid_size; y++) {
     for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
-      std::complex<float> *row_ptr = grid->data(w, pol, y, 0);
+      std::complex<float>* row_ptr = grid->data(w, pol, y, 0);
       size_t sizeof_row = grid_size * sizeof(std::complex<float>);
       MPI_Bcast(row_ptr, sizeof_row, MPI_BYTE, root, MPI_COMM_WORLD);
     }
@@ -298,7 +298,7 @@ void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
 }
 
 #if defined(HAVE_FTI)
-void make_checkpoint(int rank, cInfo &ckpt) {
+void make_checkpoint(int rank, cInfo& ckpt) {
   if (FTI_Status() != 0) {
     if (FTI_Recover() != 0) {
       MPI_Abort(MPI_COMM_WORLD, 1);
@@ -506,7 +506,7 @@ void run_master() {
                                            baselines, aterms_offsets, options));
         runtimes_plan[t] += omp_get_wtime();
       }
-      idg::Plan &plan = *plans[t];
+      idg::Plan& plan = *plans[t];
       synchronize();
 
       // Run gridding
@@ -721,7 +721,7 @@ void run_worker() {
         plans.emplace_back(proxy.make_plan(kernel_size, frequencies, uvw,
                                            baselines, aterms_offsets, options));
       }
-      idg::Plan &plan = *plans[t];
+      idg::Plan& plan = *plans[t];
       synchronize();
 
       // Run gridding
@@ -760,7 +760,7 @@ void run_worker() {
   }
 }  // end run_worker
 
-void run(int argc, char *argv[]) {
+void run(int argc, char* argv[]) {
   // Initialize the MPI environment
   MPI_Init(&argc, &argv);
 
@@ -770,7 +770,7 @@ void run(int argc, char *argv[]) {
     std::cerr << "Usage: " << argv[0] << " <fti_config_file>" << std::endl;
     exit(EXIT_FAILURE);
   }
-  const char *fti_config_file = argv[1];
+  const char* fti_config_file = argv[1];
   if (FTI_Init(fti_config_file, MPI_COMM_WORLD) != 0) {
     exit(EXIT_FAILURE);
   };

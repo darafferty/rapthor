@@ -26,7 +26,7 @@
 using namespace std;
 
 std::tuple<int, int, int, int, int, int, int, int, int, int, int, float, bool,
-           bool, const char *>
+           bool, const char*>
 read_parameters() {
   const unsigned int DEFAULT_NR_STATIONS = 52;      // all LOFAR LBA stations
   const unsigned int DEFAULT_NR_CHANNELS = 16 * 4;  // 16 channels, 4 subbands
@@ -40,64 +40,64 @@ read_parameters() {
   const float DEFAULT_GRID_PADDING = 1.0;
   const bool DEFAULT_USE_WTILES = false;
   const bool DEFAULT_STOKES_I_ONLY = false;
-  const char *DEFAULT_LAYOUT_FILE = "LOFAR_lba.txt";
+  const char* DEFAULT_LAYOUT_FILE = "LOFAR_lba.txt";
 
-  char *cstr_nr_stations = getenv("NR_STATIONS");
+  char* cstr_nr_stations = getenv("NR_STATIONS");
   auto nr_stations =
       cstr_nr_stations ? atoi(cstr_nr_stations) : DEFAULT_NR_STATIONS;
 
-  char *cstr_nr_channels = getenv("NR_CHANNELS");
+  char* cstr_nr_channels = getenv("NR_CHANNELS");
   auto nr_channels =
       cstr_nr_channels ? atoi(cstr_nr_channels) : DEFAULT_NR_CHANNELS;
 
-  char *cstr_nr_timesteps = getenv("NR_TIMESTEPS");
+  char* cstr_nr_timesteps = getenv("NR_TIMESTEPS");
   auto nr_timesteps =
       cstr_nr_timesteps ? atoi(cstr_nr_timesteps) : DEFAULT_NR_TIMESTEPS;
 
-  char *cstr_total_nr_stations = getenv("TOTAL_NR_STATIONS");
+  char* cstr_total_nr_stations = getenv("TOTAL_NR_STATIONS");
   auto total_nr_stations =
       cstr_total_nr_stations ? atoi(cstr_total_nr_stations) : nr_stations;
 
-  char *cstr_total_nr_channels = getenv("TOTAL_NR_CHANNELS");
+  char* cstr_total_nr_channels = getenv("TOTAL_NR_CHANNELS");
   auto total_nr_channels =
       cstr_total_nr_channels ? atoi(cstr_total_nr_channels) : nr_channels;
 
-  char *cstr_total_nr_timesteps = getenv("TOTAL_NR_TIMESTEPS");
+  char* cstr_total_nr_timesteps = getenv("TOTAL_NR_TIMESTEPS");
   auto total_nr_timesteps =
       cstr_total_nr_timesteps ? atoi(cstr_total_nr_timesteps) : nr_timesteps;
 
-  char *cstr_nr_timeslots = getenv("NR_TIMESLOTS");
+  char* cstr_nr_timeslots = getenv("NR_TIMESLOTS");
   auto nr_timeslots =
       cstr_nr_timeslots ? atoi(cstr_nr_timeslots) : DEFAULT_NR_TIMESLOTS;
 
-  char *cstr_grid_size = getenv("GRIDSIZE");
+  char* cstr_grid_size = getenv("GRIDSIZE");
   auto grid_size = cstr_grid_size ? atoi(cstr_grid_size) : DEFAULT_GRIDSIZE;
 
-  char *cstr_subgrid_size = getenv("SUBGRIDSIZE");
+  char* cstr_subgrid_size = getenv("SUBGRIDSIZE");
   auto subgrid_size =
       cstr_subgrid_size ? atoi(cstr_subgrid_size) : DEFAULT_SUBGRIDSIZE;
 
-  char *cstr_kernel_size = getenv("KERNELSIZE");
+  char* cstr_kernel_size = getenv("KERNELSIZE");
   auto kernel_size =
       cstr_kernel_size ? atoi(cstr_kernel_size) : (subgrid_size / 4) + 1;
 
-  char *cstr_nr_cycles = getenv("NR_CYCLES");
+  char* cstr_nr_cycles = getenv("NR_CYCLES");
   auto nr_cycles = cstr_nr_cycles ? atoi(cstr_nr_cycles) : DEFAULT_NR_CYCLES;
 
-  char *cstr_grid_padding = getenv("GRID_PADDING");
+  char* cstr_grid_padding = getenv("GRID_PADDING");
   auto grid_padding =
       cstr_grid_padding ? atof(cstr_grid_padding) : DEFAULT_GRID_PADDING;
 
-  char *cstr_use_wtiles = getenv("USE_WTILES");
+  char* cstr_use_wtiles = getenv("USE_WTILES");
   auto use_wtiles =
       cstr_use_wtiles ? atoi(cstr_use_wtiles) : DEFAULT_USE_WTILES;
 
-  char *cstr_stokes_i_only = getenv("STOKES_I_ONLY");
+  char* cstr_stokes_i_only = getenv("STOKES_I_ONLY");
   auto stokes_i_only =
       cstr_stokes_i_only ? atoi(cstr_stokes_i_only) : DEFAULT_STOKES_I_ONLY;
 
-  char *cstr_layout_file = getenv("LAYOUT_FILE");
-  const char *layout_file =
+  char* cstr_layout_file = getenv("LAYOUT_FILE");
+  const char* layout_file =
       cstr_layout_file ? cstr_layout_file : DEFAULT_LAYOUT_FILE;
 
   return std::make_tuple(total_nr_stations, total_nr_channels,
@@ -117,7 +117,7 @@ void print_parameters(unsigned int total_nr_stations,
                       float grid_padding, bool stokes_i_only) {
   const int fw1 = 30;
   const int fw2 = 10;
-  ostream &os = clog;
+  ostream& os = clog;
 
   os << "-----------" << endl;
   os << "PARAMETERS:" << endl;
@@ -189,7 +189,7 @@ void run() {
   float grid_padding;
   bool use_wtiles;
   bool stokes_i_only;
-  const char *layout_file;
+  const char* layout_file;
 
   // Read parameters from environment
   std::tie(total_nr_stations, total_nr_channels, total_nr_timesteps,
@@ -348,7 +348,7 @@ void run() {
                                              baselines, aterms_offsets,
                                              options));
         }
-        idg::Plan &plan = *plans[t];
+        idg::Plan& plan = *plans[t];
 
         // Run gridding
         clog << ">>> Run gridding" << endl;

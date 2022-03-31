@@ -13,13 +13,13 @@ namespace idg {
 
 namespace runtime {
 
-const char *Error::what() const throw() { return _what; }
+const char* Error::what() const throw() { return _what; }
 
-Source::Source(const char *input_file_name)
+Source::Source(const char* input_file_name)
     : input_file_name(input_file_name) {}
 
-void Source::compile(const char *compiler, const char *output_file_name,
-                     const char *compiler_options) {
+void Source::compile(const char* compiler, const char* output_file_name,
+                     const char* compiler_options) {
   // Build command
   stringstream command_line;
   command_line << compiler;

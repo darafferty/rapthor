@@ -24,9 +24,9 @@ namespace cpu {
 namespace optimized {
 
 void kernel_apply_phasor(int nr_polarizations, int w_padded_tile_size,
-                         float image_size, float w_step, const float *shift,
-                         const idg::Coordinate &coordinate,
-                         std::complex<float> *tile, int sign) {
+                         float image_size, float w_step, const float* shift,
+                         const idg::Coordinate& coordinate,
+                         std::complex<float>* tile, int sign) {
   float cell_size = image_size / w_padded_tile_size;
   int N = w_padded_tile_size * w_padded_tile_size;
   float w = (coordinate.z + 0.5f) * w_step;
@@ -57,9 +57,9 @@ void kernel_apply_phasor(int nr_polarizations, int w_padded_tile_size,
 
 inline void kernel_tile_from_grid(int wtile_size, int w_padded_tile_size,
                                   int nr_polarizations, int grid_size,
-                                  const idg::Coordinate &coordinate,
-                                  std::complex<float> *tile,
-                                  const std::complex<float> *grid) {
+                                  const idg::Coordinate& coordinate,
+                                  std::complex<float>* tile,
+                                  const std::complex<float>* grid) {
   int x0 = coordinate.x * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
            grid_size / 2;
   int y0 = coordinate.y * wtile_size - (w_padded_tile_size - wtile_size) / 2 +
@@ -82,14 +82,14 @@ inline void kernel_tile_from_grid(int wtile_size, int w_padded_tile_size,
 
 void kernel_tiles_from_grid(int nr_tiles, int wtile_size,
                             int w_padded_tile_size, int nr_polarizations,
-                            int grid_size, const idg::Coordinate *coordinates,
-                            std::complex<float> *tiles,
-                            const std::complex<float> *grid) {
+                            int grid_size, const idg::Coordinate* coordinates,
+                            std::complex<float>* tiles,
+                            const std::complex<float>* grid) {
 #pragma omp parallel for
   for (int i = 0; i < nr_tiles; i++) {
     size_t sizeof_w_padded_tile =
         nr_polarizations * w_padded_tile_size * w_padded_tile_size;
-    std::complex<float> *tile = &tiles[i * sizeof_w_padded_tile];
+    std::complex<float>* tile = &tiles[i * sizeof_w_padded_tile];
     kernel_tile_from_grid(wtile_size, w_padded_tile_size, nr_polarizations,
                           grid_size, coordinates[i], tile, grid);
   }
@@ -97,13 +97,13 @@ void kernel_tiles_from_grid(int nr_tiles, int wtile_size,
 
 void kernel_tiles_to_grid(int nr_tiles, int wtile_size, int w_padded_tile_size,
                           int nr_polarizations, int grid_size,
-                          const idg::Coordinate *coordinates,
-                          const std::complex<float> *tiles,
-                          std::complex<float> *grid) {
+                          const idg::Coordinate* coordinates,
+                          const std::complex<float>* tiles,
+                          std::complex<float>* grid) {
 #pragma omp parallel
   {
     for (int i = 0; i < nr_tiles; i++) {
-      const idg::Coordinate &coordinate = coordinates[i];
+      const idg::Coordinate& coordinate = coordinates[i];
       int x0 = coordinate.x * wtile_size -
                (w_padded_tile_size - wtile_size) / 2 + grid_size / 2;
       int y0 = coordinate.y * wtile_size -
@@ -131,8 +131,8 @@ void kernel_tiles_to_grid(int nr_tiles, int wtile_size, int w_padded_tile_size,
 
 inline void kernel_copy_tile(int nr_polarizations, int src_tile_size,
                              int dst_tile_size,
-                             const std::complex<float> *src_tile,
-                             std::complex<float> *dst_tile) {
+                             const std::complex<float>* src_tile,
+                             std::complex<float>* dst_tile) {
   const int index_pol_transposed[nr_polarizations] = {0, 2, 1, 3};
   int padding = dst_tile_size - src_tile_size;
   int padding2 = padding / 2;
@@ -164,9 +164,9 @@ inline void kernel_copy_tile(int nr_polarizations, int src_tile_size,
 }
 
 void kernel_fft_composite(fftwf_plan plan, int batch, int size,
-                          std::complex<float> *data) {
-  fftwf_complex *in_ptr = reinterpret_cast<fftwf_complex *>(data);
-  fftwf_complex *out_ptr = reinterpret_cast<fftwf_complex *>(data);
+                          std::complex<float>* data) {
+  fftwf_complex* in_ptr = reinterpret_cast<fftwf_complex*>(data);
+  fftwf_complex* out_ptr = reinterpret_cast<fftwf_complex*>(data);
 
   for (int i = 0; i < batch; i++) {
     // FFT over rows
@@ -188,7 +188,7 @@ void kernel_fft_composite(fftwf_plan plan, int batch, int size,
       }
 
       // FFT column
-      fftwf_complex *tmp_ptr = reinterpret_cast<fftwf_complex *>(tmp);
+      fftwf_complex* tmp_ptr = reinterpret_cast<fftwf_complex*>(tmp);
       fftwf_execute_dft(plan, tmp_ptr, tmp_ptr);
 
       // Store the result in the output buffer
@@ -203,13 +203,13 @@ void kernel_fft_composite(fftwf_plan plan, int batch, int size,
 
 void kernel_adder_subgrids_to_wtiles(
     const long nr_subgrids, const int nr_polarizations, const int grid_size,
-    const int subgrid_size, const int wtile_size, const idg::Metadata *metadata,
-    const std::complex<float> *subgrid, std::complex<float> *tiles) {
+    const int subgrid_size, const int wtile_size, const idg::Metadata* metadata,
+    const std::complex<float>* subgrid, std::complex<float>* tiles) {
   // Precompute phasor
   int nr_pixels = subgrid_size * subgrid_size;
-  float *phasor_real = allocate_memory<float>(nr_pixels);
-  float *phasor_imag = allocate_memory<float>(nr_pixels);
-  float *phase = allocate_memory<float>(nr_pixels);
+  float* phasor_real = allocate_memory<float>(nr_pixels);
+  float* phasor_imag = allocate_memory<float>(nr_pixels);
+  float* phase = allocate_memory<float>(nr_pixels);
 
 #pragma omp parallel for collapse(2)
   for (int y = 0; y < subgrid_size; y++) {
@@ -282,9 +282,9 @@ void kernel_adder_subgrids_to_wtiles(
 
 void kernel_adder_wtiles_to_grid(
     int nr_polarizations, int grid_size, int subgrid_size, int wtile_size,
-    float image_size, float w_step, const float *shift, int nr_tiles,
-    const int *tile_ids, const idg::Coordinate *tile_coordinates,
-    std::complex<float> *tiles, std::complex<float> *grid) {
+    float image_size, float w_step, const float* shift, int nr_tiles,
+    const int* tile_ids, const idg::Coordinate* tile_coordinates,
+    std::complex<float>* tiles, std::complex<float>* grid) {
   // Compute w_padded_tile_size for all tiles
   const int padded_tile_size = wtile_size + subgrid_size;
   const float image_size_shift =
@@ -331,7 +331,7 @@ void kernel_adder_wtiles_to_grid(
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
-      const idg::Coordinate &coordinate = tile_coordinates[tile_idx];
+      const idg::Coordinate& coordinate = tile_coordinates[tile_idx];
 
       // Copy tile
       size_t src_idx = index_grid_4d(nr_polarizations, padded_tile_size,
@@ -347,8 +347,8 @@ void kernel_adder_wtiles_to_grid(
                 std::complex<float>({0.0, 0.0}));
 
       // Forward FFT
-      std::complex<float> *tile_ptr = reinterpret_cast<std::complex<float> *>(
-          tile_buffers.data(i, 0, 0, 0));
+      std::complex<float>* tile_ptr =
+          reinterpret_cast<std::complex<float>*>(tile_buffers.data(i, 0, 0, 0));
       kernel_fft_composite(plan_forward, nr_polarizations, w_padded_tile_size,
                            tile_ptr);
 
@@ -369,7 +369,7 @@ void kernel_adder_wtiles_to_grid(
   }  // end for tile_offset
 
   // Free FFT plans
-  for (auto &entry : fft_plans) {
+  for (auto& entry : fft_plans) {
     fftwf_destroy_plan(entry.second.first);
     fftwf_destroy_plan(entry.second.second);
   }
@@ -377,13 +377,13 @@ void kernel_adder_wtiles_to_grid(
 
 void kernel_splitter_subgrids_from_wtiles(
     const long nr_subgrids, const int nr_polarizations, const int grid_size,
-    const int subgrid_size, const int wtile_size, const idg::Metadata *metadata,
-    std::complex<float> *subgrid, const std::complex<float> *tiles) {
+    const int subgrid_size, const int wtile_size, const idg::Metadata* metadata,
+    std::complex<float>* subgrid, const std::complex<float>* tiles) {
   // Precompute phasor
   int nr_pixels = subgrid_size * subgrid_size;
-  float *phasor_real = allocate_memory<float>(nr_pixels);
-  float *phasor_imag = allocate_memory<float>(nr_pixels);
-  float *phase = allocate_memory<float>(nr_pixels);
+  float* phasor_real = allocate_memory<float>(nr_pixels);
+  float* phasor_imag = allocate_memory<float>(nr_pixels);
+  float* phase = allocate_memory<float>(nr_pixels);
 
 #pragma omp parallel for collapse(2)
   for (int y = 0; y < subgrid_size; y++) {
@@ -455,9 +455,9 @@ void kernel_splitter_subgrids_from_wtiles(
 
 void kernel_splitter_wtiles_from_grid(
     int nr_polarizations, int grid_size, int subgrid_size, int wtile_size,
-    float image_size, float w_step, const float *shift, int nr_tiles,
-    const int *tile_ids, const idg::Coordinate *tile_coordinates,
-    std::complex<float> *tiles, const std::complex<float> *grid) {
+    float image_size, float w_step, const float* shift, int nr_tiles,
+    const int* tile_ids, const idg::Coordinate* tile_coordinates,
+    std::complex<float>* tiles, const std::complex<float>* grid) {
   // Compute w_padded_tile_size for all tiles
   const int padded_tile_size = wtile_size + subgrid_size;
   const float image_size_shift =
@@ -509,11 +509,11 @@ void kernel_splitter_wtiles_from_grid(
 #pragma omp parallel for
     for (int i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
-      const idg::Coordinate &coordinate = tile_coordinates[tile_idx];
+      const idg::Coordinate& coordinate = tile_coordinates[tile_idx];
 
       // Backwards FFT
-      std::complex<float> *tile_ptr = reinterpret_cast<std::complex<float> *>(
-          tile_buffers.data(i, 0, 0, 0));
+      std::complex<float>* tile_ptr =
+          reinterpret_cast<std::complex<float>*>(tile_buffers.data(i, 0, 0, 0));
       kernel_fft_composite(plan_backward, nr_polarizations, w_padded_tile_size,
                            tile_ptr);
 
@@ -535,7 +535,7 @@ void kernel_splitter_wtiles_from_grid(
   }    // end for tile_offset
 
   // Free FFT plans
-  for (auto &entry : fft_plans) {
+  for (auto& entry : fft_plans) {
     fftwf_destroy_plan(entry.second.first);
     fftwf_destroy_plan(entry.second.second);
   }

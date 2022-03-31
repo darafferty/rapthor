@@ -38,17 +38,17 @@ OpenCL::~OpenCL() {
 
 unsigned int OpenCL::get_num_devices() const { return devices_.size(); }
 
-InstanceOpenCL &OpenCL::get_device(unsigned int i) const {
+InstanceOpenCL& OpenCL::get_device(unsigned int i) const {
   return *(devices_[i]);
 }
 
-std::vector<int> OpenCL::compute_jobsize(const Plan &plan,
+std::vector<int> OpenCL::compute_jobsize(const Plan& plan,
                                          const unsigned int nr_timesteps,
                                          const unsigned int nr_channels,
                                          const unsigned int subgrid_size,
                                          const unsigned int nr_streams) {
   // Read maximum jobsize from environment
-  char *cstr_max_jobsize = getenv("MAX_JOBSIZE");
+  char* cstr_max_jobsize = getenv("MAX_JOBSIZE");
   auto max_jobsize = cstr_max_jobsize ? atoi(cstr_max_jobsize) : 0;
 
   // Compute the maximum number of subgrids for any baseline
@@ -67,8 +67,8 @@ std::vector<int> OpenCL::compute_jobsize(const Plan &plan,
   int nr_devices = devices_.size();
   std::vector<int> jobsize(nr_devices);
   for (int i = 0; i < nr_devices; i++) {
-    InstanceOpenCL *di = devices_[i].get();
-    cl::Device &d = di->get_device();
+    InstanceOpenCL* di = devices_[i].get();
+    cl::Device& d = di->get_device();
     auto bytes_total = d.getInfo<CL_DEVICE_GLOBAL_MEM_SIZE>();
     jobsize[i] = (bytes_total * 0.9) / bytes_required;
     jobsize[i] = max_jobsize > 0 ? min(jobsize[i], max_jobsize) : jobsize[i];
@@ -87,7 +87,7 @@ void OpenCL::init_devices() {
   context_.reset(new cl::Context(CL_DEVICE_TYPE_ALL));
 
   // Get list of all device numbers
-  char *char_opencl_device = getenv("OPENCL_DEVICE");
+  char* char_opencl_device = getenv("OPENCL_DEVICE");
   std::vector<int> device_numbers;
   if (!char_opencl_device) {
     // Use device 0 if no OpenCL devices were specified
@@ -106,7 +106,7 @@ void OpenCL::free_devices() { devices_.clear(); }
 
 void OpenCL::print_devices() {
   std::cout << "Devices: " << std::endl;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     std::cout << *device;
   }
   std::cout << std::endl;
@@ -114,7 +114,7 @@ void OpenCL::print_devices() {
 
 void OpenCL::print_compiler_flags() {
   std::cout << "Compiler flags: " << std::endl;
-  for (const auto &device : devices_) {
+  for (const auto& device : devices_) {
     std::cout << device->get_compiler_flags() << std::endl;
   }
   std::cout << std::endl;

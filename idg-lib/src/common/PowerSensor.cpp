@@ -36,13 +36,13 @@ class DummyPowerSensor : public PowerSensor {
     return state;
   }
 
-  static DummyPowerSensor *create() { return new DummyPowerSensor(); };
+  static DummyPowerSensor* create() { return new DummyPowerSensor(); };
 };
 
 PowerSensor::~PowerSensor(){};
 #endif
 
-PowerSensor *get_power_sensor(const std::string name, const unsigned i) {
+PowerSensor* get_power_sensor(const std::string name, const unsigned i) {
   // Determine which environment variable to read
   std::string power_sensor_env_str;
   if (name.compare(sensor_host) == 0) {
@@ -54,7 +54,7 @@ PowerSensor *get_power_sensor(const std::string name, const unsigned i) {
   }
 
   // Read environment variable
-  char *power_sensor_char = getenv(power_sensor_env_str.c_str());
+  char* power_sensor_char = getenv(power_sensor_env_str.c_str());
   if (!power_sensor_char) {
     power_sensor_char = getenv(sensor_default.c_str());
   }
@@ -93,15 +93,15 @@ PowerSensor *get_power_sensor(const std::string name, const unsigned i) {
   return DummyPowerSensor::create();
 }
 
-double PowerSensor::seconds(const State &firstState, const State &secondState) {
+double PowerSensor::seconds(const State& firstState, const State& secondState) {
   return secondState.timeAtRead - firstState.timeAtRead;
 }
 
-double PowerSensor::Joules(const State &firstState, const State &secondState) {
+double PowerSensor::Joules(const State& firstState, const State& secondState) {
   return secondState.joulesAtRead - firstState.joulesAtRead;
 }
 
-double PowerSensor::Watt(const State &firstState, const State &secondState) {
+double PowerSensor::Watt(const State& firstState, const State& secondState) {
   return Joules(firstState, secondState) / seconds(firstState, secondState);
 }
 }  // end namespace powersensor

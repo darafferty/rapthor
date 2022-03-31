@@ -14,8 +14,8 @@
 //#define PRINT_ERRORS
 
 // computes sqrt(A^2-B^2) / n
-float get_accuracy(const int n, const std::complex<float> *A,
-                   const std::complex<float> *B) {
+float get_accuracy(const int n, const std::complex<float>* A,
+                   const std::complex<float>* B) {
   double r_error = 0.0;
   double i_error = 0.0;
   int nnz = 0;
@@ -76,7 +76,7 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
                       unsigned int subgrid_size, unsigned int kernel_size) {
   const int fw1 = 30;
   const int fw2 = 10;
-  std::ostream &os = std::clog;
+  std::ostream& os = std::clog;
 
   os << "-----------" << std::endl;
   os << "PARAMETERS:" << std::endl;
@@ -109,7 +109,7 @@ void print_parameters(unsigned int nr_stations, unsigned int nr_channels,
 }
 
 // Run gridding and degridding and compare the outcome.
-int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
+int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   int info = 0;
 
   // Parameters
@@ -124,7 +124,7 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   unsigned int kernel_size = 9;
   unsigned int nr_baselines = (nr_stations * (nr_stations - 1)) / 2;
   float integration_time = 1.0f;
-  const char *layout_file = "LOFAR_lba.txt";
+  const char* layout_file = "LOFAR_lba.txt";
 
   idg::Data data = idg::get_example_data(
       nr_baselines, grid_size, integration_time, nr_channels, layout_file);
@@ -134,7 +134,7 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
   float cell_size = image_size / grid_size;
 
   // Configure Stokes-I only mode
-  char *cstr_stokes_i_only = getenv("STOKES_I_ONLY");
+  char* cstr_stokes_i_only = getenv("STOKES_I_ONLY");
   auto stokes_i_only = cstr_stokes_i_only ? atoi(cstr_stokes_i_only) : false;
   if (stokes_i_only) {
     nr_correlations = 2;
@@ -245,8 +245,8 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
 
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
-                   (std::complex<float> *)visibilities.data(),
-                   (std::complex<float> *)visibilities_ref.data());
+                   (std::complex<float>*)visibilities.data(),
+                   (std::complex<float>*)visibilities_ref.data());
 #endif
 
 #if TEST_AVERAGE_BEAM
@@ -264,8 +264,8 @@ int compare(idg::proxy::Proxy &proxy1, idg::proxy::Proxy &proxy2, float tol) {
                           aterms_offsets, weights, average_beam_ref);
   float average_beam_error =
       get_accuracy(subgrid_size * subgrid_size * 4 * 4,
-                   (std::complex<float> *)average_beam.data(),
-                   (std::complex<float> *)average_beam_ref.data());
+                   (std::complex<float>*)average_beam.data(),
+                   (std::complex<float>*)average_beam_ref.data());
 #endif
 
   // Report results
