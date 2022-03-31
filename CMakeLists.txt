@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.7)
 
-set(IDG_VERSION "0.8.1")
+set(IDG_VERSION "1.0.0")
 if(IDG_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
   set(IDG_VERSION_MAJOR "${CMAKE_MATCH_1}")
   set(IDG_VERSION_MINOR "${CMAKE_MATCH_2}")
