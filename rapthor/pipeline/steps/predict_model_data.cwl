@@ -33,7 +33,7 @@ inputs:
     label: Input MS filename
     doc: |
       The filename of the input MS file.
-    type: string
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -79,7 +79,7 @@ inputs:
     label: Solution table
     doc: |
       The solution table to use to corrupt the model visibilities.
-    type: string
+    type: File
     inputBinding:
       prefix: predict.applycal.parmdb=
       separate: False
@@ -88,7 +88,7 @@ inputs:
     label: Sky model
     doc: |
       The sourcedb sky model to use to predict the model visibilities.
-    type: string
+    type: File
     inputBinding:
       prefix: predict.sourcedb=
       separate: False
@@ -97,7 +97,7 @@ inputs:
     label: Dummy parameter
     doc: |
       A dummy parameter used to enforce step order.
-    type: string[]
+    type: File[]
     inputBinding:
       valueFrom: ''
 
@@ -127,9 +127,9 @@ outputs:
     label: Output MS filename
     doc: |
       The filename of the output MS file.
-    type: string
+    type: Directory
     outputBinding:
-      outputEval: $(inputs.msout)
+      glob: $(inputs.msout)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

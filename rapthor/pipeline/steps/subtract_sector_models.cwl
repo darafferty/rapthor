@@ -21,14 +21,14 @@ inputs:
     label: Filename of data MS
     doc: |
       The filename of the input MS file for which subtraction will be done.
-    type: string
+    type: Directory
     inputBinding:
       position: 0
   - id: msmod
     label: Filename of model MS
     doc: |
       The filename of the input model MS file which will be subtracted.
-    type: string[]
+    type: Directory[]
     inputBinding:
       position: 1
       itemSeparator: ","
@@ -92,7 +92,7 @@ inputs:
     label: Outlier flag
     doc: |
       The flag that sets peeling of outlier sources.
-    type: boolean
+    type: string
     inputBinding:
       prefix: --peel_outliers=
       valueFrom: "$(self ? 'True': 'False')"
@@ -109,7 +109,7 @@ inputs:
     label: Bright-source flag
     doc: |
       The flag that sets peeling of bright-source sources.
-    type: boolean
+    type: string
     inputBinding:
       prefix: --peel_bright=
       valueFrom: "$(self ? 'True': 'False')"
