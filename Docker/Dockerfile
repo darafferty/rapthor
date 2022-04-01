@@ -1,7 +1,9 @@
 FROM ubuntu:20.04 as builder
 
-# This Docker image builds the dependencies for the Rapthor pipeline.
-# It lives on the head of its dependencies.
+# This Dockerfile builds a Docker image for the Rapthor pipeline
+# and all its dependencies.
+
+ARG PORTABLE=TRUE
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \ 
@@ -50,6 +52,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/idg \
     -B/src/idg/build \
     -G Ninja
@@ -61,6 +64,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=ON \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/EveryBeam \
     -B/src/EveryBeam/build \
     -G Ninja
@@ -70,6 +74,7 @@ RUN ninja -C /src/EveryBeam/build install
 RUN git shallow-clone https://github.com/aroffringa/dysco.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DPORTABLE=${PORTABLE} \
     -H/src/dysco \
     -B/src/dysco/build \
     -G Ninja
@@ -79,6 +84,7 @@ RUN ninja -C /src/dysco/build install
 RUN git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DPORTABLE=${PORTABLE} \
     -H/src/aoflagger \
     -B/src/aoflagger/build \
     -G Ninja
@@ -89,6 +95,7 @@ RUN git shallow-clone https://gitlab.com/aroffringa/wsclean.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/wsclean \
     -B/src/wsclean/build \
     -G Ninja
@@ -99,6 +106,7 @@ RUN git shallow-clone https://git.astron.nl/RD/DP3.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/DP3 \
     -B/src/DP3/build \
     -G Ninja
