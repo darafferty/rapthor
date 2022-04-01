@@ -78,6 +78,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: --peel_bright=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
 outputs: []

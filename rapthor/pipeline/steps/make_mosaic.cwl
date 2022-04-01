@@ -39,6 +39,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: --skip=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
 outputs: []

@@ -95,6 +95,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: --peel_outliers=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: nr_bright
     label: Number bright-source sectors
@@ -111,6 +112,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: --peel_bright=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: reweight
     label: Reweight flag

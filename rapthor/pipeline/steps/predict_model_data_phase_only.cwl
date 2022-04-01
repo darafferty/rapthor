@@ -48,9 +48,10 @@ inputs:
       prefix: msin.ntimes=
       separate: False
   - id: onebeamperpatch
-    type: string
+    type: boolean
     inputBinding:
       prefix: predict.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: h5parm
     type: string

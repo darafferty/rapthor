@@ -89,9 +89,10 @@ inputs:
       prefix: solve.maxiter=
       separate: False
   - id: propagatesolutions
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.propagatesolutions=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: solveralgorithm
     type: string
@@ -99,9 +100,10 @@ inputs:
       prefix: solve.solveralgorithm=
       separate: False
   - id: onebeamperpatch
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: stepsize
     type: float

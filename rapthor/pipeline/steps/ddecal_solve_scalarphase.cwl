@@ -113,9 +113,10 @@ inputs:
     doc: |
       Flag that determines whether solutions are propagated as initial start values
       for the next solution interval.
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.propagatesolutions=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
   - id: solveralgorithm
@@ -131,9 +132,10 @@ inputs:
     label: One beam per patch
     doc: |
       Flag that sets beam correction per patch or per source.
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
   - id: stepsize

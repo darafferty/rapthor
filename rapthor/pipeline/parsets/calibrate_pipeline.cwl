@@ -30,7 +30,7 @@ inputs:
     doc: |
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_time_chunks).
-    type: string[]
+    type: Directory[]
 
   - id: starttime
     label: Start time of each chunk
@@ -91,7 +91,7 @@ inputs:
     label: Filename of sky model
     doc: |
       The filename of the input sky model text file (length = 1).
-    type: string
+    type: File
 
   - id: calibration_sourcedb
     label: Filename of sourcedb
@@ -128,7 +128,7 @@ inputs:
     doc: |
       Flag that determines whether solutions are propagated as initial start values
       for the next solution interval (length = 1).
-    type: string
+    type: boolean
 
   - id: solveralgorithm
     label: Solver algorithm
@@ -140,7 +140,7 @@ inputs:
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
       source (length = 1).
-    type: string
+    type: boolean
 
   - id: stepsize
     label: Solver step size
@@ -208,7 +208,7 @@ inputs:
     doc: |
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_freq_chunks).
-    type: string[]
+    type: Directory[]
 
   - id: slow_starttime
     label: Start time of each chunk
@@ -342,7 +342,21 @@ inputs:
 {% endif %}
 {% endif %}
 
-outputs: []
+
+outputs:
+  - id: make_sourcedb
+    outputSource:
+      - make_sourcedb/sourcedb
+    type: File
+  - id: solve_fast_phases
+    outputSource:
+      - solve_fast_phases/fast_phases_h5parm
+    type: File[]
+  - id: combine_slow_gains1
+    outputSource:
+      - combine_slow_gains1/outh5parm
+    type: File
+
 
 steps:
   - id: make_sourcedb

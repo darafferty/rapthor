@@ -49,7 +49,7 @@ inputs:
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
       source (length = 1).
-    type: string
+    type: boolean
 
   - id: sector_patches
     label: Names of sector calibration patches

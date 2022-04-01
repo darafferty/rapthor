@@ -69,9 +69,10 @@ inputs:
     label: One beam per patch
     doc: |
       Flag that sets beam correction per patch or per source.
-    type: string
+    type: boolean
     inputBinding:
       prefix: predict.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
   - id: h5parm
