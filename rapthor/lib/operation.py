@@ -122,6 +122,12 @@ class Operation(object):
         # Set the temp directory local to each node
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
 
+        # Get the container type
+        if self.parset['cluster_specific']['use_container']:
+            self.container = self.parset['cluster_specific']['container_type']
+        else:
+            self.container = None
+
     def set_parset_parameters(self):
         """
         Define parameters needed for the pipeline parset template
@@ -179,15 +185,18 @@ class Operation(object):
         """
         Calls Toil to run the operation's pipeline
         """
-        use_container = False
         # Build the args list
         args = []
-        if use_container:
-            args.extend(['--singularity'])
+        if self.container is not None:
+            # If the container is Docker, no extra args are needed. For other
+            # containers, set the required args
+            if self.container == 'singularity':
+                args.extend(['--singularity'])
+            elif self.container == 'udocker':
+                args.extend(['--user-space-docker-cmd', 'udocker'])
         else:
             args.extend(['--no-container'])
             args.extend(['--preserve-entire-environment'])
-#            args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         args.extend(['--batchSystem', self.batch_system])
         if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
