@@ -344,18 +344,20 @@ inputs:
 
 
 outputs:
-  - id: make_sourcedb
+  - id: fast_phases
     outputSource:
-      - make_sourcedb/sourcedb
+      - combine_fast_phases/outh5parm
     type: File
-  - id: solve_fast_phases
+{% if do_slowgain_solve %}
+  - id: combined_solutions
     outputSource:
-      - solve_fast_phases/fast_phases_h5parm
+      - combine_fast_and_slow_h5parms2/combinedh5parm
+    type: File
+{% endif %}
+  - id: diagonal_aterms
+    outputSource:
+      - merge_aterm_files/output
     type: File[]
-  - id: combine_slow_gains1
-    outputSource:
-      - combine_slow_gains1/outh5parm
-    type: File
 
 
 steps:
@@ -387,7 +389,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -467,9 +469,9 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
-{% endif %}
+{% endif %} 
     in:
       - id: msin
         source: freqchunk_filename
@@ -587,7 +589,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -774,7 +776,8 @@ steps:
         valueFrom: '{{ max_threads }}'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_images
 
 {% if debug %}
 # Solve for slow gains again, applying the first ones
@@ -785,7 +788,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -894,6 +897,18 @@ steps:
         valueFrom: '{{ max_threads }}'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_images
 
 {% endif %}
+
+  - id: merge_aterm_files
+    in:
+      - id: input
+        source:
+          - make_aterms/output_images
+    out:
+      - id: output
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/merge_array_files.cwl
+    label: merge_aterm_files
+
