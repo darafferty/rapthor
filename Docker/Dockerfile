@@ -119,10 +119,6 @@ RUN ninja -C /src/DP3/build install
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
-# Install current version of Rapthor
-COPY . rapthor
-RUN python3 -m pip install --upgrade ./rapthor
-
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
@@ -189,3 +185,9 @@ RUN wget -q -O /WSRT_Measures.ztar \
 RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version
+
+# Install current version of Rapthor
+COPY . /tmp/rapthor
+RUN python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
+RUN rm -rf /tmp/*
+
