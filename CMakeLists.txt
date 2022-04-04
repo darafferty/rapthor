@@ -1,7 +1,7 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.8)
 
 set(IDG_VERSION "1.0.0")
 if(IDG_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")
@@ -25,6 +25,10 @@ set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/modules"
                       ${CMAKE_MODULE_PATH})
 
 include(CTest)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED YES)
+set(CMAKE_CXX_EXTENSIONS NO)
 
 # build shared or static libraries (default: shared)
 if(BUILD_STATIC_LIBS)
