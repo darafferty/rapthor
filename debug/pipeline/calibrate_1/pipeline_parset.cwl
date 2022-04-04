@@ -18,7 +18,6 @@ requirements:
   StepInputExpressionRequirement: {}
 
 
-
 inputs:
   - id: timechunk_filename
     label: Filename of input MS (time)
@@ -329,21 +328,19 @@ inputs:
     type: string
 
 
-
-
 outputs:
-  - id: make_sourcedb
+  - id: fast_phases
     outputSource:
-      - make_sourcedb/sourcedb 
+      - combine_fast_phases/outh5parm
     type: File
-  - id: solve_fast_phases
+  - id: combined_solutions
     outputSource:
-      - solve_fast_phases/fast_phases_h5parm
+      - combine_fast_and_slow_h5parms2/combinedh5parm
+    type: File
+  - id: diagonal_aterms
+    outputSource:
+      - merge_aterm_files/output
     type: File[]
-  - id: combine_slow_gains1
-    outputSource:
-      - combine_slow_gains1/outh5parm
-    type: File
 
 
 steps:
@@ -745,7 +742,16 @@ steps:
         valueFrom: '40'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_images
 
-
+  - id: merge_aterm_files
+    in:
+      - id: input
+        source:
+          - make_aterms/output_images
+    out:
+      - id: output
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/merge_array_files.cwl
+    label: merge_aterm_files
 
