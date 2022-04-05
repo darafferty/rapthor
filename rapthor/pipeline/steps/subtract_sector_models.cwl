@@ -92,7 +92,7 @@ inputs:
     label: Outlier flag
     doc: |
       The flag that sets peeling of outlier sources.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --peel_outliers=
       valueFrom: "$(self ? 'True': 'False')"
@@ -109,7 +109,7 @@ inputs:
     label: Bright-source flag
     doc: |
       The flag that sets peeling of bright-source sources.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --peel_bright=
       valueFrom: "$(self ? 'True': 'False')"
@@ -118,9 +118,10 @@ inputs:
     label: Reweight flag
     doc: |
       The flag that sets reweighting of uv data.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --reweight=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
 outputs: []

@@ -3,6 +3,7 @@ Module that holds the Calibrate class
 """
 import os
 import logging
+import shutil
 from rapthor.lib.operation import Operation
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLFile, CWLDir
@@ -275,6 +276,8 @@ class Calibrate(Operation):
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
         if self.field.do_slowgain_solve:
-            os.system('cp {0} {1}'.format(self.combined_h5parms, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                        os.path.join(dst_dir, self.field.h5parm_filename))
         else:
-            os.system('cp {0} {1}'.format(self.combined_fast_h5parm, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.h5parm_filename))

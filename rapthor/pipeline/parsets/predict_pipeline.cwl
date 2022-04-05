@@ -23,7 +23,7 @@ inputs:
     doc: |
       The filenames of input MS files for which prediction will be done (length =
       n_obs * n_sectors).
-    type: string[]
+    type: Directory[]
 
   - id: sector_model_filename
     label: Filenames of output MS
@@ -67,7 +67,7 @@ inputs:
     doc: |
       The filename of the h5parm solution table from the calibration pipeline (length
       = 1).
-    type: string
+    type: File
 
   - id: sector_skymodel
     label: Filename of sky model
@@ -87,14 +87,14 @@ inputs:
     doc: |
       The filename of the output sourcedb sky model file of each sector, repeated for
       each observation  (length = n_obs * n_sectors).
-    type: string[]
+    type: File[]
 
   - id: obs_filename
     label: Filename of input MS
     doc: |
       The filenames of input MS files for which subtraction will be done (length =
       n_obs).
-    type: string[]
+    type: Directory[]
 
   - id: obs_starttime
     label: Start time of each chunk
@@ -163,9 +163,13 @@ inputs:
     label: Reweight flag
     doc: |
       The flag that sets reweighting of uv data (length = 1).
-    type: string
+    type: boolean
 
-outputs: []
+outputs:
+  - id: make_sourcedb
+    outputSource:
+      - make_sourcedb/sourcedb
+    type: File[]
 
 steps:
   - id: make_sourcedb
@@ -200,7 +204,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -241,7 +245,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
