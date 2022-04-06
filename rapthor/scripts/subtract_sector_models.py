@@ -177,6 +177,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
     # Get the scratch directory from the first model filename (they are all the same)
     scratch_dir = os.path.dirname(model_list[0])
+    scratch_dir = '.'
 
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)

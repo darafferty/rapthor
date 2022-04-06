@@ -25,9 +25,9 @@ inputs:
     inputBinding:
       position: 0
   - id: msmod
-    label: Filename of model MS
+    label: Filenames of model MS
     doc: |
-      The filename of the input model MS file which will be subtracted.
+      The filenames of the input model MS files which will be subtracted.
     type: Directory[]
     inputBinding:
       position: 1
@@ -124,7 +124,12 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
-outputs: []
+outputs:
+  - id: output_models
+    type: Directory[]
+    outputBinding:
+      glob: '$(inputs.msobs.basename)$(inputs.infix)_*'
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

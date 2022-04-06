@@ -65,7 +65,7 @@ class Predict(Operation):
             )
             sector_sourcedb.append(sdb_file)
             sector_obs_sourcedb.extend(
-                [os.path.join(sdb_dir, sdb_file)] * len(self.field.observations)
+                [sdb_file] * len(self.field.observations)
             )
             sector_filename.extend(sector.get_obs_parameters('ms_filename'))
             sector_model_filename.extend(
@@ -102,7 +102,7 @@ class Predict(Operation):
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
-                            'sector_skymodel': sector_skymodel,
+                            'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_sourcedb': sector_sourcedb,
                             'sector_obs_sourcedb': CWLFile(sector_obs_sourcedb).to_json(),
                             'sector_patches': sector_patches,

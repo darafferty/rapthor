@@ -73,7 +73,7 @@ inputs:
     label: Filename of sky model
     doc: |
       The filename of the input sky model text file of each sector (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: sector_sourcedb
     label: Filename of sourcedb
@@ -170,6 +170,10 @@ outputs:
     outputSource:
       - make_sourcedb/sourcedb
     type: File[]
+  - id: subtract_models
+    outputSource:
+      - merge_subtract_models/output
+    type: Directory[]
 
 steps:
   - id: make_sourcedb
@@ -221,7 +225,7 @@ steps:
       - id: h5parm
         source: h5parm
       - id: sourcedb
-        source: sector_obs_sourcedb
+        source: make_sourcedb/sourcedb
       - id: sourcedb2
         source: make_sourcedb/sourcedb
       - id: directions
@@ -277,4 +281,15 @@ steps:
         source: reweight
     scatter: [msobs, obs_starttime, solint_sec, solint_hz, infix]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_models
+
+  - id: merge_subtract_models
+    in:
+      - id: input
+        source:
+          - subtract_models/output_models
+    out:
+      - id: output
+    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/merge_array_directories.cwl
+    label: merge_subtract_models
