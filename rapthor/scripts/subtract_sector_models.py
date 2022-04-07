@@ -8,7 +8,9 @@ import casacore.tables as pt
 import numpy as np
 import sys
 import os
+import shutil
 import subprocess
+import tempfile
 from astropy.time import Time
 import dateutil.parser
 from rapthor.lib import miscellaneous as misc
@@ -100,7 +102,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
          peel_outliers=False, peel_bright=False, reweight=True, starttime=None,
          solint_sec=None, solint_hz=None, weights_colname="CAL_WEIGHT",
          gainfile="", uvcut_min=80.0, uvcut_max=1e6, phaseonly=True,
-         dirname=None, quiet=True, infix=''):
+         dirname=None, quiet=True, infix='', scratch_dir=None):
     """
     Subtract sector model data
 
@@ -134,6 +136,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         Start time in JD seconds
     infix : str, optional
         Infix string used in filenames
+    scratch_dir: str, optional
+        Name of the scratch directory to use. If not specified, the directory containing
+        the model data MS files will be used.
     """
     use_compression = misc.string2bool(use_compression)
     peel_outliers = misc.string2bool(peel_outliers)
@@ -148,6 +153,11 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     phaseonly = misc.string2bool(phaseonly)
     reweight = misc.string2bool(reweight)
     model_list = misc.string2list(msmod_list)
+    # If not given as argument, get the scratch directory from the first model
+    # filename (they are all the same)
+    print(">>> scratch_dir", scratch_dir, file=sys.stderr)
+    scratch_dir = os.path.dirname(model_list[0]) if scratch_dir is None else scratch_dir
+    print("<<< scratch_dir", scratch_dir, file=sys.stderr)
 
     # Get the model data filenames, filtering any that do not have the right start time
     if starttime is not None:
@@ -174,10 +184,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         print('subtract_sector_models: No model data found. Exiting...')
         sys.exit(1)
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
-
-    # Get the scratch directory from the first model filename (they are all the same)
-    scratch_dir = os.path.dirname(model_list[0])
-    scratch_dir = '.'
 
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)
@@ -371,6 +377,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
     # Open output tables
     tout_list = []
+    print("**** model_list:", model_list, file=sys.stderr)
     for i, msmod in enumerate(model_list):
         if nr_bright > 0 and nr_outliers > 0 and i == len(model_list)-nr_outliers-nr_bright:
             # Break so we don't open output tables for the outliers or bright sources
@@ -381,7 +388,8 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         elif nr_bright > 0 and i == len(model_list)-nr_bright:
             # Break so we don't open output tables for the bright sources
             break
-        msout = msmod.rstrip('_modeldata')
+        msout = os.path.basename(msmod).rstrip('_modeldata')
+        print("**** msout:", msout, file=sys.stderr)
         if starttime is not None:
             # Use a model ms file as source for the copy (since otherwise we could copy the
             # entire msin and not just the data for the correct time range)
@@ -391,6 +399,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if not os.path.exists(msout):
             # Use subprocess to call 'cp' to ensure that the copied version has the
             # default permissions (e.g., so it's not read only)
+            print(f"mssrc: {mssrc}; msout: {msout}", file=sys.stderr)
             subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
@@ -429,7 +438,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                         datamod_all += datamod_list[i]
                     covweights = CovWeights(model_list[0], solint_sec, solint_hz, startrow_tmod, nrow,
                                             gainfile=gainfile, uvcut=uvcut, phaseonly=phaseonly,
-                                            dirname=dirname, quiet=quiet)
+                                            dirname=dirname, quiet=quiet, scratch_dir=scratch_dir)
                     coefficients = covweights.FindWeights(datain-datamod_all, flags)
                     weights = covweights.calcWeights(coefficients)
                     covweights = None
@@ -453,11 +462,14 @@ https://github.com/ebonnassieux/Scripts/blob/master/QualityWeightsLOFAR.py
 
 class CovWeights:
     def __init__(self, MSName, solint_sec, solint_hz, startrow, nrow, uvcut=[0, 2000],
-                 gainfile=None, phaseonly=False, dirname=None, quiet=True):
-        if MSName[-1] == "/":
-            self.MSName = MSName[0:-1]
+                 gainfile=None, phaseonly=False, dirname=None, quiet=True, scratch_dir=None):
+        self.MSName = MSName.rstrip('/')
+        if scratch_dir is not None:
+            self.MSCopy = shutil.copytree(
+                self.MSName, os.path.join(scratch_dir, os.path.basename(self.MSName))
+            )
         else:
-            self.MSName = MSName
+            self.MSCopy = self.MSName
         tab = pt.table(self.MSName, ack=False)
         self.timepersample = tab.getcell('EXPOSURE', 0)
         self.ntSol = max(1, int(round(solint_sec / self.timepersample)))
@@ -556,7 +568,7 @@ class CovWeights:
         return CoeffArray
 
     def calcWeights(self, CoeffArray, max_radius = 5e3):
-        ms = pt.table(self.MSName, readonly=False, ack=False)
+        ms = pt.table(self.MSCopy, readonly=False, ack=False)
         ants = pt.table(ms.getkeyword("ANTENNA"), ack=False)
         antnames = ants.getcol("NAME")
         nAnt = len(antnames)
@@ -719,14 +731,17 @@ if __name__ == '__main__':
     parser.add_argument('--dirname', help='Name of gain file directory', type=str, default=None)
     parser.add_argument('--quiet', help='Quiet', type=str, default='True')
     parser.add_argument('--infix', help='Infix for output files', type=str, default='')
+    parser.add_argument('--scratch_dir', help='Temporary scratch directory', type=str, default=None)
     args = parser.parse_args()
-    main(args.msin, args.msmod, msin_column=args.msin_column,
-         model_column=args.model_column, out_column=args.out_column,
-         nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
-         use_compression=args.use_compression, peel_outliers=args.peel_outliers,
-         peel_bright=args.peel_bright, reweight=args.reweight,
-         starttime=args.starttime, solint_sec=args.solint_sec,
-         solint_hz=args.solint_hz, weights_colname=args.weights_colname,
-         gainfile=args.gainfile, uvcut_min=args.uvcut_min,
-         uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
-         dirname=args.dirname, quiet=args.quiet, infix=args.infix)
+    with tempfile.TemporaryDirectory(dir=args.scratch_dir) as scratch:
+        main(args.msin, args.msmod, msin_column=args.msin_column,
+            model_column=args.model_column, out_column=args.out_column,
+            nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
+            use_compression=args.use_compression, peel_outliers=args.peel_outliers,
+            peel_bright=args.peel_bright, reweight=args.reweight,
+            starttime=args.starttime, solint_sec=args.solint_sec,
+            solint_hz=args.solint_hz, weights_colname=args.weights_colname,
+            gainfile=args.gainfile, uvcut_min=args.uvcut_min,
+            uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
+            dirname=args.dirname, quiet=args.quiet, infix=args.infix,
+            scratch_dir=scratch)
