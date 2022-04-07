@@ -279,13 +279,10 @@ steps:
         source: peel_bright
       - id: reweight
         source: reweight
-#      - id: scratch_dir
-#        source: scratch_dir
     scatter: [msobs, obs_starttime, solint_sec, solint_hz, infix]
     scatterMethod: dotproduct
     out:
       - id: output_models
-#      - id: logfile
 
   - id: merge_subtract_models
     in:
@@ -296,27 +293,4 @@ steps:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_directories.cwl
     label: merge_subtract_models
-
-  - id: writable_dir
-    in: []
-    out:
-      - id: out
-    run: {{ rapthor_pipeline_dir }}/steps/writable_dir.cwl
-    label: writable_dir
-
-#   - id: create_writable_dir
-#     out:
-#       - id: output
-#     run: {{ rapthor_pipeline_dir }}/steps/writable_dir.cwl
-#     label: create_writable_dir
-
-#  - id: merge_logfiles
-#    in:
-#      - id: input
-#        source:
-#          - subtract_models/logfile
-#    out:
-#      - id: output
-#    run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
-#    label: merge_logfiles
 
