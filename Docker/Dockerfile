@@ -6,7 +6,7 @@ FROM ubuntu:20.04 as builder
 ARG PORTABLE=TRUE
 
 # Install all build-time dependencies
-RUN export DEBIAN_FRONTEND=noninteractive && \ 
+RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
@@ -119,6 +119,22 @@ RUN ninja -C /src/DP3/build install
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
+# Install all Python dependencies for Rapthor
+RUN python3 -m pip install \
+    numpy \
+    scipy \
+    astropy \
+    jinja2 \
+    shapely \
+    toil[cwl] \
+    reproject \
+    python-dateutil \
+    Rtree \
+    loess \
+    lsmtool \
+    losoto \
+    bdsf \
+    python-casacore
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
@@ -128,7 +144,7 @@ FROM ubuntu:20.04 as runner
 
 COPY --from=builder /usr/local /usr/local
 
-# Only install run-time required packages 
+# Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
