@@ -10,7 +10,12 @@ doc: |
   data in which all sources have been subtracted.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entryname: scratch
+        entry: "$({class: 'Directory', listing: []})"
+        writable: true
 
 arguments:
   - '--weights_colname=WEIGHT_SPECTRUM'
@@ -123,12 +128,27 @@ inputs:
       prefix: --reweight=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
+#  - id: scratch_dir
+#    type: string
+#    inputBinding:
+#      prefix: --scratch_dir=
+#      separate: False
 
 outputs:
   - id: output_models
     type: Directory[]
     outputBinding:
       glob: '$(inputs.msobs.basename)$(inputs.infix)_*'
+  - id: scratch_dir
+    type: Directory[]
+    outputBinding:
+      glob: scratch
+#  - id: logfile
+#    type: File[]
+#    outputBinding:
+#      glob: 'subtract_sector_models*.log'
+#stdout: subtract_sector_models.log
+#stderr: subtract_sector_models_err.log
 
 hints:
   - class: DockerRequirement
