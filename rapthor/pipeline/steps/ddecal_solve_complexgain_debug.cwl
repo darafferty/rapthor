@@ -27,7 +27,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: string
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -72,7 +72,7 @@ inputs:
       prefix: solve.nchan=
       separate: False
   - id: sourcedb
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
@@ -126,9 +126,9 @@ inputs:
 
 outputs:
   - id: slow_gains_h5parm
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.h5parm)
+      glob: $(inputs.h5parm)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

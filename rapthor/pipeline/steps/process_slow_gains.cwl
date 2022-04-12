@@ -42,6 +42,7 @@ outputs:
     type: File
     outputBinding:
       glob: $(inputs.slowh5parm.basename)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

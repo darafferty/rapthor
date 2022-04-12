@@ -22,7 +22,7 @@ inputs:
     doc: |
       The filename of the input residual image to which sources will
       be restored.
-    type: string
+    type: File
     inputBinding:
       prefix: -restore-list
       position: 2
@@ -30,7 +30,7 @@ inputs:
     label: Filename of input model
     doc: |
       The filename of the input sky model which will be restored.
-    type: string
+    type: File
     inputBinding:
       position: 3
   - id: output_image
@@ -47,9 +47,10 @@ outputs:
     doc: |
       The filename of the output restored image. The value is
       taken from the input parameter "output_image"
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.output_image)
+      glob: $(inputs.output_image)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

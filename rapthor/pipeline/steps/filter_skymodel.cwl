@@ -14,21 +14,21 @@ inputs:
     label: Input image
     doc: |
       The filename of the input FITS image.
-    type: string
+    type: File
     inputBinding:
       position: 1
   - id: input_skymodel_pb
     label: PB-corrected model
     doc: |
       The filename of the input primary-beam-corrected sky model.
-    type: string
+    type: File
     inputBinding:
       position: 2
   - id: input_bright_skymodel_pb
     label: Bright-source PB-corrected model
     doc: |
       The filename of the input bright-source primary-beam-corrected sky model.
-    type: string
+    type: File
     inputBinding:
       position: 3
   - id: output_root
@@ -64,7 +64,7 @@ inputs:
   - id: beamMS
     label: Filename of MS file for beam
     doc: |
-      The filename of the MS file to use for beam calculations.
+      The filenames of the MS files to use for beam calculations.
     type: string[]
     inputBinding:
       prefix: --beamMS=

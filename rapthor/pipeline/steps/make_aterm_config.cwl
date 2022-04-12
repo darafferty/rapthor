@@ -32,9 +32,9 @@ outputs:
     doc: |
       The filename of the output config file. The value is taken from the input
       parameter "outfile".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.outfile)
+      glob: $(inputs.outfile)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

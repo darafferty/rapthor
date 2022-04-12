@@ -15,7 +15,7 @@ inputs:
     label: Filenames of images
     doc: |
       The filenames of the FITS images to be mosaicked.
-    type: string[]
+    type: File[]
     inputBinding:
       position: 1
       itemSeparator: ","
@@ -23,7 +23,7 @@ inputs:
     label: Filenames of vertices files
     doc: |
       The filenames of the sector vertices files.
-    type: string[]
+    type: File[]
     inputBinding:
       position: 2
       itemSeparator: ","
@@ -50,9 +50,10 @@ outputs:
     doc: |
       The filename of the output FITS image. The value is taken from the input
       parameter "output_image".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.output_image)
+      glob: $(inputs.output_image)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

@@ -28,7 +28,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: string
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -54,17 +54,17 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: h5parm
-    type: string
+    type: File
     inputBinding:
       prefix: predict.applycal.parmdb=
       separate: False
   - id: sourcedb
-    type: string
+    type: File
     inputBinding:
       prefix: predict.sourcedb=
       separate: False
   - id: sourcedb2
-    type: string[]
+    type: File[]
     inputBinding:
       valueFrom: ''
   - id: directions
@@ -82,9 +82,10 @@ inputs:
 
 outputs:
   - id: msmod
-    type: string
+    type: Directory
     outputBinding:
-      outputEval: $(inputs.msout)
+      glob: $(inputs.msout)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

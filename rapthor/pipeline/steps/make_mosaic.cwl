@@ -14,7 +14,7 @@ inputs:
     label: Filenames of images
     doc: |
       The filenames of the regridded FITS images to be mosaicked.
-    type: string[]
+    type: File[]
     inputBinding:
       position: 1
       itemSeparator: ","
@@ -22,7 +22,7 @@ inputs:
     label: Filename of template image
     doc: |
       The filename of the template mosaic FITS image.
-    type: string
+    type: File
     inputBinding:
       position: 2
   - id: output_image
@@ -42,7 +42,14 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
-outputs: []
+outputs:
+  - id: mosaic_image
+    doc: |
+      FITS mosaic from input FITS images.
+    type: File
+    outputBinding:
+      glob: $(inputs.output_image)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

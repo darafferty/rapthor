@@ -40,6 +40,7 @@ outputs:
     type: File
     outputBinding:
       glob: $(inputs.out)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

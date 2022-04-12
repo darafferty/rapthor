@@ -43,6 +43,7 @@ outputs:
     type: File[]
     outputBinding:
       glob: $(inputs.outh5parms)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

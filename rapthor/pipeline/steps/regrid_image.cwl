@@ -14,21 +14,21 @@ inputs:
     label: Input image
     doc: |
       The filename of the input FITS image.
-    type: string
+    type: File
     inputBinding:
       position: 1
   - id: template_image
     label: Input template
     doc: |
       The filename of the input template FITS image.
-    type: string
+    type: File
     inputBinding:
       position: 2
   - id: vertices_file
     label: Filename of vertices file
     doc: |
       The filename of the sector vertices file.
-    type: string
+    type: File
     inputBinding:
       position: 3
   - id: output_image
@@ -54,9 +54,10 @@ outputs:
     doc: |
       The filename of the regridded FITS image. The value is taken from the input
       parameter "output_image".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.output_image)
+      glob: $(inputs.output_image)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

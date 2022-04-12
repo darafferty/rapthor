@@ -44,7 +44,7 @@ inputs:
     label: Filenames of input MS
     doc: |
       The filenames of input MS files for which imaging will be done.
-    type: string[]
+    type: Directory[]
     inputBinding:
       position: 3
   - id: name
@@ -184,33 +184,34 @@ outputs:
     doc: |
       The filename of the output non-primary-beam-corrected image. The value is
       constructed from the input parameter "name"
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-MFS-image.fits
+      glob: $(inputs.name)-MFS-image.fits
   - id: image_pb_name
     label: Output PB-corrected image
     doc: |
       The filename of the output primary-beam-corrected image. The value is
       constructed from the input parameter "name"
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-MFS-image-pb.fits
+      glob: $(inputs.name)-MFS-image-pb.fits
   - id: skymodel_nonpb
     label: Output non-PB-corrected sky model
     doc: |
       The filename of the output primary beam-corrected image. The value is
       constructed from the input parameter "name"
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-sources.txt
+      glob: $(inputs.name)-sources.txt
   - id: skymodel_pb
     label: Output PB-corrected image
     doc: |
       The filename of the output primary beam-corrected image. The value is
       constructed from the input parameter "name"
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-sources-pb.txt
+      glob: $(inputs.name)-sources-pb.txt
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

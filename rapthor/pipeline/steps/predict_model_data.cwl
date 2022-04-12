@@ -130,6 +130,7 @@ outputs:
     type: Directory
     outputBinding:
       glob: $(inputs.msout)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'
