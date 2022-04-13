@@ -4,3 +4,4 @@
 int Plan_get_nr_subgrids(struct Plan* plan);
 void Plan_copy_metadata(struct Plan* plan, void* ptr);
 void Plan_destroy(struct Plan* plan);
+struct Plan* Plan_init(struct Plan* plan);
