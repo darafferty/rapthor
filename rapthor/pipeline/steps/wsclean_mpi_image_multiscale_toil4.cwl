@@ -22,11 +22,11 @@ inputs:
     inputBinding:
       prefix: -n
   - id: mask
-    type: string
+    type: File
     inputBinding:
       prefix: -k
   - id: config
-    type: string
+    type: File
     inputBinding:
       prefix: -c
   - id: wsclean_imsize

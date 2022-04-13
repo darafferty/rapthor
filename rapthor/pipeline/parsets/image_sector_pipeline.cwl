@@ -24,7 +24,7 @@ inputs:
     doc: |
       The filenames of input MS files for which imaging will be done (length =
       n_obs).
-    type: string[]
+    type: Directory[]
 
   - id: prepare_filename
     label: Filenames of imaging MS
@@ -60,7 +60,7 @@ inputs:
     label: Filename of previous mask
     doc: |
       The filename of the image mask from the previous iteration (length = 1).
-    type: string
+    type: File
 
   - id: mask_filename
     label: Filename of current mask
@@ -108,13 +108,13 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices (length = 1).
-    type: string
+    type: File
 
   - id: region_file
     label: Filename of region file
     doc: |
       The filename of the region file (length = 1).
-    type: string
+    type: File
 
 {% if use_screens %}
   - id: aterms_config_file
@@ -253,7 +253,7 @@ inputs:
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = 1).
-    type: string
+    type: File
 
   - id: peel_bright
     label: Peeling flag

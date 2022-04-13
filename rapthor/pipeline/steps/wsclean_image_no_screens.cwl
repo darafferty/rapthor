@@ -50,7 +50,7 @@ inputs:
     inputBinding:
       prefix: -name
   - id: mask
-    type: string
+    type: File
     inputBinding:
       prefix: -fits-mask
   - id: wsclean_imsize

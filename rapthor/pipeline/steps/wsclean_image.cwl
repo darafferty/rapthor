@@ -58,14 +58,14 @@ inputs:
     label: Filename of mask
     doc: |
       The filename of the clean mask.
-    type: string
+    type: File
     inputBinding:
       prefix: -fits-mask
   - id: config
     label: Filename of config file
     doc: |
       The filename of the a-term config file.
-    type: string
+    type: File
     inputBinding:
       prefix: -aterm-config
   - id: wsclean_imsize

@@ -54,11 +54,11 @@ inputs:
     inputBinding:
       prefix: -name
   - id: mask
-    type: string
+    type: File
     inputBinding:
       prefix: -fits-mask
   - id: config
-    type: string
+    type: File
     inputBinding:
       prefix: -aterm-config
   - id: wsclean_imsize

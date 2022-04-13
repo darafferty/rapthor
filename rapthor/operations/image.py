@@ -4,6 +4,7 @@ Module that holds the Image class
 import os
 import logging
 from rapthor.lib.operation import Operation
+from rapthor.lib.cwl import CWLFile, CWLDir
 from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:image')
@@ -128,9 +129,9 @@ class Image(Operation):
             # The following attribute was set by the preceding calibrate operation
             aterm_image_filenames.append("'[{}]'".format(','.join(self.field.aterm_image_filenames)))
 
-        self.input_parms = {'obs_filename': obs_filename,
+        self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
-                            'previous_mask_filename': previous_mask_filename,
+                            'previous_mask_filename': [CWLFile(name).to_json() for name in previous_mask_filename],
                             'mask_filename': mask_filename,
                             'starttime': starttime,
                             'ntimes': ntimes,
@@ -145,8 +146,8 @@ class Image(Operation):
                             'ra': [sector.ra for sector in self.field.imaging_sectors],
                             'dec': [sector.dec for sector in self.field.imaging_sectors],
                             'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
-                            'vertices_file': [sector.vertices_file for sector in self.field.imaging_sectors],
-                            'region_file': [sector.region_file for sector in self.field.imaging_sectors],
+                            'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.field.imaging_sectors],
+                            'region_file': [CWLFile(sector.region_file).to_json() for sector in self.field.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
                             'robust': [sector.robust for sector in self.field.imaging_sectors],
@@ -159,7 +160,7 @@ class Image(Operation):
                             'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
-                            'bright_skymodel_pb': [self.field.bright_source_skymodel_file] * nsectors,
+                            'bright_skymodel_pb': [CWLFile(self.field.bright_source_skymodel_file).to_json()] * nsectors,
                             'peel_bright': [self.field.peel_bright_sources] * nsectors}
         if self.field.use_screens:
             self.input_parms.update({'aterms_config_file': aterms_config_file,

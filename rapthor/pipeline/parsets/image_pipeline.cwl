@@ -22,7 +22,7 @@ inputs:
       type: array
       items:
         type: array
-        items: string
+        items: Directory
 
   - id: prepare_filename
     label: Filename of imaging MS
@@ -80,7 +80,7 @@ inputs:
     label: Filename of previous mask
     doc: |
       The filename of the image mask from the previous iteration (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: mask_filename
     label: Filename of current mask
@@ -132,13 +132,13 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: region_file
     label: Filename of region file
     doc: |
       The filename of the region file (length = n_sectors).
-    type: string[]
+    type: File[]
 
 {% if use_screens %}
   - id: aterms_config_file
@@ -278,7 +278,7 @@ inputs:
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: peel_bright
     label: Peeling flag

@@ -42,7 +42,7 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
-    type: string
+    type: File
     inputBinding:
       position: 5
   - id: threshisl
@@ -65,7 +65,7 @@ inputs:
     label: Filename of MS file for beam
     doc: |
       The filenames of the MS files to use for beam calculations.
-    type: string[]
+    type: Directory[]
     inputBinding:
       prefix: --beamMS=
       itemSeparator: ","
