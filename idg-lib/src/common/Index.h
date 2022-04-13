@@ -19,7 +19,6 @@ inline FUNCTION_ATTRIBUTES size_t index_grid_tiling(int nr_polarizations,
                                                     size_t grid_size, int pol,
                                                     int y, int x) {
   // grid: [NR_TILES][NR_TILES][nr_polarizations][TILE_SIZE][TILE_SIZE]
-  assert(grid_size % tile_size == 0);
   const int NR_TILES = grid_size / tile_size;
   size_t idx_tile_y = y / tile_size;
   size_t idx_tile_x = x / tile_size;
