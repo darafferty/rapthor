@@ -909,6 +909,6 @@ steps:
           - make_aterms/output_images
     out:
       - id: output
-    run: /project/rapthor/Software/rapthor.rap-423/lib/python3.6/site-packages/rapthor/pipeline/steps/merge_array_files.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
     label: merge_aterm_files
 
