@@ -13,6 +13,10 @@ void Plan_copy_metadata(struct idg::Plan* plan, void* ptr) {
   plan->copy_metadata(ptr);
 }
 
+void Plan_copy_aterms_indices(struct idg::Plan* plan, void* ptr) {
+  plan->copy_aterm_indices(ptr);
+}
+
 void Plan_destroy(struct idg::Plan* plan) { delete plan; }
 
 struct idg::Plan* Plan_init(int kernel_size, int subgrid_size, int grid_size,
