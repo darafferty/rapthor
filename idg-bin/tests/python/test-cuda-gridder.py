@@ -128,7 +128,6 @@ def run():
     sizeof_metadata, d_metadata = cuda_mem_alloc(metadata)
     sizeof_subgrids, d_subgrids = cuda_mem_alloc(subgrids)
 
-
     # Copy data to device
     print(">>> Copy data from host to device")
     cuda_memcpy_htod(d_uvw, uvw, sizeof_uvw, stream)
@@ -211,8 +210,34 @@ def run():
     err, = cuda.cuStreamSynchronize(stream)
     cuda_check(err)
 
+    # Run reference
+    subgrids_reference = np.zeros(
+        (nr_subgrids, nr_polarizations, subgrid_size, subgrid_size), dtype=np.complex64)
+
+    kernel = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
+
+    # Launch kernel
+    print(">>> Launch kernel")
+    err, = cuda.cuLaunchKernel(
+        kernel,
+        nr_subgrids,  # grid x dim
+        1,  # grid y dim
+        1,  # grid z dim
+        128,  # block x dim
+        1,  # block y dim
+        1,  # block z dim
+        0,  # dynamic shared memory
+        stream,  # stream
+        (arg_values, arg_types), # kernel arguments
+        0,  # extra (ignore)
+    )
+    cuda_check(err)
+    cuda_memcpy_dtoh(d_subgrids, subgrids_reference, sizeof_subgrids, stream)
+    cuda_check(err)
+    err, = cuda.cuStreamSynchronize(stream)
+
     # Debug
-    print(subgrids)
+    print(subgrids - subgrids_reference)
 
 
 if __name__ == "__main__":

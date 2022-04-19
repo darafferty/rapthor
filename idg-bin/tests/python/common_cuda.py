@@ -138,15 +138,10 @@ def compile_kernel(device, kernel_filename, kernel_name, compile_options=[]):
     # Compile program
     compile_options = [bytes(compile_option, encoding='utf8') for compile_option in compile_options]
     compile_options = [arch_arg] + compile_options
-    #opts.append(b"-DBLOCK_SIZE_X=128")
-    #opts.append(b"-DUNROLL_PIXELS=4")
-    #opts.append(b"-DNUM_BLOCKS=4")
-    #opts.append(b"-DUSE_EXTRAPOLATE=0")
     compile_options.append(b"--use_fast_math")
     cuda_dir = get_cuda_dir()
     include_dir = f"{cuda_dir}/include"
     compile_options.append(bytes(f"--include-path={include_dir}", encoding='utf8'))
-    print(compile_options)
     err, = nvrtc.nvrtcCompileProgram(prog, len(compile_options), compile_options)
 
     if (err != nvrtc.nvrtcResult.NVRTC_SUCCESS):
