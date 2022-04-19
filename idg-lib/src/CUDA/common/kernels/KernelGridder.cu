@@ -160,6 +160,7 @@ __device__ void
           float2*          __restrict__ subgrid)
 {
     int tid = threadIdx.x;
+    int num_threads = blockDim.x;
     int s = blockIdx.x;
 
 	// Load metadata for current subgrid
@@ -177,7 +178,7 @@ __device__ void
     const float w_offset = w_step * ((float) m.coordinate.z + 0.5) * 2 * M_PI;
 
     // Iterate all pixels in subgrid
-    for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, NUM_THREADS); i += NUM_THREADS * UNROLL_PIXELS) {
+    for (int i = tid; i < ALIGN(subgrid_size * subgrid_size, NUM_THREADS); i += num_threads * UNROLL_PIXELS) {
         float2 pixel_cur[UNROLL_PIXELS][4];
         float2 pixel_sum[UNROLL_PIXELS][4];
 
@@ -198,7 +199,7 @@ __device__ void
         float phase_offset[UNROLL_PIXELS];
 
         for (int j = 0; j < UNROLL_PIXELS; j++) {
-            int i_ = i + j * NUM_THREADS;
+            int i_ = i + j * num_threads;
             int y = i_ / subgrid_size;
             int x = i_ % subgrid_size;
             float l_offset = compute_l(x, subgrid_size, image_size);
@@ -218,7 +219,7 @@ __device__ void
             __syncthreads();
 
             // Load UVW
-            for (int j = tid; j < current_nr_timesteps; j += NUM_THREADS) {
+            for (int j = tid; j < current_nr_timesteps; j += num_threads) {
                 int time = time_offset_local + j;
                 if (time < nr_timesteps) {
                     int idx_time = time_offset_global + time;
@@ -229,7 +230,7 @@ __device__ void
 
             // Load visibilities
             if (nr_polarizations == 4) {
-                for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += NUM_THREADS) {
+                for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += num_threads) {
                     int j = v % 2; // one thread loads either upper or lower float4 part of visibility
                     int k = v / 2;
                     int time = time_offset_local + (k / current_nr_channels);
@@ -243,7 +244,7 @@ __device__ void
                 }
             } else if (nr_polarizations == 1) {
                 // Use only visibilities_[0][*]
-                for (int k = tid; k < current_nr_timesteps*current_nr_channels; k += NUM_THREADS) {
+                for (int k = tid; k < current_nr_timesteps*current_nr_channels; k += num_threads) {
                     int time = time_offset_local + (k / current_nr_channels);
                     int idx_time = time_offset_global + time;
                     int idx_chan = channel_offset + (k % current_nr_channels);
@@ -269,7 +270,7 @@ __device__ void
 
                 if (aterm_changed) {
                     for (int j = 0; j < UNROLL_PIXELS; j++) {
-                        int i_ = i + j * NUM_THREADS;
+                        int i_ = i + j * num_threads;
                         int y = i_ / subgrid_size;
                         int x = i_ % subgrid_size;
 
@@ -323,7 +324,7 @@ __device__ void
         } // end for time_offset_local
 
         for (int j = 0; j < UNROLL_PIXELS; j++) {
-            int i_ = i + j * NUM_THREADS;
+            int i_ = i + j * num_threads;
             int y = i_ / subgrid_size;
             int x = i_ % subgrid_size;
 
