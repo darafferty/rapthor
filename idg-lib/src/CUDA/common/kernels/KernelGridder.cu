@@ -138,7 +138,7 @@ __device__ void update_subgrid(
 template<int nr_polarizations>
 __device__ void
     kernel_gridder_(
-    const int                           time_offset_job,
+    const int                           time_offset,
     const int                           grid_size,
     const int                           subgrid_size,
     const float                         image_size,
@@ -164,7 +164,7 @@ __device__ void
 
 	// Load metadata for current subgrid
     const Metadata &m = metadata[s];
-    const int time_offset_global = m.time_index - time_offset_job;
+    const int time_offset_global = m.time_index - time_offset;
     const int nr_timesteps = m.nr_timesteps;
     const int x_coordinate = m.coordinate.x;
     const int y_coordinate = m.coordinate.y;
