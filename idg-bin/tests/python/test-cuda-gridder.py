@@ -1,97 +1,17 @@
 #!/usr/bin/env python
 
 import ctypes
-from cuda import cuda, nvrtc
+from cuda import cuda
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 
+from common_cuda import *
 import idg
 import idg.util as util
 from idg.data import Data
 
-import common_cuda
-
-def ASSERT_DRV(err):
-    if isinstance(err, cuda.CUresult):
-        if err != cuda.CUresult.CUDA_SUCCESS:
-            raise RuntimeError('Cuda Error: {}'.format(err))
-    elif isinstance(err, nvrtc.nvrtcResult):
-        if err != nvrtc.nvrtcResult.NVRTC_SUCCESS:
-            raise RuntimeError('Nvrtc Error: {}'.format(err))
-    else:
-        raise RuntimeError('Unknown error type: {}'.format(err))
-
 def run():
-    # The kernel to test
-    root_dir = os.path.realpath(f"{__file__}/../../../..")
-    kernel_dir = f"{root_dir}/idg-lib/src/CUDA/common/kernels"
-    kernel_filename = "KernelGridder.cu"
-    kernel_path = f"{kernel_dir}/{kernel_filename}"
-    kernel_name = "kernel_gridder"
-    kernel_string = common_cuda.get_kernel_string(kernel_path)
-    with open("temp.cu", "w") as f:
-        f.write(kernel_string)
-
-    # Initialize CUDA
-    err, = cuda.cuInit(0)
-    ASSERT_DRV(err)
-
-    # Retrieve handle for device 0
-    err, cuDevice = cuda.cuDeviceGet(0)
-    ASSERT_DRV(err)
-
-    # Create program
-    err, prog = nvrtc.nvrtcCreateProgram(str.encode(kernel_string), b"", 0, [], [])
-    ASSERT_DRV(err)
-
-    # Create context
-    err, context = cuda.cuCtxCreate(0, cuDevice)
-    ASSERT_DRV(err)
-
-    # Get target architecture
-    err, major = cuda.cuDeviceGetAttribute(cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, cuDevice)
-    ASSERT_DRV(err)
-    err, minor = cuda.cuDeviceGetAttribute(cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, cuDevice)
-    ASSERT_DRV(err)
-    err, nvrtc_major, nvrtc_minor = nvrtc.nvrtcVersion()
-    ASSERT_DRV(err)
-    use_cubin = (nvrtc_minor >= 1)
-    prefix = 'sm' if use_cubin else 'compute'
-    arch_arg = bytes(f'--gpu-architecture={prefix}_{major}{minor}', 'ascii')
-
-    # Compile program
-    opts = [arch_arg]
-    #opts.append(b"-DBLOCK_SIZE_X=128")
-    #opts.append(b"-DUNROLL_PIXELS=4")
-    #opts.append(b"-DNUM_BLOCKS=4")
-    #opts.append(b"-DUSE_EXTRAPOLATE=0")
-    opts.append(b"--use_fast_math")
-    cuda_dir = common_cuda.get_cuda_dir()
-    include_dir = f"{cuda_dir}/include"
-    opts.append(bytes(f"--include-path={include_dir}", encoding='utf8'))
-    err, = nvrtc.nvrtcCompileProgram(prog, len(opts), opts)
-
-    if (err != nvrtc.nvrtcResult.NVRTC_SUCCESS):
-        err, logSize = nvrtc.nvrtcGetProgramLogSize(prog)
-        log = bytearray(logSize)
-        nvrtc.nvrtcGetProgramLog(prog, log)
-        raise RuntimeError("Nvrtc Error: {}".format(log.decode()))
-
-    # Get PTX from compilation
-    err, ptxSize = nvrtc.nvrtcGetPTXSize(prog)
-    ASSERT_DRV(err)
-    ptx = b" " * ptxSize
-    err, = nvrtc.nvrtcGetPTX(prog, ptx)
-    ASSERT_DRV(err)
-
-    # Load PTX as module data and retrieve function
-    ptx = np.char.array(ptx)
-    err, module = cuda.cuModuleLoadData(ptx.ctypes.data)
-    ASSERT_DRV(err)
-    err, kernel = cuda.cuModuleGetFunction(module, bytes(f"{kernel_name}", encoding='utf8'))
-    ASSERT_DRV(err)
-
     # IDG parameters
     grid_size = 2048
     nr_correlations = 4
@@ -191,24 +111,14 @@ def run():
     # util.plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size, image_size)
     # plt.show()
 
+    # Initalize CUDA
+    device, context = cuda_initialize()
+
     # Create stream
     err, stream = cuda.cuStreamCreate(0)
 
-
-    hX = np.random.rand(64).astype(dtype=np.float32)
-    bufferSize = 64 * hX.itemsize
-    err, dX = cuda.cuMemAlloc(bufferSize)
-    ASSERT_DRV(err)
-    err, = cuda.cuMemcpyHtoDAsync(dX, hX, bufferSize, stream)
-    ASSERT_DRV(err)
-
-    def cuda_mem_alloc(data):
-        sizeof_data = np.array(data).nbytes
-        err, d_data = cuda.cuMemAlloc(sizeof_data)
-        if (err != cuda.CUresult.CUDA_SUCCESS):
-            raise RuntimeError("Cuda Error: {}".format(err))
-        return sizeof_data, d_data
-
+    # Allocate device memory
+    print(">>> Allocate device memory")
     sizeof_uvw, d_uvw = cuda_mem_alloc(uvw)
     sizeof_wavenumbers, d_wavenumbers = cuda_mem_alloc(wavenumbers)
     sizeof_visbilities, d_visibilities = cuda_mem_alloc(visibilities)
@@ -218,14 +128,8 @@ def run():
     sizeof_metadata, d_metadata = cuda_mem_alloc(metadata)
     sizeof_subgrids, d_subgrids = cuda_mem_alloc(subgrids)
 
-    def cuda_memcpy_htod(d_data, h_data, bytes, stream):
-        err, = cuda.cuMemcpyHtoDAsync(d_data, h_data, bytes, stream)
-        ASSERT_DRV(err)
 
-    def cuda_memcpy_dtoh(d_data, h_data, bytes, stream):
-        err, = cuda.cuMemcpyDtoHAsync(h_data, d_data, bytes, stream)
-        ASSERT_DRV(err)
-
+    # Copy data to device
     print(">>> Copy data from host to device")
     cuda_memcpy_htod(d_uvw, uvw, sizeof_uvw, stream)
     cuda_memcpy_htod(d_wavenumbers, wavenumbers, sizeof_wavenumbers, stream)
@@ -279,8 +183,8 @@ def run():
         None  # subgrid
     )
 
-    err, = cuda.cuStreamSynchronize(stream)
-    ASSERT_DRV(err)
+    # Compile kernel
+    kernel = compile_kernel(device, "KernelGridder.cu", "kernel_gridder")
 
     # Launch kernel
     print(">>> Launch kernel")
@@ -297,16 +201,19 @@ def run():
         (arg_values, arg_types), # kernel arguments
         0,  # extra (ignore)
     )
-    ASSERT_DRV(err)
+    cuda_check(err)
 
-    err, = cuda.cuStreamSynchronize(stream)
-    ASSERT_DRV(err)
-
+    # Copy result
     print(">>> Copy data from device to host")
     cuda_memcpy_dtoh(d_subgrids, subgrids, sizeof_subgrids, stream)
 
+    # Wait for GPU to finish
     err, = cuda.cuStreamSynchronize(stream)
-    ASSERT_DRV(err)
+    cuda_check(err)
+
+    # Debug
+    print(subgrids)
+
 
 if __name__ == "__main__":
     run()
