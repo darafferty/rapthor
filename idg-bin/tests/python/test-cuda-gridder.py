@@ -126,11 +126,13 @@ def compare_gridder(device, kernel1, kernel2):
     (err,) = cuda.cuStreamSynchronize(stream)
 
     # Debug
-    compare_subgrids(subgrids_reference, subgrids)
+    # compare_subgrids(subgrids_reference, subgrids)
 
     # Check correctness
     print(f"Error: {get_accuracy(subgrids_reference, subgrids)}")
-    assert np.allclose(subgrids_reference, subgrids, atol=1e-5, rtol=1e-2)
+
+    max = np.max(np.absolute(subgrids_reference))
+    assert np.allclose(subgrids_reference/max, subgrids/max, atol=1e-5, rtol=1e-6)
 
 
 def test_gridder_default():

@@ -368,6 +368,10 @@ def compare_subgrids(s1, s2, subgrid_index=0, polarization_index=0):
     ax[0, 0].imshow(np.abs(s1))
     ax[0, 1].imshow(np.abs(s2))
 
+    max = np.max(np.absolute(s1))
+    s1 /= max
+    s2 /= max
+
     diff = np.absolute(s2) - np.absolute(s1)
     scale = np.absolute(s2) / np.absolute(s1)
 
