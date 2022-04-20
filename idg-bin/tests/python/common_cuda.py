@@ -213,9 +213,9 @@ class TestData:
         self.subgrid_size = 32
         self.image_size = 0.01
         self.nr_channels = 16
-        self.nr_stations = 3
+        self.nr_stations = 8
         self.nr_timeslots = 32
-        self.nr_timesteps = 8192
+        self.nr_timesteps = 4096
         self.integration_time = 0.9
         layout_file = "LOFAR_lba.txt"
 
