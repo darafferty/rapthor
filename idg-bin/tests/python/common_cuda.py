@@ -2,7 +2,13 @@ import os
 import re
 from ctypes import cdll
 from cuda import cuda, nvrtc
+import matplotlib.pyplot as plt
 import numpy as np
+
+import idg
+import idg.util as util
+from idg.data import Data
+
 
 def get_cuda_dir():
     # NVRTC is used, so we should be able to find libnvrtc.so
@@ -21,7 +27,6 @@ def get_cuda_dir():
 
     # CUDA directory: <prefix>/targets/<arch>-<os>
     cuda_dir = os.path.realpath(f"{library_dir}/..")
-    print(cuda_dir)
 
     return cuda_dir
 
@@ -29,17 +34,17 @@ def get_cuda_dir():
 def get_kernel_string(filename):
     # Helper function to recursively get a parent directory
     def get_parent_dir(dirname, level=1):
-        if (level == 0):
+        if level == 0:
             return dirname
         else:
             parentdir = os.path.abspath(os.path.join(dirname, os.pardir))
-            return get_parent_dir(parentdir, level -1)
+            return get_parent_dir(parentdir, level - 1)
 
     # All the directories to look for kernel sources and header files
     prefixes = []
-    dirname_kernel = os.path.dirname(filename) # e.g. idg-lib/src/CUDA/common/kernels
+    dirname_kernel = os.path.dirname(filename)  # e.g. idg-lib/src/CUDA/common/kernels
     prefixes.append(dirname_kernel)
-    dirname_src = get_parent_dir(dirname_kernel, 3) # e.g. idg-lib/src
+    dirname_src = get_parent_dir(dirname_kernel, 3)  # e.g. idg-lib/src
     prefixes.append(dirname_src)
 
     # Helper function to recursively get file contents with local includes
@@ -74,11 +79,12 @@ def get_kernel_string(filename):
         return result
 
     # Start gathering all the source lines
-    filename_kernel = os.path.basename(filename) # e.g. KernelGridder.cu
+    filename_kernel = os.path.basename(filename)  # e.g. KernelGridder.cu
     source_lines = add_file(filename_kernel)
 
     # Return the result as a string
     return "".join(source_lines)
+
 
 def cuda_check(err):
     name = cuda.cuGetErrorName(err)
@@ -94,8 +100,8 @@ def cuda_check(err):
 
 
 def cuda_initialize():
-   # Initialize CUDA
-    err, = cuda.cuInit(0)
+    # Initialize CUDA
+    (err,) = cuda.cuInit(0)
     cuda_check(err)
 
     # Retrieve handle for device 0
@@ -110,15 +116,19 @@ def cuda_initialize():
 
 
 def get_cuda_target_architecture(device):
-    err, major = cuda.cuDeviceGetAttribute(cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device)
+    err, major = cuda.cuDeviceGetAttribute(
+        cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device
+    )
     cuda_check(err)
-    err, minor = cuda.cuDeviceGetAttribute(cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device)
+    err, minor = cuda.cuDeviceGetAttribute(
+        cuda.CUdevice_attribute.CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MINOR, device
+    )
     cuda_check(err)
     err, nvrtc_major, nvrtc_minor = nvrtc.nvrtcVersion()
     cuda_check(err)
-    use_cubin = (nvrtc_minor >= 1)
-    prefix = 'sm' if use_cubin else 'compute'
-    return bytes(f'--gpu-architecture={prefix}_{major}{minor}', 'ascii')
+    use_cubin = nvrtc_minor >= 1
+    prefix = "sm" if use_cubin else "compute"
+    return bytes(f"--gpu-architecture={prefix}_{major}{minor}", "ascii")
 
 
 def compile_kernel(device, kernel_filename, kernel_name, compile_options=[]):
@@ -136,15 +146,17 @@ def compile_kernel(device, kernel_filename, kernel_name, compile_options=[]):
     arch_arg = get_cuda_target_architecture(device)
 
     # Compile program
-    compile_options = [bytes(compile_option, encoding='utf8') for compile_option in compile_options]
+    compile_options = [
+        bytes(compile_option, encoding="utf8") for compile_option in compile_options
+    ]
     compile_options = [arch_arg] + compile_options
     compile_options.append(b"--use_fast_math")
     cuda_dir = get_cuda_dir()
     include_dir = f"{cuda_dir}/include"
-    compile_options.append(bytes(f"--include-path={include_dir}", encoding='utf8'))
-    err, = nvrtc.nvrtcCompileProgram(prog, len(compile_options), compile_options)
+    compile_options.append(bytes(f"--include-path={include_dir}", encoding="utf8"))
+    (err,) = nvrtc.nvrtcCompileProgram(prog, len(compile_options), compile_options)
 
-    if (err != nvrtc.nvrtcResult.NVRTC_SUCCESS):
+    if err != nvrtc.nvrtcResult.NVRTC_SUCCESS:
         err, logSize = nvrtc.nvrtcGetProgramLogSize(prog)
         log = bytearray(logSize)
         nvrtc.nvrtcGetProgramLog(prog, log)
@@ -154,33 +166,212 @@ def compile_kernel(device, kernel_filename, kernel_name, compile_options=[]):
     err, ptxSize = nvrtc.nvrtcGetPTXSize(prog)
     cuda_check(err)
     ptx = b" " * ptxSize
-    err, = nvrtc.nvrtcGetPTX(prog, ptx)
+    (err,) = nvrtc.nvrtcGetPTX(prog, ptx)
     cuda_check(err)
 
     # Load PTX as module data and retrieve function
     ptx = np.char.array(ptx)
     err, module = cuda.cuModuleLoadData(ptx.ctypes.data)
     cuda_check(err)
-    err, kernel = cuda.cuModuleGetFunction(module, bytes(f"{kernel_name}", encoding='utf8'))
+    err, kernel = cuda.cuModuleGetFunction(
+        module, bytes(f"{kernel_name}", encoding="utf8")
+    )
     cuda_check(err)
 
     return kernel
 
+
 def cuda_mem_alloc(data):
     sizeof_data = np.array(data).nbytes
     err, d_data = cuda.cuMemAlloc(sizeof_data)
-    if (err != cuda.CUresult.CUDA_SUCCESS):
+    if err != cuda.CUresult.CUDA_SUCCESS:
         raise RuntimeError("Cuda Error: {}".format(err))
     return sizeof_data, d_data
 
+
 def cuda_memcpy_htod(d_data, h_data, bytes, stream):
-    err, = cuda.cuMemcpyHtoDAsync(d_data, h_data, bytes, stream)
+    (err,) = cuda.cuMemcpyHtoDAsync(d_data, h_data, bytes, stream)
     cuda_check(err)
+
 
 def cuda_memcpy_dtoh(d_data, h_data, bytes, stream):
-    err, = cuda.cuMemcpyDtoHAsync(h_data, d_data, bytes, stream)
+    (err,) = cuda.cuMemcpyDtoHAsync(h_data, d_data, bytes, stream)
     cuda_check(err)
 
+
 def cuda_stream_synchronize(stream):
-    err, = cuda.cuStreamSynchronize(stream)
+    (err,) = cuda.cuStreamSynchronize(stream)
     cuda_check(err)
+
+
+class TestData:
+    def __init__(self, device, stream):
+        # IDG parameters
+        self.grid_size = 2048
+        self.nr_correlations = 4
+        self.nr_polarizations = 4
+        self.subgrid_size = 32
+        self.image_size = 0.01
+        self.nr_channels = 16
+        self.nr_stations = 3
+        self.nr_timeslots = 32
+        self.nr_timesteps = 8192
+        self.integration_time = 0.9
+        layout_file = "LOFAR_lba.txt"
+
+        # Derived IDG parameters
+        self.nr_baselines = int((self.nr_stations * (self.nr_stations - 1)) / 2)
+
+        # Initialize data
+        data = Data(layout_file)
+
+        # Limit baselines in length and number
+        max_uv = data.compute_max_uv(self.grid_size, self.nr_channels)
+        data.limit_max_baseline_length(max_uv)
+        data.limit_nr_baselines(self.nr_baselines)
+        self.data = data
+
+        # Get remaining parameters
+        self.image_size = data.compute_image_size(self.grid_size, self.nr_channels)
+
+        # CUDA members
+        self.device = device
+        self.stream = stream
+
+    def get_plan(self, uvw, frequencies):
+        # Initialize baselines
+        baselines = util.get_example_baselines(self.nr_stations, self.nr_baselines)
+
+        # Initialize aterms offfsets
+        aterms_offsets = util.get_example_aterms_offset(
+            self.nr_timeslots, self.nr_timesteps
+        )
+
+        # Create plan
+        kernel_size = 9
+        cell_size = self.image_size / self.grid_size
+        plan = idg.Plan(
+            kernel_size,
+            self.subgrid_size,
+            self.grid_size,
+            cell_size,
+            frequencies,
+            uvw,
+            baselines,
+            aterms_offsets,
+        )
+
+        return plan
+
+    def get_frequencies(self):
+        frequencies = np.zeros(self.nr_channels, dtype=idg.frequenciestype)
+        channel_offset = 0
+        self.data.get_frequencies(
+            frequencies, self.nr_channels, self.image_size, channel_offset
+        )
+        sizeof_frequencies, d_frequencies = cuda_mem_alloc(frequencies)
+        cuda_memcpy_htod(d_frequencies, frequencies, sizeof_frequencies, self.stream)
+        return frequencies, d_frequencies
+
+    def get_wavenumbers(self, frequencies):
+        # Initialize frequencies, wavenumbers
+        speed_of_light = 299792458.0
+        wavenumbers = np.array(
+            2 * np.pi * frequencies / speed_of_light, dtype=frequencies.dtype
+        )
+        sizeof_wavenumbers, d_wavenumbers = cuda_mem_alloc(wavenumbers)
+        cuda_memcpy_htod(d_wavenumbers, wavenumbers, sizeof_wavenumbers, self.stream)
+        return wavenumbers, d_wavenumbers
+
+    def get_uvw(self):
+        # Initialize UVW coordinates
+        uvw = np.zeros((self.nr_baselines, self.nr_timesteps, 3), dtype=np.float32)
+        baseline_offset = 0
+        time_offset = 0
+        integration_time = 0.9
+        self.data.get_uvw(
+            uvw,
+            self.nr_baselines,
+            self.nr_timesteps,
+            baseline_offset,
+            time_offset,
+            integration_time,
+        )
+        uvw[..., -1] = 0
+        sizeof_uvw, d_uvw = cuda_mem_alloc(uvw)
+        cuda_memcpy_htod(d_uvw, uvw, sizeof_uvw, self.stream)
+        return uvw, d_uvw
+
+    def get_visibilities(self, uvw, frequencies):
+        # Initialize visibilities
+        visibilities = util.get_example_visibilities(
+            self.nr_baselines,
+            self.nr_timesteps,
+            self.nr_channels,
+            self.nr_correlations,
+            self.image_size,
+            self.grid_size,
+            uvw,
+            frequencies,
+        )
+        sizeof_visibilities, d_visibilities = cuda_mem_alloc(visibilities)
+        cuda_memcpy_htod(d_visibilities, visibilities, sizeof_visibilities, self.stream)
+        return visibilities, d_visibilities
+
+    def get_taper(self):
+        # Initalize taper
+        spheroidal = util.get_identity_spheroidal(self.subgrid_size)
+        sizeof_spheroidal, d_spheroidal = cuda_mem_alloc(spheroidal)
+        cuda_memcpy_htod(d_spheroidal, spheroidal, sizeof_spheroidal, self.stream)
+        return spheroidal, d_spheroidal
+
+    def get_aterms(self):
+        # Initialize aterms
+        aterms = util.get_example_aterms(
+            self.nr_timeslots, self.nr_stations, self.subgrid_size, self.nr_correlations
+        )
+        sizeof_aterms, d_aterms = cuda_mem_alloc(aterms)
+        cuda_memcpy_htod(d_aterms, aterms, sizeof_aterms, self.stream)
+        return aterms, d_aterms
+
+    def get_metadata(self, plan):
+        # Initialize metadata
+        nr_subgrids = plan.get_nr_subgrids()
+        metadata = np.zeros(nr_subgrids, dtype=idg.metadatatype)
+        plan.copy_metadata(metadata)
+        sizeof_metadata, d_metadata = cuda_mem_alloc(metadata)
+        cuda_memcpy_htod(d_metadata, metadata, sizeof_metadata, self.stream)
+        return metadata, d_metadata
+
+    def get_aterms_indices(self, plan):
+        aterms_indices = np.zeros(
+            (self.nr_baselines, self.nr_timesteps), dtype=np.int32
+        )
+        plan.copy_aterms_indices(aterms_indices)
+        sizeof_aterms_indices, d_aterms_indices = cuda_mem_alloc(aterms_indices)
+        cuda_memcpy_htod(
+            d_aterms_indices, aterms_indices, sizeof_aterms_indices, self.stream
+        )
+        return aterms_indices, d_aterms_indices
+
+
+def get_accuracy(a, b):
+    diff = np.absolute(a) - np.absolute(b)
+    return np.sum(np.power(diff.flatten(), 2)) / (np.max(a) * np.count_nonzero(a))
+
+
+def compare_subgrids(s1, s2, subgrid_index=0, polarization_index=0):
+    s1 = s1[subgrid_index, polarization_index, :, :]
+    s2 = s2[subgrid_index, polarization_index, :, :]
+
+    f, ax = plt.subplots(2, 2)
+    ax[0, 0].imshow(np.abs(s1))
+    ax[0, 1].imshow(np.abs(s2))
+
+    diff = np.absolute(s2) - np.absolute(s1)
+    scale = np.absolute(s2) / np.absolute(s1)
+
+    ax[1, 0].imshow(diff)
+    ax[1, 1].imshow(scale)
+
+    plt.show()
