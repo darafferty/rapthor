@@ -141,6 +141,13 @@ def test_gridder_default():
     k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder")
     compare_gridder(device, k1, k2)
 
+def test_gridder_extrapolate():
+    device, context = cuda_initialize()
+    k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
+    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder", ["-DUSE_EXTRAPOLATE"])
+    compare_gridder(device, k1, k2)
+
 
 if __name__ == "__main__":
     test_gridder_default()
+    test_gridder_extrapolate()
