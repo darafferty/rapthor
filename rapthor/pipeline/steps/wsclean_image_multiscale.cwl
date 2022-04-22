@@ -61,6 +61,10 @@ inputs:
     type: File
     inputBinding:
       prefix: -aterm-config
+  - id: aterm_images
+    type: File[]
+    inputBinding:
+      valueFrom: ""
   - id: wsclean_imsize
     type: int[]
     inputBinding:

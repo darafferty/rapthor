@@ -144,14 +144,14 @@ inputs:
   - id: aterms_config_file
     label: Filename of config file
     doc: |
-      The filename of the a-term config file (length = n_sectors).
-    type: string[]
+      The filename of the a-term config file (length = 1).
+    type: File
 
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
-      The filenames of the a-term images (length = n_sectors).
-    type: string[]
+      The filenames of the a-term images (length = 1, with n_aterms subelements).
+    type: File[]
 
 {% if use_mpi %}
   - id: mpi_cpus_per_task
@@ -386,7 +386,7 @@ steps:
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, aterms_config_file, aterm_image_filenames,
+              vertices_file, region_file,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}

@@ -29,6 +29,10 @@ inputs:
     type: File
     inputBinding:
       prefix: -c
+  - id: aterm_images
+    type: File[]
+    inputBinding:
+      valueFrom: ""
   - id: wsclean_imsize
     type: int[]
     inputBinding:

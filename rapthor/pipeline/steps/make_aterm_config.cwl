@@ -21,10 +21,11 @@ inputs:
     label: Filenames of a-term images
     doc: |
       The filenames of the a-term gain images.
-    type: string
+    type: File[]
     inputBinding:
       prefix: --gain_filenames=
       separate: false
+      itemSeparator: ","
 
 outputs:
   - id: aterms_config

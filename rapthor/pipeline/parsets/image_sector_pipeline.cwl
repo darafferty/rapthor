@@ -121,13 +121,14 @@ inputs:
     label: Filename of config file
     doc: |
       The filename of the a-term config file (length = 1).
-    type: string
+    type: File
 
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
-      The filenames of the a-term images (length = 1).
-    type: string
+      The filenames of the a-term images (length = 1, with n_aterms subelements).
+    type: File[]
+
 {% if use_mpi %}
   - id: mpi_cpus_per_task
     label: Number of CPUs per task
@@ -347,21 +348,6 @@ steps:
     out:
       - id: maskimg
 
-{% if use_screens %}
-  - id: make_aterm_config
-    label: Make a-term config file
-    doc: |
-      This step makes the a-term configuration file needed for WSClean+IDG.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_config.cwl
-    in:
-      - id: outfile
-        source: aterms_config_file
-      - id: gain_filenames
-        source: aterm_image_filenames
-    out:
-      - id: aterms_config
-{% endif %}
-
   - id: image
     label: Make an image
     doc: |
@@ -411,7 +397,9 @@ steps:
         source: premask/maskimg
 {% if use_screens %}
       - id: config
-        source: make_aterm_config/aterms_config
+        source: aterms_config_file
+      - id: aterm_images
+        source: aterm_image_filenames
 {% if use_mpi %}
       - id: ntasks
         source: mpi_cpus_per_task

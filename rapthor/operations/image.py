@@ -108,7 +108,6 @@ class Image(Operation):
                 # Use a dummy mask
                 previous_mask_filename.append(image_root[-1] + '_dummy.fits')
             mask_filename.append(image_root[-1] + '_mask.fits')
-            aterms_config_file.append(image_root[-1] + '_aterm.cfg')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
             sector_starttime = []
@@ -125,9 +124,6 @@ class Image(Operation):
                 dir_local.append(self.scratch_dir)
             multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
-
-            # The following attribute was set by the preceding calibrate operation
-            aterm_image_filenames.append("'[{}]'".format(','.join(self.field.aterm_image_filenames)))
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
@@ -163,8 +159,11 @@ class Image(Operation):
                             'bright_skymodel_pb': [CWLFile(self.field.bright_source_skymodel_file).to_json()] * nsectors,
                             'peel_bright': [self.field.peel_bright_sources] * nsectors}
         if self.field.use_screens:
-            self.input_parms.update({'aterms_config_file': aterms_config_file,
-                                     'aterm_image_filenames': aterm_image_filenames})
+            # The following parameters were set by the preceding calibrate operation, where
+            # aterm image files were generated. They do not need to be set separately for
+            # each sector
+            self.input_parms.update({'aterms_config_file': CWLFile(self.field.aterms_config_filename).to_json(),
+                                     'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
 
             if self.field.do_multiscale_clean:
                 self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})

@@ -202,6 +202,12 @@ inputs:
       The screen type to use to derive the a-term images (length = 1).
     type: string
 
+  - id: aterms_config_file
+    label: Filename of config file
+    doc: |
+      The filename of the a-term config file (length = 1).
+    type: string
+
 {% if do_slowgain_solve %}
   - id: freqchunk_filename
     label: Filename of input MS (frequency)
@@ -358,6 +364,10 @@ outputs:
     outputSource:
       - merge_aterm_files/output
     type: File[]
+  - id: aterm_config
+    outputSource:
+      - make_aterm_config/aterms_config
+    type: File
 
 
 steps:
@@ -471,7 +481,7 @@ steps:
       ResourceRequirement:
         coresMin: 1
         coresMax: {{ max_cores }}
-{% endif %} 
+{% endif %}
     in:
       - id: msin
         source: freqchunk_filename
@@ -911,4 +921,17 @@ steps:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
     label: merge_aterm_files
+
+  - id: make_aterm_config
+    label: Make a-term config file
+    doc: |
+      This step makes the a-term configuration file needed for WSClean+IDG.
+    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_config.cwl
+    in:
+      - id: outfile
+        source: aterms_config_file
+      - id: gain_filenames
+        source: merge_aterm_files/output
+    out:
+      - id: aterms_config
 

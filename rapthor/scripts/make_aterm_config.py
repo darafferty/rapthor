@@ -20,8 +20,6 @@ def main(output_file, tec_filenames=None, gain_filenames=None, use_beam=True):
         List of filenames for TEC images
     gain_filenames : list, optional
         List of filenames for gain images
-    use_beam : bool, optional
-        If True, use the beam with IDG
     """
     if tec_filenames is None and gain_filenames is None:
         print('make_aterm_config: One of tec_filenames or gain_filenames must be specified')
@@ -43,10 +41,9 @@ def main(output_file, tec_filenames=None, gain_filenames=None, use_beam=True):
         lines.append('tec.images = [{}]\n'.format(' '.join(tec_images)))
     if gain_filenames is not None:
         lines.append('diagonal.images = [{}]\n'.format(' '.join(gain_images)))
-    if use_beam:
-        lines.append('beam.differential = true\n')
-        lines.append('beam.update_interval = 120\n')
-        lines.append('beam.usechannelfreq = true\n')
+    lines.append('beam.differential = true\n')
+    lines.append('beam.update_interval = 120\n')
+    lines.append('beam.usechannelfreq = true\n')
 
     config_file = open(output_file, 'w')
     config_file.writelines(lines)
@@ -60,7 +57,6 @@ if __name__ == '__main__':
     parser.add_argument('output_file', help='Filename of output config file')
     parser.add_argument('--tec_filenames', help='Filenames of TEC aterm images', type=str, default=None)
     parser.add_argument('--gain_filenames', help='Filenames of gain aterm images', type=str, default=None)
-    parser.add_argument('--use_beam', help='Use beam model', type=str, default='True')
     args = parser.parse_args()
     main(args.output_file, tec_filenames=args.tec_filenames,
-         gain_filenames=args.gain_filenames, use_beam=args.use_beam)
+         gain_filenames=args.gain_filenames)
