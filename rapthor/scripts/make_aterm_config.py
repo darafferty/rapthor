@@ -38,9 +38,9 @@ def main(output_file, tec_filenames=None, gain_filenames=None, use_beam=True):
     aterm_str = 'aterms = [{}]\n'.format(', '.join(terms))
     lines = [aterm_str]
     if tec_filenames is not None:
-        lines.append('tec.images = [{}]\n'.format(' '.join(tec_images)))
+        lines.append('tec.images = [{}]\n'.format(','.join(tec_images)))
     if gain_filenames is not None:
-        lines.append('diagonal.images = [{}]\n'.format(' '.join(gain_images)))
+        lines.append('diagonal.images = [{}]\n'.format(','.join(gain_images)))
     lines.append('beam.differential = true\n')
     lines.append('beam.update_interval = 120\n')
     lines.append('beam.usechannelfreq = true\n')
