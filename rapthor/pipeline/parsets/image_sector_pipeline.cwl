@@ -60,7 +60,7 @@ inputs:
     label: Filename of previous mask
     doc: |
       The filename of the image mask from the previous iteration (length = 1).
-    type: File
+    type: File?
 
   - id: mask_filename
     label: Filename of current mask
@@ -114,7 +114,7 @@ inputs:
     label: Filename of region file
     doc: |
       The filename of the region file (length = 1).
-    type: File
+    type: File?
 
 {% if use_screens %}
   - id: aterms_config_file
@@ -263,7 +263,11 @@ inputs:
       pipeline (length = 1).
     type: boolean
 
-outputs: []
+outputs: 
+  - id: filtered_skymodel
+    outputSource:
+      - filter/skymodels
+    type: File[]
 
 steps:
   - id: prepare_imaging_data
@@ -528,4 +532,5 @@ steps:
         source: prepare_imaging_data/msimg
       - id: peel_bright
         source: peel_bright
-    out: []
+    out:
+      - id: skymodels

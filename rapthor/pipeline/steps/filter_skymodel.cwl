@@ -81,7 +81,12 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
-outputs: []
+outputs:
+  - id: skymodels
+    type: File[]
+    outputBinding:
+      glob: '$(inputs.output_root).*'
+
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'

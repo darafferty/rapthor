@@ -66,7 +66,8 @@ class Image(Operation):
             # Each image job must have its own directory, so we create it here
             image_dir = os.path.join(self.pipeline_working_dir, sector.name)
             misc.create_directory(image_dir)
-            image_root.append(os.path.join(image_dir, sector.name))
+            #image_root.append(os.path.join(image_dir, sector.name))
+            image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
             # let the imsize be recalcuated, as otherwise it may change from the previous
@@ -106,7 +107,8 @@ class Image(Operation):
                 previous_mask_filename.append(sector.I_mask_file)
             else:
                 # Use a dummy mask
-                previous_mask_filename.append(image_root[-1] + '_dummy.fits')
+                #previous_mask_filename.append(image_root[-1] + '_dummy.fits')
+                previous_mask_filename.append(None)
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
@@ -127,7 +129,7 @@ class Image(Operation):
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
-                            'previous_mask_filename': [CWLFile(name).to_json() for name in previous_mask_filename],
+                            'previous_mask_filename': [None if name is None else CWLFile(name).to_json() for name in previous_mask_filename],
                             'mask_filename': mask_filename,
                             'starttime': starttime,
                             'ntimes': ntimes,
@@ -143,7 +145,7 @@ class Image(Operation):
                             'dec': [sector.dec for sector in self.field.imaging_sectors],
                             'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
                             'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.field.imaging_sectors],
-                            'region_file': [CWLFile(sector.region_file).to_json() for sector in self.field.imaging_sectors],
+                            'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.field.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
                             'robust': [sector.robust for sector in self.field.imaging_sectors],

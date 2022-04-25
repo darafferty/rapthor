@@ -80,7 +80,11 @@ inputs:
     label: Filename of previous mask
     doc: |
       The filename of the image mask from the previous iteration (length = n_sectors).
-    type: File[]
+    type:
+      type: array
+      items: 
+        - File
+        - "null"
 
   - id: mask_filename
     label: Filename of current mask
@@ -138,7 +142,11 @@ inputs:
     label: Filename of region file
     doc: |
       The filename of the region file (length = n_sectors).
-    type: File[]
+    type:
+      type: array
+      items: 
+        - File
+        - "null"
 
 {% if use_screens %}
   - id: aterms_config_file

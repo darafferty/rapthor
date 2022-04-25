@@ -10,19 +10,19 @@ requirements:
   InlineJavascriptRequirement: {}
 
 inputs:
-  - id: imagefile
-    label: Filename of input image
-    doc: |
-      The filenames of the input FITS image. If the file does not exist, a blank
-      FITS image will be made.
-    type: File
-    inputBinding:
-      position: 0
   - id: maskfile
     label: Filename of output mask
     doc: |
       The filename of the output FITS image mask.
     type: string
+    inputBinding:
+      position: 0
+  - id: imagefile
+    label: Filename of input image
+    doc: |
+      The filenames of the input FITS image. If the file does not exist, a blank
+      FITS image will be made.
+    type: File?
     inputBinding:
       position: 1
   - id: wsclean_imsize
@@ -70,7 +70,7 @@ inputs:
     label: Filename of region file
     doc: |
       The filename of a user-supplied region file.
-    type: File
+    type: File?
     inputBinding:
       prefix: --region_file=
       separate: false
@@ -83,7 +83,7 @@ outputs:
       parameter "maskfile".
     type: File
     outputBinding:
-      outputEval: $(inputs.maskfile)
+      glob: $(inputs.maskfile)
 hints:
   - class: DockerRequirement
     dockerPull: 'loose/rapthor'
