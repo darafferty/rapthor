@@ -37,7 +37,7 @@ outputs:
       - File
       - string
     outputBinding:
-      outputEval: $(inputs.outfile)
+      glob: $(inputs.outfile)
 
 hints:
   - class: DockerRequirement
