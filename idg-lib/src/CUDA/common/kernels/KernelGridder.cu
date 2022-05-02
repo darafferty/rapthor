@@ -359,7 +359,7 @@ void kernel_gridder(
         const int                      nr_stations,
         const UVW<float>* __restrict__ uvw,
         const float*      __restrict__ wavenumbers,
-              float2*     __restrict__ visibilities,
+        const float2*     __restrict__ visibilities,
         const float*      __restrict__ spheroidal,
         const float2*     __restrict__ aterms,
         const int*        __restrict__ aterms_indices,
