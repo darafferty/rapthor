@@ -76,8 +76,9 @@ __device__ void prepare_shared(
     const float2* aterms,
     const float2* subgrid)
 {
-    int s = blockIdx.x;
-    int tid = threadIdx.x;
+    int s           = blockIdx.x;
+    int num_threads = blockDim.x;
+    int tid         = threadIdx.x;
 
     // Load metadata for current subgrid
     const int x_coordinate = metadata.coordinate.x;
@@ -90,7 +91,7 @@ __device__ void prepare_shared(
     const float v_offset = (y_coordinate + subgrid_size/2 - grid_size/2) / image_size * 2 * M_PI;
     const float w_offset = w_step * ((float) metadata.coordinate.z + 0.5) * 2 * M_PI;
 
-    for (int j = tid; j < current_nr_pixels; j += NUM_THREADS) {
+    for (int j = tid; j < current_nr_pixels; j += num_threads) {
         int y = (pixel_offset + j) / subgrid_size;
         int x = (pixel_offset + j) % subgrid_size;
 
@@ -142,14 +143,14 @@ __device__ void prepare_shared(
 
 template<int unroll_channels>
 __device__ void compute_visibility(
-    const int                 nr_polarizations,
-    const int                 current_nr_pixels,
-    const int                 channel_offset,
-    const float               u,
-    const float               v,
-    const float               w,
-    const float* wavenumbers,
-          float2 visibility[unroll_channels][4])
+    const int     nr_polarizations,
+    const int     current_nr_pixels,
+    const int     channel_offset,
+    const float   u,
+    const float   v,
+    const float   w,
+    const float*  wavenumbers,
+          float2* visibility)
 {
     for (int i = 0; i < current_nr_pixels; i++) {
         const int unroll_pixels = 1;
@@ -171,16 +172,12 @@ __device__ void compute_visibility(
         compute_reduction_extrapolate<unroll_pixels>(
             unroll_channels, nr_polarizations,
             wavenumbers + channel_offset, phase_index, phase_offset,
-            &shared[0][i],
-            &shared[1][i],
-            reinterpret_cast<float2*>(visibility), 0, 0);
+            &shared[0][i], &shared[1][i], visibility, 0, 0);
         #else
         compute_reduction(
             unroll_channels, unroll_pixels, nr_polarizations,
             wavenumbers + channel_offset, phase_index, phase_offset,
-            &shared[0][i],
-            &shared[1][i],
-            reinterpret_cast<float2*>(visibility), 0, 0);
+            &shared[0][i], &shared[1][i], visibility, 0, 0);
         #endif
     } // end for k (batch)
 }
@@ -201,14 +198,14 @@ __device__ void store_visibility(
         int idx_time = time;
         int idx_chan = channel_offset + chan;
         if (nr_polarizations == 4) {
-            int idx_vis = index_visibility(nr_polarizations, nr_channels, idx_time, idx_chan, 0);
+            size_t idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
             float4 visA = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][1].x, visibility[chan][1].y);
             float4 visB = make_float4(visibility[chan][2].x, visibility[chan][2].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             vis_ptr[0] = visA * scale;
             vis_ptr[1] = visB * scale;
         } else if (nr_polarizations == 1) {
-            int idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
+            size_t idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
             float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             *vis_ptr = vis * scale;
@@ -232,7 +229,7 @@ __device__ void update_visibility(
         int idx_time = time;
         int idx_chan = channel_offset + chan;
         if (nr_polarizations == 4) {
-            int idx_vis = index_visibility(nr_polarizations, nr_channels, idx_time, idx_chan, 0);
+            int idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
             float4 visA = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][1].x, visibility[chan][1].y);
             float4 visB = make_float4(visibility[chan][2].x, visibility[chan][2].y, visibility[chan][3].x, visibility[chan][3].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
@@ -270,8 +267,9 @@ __device__ void kernel_degridder_tp(
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
-    int s          = blockIdx.x;
-    int tid        = threadIdx.x;
+    int s           = blockIdx.x;
+    int num_threads = blockDim.x;
+    int tid         = threadIdx.x;
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
@@ -300,7 +298,7 @@ __device__ void kernel_degridder_tp(
         int time_start = time_offset_global + time_offset_local;
         int time_end = time_start + current_nr_timesteps;
 
-        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, NUM_THREADS); i += NUM_THREADS) {
+        for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, num_threads); i += num_threads) {
             int time = time_start + (i / nr_channels_parallel);
             int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
             int channel = channel_offset + channel_offset_local;
@@ -327,8 +325,8 @@ __device__ void kernel_degridder_tp(
             const int nr_pixels = subgrid_size * subgrid_size;
             int current_nr_pixels = BATCH_SIZE;
             for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += current_nr_pixels) {
-                current_nr_pixels = nr_pixels - pixel_offset < min(NUM_THREADS, BATCH_SIZE) ?
-                                    nr_pixels - pixel_offset : min(NUM_THREADS, BATCH_SIZE);
+                current_nr_pixels = nr_pixels - pixel_offset < min(num_threads, BATCH_SIZE) ?
+                                    nr_pixels - pixel_offset : min(num_threads, BATCH_SIZE);
 
                 __syncthreads();
 
@@ -343,7 +341,7 @@ __device__ void kernel_degridder_tp(
                 // Compute visibility
                 compute_visibility<unroll_channels>(
                     nr_polarizations, current_nr_pixels, channel,
-                    u, v, w, wavenumbers, visibility);
+                    u, v, w, wavenumbers, reinterpret_cast<float2*>(visibility));
             } // end for pixel_offset
 
             if (time < time_end) {
@@ -378,8 +376,9 @@ __device__ void kernel_degridder_pt(
     const Metadata*      metadata,
           float2*        subgrid)
 {
-    int s          = blockIdx.x;
-    int tid        = threadIdx.x;
+    int s           = blockIdx.x;
+    int num_threads = blockDim.x;
+    int tid         = threadIdx.x;
 
     // Load metadata for current subgrid
     const Metadata &m = metadata[s];
@@ -393,8 +392,8 @@ __device__ void kernel_degridder_pt(
     const int nr_pixels = subgrid_size * subgrid_size;
     int current_nr_pixels = BATCH_SIZE;
     for (int pixel_offset = 0; pixel_offset < nr_pixels; pixel_offset += current_nr_pixels) {
-        current_nr_pixels = nr_pixels - pixel_offset < min(NUM_THREADS, BATCH_SIZE) ?
-                            nr_pixels - pixel_offset : min(NUM_THREADS, BATCH_SIZE);
+        current_nr_pixels = nr_pixels - pixel_offset < min(num_threads, BATCH_SIZE) ?
+                            nr_pixels - pixel_offset : min(num_threads, BATCH_SIZE);
 
         // Iterate timesteps
         int current_nr_timesteps = 0;
@@ -425,7 +424,7 @@ __device__ void kernel_degridder_pt(
             int time_start = time_offset_global + time_offset_local;
             int time_end = time_start + current_nr_timesteps;
 
-            for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, NUM_THREADS); i += NUM_THREADS) {
+            for (int i = tid; i < ALIGN(current_nr_timesteps * nr_channels_parallel, num_threads); i += num_threads) {
                 int time = time_start + (i / nr_channels_parallel);
                 int channel_offset_local = (i % nr_channels_parallel) * unroll_channels;
                 int channel = channel_offset + channel_offset_local;
@@ -449,7 +448,7 @@ __device__ void kernel_degridder_pt(
                 // Compute visibility
                 compute_visibility<unroll_channels>(
                     nr_polarizations, current_nr_pixels, channel,
-                    u, v, w, wavenumbers, visibility);
+                    u, v, w, wavenumbers, reinterpret_cast<float2*>(visibility));
 
                 // Update visibility
                 if (time < time_end) {
@@ -471,7 +470,7 @@ __device__ void kernel_degridder_pt(
     const int nr_aterms     = m.nr_aterms;
 
 #define KERNEL_DEGRIDDER(current_nr_channels) \
-    if ((nr_timesteps / nr_aterms) >= NUM_THREADS) { \
+    if ((nr_timesteps / nr_aterms) >= num_threads) { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_tp<current_nr_channels>( \
                 time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
@@ -514,6 +513,7 @@ void kernel_degridder(
           float2*     __restrict__ subgrid)
 {
     int s                   = blockIdx.x;
+    int num_threads         = blockDim.x;
     const Metadata &m       = metadata[s];
     const int channel_begin = m.channel_begin;
     const int channel_end   = m.channel_end;
