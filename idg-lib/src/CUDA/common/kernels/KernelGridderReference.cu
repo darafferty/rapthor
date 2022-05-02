@@ -15,7 +15,7 @@ __global__ void kernel_gridder(
     const int                      nr_stations,
     const UVW<float>* __restrict__ uvw,
     const float*      __restrict__ wavenumbers,
-          float2*     __restrict__ visibilities,
+    const float2*     __restrict__ visibilities,
     const float*      __restrict__ spheroidal,
     const float2*     __restrict__ aterms,
     const int*        __restrict__ aterms_indices,
@@ -93,7 +93,7 @@ __global__ void kernel_gridder(
         float phase = phase_offset - (phase_index * wavenumbers[chan]);
 
         // Compute phasor
-        float2 phasor = make_float2(cos(phase), sin(phase));
+        float2 phasor = make_float2(cosf(phase), sinf(phase));
 
         // Update pixel for every polarization
         size_t index = (time_offset_global + time) * nr_channels + chan;
