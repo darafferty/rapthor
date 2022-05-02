@@ -10,7 +10,7 @@ requirements:
     listing:
       - entryname: aterm_plus_beam.cfg
         entry: |
-          aterms = [diagonal]
+          aterms = [diagonal, beam]
           diagonal.images = [$(inputs.aterm_images.map( (e,i) => (e.path) ).join(' '))]
           beam.differential = true
           beam.update_interval = 120
