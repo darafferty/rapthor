@@ -289,12 +289,7 @@ inputs:
       pipeline (length = n_sectors).
     type: boolean[]
 
-outputs:
-  - id: fast_phases
-    outputSource:
-      - combine_fast_phases/outh5parm
-    type: File
-
+outputs: []
 
 steps:
   - id: image_sector
