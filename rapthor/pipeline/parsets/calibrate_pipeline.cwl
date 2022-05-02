@@ -364,10 +364,6 @@ outputs:
     outputSource:
       - merge_aterm_files/output
     type: File[]
-  - id: aterm_config
-    outputSource:
-      - make_aterm_config/aterms_config
-    type: File
 
 
 steps:
@@ -921,17 +917,3 @@ steps:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
     label: merge_aterm_files
-
-  - id: make_aterm_config
-    label: Make a-term config file
-    doc: |
-      This step makes the a-term configuration file needed for WSClean+IDG.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_config.cwl
-    in:
-      - id: outfile
-        source: aterms_config_file
-      - id: gain_filenames
-        source: merge_aterm_files/output
-    out:
-      - id: aterms_config
-

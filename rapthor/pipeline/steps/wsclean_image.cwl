@@ -6,7 +6,17 @@ doc: |
   This tool makes an image using WSClean+IDG with a-term corrections.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InitialWorkDirRequirement
+    listing:
+      - entryname: aterm_plus_beam.cfg
+        entry: |
+          aterms = [diagonal]
+          diagonal.images =  = [$(inputs.aterm_images.join(" "))]
+          beam.differential = true
+          beam.update_interval = 120
+          beam.usechannelfreq = true
+        writable: false
+  - class: InlineJavascriptRequirement
 
 arguments:
   - -no-update-model-required
@@ -61,20 +71,13 @@ inputs:
     type: File
     inputBinding:
       prefix: -fits-mask
-  - id: config
-    label: Filename of config file
-    doc: |
-      The filename of the a-term config file.
-    type: File
-    inputBinding:
-      prefix: -aterm-config
   - id: aterm_images
     label: Filenames of aterm files
     doc: |
       The filenames of the a-term image files.
     type: File[]
     inputBinding:
-      valueFrom: ""
+      valueFrom: null
   - id: wsclean_imsize
     label: Image size
     doc: |

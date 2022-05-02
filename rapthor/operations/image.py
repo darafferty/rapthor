@@ -164,8 +164,7 @@ class Image(Operation):
             # The following parameters were set by the preceding calibrate operation, where
             # aterm image files were generated. They do not need to be set separately for
             # each sector
-            self.input_parms.update({'aterms_config_file': CWLFile(self.field.aterms_config_filename).to_json(),
-                                     'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
+            self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
 
             if self.field.do_multiscale_clean:
                 self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})

@@ -117,12 +117,6 @@ inputs:
     type: File?
 
 {% if use_screens %}
-  - id: aterms_config_file
-    label: Filename of config file
-    doc: |
-      The filename of the a-term config file (length = 1).
-    type: File
-
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
@@ -263,7 +257,7 @@ inputs:
       pipeline (length = 1).
     type: boolean
 
-outputs: 
+outputs:
   - id: filtered_skymodel
     outputSource:
       - filter/skymodels
@@ -400,8 +394,6 @@ steps:
       - id: mask
         source: premask/maskimg
 {% if use_screens %}
-      - id: config
-        source: aterms_config_file
       - id: aterm_images
         source: aterm_image_filenames
 {% if use_mpi %}

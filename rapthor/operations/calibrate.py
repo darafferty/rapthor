@@ -274,27 +274,6 @@ class Calibrate(Operation):
                 self.field.aterm_image_filenames.extend(f.readlines())
         self.field.aterm_image_filenames = [af.strip() for af in self.field.aterm_image_filenames]
 
-        # Set the filename of the aterm config file, used for WSClean in the image pipeline.
-        # We also modify the paths inside the file to ensure they point to valid files (CWL
-        # uses temp paths for the files)
-        self.field.aterms_config_filename = os.path.join(self.pipeline_working_dir,
-                                                         self.aterms_config_file)
-        with open(self.field.aterms_config_filename, 'r') as f:
-            lines = f.readlines()
-        out_lines = []
-        for line in lines:
-            if line.startswith('diagonal.images'):
-                parm_str = line.split('=')[0]
-                path_str = line.split('=')[1]
-                path_list = misc.string2list(path_str)
-                path_list = [os.path.join(self.pipeline_working_dir, os.path.basename(path))
-                             for path in path_list if path.endswith('fits')]
-                out_lines.append('{0} = [{1}]\n'.format(parm_str, ' '.join(path_list)))
-            else:
-                out_lines.append(line)
-        with open(self.field.aterms_config_filename, 'w') as f:
-            f.writelines(out_lines)
-
         # Save the solutions
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)

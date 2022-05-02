@@ -82,7 +82,7 @@ inputs:
       The filename of the image mask from the previous iteration (length = n_sectors).
     type:
       type: array
-      items: 
+      items:
         - File
         - "null"
 
@@ -144,17 +144,11 @@ inputs:
       The filename of the region file (length = n_sectors).
     type:
       type: array
-      items: 
+      items:
         - File
         - "null"
 
 {% if use_screens %}
-  - id: aterms_config_file
-    label: Filename of config file
-    doc: |
-      The filename of the a-term config file (length = 1).
-    type: File
-
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
@@ -295,7 +289,12 @@ inputs:
       pipeline (length = n_sectors).
     type: boolean[]
 
-outputs: []
+outputs:
+  - id: fast_phases
+    outputSource:
+      - combine_fast_phases/outh5parm
+    type: File
+
 
 steps:
   - id: image_sector
@@ -338,8 +337,6 @@ steps:
       - id: region_file
         source: region_file
 {% if use_screens %}
-      - id: aterms_config_file
-        source: aterms_config_file
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
