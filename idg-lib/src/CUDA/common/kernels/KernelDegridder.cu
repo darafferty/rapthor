@@ -72,9 +72,9 @@ __device__ void prepare_shared(
     const int                  nr_stations,
     const int                  aterm_idx,
     const Metadata&            metadata,
-    const float*  __restrict__ spheroidal,
-    const float2* __restrict__ aterms,
-    const float2* __restrict__ subgrid)
+    const float*  spheroidal,
+    const float2* aterms,
+    const float2* subgrid)
 {
     int s = blockIdx.x;
     int tid = threadIdx.x;
@@ -148,8 +148,8 @@ __device__ void compute_visibility(
     const float               u,
     const float               v,
     const float               w,
-    const float* __restrict__ wavenumbers,
-          float2 __restrict__ visibility[unroll_channels][4])
+    const float* wavenumbers,
+          float2 visibility[unroll_channels][4])
 {
     for (int i = 0; i < current_nr_pixels; i++) {
         const int unroll_pixels = 1;
@@ -192,8 +192,8 @@ __device__ void store_visibility(
     const int nr_channels,
     const int channel_offset,
     const int time,
-    const float2  __restrict__ visibility[unroll_channels][4],
-          float2* __restrict__ visibilities)
+    const float2  visibility[unroll_channels][4],
+          float2* visibilities)
 {
     for (int chan = 0; chan < unroll_channels; chan++) {
         // Store visibility
@@ -223,8 +223,8 @@ __device__ void update_visibility(
     const int nr_channels,
     const int channel_offset,
     const int time,
-    const float2  __restrict__ visibility[unroll_channels][4],
-          float2* __restrict__ visibilities)
+    const float2  visibility[unroll_channels][4],
+          float2* visibilities)
 {
     for (int chan = 0; chan < unroll_channels; chan++) {
         // Store visibility
@@ -369,14 +369,14 @@ __device__ void kernel_degridder_pt(
     const int                         current_nr_channels,
     const int                         channel_offset,
     const int                         nr_stations,
-    const UVW<float>*    __restrict__ uvw,
-    const float*         __restrict__ wavenumbers,
-          float2*        __restrict__ visibilities,
-    const float*         __restrict__ spheroidal,
-    const float2*        __restrict__ aterms,
-    const int*           __restrict__ aterms_indices,
-    const Metadata*      __restrict__ metadata,
-          float2*        __restrict__ subgrid)
+    const UVW<float>*    uvw,
+    const float*         wavenumbers,
+          float2*        visibilities,
+    const float*         spheroidal,
+    const float2*        aterms,
+    const int*           aterms_indices,
+    const Metadata*      metadata,
+          float2*        subgrid)
 {
     int s          = blockIdx.x;
     int tid        = threadIdx.x;
