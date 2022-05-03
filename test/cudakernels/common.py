@@ -134,6 +134,7 @@ def get_cuda_target_architecture(device):
 def compile_kernel(device, kernel_filename, kernel_name, compile_options=[]):
     # The kernel to compile
     root_dir = os.path.realpath(f"{__file__}/../../../..")
+    root_dir = os.path.realpath(f"{__file__}/../../..")
     kernel_dir = f"{root_dir}/idg-lib/src/CUDA/common/kernels"
     kernel_path = f"{kernel_dir}/{kernel_filename}"
     kernel_string = get_kernel_string(kernel_path)
@@ -204,7 +205,7 @@ def cuda_stream_synchronize(stream):
     cuda_check(err)
 
 
-class TestData:
+class DummyData:
     def __init__(self, device, stream):
         # IDG parameters
         self.grid_size = 2048
@@ -377,5 +378,10 @@ def compare_subgrids(s1, s2, subgrid_index=0, polarization_index=0):
 
     ax[1, 0].imshow(diff)
     ax[1, 1].imshow(scale)
+
+    ax[0, 0].set_title('subgrid 1')
+    ax[0, 1].set_title('subgrid 2')
+    ax[1, 0].set_title('diff')
+    ax[1, 1].set_title('scale')
 
     plt.show()

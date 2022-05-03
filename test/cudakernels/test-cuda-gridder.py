@@ -4,15 +4,15 @@ import ctypes
 from cuda import cuda
 import numpy as np
 
-from common_cuda import *
+from common import *
 
 
-def compare_degridder(device, kernel1, kernel2):
+def compare_gridder(device, kernel1, kernel2):
     # Create stream
     err, stream = cuda.cuStreamCreate(0)
 
     # Initialize data
-    data = TestData(device, stream)
+    data = DummyData(device, stream)
 
     nr_polarizations = data.nr_polarizations
     subgrid_size = data.subgrid_size
@@ -20,8 +20,6 @@ def compare_degridder(device, kernel1, kernel2):
     image_size = data.image_size
     nr_channels = data.nr_channels
     nr_stations = data.nr_stations
-    nr_baselines = data.nr_baselines
-    nr_timesteps = data.nr_timesteps
     time_offset = 0
     w_step = 0
     shift_l = 0
@@ -31,6 +29,7 @@ def compare_degridder(device, kernel1, kernel2):
     frequencies, d_frequencies = data.get_frequencies()
     plan = data.get_plan(uvw, frequencies)
     wavenumbers, d_wavenumbers = data.get_wavenumbers(frequencies)
+    visibilities, d_visibilities = data.get_visibilities(uvw, frequencies)
     taper, d_taper = data.get_taper()
     metadata, d_metadata = data.get_metadata(plan)
     aterms, d_aterms = data.get_aterms()
@@ -42,18 +41,11 @@ def compare_degridder(device, kernel1, kernel2):
 
     # Allocate subgrids
     nr_subgrids = plan.get_nr_subgrids()
-    subgrids = np.random.random(
-        (nr_subgrids, nr_polarizations, subgrid_size, subgrid_size)).astype(np.complex64)
+    subgrids = np.zeros(
+        (nr_subgrids, nr_polarizations, subgrid_size, subgrid_size), dtype=np.complex64
+    )
     sizeof_subgrids, d_subgrids = cuda_mem_alloc(subgrids)
     cuda_memcpy_htod(d_subgrids, subgrids, sizeof_subgrids, stream)
-
-    # Allocate visibilities
-    visibilities = np.zeros(
-        (nr_baselines, nr_timesteps, nr_channels, nr_polarizations), dtype=np.complex64
-    )
-
-    sizeof_visibilities, d_visibilities = cuda_mem_alloc(visibilities)
-    cuda_memcpy_htod(d_visibilities, visibilities, sizeof_visibilities, stream)
 
     arg_values = (
         time_offset,
@@ -73,6 +65,7 @@ def compare_degridder(device, kernel1, kernel2):
         d_aterms,
         d_aterms_indices,
         d_metadata,
+        0,  # average aterm is not used
         d_subgrids,
     )
 
@@ -94,6 +87,7 @@ def compare_degridder(device, kernel1, kernel2):
         None,  # aterms
         None,  # aterms_indicies
         None,  # metadata
+        ctypes.c_int,  # avg_aterm
         None,  # subgrid
     )
 
@@ -115,43 +109,50 @@ def compare_degridder(device, kernel1, kernel2):
         cuda_check(err)
 
     # Launch first kernel
-    cuda_memcpy_htod(d_visibilities, visibilities, sizeof_visibilities, stream)
+    cuda_memcpy_htod(d_subgrids, subgrids, sizeof_subgrids, stream)
     launch_kernel(kernel1)
-    cuda_memcpy_dtoh(d_visibilities, visibilities, sizeof_visibilities, stream)
+    cuda_memcpy_dtoh(d_subgrids, subgrids, sizeof_subgrids, stream)
     (err,) = cuda.cuStreamSynchronize(stream)
     cuda_check(err)
 
     # Run reference
-    visibilities_reference = np.zeros(visibilities.shape, dtype=np.complex64)
+    subgrids_reference = np.zeros(
+        (nr_subgrids, nr_polarizations, subgrid_size, subgrid_size), dtype=np.complex64
+    )
 
     # Launch second kernel
-    cuda_memcpy_htod(d_visibilities, visibilities_reference, sizeof_visibilities, stream)
+    cuda_memcpy_htod(d_subgrids, subgrids_reference, sizeof_subgrids, stream)
     launch_kernel(kernel2)
-    cuda_memcpy_dtoh(d_visibilities, visibilities_reference, sizeof_visibilities, stream)
+    cuda_memcpy_dtoh(d_subgrids, subgrids_reference, sizeof_subgrids, stream)
     cuda_check(err)
     (err,) = cuda.cuStreamSynchronize(stream)
 
-    # Check correctness
-    print(f"Error: {get_accuracy(visibilities_reference, visibilities)}")
-
     # Debug
-    # util.plot_visibilities(visibilities_reference - visibilities)
-    # plt.show()
+    # compare_subgrids(subgrids_reference, subgrids)
+
+    # Check correctness
+    tolerance = nr_subgrids * subgrid_size * subgrid_size * nr_polarizations * np.finfo(np.float32).eps
+    print(f"Tolerance: {tolerance}")
+    error = get_accuracy(subgrids_reference, subgrids)
+    print(f"Error: {error}")
+    assert abs(error) < tolerance
+    max = np.max(np.absolute(subgrids_reference))
+    assert np.allclose(subgrids_reference/max, subgrids/max, atol=1e-5, rtol=1e-8)
 
 
-def test_degridder_default():
+def test_gridder_default():
     device, context = cuda_initialize()
-    k1 = compile_kernel(device, "KernelDegridderReference.cu", "kernel_degridder")
-    k2 = compile_kernel(device, "KernelDegridder.cu", "kernel_degridder")
-    compare_degridder(device, k1, k2)
+    k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
+    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder")
+    compare_gridder(device, k1, k2)
 
-def test_degridder_extrapolate():
+def test_gridder_extrapolate():
     device, context = cuda_initialize()
-    k1 = compile_kernel(device, "KernelDegridderReference.cu", "kernel_degridder")
-    k2 = compile_kernel(device, "KernelDegridder.cu", "kernel_degridder", ["-DUSE_EXTRAPOLATE"])
-    compare_degridder(device, k1, k2)
+    k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
+    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder", ["-DUSE_EXTRAPOLATE"])
+    compare_gridder(device, k1, k2)
 
 
 if __name__ == "__main__":
-    test_degridder_default()
-    test_degridder_extrapolate()
+    test_gridder_default()
+    test_gridder_extrapolate()
