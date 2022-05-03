@@ -1,6 +1,50 @@
 #include "math.cu"
 #include "Types.h"
 
+__device__ void update_pixel(
+    const unsigned             nr_polarizations,
+    const unsigned             subgrid_size,
+    const unsigned             nr_stations,
+    const unsigned             s,
+    const unsigned             y,
+    const unsigned             x,
+    const unsigned             aterm_index,
+    const unsigned             station1,
+    const unsigned             station2,
+    const float2* __restrict__ aterms,
+          float2* __restrict   pixel,
+          float2* __restrict__ pixel_sum)
+{
+    // Load aterm for station1
+    int station1_index = (aterm_index * nr_stations + station1) *
+                              subgrid_size * subgrid_size * nr_polarizations +
+                          y * subgrid_size * nr_polarizations +
+                          x * nr_polarizations;
+    const float2 *aterm1 = &aterms[station1_index];
+
+    // Load aterm for station2
+    int station2_index = (aterm_index * nr_stations + station2) *
+                              subgrid_size * subgrid_size * nr_polarizations +
+                          y * subgrid_size * nr_polarizations +
+                          x * nr_polarizations;
+    const float2 *aterm2 = &aterms[station2_index];
+
+    // Apply aterm
+    apply_aterm_gridder(pixel, aterm1, aterm2);
+
+    // Update pixel
+    if (nr_polarizations == 4) {
+        // Full Stokes
+        for (unsigned pol = 0; pol < nr_polarizations; pol++) {
+            pixel_sum[pol] += pixel[pol];
+        }
+    } else if (nr_polarizations == 1) {
+        // Stokes-I only
+        pixel_sum[0] += pixel[0];
+        pixel_sum[3] += pixel[3];
+    }
+}
+
 extern "C" {
 __global__ void kernel_gridder(
     const int                      time_offset,
@@ -58,10 +102,11 @@ __global__ void kernel_gridder(
     }
 
     // Initialize pixel for every polarization
-    float2 pixel_sum[4];
     float2 pixel_cur[4];
+    float2 pixel_sum[4];
 
     for (int j = 0; j < nr_correlations; j++) {
+      pixel_cur[j] = make_float2(0, 0);
       pixel_sum[j] = make_float2(0, 0);
     }
 
@@ -70,8 +115,34 @@ __global__ void kernel_gridder(
     float m = compute_m(y, subgrid_size, image_size);
     float n = compute_n(l, m);
 
+    // Initialize aterm index to first timestep
+    int aterm_idx_previous = aterms_indices[time_offset_global];
+
     // Iterate all timesteps
     for (int time = 0; time < nr_timesteps; time++) {
+      // Get aterm index for current timestep
+      int time_current = time_offset_global + time;
+      int aterm_idx_current = aterms_indices[time_current];
+
+      // Determine whether aterm has changed
+      bool aterm_changed = aterm_idx_previous != aterm_idx_current;
+
+      if (aterm_changed) {
+        // Update pixel
+        update_pixel(
+            nr_polarizations, subgrid_size, nr_stations, s, y, x,
+            aterm_idx_previous, station1, station2, aterms,
+            pixel_cur, pixel_sum);
+
+        // Reset pixel
+        for (int pol = 0; pol < 4; pol++) {
+            pixel_cur[pol] = make_float2(0, 0);
+        }
+
+        // Update aterm index
+        aterm_idx_previous = aterm_idx_current;
+      }
+
       // Load UVW coordinates
       float u = uvw[time_offset_global + time].u;
       float v = uvw[time_offset_global + time].v;
@@ -82,10 +153,6 @@ __global__ void kernel_gridder(
 
       // Compute phase offset
       float phase_offset = u_offset * l + v_offset * m + w_offset * n;
-
-      for (int j = 0; j < nr_correlations; j++) {
-        pixel_cur[j] = make_float2(0, 0);
-      }
 
       // Update pixel for every channel
       for (int chan = 0; chan < nr_channels; chan++) {
@@ -102,37 +169,12 @@ __global__ void kernel_gridder(
           pixel_cur[pol] += visibility * phasor;
         }
       }
+    } // end for time
 
-      int aterm_index = aterms_indices[time_offset_global + time];
-
-      // Load a term for station1
-      int station1_index = (aterm_index * nr_stations + station1) *
-                                subgrid_size * subgrid_size * nr_correlations +
-                            y * subgrid_size * nr_correlations +
-                            x * nr_correlations;
-      const float2 *aterm1_ptr = &aterms[station1_index];
-
-      // Load aterm for station2
-      int station2_index = (aterm_index * nr_stations + station2) *
-                                subgrid_size * subgrid_size * nr_correlations +
-                            y * subgrid_size * nr_correlations +
-                            x * nr_correlations;
-      const float2 *aterm2_ptr = &aterms[station2_index];
-
-      // Apply aterm
-      apply_aterm_gridder(pixel_cur, aterm1_ptr, aterm2_ptr);
-
-      if (nr_polarizations == 4) {
-          // Full Stokes
-          for (unsigned pol = 0; pol < nr_polarizations; pol++) {
-              pixel_sum[pol] += pixel_cur[pol];
-          }
-      } else if (nr_polarizations == 1) {
-          // Stokes-I only
-          pixel_sum[0] += pixel_cur[0];
-          pixel_sum[3] += pixel_cur[3];
-      }
-    }
+    update_pixel(
+        nr_polarizations, subgrid_size, nr_stations, s, y, x,
+        aterm_idx_previous, station1, station2, aterms,
+        pixel_cur, pixel_sum);
 
     // Load spheroidal
     float sph = spheroidal[y * subgrid_size + x];
@@ -148,6 +190,6 @@ __global__ void kernel_gridder(
           pol * subgrid_size * subgrid_size + y_dst * subgrid_size + x_dst;
       subgrid[idx_subgrid] = pixel_sum[pol] * sph;
     }
-  }
+  } // end for i (pixels)
 }
 } // end extern "C"
