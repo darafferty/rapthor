@@ -73,7 +73,7 @@ __device__ void update_pixel(
     const unsigned             station1,
     const unsigned             station2,
     const float2* __restrict__ aterms,
-          float2* __restrict   pixel,
+          float2* __restrict__ pixel,
           float2* __restrict__ pixel_sum)
 {
     // Apply aterm
