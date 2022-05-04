@@ -7,7 +7,12 @@ doc: |
   a clean mask for the next iteration.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.input_image)
+        writable: true
+
 
 inputs:
   - id: input_image
