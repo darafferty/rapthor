@@ -3,16 +3,17 @@
 import ctypes
 from cuda import cuda
 import numpy as np
+import pytest
 
 from common import *
 
 
-def compare_gridder(device, kernel1, kernel2):
+def compare_gridder(device, kernel1, kernel2, stokes_i_only):
     # Create stream
     err, stream = cuda.cuStreamCreate(0)
 
     # Initialize data
-    data = DummyData(device, stream)
+    data = DummyData(device, stream, stokes_i_only)
 
     nr_polarizations = data.nr_polarizations
     subgrid_size = data.subgrid_size
@@ -140,19 +141,22 @@ def compare_gridder(device, kernel1, kernel2):
     assert np.allclose(subgrids_reference/max, subgrids/max, atol=1e-5, rtol=1e-8)
 
 
-def test_gridder_default():
+@pytest.mark.parametrize("stokes_i_only", [False, True])
+def test_gridder_default(stokes_i_only):
+    print(f"test gridder default {'(Stokes I only)' if stokes_i_only else ''}")
     device, context = cuda_initialize()
     k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
     k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder")
-    compare_gridder(device, k1, k2)
+    compare_gridder(device, k1, k2, stokes_i_only)
 
-def test_gridder_extrapolate():
+@pytest.mark.parametrize("stokes_i_only", [False, True])
+def test_gridder_extrapolate(stokes_i_only):
     device, context = cuda_initialize()
     k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
     k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder", ["-DUSE_EXTRAPOLATE"])
-    compare_gridder(device, k1, k2)
+    compare_gridder(device, k1, k2, stokes_i_only)
 
 
 if __name__ == "__main__":
-    test_gridder_default()
-    test_gridder_extrapolate()
+    test_gridder_default(True)
+    test_gridder_extrapolate(True)

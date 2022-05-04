@@ -206,7 +206,7 @@ def cuda_stream_synchronize(stream):
 
 
 class DummyData:
-    def __init__(self, device, stream):
+    def __init__(self, device, stream, stokes_i_only = False):
         # IDG parameters
         self.grid_size = 2048
         self.nr_correlations = 4
@@ -219,6 +219,11 @@ class DummyData:
         self.nr_timesteps = 4096
         self.integration_time = 0.9
         layout_file = "LOFAR_lba.txt"
+
+        # Stokes I only mode
+        if (stokes_i_only):
+            self.nr_correlations = 2
+            self.nr_polarizations = 1
 
         # Derived IDG parameters
         self.nr_baselines = int((self.nr_stations * (self.nr_stations - 1)) / 2)
@@ -329,7 +334,7 @@ class DummyData:
     def get_aterms(self):
         # Initialize aterms
         aterms = util.get_example_aterms(
-            self.nr_timeslots, self.nr_stations, self.subgrid_size, self.nr_correlations
+            self.nr_timeslots, self.nr_stations, self.subgrid_size, 4
         )
         sizeof_aterms, d_aterms = cuda_mem_alloc(aterms)
         cuda_memcpy_htod(d_aterms, aterms, sizeof_aterms, self.stream)

@@ -3,18 +3,20 @@
 import ctypes
 from cuda import cuda
 import numpy as np
+import pytest
 
 from common import *
 
 
-def compare_degridder(device, kernel1, kernel2):
+def compare_degridder(device, kernel1, kernel2, stokes_i_only):
     # Create stream
     err, stream = cuda.cuStreamCreate(0)
 
     # Initialize data
-    data = DummyData(device, stream)
+    data = DummyData(device, stream, stokes_i_only)
 
     nr_polarizations = data.nr_polarizations
+    nr_correlations = data.nr_correlations
     subgrid_size = data.subgrid_size
     grid_size = data.grid_size
     image_size = data.image_size
@@ -48,12 +50,12 @@ def compare_degridder(device, kernel1, kernel2):
     cuda_memcpy_htod(d_subgrids, subgrids, sizeof_subgrids, stream)
 
     # Allocate visibilities
-    visibilities = np.zeros(
-        (nr_baselines, nr_timesteps, nr_channels, nr_polarizations), dtype=np.complex64
+    visibilities1 = np.zeros(
+        (nr_baselines, nr_timesteps, nr_channels, nr_correlations), dtype=np.complex64
     )
 
-    sizeof_visibilities, d_visibilities = cuda_mem_alloc(visibilities)
-    cuda_memcpy_htod(d_visibilities, visibilities, sizeof_visibilities, stream)
+    sizeof_visibilities, d_visibilities = cuda_mem_alloc(visibilities1)
+    cuda_memcpy_htod(d_visibilities, visibilities1, sizeof_visibilities, stream)
 
     arg_values = (
         time_offset,
@@ -115,50 +117,53 @@ def compare_degridder(device, kernel1, kernel2):
         cuda_check(err)
 
     # Launch first kernel
-    cuda_memcpy_htod(d_visibilities, visibilities, sizeof_visibilities, stream)
+    cuda_memcpy_htod(d_visibilities, visibilities1, sizeof_visibilities, stream)
     launch_kernel(kernel1)
-    cuda_memcpy_dtoh(d_visibilities, visibilities, sizeof_visibilities, stream)
+    cuda_memcpy_dtoh(d_visibilities, visibilities1, sizeof_visibilities, stream)
     (err,) = cuda.cuStreamSynchronize(stream)
     cuda_check(err)
 
     # Run reference
-    visibilities_reference = np.zeros(visibilities.shape, dtype=np.complex64)
+    visibilities2 = np.zeros(visibilities1.shape, dtype=np.complex64)
 
     # Launch second kernel
-    cuda_memcpy_htod(d_visibilities, visibilities_reference, sizeof_visibilities, stream)
+    cuda_memcpy_htod(d_visibilities, visibilities2, sizeof_visibilities, stream)
     launch_kernel(kernel2)
-    cuda_memcpy_dtoh(d_visibilities, visibilities_reference, sizeof_visibilities, stream)
+    cuda_memcpy_dtoh(d_visibilities, visibilities2, sizeof_visibilities, stream)
     cuda_check(err)
     (err,) = cuda.cuStreamSynchronize(stream)
 
     # Debug
-    # util.plot_visibilities(visibilities_reference - visibilities)
+    # util.plot_visibilities(visibilities1 - visibilities2)
     # plt.show()
 
     # Check correctness
     tolerance = nr_baselines * nr_timesteps * nr_channels * np.finfo(np.float32).eps
     print(f"Tolerance: {tolerance}")
-    error = get_accuracy(visibilities_reference, visibilities)
+    error = get_accuracy(visibilities2, visibilities1)
     print(f"Error: {error}")
     assert abs(error) < tolerance
-    max = np.max(np.absolute(visibilities_reference))
-    assert np.allclose(visibilities_reference/max, visibilities_reference/max, atol=1e-5, rtol=1e-8)
+    max = np.max(np.absolute(visibilities2))
+    assert np.allclose(visibilities2/max, visibilities2/max, atol=1e-5, rtol=1e-8)
 
 
-
-def test_degridder_default():
+@pytest.mark.parametrize("stokes_i_only", [False, True])
+def test_degridder_default(stokes_i_only):
+    print(f"test degridder default {'(Stokes I only)' if stokes_i_only else ''}")
     device, context = cuda_initialize()
     k1 = compile_kernel(device, "KernelDegridderReference.cu", "kernel_degridder")
     k2 = compile_kernel(device, "KernelDegridder.cu", "kernel_degridder")
-    compare_degridder(device, k1, k2)
+    compare_degridder(device, k1, k2, stokes_i_only)
 
-def test_degridder_extrapolate():
+@pytest.mark.parametrize("stokes_i_only", [False, True])
+def test_degridder_extrapolate(stokes_i_only):
+    print(f"test degridder extrapolate {'(Stokes I only)' if stokes_i_only else ''}")
     device, context = cuda_initialize()
     k1 = compile_kernel(device, "KernelDegridderReference.cu", "kernel_degridder")
     k2 = compile_kernel(device, "KernelDegridder.cu", "kernel_degridder", ["-DUSE_EXTRAPOLATE"])
-    compare_degridder(device, k1, k2)
+    compare_degridder(device, k1, k2, stokes_i_only)
 
 
 if __name__ == "__main__":
-    test_degridder_default()
-    test_degridder_extrapolate()
+    test_degridder_default(False)
+    test_degridder_extrapolate(False)
