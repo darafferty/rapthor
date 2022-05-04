@@ -17,16 +17,16 @@ __device__ void update_pixel(
 {
     // Load aterm for station1
     int station1_index = (aterm_index * nr_stations + station1) *
-                              subgrid_size * subgrid_size * nr_polarizations +
-                          y * subgrid_size * nr_polarizations +
-                          x * nr_polarizations;
+                              subgrid_size * subgrid_size * 4 +
+                          y * subgrid_size * 4 +
+                          x * 4;
     const float2 *aterm1 = &aterms[station1_index];
 
     // Load aterm for station2
     int station2_index = (aterm_index * nr_stations + station2) *
-                              subgrid_size * subgrid_size * nr_polarizations +
-                          y * subgrid_size * nr_polarizations +
-                          x * nr_polarizations;
+                              subgrid_size * subgrid_size * 4 +
+                          y * subgrid_size * 4 +
+                          x * 4;
     const float2 *aterm2 = &aterms[station2_index];
 
     // Apply aterm
@@ -71,13 +71,6 @@ __global__ void kernel_gridder(
   int tid = threadIdx.x;
   int nr_threads = blockDim.x * blockDim.y;
 
-  int nr_correlations = 0;
-  if (nr_polarizations == 4) {
-    nr_correlations = 4;
-  } else if (nr_polarizations == 1) {
-    nr_correlations = 2;
-  }
-
   // Load metadata
   const Metadata &m = metadata[s];
   const int time_offset_global = m.time_index - time_offset;
@@ -105,7 +98,7 @@ __global__ void kernel_gridder(
     float2 pixel_cur[4];
     float2 pixel_sum[4];
 
-    for (int j = 0; j < nr_correlations; j++) {
+    for (int j = 0; j < 4; j++) {
       pixel_cur[j] = make_float2(0, 0);
       pixel_sum[j] = make_float2(0, 0);
     }
@@ -164,9 +157,14 @@ __global__ void kernel_gridder(
 
         // Update pixel for every polarization
         size_t index = (time_offset_global + time) * nr_channels + chan;
-        for (int pol = 0; pol < nr_correlations; pol++) {
-          float2 visibility = visibilities[index * nr_correlations + pol];
-          pixel_cur[pol] += visibility * phasor;
+        if (nr_polarizations == 4) {
+          pixel_cur[0] += visibilities[index * 4 + 0] * phasor;
+          pixel_cur[1] += visibilities[index * 4 + 1] * phasor;
+          pixel_cur[2] += visibilities[index * 4 + 2] * phasor;
+          pixel_cur[3] += visibilities[index * 4 + 3] * phasor;
+        } else if (nr_polarizations == 1) {
+          pixel_cur[0] += visibilities[index * 2 + 0] * phasor;
+          pixel_cur[3] += visibilities[index * 2 + 1] * phasor;
         }
       }
     } // end for time
@@ -184,11 +182,18 @@ __global__ void kernel_gridder(
     int y_dst = (y + (subgrid_size/2)) % subgrid_size;
 
     // Set subgrid value
-    for (int pol = 0; pol < nr_correlations; pol++) {
-      unsigned idx_subgrid =
-          s * nr_correlations * subgrid_size * subgrid_size +
-          pol * subgrid_size * subgrid_size + y_dst * subgrid_size + x_dst;
-      subgrid[idx_subgrid] = pixel_sum[pol] * sph;
+    if (nr_polarizations == 4) {
+      for (int pol = 0; pol < nr_polarizations; pol++) {
+        size_t index =
+            s * nr_polarizations * subgrid_size * subgrid_size +
+            pol * subgrid_size * subgrid_size + y_dst * subgrid_size + x_dst;
+          subgrid[index] = pixel_sum[pol] * sph;
+      }
+    } else if (nr_polarizations == 1) {
+        size_t index =
+            s * subgrid_size * subgrid_size +
+            y_dst * subgrid_size + x_dst;
+        subgrid[index] = (pixel_sum[0] + pixel_sum[3]) * sph * 0.5;
     }
   } // end for i (pixels)
 }

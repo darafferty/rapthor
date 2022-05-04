@@ -138,12 +138,15 @@ inline __device__ void compute_reduction_extrapolate(
             float2 phasor = phasor_c[j];
 
             int idx = 4 * (output_index ? j : i);
-            cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
             if (nr_polarizations == 4) {
+                cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
                 cmac(output[idx + 1], phasor, make_float2(a.z, a.w));
                 cmac(output[idx + 2], phasor, make_float2(b.x, b.y));
+                cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
+            } else if (nr_polarizations == 1) {
+                cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
+                cmac(output[idx + 3], phasor, make_float2(a.z, a.w));
             }
-            cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
 
             if (i < n - 1) {
                 phasor_c[j] *= phasor_d[j];
@@ -172,12 +175,15 @@ inline __device__ void compute_reduction(
             __sincosf(phase, &phasor.y, &phasor.x);
 
             int idx = 4 * (output_index ? j : i);
-            cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
             if (nr_polarizations == 4) {
+                cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
                 cmac(output[idx + 1], phasor, make_float2(a.z, a.w));
                 cmac(output[idx + 2], phasor, make_float2(b.x, b.y));
+                cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
+            } else if (nr_polarizations == 1) {
+                cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
+                cmac(output[idx + 3], phasor, make_float2(a.z, a.w));
             }
-            cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
         }
     }
 }
