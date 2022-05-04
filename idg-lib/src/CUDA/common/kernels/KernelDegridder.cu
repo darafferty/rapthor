@@ -206,7 +206,7 @@ __device__ void store_visibility(
             vis_ptr[1] = visB * scale;
         } else if (nr_polarizations == 1) {
             size_t idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
-            float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][3].x, visibility[chan][3].y);
+            float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][1].x, visibility[chan][1].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             *vis_ptr = vis * scale;
         }
@@ -237,7 +237,7 @@ __device__ void update_visibility(
             vis_ptr[1] += visB * scale;
         } else if (nr_polarizations == 1) {
             int idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
-            float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][3].x, visibility[chan][3].y);
+            float4 vis = make_float4(visibility[chan][0].x, visibility[chan][0].y, visibility[chan][1].x, visibility[chan][1].y);
             float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
             *vis_ptr += vis * scale;
         }

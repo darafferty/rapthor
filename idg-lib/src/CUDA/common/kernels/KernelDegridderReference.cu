@@ -26,13 +26,6 @@ __global__ void kernel_degridder(
   int tid = threadIdx.x;
   int nr_threads = blockDim.x * blockDim.y;
 
-  int nr_correlations = 0;
-  if (nr_polarizations == 4) {
-    nr_correlations = 4;
-  } else if (nr_polarizations == 1) {
-    nr_correlations = 2;
-  }
-
   // Load metadata
   const Metadata &m = metadata[s];
   const int time_offset_global = m.time_index - time_offset;
@@ -58,7 +51,7 @@ __global__ void kernel_degridder(
 
     // Initialize visibility to zero
     float2 visibility[4];
-    for (int j = 0; j < nr_correlations; j++) {
+    for (int j = 0; j < 4; j++) {
       visibility[j] = make_float2(0, 0);
     }
 
@@ -85,7 +78,7 @@ __global__ void kernel_degridder(
 
       // Load pixel value and apply spheroidal
       float2 pixel[4];
-      if (nr_correlations == 4) {
+      if (nr_polarizations == 4) {
         for (int pol = 0; pol < nr_polarizations; pol++) {
           size_t index =
               s * nr_polarizations * subgrid_size * subgrid_size +
@@ -93,10 +86,12 @@ __global__ void kernel_degridder(
               x_src;
           pixel[pol] = sph * subgrid[index];
         }
-      } else if (nr_correlations == 2) {
+      } else if (nr_polarizations == 1) {
         size_t index = s * nr_polarizations * subgrid_size * subgrid_size +
                         y_src * subgrid_size + x_src;
         pixel[0] = sph * subgrid[index];
+        pixel[1] = make_float2(0, 0);
+        pixel[2] = make_float2(0, 0);
         pixel[3] = sph * subgrid[index];
       }
 
@@ -104,16 +99,14 @@ __global__ void kernel_degridder(
 
       // Load a term for station1
       int station1_index = (aterm_index * nr_stations + station1) *
-                                subgrid_size * subgrid_size * nr_correlations +
-                            y * subgrid_size * nr_correlations +
-                            x * nr_correlations;
+                                subgrid_size * subgrid_size * 4 +
+                            y * subgrid_size * 4 + x * 4;
       const float2 *aterm1_ptr = &aterms[station1_index];
 
       // Load aterm for station2
       int station2_index = (aterm_index * nr_stations + station2) *
-                                subgrid_size * subgrid_size * nr_correlations +
-                            y * subgrid_size * nr_correlations +
-                            x * nr_correlations;
+                                subgrid_size * subgrid_size * 4 +
+                            y * subgrid_size * 4 + x * 4;
       const float2 *aterm2_ptr = &aterms[station2_index];
 
       // Apply aterm
@@ -137,22 +130,28 @@ __global__ void kernel_degridder(
       float2 phasor = make_float2(cosf(phase), sinf(phase));
 
       // Update visibility
-      if (nr_correlations == 4) {
-        for (int pol = 0; pol < nr_correlations; pol++) {
+      if (nr_polarizations == 4) {
+        for (int pol = 0; pol < 4; pol++) {
           visibility[pol] += pixel[pol] * phasor;
-          //visibility[pol] += make_float2(1, 0);
         }
-      } else if (nr_correlations == 2) {
+      } else if (nr_polarizations == 1) {
         visibility[0] += pixel[0] * phasor;
-        visibility[1] += pixel[1] * phasor;
+        visibility[1] += pixel[3] * phasor;
       }
     } // end for j (pixels)
 
     // Store visibility
-    size_t index = (time_offset_global + time) * nr_channels + chan;
     const float scale = 1.0f / (subgrid_size * subgrid_size);
-    for (int cor = 0; cor < nr_correlations; cor++) {
-      visibilities[index * nr_correlations + cor] = visibility[cor] * scale;
+    if (nr_polarizations == 4) {
+      size_t index = (time_offset_global + time) * nr_channels + chan;
+      visibilities[index * 4 + 0] = visibility[0] * scale;
+      visibilities[index * 4 + 1] = visibility[1] * scale;
+      visibilities[index * 4 + 2] = visibility[2] * scale;
+      visibilities[index * 4 + 3] = visibility[3] * scale;
+    } else if (nr_polarizations == 1) {
+      size_t index = (time_offset_global + time) * nr_channels + chan;
+      visibilities[index * 2 + 0] = visibility[0] * scale;
+      visibilities[index * 2 + 1] = visibility[3] * scale;
     }
   } // end for i (visibilities)
 }
