@@ -360,10 +360,12 @@ outputs:
       - combine_fast_and_slow_h5parms2/combinedh5parm
     type: File
 {% endif %}
+{% if use_screens %}
   - id: diagonal_aterms
     outputSource:
       - merge_aterm_files/output
     type: File[]
+{% endif %}
 
 
 steps:
@@ -742,6 +744,8 @@ steps:
     out:
       - id: combinedh5parm
 
+{% if use_screens %}
+
   - id: split_h5parms
     label: Split solution table
     doc: |
@@ -784,6 +788,8 @@ steps:
     scatterMethod: dotproduct
     out:
       - id: output_images
+
+{% endif %}
 
 {% if debug %}
 # Solve for slow gains again, applying the first ones
@@ -863,6 +869,8 @@ steps:
 {% else %}
 # Don't solve for slow gains
 
+{% if use_screens %}
+
   - id: split_h5parms
     label: Split solution table
     doc: |
@@ -908,6 +916,10 @@ steps:
 
 {% endif %}
 
+{% endif %}
+
+{% if use_screens %}
+
   - id: merge_aterm_files
     in:
       - id: input
@@ -917,3 +929,5 @@ steps:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
     label: merge_aterm_files
+
+{% endif %}

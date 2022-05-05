@@ -177,11 +177,13 @@ inputs:
       n_sectors).
     type: string[]
 
+{% if not use_facets %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central patch of the sector (length = n_sectors).
     type: string[]
+{% endif %}
 
 {% endif %}
   - id: channels_out
@@ -232,8 +234,8 @@ inputs:
     doc: |
       The WSClean multiscale scales in pixels (length = n_sectors).
     type: string[]
-
 {% endif %}
+
   - id: dir_local
     label: Scratch directory
     doc: |
@@ -343,8 +345,10 @@ steps:
 {% else %}
       - id: h5parm
         source: h5parm
+{% if not use_facets %}
       - id: central_patch_name
         source: central_patch_name
+{% endif %}
 {% endif %}
       - id: channels_out
         source: channels_out

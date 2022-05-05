@@ -145,11 +145,13 @@ inputs:
       1).
     type: string
 
+{% if not use_facets %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
     type: string
+{% endif %}
 
 {% endif %}
   - id: channels_out
@@ -308,7 +310,7 @@ steps:
         source: phasecenter
       - id: numthreads
         valueFrom: '{{ max_threads }}'
-{% if use_screens %}
+{% if use_screens or use_facets %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
       - id: h5parm
@@ -346,6 +348,33 @@ steps:
     out:
       - id: maskimg
 
+{% if use_facets %}
+  - id: make_region_file
+    label: Make a ds9 region file
+    doc: |
+      This step makes a ds9 region file for the imaging.
+    run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
+    in:
+      - id: imagefile
+        source: previous_mask_filename
+      - id: maskfile
+        source: mask_filename
+      - id: wsclean_imsize
+        source: wsclean_imsize
+      - id: vertices_file
+        source: vertices_file
+      - id: ra
+        source: ra
+      - id: dec
+        source: dec
+      - id: cellsize_deg
+        source: cellsize_deg
+      - id: region_file
+        source: region_file
+    out:
+      - id: maskimg
+{% endif %}
+
   - id: image
     label: Make an image
     doc: |
@@ -372,6 +401,13 @@ steps:
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
 {% endif %}
+{% endif %}
+{% else %}
+{% if use_facets %}
+{% if do_multiscale_clean %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets_multiscale.cwl
+{% else %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets.cwl
 {% endif %}
 {% else %}
 {% if do_multiscale_clean %}
@@ -402,6 +438,14 @@ steps:
       - id: nnodes
         source: mpi_nnodes
 {% endif %}
+{% endif %}
+{% if use_facets %}
+      - id: h5parm
+        source: h5parm
+      - id: soltabs
+        source: soltabs
+      - id: regionfile
+        source: make_region_file/regionfile
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize
