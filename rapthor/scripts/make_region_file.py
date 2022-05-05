@@ -5,7 +5,7 @@ Script to make a ds9 region file for use with WSClean and faceting
 import argparse
 from argparse import RawTextHelpFormatter
 from rapthor.lib import facet
-import numpy as np
+from rapthor.lib import miscellaneous as misc
 import lsmtool
 
 
@@ -40,13 +40,25 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
         ra_cal.append(v[0].value)
         dec_cal.append(v[1].value)
 
-    # Do the tessellation and make the ds9 region file
+    # Do the tessellation
     facet_points, facet_polys = facet.make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
     facet_names = []
     for facet_point in facet_points:
-        cal_ind = np.where(ra_cal == facet_point[0] & dec_cal == facet_point[1])
-        facet_names.append(name_cal[cal_ind])
-    facet.make_ds9_region_file(facet_points, facet_polys, region_file, cal_names=facet_names)
+        # For each facet, match the correct name. Some patches in the sky model may have
+        # been filtered out if they lie outside the bounding box
+        for ra, dec, name in zip(ra_cal, dec_cal, name_cal):
+            if misc.approx_equal(ra, facet_point[0], tol=1e-6) and misc.approx_equal(dec, facet_point[1], tol=1e-6):
+                facet_names.append(name)
+                break
+
+    # Make the ds9 region file
+    # Note: some versions of ds9 have problems when there is an underscore in any of
+    # the names. So if any are found, disable naming
+    for facet_name in facet_names:
+        if '_' in facet_name:
+            facet_names = None
+            break
+    facet.make_ds9_region_file(facet_points, facet_polys, region_file, names=facet_names)
 
 
 if __name__ == '__main__':

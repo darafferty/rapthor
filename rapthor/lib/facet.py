@@ -9,7 +9,7 @@ import sys
 
 def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     """
-    Makes a Voronoi tesselation and returns the resulting facet polygons
+    Makes a Voronoi tessellation and returns the resulting facet polygons
 
     Parameters
     ----------
@@ -51,8 +51,8 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         facet_polys.append(vertices)
     facet_points = []
     for point in vor.filtered_points:
-        ra, dec = xy2radec(wcs, point[0], point[1])
-        facet_points.append((ra, dec))
+        ra, dec = xy2radec(wcs, [point[0]], [point[1]])
+        facet_points.append((ra[0], dec[0]))
 
     return facet_points, facet_polys
 
@@ -137,6 +137,21 @@ def makeWCS(ra, dec):
 
 
 def in_box(cal_coords, bounding_box):
+    """
+    Checks if coordinates are inside the bounding box
+
+    Parameters
+    ----------
+    cal_coords : array
+        Array of x, y coordinates
+    bounding_box : array
+        Array defining the bounding box as [minx, maxx, miny, maxy]
+
+    Returns
+    -------
+    inside : array
+        Bool array with True for inside and False if not
+    """
     return np.logical_and(np.logical_and(bounding_box[0] <= cal_coords[:, 0],
                                          cal_coords[:, 0] <= bounding_box[1]),
                           np.logical_and(bounding_box[2] <= cal_coords[:, 1],
@@ -144,6 +159,21 @@ def in_box(cal_coords, bounding_box):
 
 
 def voronoi(cal_coords, bounding_box):
+    """
+    Checks if coordinates are inside the bounding box
+
+    Parameters
+    ----------
+    cal_coords : array
+        Array of x, y coordinates
+    bounding_box : array
+        Array defining the bounding box as [minx, maxx, miny, maxy]
+
+    Returns
+    -------
+    vor : Voronoi object
+        The resulting Voronoi object
+    """
     eps = sys.float_info.epsilon
 
     # Select calibrators inside the bounding box
@@ -201,27 +231,32 @@ def make_ds9_region_file(center_coords, facet_polygons, outfile, names=None):
 
     Parameters
     ----------
-    directions : list
-        List of Direction objects
-    outputfile : str
+    center_coords : list
+        List of (RA, Dec) of the facet center coordinates
+    facet_polygons : list
+        List of vertices for the facets
+    outfile : str
         Name of output region file
-
+    names : list, optional
+        List of names of the facets
     """
     lines = []
     lines.append('# Region file format: DS9 version 4.0\nglobal color=green '
                  'font="helvetica 10 normal" select=1 highlite=1 edit=1 '
                  'move=1 delete=1 include=1 fixed=0 source=1\nfk5\n')
     if names is None:
-        names = ['dir_{}'.format(i) for i in range(len(center_coords))]
+        names = [None] * len(center_coords)
     for name, center_coord, vertices in zip(names, center_coords, facet_polygons):
         radec_list = []
-        RAs = vertices[0]
-        Decs = vertices[1]
+        RAs = vertices.T[0]
+        Decs = vertices.T[1]
         for ra, dec in zip(RAs, Decs):
             radec_list.append('{0}, {1}'.format(ra, dec))
-        lines.append('polygon({0})\n'.format(', '.join(radec_list)))
-        lines.append('point({0}, {1}) # point=cross width=2 text={{{2}}}\n'.
-                     format(center_coord[0], center_coord[1], name))
+        if name is None:
+            lines.append('polygon({0})\n'.format(', '.join(radec_list)))
+        else:
+            lines.append('polygon({0}) # text={1}\n'.format(', '.join(radec_list), name))
+        lines.append('point({0}, {1})\n'.format(center_coord[0], center_coord[1]))
 
-    with open(outfile, 'wb') as f:
+    with open(outfile, 'w') as f:
         f.writelines(lines)
