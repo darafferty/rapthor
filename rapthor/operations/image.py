@@ -165,6 +165,7 @@ class Image(Operation):
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
                             'bright_skymodel_pb': [CWLFile(self.field.bright_source_skymodel_file).to_json()] * nsectors,
                             'peel_bright': [self.field.peel_bright_sources] * nsectors}
+
         if self.field.use_screens:
             # The following parameters were set by the preceding calibrate operation, where
             # aterm image files were generated. They do not need to be set separately for
@@ -185,8 +186,32 @@ class Image(Operation):
                 self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
             self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
-            self.input_parms.update({'central_patch_name': central_patch_name})
             self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
+            if self.field.dde_method == 'facets':
+                # For faceting, we need inputs for making the ds9 facet region files
+                self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
+                ra_mid = []
+                dec_mid = []
+                width_ra = []
+                width_dec = []
+                facet_region_file = []
+                for i, sector in enumerate(self.field.imaging_sectors):
+                    ra_mid.append(sector.ra)
+                    dec_mid.append(sector.dec)
+                    width_ra.append(sector.width_ra)
+                    width_dec.append(sector.width_dec)
+                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
+                self.input_parms.update({'ra_mid': ra_mid})
+                self.input_parms.update({'dec_mid': dec_mid})
+                self.input_parms.update({'width_ra': width_ra})
+                self.input_parms.update({'width_dec': width_dec})
+                self.input_parms.update({'facet_region_file': facet_region_file})
+                if self.field.do_slowgain_solve:
+                    self.input_parms.update({'soltabs': 'amplitude000,phase000'})
+                else:
+                    self.input_parms.update({'soltabs': 'phase000'})
+            else:
+                self.input_parms.update({'central_patch_name': central_patch_name})
 
     def finalize(self):
         """

@@ -143,9 +143,54 @@ inputs:
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
       1).
+    type: File
+
+{% if use_facets %}
+  - id: skymodel
+    label: Filename of sky model
+    doc: |
+      The filename of the sky model file with the calibration patches (length =
+      1).
+    type: File
+
+  - id: ra_mid
+    label: RA of the midpoint
+    doc: |
+        The RA in degrees of the middle of the region to be imaged (length = 1).
+    type: float
+
+  - id: dec_mid
+    label: Dec of the midpoint
+    doc: |
+        The Dec in degrees of the middle of the region to be imaged (length = 1).
+    type: float
+
+  - id: width_ra
+    label: Width along RA
+    doc: |
+      The width along RA in degrees (corrected to Dec = 0) of the region to be
+      imaged (length = 1).
+    type: float
+
+  - id: width_dec
+    label:  Width along Dec
+    doc: |
+      The width along Dec in degrees of the region to be imaged (length = 1).
+    type: float
+
+  - id: facet_region_file
+    label: Filename of output region file
+    doc: |
+      The filename of the output ds9 region file (length =1).
     type: string
 
-{% if not use_facets %}
+  - id: soltabs
+    label: Names of calibration soltabs
+    doc: |
+      The names of the calibration solution tables (length = 1).
+    type: string
+
+{% else %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
@@ -355,24 +400,20 @@ steps:
       This step makes a ds9 region file for the imaging.
     run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
     in:
-      - id: imagefile
-        source: previous_mask_filename
-      - id: maskfile
-        source: mask_filename
-      - id: wsclean_imsize
-        source: wsclean_imsize
-      - id: vertices_file
-        source: vertices_file
-      - id: ra
-        source: ra
-      - id: dec
-        source: dec
-      - id: cellsize_deg
-        source: cellsize_deg
-      - id: region_file
-        source: region_file
+      - id: skymodel
+        source: skymodel_filename
+      - id: ra_mid
+        source: ra_mid
+      - id: dec_mid
+        source: dec_mid
+      - id: width_ra
+        source: width_ra
+      - id: width_dec
+        source: width_dec
+      - id: outfile
+        source: facet_region_file
     out:
-      - id: maskimg
+      - id: region_file
 {% endif %}
 
   - id: image
@@ -445,7 +486,7 @@ steps:
       - id: soltabs
         source: soltabs
       - id: regionfile
-        source: make_region_file/regionfile
+        source: make_region_file/region_file
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize

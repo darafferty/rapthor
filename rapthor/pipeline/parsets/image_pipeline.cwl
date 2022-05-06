@@ -177,7 +177,56 @@ inputs:
       n_sectors).
     type: string[]
 
-{% if not use_facets %}
+{% if use_facets %}
+  - id: skymodel
+    label: Filename of sky model
+    doc: |
+      The filename of the sky model file with the calibration patches (length =
+      1).
+    type: File
+
+  - id: ra_mid
+    label: RA of the midpoint
+    doc: |
+        The RA in degrees of the middle of the region to be imaged (length =
+        n_sectors).
+    type: float[]
+
+  - id: dec_mid
+    label: Dec of the midpoint
+    doc: |
+        The Dec in degrees of the middle of the region to be imaged (length =
+        n_sectors).
+    type: float[]
+
+  - id: width_ra
+    label: Width along RA
+    doc: |
+      The width along RA in degrees (corrected to Dec = 0) of the region to be
+      imaged (length = n_sectors).
+    type: float[]
+
+  - id: width_dec
+    label:  Width along Dec
+    doc: |
+      The width along Dec in degrees of the region to be imaged (length =
+      n_sectors).
+    type: float[]
+
+  - id: facet_region_file
+    label: Filename of output region file
+    doc: |
+      The filename of the output ds9 region file (length = n_sectors).
+    type: string[]
+
+  - id: soltabs
+    label: Names of calibration soltabs
+    doc: |
+      The names of the calibration solution tables (length = 1).
+    type: string
+
+{% else %}
+
   - id: central_patch_name
     label: Name of central patch
     doc: |
@@ -345,7 +394,22 @@ steps:
 {% else %}
       - id: h5parm
         source: h5parm
-{% if not use_facets %}
+{% if use_facets %}
+      - id: skymodel
+        source: skymodel_filename
+      - id: ra_mid
+        source: ra_mid
+      - id: dec_mid
+        source: dec_mid
+      - id: width_ra
+        source: width_ra
+      - id: width_dec
+        source: width_dec
+      - id: outfile
+        source: facet_region_file
+      - id: soltabs
+        source: soltabs
+{% else %}
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
@@ -406,7 +470,12 @@ steps:
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, h5parm, central_patch_name,
+              vertices_file, region_file, h5parm,
+{% if use_facets %}
+              ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
+{% else %}
+              central_patch_name,
+{% endif %}
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
