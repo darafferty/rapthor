@@ -134,7 +134,6 @@ inline __device__ void compute_reduction_extrapolate(
         const float4 b = input_ptr2[i * input_stride];
 
         for (int j = 0; j < m; j++) {
-            float phase = fma(wavenumbers[i], phase_index[j], phase_offset[j]);
             float2 phasor = phasor_c[j];
 
             int idx = 4 * (output_index ? j : i);
