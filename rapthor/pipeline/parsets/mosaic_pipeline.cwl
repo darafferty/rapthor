@@ -5,6 +5,8 @@ doc: |
   This workflow performs the mosaicking of images made with the imaging pipeline.
   If only a single image was made, processing is (mostly) skipped.
 
+{% if not skip_processing %}
+
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
@@ -117,3 +119,11 @@ steps:
         source: skip_processing
     out:
       - id: mosaic_image
+
+{% else %}
+
+inputs: []
+outputs: []
+steps: []
+
+{% endif %}
