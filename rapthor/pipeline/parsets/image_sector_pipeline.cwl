@@ -457,6 +457,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
 {% endif %}
 {% endif %}
+{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:

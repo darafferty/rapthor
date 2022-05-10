@@ -29,6 +29,7 @@ class Calibrate(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'use_screens': self.field.use_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'max_cores': max_cores,
@@ -268,12 +269,13 @@ class Calibrate(Operation):
         # Get the filenames of the aterm images (for use in the image operation). The files
         # were written by the 'make_aterms' step and the number of them can vary, depending
         # on the node memory, etc.
-        self.field.aterm_image_filenames = []
-        for aterms_root in self.output_aterms_root:
-            with open(os.path.join(self.pipeline_working_dir, aterms_root+'.txt'), 'r') as f:
-                self.field.aterm_image_filenames.extend(f.readlines())
-        self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
-                                            for af in self.field.aterm_image_filenames]
+        if self.field.use_screens:
+            self.field.aterm_image_filenames = []
+            for aterms_root in self.output_aterms_root:
+                with open(os.path.join(self.pipeline_working_dir, aterms_root+'.txt'), 'r') as f:
+                    self.field.aterm_image_filenames.extend(f.readlines())
+            self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
+                                                for af in self.field.aterm_image_filenames]
 
         # Save the solutions
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
