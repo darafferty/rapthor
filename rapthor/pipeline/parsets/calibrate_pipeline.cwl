@@ -734,7 +734,11 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
+{% if use_screens %}
         valueFrom: 'p1p2a2'
+{% else %}
+        valueFrom: 'p1p2a2_diagonal'
+{% endif %}
       - id: reweight
         valueFrom: 'True'
       - id: calibrator_names

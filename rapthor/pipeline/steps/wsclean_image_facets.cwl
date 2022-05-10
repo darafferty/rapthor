@@ -14,8 +14,6 @@ arguments:
   - -save-source-list
   - -local-rms
   - -join-channels
-  - -grid-with-beam
-  - -use-differential-lofar-beam
   - -apply-facet-beam
 
   - -log-time
@@ -126,7 +124,7 @@ inputs:
     inputBinding:
       position: 4
   - id: region_file
-    type: string
+    type: File
     inputBinding:
       prefix: -facet-regions
 
