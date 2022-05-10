@@ -117,7 +117,7 @@ inputs:
     inputBinding:
       prefix: -deconvolution-threads
   - id: h5parm
-    type: string
+    type: File
     inputBinding:
       prefix: -apply-facet-solutions
       position: 3

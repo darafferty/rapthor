@@ -56,10 +56,8 @@ class Image(Operation):
         prepare_filename = []
         previous_mask_filename = []
         mask_filename = []
-        aterms_config_file = []
         starttime = []
         ntimes = []
-        aterm_image_filenames = []
         image_freqstep = []
         image_timestep = []
         multiscale_scales_pixel = []
@@ -185,7 +183,7 @@ class Image(Operation):
                 self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
                 self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
-            self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
+            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files

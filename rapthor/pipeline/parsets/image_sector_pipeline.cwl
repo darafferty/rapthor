@@ -317,7 +317,7 @@ steps:
       This step uses DPPP to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions at the center.
-{% if use_screens %}
+{% if use_screens or use_facets %}
 
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
 
@@ -401,7 +401,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
     in:
       - id: skymodel
-        source: skymodel_filename
+        source: skymodel
       - id: ra_mid
         source: ra_mid
       - id: dec_mid
@@ -486,7 +486,7 @@ steps:
         source: h5parm
       - id: soltabs
         source: soltabs
-      - id: regionfile
+      - id: region_file
         source: make_region_file/region_file
 {% endif %}
       - id: wsclean_imsize

@@ -174,8 +174,8 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
-      n_sectors).
-    type: string[]
+      1).
+    type: File
 
 {% if use_facets %}
   - id: skymodel
@@ -396,7 +396,7 @@ steps:
         source: h5parm
 {% if use_facets %}
       - id: skymodel
-        source: skymodel_filename
+        source: skymodel
       - id: ra_mid
         source: ra_mid
       - id: dec_mid
@@ -405,7 +405,7 @@ steps:
         source: width_ra
       - id: width_dec
         source: width_dec
-      - id: outfile
+      - id: facet_region_file
         source: facet_region_file
       - id: soltabs
         source: soltabs
@@ -470,7 +470,7 @@ steps:
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, h5parm,
+              vertices_file, region_file,
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
