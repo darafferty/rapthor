@@ -258,9 +258,16 @@ inputs:
     type: boolean
 
 outputs:
-  - id: filtered_skymodel
+  - id: filtered_skymodels
     outputSource:
       - filter/skymodels
+    type: File[]
+  - id: sector_images
+    outputSource:
+      - image/image_nonpb_name
+      - image/image_pb_name
+      - image/skymodel_nonpb
+      - image/skymodel_pb
     type: File[]
 
 steps:

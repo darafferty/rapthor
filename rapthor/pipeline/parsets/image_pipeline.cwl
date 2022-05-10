@@ -289,7 +289,23 @@ inputs:
       pipeline (length = n_sectors).
     type: boolean[]
 
-outputs: []
+outputs:
+  - id: filtered_skymodels
+    outputSource:
+      - image_sector/filtered_skymodels
+    type:
+      type: array
+      items:
+        type: array
+        items: File
+  - id: sector_images
+    outputSource:
+      - image_sector/sector_images
+    type:
+      type: array
+      items:
+        type: array
+        items: File
 
 steps:
   - id: image_sector
@@ -416,4 +432,7 @@ steps:
               peel_bright]
 {% endif %}
     scatterMethod: dotproduct
-    out: []
+
+    out:
+      - id: filtered_skymodels
+      - id: sector_images

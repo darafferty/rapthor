@@ -5,7 +5,7 @@ import os
 import logging
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
-from rapthor.lib import miscellaneous as misc
+#from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:image')
 
@@ -63,10 +63,9 @@ class Image(Operation):
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
-            # Each image job must have its own directory, so we create it here
-            image_dir = os.path.join(self.pipeline_working_dir, sector.name)
-            misc.create_directory(image_dir)
-            #image_root.append(os.path.join(image_dir, sector.name))
+            # TODO: image_dir is not used anymore (also not in lib/sector.py and lib/observation.py)
+            #       so it can safely be removed
+            image_dir = self.pipeline_working_dir
             image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
@@ -191,7 +190,7 @@ class Image(Operation):
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
         # pols, save them all
         for sector in self.field.imaging_sectors:
-            image_root = os.path.join(self.pipeline_working_dir, sector.name, sector.name)
+            image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
             sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
             sector.I_model_file_true_sky = image_root + '-MFS-model-pb.fits'

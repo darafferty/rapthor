@@ -4,6 +4,7 @@ Module that holds the Mosaic class
 import os
 import logging
 from rapthor.lib.operation import Operation
+from rapthor.lib.cwl import CWLFile, CWLDir
 from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:mosaic')
@@ -47,10 +48,10 @@ class Mosaic(Operation):
         sector_vertices_filename = []
         regridded_image_filename = []
         for sector in self.field.imaging_sectors:
-            sector_image_filename.append(sector.I_image_file_true_sky)
-            sector_vertices_filename.append(sector.vertices_file)
-            regridded_image_filename.append(sector.I_image_file_true_sky+'.regridded')
-        self.mosaic_root = os.path.join(self.pipeline_working_dir, self.name)
+            sector_image_filename.append(CWLFile(sector.I_image_file_true_sky).to_json())
+            sector_vertices_filename.append(CWLFile(sector.vertices_file).to_json())
+            regridded_image_filename.append(os.path.basename(sector.I_image_file_true_sky) + '.regridded')
+        self.mosaic_root = self.name
         template_image_filename = self.mosaic_root + '_template.fits'
         self.mosaic_filename = self.mosaic_root + '-MFS-I-image.fits'
 
