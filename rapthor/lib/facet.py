@@ -27,12 +27,12 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         Width of bounding box in Dec in degrees
     """
     # Build the bounding box corner coordinates
-    dec_min = dec_mid - width_dec/2.0
-    dec_max = dec_mid + width_dec/2.0
-    ra_corner = [ra_mid - width_ra/np.cos(dec_min),
-                 ra_mid + width_ra/np.cos(dec_min),
-                 ra_mid - width_ra/np.cos(dec_max),
-                 ra_mid + width_ra/np.cos(dec_max)]
+    dec_min = dec_mid - width_dec / 2.0
+    dec_max = dec_mid + width_dec / 2.0
+    ra_corner = [ra_mid - width_ra / 2.0 / np.cos(dec_min),
+                 ra_mid + width_ra / 2.0 / np.cos(dec_min),
+                 ra_mid - width_ra / 2.0 / np.cos(dec_max),
+                 ra_mid + width_ra / 2.0 / np.cos(dec_max)]
     dec_corner = [dec_min, dec_min, dec_max, dec_max]
 
     # Convert all coordinates to x, y
