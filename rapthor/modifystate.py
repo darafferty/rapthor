@@ -6,6 +6,7 @@ from rapthor.lib.strategy import set_strategy
 from rapthor.lib.field import Field
 import logging
 import os
+import shutil
 import sys
 
 log = logging.getLogger('rapthor:state')
@@ -107,10 +108,10 @@ def run(parset_file):
             print('Reseting state...')
             for pipeline in pipelines[int(p_number_raw)-1:]:
                 jobstore = os.path.join(parset['dir_working'], 'pipelines', pipeline, 'jobstore')
-                os.system('rm -rf {}'.format(jobstore))
+                shutil.rmtree(jobstore, ignore_errors=True)
 
                 # Remove associated sky models as well
                 skymodel = os.path.join(parset['dir_working'], 'skymodels', pipeline)
-                os.system('rm -rf {}'.format(skymodel))
+                shutil.rmtree(skymodel, ignore_errors=True)
 
             print('Reset complete.')
