@@ -124,8 +124,8 @@ __device__ void prepare_shared(
         apply_aterm_degridder(pixel, aterm1, aterm2);
 
         // Store pixels in shared memory
-        shared[0][j] = *((float4 *) &pixel[0]);
-        shared[1][j] = *((float4 *) &pixel[2]);
+        shared[0][j] = make_float4(pixel[0].x, pixel[0].y, pixel[1].x, pixel[1].y);
+        shared[1][j] = make_float4(pixel[2].x, pixel[2].y, pixel[3].x, pixel[3].y);
 
         // Compute l,m,n for phase offset and phase index
         const float l_offset = compute_l(x, subgrid_size, image_size);
