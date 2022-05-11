@@ -244,6 +244,15 @@ class Marker {
   nvtxRangeId_t _id;
 };
 
+class Profiler {
+ public:
+  Profiler(const Context& context);
+  ~Profiler();
+
+ private:
+  const Context& _context;
+};
+
 }  // end namespace cu
 
 #endif

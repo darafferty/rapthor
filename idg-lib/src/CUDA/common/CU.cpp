@@ -9,6 +9,7 @@
 #include <cassert>
 #include <sstream>
 
+#include <cudaProfiler.h>
 #include <vector_types.h>
 
 #define assertCudaCall(val) __assertCudaCall(val, #val, __FILE__, __LINE__)
@@ -482,6 +483,16 @@ unsigned int Marker::convert(Color color) {
     default:
       return 0xff00ff00;
   }
+}
+
+Profiler::Profiler(const Context& context) : _context(context) {
+  ScopedContext scc(_context);
+  cuProfilerStart();
+}
+
+Profiler::~Profiler() {
+  ScopedContext scc(_context);
+  cuProfilerStop();
 }
 
 }  // end namespace cu
