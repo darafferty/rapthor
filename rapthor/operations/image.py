@@ -63,9 +63,6 @@ class Image(Operation):
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
-            # TODO: image_dir is not used anymore (also not in lib/sector.py and lib/observation.py)
-            #       so it can safely be removed
-            image_dir = self.pipeline_working_dir
             image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
@@ -82,7 +79,7 @@ class Image(Operation):
                     do_multiscale = None
             else:
                 do_multiscale = False
-            sector.set_imaging_parameters(image_dir, do_multiscale=do_multiscale,
+            sector.set_imaging_parameters(self.pipeline_working_dir, do_multiscale=do_multiscale,
                                           recalculate_imsize=False)
 
             # Set input MS filenames
@@ -120,7 +117,7 @@ class Image(Operation):
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
             if self.scratch_dir is None:
-                dir_local.append(image_dir)
+                dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
             multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
