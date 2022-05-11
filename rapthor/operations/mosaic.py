@@ -49,7 +49,15 @@ class Mosaic(Operation):
             sector_vertices_filename.append(CWLFile(sector.vertices_file).to_json())
             regridded_image_filename.append(os.path.basename(sector.I_image_file_true_sky) + '.regridded')
         template_image_filename = self.name + '_template.fits'
-        self.mosaic_filename = self.name + '-MFS-I-image.fits'
+
+        if self.skip_processing:
+            if len(self.field.imaging_sectors) > 0:
+                # Use unprocessed file as mosaic file
+                self.mosaic_filename = self.field.imaging_sectors[0].I_image_file_true_sky
+            else:
+                self.mosaic_filename = None
+        else:
+            self.mosaic_filename = self.name + '-MFS-I-image.fits'
 
         self.input_parms = {'skip_processing': self.skip_processing,
                             'sector_image_filename': sector_image_filename,
@@ -62,8 +70,7 @@ class Mosaic(Operation):
         """
         Finalize this operation
         """
-        # Finalize actions are only needed if we actually did something.
-        if self.skip_processing:
+        if self.mosaic_filename is None:
             return
 
         # Save the FITS image and model
