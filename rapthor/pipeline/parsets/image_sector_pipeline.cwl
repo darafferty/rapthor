@@ -472,6 +472,7 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_pb_name
+        valueFrom: $(self.basename)
       - id: numthreads
         valueFrom: '{{ max_threads }}'
     out:
@@ -496,6 +497,7 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_nonpb_name
+        valueFrom: $(self.basename)
       - id: numthreads
         valueFrom: '{{ max_threads }}'
     out:
