@@ -647,8 +647,11 @@ int Plan::get_max_nr_timesteps_subgrid() const {
 }
 
 int Plan::get_nr_visibilities() const {
-  return accumulate(total_nr_visibilities_per_baseline.begin(),
-                    total_nr_visibilities_per_baseline.end(), 0);
+  size_t total_nr_visibilities = 0;
+  for (auto nr_visibilities : total_nr_timesteps_per_baseline) {
+    total_nr_visibilities += nr_visibilities;
+  }
+  return total_nr_visibilities;
 }
 
 int Plan::get_nr_visibilities(int baseline) const {
