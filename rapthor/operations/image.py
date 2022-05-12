@@ -79,8 +79,7 @@ class Image(Operation):
                     do_multiscale = None
             else:
                 do_multiscale = False
-            sector.set_imaging_parameters(self.pipeline_working_dir, do_multiscale=do_multiscale,
-                                          recalculate_imsize=False)
+            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
             # Set input MS filenames
             if self.field.do_predict:
