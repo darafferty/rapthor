@@ -37,7 +37,7 @@ inputs:
     label: Filename of output image
     doc: |
       The filename of the output image.
-    type: File
+    type: string
     inputBinding:
       position: 4
 
