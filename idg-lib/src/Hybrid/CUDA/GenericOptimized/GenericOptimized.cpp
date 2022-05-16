@@ -4,7 +4,6 @@
 #include "GenericOptimized.h"
 
 #include <cuda.h>
-#include <cudaProfiler.h>
 
 #include <algorithm>  // max_element
 #include <mutex>
@@ -48,8 +47,6 @@ GenericOptimized::GenericOptimized() : CUDA(default_info()) {
   set_disable_wtiling_gpu(getenv("DISABLE_WTILING_GPU"));
 
   omp_set_nested(true);
-
-  cuProfilerStart();
 }
 
 // Destructor
@@ -59,7 +56,6 @@ GenericOptimized::~GenericOptimized() {
 #endif
 
   delete cpuProxy;
-  cuProfilerStop();
 }
 
 /*

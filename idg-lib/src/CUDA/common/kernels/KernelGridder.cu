@@ -219,8 +219,11 @@ __device__ void
 
             // Load UVW
             for (int time = tid; time < current_nr_timesteps; time += NUM_THREADS) {
-                UVW<float> a = uvw[time_offset_global + time_offset_local + time];
-                uvw_[time] = make_float4(a.u, a.v, a.w, 0);
+                int idx_time = time_offset_global + time_offset_local + time;
+                if (idx_time < nr_timesteps) {
+                    UVW<float> a = uvw[idx_time];
+                    uvw_[time] = make_float4(a.u, a.v, a.w, 0);
+                }
             }
 
             // Load visibilities
@@ -231,8 +234,10 @@ __device__ void
                     int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
                     int idx_chan = channel_offset + (k % current_nr_channels);
                     long idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
-                    float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                    visibilities_[k][j] = vis_ptr[j];
+                    if (idx_time < nr_timesteps) {
+                        float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                        visibilities_[k][j] = vis_ptr[j];
+                    }
                 }
             } else if (nr_polarizations == 1) {
                 // Use only visibilities_[*][0].
@@ -240,8 +245,10 @@ __device__ void
                     int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
                     int idx_chan = channel_offset + (k % current_nr_channels);
                     long idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
-                    float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                    visibilities_[k][0] = vis_ptr[0];
+                    if (idx_time < nr_timesteps) {
+                        float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
+                        visibilities_[k][0] = vis_ptr[0];
+                    }
                 }
             }
 

@@ -265,8 +265,7 @@ void run() {
   vector<double> runtimes_fft;
   vector<double> runtimes_get_image;
   vector<double> runtimes_imaging;
-  unsigned long nr_visibilities =
-      nr_cycles * nr_baselines * total_nr_timesteps * nr_channels;
+  size_t total_nr_visibilities = 0;
 
   // Enable/disable routines
   bool disable_gridding = getenv("DISABLE_GRIDDING");
@@ -349,6 +348,7 @@ void run() {
                                              options));
         }
         idg::Plan& plan = *plans[t];
+        total_nr_visibilities += plan.get_nr_visibilities();
 
         // Run gridding
         clog << ">>> Run gridding" << endl;
@@ -416,8 +416,10 @@ void run() {
   // Report throughput
   clog << ">>> Total throughput" << endl;
   if (!disable_gridding)
-    idg::report_visibilities("gridding", runtime_gridding, nr_visibilities);
+    idg::report_visibilities("gridding", runtime_gridding,
+                             total_nr_visibilities);
   if (!disable_degridding)
-    idg::report_visibilities("degridding", runtime_degridding, nr_visibilities);
-  idg::report_visibilities("imaging", runtime_imaging, nr_visibilities);
+    idg::report_visibilities("degridding", runtime_degridding,
+                             total_nr_visibilities);
+  idg::report_visibilities("imaging", runtime_imaging, total_nr_visibilities);
 }

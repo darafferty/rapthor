@@ -4,7 +4,6 @@
 #include <string>
 
 #include <cuda.h>
-#include <cudaProfiler.h>
 
 #include "CUDA.h"
 
@@ -26,11 +25,9 @@ CUDA::CUDA(ProxyInfo info)
   init_devices();
   print_devices();
   print_compiler_flags();
-  cuProfilerStart();
 };
 
 CUDA::~CUDA() {
-  cuProfilerStop();
   // CUDA memory should be free'ed before CUDA devices and
   // contexts are free'ed, hence the explicit calls here.
   free_unified_grid();

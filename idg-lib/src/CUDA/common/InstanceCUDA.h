@@ -208,6 +208,7 @@ class InstanceCUDA : public KernelsInstance {
   std::unique_ptr<cu::Stream> executestream;
   std::unique_ptr<cu::Stream> htodstream;
   std::unique_ptr<cu::Stream> dtohstream;
+  std::unique_ptr<cu::Profiler> profiler;
   std::unique_ptr<cu::Function> function_gridder;
   std::unique_ptr<cu::Function> function_degridder;
   std::unique_ptr<cu::Function> function_fft;

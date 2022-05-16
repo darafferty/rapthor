@@ -41,6 +41,7 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_id)
   // Initialize members
   device.reset(new cu::Device(device_id));
   context.reset(new cu::Context(*device));
+  profiler.reset(new cu::Profiler(*context));
   executestream.reset(new cu::Stream(*context));
   htodstream.reset(new cu::Stream(*context));
   dtohstream.reset(new cu::Stream(*context));
@@ -66,6 +67,7 @@ InstanceCUDA::~InstanceCUDA() {
   executestream.reset();
   htodstream.reset();
   dtohstream.reset();
+  profiler.reset();
   context.reset();
   device.reset();
 }
