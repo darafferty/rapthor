@@ -137,7 +137,8 @@ class Predict(Operation):
 
             for sector in self.field.sectors:
                 for obs in sector.observations:
-                    obs.ms_filename = obs.ms_field  # use new peeled datasets in future
+                    # use new peeled datasets in future
+                    obs.ms_filename = os.path.join(self.pipeline_working_dir, obs.ms_field)
                     # remove infix for the sector observations, otherwise future predict
                     # operations will add it to the filenames multiple times
                     obs.infix = ''
