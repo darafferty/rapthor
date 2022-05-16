@@ -315,7 +315,7 @@ class Observation(object):
         timestep_sec = self.timepersample
 
         # Set MS filenames for step that prepares the data for imaging
-        root_filename = os.path.join(os.path.basename(self.ms_filename))
+        root_filename = os.path.basename(self.ms_filename)
         ms_prep_filename = '{0}{1}.{2}.prep'.format(root_filename, self.infix,
                                                     sector_name)
         self.parameters['ms_prep_filename'] = ms_prep_filename

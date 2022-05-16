@@ -37,14 +37,12 @@ def main(output_image, input_image, vertices_file=None, reference_ra_deg=None,
     region_file : list, optional
         Filenames of region files in CASA format to use as the mask (NYI)
     """
-    #if not os.path.exists(input_image):
     if input_image is None:
         print('Input image not given. Making empty image...')
         make_blank_image = True
         if reference_ra_deg is not None and reference_dec_deg is not None:
             reference_ra_deg = float(reference_ra_deg)
             reference_dec_deg = float(reference_dec_deg)
-            #temp_image = output_image + '.tmp'
             ximsize = int(imsize.split(',')[0])
             yimsize = int(imsize.split(',')[1])
             misc.make_template_image(output_image, reference_ra_deg, reference_dec_deg,
@@ -88,8 +86,6 @@ def main(output_image, input_image, vertices_file=None, reference_ra_deg=None,
 
         hdu[0].data = data
         hdu.writeto(output_image, overwrite=True)
-#        if make_blank_image:
-#            os.remove(temp_image)
 
 
 if __name__ == '__main__':
