@@ -259,7 +259,7 @@ class Observation(object):
         self.parameters['ms_filename'] = self.ms_filename
 
         # The filename of the sector's model data (from predict)
-        root_filename = os.path.join(scratch_dir, os.path.basename(self.ms_filename))
+        root_filename = os.path.basename(self.ms_filename)
         ms_model_filename = '{0}{1}.{2}_modeldata'.format(root_filename, self.infix,
                                                           sector_name)
         self.parameters['ms_model_filename'] = ms_model_filename
