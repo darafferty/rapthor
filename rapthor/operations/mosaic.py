@@ -79,7 +79,8 @@ class Mosaic(Operation):
         misc.create_directory(dst_dir)
         self.field.field_image_filename_prev = self.field.field_image_filename
         self.field.field_image_filename = os.path.join(dst_dir, 'field-MFS-I-image.fits')
-        shutil.copy(self.mosaic_filename, self.field.field_image_filename)
+        shutil.copy(os.path.join(self.pipeline_working_dir, self.mosaic_filename),
+                    self.field.field_image_filename)
 
         # TODO: make mosaic of model + QUV?
 #         self.field_model_filename = os.path.join(dst_dir, 'field-MFS-I-model.fits')
