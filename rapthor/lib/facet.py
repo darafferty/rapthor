@@ -174,7 +174,7 @@ def voronoi(cal_coords, bounding_box):
     vor : Voronoi object
         The resulting Voronoi object
     """
-    eps = sys.float_info.epsilon
+    eps = 1e-6
 
     # Select calibrators inside the bounding box
     i = in_box(cal_coords, bounding_box)

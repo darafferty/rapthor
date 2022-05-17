@@ -368,8 +368,12 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
             # and [time, freq, ant, dir] for fast phases (scalarphase)
             norm_factor = cal_weights[d] / np.nanmedian(weights_ph[:, :, :, d])
             weights_ph[:, :, :, d] *= norm_factor
-            norm_factor = cal_weights[d] / np.nanmedian(weights_amp[:, :, :, d, :])
-            weights_amp[:, :, :, d, :] *= norm_factor
+            if mode == 'p1p2a2_scalar':
+                norm_factor = cal_weights[d] / np.nanmedian(weights_amp[:, :, :, d])
+                weights_amp[:, :, :, d] *= norm_factor
+            else:
+                norm_factor = cal_weights[d] / np.nanmedian(weights_amp[:, :, :, d, :])
+                weights_amp[:, :, :, d, :] *= norm_factor
         weights_ph *= global_median_ph / np.nanmedian(weights_ph)
         weights_amp *= global_median_amp / np.nanmedian(weights_amp)
         weights_ph[np.isnan(weights_ph)] = 0.0
