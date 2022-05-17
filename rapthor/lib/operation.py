@@ -210,7 +210,7 @@ class Operation(object):
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
-        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
+#        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
         args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         if self.scratch_dir is not None:
             # Note: the trailing '/' is expected by Toil v5.3+
@@ -218,7 +218,7 @@ class Operation(object):
             args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
             args.extend(['--workDir', self.scratch_dir+'/'])
         args.extend(['--clean', 'never'])  # preserves the job store for future runs
-        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
+#        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
         if self.field.use_mpi and self.toil_major_version >= 5:
@@ -244,7 +244,6 @@ class Operation(object):
             os.environ[k] = v
 
         # Run the pipeline
-        print(f"**** Toil command-line arguments: {args} ****")
         try:
             status = cwltoil.main(args=args)
             if status == 0:
