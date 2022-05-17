@@ -19,6 +19,11 @@ set(${PROJECT_NAME}_sources
     routines/Beam.cpp
     routines/WTiling.cpp)
 
+# Set compile options
+if(${USE_PHASOR_EXTRAPOLATION})
+  add_compile_options("-DUSE_EXTRAPOLATE")
+endif()
+
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})

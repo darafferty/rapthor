@@ -145,6 +145,8 @@ class Plan {
 
   const int* get_aterm_indices_ptr(int baseline = 0) const;
 
+  void copy_aterm_indices(void* ptr) const;
+
   void initialize_job(const unsigned int nr_baselines,
                       const unsigned int jobsize, const unsigned int bl,
                       unsigned int* first_bl, unsigned int* last_bl,

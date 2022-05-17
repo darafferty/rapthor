@@ -19,6 +19,7 @@ module load py-astropy/4.0.1.post1
 module load py-scipy/1.8.0
 module load py-six/1.16.0 # Needed for python-casacore
 module load py-python-dateutil/2.8.2
+module load py-matplotlib/3.5.1
 
 # Load modulefiles from the "schaap-stack"
 module load aoflagger/3.1.0

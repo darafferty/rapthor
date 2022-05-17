@@ -3,3 +3,4 @@
 
 add_subdirectory(integration)
 add_subdirectory(pyproxies)
+add_subdirectory(cudakernels)

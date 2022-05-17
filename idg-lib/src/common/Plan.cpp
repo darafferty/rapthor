@@ -677,6 +677,10 @@ void Plan::copy_metadata(void* ptr) const {
   memcpy(ptr, get_metadata_ptr(), get_nr_subgrids() * sizeof(Metadata));
 }
 
+void Plan::copy_aterm_indices(void* ptr) const {
+  memcpy(ptr, get_aterm_indices_ptr(), aterm_indices.size() * sizeof(int));
+}
+
 const int* Plan::get_aterm_indices_ptr(int bl) const {
   auto offset = get_subgrid_offset(bl);
   return &(aterm_indices[offset]);

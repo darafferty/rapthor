@@ -735,8 +735,8 @@ def plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size,
     plt.imshow(grid, interpolation='None')
 
     # Show u,v coordinates (from uvw)
-    u = uvw['u'].flatten()
-    v = uvw['v'].flatten()
+    u = uvw[:,:,0].flatten()
+    v = uvw[:,:,1].flatten()
     u_pixels = []
     v_pixels = []
     for frequency in frequencies:
@@ -746,7 +746,7 @@ def plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size,
     u_pixels = np.asarray(u_pixels).flatten() + (grid_size / 2)
     v_pixels = np.asarray(v_pixels).flatten() + (grid_size / 2)
 
-    #plt.plot(u_pixels, v_pixels, 'r.', markersize=2, alpha=0.9)
+    plt.plot(u_pixels, v_pixels, 'r.', markersize=2, alpha=0.9)
 
     # Make mouseover show value of grid
     def format_coord(x, y):
@@ -765,7 +765,6 @@ def plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size,
     # Set plot options
     plt.grid(True)
     plt.colorbar()
-    plt.axes().set_aspect('equal')
     plt.xlim([0, grid_size])
     plt.ylim([grid_size, 0])
 

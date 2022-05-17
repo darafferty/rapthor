@@ -84,3 +84,13 @@ class Plan(object):
         lib.Plan_copy_metadata(
             self.obj,
             metadata.ctypes.data_as(ctypes.c_void_p))
+
+    def copy_aterms_indices(
+        self,
+        aterms_indices):
+        lib.Plan_copy_aterms_indices.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p]
+        lib.Plan_copy_aterms_indices(
+            self.obj,
+            aterms_indices.ctypes.data_as(ctypes.c_void_p))
