@@ -218,11 +218,12 @@ __device__ void
             __syncthreads();
 
             // Load UVW
-            for (int time = tid; time < current_nr_timesteps; time += NUM_THREADS) {
-                int idx_time = time_offset_global + time_offset_local + time;
-                if (idx_time < nr_timesteps) {
+            for (int j = tid; j < current_nr_timesteps; j += NUM_THREADS) {
+                int time = time_offset_local + j;
+                if (time < nr_timesteps) {
+                    int idx_time = time_offset_global + time;
                     UVW<float> a = uvw[idx_time];
-                    uvw_[time] = make_float4(a.u, a.v, a.w, 0);
+                    uvw_[j] = make_float4(a.u, a.v, a.w, 0);
                 }
             }
 
@@ -231,21 +232,23 @@ __device__ void
                 for (int v = tid; v < current_nr_timesteps*current_nr_channels*2; v += NUM_THREADS) {
                     int j = v % 2; // one thread loads either upper or lower float4 part of visibility
                     int k = v / 2;
-                    int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
+                    int time = time_offset_local + (k / current_nr_channels);
+                    int idx_time = time_offset_global + time;
                     int idx_chan = channel_offset + (k % current_nr_channels);
                     long idx_vis = index_visibility(4, nr_channels, idx_time, idx_chan, 0);
-                    if (idx_time < nr_timesteps) {
+                    if (time < nr_timesteps) {
                         float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
                         visibilities_[k][j] = vis_ptr[j];
                     }
                 }
             } else if (nr_polarizations == 1) {
-                // Use only visibilities_[*][0].
+                // Use only visibilities_[0][*]
                 for (int k = tid; k < current_nr_timesteps*current_nr_channels; k += NUM_THREADS) {
-                    int idx_time = time_offset_global + time_offset_local + (k / current_nr_channels);
+                    int time = time_offset_local + (k / current_nr_channels);
+                    int idx_time = time_offset_global + time;
                     int idx_chan = channel_offset + (k % current_nr_channels);
                     long idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
-                    if (idx_time < nr_timesteps) {
+                    if (time < nr_timesteps) {
                         float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
                         visibilities_[k][0] = vis_ptr[0];
                     }
