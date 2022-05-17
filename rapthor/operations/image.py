@@ -51,7 +51,6 @@ class Image(Operation):
         prepare_filename = []
         previous_mask_filename = []
         mask_filename = []
-        aterms_config_file = []
         starttime = []
         ntimes = []
         aterm_image_filenames = []

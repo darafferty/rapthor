@@ -130,10 +130,6 @@ class Calibrate(Operation):
         self.output_aterms_root = ['diagonal_aterms_{}'.format(i) for i in
                                    range(len(split_outh5parm))]
 
-        # Set the filename for the output a-term config file used for WSClean (in
-        # the image pipeline)
-        self.aterms_config_file = 'wsclean_aterm.cfg'
-
         # Set the type of screen to make
         screen_type = self.field.screen_type
 
@@ -173,7 +169,6 @@ class Calibrate(Operation):
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'split_outh5parm': split_outh5parm,
                             'output_aterms_root': self.output_aterms_root,
-                            'aterms_config_file': self.aterms_config_file,
                             'screen_type': screen_type,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': antennaconstraint_core,
