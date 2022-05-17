@@ -15,7 +15,6 @@ arguments:
   - -local-rms
   - -join-channels
   - -apply-facet-beam
-
   - -log-time
   - valueFrom: 'I'
     prefix: -pol
