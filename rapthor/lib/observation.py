@@ -259,7 +259,7 @@ class Observation(object):
         self.parameters['ms_filename'] = self.ms_filename
 
         # The filename of the sector's model data (from predict)
-        root_filename = os.path.join(scratch_dir, os.path.basename(self.ms_filename))
+        root_filename = os.path.basename(self.ms_filename)
         ms_model_filename = '{0}{1}.{2}_modeldata'.format(root_filename, self.infix,
                                                           sector_name)
         self.parameters['ms_model_filename'] = ms_model_filename
@@ -287,7 +287,7 @@ class Observation(object):
 
     def set_imaging_parameters(self, sector_name, cellsize_arcsec, max_peak_smearing, width_ra,
                                width_dec, solve_fast_timestep, solve_slow_freqstep,
-                               use_screens, imaging_dir):
+                               use_screens):
         """
         Sets the imaging parameters
 
@@ -307,8 +307,6 @@ class Observation(object):
             Solution interval in Hz for slow solve
         use_screens : bool
             If True, use setup appropriate for screens
-        imaging_dir : str
-            Imaging directory path
         """
         mean_freq_mhz = self.referencefreq / 1e6
         peak_smearing_rapthor = np.sqrt(1.0 - max_peak_smearing)
@@ -317,8 +315,7 @@ class Observation(object):
         timestep_sec = self.timepersample
 
         # Set MS filenames for step that prepares the data for imaging
-        #root_filename = os.path.join(imaging_dir, os.path.basename(self.ms_filename))
-        root_filename = os.path.join(os.path.basename(self.ms_filename))
+        root_filename = os.path.basename(self.ms_filename)
         ms_prep_filename = '{0}{1}.{2}.prep'.format(root_filename, self.infix,
                                                     sector_name)
         self.parameters['ms_prep_filename'] = ms_prep_filename

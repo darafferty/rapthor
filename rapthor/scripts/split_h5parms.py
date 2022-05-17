@@ -6,6 +6,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import os
+import shutil
 import numpy as np
 from rapthor.lib import miscellaneous as misc
 
@@ -29,7 +30,7 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
     nchunks = len(output_h5parm_list)
     if nchunks == 1:
         # If there is only one output file, just copy the input
-        os.system('cp {0} {1}'.format(inh5parm, output_h5parm_list[0]))
+        shutil.copy(inh5parm, output_h5parm_list[0])
         return
 
     # Read input table

@@ -16,7 +16,7 @@ inputs:
       The filename of the output FITS image mask.
     type: string
     inputBinding:
-      position: 0
+      position: 1
   - id: imagefile
     label: Filename of input image
     doc: |
@@ -24,7 +24,7 @@ inputs:
       FITS image will be made.
     type: File?
     inputBinding:
-      position: 1
+      position: 2
   - id: wsclean_imsize
     label: Image size
     doc: |

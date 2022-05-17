@@ -5,7 +5,7 @@ import os
 import logging
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
-from rapthor.lib import miscellaneous as misc
+#from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:image')
 
@@ -66,10 +66,6 @@ class Image(Operation):
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
-            # Each image job must have its own directory, so we create it here
-            image_dir = os.path.join(self.pipeline_working_dir, sector.name)
-            misc.create_directory(image_dir)
-            #image_root.append(os.path.join(image_dir, sector.name))
             image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
@@ -86,8 +82,7 @@ class Image(Operation):
                     do_multiscale = None
             else:
                 do_multiscale = False
-            sector.set_imaging_parameters(image_dir, do_multiscale=do_multiscale,
-                                          recalculate_imsize=False)
+            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
             # Set input MS filenames
             if self.field.do_predict:
@@ -124,7 +119,7 @@ class Image(Operation):
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
             if self.scratch_dir is None:
-                dir_local.append(image_dir)
+                dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
             multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
@@ -219,7 +214,7 @@ class Image(Operation):
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
         # pols, save them all
         for sector in self.field.imaging_sectors:
-            image_root = os.path.join(self.pipeline_working_dir, sector.name, sector.name)
+            image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
             sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
             sector.I_model_file_true_sky = image_root + '-MFS-model-pb.fits'

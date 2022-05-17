@@ -5,6 +5,8 @@ doc: |
   This workflow performs the mosaicking of images made with the imaging pipeline.
   If only a single image was made, processing is (mostly) skipped.
 
+{% if not skip_processing %}
+
 requirements:
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
@@ -21,13 +23,13 @@ inputs:
     label: Filenames of images
     doc: |
       The filenames of the sector FITS images (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: sector_vertices_filename
     label: Filenames of vertices files
     doc: |
       The filenames of the sector vertices files (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: template_image_filename
     label: Filename of template image
@@ -53,7 +55,11 @@ inputs:
       The flag that sets whether processing is skipped or not (length = 1).
     type: boolean
 
-outputs: []
+outputs:
+  - id: mosaic_image
+    outputSource:
+      - make_mosaic/mosaic_image
+    type: File
 
 steps:
   - id: make_mosaic_template
@@ -111,4 +117,13 @@ steps:
         source: mosaic_filename
       - id: skip
         source: skip_processing
-    out: []
+    out:
+      - id: mosaic_image
+
+{% else %}
+
+inputs: []
+outputs: []
+steps: []
+
+{% endif %}

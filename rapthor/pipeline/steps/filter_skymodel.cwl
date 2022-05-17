@@ -7,7 +7,12 @@ doc: |
   a clean mask for the next iteration.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.input_image)
+        writable: true
+
 
 inputs:
   - id: input_image
@@ -85,7 +90,7 @@ outputs:
   - id: skymodels
     type: File[]
     outputBinding:
-      glob: '$(inputs.output_root).*'
+      glob: ['$(inputs.output_root)-MFS-*.fits', '$(inputs.output_root)-MFS-*.mask', '$(inputs.output_root).*_sky']
 
 hints:
   - class: DockerRequirement

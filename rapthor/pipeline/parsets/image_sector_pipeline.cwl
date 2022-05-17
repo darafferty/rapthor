@@ -305,9 +305,16 @@ inputs:
     type: boolean
 
 outputs:
-  - id: filtered_skymodel
+  - id: filtered_skymodels
     outputSource:
       - filter/skymodels
+    type: File[]
+  - id: sector_images
+    outputSource:
+      - image/image_nonpb_name
+      - image/image_pb_name
+      - image/skymodel_nonpb
+      - image/skymodel_pb
     type: File[]
 
 steps:
@@ -551,6 +558,7 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_pb_name
+        valueFrom: $(self.basename)
       - id: numthreads
         valueFrom: '{{ max_threads }}'
     out:
@@ -575,6 +583,7 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_nonpb_name
+        valueFrom: $(self.basename)
       - id: numthreads
         valueFrom: '{{ max_threads }}'
     out:

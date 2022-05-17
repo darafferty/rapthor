@@ -47,7 +47,6 @@ setup(
              'rapthor/scripts/blank_image.py',
              'rapthor/scripts/combine_h5parms.py',
              'rapthor/scripts/filter_skymodel.py',
-             'rapthor/scripts/make_aterm_config.py',
              'rapthor/scripts/make_aterm_images.py',
              'rapthor/scripts/make_region_file.py',
              'rapthor/scripts/make_mosaic.py',
