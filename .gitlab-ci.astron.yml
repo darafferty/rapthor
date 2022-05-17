@@ -17,6 +17,7 @@ test-integration-das:
   before_script:
     - source scripts/load_modules_das6.sh
     - python3 -m pip install --user pytest-lazy-fixture
+    - python3 -m pip install --user cuda-python
     - mkdir build && cd build
     # Build with GPU libs
     - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ..
