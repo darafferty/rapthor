@@ -505,9 +505,12 @@ class Field(object):
             matching_ind.append(source_names.index(sn))
         bright_source_skymodel.select(np.array(matching_ind))
 
-        # Transfer patches to the bright-source model if needed (i.e., regrouping was not
-        # done)
-        if not regroup:
+        # Transfer patches to the bright-source model
+        if regroup:
+            # Transfer from the apparent-flux sky model (regrouped above)
+            self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+        else:
+            # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
             self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
