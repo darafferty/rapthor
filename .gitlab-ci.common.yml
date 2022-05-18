@@ -179,7 +179,9 @@ test-unit:
       - build/run-unit.json
     reports:
       junit: build/reports/unit-tests.xml
-      cobertura: build/reports/code-coverage.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: build/reports/code-coverage.xml
 
 # Notes for all integration test jobs:
 # - allow_failure is true, since the job will fail when IDG has breaking API
