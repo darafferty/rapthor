@@ -166,13 +166,13 @@ inputs:
     type: boolean
 
 outputs:
-  - id: make_sourcedb
+  - id: sourcedb
     outputSource:
       - make_sourcedb/sourcedb
     type: File[]
   - id: subtract_models
     outputSource:
-      - merge_subtract_models/output
+      - merge_subtract_sector_models/output
     type: Directory[]
 
 steps:
@@ -237,7 +237,7 @@ steps:
     out:
       - id: msmod
 
-  - id: subtract_models
+  - id: subtract_sector_models
     label: Subtract the model uv data
     doc: |
       This step subtracts the model uv data generated in the previous step from the
@@ -284,13 +284,13 @@ steps:
     out:
       - id: output_models
 
-  - id: merge_subtract_models
+  - id: merge_subtract_sector_models
     in:
       - id: input
         source:
-          - subtract_models/output_models
+          - subtract_sector_models/output_models
     out:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_directories.cwl
-    label: merge_subtract_models
+    label: merge_subtract_sector_models
 
