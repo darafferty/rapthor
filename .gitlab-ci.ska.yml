@@ -33,7 +33,7 @@ test-gpu:
   # This job may fail, since the k8srunner-gpu node is still experimental.
   allow_failure: true
   timeout: 10 minutes
-  tags: [k8srunner-gpu]
+  tags: [k8srunner-gpu-v100]
   image: $GPU_IMAGE
   script:
     - nvidia-smi
