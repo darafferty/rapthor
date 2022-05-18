@@ -285,6 +285,7 @@ steps:
       - id: output_models
 
   - id: merge_subtract_sector_models
+    label: Merge subtracted sector model data
     in:
       - id: input
         source:
@@ -292,5 +293,4 @@ steps:
     out:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_directories.cwl
-    label: merge_subtract_sector_models
 
