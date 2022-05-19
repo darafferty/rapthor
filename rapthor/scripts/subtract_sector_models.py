@@ -206,10 +206,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             mssrc = model_list[-1]
         else:
             mssrc = msin
-        if not os.path.exists(msout):
-            # Use subprocess to call 'cp' to ensure that the copied version has the
-            # default permissions (e.g., so it's not read only)
-            subprocess.check_call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+
+        # Use subprocess to call 'cp' to ensure that the copied version has the
+        # default permissions (e.g., so it's not read only)
+        if os.path.exists(msout):
+            # File may exist from a previous iteration; delete it if so
+            misc.delete_directory(msout)
+        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -279,10 +282,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             mssrc = model_list[-1]
         else:
             mssrc = msin
-        if not os.path.exists(msout):
-            # Use subprocess to call 'cp' to ensure that the copied version has the
-            # default permissions (e.g., so it's not read only)
-            subprocess.check_call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+
+        # Use subprocess to call 'cp' to ensure that the copied version has the
+        # default permissions (e.g., so it's not read only)
+        if os.path.exists(msout):
+            # File may exist from a previous iteration; delete it if so
+            misc.delete_directory(msout)
+        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -384,10 +390,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             mssrc = model_list[-1]
         else:
             mssrc = msin
-        if not os.path.exists(msout):
-            # Use subprocess to call 'cp' to ensure that the copied version has the
-            # default permissions (e.g., so it's not read only)
-            subprocess.check_call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+
+        # Use subprocess to call 'cp' to ensure that the copied version has the
+        # default permissions (e.g., so it's not read only)
+        if os.path.exists(msout):
+            # File may exist from a previous iteration; delete it if so
+            misc.delete_directory(msout)
+        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk

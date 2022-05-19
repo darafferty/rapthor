@@ -737,7 +737,7 @@ steps:
 {% if use_screens %}
         valueFrom: 'p1p2a2'
 {% else %}
-        valueFrom: 'p1p2a2_diagonal'
+        valueFrom: 'p1p2a2_scalar'
 {% endif %}
       - id: reweight
         valueFrom: 'True'

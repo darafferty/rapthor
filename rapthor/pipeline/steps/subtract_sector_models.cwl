@@ -128,7 +128,7 @@ outputs:
   - id: output_models
     type: Directory[]
     outputBinding:
-      glob: '$(inputs.msobs.basename)$(inputs.infix)_*'
+      glob: ['$(inputs.msobs.basename)$(inputs.infix)_field', '$(inputs.msobs.basename)$(inputs.infix)sector_*']
 
 hints:
   - class: DockerRequirement
