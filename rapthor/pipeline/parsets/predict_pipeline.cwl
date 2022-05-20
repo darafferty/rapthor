@@ -170,6 +170,10 @@ outputs:
     outputSource:
       - make_sourcedb/sourcedb
     type: File[]
+  # - id: predict_models
+  #   outputSource:
+  #     - predict_model_data/msmod
+  #   type: Directory[]
   - id: subtract_models
     outputSource:
       - merge_subtract_sector_models/output

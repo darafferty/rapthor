@@ -5,7 +5,6 @@ import os
 import logging
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
-#from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:image')
 

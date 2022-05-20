@@ -87,6 +87,8 @@ class Operation(object):
                                                     'subpipeline_parset.cwl')
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
                                                  'pipeline_inputs.json')
+        self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
+                                                  'pipeline_outputs.json')
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir,
@@ -210,6 +212,7 @@ class Operation(object):
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
+        args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
 #        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
         args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         if self.scratch_dir is not None:
@@ -245,11 +248,9 @@ class Operation(object):
 
         # Run the pipeline
         try:
-            status = cwltoil.main(args=args)
-            if status == 0:
-                self.success = True
-            else:
-                self.success = False
+            with open(self.pipeline_outputs_file, 'w') as stdout:
+                status = cwltoil.main(args=args, stdout=stdout)
+            self.success = (status == 0)
         except FailedJobsException:
             self.success = False
 
