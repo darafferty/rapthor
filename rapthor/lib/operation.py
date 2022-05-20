@@ -213,15 +213,17 @@ class Operation(object):
         args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
         args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
-#        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
+#        args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
         args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         if self.scratch_dir is not None:
-            # Note: the trailing '/' is expected by Toil v5.3+
-            args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
-            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
+            # Note: the trailing '/' is required by Toil v5.3+; in addition,
+            # --tmpdir-prefix and --tmp-outdir-prefix require a filename prefix
+            # when using --bypass-file-store, but it won't harm to use it anyway.
+            args.extend(['--tmpdir-prefix', self.scratch_dir+'/toil.'])
+            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/toil.'])
             args.extend(['--workDir', self.scratch_dir+'/'])
         args.extend(['--clean', 'never'])  # preserves the job store for future runs
-#        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
+#        args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
         if self.field.use_mpi and self.toil_major_version >= 5:
