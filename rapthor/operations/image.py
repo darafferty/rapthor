@@ -85,15 +85,7 @@ class Image(Operation):
             sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
             # Set input MS filenames
-            if self.field.do_predict:
-                # If predict was done, use the model-subtracted/reweighted data
-                # Note: if a single sector was used, these files won't exist, so fall
-                # back to 'ms_filename' in this case
-                sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
-                if not os.path.exists(sector_obs_filename[0]):
-                    sector_obs_filename = sector.get_obs_parameters('ms_filename')
-            else:
-                sector_obs_filename = sector.get_obs_parameters('ms_filename')
+            sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
             obs_filename.append(sector_obs_filename)
 
             # Set output MS filenames for step that prepares the data for WSClean

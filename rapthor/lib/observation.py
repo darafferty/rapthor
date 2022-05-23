@@ -265,8 +265,7 @@ class Observation(object):
         self.parameters['ms_model_filename'] = ms_model_filename
 
         # The filename of the sector's data with all non-sector sources peeled off
-        # and/or with the weights adjusted (i.e., the data used as input for the
-        # imaging pipeline)
+        # and/or with the weights adjusted
         ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
                                                      sector_name)
         self.parameters['ms_subtracted_filename'] = ms_subtracted_filename
