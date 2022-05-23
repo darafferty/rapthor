@@ -646,22 +646,19 @@ int Plan::get_max_nr_timesteps_subgrid() const {
   return max_nr_timesteps;
 }
 
-int Plan::get_nr_visibilities() const {
-  size_t total_nr_visibilities = 0;
-  for (auto nr_visibilities : total_nr_timesteps_per_baseline) {
-    total_nr_visibilities += nr_visibilities;
-  }
-  return total_nr_visibilities;
+size_t Plan::get_nr_visibilities() const {
+  return accumulate(total_nr_visibilities_per_baseline.begin(),
+                    total_nr_visibilities_per_baseline.end(), size_t(0));
 }
 
-int Plan::get_nr_visibilities(int baseline) const {
+size_t Plan::get_nr_visibilities(int baseline) const {
   return total_nr_visibilities_per_baseline[baseline];
 }
 
-int Plan::get_nr_visibilities(int baseline, int n) const {
+size_t Plan::get_nr_visibilities(int baseline, int n) const {
   auto begin = next(total_nr_visibilities_per_baseline.begin(), baseline);
   auto end = next(begin, n);
-  return accumulate(begin, end, 0);
+  return accumulate(begin, end, size_t(0));
 }
 
 const Metadata* Plan::get_metadata_ptr(int bl) const {

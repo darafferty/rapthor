@@ -124,13 +124,13 @@ class Plan {
   int get_max_nr_timesteps_subgrid() const;
 
   // total number of visibilities
-  int get_nr_visibilities() const;
+  size_t get_nr_visibilities() const;
 
   // number of visibilities one baseline
-  int get_nr_visibilities(int baseline) const;
+  size_t get_nr_visibilities(int baseline) const;
 
   // number of visibilities for baselines b1 to b1+n-1
-  int get_nr_visibilities(int baseline, int n) const;
+  size_t get_nr_visibilities(int baseline, int n) const;
 
   // number of baselines
   int get_nr_baselines() const {
