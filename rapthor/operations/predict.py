@@ -156,8 +156,12 @@ class Predict(Operation):
         # Update filenames of datasets used for imaging
         if (len(self.field.imaging_sectors) > 1 or self.field.reweight or
             (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
-            (len(self.field.bright_source_sectors) and self.field.peel_bright_sources)):
-            obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
-                                                   obs.ms_subtracted_filename)
+            (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
+                                                           obs.ms_subtracted_filename)
         else:
-            obs.ms_imaging_filename = obs.ms_filename
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_imaging_filename = obs.ms_filename

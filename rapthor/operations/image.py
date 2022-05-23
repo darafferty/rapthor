@@ -85,7 +85,10 @@ class Image(Operation):
             sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
             # Set input MS filenames
-            sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
+            if self.field.do_predict:
+                sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
+            else:
+                sector_obs_filename = sector.get_obs_parameters('ms_filename')
             obs_filename.append(sector_obs_filename)
 
             # Set output MS filenames for step that prepares the data for WSClean

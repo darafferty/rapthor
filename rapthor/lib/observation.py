@@ -265,10 +265,11 @@ class Observation(object):
         self.parameters['ms_model_filename'] = ms_model_filename
 
         # The filename of the sector's data with all non-sector sources peeled off
-        # and/or with the weights adjusted
-        ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
+        # and/or with the weights adjusted (i.e., the data used as input for the
+        # imaging pipeline)
+        self.ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
                                                      sector_name)
-        self.parameters['ms_subtracted_filename'] = ms_subtracted_filename
+        self.parameters['ms_subtracted_filename'] = self.ms_subtracted_filename
 
         # The filename of the field data (after subtraction of outlier sources)
         self.ms_field = '{0}{1}_field'.format(root_filename, self.infix)
