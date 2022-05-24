@@ -697,10 +697,21 @@ def get_cluster_options(parset):
     else:
         parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
 
+    # Run the pipelines inside a container (default = False)? If True, the pipeline
+    # for each operation (such as calibrate or image) will be run inside a container.
+    # The type of container can also be specified (one of docker, udocker, or
+    # singularity; default = docker)
+    if 'use_container' in parset_dict:
+        parset_dict['use_container'] = parset.getboolean('cluster', 'use_container')
+    else:
+        parset_dict['use_container'] = False
+    if 'container_type' not in parset_dict:
+        parset_dict['container_type'] = 'docker'
+
     # Check for invalid options
     allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
                        'max_threads', 'deconvolution_threads', 'dir_local',
-                       'mem_per_node_gb']
+                       'mem_per_node_gb', 'use_container', 'container_type']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '
