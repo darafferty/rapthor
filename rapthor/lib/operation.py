@@ -4,7 +4,7 @@ Definition of the master Operation class
 import os
 import sys
 import logging
-import json
+import subprocess
 from rapthor import _logging
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
@@ -12,7 +12,6 @@ from toil.leader import FailedJobsException
 from toil.cwl import cwltoil
 import toil.version as toil_version
 from rapthor.lib.context import Timer
-from rapthor.lib.cwl import NpEncoder
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
@@ -86,7 +85,7 @@ class Operation(object):
         self.subpipeline_parset_file = os.path.join(self.pipeline_working_dir,
                                                     'subpipeline_parset.cwl')
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
-                                                 'pipeline_inputs.json')
+                                                 'pipeline_inputs.yml')
         self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
                                                   'pipeline_outputs.json')
 
@@ -172,8 +171,19 @@ class Operation(object):
 
         # Save the pipeline inputs to a file
         self.set_input_parameters()
+        keys = []
+        vals = []
+        for k, v in self.input_parms.items():
+            keys.append(k)
+            if type(v) is bool:
+                vals.append("'{}'".format(v))
+            elif type(v) is list and type(v[0]) is bool:
+                vals.append('[{}]'.format(','.join(["'{}'".format(ve) for ve in v])))
+            else:
+                vals.append(v)
+        tmp = '\n'.join(['{0}: {1}'.format(k, v) for k, v in zip(keys, vals)])
         with open(self.pipeline_inputs_file, 'w') as f:
-            f.write(json.dumps(self.input_parms, cls=NpEncoder, indent=4, sort_keys=True))
+            f.write(tmp)
 
     def finalize(self):
         """
@@ -182,6 +192,61 @@ class Operation(object):
         This should be defined in the subclasses as needed
         """
         pass
+
+    def call_cwltool(self):
+        """
+        Call CWLTool to run the operations's pipeline
+        """
+        # Build the args list, start with the CWL runner executable
+        args = [self.parset['cwl_runner']]
+
+        ### The following options are identical to those used by Toil
+        args.extend(['--outdir', self.pipeline_working_dir])
+#        args.extend(['--debug'])  # used for debugging purposes only
+
+        if self.container is not None:
+            # If the container is Docker, no extra args are needed. For other
+            # containers, set the required args
+            if self.container == 'singularity':
+                args.extend(['--singularity'])
+            elif self.container == 'udocker':
+                args.extend(['--user-space-docker-cmd', 'udocker'])
+        else:
+            args.extend(['--no-container'])
+            args.extend(['--preserve-entire-environment'])
+
+        if self.scratch_dir is not None:
+            # Note: the trailing '/' is required by CWLTool
+            args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
+            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
+
+        if self.field.use_mpi:
+            # Create the config file for MPI jobs and add the required args
+            mpi_config_lines = ["runner: 'mpirun'", "nproc_flag: '-np'",
+                                "extra_flags: ['--map-by node']"]
+            self.log.warning('MPI support for non-Slurm clusters is experimental. '
+                             'Please report any issues encountered.')
+            with open(self.mpi_config_file, 'w') as f:
+                f.write('\n'.join(mpi_config_lines))
+            args.extend(['--mpi-config-file', self.mpi_config_file])
+
+        args.extend(['--parallel'])
+        args.extend(['--disable-color'])
+
+        args.append(self.pipeline_parset_file)
+        args.append(self.pipeline_inputs_file)
+
+        # Run the pipeline
+        stdout_file = self.pipeline_outputs_file
+        stderr_file = os.path.join(self.log_dir, 'pipeline.log')
+        self.log.debug("Executing command: %s", ' '.join(args))
+        try:
+            with open(stdout_file, 'w') as stdout, open(stderr_file, 'w') as stderr:
+                status = subprocess.call(args=args, stdout=stdout, stderr=stderr)
+            self.success = (status == 0)
+        except IOError as err:
+            self.log.critical(err)
+            self.success = False
 
     def call_toil(self):
         """
@@ -274,7 +339,10 @@ class Operation(object):
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
         with Timer(self.log):
-            self.call_toil()
+            if self.parset['cwl_runner'] == 'toil':
+                self.call_toil()
+            elif self.parset['cwl_runner'] == 'cwltool':
+                self.call_cwltool()
 
         # Finalize
         if self.success:
