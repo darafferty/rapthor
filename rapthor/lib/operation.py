@@ -230,8 +230,9 @@ class Operation(object):
                 f.write('\n'.join(mpi_config_lines))
             args.extend(['--mpi-config-file', self.mpi_config_file])
 
-        args.extend(['--parallel'])
         args.extend(['--disable-color'])
+        args.extend(['--parallel'])
+        args.extend(['--timestamps'])
 
         args.append(self.pipeline_parset_file)
         args.append(self.pipeline_inputs_file)
