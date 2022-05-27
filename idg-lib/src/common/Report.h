@@ -326,7 +326,7 @@ class Report {
     print(nr_correlations, nr_timesteps, nr_subgrids, true, prefix);
   }
 
-  void print_visibilities(const std::string name, int nr_visibilities = 0) {
+  void print_visibilities(const std::string name, size_t nr_visibilities = 0) {
     if (nr_visibilities == 0) {
       nr_visibilities = counters.total_nr_visibilities;
     }
