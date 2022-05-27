@@ -400,7 +400,10 @@ void Plan::initialize(
               // HACK also pass w_lambda0 below
               subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda0)) {
             nr_timesteps_subgrid++;
-            if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) break;
+            if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) {
+              time_offset++;
+              break;
+            }
           } else {
             break;
           }
