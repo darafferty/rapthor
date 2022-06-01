@@ -168,7 +168,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if len(set(nrows_list)) > 1:
             print('subtract_sector_models: Model data files have differing number of rows...')
             sys.exit(1)
-
     nsectors = len(model_list)
     if nsectors == 0:
         print('subtract_sector_models: No model data found. Exiting...')
@@ -199,20 +198,14 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
         msout = '{0}{1}_field'.format(root_filename, infix)
-        if infix != '':
-            # This implies we have a subrange of a full dataset, so use a model ms
-            # file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct subrange)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
+        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -275,20 +268,14 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
         msout = '{0}{1}_field_no_bright'.format(root_filename, infix)
-        if infix != '':
-            # This implies we have a subrange of a full dataset, so use a model ms
-            # file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct subrange)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
+        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -384,19 +371,14 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             # Break so we don't open output tables for the bright sources
             break
         msout = os.path.basename(msmod).rstrip('_modeldata')
-        if starttime is not None:
-            # Use a model ms file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct time range)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
+        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
@@ -560,7 +542,7 @@ class CovWeights:
             CoeffArray[:, :, i][tempars < thres] = thres
         return CoeffArray
 
-    def calcWeights(self, CoeffArray, max_radius = 5e3):
+    def calcWeights(self, CoeffArray, max_radius=5e3):
         ms = pt.table(self.MSName, readonly=True, ack=False)
         ants = pt.table(ms.getkeyword("ANTENNA"), ack=False)
         antnames = ants.getcol("NAME")
