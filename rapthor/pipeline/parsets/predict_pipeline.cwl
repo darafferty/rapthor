@@ -82,13 +82,6 @@ inputs:
       n_sectors).
     type: string[]
 
-  - id: sector_obs_sourcedb
-    label: Filename of sourcedb
-    doc: |
-      The filename of the output sourcedb sky model file of each sector, repeated for
-      each observation  (length = n_obs * n_sectors).
-    type: File[]
-
   - id: obs_filename
     label: Filename of input MS
     doc: |
@@ -166,11 +159,11 @@ inputs:
     type: boolean
 
 outputs:
-  - id: make_sourcedb
+  - id: sourcedbs
     outputSource:
       - make_sourcedb/sourcedb
     type: File[]
-  - id: subtract_models
+  - id: subtracted_models
     outputSource:
       - merge_subtract_models/output
     type: Directory[]
