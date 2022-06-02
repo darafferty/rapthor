@@ -58,11 +58,11 @@ class Predict(Operation):
         sector_patches = []
         for sector in sectors:
             sector.set_prediction_parameters()
-            sector_skymodel.append(sector.predict_skymodel_file)
+            sector_skymodel.extend([sector.predict_skymodel_file] * len(sector.observations))
             sdb_dir, sdb_file = os.path.split(
                 os.path.splitext(sector.predict_skymodel_file)[0]+'.sourcedb'
             )
-            sector_sourcedb.append(sdb_file)
+            sector_sourcedb.extend([sdb_file] * len(sector.observations))
             sector_filename.extend(sector.get_obs_parameters('ms_filename'))
             sector_model_filename.extend(
                 [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
