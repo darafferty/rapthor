@@ -202,12 +202,6 @@ inputs:
       The screen type to use to derive the a-term images (length = 1).
     type: string
 
-  - id: aterms_config_file
-    label: Filename of config file
-    doc: |
-      The filename of the a-term config file (length = 1).
-    type: string
-
 {% if do_slowgain_solve %}
   - id: freqchunk_filename
     label: Filename of input MS (frequency)

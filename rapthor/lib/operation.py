@@ -87,6 +87,8 @@ class Operation(object):
                                                     'subpipeline_parset.cwl')
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
                                                  'pipeline_inputs.json')
+        self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
+                                                  'pipeline_outputs.json')
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir,
@@ -197,6 +199,7 @@ class Operation(object):
         else:
             args.extend(['--no-container'])
             args.extend(['--preserve-entire-environment'])
+#        args.extend(['--bypass-file-store'])  # for debugging weird issues!!
         args.extend(['--batchSystem', self.batch_system])
         if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
@@ -210,17 +213,22 @@ class Operation(object):
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
-        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
+        args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
         args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         if self.scratch_dir is not None:
-            # Note: the trailing '/' is expected by Toil v5.3+
-            args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
-            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
+            # Note: the trailing '/' is required by Toil v5.3+; in addition,
+            # --tmpdir-prefix and --tmp-outdir-prefix require a filename prefix
+            # when using --bypass-file-store, but it won't harm to use it anyway.
+            args.extend(['--tmpdir-prefix', self.scratch_dir+'/toil.'])
+            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/toil.'])
             args.extend(['--workDir', self.scratch_dir+'/'])
         args.extend(['--clean', 'never'])  # preserves the job store for future runs
-        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
+        # The following three options should be enabled for debugging purposes only!!
+        args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
+        args.extend(['--debugWorker'])  # enable for debugging purposes only!!
+        args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
         if self.field.use_mpi and self.toil_major_version >= 5:
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
@@ -246,11 +254,9 @@ class Operation(object):
         # Run the pipeline
         print(f"**** Toil command-line arguments: {args} ****")
         try:
-            status = cwltoil.main(args=args)
-            if status == 0:
-                self.success = True
-            else:
-                self.success = False
+            with open(self.pipeline_outputs_file, 'w') as stdout:
+                status = cwltoil.main(args=args, stdout=stdout)
+            self.success = (status == 0)
         except FailedJobsException:
             self.success = False
 

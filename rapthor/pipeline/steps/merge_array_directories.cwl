@@ -3,14 +3,14 @@ label: merge_array_directories
 class: ExpressionTool
 
 cwlVersion: v1.2
-inputs: 
+inputs:
     - id: input
       type:
         - type: array
           items:
             - type: array
               items: Directory
-outputs: 
+outputs:
     - id: output
       type: Directory[]
 

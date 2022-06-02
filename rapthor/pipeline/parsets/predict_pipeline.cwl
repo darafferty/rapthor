@@ -165,7 +165,7 @@ outputs:
     type: File[]
   - id: subtracted_models
     outputSource:
-      - merge_subtract_models/output
+      - merge_subtract_sector_models/output
     type: Directory[]
 
 steps:
@@ -230,7 +230,7 @@ steps:
     out:
       - id: msmod
 
-  - id: subtract_models
+  - id: subtract_sector_models
     label: Subtract the model uv data
     doc: |
       This step subtracts the model uv data generated in the previous step from the
@@ -277,13 +277,13 @@ steps:
     out:
       - id: output_models
 
-  - id: merge_subtract_models
+  - id: merge_subtract_sector_models
+    label: Merge subtracted sector model data
     in:
       - id: input
         source:
-          - subtract_models/output_models
+          - subtract_sector_models/output_models
     out:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_directories.cwl
-    label: merge_subtract_models
 
