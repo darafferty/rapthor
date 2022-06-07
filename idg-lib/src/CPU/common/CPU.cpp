@@ -142,7 +142,7 @@ unsigned int CPU::compute_jobsize(const Plan& plan,
   std::clog << "jobsize: " << jobsize << std::endl;
 #endif
 
-  return jobsize;
+  return std::max(1, jobsize);
 }
 
 /*

@@ -77,8 +77,7 @@ void report(string name, uint64_t flops, uint64_t bytes,
   return;
 }
 
-void report_visibilities(string name, double runtime,
-                         uint64_t nr_visibilities) {
+void report_visibilities(string name, double runtime, size_t nr_visibilities) {
 #if defined(PERFORMANCE_REPORT)
   clog << setw(FW1) << left << string(name) + ": " << fixed << setprecision(2)
        << 1e-6 * nr_visibilities / runtime << " Mvisibilities/s" << endl;

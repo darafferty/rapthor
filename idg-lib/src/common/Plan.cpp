@@ -400,7 +400,10 @@ void Plan::initialize(
               // HACK also pass w_lambda0 below
               subgrid.add_visibility(u_pixels1, v_pixels1, w_lambda0)) {
             nr_timesteps_subgrid++;
-            if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) break;
+            if (nr_timesteps_subgrid == max_nr_timesteps_per_subgrid) {
+              time_offset++;
+              break;
+            }
           } else {
             break;
           }
@@ -646,22 +649,19 @@ int Plan::get_max_nr_timesteps_subgrid() const {
   return max_nr_timesteps;
 }
 
-int Plan::get_nr_visibilities() const {
-  size_t total_nr_visibilities = 0;
-  for (auto nr_visibilities : total_nr_timesteps_per_baseline) {
-    total_nr_visibilities += nr_visibilities;
-  }
-  return total_nr_visibilities;
+size_t Plan::get_nr_visibilities() const {
+  return accumulate(total_nr_visibilities_per_baseline.begin(),
+                    total_nr_visibilities_per_baseline.end(), size_t(0));
 }
 
-int Plan::get_nr_visibilities(int baseline) const {
+size_t Plan::get_nr_visibilities(int baseline) const {
   return total_nr_visibilities_per_baseline[baseline];
 }
 
-int Plan::get_nr_visibilities(int baseline, int n) const {
+size_t Plan::get_nr_visibilities(int baseline, int n) const {
   auto begin = next(total_nr_visibilities_per_baseline.begin(), baseline);
   auto end = next(begin, n);
-  return accumulate(begin, end, 0);
+  return accumulate(begin, end, size_t(0));
 }
 
 const Metadata* Plan::get_metadata_ptr(int bl) const {
