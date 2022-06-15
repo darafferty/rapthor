@@ -20,9 +20,6 @@ stages:
   - publish
   - pages
   - documentation
-  # Since Astron GitLab does not support 'needs' between jobs in the same stage,
-  # add an extra documentation stage
-  - documentation-publish
 
 # This job stores creates environment variables that are used in other jobs,
 # including their definitions, via a 'dotenv' report artifact.
