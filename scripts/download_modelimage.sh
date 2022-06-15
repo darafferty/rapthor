@@ -21,5 +21,5 @@ cd test/integration/tmp/data
 MOCK_MODELIMAGE=modelimage.fits
 
 if [ ! -f "$MOCK_MODELIMAGE" ]; then
-    wget -q https://www.astron.nl/citt/ci_data/IDG/modelimage.fits -O $MOCK_MODELIMAGE
+    wget -q https://support.astron.nl/software/ci_data/IDG/modelimage.fits -O $MOCK_MODELIMAGE
 fi
