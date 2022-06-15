@@ -20,9 +20,8 @@ To learn how to use IDG as a component in your own software the quickest route i
     make install
 
 The demo needs a measurement set. An example measurement set can be downloaded from
-`<http://www.astron.nl/citt/ci_data/EveryBeam/MWA-1052736496-averaged.ms.tgz>`_
- 
+`<https://support.astron.nl/software/ci_data/IDG/MWA-1052736496-averaged.ms.tgz>`_
+
  ::
 
     idg-demo.py ~/data/MWA-1052736496-averaged.ms --column DATA
-
