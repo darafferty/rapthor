@@ -101,19 +101,3 @@ check-stack:
     # Only add job for a merge request event
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - when: never
-
-documentation-publish:
-  stage: documentation-publish
-  needs: ["versioning","documentation-build"]
-  image: $BASE_IMAGE
-  before_script:
-    - apt-get install -y openssh-client
-    - eval $(ssh-agent -s)
-    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | base64 -d | ssh-add -
-    - mkdir -p ~/.ssh
-    - chmod 700 ~/.ssh
-    - echo "dop810,195.169.155.206 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBFCjBBJSbZSFmDGJK8Xlxa2gt/4TUqacQAo1kxWVwMeHqqXP0+HasL9tDYe25Ci7/Ug3roQkwoJBzyuCkN+dtr8=" >> ~/.ssh/known_hosts
-  script:
-    - scp -r build/doc/html/* citt@dop810:IDG
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "master"'
