@@ -12,4 +12,4 @@ reproject
 Rtree
 scipy
 shapely
-toil @ git+https://github.com/DataBiosphere/toil.git@88d73fbfd42ec22fd692940fc1efdacaf53b1b76#egg=toil[cwl]
+toil @ git+https://github.com/DataBiosphere/toil.git#egg=toil[cwl]
