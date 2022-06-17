@@ -215,7 +215,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.check_call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -294,7 +294,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.check_call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -405,7 +405,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.check_call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
