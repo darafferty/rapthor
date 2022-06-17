@@ -126,7 +126,7 @@ RUN python3 -m pip install \
     astropy \
     jinja2 \
     shapely \
-    toil[cwl] \
+    toil[cwl]!=5.6 \
     reproject \
     python-dateutil \
     Rtree \
