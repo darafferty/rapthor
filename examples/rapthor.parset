@@ -66,6 +66,8 @@ input_skymodel = /data/skymodel.txt
 # fast_timestep_sec = 8.0
 # fast_freqstep_hz = 1e6
 # fast_smoothnessconstraint = 6e6
+# fast_smoothnessreffrequency = midpoint of frequency coverage
+# fast_smoothnessrefdistance = 0
 
 # Slow solve parameters (defaults shown):
 # slow_timestep_sec = 600.0
