@@ -17,6 +17,9 @@ arguments:
   - -apply-facet-beam
   - -multiscale
   - -log-time
+  - -use-wgridder
+  - valueFrom: '4'
+    prefix: -parallel-gridding
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
