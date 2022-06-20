@@ -16,6 +16,7 @@ arguments:
   - -join-channels
   - -apply-facet-beam
   - -log-time
+  - -use-wgridder
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
