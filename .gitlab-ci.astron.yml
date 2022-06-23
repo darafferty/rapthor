@@ -85,19 +85,3 @@ deploy-package:
     - if: '$CI_COMMIT_BRANCH != "master"'
       when: never
     - if: '$UPLOAD_PACKAGE'
-
-check-stack:
-  stage: test
-  needs: []
-  variables:
-    # Pass commit hash to downstream pipeline
-    IDG_TRIGGER_HASH: $CI_COMMIT_SHA
-  trigger:
-    project: RD/schaap-stack
-    branch: master
-    # This will mirror the status of the downstream pipeline
-    strategy: depend
-  rules:
-    # Only add job for a merge request event
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - when: never
