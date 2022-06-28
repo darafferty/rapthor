@@ -110,7 +110,7 @@ inputs:
     doc: |
       The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
       n_time_chunks).
-    type: float
+    type: float[]
 
   - id: fast_smoothnessrefdistance
     label: Fast smoothnessrefdistance

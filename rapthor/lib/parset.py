@@ -312,7 +312,7 @@ def get_calibration_options(parset):
     if 'fast_smoothnessrefdistance' in parset_dict:
         parset_dict['fast_smoothnessrefdistance'] = parset.getfloat('calibration', 'fast_smoothnessrefdistance')
     else:
-        parset_dict['fast_smoothnessrefdistance'] = 0
+        parset_dict['fast_smoothnessrefdistance'] = 0.0
     if 'slow_smoothnessconstraint_joint' in parset_dict:
         parset_dict['slow_smoothnessconstraint_joint'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_joint')
     else:
