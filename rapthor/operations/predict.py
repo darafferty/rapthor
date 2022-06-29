@@ -137,9 +137,10 @@ class Predict(Operation):
 
             for sector in self.field.sectors:
                 for obs in sector.observations:
-                    # use new peeled datasets in future
+                    # Use new peeled datasets in future
                     obs.ms_filename = os.path.join(self.pipeline_working_dir, obs.ms_field)
-                    # remove infix for the sector observations, otherwise future predict
+
+                    # Remove infix for the sector observations, otherwise future predict
                     # operations will add it to the filenames multiple times
                     obs.infix = ''
 
@@ -151,3 +152,16 @@ class Predict(Operation):
                     for field_obs in self.field.observations:
                         if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
                             field_obs.ms_filename = obs.ms_filename
+
+        # Update filenames of datasets used for imaging
+        if (len(self.field.imaging_sectors) > 1 or self.field.reweight or
+            (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
+            (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
+                                                           obs.ms_subtracted_filename)
+        else:
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_imaging_filename = obs.ms_filename
