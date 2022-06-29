@@ -146,6 +146,14 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during fast phase calibration, in
         Hz (default = 6e6).
 
+    fast_smoothnessreffrequency
+        Smoothness constraint reference frequency used during fast phase calibration, in
+        Hz (default = midpoint of frequency coverage).
+
+    fast_smoothnessrefdistance
+        Smoothness constraint reference distance used during fast phase calibration, in
+        m (default = 0).
+
     slow_timestep_sec
         Time step used during slow amplitude calibration, in seconds (default = 600).
 

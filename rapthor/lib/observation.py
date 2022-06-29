@@ -243,6 +243,13 @@ class Observation(object):
         self.parameters['nsplit_fast'] = [max(1, int(self.numsamples / solint_fast_timestep / 2))]
         self.parameters['nsplit_slow'] = [max(1, int(self.numsamples / solint_slow_timestep / 2))]
 
+        # Set the smoothnessreffrequency for the fast solves, if not set by the user
+        fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
+        if fast_smoothnessreffrequency is None:
+            # Select a frequency at the midpoint of the frequency coverage of this observation
+            fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
+        self.parameters['fast_smoothnessreffrequency'] = [fast_smoothnessreffrequency] * self.ntimechunks
+
     def set_prediction_parameters(self, sector_name, patch_names, scratch_dir):
         """
         Sets the prediction parameters
