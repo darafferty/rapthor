@@ -104,6 +104,8 @@ class Calibrate(Operation):
 
         # Set the constraints used in the calibrations
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
+        fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
+        fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
         slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint_joint
         slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint_separate
         antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
@@ -166,6 +168,8 @@ class Calibrate(Operation):
                             'calibration_skymodel_file': calibration_skymodel_file,
                             'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
+                            'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
+                            'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint1': slow_smoothnessconstraint1,
                             'llssolver': llssolver,
                             'maxiter': maxiter,
