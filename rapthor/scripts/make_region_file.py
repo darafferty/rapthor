@@ -37,8 +37,16 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
     dec_cal = []
     for k, v in source_dict.items():
         name_cal.append(k)
-        ra_cal.append(v[0].value)
-        dec_cal.append(v[1].value)
+        # Make sure RA is between 0 and 360 deg
+        ra = v[0].value
+        for ra in ra_cal:
+            if ra < 0.0:
+                ra += 360.0
+            elif ra > 360.0:
+                ra -= 360.0
+        dec = v[1].value
+        ra_cal.append(ra)
+        dec_cal.append(dec)
 
     # Do the tessellation
     facet_points, facet_polys = facet.make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)

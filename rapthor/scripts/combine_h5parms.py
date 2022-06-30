@@ -17,11 +17,30 @@ import losoto.operations
 
 
 def expand_array(array, new_shape, new_axis_ind):
+    """
+    Expands an array along an axis
+
+    Parameters
+    ----------
+    array : array
+        Array to expand
+    new_shape : list
+        New shape of expanded array
+    new_axis_ind : int
+        Index of the axis to expand
+
+    Returns
+    -------
+    new_array : array
+        The expanded array
+    """
     new_array = np.zeros(new_shape)
     slc = [slice(None)] * len(new_shape)
     for i in range(new_shape[new_axis_ind]):
         slc[new_axis_ind] = i
         new_array[tuple(slc)] = array
+
+    return new_array
 
 
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
@@ -247,7 +266,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
             # Just duplicate the single time to all times, without altering the freq axis
             axes_shapes1 = axes_shapes[:]
             axes_shapes1[freq_ind] = val2.shape[freq_ind]
-            v1 = expand_array(val2, axes_shapes, time_ind)
+            v1 = expand_array(val2, axes_shapes1, time_ind)
         if len(st2.freq) > 1:
             f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
             vals = f(st1.freq) + st1_vals
