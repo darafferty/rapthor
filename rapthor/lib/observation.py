@@ -268,7 +268,7 @@ class Observation(object):
         # and/or with the weights adjusted (i.e., the data used as input for the
         # imaging pipeline)
         self.ms_subtracted_filename = '{0}{1}.{2}'.format(root_filename, self.infix,
-                                                     sector_name)
+                                                          sector_name)
         self.parameters['ms_subtracted_filename'] = self.ms_subtracted_filename
 
         # The filename of the field data (after subtraction of outlier sources)

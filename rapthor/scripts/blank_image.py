@@ -13,7 +13,7 @@ from astropy import wcs
 import os
 
 
-def main(output_image, input_image, vertices_file=None, reference_ra_deg=None,
+def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=None,
          reference_dec_deg=None, cellsize_deg=None, imsize=None, region_file='[]'):
     """
     Blank a region in an image

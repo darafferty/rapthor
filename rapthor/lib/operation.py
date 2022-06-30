@@ -199,7 +199,7 @@ class Operation(object):
         else:
             args.extend(['--no-container'])
             args.extend(['--preserve-entire-environment'])
-#        args.extend(['--bypass-file-store'])  # for debugging weird issues!!
+        # args.extend(['--bypass-file-store'])  # for debugging weird issues!!
         args.extend(['--batchSystem', self.batch_system])
         if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
@@ -227,7 +227,7 @@ class Operation(object):
         args.extend(['--stats'])
         # The following three options should be enabled for debugging purposes only!!
         args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
-        args.extend(['--debugWorker'])  # enable for debugging purposes only!!
+        # args.extend(['--debugWorker'])  # enable for debugging purposes only!!
         args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
         if self.field.use_mpi and self.toil_major_version >= 5:
             # Create the config file for MPI jobs and add the required args

@@ -120,21 +120,8 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
 # Install all Python dependencies for Rapthor
-RUN python3 -m pip install \
-    numpy \
-    scipy \
-    astropy \
-    jinja2 \
-    shapely \
-    toil[cwl] \
-    reproject \
-    python-dateutil \
-    Rtree \
-    loess \
-    lsmtool \
-    losoto \
-    bdsf \
-    python-casacore
+COPY ./requirements.txt .
+RUN python3 -m pip install -r requirements.txt
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
