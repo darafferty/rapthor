@@ -264,8 +264,13 @@ outputs:
     type: File[]
   - id: sector_images
     outputSource:
+{% if peel_bright_sources %}
+      - restore_nonpb/restored_image
+      - restore_pb/restored_image
+{% else %}
       - image/image_nonpb_name
       - image/image_pb_name
+{% endif %}
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
