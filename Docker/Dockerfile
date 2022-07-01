@@ -112,6 +112,15 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/DP3/build install
 
+# Generate file with one-liner package version descriptions
+RUN mkdir -p /usr/local/share/rapthor; \
+for p in $(find /src -type d -name .git | sort); \
+do \
+  d=$(dirname $p); b=$(basename $d); cd $d; l=$(git log -1 --oneline); \
+  echo "$b: $l"; \
+done \
+> /usr/local/share/rapthor/sw-versions.txt
+
 # Do not use `pip` from the Debian repository, but fetch it from PyPA.
 # This way, we are sure that the latest versions of `pip`, `setuptools`, and
 # `wheel` are installed in /usr/local, the only directory we're going to copy
