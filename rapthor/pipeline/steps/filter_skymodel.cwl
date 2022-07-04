@@ -90,7 +90,7 @@ outputs:
   - id: skymodels
     type: File[]
     outputBinding:
-      glob: ['$(inputs.output_root)-MFS-*.fits', '$(inputs.output_root)-MFS-*.mask', '$(inputs.output_root).*_sky.txt']
+      glob: ['$(inputs.output_root)-MFS-*.fits', '$(inputs.output_root)-MFS-*.mask', '$(inputs.output_root).*_sky']
 
 hints:
   - class: DockerRequirement

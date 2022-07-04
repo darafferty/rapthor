@@ -195,8 +195,8 @@ class Image(Operation):
 
             # The sky models, both true sky and apparent sky (the filenames are defined
             # in the rapthor/scripts/filter_skymodel.py file)
-            sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
-            sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
+            sector.image_skymodel_file_true_sky = image_root + '.true_sky'
+            sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky'
 
         # Symlink to datasets and remove old ones
 #         dst_dir = os.path.join(self.parset['dir_working'], 'datasets', self.direction.name)
