@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: Workflow
 label: Rapthor imaging subpipeline
 doc: |
@@ -24,7 +24,7 @@ inputs:
     doc: |
       The filenames of input MS files for which imaging will be done (length =
       n_obs).
-    type: string[]
+    type: Directory[]
 
   - id: prepare_filename
     label: Filenames of imaging MS
@@ -60,7 +60,7 @@ inputs:
     label: Filename of previous mask
     doc: |
       The filename of the image mask from the previous iteration (length = 1).
-    type: string
+    type: File?
 
   - id: mask_filename
     label: Filename of current mask
@@ -108,26 +108,21 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices (length = 1).
-    type: string
+    type: File
 
   - id: region_file
     label: Filename of region file
     doc: |
       The filename of the region file (length = 1).
-    type: string
+    type: File?
 
 {% if use_screens %}
-  - id: aterms_config_file
-    label: Filename of config file
-    doc: |
-      The filename of the a-term config file (length = 1).
-    type: string
-
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
-      The filenames of the a-term images (length = 1).
-    type: string
+      The filenames of the a-term images (length = 1, with n_aterms subelements).
+    type: File[]
+
 {% if use_mpi %}
   - id: mpi_cpus_per_task
     label: Number of CPUs per task
@@ -253,16 +248,32 @@ inputs:
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = 1).
-    type: string
+    type: File
 
   - id: peel_bright
     label: Peeling flag
     doc: |
       The flag that sets whether peeling of bright sources was done in the predict
       pipeline (length = 1).
-    type: string
+    type: boolean
 
-outputs: []
+outputs:
+  - id: filtered_skymodels
+    outputSource:
+      - filter/skymodels
+    type: File[]
+  - id: sector_images
+    outputSource:
+{% if peel_bright_sources %}
+      - restore_nonpb/restored_image
+      - restore_pb/restored_image
+{% else %}
+      - image/image_nonpb_name
+      - image/image_pb_name
+{% endif %}
+      - image/skymodel_nonpb
+      - image/skymodel_pb
+    type: File[]
 
 steps:
   - id: prepare_imaging_data
@@ -347,21 +358,6 @@ steps:
     out:
       - id: maskimg
 
-{% if use_screens %}
-  - id: make_aterm_config
-    label: Make a-term config file
-    doc: |
-      This step makes the a-term configuration file needed for WSClean+IDG.
-    run: {{ rapthor_pipeline_dir }}/steps/make_aterm_config.cwl
-    in:
-      - id: outfile
-        source: aterms_config_file
-      - id: gain_filenames
-        source: aterm_image_filenames
-    out:
-      - id: aterms_config
-{% endif %}
-
   - id: image
     label: Make an image
     doc: |
@@ -410,8 +406,8 @@ steps:
       - id: mask
         source: premask/maskimg
 {% if use_screens %}
-      - id: config
-        source: make_aterm_config/aterms_config
+      - id: aterm_images
+        source: aterm_image_filenames
 {% if use_mpi %}
       - id: ntasks
         source: mpi_cpus_per_task
@@ -481,6 +477,7 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_pb_name
+        valueFrom: $(self.basename)
       - id: numthreads
         valueFrom: '{{ max_threads }}'
     out:
@@ -505,6 +502,7 @@ steps:
         source: bright_skymodel_pb
       - id: output_image
         source: image/image_nonpb_name
+        valueFrom: $(self.basename)
       - id: numthreads
         valueFrom: '{{ max_threads }}'
     out:
@@ -540,4 +538,5 @@ steps:
         source: prepare_imaging_data/msimg
       - id: peel_bright
         source: peel_bright
-    out: []
+    out:
+      - id: skymodels

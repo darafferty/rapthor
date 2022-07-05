@@ -52,7 +52,8 @@ build-doc:
   image: $BASE_IMAGE
   before_script:
     - apt-get -y update
-    - apt-get -y install make python3-sphinx python3-numpydoc
+    - apt-get -y install make 
+    - pip install sphinx numpydoc
   script:
     - cd docs
     - make html

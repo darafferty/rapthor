@@ -4,7 +4,7 @@ Module that holds the Image class
 import os
 import logging
 from rapthor.lib.operation import Operation
-from rapthor.lib import miscellaneous as misc
+from rapthor.lib.cwl import CWLFile, CWLDir
 
 log = logging.getLogger('rapthor:image')
 
@@ -50,7 +50,6 @@ class Image(Operation):
         prepare_filename = []
         previous_mask_filename = []
         mask_filename = []
-        aterms_config_file = []
         starttime = []
         ntimes = []
         aterm_image_filenames = []
@@ -62,10 +61,7 @@ class Image(Operation):
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
-            # Each image job must have its own directory, so we create it here
-            image_dir = os.path.join(self.pipeline_working_dir, sector.name)
-            misc.create_directory(image_dir)
-            image_root.append(os.path.join(image_dir, sector.name))
+            image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
             # let the imsize be recalcuated, as otherwise it may change from the previous
@@ -81,17 +77,11 @@ class Image(Operation):
                     do_multiscale = None
             else:
                 do_multiscale = False
-            sector.set_imaging_parameters(image_dir, do_multiscale=do_multiscale,
-                                          recalculate_imsize=False)
+            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
 
             # Set input MS filenames
             if self.field.do_predict:
-                # If predict was done, use the model-subtracted/reweighted data
-                # Note: if a single sector was used, these files won't exist, so fall
-                # back to 'ms_filename' in this case
-                sector_obs_filename = sector.get_obs_parameters('ms_subtracted_filename')
-                if not os.path.exists(sector_obs_filename[0]):
-                    sector_obs_filename = sector.get_obs_parameters('ms_filename')
+                sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
             else:
                 sector_obs_filename = sector.get_obs_parameters('ms_filename')
             obs_filename.append(sector_obs_filename)
@@ -105,9 +95,9 @@ class Image(Operation):
                 previous_mask_filename.append(sector.I_mask_file)
             else:
                 # Use a dummy mask
-                previous_mask_filename.append(image_root[-1] + '_dummy.fits')
+                #previous_mask_filename.append(image_root[-1] + '_dummy.fits')
+                previous_mask_filename.append(None)
             mask_filename.append(image_root[-1] + '_mask.fits')
-            aterms_config_file.append(image_root[-1] + '_aterm.cfg')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
             image_timestep.append(sector.get_obs_parameters('image_timestep'))
             sector_starttime = []
@@ -119,18 +109,15 @@ class Image(Operation):
             ntimes.append(sector_ntimes)
             phasecenter.append("'[{0}deg, {1}deg]'".format(sector.ra, sector.dec))
             if self.scratch_dir is None:
-                dir_local.append(image_dir)
+                dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
             multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
 
-            # The following attribute was set by the preceding calibrate operation
-            aterm_image_filenames.append("'[{}]'".format(','.join(self.field.aterm_image_filenames)))
-
-        self.input_parms = {'obs_filename': obs_filename,
+        self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
-                            'previous_mask_filename': previous_mask_filename,
+                            'previous_mask_filename': [None if name is None else CWLFile(name).to_json() for name in previous_mask_filename],
                             'mask_filename': mask_filename,
                             'starttime': starttime,
                             'ntimes': ntimes,
@@ -145,8 +132,8 @@ class Image(Operation):
                             'ra': [sector.ra for sector in self.field.imaging_sectors],
                             'dec': [sector.dec for sector in self.field.imaging_sectors],
                             'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
-                            'vertices_file': [sector.vertices_file for sector in self.field.imaging_sectors],
-                            'region_file': [sector.region_file for sector in self.field.imaging_sectors],
+                            'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.field.imaging_sectors],
+                            'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.field.imaging_sectors],
                             'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
                             'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
                             'robust': [sector.robust for sector in self.field.imaging_sectors],
@@ -159,11 +146,13 @@ class Image(Operation):
                             'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
-                            'bright_skymodel_pb': [self.field.bright_source_skymodel_file] * nsectors,
+                            'bright_skymodel_pb': [CWLFile(self.field.bright_source_skymodel_file).to_json()] * nsectors,
                             'peel_bright': [self.field.peel_bright_sources] * nsectors}
         if self.field.use_screens:
-            self.input_parms.update({'aterms_config_file': aterms_config_file,
-                                     'aterm_image_filenames': aterm_image_filenames})
+            # The following parameters were set by the preceding calibrate operation, where
+            # aterm image files were generated. They do not need to be set separately for
+            # each sector
+            self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
 
             if self.field.do_multiscale_clean:
                 self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
@@ -190,7 +179,7 @@ class Image(Operation):
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
         # pols, save them all
         for sector in self.field.imaging_sectors:
-            image_root = os.path.join(self.pipeline_working_dir, sector.name, sector.name)
+            image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
             sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
             sector.I_model_file_true_sky = image_root + '-MFS-model-pb.fits'

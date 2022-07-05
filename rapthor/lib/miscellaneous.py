@@ -255,6 +255,7 @@ def string2list(invar):
         return None
     str_list = None
     if type(invar) is str:
+        invar = invar.strip()
         if invar.startswith('[') and invar.endswith(']'):
             str_list = [f.strip(' \'\"') for f in invar.strip('[]').split(',')]
         elif "," in invar:

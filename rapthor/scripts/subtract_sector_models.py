@@ -175,9 +175,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         sys.exit(1)
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
 
-    # Get the scratch directory from the first model filename (they are all the same)
-    scratch_dir = os.path.dirname(model_list[0])
-
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)
     tarray = tin.getcol("TIME")
@@ -200,7 +197,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     if peel_outliers and nr_outliers > 0:
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
-        root_filename = os.path.join(scratch_dir, os.path.basename(msin))
+        root_filename = os.path.basename(msin)
         msout = '{0}{1}_field'.format(root_filename, infix)
         if infix != '':
             # This implies we have a subrange of a full dataset, so use a model ms
@@ -212,10 +209,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
+        # TODO: Check for existence of `msout` could be removed. It should always
+        # be created in a different temporary directory by the CWL runner. If we
+        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -276,7 +276,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     if peel_bright and nr_bright > 0:
         # Open input and output table
         tin = pt.table(msin, readonly=True, ack=False)
-        root_filename = os.path.join(scratch_dir, os.path.basename(msin))
+        root_filename = os.path.basename(msin)
         msout = '{0}{1}_field_no_bright'.format(root_filename, infix)
         if infix != '':
             # This implies we have a subrange of a full dataset, so use a model ms
@@ -288,10 +288,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
+        # TODO: Check for existence of `msout` could be removed. It should always
+        # be created in a different temporary directory by the CWL runner. If we
+        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -386,7 +389,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         elif nr_bright > 0 and i == len(model_list)-nr_bright:
             # Break so we don't open output tables for the bright sources
             break
-        msout = msmod.rstrip('_modeldata')
+        msout = os.path.basename(msmod).rstrip('_modeldata')
         if starttime is not None:
             # Use a model ms file as source for the copy (since otherwise we could copy the
             # entire msin and not just the data for the correct time range)
@@ -396,10 +399,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
+        # TODO: Check for existence of `msout` could be removed. It should always
+        # be created in a different temporary directory by the CWL runner. If we
+        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
@@ -564,7 +570,7 @@ class CovWeights:
         return CoeffArray
 
     def calcWeights(self, CoeffArray, max_radius = 5e3):
-        ms = pt.table(self.MSName, readonly=False, ack=False)
+        ms = pt.table(self.MSName, readonly=True, ack=False)
         ants = pt.table(ms.getkeyword("ANTENNA"), ack=False)
         antnames = ants.getcol("NAME")
         nAnt = len(antnames)

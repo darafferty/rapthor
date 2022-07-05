@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
@@ -27,7 +27,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: string
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -72,7 +72,7 @@ inputs:
       prefix: solve.nchan=
       separate: False
   - id: sourcedb
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
@@ -82,9 +82,10 @@ inputs:
       prefix: solve.maxiter=
       separate: False
   - id: propagatesolutions
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.propagatesolutions=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: solveralgorithm
     type: string
@@ -92,9 +93,10 @@ inputs:
       prefix: solve.solveralgorithm=
       separate: False
   - id: onebeamperpatch
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: stepsize
     type: float
@@ -124,6 +126,9 @@ inputs:
 
 outputs:
   - id: slow_gains_h5parm
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.h5parm)
+      glob: $(inputs.h5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

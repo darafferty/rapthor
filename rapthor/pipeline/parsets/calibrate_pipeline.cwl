@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: Workflow
 label: Rapthor calibration pipeline
 doc: |
@@ -30,7 +30,7 @@ inputs:
     doc: |
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_time_chunks).
-    type: string[]
+    type: Directory[]
 
   - id: starttime
     label: Start time of each chunk
@@ -91,7 +91,7 @@ inputs:
     label: Filename of sky model
     doc: |
       The filename of the input sky model text file (length = 1).
-    type: string
+    type: File
 
   - id: calibration_sourcedb
     label: Filename of sourcedb
@@ -141,7 +141,7 @@ inputs:
     doc: |
       Flag that determines whether solutions are propagated as initial start values
       for the next solution interval (length = 1).
-    type: string
+    type: boolean
 
   - id: solveralgorithm
     label: Solver algorithm
@@ -153,7 +153,7 @@ inputs:
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
       source (length = 1).
-    type: string
+    type: boolean
 
   - id: stepsize
     label: Solver step size
@@ -221,7 +221,7 @@ inputs:
     doc: |
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_freq_chunks).
-    type: string[]
+    type: Directory[]
 
   - id: slow_starttime
     label: Start time of each chunk
@@ -355,7 +355,23 @@ inputs:
 {% endif %}
 {% endif %}
 
-outputs: []
+
+outputs:
+  - id: fast_phases
+    outputSource:
+      - combine_fast_phases/outh5parm
+    type: File
+{% if do_slowgain_solve %}
+  - id: combined_solutions
+    outputSource:
+      - combine_fast_and_slow_h5parms2/combinedh5parm
+    type: File
+{% endif %}
+  - id: diagonal_aterms
+    outputSource:
+      - merge_aterm_files/output
+    type: File[]
+
 
 steps:
   - id: make_sourcedb
@@ -386,7 +402,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -470,7 +486,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -590,7 +606,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -777,7 +793,8 @@ steps:
         valueFrom: '{{ max_threads }}'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_images
 
 {% if debug %}
 # Solve for slow gains again, applying the first ones
@@ -788,7 +805,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -897,6 +914,17 @@ steps:
         valueFrom: '{{ max_threads }}'
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_images
 
 {% endif %}
+
+  - id: merge_aterm_files
+    in:
+      - id: input
+        source:
+          - make_aterms/output_images
+    out:
+      - id: output
+    run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
+    label: merge_aterm_files

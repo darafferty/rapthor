@@ -1,6 +1,7 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [DP3]
+id: ddecal_solve_scalarphase
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for scalar phases in multiple directions simultaneously
@@ -8,7 +9,7 @@ doc: |
   table in h5parm format.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
 
 arguments:
   - msin.datacolumn=DATA
@@ -21,10 +22,10 @@ arguments:
 
 inputs:
   - id: msin
-    label: Input MS filename
+    label: Input MS directory name
     doc: |
-      The filename of the input MS file.
-    type: string
+      The name of the input MS directory.
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -78,7 +79,7 @@ inputs:
     label: Sky model
     doc: |
       The sourcedb sky model to use for the solve.
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
@@ -106,9 +107,10 @@ inputs:
     doc: |
       Flag that determines whether solutions are propagated as initial start values
       for the next solution interval.
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.propagatesolutions=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
   - id: solveralgorithm
@@ -124,9 +126,10 @@ inputs:
     label: One beam per patch
     doc: |
       Flag that sets beam correction per patch or per source.
-    type: string
+    type: boolean
     inputBinding:
       prefix: solve.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
   - id: stepsize
@@ -226,6 +229,9 @@ outputs:
     doc: |
       The filename of the output solution table. The value is taken from the input
       parameter "h5parm"
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.h5parm)
+      glob: $(inputs.h5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

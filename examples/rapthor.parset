@@ -185,3 +185,10 @@ input_skymodel = /data/skymodel.txt
 #   - when use_mpi = True under the [imaging] section above and dir_local is
 #     not on a shared filesystem
 # dir_local = /tmp
+
+# Run the pipelines inside a container (default = False)? If True, the pipeline
+# for each operation (such as calibrate or image) will be run inside a container.
+# The type of container can also be specified (one of docker, udocker, or
+# singularity; default = docker)
+# use_container = False
+# container_type = docker

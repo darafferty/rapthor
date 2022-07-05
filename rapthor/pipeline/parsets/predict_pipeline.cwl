@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: Workflow
 label: Rapthor prediction pipeline
 doc: |
@@ -23,7 +23,7 @@ inputs:
     doc: |
       The filenames of input MS files for which prediction will be done (length =
       n_obs * n_sectors).
-    type: string[]
+    type: Directory[]
 
   - id: sector_model_filename
     label: Filenames of output MS
@@ -49,7 +49,7 @@ inputs:
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
       source (length = 1).
-    type: string
+    type: boolean
 
   - id: sector_patches
     label: Names of sector calibration patches
@@ -67,13 +67,13 @@ inputs:
     doc: |
       The filename of the h5parm solution table from the calibration pipeline (length
       = 1).
-    type: string
+    type: File
 
   - id: sector_skymodel
     label: Filename of sky model
     doc: |
       The filename of the input sky model text file of each sector (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: sector_sourcedb
     label: Filename of sourcedb
@@ -87,14 +87,14 @@ inputs:
     doc: |
       The filename of the output sourcedb sky model file of each sector, repeated for
       each observation  (length = n_obs * n_sectors).
-    type: string[]
+    type: File[]
 
   - id: obs_filename
     label: Filename of input MS
     doc: |
       The filenames of input MS files for which subtraction will be done (length =
       n_obs).
-    type: string[]
+    type: Directory[]
 
   - id: obs_starttime
     label: Start time of each chunk
@@ -145,7 +145,7 @@ inputs:
     label: Outlier flag
     doc: |
       The flag that sets peeling of outlier sources (length = 1).
-    type: string
+    type: boolean
 
   - id: nr_bright
     label: Number bright-source sectors
@@ -157,15 +157,27 @@ inputs:
     label: Bright-source flag
     doc: |
       The flag that sets peeling of bright sources (length = 1).
-    type: string
+    type: boolean
 
   - id: reweight
     label: Reweight flag
     doc: |
       The flag that sets reweighting of uv data (length = 1).
-    type: string
+    type: boolean
 
-outputs: []
+outputs:
+  - id: sourcedb
+    outputSource:
+      - make_sourcedb/sourcedb
+    type: File[]
+  # - id: predict_models
+  #   outputSource:
+  #     - predict_model_data/msmod
+  #   type: Directory[]
+  - id: subtract_models
+    outputSource:
+      - merge_subtract_sector_models/output
+    type: Directory[]
 
 steps:
   - id: make_sourcedb
@@ -200,7 +212,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -217,7 +229,7 @@ steps:
       - id: h5parm
         source: h5parm
       - id: sourcedb
-        source: sector_obs_sourcedb
+        source: make_sourcedb/sourcedb
       - id: sourcedb2
         source: make_sourcedb/sourcedb
       - id: directions
@@ -229,7 +241,7 @@ steps:
     out:
       - id: msmod
 
-  - id: subtract_models
+  - id: subtract_sector_models
     label: Subtract the model uv data
     doc: |
       This step subtracts the model uv data generated in the previous step from the
@@ -241,7 +253,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: {{ max_cores }}
+        coresMin: 1
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -273,4 +285,16 @@ steps:
         source: reweight
     scatter: [msobs, obs_starttime, solint_sec, solint_hz, infix]
     scatterMethod: dotproduct
-    out: []
+    out:
+      - id: output_models
+
+  - id: merge_subtract_sector_models
+    label: Merge subtracted sector model data
+    in:
+      - id: input
+        source:
+          - subtract_sector_models/output_models
+    out:
+      - id: output
+    run: {{ rapthor_pipeline_dir }}/steps/merge_array_directories.cwl
+

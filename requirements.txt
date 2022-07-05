@@ -1,0 +1,15 @@
+astropy
+bdsf
+jinja2
+loess
+losoto
+lsmtool
+numpy
+psutil>=5.6.6
+python-casacore
+python-dateutil
+reproject
+Rtree
+scipy
+shapely
+toil @ git+https://github.com/DataBiosphere/toil.git#egg=toil[cwl]
