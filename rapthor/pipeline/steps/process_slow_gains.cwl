@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [process_slow_gains.py]
 label: Process slow gain solutions
@@ -7,7 +7,11 @@ doc: |
   them.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.slowh5parm)
+        writable: true
 
 arguments:
   - '--normalize=True'
@@ -17,7 +21,7 @@ inputs:
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 1
   - id: smooth
@@ -35,6 +39,10 @@ outputs:
     doc: |
       The filename of the output h5parm file. The value is taken from the input
       parameter "slowh5parm".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.slowh5parm)
+      glob: $(inputs.slowh5parm.basename)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

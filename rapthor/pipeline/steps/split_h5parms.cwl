@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [split_h5parms.py]
 label: Splits an h5parm
@@ -14,7 +14,7 @@ inputs:
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 0
   - id: outh5parms
@@ -40,6 +40,10 @@ outputs:
     doc: |
       The filenames of the output h5parm files. The value is taken from the input
       parameter "outh5parms"
-    type: string[]
+    type: File[]
     outputBinding:
-      outputEval: $(inputs.outh5parms)
+      glob: $(inputs.outh5parms)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

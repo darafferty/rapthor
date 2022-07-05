@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [DP3]
 label: Prepares a dataset for imaging
@@ -27,7 +27,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: string
+    type: Directory
     inputBinding:
       prefix: msin=
       separate: False
@@ -93,6 +93,10 @@ inputs:
 
 outputs:
   - id: msimg
-    type: string
+    type: Directory
     outputBinding:
-      outputEval: $(inputs.msout)
+      glob: $(inputs.msout)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

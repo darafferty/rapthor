@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [blank_image.py]
 label: Make an image mask
@@ -10,14 +10,6 @@ requirements:
   InlineJavascriptRequirement: {}
 
 inputs:
-  - id: imagefile
-    label: Filename of input image
-    doc: |
-      The filenames of the input FITS image. If the file does not exist, a blank
-      FITS image will be made.
-    type: string
-    inputBinding:
-      position: 0
   - id: maskfile
     label: Filename of output mask
     doc: |
@@ -25,6 +17,14 @@ inputs:
     type: string
     inputBinding:
       position: 1
+  - id: imagefile
+    label: Filename of input image
+    doc: |
+      The filenames of the input FITS image. If the file does not exist, a blank
+      FITS image will be made.
+    type: File?
+    inputBinding:
+      position: 2
   - id: wsclean_imsize
     label: Image size
     doc: |
@@ -38,7 +38,7 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
-    type: string
+    type: File
     inputBinding:
       prefix: --vertices_file=
       separate: false
@@ -70,7 +70,7 @@ inputs:
     label: Filename of region file
     doc: |
       The filename of a user-supplied region file.
-    type: string
+    type: File?
     inputBinding:
       prefix: --region_file=
       separate: false
@@ -81,6 +81,9 @@ outputs:
     doc: |
       The filename of the output FITS mask. The value is taken from the input
       parameter "maskfile".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.maskfile)
+      glob: $(inputs.maskfile)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

@@ -4,6 +4,7 @@ Module that holds the Predict class
 import os
 import logging
 from rapthor.lib.operation import Operation
+from rapthor.lib.cwl import CWLFile, CWLDir
 
 log = logging.getLogger('rapthor:predict')
 
@@ -59,11 +60,17 @@ class Predict(Operation):
         for sector in sectors:
             sector.set_prediction_parameters()
             sector_skymodel.append(sector.predict_skymodel_file)
-            sdb = os.path.splitext(sector.predict_skymodel_file)[0]+'.sourcedb'
-            sector_sourcedb.append(sdb)
-            sector_obs_sourcedb.extend([sdb]*len(self.field.observations))
+            sdb_dir, sdb_file = os.path.split(
+                os.path.splitext(sector.predict_skymodel_file)[0]+'.sourcedb'
+            )
+            sector_sourcedb.append(sdb_file)
+            sector_obs_sourcedb.extend(
+                [sdb_file] * len(self.field.observations)
+            )
             sector_filename.extend(sector.get_obs_parameters('ms_filename'))
-            sector_model_filename.extend(sector.get_obs_parameters('ms_model_filename'))
+            sector_model_filename.extend(
+                [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
+            )
             sector_patches.extend(sector.get_obs_parameters('patch_names'))
             sector_starttime.extend(sector.get_obs_parameters('predict_starttime'))
             sector_ntimes.extend(sector.get_obs_parameters('predict_ntimes'))
@@ -91,21 +98,21 @@ class Predict(Operation):
         max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         onebeamperpatch = self.field.onebeamperpatch
 
-        self.input_parms = {'sector_filename': sector_filename,
+        self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
-                            'sector_skymodel': sector_skymodel,
+                            'sector_skymodel': CWLFile(sector_skymodel).to_json(),
                             'sector_sourcedb': sector_sourcedb,
-                            'sector_obs_sourcedb': sector_obs_sourcedb,
+                            'sector_obs_sourcedb': CWLFile(sector_obs_sourcedb).to_json(),
                             'sector_patches': sector_patches,
-                            'h5parm': self.field.h5parm_filename,
+                            'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
                             'obs_solint_sec': obs_solint_sec,
                             'obs_solint_hz': obs_solint_hz,
                             'min_uv_lambda': min_uv_lambda,
                             'max_uv_lambda': max_uv_lambda,
                             'onebeamperpatch': onebeamperpatch,
-                            'obs_filename': obs_filename,
+                            'obs_filename': CWLDir(obs_filename).to_json(),
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,
                             'nr_outliers': nr_outliers,
@@ -130,8 +137,10 @@ class Predict(Operation):
 
             for sector in self.field.sectors:
                 for obs in sector.observations:
-                    obs.ms_filename = obs.ms_field  # use new peeled datasets in future
-                    # remove infix for the sector observations, otherwise future predict
+                    # Use new peeled datasets in future
+                    obs.ms_filename = os.path.join(self.pipeline_working_dir, obs.ms_field)
+
+                    # Remove infix for the sector observations, otherwise future predict
                     # operations will add it to the filenames multiple times
                     obs.infix = ''
 
@@ -143,3 +152,16 @@ class Predict(Operation):
                     for field_obs in self.field.observations:
                         if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
                             field_obs.ms_filename = obs.ms_filename
+
+        # Update filenames of datasets used for imaging
+        if (len(self.field.imaging_sectors) > 1 or self.field.reweight or
+            (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
+            (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
+                                                           obs.ms_subtracted_filename)
+        else:
+            for sector in self.field.sectors:
+                for obs in sector.observations:
+                    obs.ms_imaging_filename = obs.ms_filename

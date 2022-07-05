@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [make_mosaic.py]
 label: Make a mosaic
@@ -14,7 +14,7 @@ inputs:
     label: Filenames of images
     doc: |
       The filenames of the regridded FITS images to be mosaicked.
-    type: string[]
+    type: File[]
     inputBinding:
       position: 1
       itemSeparator: ","
@@ -22,7 +22,7 @@ inputs:
     label: Filename of template image
     doc: |
       The filename of the template mosaic FITS image.
-    type: string
+    type: File
     inputBinding:
       position: 2
   - id: output_image
@@ -36,9 +36,20 @@ inputs:
     label: Flag to skip processing
     doc: |
       The flag that sets whether processing is skipped or not.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --skip=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
-outputs: []
+outputs:
+  - id: mosaic_image
+    doc: |
+      FITS mosaic from input FITS images.
+    type: File
+    outputBinding:
+      glob: $(inputs.output_image)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

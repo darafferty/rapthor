@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [make_mosaic_template.py]
 label: Make template image for mosaicking
@@ -15,7 +15,7 @@ inputs:
     label: Filenames of images
     doc: |
       The filenames of the FITS images to be mosaicked.
-    type: string[]
+    type: File[]
     inputBinding:
       position: 1
       itemSeparator: ","
@@ -23,7 +23,7 @@ inputs:
     label: Filenames of vertices files
     doc: |
       The filenames of the sector vertices files.
-    type: string[]
+    type: File[]
     inputBinding:
       position: 2
       itemSeparator: ","
@@ -38,9 +38,10 @@ inputs:
     label: Flag to skip processing
     doc: |
       The flag that sets whether processing is skipped or not.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --skip=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
 outputs:
@@ -49,6 +50,10 @@ outputs:
     doc: |
       The filename of the output FITS image. The value is taken from the input
       parameter "output_image".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.output_image)
+      glob: $(inputs.output_image)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

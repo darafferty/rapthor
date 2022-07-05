@@ -4,6 +4,7 @@ Definition of the master Operation class
 import os
 import sys
 import logging
+import json
 from rapthor import _logging
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
@@ -11,6 +12,7 @@ from toil.leader import FailedJobsException
 from toil.cwl import cwltoil
 import toil.version as toil_version
 from rapthor.lib.context import Timer
+from rapthor.lib.cwl import NpEncoder
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
@@ -84,7 +86,9 @@ class Operation(object):
         self.subpipeline_parset_file = os.path.join(self.pipeline_working_dir,
                                                     'subpipeline_parset.cwl')
         self.pipeline_inputs_file = os.path.join(self.pipeline_working_dir,
-                                                 'pipeline_inputs.yml')
+                                                 'pipeline_inputs.json')
+        self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
+                                                  'pipeline_outputs.json')
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir,
@@ -119,6 +123,12 @@ class Operation(object):
 
         # Set the temp directory local to each node
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
+
+        # Get the container type
+        if self.parset['cluster_specific']['use_container']:
+            self.container = self.parset['cluster_specific']['container_type']
+        else:
+            self.container = None
 
     def set_parset_parameters(self):
         """
@@ -162,19 +172,8 @@ class Operation(object):
 
         # Save the pipeline inputs to a file
         self.set_input_parameters()
-        keys = []
-        vals = []
-        for k, v in self.input_parms.items():
-            keys.append(k)
-            if type(v) is bool:
-                vals.append("'{}'".format(v))
-            elif type(v) is list and type(v[0]) is bool:
-                vals.append('[{}]'.format(','.join(["'{}'".format(ve) for ve in v])))
-            else:
-                vals.append(v)
-        tmp = '\n'.join(['{0}: {1}'.format(k, v) for k, v in zip(keys, vals)])
         with open(self.pipeline_inputs_file, 'w') as f:
-            f.write(tmp)
+            f.write(json.dumps(self.input_parms, cls=NpEncoder, indent=4, sort_keys=True))
 
     def finalize(self):
         """
@@ -190,6 +189,17 @@ class Operation(object):
         """
         # Build the args list
         args = []
+        if self.container is not None:
+            # If the container is Docker, no extra args are needed. For other
+            # containers, set the required args
+            if self.container == 'singularity':
+                args.extend(['--singularity'])
+            elif self.container == 'udocker':
+                args.extend(['--user-space-docker-cmd', 'udocker'])
+        else:
+            args.extend(['--no-container'])
+            args.extend(['--preserve-entire-environment'])
+        # args.extend(['--bypass-file-store'])  # for debugging weird issues!!
         args.extend(['--batchSystem', self.batch_system])
         if self.batch_system == 'slurm':
             args.extend(['--disableCaching'])
@@ -203,19 +213,22 @@ class Operation(object):
         args.extend(['--basedir', self.pipeline_working_dir])
         args.extend(['--outdir', self.pipeline_working_dir])
         args.extend(['--writeLogs', self.log_dir])
-#        args.extend(['--logLevel', 'DEBUG'])  # used for debugging purposes only
+        args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
         args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
-        args.extend(['--preserve-entire-environment'])
-#         args.extend(['--preserve-environment', 'PATH', 'PYTHONPATH', 'LD_LIBRARY_PATH'])
         if self.scratch_dir is not None:
-            # Note: the trailing '/' is expected by Toil v5.3+
-            args.extend(['--tmpdir-prefix', self.scratch_dir+'/'])
-            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/'])
+            # Note: the trailing '/' is required by Toil v5.3+; in addition,
+            # --tmpdir-prefix and --tmp-outdir-prefix require a filename prefix
+            # when using --bypass-file-store, but it won't harm to use it anyway.
+            args.extend(['--tmpdir-prefix', self.scratch_dir+'/toil.'])
+            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/toil.'])
             args.extend(['--workDir', self.scratch_dir+'/'])
         args.extend(['--clean', 'never'])  # preserves the job store for future runs
-#        args.extend(['--cleanWorkDir', 'never'])  # used for debugging purposes only
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
+        # The following three options should be enabled for debugging purposes only!!
+        # args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
+        # args.extend(['--debugWorker'])  # enable for debugging purposes only!!
+        # args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
         if self.field.use_mpi and self.toil_major_version >= 5:
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
@@ -239,12 +252,11 @@ class Operation(object):
             os.environ[k] = v
 
         # Run the pipeline
+        # print(f"**** Toil command-line arguments: {args} ****")
         try:
-            status = cwltoil.main(args=args)
-            if status == 0:
-                self.success = True
-            else:
-                self.success = False
+            with open(self.pipeline_outputs_file, 'w') as stdout:
+                status = cwltoil.main(args=args, stdout=stdout)
+            self.success = (status == 0)
         except FailedJobsException:
             self.success = False
 
