@@ -181,8 +181,8 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
                 # Write out apparent and true-sky models
                 del(img)  # helps reduce memory usage
                 s.group(maskfile)  # group the sky model by mask islands
-                s.write(output_root+'.true_sky', clobber=True)
-                s.write(output_root+'.apparent_sky', clobber=True, applyBeam=True)
+                s.write(output_root+'.true_sky.txt', clobber=True)
+                s.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
     else:
         emptysky = True
 
