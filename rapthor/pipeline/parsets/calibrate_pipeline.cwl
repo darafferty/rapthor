@@ -946,13 +946,3 @@ steps:
     label: merge_aterm_files
 
 {% endif %}
-
-  - id: merge_aterm_files
-    in:
-      - id: input
-        source:
-          - make_aterms/output_images
-    out:
-      - id: output
-    run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
-    label: merge_aterm_files
