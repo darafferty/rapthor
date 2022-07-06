@@ -57,7 +57,3 @@ html_theme = 'alabaster'
 # of the class. check your autosummary_generate settings", which seems to be
 # triggered by numpydoc (ref: https://stackoverflow.com/a/66139873/16350552).
 numpydoc_show_class_members = False 
-
-# Fix "WARNING: Since v2.0, Sphinx uses "index" as root_doc by default. 
-# Please add "root_doc = 'contents'" to your conf.py."
-#root_doc = 'contents'
