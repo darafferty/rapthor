@@ -27,5 +27,6 @@ sphinx:
 python:
   install:
     - requirements: docs/requirements.txt
+    # Rapthor itself needs to be installed to generate the documentation.
     - method: pip
       path: .
