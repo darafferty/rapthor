@@ -60,4 +60,4 @@ numpydoc_show_class_members = False
 
 # Fix "WARNING: Since v2.0, Sphinx uses "index" as root_doc by default. 
 # Please add "root_doc = 'contents'" to your conf.py."
-root_doc = 'contents'
+#root_doc = 'contents'
