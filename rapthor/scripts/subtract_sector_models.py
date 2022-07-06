@@ -202,10 +202,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
+        # TODO: Check for existence of `msout` could be removed. It should always
+        # be created in a different temporary directory by the CWL runner. If we
+        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -272,10 +275,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
+        # TODO: Check for existence of `msout` could be removed. It should always
+        # be created in a different temporary directory by the CWL runner. If we
+        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -375,10 +381,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
+        # TODO: Check for existence of `msout` could be removed. It should always
+        # be created in a different temporary directory by the CWL runner. If we
+        # don't trust the CWL runner, we might bail out if `msout` exists.
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk

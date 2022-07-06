@@ -105,6 +105,19 @@ inputs:
       The smoothnessconstraint kernel size in Hz for the fast phase solve (length = 1).
     type: float
 
+  - id: fast_smoothnessreffrequency
+    label: Fast smoothnessreffrequency
+    doc: |
+      The smoothnessreffrequency Hz for the fast phase solve (length = n_obs *
+      n_time_chunks).
+    type: float[]
+
+  - id: fast_smoothnessrefdistance
+    label: Fast smoothnessrefdistance
+    doc: |
+      The smoothnessrefdistance in m for the fast phase solve (length = 1).
+    type: float
+
   - id: fast_antennaconstraint
     label: Fast antenna constraint
     doc: |
@@ -431,11 +444,15 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: fast_smoothnessconstraint
+      - id: smoothnessreffrequency
+        source: fast_smoothnessreffrequency
+      - id: smoothnessrefdistance
+        source: fast_smoothnessrefdistance
       - id: antennaconstraint
         source: fast_antennaconstraint
       - id: numthreads
         valueFrom: '{{ max_threads }}'
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan]
+    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency]
     scatterMethod: dotproduct
     out:
       - id: fast_phases_h5parm
@@ -929,3 +946,13 @@ steps:
     label: merge_aterm_files
 
 {% endif %}
+
+  - id: merge_aterm_files
+    in:
+      - id: input
+        source:
+          - make_aterms/output_images
+    out:
+      - id: output
+    run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
+    label: merge_aterm_files

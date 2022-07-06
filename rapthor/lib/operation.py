@@ -226,9 +226,9 @@ class Operation(object):
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
         # The following three options should be enabled for debugging purposes only!!
-        args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
+        # args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
         # args.extend(['--debugWorker'])  # enable for debugging purposes only!!
-        args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
+        # args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
         if self.field.use_mpi and self.toil_major_version >= 5:
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
@@ -252,7 +252,7 @@ class Operation(object):
             os.environ[k] = v
 
         # Run the pipeline
-        print(f"**** Toil command-line arguments: {args} ****")
+        # print(f"**** Toil command-line arguments: {args} ****")
         try:
             with open(self.pipeline_outputs_file, 'w') as stdout:
                 status = cwltoil.main(args=args, stdout=stdout)

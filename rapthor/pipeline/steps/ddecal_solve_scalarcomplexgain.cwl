@@ -113,6 +113,16 @@ inputs:
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
+  - id: smoothnessreffrequency
+    type: float
+    inputBinding:
+      prefix: solve.smoothnessreffrequency=
+      separate: False
+  - id: smoothnessrefdistance
+    type: float
+    inputBinding:
+      prefix: solve.smoothnessrefdistance=
+      separate: False
   - id: antennaconstraint
     type: string
     inputBinding:

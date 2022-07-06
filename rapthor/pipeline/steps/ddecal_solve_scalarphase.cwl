@@ -187,6 +187,24 @@ inputs:
       prefix: solve.smoothnessconstraint=
       separate: False
 
+  - id: smoothnessreffrequency
+    label: Smoothness constraint reference frequency
+    doc: |
+      The smoothness constraint reference frequency in Hz.
+    type: float
+    inputBinding:
+      prefix: solve.smoothnessreffrequency=
+      separate: False
+
+  - id: smoothnessrefdistance
+    label: Smoothness constraint reference distance
+    doc: |
+      The smoothness constraint reference distance in m.
+    type: float
+    inputBinding:
+      prefix: solve.smoothnessrefdistance=
+      separate: False
+
   - id: antennaconstraint
     label: Antenna constraint
     doc: |
