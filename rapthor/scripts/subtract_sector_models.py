@@ -26,6 +26,10 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
         Number of imaging sectors
     fraction : float
         Fraction of MS file to be read
+    reweight: bool
+        True if reweighting is to be done
+    compressed: bool
+        True if data are compressed (by Dysco)
 
     Returns
     -------
@@ -132,6 +136,24 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         If True, reweight using the residuals
     starttime : str, optional
         Start time in JD seconds
+    solint_sec : float
+        Solution interval in s
+    solint_hz : float
+        Solution interval in Hz
+    weights_colname : str
+        Name of weight column
+    gainfile : str
+        Filename of gain file
+    uvcut_min : float
+        Min uv cut in lambda
+    uvcut_max : float
+        Max uv cut in lambda
+    phaseonly : bool
+        Reweight with phases only
+    dirname : str
+        Name of gain file directory
+    quiet : bool
+        If True, suppress (most) output
     infix : str, optional
         Infix string used in filenames
     """
@@ -434,11 +456,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     for tout in tout_list:
         tout.close()
     tin.close()
-
-    # Delete model data
-#     for msmod in model_list:
-#         if os.path.exists(msmod):
-#             os.system('/bin/rm -rf {0}'.format(msmod))
 
 
 """
