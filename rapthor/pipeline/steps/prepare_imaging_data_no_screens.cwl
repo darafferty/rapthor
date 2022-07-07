@@ -73,7 +73,7 @@ inputs:
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions.
-    type: string
+    type: File
     inputBinding:
       prefix: applycal.parmdb=
       separate: False
