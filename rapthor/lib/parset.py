@@ -526,6 +526,9 @@ def get_imaging_options(parset):
     # be cpu, gpu, or hybrid.
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'cpu'
+    if parset_dict['idg_mode'] not in ['cpu', 'gpu', 'hybrid']:
+        log.error('The option dde_method must be one of "cpu", "gpu", or "hybrid"')
+        sys.exit(1)
 
     # Method to use to apply direction-dependent effects during imaging: "none",
     # "facets", or "screens". If "none", the solutions closest to the image centers
@@ -535,8 +538,14 @@ def get_imaging_options(parset):
     # screens) (default = kl)
     if 'dde_method' not in parset_dict:
         parset_dict['dde_method'] = 'screens'
+    if parset_dict['dde_method'] not in ['none', 'screens', 'facets']:
+        log.error('The option dde_method must be one of "none", "screens", or "facets"')
+        sys.exit(1)
     if 'screen_type' not in parset_dict:
         parset_dict['screen_type'] = 'kl'
+    if parset_dict['screen_type'] not in ['kl', 'tessellated']:
+        log.error('The option screen_type must be one of "kl", or "tessellated"')
+        sys.exit(1)
 
     # Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
     if 'mem_fraction' in parset_dict:
