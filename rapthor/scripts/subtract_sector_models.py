@@ -170,6 +170,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     phaseonly = misc.string2bool(phaseonly)
     reweight = misc.string2bool(reweight)
     model_list = misc.string2list(msmod_list)
+    msin_orig = msin
 
     # Get the model data filenames, filtering any that do not have the right start time
     if starttime is not None:
@@ -360,6 +361,17 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         datain = None
         datamod_all = None
         datamod_list = None
+
+    if len(model_list) == 0:
+        # This means there is just a single sector and no reweighting is to be done
+        msout = os.path.basename(msin_orig) + '.sector_1'
+        print(msout)
+        if os.path.exists(msout):
+            # File may exist from a previous iteration; delete it if so
+            misc.delete_directory(msout)
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
+        tin.close()
+        return
 
     # Open input table and define chunks based on available memory, making sure each
     # chunk gives a full timeslot (needed for reweighting)
@@ -711,7 +723,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('msin', help='Filename of input MS data file')
-    parser.add_argument('msmod', help='Filename of input MS model data file', type=str, default='phase000')
+    parser.add_argument('msmod', help='Filename of input MS model data file')
     parser.add_argument('--msin_column', help='Name of msin column', type=str, default='DATA')
     parser.add_argument('--model_column', help='Name of msmod column', type=str, default='DATA')
     parser.add_argument('--out_column', help='Name of output column', type=str, default='DATA')
