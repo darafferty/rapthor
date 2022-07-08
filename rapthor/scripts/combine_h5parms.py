@@ -44,7 +44,7 @@ def expand_array(array, new_shape, new_axis_ind):
 
 
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
-         reweight=False, cal_names=None, cal_fluxes=None, interpolate_amplitudes=True):
+         reweight=False, cal_names=None, cal_fluxes=None, interpolate_amplitudes=False):
     """
     Combines two h5parms
 
