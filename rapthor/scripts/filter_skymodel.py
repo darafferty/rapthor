@@ -202,9 +202,9 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         dummylines.append(',,p1,{0},{1}\n'.format(sra, sdec))
         dummylines.append('s0c0,POINT,p1,{0},{1},0.00000001,'
                           '[0.0,0.0],false,100000000.0,,,\n'.format(sra, sdec))
-        with open(output_root+'.apparent_sky', 'w') as f:
+        with open(output_root+'.apparent_sky.txt', 'w') as f:
             f.writelines(dummylines)
-        with open(output_root+'.true_sky', 'w') as f:
+        with open(output_root+'.true_sky.txt', 'w') as f:
             f.writelines(dummylines)
 
     # Set the TMPDIR env var back to its original value
