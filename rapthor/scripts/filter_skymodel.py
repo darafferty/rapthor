@@ -35,7 +35,7 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         beam correction
     output_root : str
         Root of filename of output makesourcedb sky models. Output filenames will be
-        output_root+'.apparent_sky' and output_root+'.true_sky'
+        output_root+'.apparent_sky.txt' and output_root+'.true_sky.txt'
     vertices_file : str
         Filename of file with vertices
     threshisl : float, optional
