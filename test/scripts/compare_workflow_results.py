@@ -14,13 +14,15 @@ import sys
 
 import astropy.io.fits
 import coloredlogs
-import h5py
 import lsmtool
 import numpy as np
 import rapthor.lib.image
 
 # import traceback
-# import warnings
+import warnings
+
+# Suppress UserWarning messages (matplotlib spits out a lot of them)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 # warnings.showwarning
 
@@ -43,8 +45,9 @@ import rapthor.lib.image
 
 
 # logging.basicConfig(format="{levelname}: {message}", style="{", level=logging.INFO)
-coloredlogs.install(level="INFO", fmt="%(levelname)s: %(message)s")
-logger = logging.getLogger("compare_workflow_results")
+coloredlogs.install(level="INFO", fmt="%(levelname)s [%(name)s]: %(message)s")
+logger = logging.getLogger()
+# logger = logging.getLogger("compare_workflow_results")
 
 
 def check_all_files_present(dcmp):
@@ -76,78 +79,6 @@ def check_all_files_present(dcmp):
     return agree
 
 
-# def compare_solution_files(left, right, atol=1e-3, rtol=1e-3):
-#     """
-#     Compare the values in the solution files `left` and `right`.
-#     This method assumes that the h5 files are produced by the Rapthor pipeline,
-#     hence have a certain known structure.
-#     :param left: First solutions file
-#     :param right: Second solutions file
-#     :param atol: Absolute tolerance threshold
-#     :param rtol: Relative tolerance threshold
-#     :return: True if files are similar, else False.
-#     """
-#     agree = True
-#     with h5py.File(left, "r") as h5_left, h5py.File(right, "r") as h5_right:
-#         for solsetname in h5_left:
-#             soltabnames = [
-#                 name
-#                 for name in h5_left[solsetname]
-#                 if name not in ("source", "antenna")
-#             ]
-#             for soltabname in soltabnames:
-#                 left_soltabval = h5_left[solsetname][soltabname]["val"]
-#                 try:
-#                     right_soltabval = h5_right[solsetname][soltabname]["val"]
-#                 except KeyError:
-#                     logger.error(
-#                         "Table '%s' in set '%s' is present in file '%s', but not in "
-#                         "file '%s'",
-#                         soltabname,
-#                         solsetname,
-#                         left,
-#                         right,
-#                     )
-#                     return False
-#                 # matching_vals = right_soltabval
-#                 # if 'freq' in h5_left[solsetname][soltabname].keys() and args.allow_frequency_subset:
-#                 #     left_axes = left_soltabval.attrs['AXES'].decode('utf-8').split(',')
-#                 #     freq_axis_index = left_axes.index('freq')
-#                 #     left_soltabfreq = h5_left[solsetname][soltabname]['freq'][:]
-#                 #     right_soltabfreq = h5_right[solsetname][soltabname]['freq'][:]
-#                 #     matches = np.isclose(right_soltabfreq[:, np.newaxis], left_soltabfreq)
-#                 #     matching_freq_indices = np.where(matches)[0]
-#                 #     matching_vals = np.take(right_soltabval,
-#                 #                             matching_freq_indices,
-#                 #                             axis=freq_axis_index)
-#                 # if not np.allclose(left_soltabval, matching_vals,
-
-#                 # Calculate cosine of phase to avoid phase jump issues
-#                 if 'phase' in soltabname:
-#                     logger.debug("Calculate cosine to avoid phase jump issues")
-#                     left_soltabval = np.cos(left_soltabval)
-#                     right_soltabval = np.cos(right_soltabval)
-#                 if np.allclose(
-#                     left_soltabval,
-#                     right_soltabval,
-#                     rtol=rtol,
-#                     atol=atol,
-#                     equal_nan=True,
-#                 ):
-#                     logger.info("Values in solution table '%s' match", soltabname)
-#                 else:
-#                     agree = False
-#                     logger.error(
-#                         "Values in solution table '%s' do not match", soltabname
-#                     )
-#                     # if dump_vals:
-#                     #     with open(f"left.{soltabname}.val", "w") as f:
-#                     #         f.write(str(left_soltabval[:]))
-#                     #     with open(f"right.{soltabname}.val", "w") as f:
-#                     #         f.write(str(right_soltabval[:]))
-#     return agree
-
-
 def fits_files_are_similar(file1, file2, rtol=1e-3, verbose=False):
     """
     Compare FITS files `file1` and `file2`, using `FITSDiff` in `astropy`.
@@ -166,10 +97,10 @@ def fits_files_are_similar(file1, file2, rtol=1e-3, verbose=False):
         logger.info("FITS files '%s' and '%s' are similar", file1, file2)
     else:
         if verbose:
-            logger.error("FITS files '%s' and '%s' are different:\n%s", 
-                         file1, file2, diff.report())
+            logger.error("FITS files '%s' and '%s' differ (rtol: %s):\n%s", 
+                         file1, file2, rtol, diff.report())
         else:
-            logger.error("FITS files '%s' and '%s' are different", file1, file2)
+            logger.error("FITS files '%s' and '%s' differ (rtol: %s)", file1, file2, rtol)
 
 
 def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbose=False):
@@ -190,8 +121,10 @@ def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbose=
     """
     logger.debug("Comparing '%s' and '%s'", file1, file2)
     command = ["h5diff"]
-    if verbose:
-        command.extend(["--verbose"])
+    # if verbose:
+    #     command.extend(["--verbose"])
+    if not verbose:
+        command.extend(["--quiet"])
     command.extend([f"--relative={rtol}"])
     command.extend([file1, file2])
     if obj1:
@@ -210,9 +143,9 @@ def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbose=
         logger.info("HDF5 files '%s' and '%s' are similar", file1, file2)
     if cp.returncode == 1:
         if verbose:
-            logger.error("HDF5 files '%s' and '%s' differ:\n%s", file1, file2, cp.stdout)
+            logger.error("HDF5 files '%s' and '%s' differ (rtol: %s):\n%s", file1, file2, rtol, cp.stdout)
         else:
-            logger.error("HDF5 files '%s' and '%s' differ", file1, file2)
+            logger.error("HDF5 files '%s' and '%s' differ (rtol: %s)", file1, file2, rtol)
     if cp.returncode == 2:
         if verbose:
             logger.error("Failed to compare files '%s' and '%s': %s", file1, file2, cp.stdout)
@@ -244,17 +177,17 @@ def image_files_are_similar(file1, file2, rtol=1e-3, verbose=False):
     noise2 = image_noise(file2)
     agree = np.isclose(noise1, noise2, rtol=rtol)
     if agree:
-        logger.info("Image noise in '%s' and '%s' is similar", file1, file2)
+        logger.info("Image files '%s' and '%s' are similar", file1, file2)
     if not agree:
         if verbose:
-            logger.error("Image noise in '%s' and '%s' is different: %f and %f",
-                         file1, file2, noise1, noise2)
+            logger.error("Image files '%s' and '%s' differ (rtol: %s):\n"
+                         "noise levels are %s and %s", file1, file2, rtol, noise1, noise2)
         else:
-            logger.error("Image noise in '%s' and '%s' is different", file1, file2)
+            logger.error("Image files '%s' and '%s' differ (rtol: %s)", file1, file2, rtol)
     return agree
 
 
-def skymodel_files_are_similar(file1, file2, atol=1e-6, rtol=1e-3, verbose=False):
+def skymodel_files_are_similar(file1, file2, atol=1e-5, rtol=1e-3, verbose=False):
     """
     Compare two skymodel files. Skymodels are considered similar if their
     statistics are similar. This function uses LSMTool to determine the skymodel
@@ -286,14 +219,22 @@ def skymodel_files_are_similar(file1, file2, atol=1e-6, rtol=1e-3, verbose=False
     sm1 = lsmtool.load(file1)
     sm2 = lsmtool.load(file2)
     stats = sm1.compare(sm2)
-    agree = compare_stats(stats, atol, rtol)
+    if not stats:
+        agree = False
+    else:
+        # We're only interested in a few statistics
+        stats = {key: stats[key] for key in ('meanRatio', 'meanRAOffsetDeg', 'meanDecOffsetDeg')}
+        agree = compare_stats(stats, atol, rtol)
     if agree:
         logger.info("Skymodels '%s' and '%s' are similar", file1, file2)
     else:
-        if verbose:
-            logger.error("Skymodels '%s' and '%s' differ: %s", file1, file2, stats)
+        if stats:
+            if verbose:
+                logger.error("Skymodels '%s' and '%s' differ (atol: %s, rtol: %s): %s", file1, file2, atol, rtol, stats)
+            else:
+                logger.error("Skymodels '%s' and '%s' differ (atol: %s, rtol: %s)", file1, file2, atol, rtol)
         else:
-            logger.error("Skymodels '%s' and '%s' differ", file1, file2)
+            logger.error("Failed to compare skymodels '%s' and '%s'", file1, file2)
     return agree
 
 
@@ -302,7 +243,7 @@ def compare_images(dcmp, rtol=1e-3, verbose=False):
     Compare the image files present in `dircmp` object `dcmp`.
     Only files with extension `.fits` are considered to be image files.
     """
-    logger.debug("Comparing images in '%s' and '%s'", dcmp.left, dcmp.right)
+    logger.debug("Comparing directories '%s' and '%s'", dcmp.left, dcmp.right)
     agree = True
     if not check_all_files_present(dcmp):
         agree = False
@@ -323,7 +264,7 @@ def compare_skymodels(dcmp, atol=1e-6, rtol=1e-3, verbose=False):
     Compare the skymodel files present in `dircmp` object `dcmp`.
     Only files with extension `.txt` are considered to be skymodel files.
     """
-    logger.info("Comparing directories '%s' and '%s'", dcmp.left, dcmp.right)
+    logger.debug("Comparing directories '%s' and '%s'", dcmp.left, dcmp.right)
     agree = True
     if not check_all_files_present(dcmp):
         agree = False
@@ -358,30 +299,6 @@ def compare_solutions(dcmp, rtol=1e-3, verbose=False):
         if not compare_solutions(sub_dcmp, rtol=rtol, verbose=verbose):
             agree = False
     return agree
-
-
-# def compare_lsm_stats(stats, atol, rtol):
-#     """
-#     Check if the flux ratio is close to 1, and that the position offsets
-#     are less than `atol`
-#     :param atol: Absolute tolerance used to compare position offsets
-#     :param rtol: Relative tolerance used to compare flux ratio
-#     """
-#     if not np.isclose(stats['meanRatio'], 1, rtol=rtol):
-#         return False
-#     if not np.isclose(stats['meanRAOffsetDeg'], 0, atol=atol):
-#         return False
-#     if not np.isclose(stats['meanDecOffsetDeg'], 0, atol=atol):
-#         return False
-#     return True
-
-# def image_noise(fname):
-#     """
-#     Calculate the RMS value of the noise in the image file `fname`
-#     """
-#     image = rapthor.lib.image.FITSImage(fname)
-#     image.calc_noise()
-#     return image.noise
 
 
 def compare_intermediate_results(dcmp, rtol=1e-2, verbose=False):
@@ -444,36 +361,38 @@ def main(args):
     """
     agree = True
 
-    if not compare_images(
-        filecmp.dircmp(
-            os.path.join(args.left, "images"), os.path.join(args.right, "images")
-        ),
-        rtol=0.01,
-        verbose=args.verbose,
-    ):
-        agree = False
+    # if not compare_images(
+    #     filecmp.dircmp(
+    #         os.path.join(args.left, "images"), os.path.join(args.right, "images")
+    #     ),
+    #     rtol=0.01,
+    #     verbose=args.verbose,
+    # ):
+    #     agree = False
 
-    if not compare_skymodels(
-        filecmp.dircmp(
-            os.path.join(args.left, "skymodels"), os.path.join(args.right, "skymodels")
-        ),
-        verbose=args.verbose,
-    ):
-        agree = False
+    # if not compare_skymodels(
+    #     filecmp.dircmp(
+    #         os.path.join(args.left, "skymodels"), os.path.join(args.right, "skymodels")
+    #     ),
+    #     verbose=args.verbose,
+    # ):
+    #     agree = False
 
-    if not compare_solutions(
-        filecmp.dircmp(
-            os.path.join(args.left, "solutions"), os.path.join(args.right, "solutions")
-        ),
-        rtol=5e-3,
-        verbose=args.verbose,
-    ):
-        agree = False
+    # if not compare_solutions(
+    #     filecmp.dircmp(
+    #         os.path.join(args.left, "solutions"), os.path.join(args.right, "solutions")
+    #     ),
+    #     rtol=5e-3,
+    #     verbose=args.verbose,
+    # ):
+    #     agree = False
 
     if not compare_intermediate_results(
         filecmp.dircmp(
             os.path.join(args.left, "pipelines"), os.path.join(args.right, "pipelines")
-        )
+        ),
+        # rtol=5e-3,
+        verbose=args.verbose
     ):
         agree = False
 
