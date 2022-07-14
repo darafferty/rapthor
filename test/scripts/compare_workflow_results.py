@@ -11,6 +11,7 @@ import logging
 import os
 import subprocess
 import sys
+import textwrap
 import warnings
 
 import astropy.io.fits
@@ -25,36 +26,36 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # Global Logger object, will be initialized in init_logger()
 logger = None
 
-def check_all_files_present(dcmp):
-    """
-    Checks recursively that all files are present in both compared directories
+# def check_all_files_present(dcmp):
+#     """
+#     Checks recursively that all files are present in both compared directories
 
-    Parameters
-    ----------
-    dcmp : dircmp object
-        The result of dircmp(left, right)
+#     Parameters
+#     ----------
+#     dcmp : dircmp object
+#         The result of dircmp(left, right)
 
-    Returns
-    -------
-    agree : bool
-        True if all files are present, False if not
-    """
-    logger.debug("Comparing directory contents of '%s' and '%s'", dcmp.left, dcmp.right)
-    agree = True
-    if dcmp.left_only or dcmp.right_only:
-        agree = False
-        msg = "The following files/directories are present in '%s' but not in '%s': %s"
-        if dcmp.left_only:
-            logger.error(msg, dcmp.left, dcmp.right, dcmp.left_only)
-        if dcmp.right_only:
-            logger.error(msg, dcmp.right, dcmp.left, dcmp.right_only)
-    for sub_dcmp in dcmp.subdirs.values():
-        if not check_all_files_present(sub_dcmp):
-            agree = False
-    return agree
+#     Returns
+#     -------
+#     agree : bool
+#         True if all files are present, False if not
+#     """
+#     logger.debug("Comparing directory contents of '%s' and '%s'", dcmp.left, dcmp.right)
+#     agree = True
+#     if dcmp.left_only or dcmp.right_only:
+#         agree = False
+#         msg = "The following files/directories are present in '%s' but not in '%s': %s"
+#         if dcmp.left_only:
+#             logger.error(msg, dcmp.left, dcmp.right, dcmp.left_only)
+#         if dcmp.right_only:
+#             logger.error(msg, dcmp.right, dcmp.left, dcmp.right_only)
+#     for sub_dcmp in dcmp.subdirs.values():
+#         if not check_all_files_present(sub_dcmp):
+#             agree = False
+#     return agree
 
 
-def fits_files_are_similar(file1, file2, rtol=1e-3, verbosity=0):
+def fits_files_are_similar(file1, file2, rtol, verbosity):
     """
     Compare FITS files `file1` and `file2`, using `FITSDiff` in `astropy`.
     FITS files are considered similar if none of the values have a relative
@@ -72,13 +73,13 @@ def fits_files_are_similar(file1, file2, rtol=1e-3, verbosity=0):
         logger.info("FITS files '%s' and '%s' are similar", file1, file2)
     else:
         if verbosity > 0:
-            logger.error("FITS files '%s' and '%s' differ (rtol: %s):\n%s",
+            logger.error("FITS files '%s' and '%s' differ (rtol=%s):\n%s",
                          file1, file2, rtol, diff.report())
         else:
-            logger.error("FITS files '%s' and '%s' differ (rtol: %s)", file1, file2, rtol)
+            logger.error("FITS files '%s' and '%s' differ (rtol=%s)", file1, file2, rtol)
 
 
-def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbosity=0):
+def h5_files_are_similar(file1, file2, rtol, verbosity): #, obj1=None, obj2=None):
     """
     Check if HDF-5 `file1` and `file2` are similar. If `obj1` is not None and `obj2`
     is None, then `obj1` in `file1` is compared against `obj1` in `file2`. If both
@@ -88,8 +89,8 @@ def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbosit
     This method uses the `h5diff` command that is part of the HDF5 Tools.
     :param file1: First HDF-5 file
     :param file2: Second HDF-5 file
-    :param obj1: Object in file1 (and file2 if obj2 is `None`) to compare
-    :param obj2: Object in file2 to compare
+    # :param obj1: Object in file1 (and file2 if obj2 is `None`) to compare
+    # :param obj2: Object in file2 to compare
     :param rtol: Relative tolerance threshold
     :param verbosity: Verbosity level, higher is more verbose
     :return: True if files are similar, else False
@@ -102,10 +103,10 @@ def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbosit
         command.extend(["--verbose"])
     command.extend([f"--relative={rtol}"])
     command.extend([file1, file2])
-    if obj1:
-        command.extend([obj1])
-        if obj2:
-            command.extend([obj2])
+    # if obj1:
+    #     command.extend([obj1])
+    #     if obj2:
+    #         command.extend([obj2])
     logger.debug("Executing command: %s", command)
     cp = subprocess.run(
         command,
@@ -118,9 +119,9 @@ def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbosit
         logger.info("HDF5 files '%s' and '%s' are similar", file1, file2)
     if cp.returncode == 1:
         if cp.stdout:
-            logger.error("HDF5 files '%s' and '%s' differ (rtol: %s)\n%s", file1, file2, rtol, cp.stdout)
+            logger.error("HDF5 files '%s' and '%s' differ (rtol=%s)\n%s", file1, file2, rtol, cp.stdout)
         else:
-            logger.error("HDF5 files '%s' and '%s' differ (rtol: %s)", file1, file2, rtol)
+            logger.error("HDF5 files '%s' and '%s' differ (rtol=%s)", file1, file2, rtol)
     if cp.returncode == 2:
         if cp.stdout:
             logger.error("Failed to compare files '%s' and '%s': %s", file1, file2, cp.stdout)
@@ -129,7 +130,7 @@ def h5_files_are_similar(file1, file2, obj1=None, obj2=None, rtol=1e-3, verbosit
     return cp.returncode == 0
 
 
-def image_files_are_similar(file1, file2, rtol=1e-3, verbosity=0):
+def image_files_are_similar(file1, file2, rtol, verbosity):
     """
     Compare two FITS image files, by comparing the RMS noise values.
     Files are considered similar if the the noise ratio differs less than
@@ -155,14 +156,14 @@ def image_files_are_similar(file1, file2, rtol=1e-3, verbosity=0):
         logger.info("Image files '%s' and '%s' are similar", file1, file2)
     if not agree:
         if verbosity > 0:
-            logger.error("Image files '%s' and '%s' differ (rtol: %s)\n"
+            logger.error("Image files '%s' and '%s' differ (rtol=%s)\n"
                          "Noise: %.3f mJy/b vs %.3f mJy/b", file1, file2, rtol, 1000 * noise1, 1000 * noise2)
         else:
-            logger.error("Image files '%s' and '%s' differ (rtol: %s)", file1, file2, rtol)
+            logger.error("Image files '%s' and '%s' differ (rtol=%s)", file1, file2, rtol)
     return agree
 
 
-def skymodel_files_are_similar(file1, file2, atol=1e-5, rtol=1e-3, verbosity=0):
+def skymodel_files_are_similar(file1, file2, atol, rtol, verbosity):
     """
     Compare two skymodel files. Skymodels are considered similar if their
     statistics are similar. This function uses LSMTool to determine the skymodel
@@ -205,15 +206,15 @@ def skymodel_files_are_similar(file1, file2, atol=1e-5, rtol=1e-3, verbosity=0):
     else:
         if stats:
             if verbosity > 0:
-                logger.error("Skymodel files '%s' and '%s' differ (atol: %s, rtol: %s): %s", file1, file2, atol, rtol, stats)
+                logger.error("Skymodel files '%s' and '%s' differ (atol=%s, rtol=%s): %s", file1, file2, atol, rtol, stats)
             else:
-                logger.error("Skymodel files '%s' and '%s' differ (atol: %s, rtol: %s)", file1, file2, atol, rtol)
+                logger.error("Skymodel files '%s' and '%s' differ (atol=%s, rtol=%s)", file1, file2, atol, rtol)
         else:
             logger.error("Failed to compare skymodel files '%s' and '%s'", file1, file2)
     return agree
 
 
-def compare_results(dcmp, atol=1e-5, rtol=1e-3, verbosity=0):
+def compare_results(dcmp, atol, rtol, verbosity):
     """
     Compare the results between the files produced by each CWL workflow.
     :param dcmp: a `dircmp` object with the directory contents of the two workflows
@@ -221,7 +222,7 @@ def compare_results(dcmp, atol=1e-5, rtol=1e-3, verbosity=0):
     :param rtol: relative tolerance threshold
     :param verbosity: verbosity level, higher means more verbose
     """
-    logger.info("Comparing results in '%s' and '%s'", dcmp.left, dcmp.right)
+    logger.info("*** Comparing results in '%s' and '%s' ***", dcmp.left, dcmp.right)
     agree = True
     for dname, sub_dcmp in dcmp.subdirs.items():
         logger.debug("dname: %s, sub_dcmp.left: %s, sub_dcmp.right: %s", dname, sub_dcmp.left, sub_dcmp.right)
@@ -252,16 +253,42 @@ def parse_arguments():
     :return: argparse.Namespace
     """
     parser = argparse.ArgumentParser(
-        description="Compare the results of two Rapthor runs.\n",
-        formatter_class=argparse.RawTextHelpFormatter,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        description=textwrap.dedent(
+            """
+            Compare the results of two Rapthor runs.
+            By default, only the saved results (images, skymodels, and solutions) are
+            compared, and not the intermediate results. If the `--all` option is given,
+            the intermediate results are also compared. The user can also choose to
+            compare just one category of results for comparison: saved images, saved
+            skymodels, saved solutions, or intermediate results. Note that the
+            intermediate results also contain images, skymodels and solutions.
+            """
+        )
     )
-    parser.add_argument("left", help="Directory containing results of the first run")
-    parser.add_argument("right", help="Directory containing results of the second run")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-q", "--quiet", action="store_true",
-                       help="Quiet mode; only report errors")
-    group.add_argument("-v", "--verbose", action="count", default=0,
-                       help="Verbose mode; multiple -v options increase verbosity")
+    parser.add_argument("first", help="Directory containing results of the first run")
+    parser.add_argument("second", help="Directory containing results of the second run")
+    parser.add_argument("--atol", type=float, default=1e-5,
+                        help="Absolute tolerance threshold for comparing data (default=%(default)s)")
+    parser.add_argument("--rtol", type=float, default=1e-3,
+                        help="Relative tolerance threshold for comparing data (default=%(default)s)")
+    verb_group = parser.add_mutually_exclusive_group()
+    verb_group.add_argument("-q", "--quiet", action="store_true",
+                           help="Quiet mode; only report errors")
+    verb_group.add_argument("-v", "--verbose", action="count", default=0,
+                           help="Verbose mode; multiple -v options increase verbosity")
+    data_group = parser.add_mutually_exclusive_group()
+    data_group.add_argument("--all", action="store_true",
+                        help="Compare all results (including intermediate results)")
+    data_group.add_argument("--images", action="store_true",
+                        help="Compare saved images only")
+    data_group.add_argument("--skymodels", action="store_true",
+                        help="Compare saved skymodels only")
+    data_group.add_argument("--solutions", action="store_true",
+                        help="Compare saved solutions only")
+    data_group.add_argument("--intermediate", action="store_true",
+                        help="Compare intermediate results only")
+
     args = parser.parse_args()
     print("**** args:", args)
     return args
@@ -287,61 +314,71 @@ def init_logger(verbosity):
 
 def main(args):
     """
-    Compare the images, skymodels and solutions in the `args.left` directory to
-    those in the `args.right` directory.
+    Compare the images, skymodels and solutions in the `args.first` directory to
+    those in the `args.second` directory.
     :param args: Output of command-line parsing using `argparse`
-    :return: True if all files in `args.left` are similar to those in `args.right`,
+    :return: True if all files in `args.first` are similar to those in `args.second`,
     else False.
     """
     # Set level of verbosity to -1 if command-line option `-q` is given, else
     # to the number of times the command-line option `-v` is given.
     verbosity = -1 if args.quiet else args.verbose
 
+    # Initialize logger and set log level depending on verbosity level
     init_logger(verbosity)
 
     agree = True
 
-    # if not compare_images(
-    if not compare_results(
-        filecmp.dircmp(
-            os.path.join(args.left, "images"), os.path.join(args.right, "images")
-        ),
-        # rtol=0.01,
-        verbosity=verbosity
-    ):
-        agree = False
+    no_opts = not any((args.all, args.images, args.skymodels, args.solutions, args.intermediate))
 
-    # if not compare_skymodels(
-    if not compare_results(
-        filecmp.dircmp(
-            os.path.join(args.left, "skymodels"), os.path.join(args.right, "skymodels")
-        ),
-        verbosity=verbosity
-    ):
-        agree = False
+    if args.all or args.images or no_opts:
+        if not compare_results(
+            filecmp.dircmp(
+                os.path.join(args.first, "images"), os.path.join(args.second, "images")
+            ),
+            atol=args.atol,
+            rtol=args.rtol,
+            verbosity=verbosity
+        ):
+            agree = False
 
-    # if not compare_solutions(
-    if not compare_results(
-        filecmp.dircmp(
-            os.path.join(args.left, "solutions"), os.path.join(args.right, "solutions")
-        ),
-        # rtol=5e-3,
-        verbosity=verbosity
-    ):
-        agree = False
+    if args.all or args.skymodels or no_opts:
+        if not compare_results(
+            filecmp.dircmp(
+                os.path.join(args.first, "skymodels"), os.path.join(args.second, "skymodels")
+            ),
+            atol=args.atol,
+            rtol=args.rtol,
+            verbosity=verbosity
+        ):
+            agree = False
 
-    # if not compare_intermediate_results(
-    if not compare_results(
-        filecmp.dircmp(
-            os.path.join(args.left, "pipelines"), os.path.join(args.right, "pipelines")
-        ),
-        # rtol=5e-3,
-        verbosity=verbosity
-    ):
-        agree = False
+    if args.all or args.solutions or no_opts:
+        if not compare_results(
+            filecmp.dircmp(
+                os.path.join(args.first, "solutions"), os.path.join(args.second, "solutions")
+            ),
+            atol=args.atol,
+            rtol=args.rtol,
+            verbosity=verbosity
+        ):
+            agree = False
 
-    return 0 if agree else 1
+    if args.all or args.intermediate:
+        if not compare_results(
+            filecmp.dircmp(
+                os.path.join(args.first, "pipelines"), os.path.join(args.second, "pipelines")
+            ),
+            atol=args.atol,
+            rtol=args.rtol,
+            verbosity=verbosity
+        ):
+            agree = False
+
+    return agree
 
 
 if __name__ == "__main__":
-    sys.exit(main(parse_arguments()))
+    # parse_arguments()
+    success = main(parse_arguments())
+    sys.exit(0 if success else 1)
