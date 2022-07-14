@@ -269,7 +269,7 @@ def parse_arguments():
 
 def init_logger(verbosity):
     """
-    Initialize a global logger object. 
+    Initialize a global logger object.
     Set the loglevel depending on the `verbosity`.
     """
     global logger
@@ -293,21 +293,10 @@ def main(args):
     :return: True if all files in `args.left` are similar to those in `args.right`,
     else False.
     """
-    def get_verbosity(args):
-        """
-        Determine the level of verbosity, based on the command-line options
-        stored in `args`. If the option `-q` or `--quiet` is given, set the
-        verbosity level to -1. Otherwise, set the verbosity level to the number
-        of times that the option `-v` or `--verbose` is given.
-        :param args: The output produced by the argument parser
-        :return: Verbosity level (integer), higher value means more verbose
-        """
-        if args.quiet:
-            return -1
-        else:
-            return args.verbose
+    # Set level of verbosity to -1 if command-line option `-q` is given, else
+    # to the number of times the command-line option `-v` is given.
+    verbosity = -1 if args.quiet else args.verbose
 
-    verbosity = get_verbosity(args)
     init_logger(verbosity)
 
     agree = True
