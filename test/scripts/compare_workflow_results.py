@@ -26,40 +26,37 @@ warnings.filterwarnings("ignore", category=UserWarning)
 # Global Logger object, will be initialized in init_logger()
 logger = None
 
-# def check_all_files_present(dcmp):
-#     """
-#     Checks recursively that all files are present in both compared directories
+def check_all_files_present(dcmp):
+    """
+    Checks that all files are present in both compared directories
 
-#     Parameters
-#     ----------
-#     dcmp : dircmp object
-#         The result of dircmp(left, right)
+    Parameters
+    ----------
+    dcmp : dircmp object
+        The result of dircmp(left, right)
 
-#     Returns
-#     -------
-#     agree : bool
-#         True if all files are present, False if not
-#     """
-#     logger.debug("Comparing directory contents of '%s' and '%s'", dcmp.left, dcmp.right)
-#     agree = True
-#     if dcmp.left_only or dcmp.right_only:
-#         agree = False
-#         msg = "The following files/directories are present in '%s' but not in '%s': %s"
-#         if dcmp.left_only:
-#             logger.error(msg, dcmp.left, dcmp.right, dcmp.left_only)
-#         if dcmp.right_only:
-#             logger.error(msg, dcmp.right, dcmp.left, dcmp.right_only)
-#     for sub_dcmp in dcmp.subdirs.values():
-#         if not check_all_files_present(sub_dcmp):
-#             agree = False
-#     return agree
+    Returns
+    -------
+    agree : bool
+        True if all files are present, False if not
+    """
+    logger.debug("Comparing directory contents of '%s' and '%s'", dcmp.left, dcmp.right)
+    agree = True
+    if dcmp.left_only or dcmp.right_only:
+        agree = False
+        msg = "The following files are present in '%s' but not in '%s': %s"
+        if dcmp.left_only:
+            logger.error(msg, dcmp.left, dcmp.right, dcmp.left_only)
+        if dcmp.right_only:
+            logger.error(msg, dcmp.right, dcmp.left, dcmp.right_only)
+    return agree
 
 
 def fits_files_are_similar(file1, file2, rtol, verbosity):
     """
     Compare FITS files `file1` and `file2`, using `FITSDiff` in `astropy`.
     FITS files are considered similar if none of the values have a relative
-    difference that exceeds `rtol`.
+    difference exceeding `rtol`.
     :param file1: First FITS file
     :param file2: Second FITS file
     :param rtol: Relative tolerance threshold
@@ -79,18 +76,13 @@ def fits_files_are_similar(file1, file2, rtol, verbosity):
             logger.error("FITS files '%s' and '%s' differ (rtol=%s)", file1, file2, rtol)
 
 
-def h5_files_are_similar(file1, file2, rtol, verbosity): #, obj1=None, obj2=None):
+def h5_files_are_similar(file1, file2, rtol, verbosity):
     """
-    Check if HDF-5 `file1` and `file2` are similar. If `obj1` is not None and `obj2`
-    is None, then `obj1` in `file1` is compared against `obj1` in `file2`. If both
-    `obj1` and `obj2` are not None, then `obj1` in `file1` is compared against `obj2`
-    in `file2`. Files are considered similar if none of the values have a relative
-    difference that exceed `rtol`.
+    Check if HDF-5 `file1` and `file2` are similar. Files are considered
+    similar if none of the values have a relative difference exceeding `rtol`.
     This method uses the `h5diff` command that is part of the HDF5 Tools.
     :param file1: First HDF-5 file
     :param file2: Second HDF-5 file
-    # :param obj1: Object in file1 (and file2 if obj2 is `None`) to compare
-    # :param obj2: Object in file2 to compare
     :param rtol: Relative tolerance threshold
     :param verbosity: Verbosity level, higher is more verbose
     :return: True if files are similar, else False
@@ -103,10 +95,6 @@ def h5_files_are_similar(file1, file2, rtol, verbosity): #, obj1=None, obj2=None
         command.extend(["--verbose"])
     command.extend([f"--relative={rtol}"])
     command.extend([file1, file2])
-    # if obj1:
-    #     command.extend([obj1])
-    #     if obj2:
-    #         command.extend([obj2])
     logger.debug("Executing command: %s", command)
     cp = subprocess.run(
         command,
@@ -226,6 +214,7 @@ def compare_results(dcmp, atol, rtol, verbosity):
     agree = True
     for dname, sub_dcmp in dcmp.subdirs.items():
         logger.debug("dname: %s, sub_dcmp.left: %s, sub_dcmp.right: %s", dname, sub_dcmp.left, sub_dcmp.right)
+        check_all_files_present(sub_dcmp)
         for fname in sub_dcmp.common_files:
             left = os.path.join(sub_dcmp.left, fname)
             right = os.path.join(sub_dcmp.right, fname)
@@ -327,11 +316,10 @@ def main(args):
     # Initialize logger and set log level depending on verbosity level
     init_logger(verbosity)
 
+    no_opts = not any((args.all, args.images, args.skymodels, args.solutions, args.intermediate))
     agree = True
 
-    no_opts = not any((args.all, args.images, args.skymodels, args.solutions, args.intermediate))
-
-    if args.all or args.images or no_opts:
+    if args.images or args.all or no_opts:
         if not compare_results(
             filecmp.dircmp(
                 os.path.join(args.first, "images"), os.path.join(args.second, "images")
@@ -342,7 +330,7 @@ def main(args):
         ):
             agree = False
 
-    if args.all or args.skymodels or no_opts:
+    if args.skymodels or args.all or no_opts:
         if not compare_results(
             filecmp.dircmp(
                 os.path.join(args.first, "skymodels"), os.path.join(args.second, "skymodels")
@@ -353,7 +341,7 @@ def main(args):
         ):
             agree = False
 
-    if args.all or args.solutions or no_opts:
+    if args.solutions or args.all or no_opts:
         if not compare_results(
             filecmp.dircmp(
                 os.path.join(args.first, "solutions"), os.path.join(args.second, "solutions")
@@ -364,7 +352,7 @@ def main(args):
         ):
             agree = False
 
-    if args.all or args.intermediate:
+    if args.intermediate or args.all:
         if not compare_results(
             filecmp.dircmp(
                 os.path.join(args.first, "pipelines"), os.path.join(args.second, "pipelines")
@@ -379,6 +367,5 @@ def main(args):
 
 
 if __name__ == "__main__":
-    # parse_arguments()
     success = main(parse_arguments())
     sys.exit(0 if success else 1)
