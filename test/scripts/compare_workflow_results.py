@@ -316,7 +316,7 @@ def parse_arguments():
     parser.add_argument(
         "--atol",
         type=float,
-        default=1e-5,
+        default=1e-6,
         help="Absolute tolerance threshold for comparing data (default=%(default)s)",
     )
     parser.add_argument(
