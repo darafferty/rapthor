@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: Workflow
 label: Rapthor imaging pipeline
 doc: |
@@ -22,7 +22,7 @@ inputs:
       type: array
       items:
         type: array
-        items: string
+        items: Directory
 
   - id: prepare_filename
     label: Filename of imaging MS
@@ -80,7 +80,11 @@ inputs:
     label: Filename of previous mask
     doc: |
       The filename of the image mask from the previous iteration (length = n_sectors).
-    type: string[]
+    type:
+      type: array
+      items:
+        - File
+        - "null"
 
   - id: mask_filename
     label: Filename of current mask
@@ -132,26 +136,24 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: region_file
     label: Filename of region file
     doc: |
       The filename of the region file (length = n_sectors).
-    type: string[]
+    type:
+      type: array
+      items:
+        - File
+        - "null"
 
 {% if use_screens %}
-  - id: aterms_config_file
-    label: Filename of config file
-    doc: |
-      The filename of the a-term config file (length = n_sectors).
-    type: string[]
-
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
-      The filenames of the a-term images (length = n_sectors).
-    type: string[]
+      The filenames of the a-term images (length = 1, with n_aterms subelements).
+    type: File[]
 
 {% if use_mpi %}
   - id: mpi_cpus_per_task
@@ -278,16 +280,32 @@ inputs:
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = n_sectors).
-    type: string[]
+    type: File[]
 
   - id: peel_bright
     label: Peeling flag
     doc: |
       The flag that sets whether peeling of bright sources was done in the predict
       pipeline (length = n_sectors).
-    type: string[]
+    type: boolean[]
 
-outputs: []
+outputs:
+  - id: filtered_skymodels
+    outputSource:
+      - image_sector/filtered_skymodels
+    type:
+      type: array
+      items:
+        type: array
+        items: File
+  - id: sector_images
+    outputSource:
+      - image_sector/sector_images
+    type:
+      type: array
+      items:
+        type: array
+        items: File
 
 steps:
   - id: image_sector
@@ -330,8 +348,6 @@ steps:
       - id: region_file
         source: region_file
 {% if use_screens %}
-      - id: aterms_config_file
-        source: aterms_config_file
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
@@ -386,7 +402,7 @@ steps:
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, aterms_config_file, aterm_image_filenames,
+              vertices_file, region_file,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
@@ -416,4 +432,7 @@ steps:
               peel_bright]
 {% endif %}
     scatterMethod: dotproduct
-    out: []
+
+    out:
+      - id: filtered_skymodels
+      - id: sector_images

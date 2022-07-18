@@ -47,6 +47,8 @@ class Field(object):
         self.target_number = self.parset['calibration_specific']['patch_target_number']
         self.solve_min_uv_lambda = self.parset['calibration_specific']['solve_min_uv_lambda']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
+        self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
+        self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
         self.slow_smoothnessconstraint_joint = self.parset['calibration_specific']['slow_smoothnessconstraint_joint']
         self.slow_smoothnessconstraint_separate = self.parset['calibration_specific']['slow_smoothnessconstraint_separate']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']

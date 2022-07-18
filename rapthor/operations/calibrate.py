@@ -3,8 +3,10 @@ Module that holds the Calibrate class
 """
 import os
 import logging
+import shutil
 from rapthor.lib.operation import Operation
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.cwl import CWLFile, CWLDir
 
 log = logging.getLogger('rapthor:calibrate')
 
@@ -69,34 +71,23 @@ class Calibrate(Operation):
 
         # Define various output filenames for the solution tables. We save some to
         # as attributes since they are needed in finalize()
-        output_fast_h5parm = [str(os.path.join(self.pipeline_working_dir,
-                              'fast_phase_{}.h5parm'.format(i)))
+        output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
-        self.combined_fast_h5parm = os.path.join(self.pipeline_working_dir,
-                                                 'fast_phases.h5parm')
-        output_slow_h5parm = [str(os.path.join(self.pipeline_working_dir,
-                              'slow_gain_{}.h5parm'.format(i)))
+        self.combined_fast_h5parm = 'fast_phases.h5parm'
+        output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
                               for i in range(self.field.nfreqchunks)]
-        combined_slow_h5parm = os.path.join(self.pipeline_working_dir,
-                                            'slow_gains.h5parm')
-        self.combined_h5parms = str(os.path.join(self.pipeline_working_dir,
-                                                 'combined_solutions.h5'))
-        output_slow_h5parm2 = [str(os.path.join(self.pipeline_working_dir,
-                               'slow_gain2_{}.h5parm'.format(i)))
+        combined_slow_h5parm = 'slow_gains.h5parm'
+        self.combined_h5parms = 'combined_solutions.h5'
+        output_slow_h5parm2 = ['slow_gain2_{}.h5parm'.format(i)
                                for i in range(self.field.nfreqchunks)]
-        combined_slow_h5parm1 = os.path.join(self.pipeline_working_dir,
-                                             'slow_gains1.h5parm')
-        combined_slow_h5parm2 = os.path.join(self.pipeline_working_dir,
-                                             'slow_gains2.h5parm')
-        combined_h5parms1 = str(os.path.join(self.pipeline_working_dir,
-                                             'combined_solutions1.h5'))
-        combined_h5parms2 = str(os.path.join(self.pipeline_working_dir,
-                                             'combined_solutions2.h5'))
+        combined_slow_h5parm1 = 'slow_gains1.h5parm'
+        combined_slow_h5parm2 = 'slow_gains2.h5parm'
+        combined_h5parms1 = 'combined_solutions1.h5'
+        combined_h5parms2 = 'combined_solutions2.h5'
 
         # Define the input sky model and its associated sourcedb
         calibration_skymodel_file = self.field.calibration_skymodel_file
-        calibration_sourcedb = str(os.path.join(self.pipeline_working_dir,
-                                                'calibration_skymodel.sourcedb'))
+        calibration_sourcedb = 'calibration_skymodel.sourcedb'
 
         # Get the calibrator names and fluxes (used in screen fitting)
         calibrator_patch_names = self.field.calibrator_patch_names
@@ -104,10 +95,12 @@ class Calibrate(Operation):
 
         # Set the constraints used in the calibrations
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
+        fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
+        fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
         slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint_joint
         slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint_separate
-        antennaconstraint_core = "'[[{}]]'".format(','.join(self.get_core_stations()))
-        antennaconstraint_all = "'[[{}]]'".format(','.join(self.field.stations))
+        antennaconstraint_core = '[[{}]]'.format(','.join(self.get_core_stations()))
+        antennaconstraint_all = '[[{}]]'.format(','.join(self.field.stations))
 
         # Get various DDECal solver parameters
         llssolver = self.field.llssolver
@@ -122,8 +115,8 @@ class Calibrate(Operation):
         uvlambdamin = self.field.solve_min_uv_lambda
 
         # Get the size of the imaging area (for use in making the a-term images)
-        sector_bounds_deg = "'{}'".format(self.field.sector_bounds_deg)
-        sector_bounds_mid_deg = "'{}'".format(self.field.sector_bounds_mid_deg)
+        sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
+        sector_bounds_mid_deg = '{}'.format(self.field.sector_bounds_mid_deg)
 
         # Set the number of chunks to split the solution tables into and define
         # the associated filenames
@@ -131,22 +124,19 @@ class Calibrate(Operation):
             nsplit = sum(self.field.get_obs_parameters('nsplit_slow'))
         else:
             nsplit = sum(self.field.get_obs_parameters('nsplit_fast'))
-        split_outh5parm = [str(os.path.join(self.pipeline_working_dir,
-                           'split_solutions_{}.h5'.format(i))) for i in
+        split_outh5parm = ['split_solutions_{}.h5'.format(i) for i in
                            range(nsplit)]
 
         # Set the root filenames for the a-term images. We save it to an attribute
         # since it is needed in finalize()
-        aterms_root = str(os.path.join(self.pipeline_working_dir,
-                                       'diagonal_aterms'))
-        self.output_aterms_root = [aterms_root+'_{}'.format(i) for i in
+        self.output_aterms_root = ['diagonal_aterms_{}'.format(i) for i in
                                    range(len(split_outh5parm))]
 
         # Set the type of screen to make
         screen_type = self.field.screen_type
 
-        self.input_parms = {'timechunk_filename': timechunk_filename,
-                            'freqchunk_filename': freqchunk_filename,
+        self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
+                            'freqchunk_filename': CWLDir(freqchunk_filename).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'slow_starttime': slow_starttime,
@@ -163,9 +153,11 @@ class Calibrate(Operation):
                             'combined_fast_h5parm': self.combined_fast_h5parm,
                             'output_slow_h5parm': output_slow_h5parm,
                             'combined_slow_h5parm': combined_slow_h5parm,
-                            'calibration_skymodel_file': calibration_skymodel_file,
+                            'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
+                            'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
+                            'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint1': slow_smoothnessconstraint1,
                             'llssolver': llssolver,
                             'maxiter': maxiter,
@@ -195,11 +187,9 @@ class Calibrate(Operation):
                             'combined_h5parms2': combined_h5parms2}
 
         if self.field.debug:
-            output_slow_h5parm_debug = [str(os.path.join(self.pipeline_working_dir,
-                                        'slow_gain_{}_debug.h5parm'.format(i)))
+            output_slow_h5parm_debug = ['slow_gain_{}_debug.h5parm'.format(i)
                                         for i in range(self.field.nfreqchunks)]
-            combined_slow_h5parm_debug = os.path.join(self.pipeline_working_dir,
-                                                      'slow_gains_debug.h5parm')
+            combined_slow_h5parm_debug = 'slow_gains_debug.h5parm'
             self.input_parms.update({'output_slow_h5parm_debug': output_slow_h5parm_debug,
                                      'combined_slow_h5parm_debug': combined_slow_h5parm_debug})
 
@@ -279,9 +269,10 @@ class Calibrate(Operation):
         # on the node memory, etc.
         self.field.aterm_image_filenames = []
         for aterms_root in self.output_aterms_root:
-            with open(aterms_root+'.txt', 'r') as f:
+            with open(os.path.join(self.pipeline_working_dir, aterms_root+'.txt'), 'r') as f:
                 self.field.aterm_image_filenames.extend(f.readlines())
-        self.field.aterm_image_filenames = [af.strip() for af in self.field.aterm_image_filenames]
+        self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
+                                            for af in self.field.aterm_image_filenames]
 
         # Save the solutions
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
@@ -290,6 +281,8 @@ class Calibrate(Operation):
         if os.path.exists(self.field.h5parm_filename):
             os.remove(self.field.h5parm_filename)
         if self.field.do_slowgain_solve:
-            os.system('cp {0} {1}'.format(self.combined_h5parms, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                        os.path.join(dst_dir, self.field.h5parm_filename))
         else:
-            os.system('cp {0} {1}'.format(self.combined_fast_h5parm, self.field.h5parm_filename))
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.h5parm_filename))

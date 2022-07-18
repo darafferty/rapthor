@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [makesourcedb]
 label: Makes a sourcedb
@@ -18,7 +18,7 @@ inputs:
     label: Input sky model
     doc: |
       The filename of the input sky model.
-    type: string
+    type: File
     inputBinding:
       prefix: in=
       separate: false
@@ -37,6 +37,10 @@ outputs:
     label: Output sourcedb
     doc: |
       The filename of the output sourcedb model.
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.out)
+      glob: $(inputs.out)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

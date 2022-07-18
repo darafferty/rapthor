@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [wsclean]
 label: Make an image
@@ -8,7 +8,21 @@ doc: |
   of the inputs and outputs.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InitialWorkDirRequirement
+    listing:
+      - entryname: aterm_plus_beam.cfg
+        # Note: WSClean requires that the aterm image filenames be input as part of an
+        # aterm config file (and not directly on the command line). Therefore, a config
+        # file is made here that contains the filenames defined in the aterm_images
+        # input parameter. Also, the required beam parameters are set here
+        entry: |
+          aterms = [diagonal, beam]
+          diagonal.images = [$(inputs.aterm_images.map( (e,i) => (e.path) ).join(' '))]
+          beam.differential = true
+          beam.update_interval = 120
+          beam.usechannelfreq = true
+        writable: false
+  - class: InlineJavascriptRequirement
 
 arguments:
   - -no-update-model-required
@@ -36,6 +50,9 @@ arguments:
     prefix: -local-rms-method
   - valueFrom: '32'
     prefix: -aterm-kernel-size
+  - valueFrom: 'aterm_plus_beam.cfg'
+    # Note: this file is generated on the fly in the requirements section above
+    prefix: -aterm-config
   - valueFrom: 'briggs'
     # Note: we have to set part of the 'weight' argument here and part below, as it has
     # three parts (e.g., '-weight briggs -0.5'), and WSClean will not parse the value
@@ -46,7 +63,7 @@ arguments:
 
 inputs:
   - id: msin
-    type: string[]
+    type: Directory[]
     inputBinding:
       position: 3
   - id: name
@@ -54,13 +71,19 @@ inputs:
     inputBinding:
       prefix: -name
   - id: mask
-    type: string
+    type: File
     inputBinding:
       prefix: -fits-mask
-  - id: config
-    type: string
+  - id: aterm_images
+    label: Filenames of aterm files
+    doc: |
+      The filenames of the a-term image files. These filenames are not used directly in the
+      WSClean call (they are read by WSClean from the aterm config file, defined in the
+      requirements section above), hence the value is set to "null" (which results in
+      nothing being added to the command for this input).
+    type: File[]
     inputBinding:
-      prefix: -aterm-config
+      valueFrom: null
   - id: wsclean_imsize
     type: int[]
     inputBinding:
@@ -135,18 +158,22 @@ inputs:
 
 outputs:
   - id: image_nonpb_name
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-MFS-image.fits
+      glob: $(inputs.name)-MFS-image.fits
   - id: image_pb_name
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-MFS-image-pb.fits
+      glob: $(inputs.name)-MFS-image-pb.fits
   - id: skymodel_nonpb
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-sources.txt
+      glob: $(inputs.name)-sources.txt
   - id: skymodel_pb
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-sources-pb.txt
+      glob: $(inputs.name)-sources-pb.txt
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

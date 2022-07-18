@@ -56,7 +56,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     try:
         os.chdir(parset_dict['dir_working'])
         for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
-                       'solutions', 'scratch']:
+                       'solutions']:
             subdir_path = os.path.join(parset_dict['dir_working'], subdir)
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
@@ -316,6 +316,14 @@ def get_calibration_options(parset):
         parset_dict['fast_smoothnessconstraint'] = parset.getfloat('calibration', 'fast_smoothnessconstraint')
     else:
         parset_dict['fast_smoothnessconstraint'] = 6e6
+    if 'fast_smoothnessreffrequency' in parset_dict:
+        parset_dict['fast_smoothnessreffrequency'] = parset.getfloat('calibration', 'fast_smoothnessreffrequency')
+    else:
+        parset_dict['fast_smoothnessreffrequency'] = None  # set later depending on whether data is HBA or LBA
+    if 'fast_smoothnessrefdistance' in parset_dict:
+        parset_dict['fast_smoothnessrefdistance'] = parset.getfloat('calibration', 'fast_smoothnessrefdistance')
+    else:
+        parset_dict['fast_smoothnessrefdistance'] = 0.0
     if 'slow_smoothnessconstraint_joint' in parset_dict:
         parset_dict['slow_smoothnessconstraint_joint'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_joint')
     else:
@@ -373,6 +381,7 @@ def get_calibration_options(parset):
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
                        'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
+                       'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
                        'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
                        'use_idg_predict', 'debug', 'llsstarttolerance', 'llstolerance',
                        'solveralgorithm']

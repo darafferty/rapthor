@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [filter_skymodel.py]
 label: Filter a sky model
@@ -7,28 +7,33 @@ doc: |
   a clean mask for the next iteration.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.input_image)
+        writable: true
+
 
 inputs:
   - id: input_image
     label: Input image
     doc: |
       The filename of the input FITS image.
-    type: string
+    type: File
     inputBinding:
       position: 1
   - id: input_skymodel_pb
     label: PB-corrected model
     doc: |
       The filename of the input primary-beam-corrected sky model.
-    type: string
+    type: File
     inputBinding:
       position: 2
   - id: input_bright_skymodel_pb
     label: Bright-source PB-corrected model
     doc: |
       The filename of the input bright-source primary-beam-corrected sky model.
-    type: string
+    type: File
     inputBinding:
       position: 3
   - id: output_root
@@ -42,7 +47,7 @@ inputs:
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
-    type: string
+    type: File
     inputBinding:
       position: 5
   - id: threshisl
@@ -64,8 +69,8 @@ inputs:
   - id: beamMS
     label: Filename of MS file for beam
     doc: |
-      The filename of the MS file to use for beam calculations.
-    type: string[]
+      The filenames of the MS files to use for beam calculations.
+    type: Directory[]
     inputBinding:
       prefix: --beamMS=
       itemSeparator: ","
@@ -75,9 +80,18 @@ inputs:
     doc: |
       The flag that sets whether peeling of bright sources was done in the predict
       pipeline.
-    type: string
+    type: boolean
     inputBinding:
       prefix: --peel_bright=
+      valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
-outputs: []
+outputs:
+  - id: skymodels
+    type: File[]
+    outputBinding:
+      glob: ['$(inputs.output_root)-MFS-*.fits', '$(inputs.output_root)-MFS-*.mask', '$(inputs.output_root).*_sky']
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

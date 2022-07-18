@@ -1,10 +1,12 @@
 FROM ubuntu:20.04 as builder
 
-# This Docker image builds the dependencies for the Rapthor pipeline.
-# It lives on the head of its dependencies.
+# This Dockerfile builds a Docker image for the Rapthor pipeline
+# and all its dependencies.
+
+ARG PORTABLE=TRUE
 
 # Install all build-time dependencies
-RUN export DEBIAN_FRONTEND=noninteractive && \ 
+RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         bison \
@@ -50,6 +52,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/idg \
     -B/src/idg/build \
     -G Ninja
@@ -61,6 +64,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=ON \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/EveryBeam \
     -B/src/EveryBeam/build \
     -G Ninja
@@ -70,6 +74,7 @@ RUN ninja -C /src/EveryBeam/build install
 RUN git shallow-clone https://github.com/aroffringa/dysco.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DPORTABLE=${PORTABLE} \
     -H/src/dysco \
     -B/src/dysco/build \
     -G Ninja
@@ -79,6 +84,7 @@ RUN ninja -C /src/dysco/build install
 RUN git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DPORTABLE=${PORTABLE} \
     -H/src/aoflagger \
     -B/src/aoflagger/build \
     -G Ninja
@@ -89,6 +95,7 @@ RUN git shallow-clone https://gitlab.com/aroffringa/wsclean.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/wsclean \
     -B/src/wsclean/build \
     -G Ninja
@@ -99,10 +106,20 @@ RUN git shallow-clone https://git.astron.nl/RD/DP3.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
+    -DPORTABLE=${PORTABLE} \
     -H/src/DP3 \
     -B/src/DP3/build \
     -G Ninja
 RUN ninja -C /src/DP3/build install
+
+# Generate file with one-liner package version descriptions
+RUN mkdir -p /usr/local/share/rapthor; \
+for p in $(find /src -type d -name .git | sort); \
+do \
+  d=$(dirname $p); b=$(basename $d); cd $d; l=$(git log -1 --oneline); \
+  echo "$b: $l"; \
+done \
+> /usr/local/share/rapthor/sw-versions.txt
 
 # Do not use `pip` from the Debian repository, but fetch it from PyPA.
 # This way, we are sure that the latest versions of `pip`, `setuptools`, and
@@ -111,14 +128,9 @@ RUN ninja -C /src/DP3/build install
 RUN wget https://bootstrap.pypa.io/get-pip.py && \
     python3 get-pip.py
 
-# Install current version of Rapthor, and then uninstall it again. By doing
-# so, we can speed up the build of the final image, because all of Rapthor's
-# dependencies will have been installed already and (probably) don't need to
-# be updated. 
-COPY . rapthor
-RUN python3 -m pip install --upgrade ./rapthor && \
-    python3 -m pip uninstall -y rapthor
-
+# Install all Python dependencies for Rapthor
+COPY ./requirements.txt .
+RUN python3 -m pip install -r requirements.txt
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
@@ -128,7 +140,7 @@ FROM ubuntu:20.04 as runner
 
 COPY --from=builder /usr/local /usr/local
 
-# Only install run-time required packages 
+# Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
@@ -185,3 +197,9 @@ RUN wget -q -O /WSRT_Measures.ztar \
 RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version
+
+# Install current version of Rapthor
+COPY . /tmp/rapthor
+RUN python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
+RUN rm -rf /tmp/*
+

@@ -12,6 +12,7 @@ import scipy.interpolate as si
 from astropy.stats import circmean
 from rapthor.lib import miscellaneous as misc
 import shutil
+import tempfile
 import losoto.operations
 
 
@@ -52,16 +53,12 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
 
     # Make copies of the input h5parms (since they may be altered by steps below) and
     # open them
-    h5parm1_copy = h5parm1 + '.tmp'
-    if os.path.exists(h5parm1_copy):
-        os.remove(h5parm1_copy)
-    shutil.copyfile(h5parm1, h5parm1_copy)
-    h1 = h5parm(h5parm1_copy, readonly=False)
-    h5parm2_copy = h5parm2 + '.tmp'
-    if os.path.exists(h5parm2_copy):
-        os.remove(h5parm2_copy)
-    shutil.copyfile(h5parm2, h5parm2_copy)
-    h2 = h5parm(h5parm2_copy, readonly=False)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        h5parm1_copy = shutil.copy(h5parm1, tmpdir)
+        h5parm2_copy = shutil.copy(h5parm2, tmpdir)
+        h1 = h5parm(h5parm1_copy, readonly=False)
+        h2 = h5parm(h5parm2_copy, readonly=False)
+
     ss1 = h1.getSolset(solset=solset1)
     ss2 = h2.getSolset(solset=solset2)
 
@@ -137,14 +134,10 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         print('ERROR: mode not understood')
         sys.exit(1)
 
-    # Close the files and remove the copies
+    # Close the files, copies are removed automatically
     h1.close()
     h2.close()
     ho.close()
-    if os.path.exists(h5parm1_copy):
-        os.remove(h5parm1_copy)
-    if os.path.exists(h5parm2_copy):
-        os.remove(h5parm2_copy)
 
     # Reweight
     if reweight:

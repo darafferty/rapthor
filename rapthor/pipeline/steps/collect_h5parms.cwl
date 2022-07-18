@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [H5parm_collector.py, -c]
 label: Collects multiple h5parms
@@ -13,8 +13,8 @@ inputs:
   - id: inh5parms
     label: Input solution tables
     doc: |
-      A list of the filenames of the input h5parm files.
-    type: string[]
+      A list of input h5parm files.
+    type: File[]
     inputBinding:
       position: 0
       itemSeparator: ","
@@ -33,6 +33,9 @@ outputs:
     doc: |
       The filename of the output h5parm file. The value is taken from the input
       parameter "outputh5parm".
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.outputh5parm)
+      glob: $(inputs.outputh5parm)
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

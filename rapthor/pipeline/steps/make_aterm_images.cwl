@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [make_aterm_images.py]
 label: Make a-term images
@@ -17,7 +17,7 @@ inputs:
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
-    type: string
+    type: File
     inputBinding:
       position: 0
   - id: soltabname
@@ -48,7 +48,7 @@ inputs:
     label: Input sky model
     doc: |
       The filename of the input sky model file.
-    type: string
+    type: File
     inputBinding:
       prefix: --skymodel=
       separate: false
@@ -77,4 +77,12 @@ inputs:
       prefix: --ncpu=
       separate: false
 
-outputs: []
+outputs:
+  - id: output_images
+    type: File[]
+    outputBinding:
+      glob: '$(inputs.outroot)*'
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'

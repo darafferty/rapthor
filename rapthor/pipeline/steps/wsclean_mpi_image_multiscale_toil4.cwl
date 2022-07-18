@@ -1,4 +1,4 @@
-cwlVersion: v1.0
+cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [run_wsclean_mpi.sh]
 label: Make an image
@@ -13,7 +13,7 @@ requirements:
 
 inputs:
   - id: msin
-    type: string[]
+    type: Directory[]
     inputBinding:
       prefix: -m
       itemSeparator: " "
@@ -22,13 +22,17 @@ inputs:
     inputBinding:
       prefix: -n
   - id: mask
-    type: string
+    type: File
     inputBinding:
       prefix: -k
   - id: config
-    type: string
+    type: File
     inputBinding:
       prefix: -c
+  - id: aterm_images
+    type: File[]
+    inputBinding:
+      valueFrom: ""
   - id: wsclean_imsize
     type: int[]
     inputBinding:
@@ -118,18 +122,22 @@ inputs:
 
 outputs:
   - id: image_nonpb_name
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-MFS-image.fits
+      glob: $(inputs.name)-MFS-image.fits
   - id: image_pb_name
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-MFS-image-pb.fits
+      glob: $(inputs.name)-MFS-image-pb.fits
   - id: skymodel_nonpb
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-sources.txt
+      glob: $(inputs.name)-sources.txt
   - id: skymodel_pb
-    type: string
+    type: File
     outputBinding:
-      outputEval: $(inputs.name)-sources-pb.txt
+      glob: $(inputs.name)-sources-pb.txt
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'loose/rapthor'
