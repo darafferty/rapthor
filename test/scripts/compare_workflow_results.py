@@ -356,7 +356,7 @@ def parse_arguments():
     )
 
     args = parser.parse_args()
-    print("**** args:", args)
+    # print("**** args:", args)
     return args
 
 
