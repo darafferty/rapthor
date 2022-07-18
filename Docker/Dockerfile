@@ -101,12 +101,23 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/wsclean/build install
 
+# Install SAGECal libdirac
+RUN git shallow-clone https://github.com/nlesc-dirac/sagecal.git
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DLIB_ONLY=1 \
+    -H/src/sagecal \
+    -B/src/sagecal/build \
+    -G Ninja
+RUN ninja -C /src/sagecal/build install
+
 # Install DP3
 RUN git shallow-clone https://git.astron.nl/RD/DP3.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DLIBDIRAC_PREFIX=/usr/ \
     -H/src/DP3 \
     -B/src/DP3/build \
     -G Ninja
