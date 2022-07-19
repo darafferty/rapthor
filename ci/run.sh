@@ -4,6 +4,7 @@
 
 set -e
 
+python3 -m pip install h5py
 python3 -m pip install .
 
 cd test
