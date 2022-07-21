@@ -66,6 +66,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if use_log_file:
         set_log_file(os.path.join(parset_dict['dir_working'], 'logs', 'rapthor.log'))
     log.info("=========================================================\n")
+    log.info("CWLRunner is %s", parset_dict['cluster_specific']['cwl_runner'])
     log.info("Working directory is {}".format(parset_dict['dir_working']))
 
     # Get the input MS files
