@@ -23,7 +23,6 @@ class CWLRunner:
         """
         Initalizer
         """
-        logger.debug("CWLRunner.__init__()")
         self.args = []
         self.command = None
         self.operation = operation
@@ -32,7 +31,6 @@ class CWLRunner:
         """
         Called when entering a context.
         """
-        logger.debug("CWLRunner.__enter__()")
         self.setup()
         return self
 
@@ -40,13 +38,13 @@ class CWLRunner:
         """
         Called when exiting a context.
         """
-        logger.debug("CWLRunner.__exit__()")
         self.teardown()
 
     def _create_mpi_config_file(self) -> None:
         """
         Create the config file for MPI jobs and add the required args
         """
+        logger.debug("Creating MPI config file %s", self.operation.mpi_config_file)
         if self.operation.batch_system == 'slurm':
             mpi_config_lines = [
                 "runner: 'mpirun'",
@@ -76,7 +74,6 @@ class CWLRunner:
         actual CWL runner.
         Derived classes can add their own arguments by overriding this method.
         """
-        logger.debug("CWLRunner.setup()")
         self.args.extend(["--outdir", self.operation.pipeline_working_dir])
         if self.operation.container is not None:
             # If the container is Docker, no extra args are needed. For other
@@ -101,7 +98,6 @@ class CWLRunner:
         """
         Clean up after the runner has run.
         """
-        logger.debug("CWLRunner.teardown()")
         if self.operation.field.use_mpi:
             self._delete_mpi_config_file()
 
@@ -118,8 +114,6 @@ class CWLRunner:
           - `stdout` -> `self.operation.pipeline_outputs_file`
           - `stderr` -> `self.operation.pipeline_log_file`
         """
-        print("**** self.operation.debug_workflow:", self.operation.debug_workflow)
-        logger.debug("CWLRunner.run()")
         if self.command is None:
             raise RuntimeError(
                 "Don't know how to start CWL runner {}".format(self.__class__.__name__)
@@ -129,7 +123,7 @@ class CWLRunner:
         #     args.extend(item)
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
-        logger.debug("Executing command: %s", args)
+        logger.debug("Executing command: %s", ' '.join(args))
         with open(self.operation.pipeline_outputs_file, 'w') as stdout, \
              open(self.operation.pipeline_log_file, 'w') as stderr:
             try:
@@ -149,7 +143,6 @@ class ToilRunner(CWLRunner):
         """
         Initializer
         """
-        logger.debug("ToilRunner.__init__()")
         super().__init__(operation)
         self.command = "toil-cwl-runner"
         self.toil_env_variables = {
@@ -160,7 +153,6 @@ class ToilRunner(CWLRunner):
         """
         Prepare runner for running. Adds some additional preprations to base class.
         """
-        logger.debug("ToilRunner.setup()")
         super().setup()
         self.args.extend(['--batchSystem', self.operation.batch_system])
         if self.operation.batch_system == 'slurm':
@@ -190,7 +182,6 @@ class ToilRunner(CWLRunner):
         """
         Clean up after the runner has run.
         """
-        logger.debug("ToilRunner.teardown()")
         for key in self.toil_env_variables:
             del os.environ[key]
         # # Reset the logging level, as Toil may have changed it
@@ -203,7 +194,6 @@ class CWLToolRunner(CWLRunner):
     Wrapper class for the CWLTool CWL runner
     """
     def __init__(self, operation: Operation) -> None:
-        logger.debug("CWLToolRunner.__init__()")
         super().__init__(operation)
         self.command = "cwltool"
 
@@ -211,7 +201,6 @@ class CWLToolRunner(CWLRunner):
         """
         Set arguments that are specific to this CWL runner.
         """
-        logger.debug("CWLToolRunner.set_arguments()")
         super().setup()
         self.args.extend(['--disable-color'])
         self.args.extend(['--parallel'])
@@ -227,7 +216,6 @@ def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
     Factory method that creates a CWLRunner instance based on the `runner` argument.
     We need access to some information inside the `operation` that calls us.
     """
-    logger.debug("create_cwl_runner(%s, %s)", runner, operation)
     if runner.lower() == "toil":
         return ToilRunner(operation)
     if runner.lower() == "cwltool":
