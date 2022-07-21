@@ -14,6 +14,7 @@ from toil.cwl import cwltoil
 import toil.version as toil_version
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder
+from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
@@ -64,6 +65,10 @@ class Operation(object):
                                                  'pipelines', self.name)
         misc.create_directory(self.pipeline_working_dir)
 
+        # CWL runner settings
+        self.cwl_runner = self.parset['cluster_specific']['cwl_runner']
+        self.debug_workflow = self.parset['cluster_specific']['debug_workflow']
+
         # Maximum number of nodes to use
         self.max_nodes = self.parset['cluster_specific']['max_nodes']
 
@@ -90,6 +95,7 @@ class Operation(object):
                                                  'pipeline_inputs.json')
         self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
                                                   'pipeline_outputs.json')
+        self.pipeline_log_file = os.path.join(self.log_dir, 'pipeline.log')
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir,
@@ -189,11 +195,12 @@ class Operation(object):
         Call CWLTool to run the operations's pipeline
         """
         # Build the args list, start with the CWL runner executable
-        args = [self.parset['cwl_runner']]
+        args = ['cwltool']
 
         ### The following options are identical to those used by Toil
         args.extend(['--outdir', self.pipeline_working_dir])
-#        args.extend(['--debug'])  # used for debugging purposes only
+        if self.debug_workflow:
+            args.extend(['--debug'])  # used for debugging purposes only
 
         if self.container is not None:
             # If the container is Docker, no extra args are needed. For other
@@ -231,7 +238,7 @@ class Operation(object):
         # Run the pipeline
         stdout_file = self.pipeline_outputs_file
         stderr_file = os.path.join(self.log_dir, 'pipeline.log')
-        self.log.debug("Executing command: %s", ' '.join(args))
+        self.log.debug("Executing command: %s", args)
         try:
             with open(stdout_file, 'w') as stdout, open(stderr_file, 'w') as stderr:
                 status = subprocess.call(args=args, stdout=stdout, stderr=stderr)
@@ -282,10 +289,10 @@ class Operation(object):
         args.extend(['--clean', 'never'])  # preserves the job store for future runs
         args.extend(['--servicePollingInterval', '10'])
         args.extend(['--stats'])
-        # The following three options should be enabled for debugging purposes only!!
-        # args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
-        # args.extend(['--debugWorker'])  # enable for debugging purposes only!!
-        # args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
+        if self.debug_workflow:
+            args.extend(['--cleanWorkDir', 'never'])
+            args.extend(['--debugWorker'])
+            args.extend(['--logLevel', 'DEBUG'])
         if self.field.use_mpi and self.toil_major_version >= 5:
             # Create the config file for MPI jobs and add the required args
             if self.batch_system == 'slurm':
@@ -309,7 +316,7 @@ class Operation(object):
             os.environ[k] = v
 
         # Run the pipeline
-        # print(f"**** Toil command-line arguments: {args} ****")
+        self.log.debug("Toil command-line arguments: %s", args)
         try:
             with open(self.pipeline_outputs_file, 'w') as stdout:
                 status = cwltoil.main(args=args, stdout=stdout)
@@ -332,10 +339,8 @@ class Operation(object):
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
         with Timer(self.log):
-            if self.parset['cwl_runner'] == 'toil':
-                self.call_toil()
-            elif self.parset['cwl_runner'] == 'cwltool':
-                self.call_cwltool()
+            with create_cwl_runner(self.cwl_runner, self) as runner:
+                self.success = runner.run()
 
         # Finalize
         if self.success:

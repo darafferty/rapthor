@@ -2,7 +2,6 @@
 Classes that wrap the CWL runners that Rapthor supports.
 """
 from __future__ import annotations
-from collections import defaultdict
 import logging
 import os
 import subprocess
@@ -25,12 +24,9 @@ class CWLRunner:
         Initalizer
         """
         logger.debug("CWLRunner.__init__()")
-        self.operation = operation
+        self.args = []
         self.command = None
-        # Using a dict here instead of a list avoids duplicate entries
-        self.args = defaultdict(str)
-        # If enabled, some temporary files are preserved and logging is more verbose
-        self.debug = False
+        self.operation = operation
 
     def __enter__(self) -> "CWLRunner":
         """
@@ -81,24 +77,25 @@ class CWLRunner:
         Derived classes can add their own arguments by overriding this method.
         """
         logger.debug("CWLRunner.setup()")
-        self.args["--outdir"] = self.operation.pipeline_working_dir
+        self.args.extend(["--outdir", self.operation.pipeline_working_dir])
         if self.operation.container is not None:
             # If the container is Docker, no extra args are needed. For other
             # containers, set the required args
             if self.operation.container == 'singularity':
-                self.args['--singularity']
+                self.args.extend(['--singularity'])
             elif self.operation.container == 'udocker':
-                self.args['--user-space-docker-cmd'] = 'udocker'
+                self.args.extend(['--user-space-docker-cmd', 'udocker'])
         else:
-            self.args['--no-container']
-            self.args['--preserve-entire-environment']
+            self.args.extend(['--no-container'])
+            self.args.extend(['--preserve-entire-environment'])
         if self.operation.scratch_dir is not None:
-            self.args['--tmpdir-prefix'] = os.path.join(self.operation.scratch_dir, 'tmp.')
-            self.args['--tmp-outdir-prefix'] = os.path.join(self.operation.scratch_dir, 'tmp.')
+            prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
+            self.args.extend(['--tmpdir-prefix', prefix])
+            self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.field.use_mpi:
             self._create_mpi_config_file()
-            self.args['--mpi-config-file'] = self.operation.mpi_config_file
-            self.args['--enable-ext']
+            self.args.extend(['--mpi-config-file', self.operation.mpi_config_file])
+            self.args.extend(['--enable-ext'])
 
     def teardown(self) -> None:
         """
@@ -108,7 +105,7 @@ class CWLRunner:
         if self.operation.field.use_mpi:
             self._delete_mpi_config_file()
 
-    def run(self):
+    def run(self) -> bool:
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
@@ -121,14 +118,15 @@ class CWLRunner:
           - `stdout` -> `self.operation.pipeline_outputs_file`
           - `stderr` -> `self.operation.pipeline_log_file`
         """
+        print("**** self.operation.debug_workflow:", self.operation.debug_workflow)
         logger.debug("CWLRunner.run()")
         if self.command is None:
             raise RuntimeError(
                 "Don't know how to start CWL runner {}".format(self.__class__.__name__)
             )
-        args = [self.command]
-        for item in self.args.items():
-            args.extend(item)
+        args = [self.command] + self.args
+        # for item in self.args.items():
+        #     args.extend(item)
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
         logger.debug("Executing command: %s", args)
@@ -164,28 +162,28 @@ class ToilRunner(CWLRunner):
         """
         logger.debug("ToilRunner.setup()")
         super().setup()
-        self.args['--batchSystem'] = self.operation.batch_system
+        self.args.extend(['--batchSystem', self.operation.batch_system])
         if self.operation.batch_system == 'slurm':
-            self.args['--disableCaching']
-            self.args['--defaultCores'] = str(self.operation.cpus_per_task)
-            self.args['--defaultMemory'] = self.operation.mem_per_node_gb
-        self.args['--maxLocalJobs'] = str(self.operation.max_nodes)
-        self.args['--jobStore'] = self.operation.jobstore
+            self.args.extend(['--disableCaching'])
+            self.args.extend(['--defaultCores', str(self.operation.cpus_per_task)])
+            self.args.extend(['--defaultMemory', self.operation.mem_per_node_gb])
+        self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
+        self.args.extend(['--jobStore', self.operation.jobstore])
         if os.path.exists(self.operation.jobstore):
-            self.args['--restart']
-        self.args['--writeLogs'] = self.operation.log_dir
-        self.args['--writeLogsFromAllJobs']  # also keep logs of successful jobs
-        self.args['--maxLogFileSize'] = '0'  # disable truncation of log files
+            self.args.extend(['--restart'])
+        self.args.extend(['--writeLogs', self.operation.log_dir])
+        self.args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
+        self.args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         if self.operation.scratch_dir is not None:
-            # Note: the trailing directory separator is required by Toil v5.3+
-            self.args['--workDir'] = os.path.join(self.operation.scratch_dir, '')
-        self.args['--clean'] = 'never'  # preserves the job store for future runs
-        self.args['--servicePollingInterval'] = '10'
-        self.args['--stats']
-        if self.debug:
-            self.args['--cleanWorkDir'] = 'never'  # WARNING: use for debugging only!
-            self.args['--debugWorker']  # NOTE: stdout/stderr are not redirected to the log
-            self.args['--logDebug']
+            # Note: add a trailing directory separator, required by Toil v5.3+
+            self.args.extend(['--workDir', os.path.join(self.operation.scratch_dir, '')])
+        self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
+        self.args.extend(['--servicePollingInterval', '10'])
+        self.args.extend(['--stats'])
+        if self.operation.debug_workflow:
+            self.args.extend(['--cleanWorkDir', 'never'])
+            self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
+            self.args.extend(['--logDebug'])
         os.environ.update(self.toil_env_variables)
 
     def teardown(self):
@@ -215,10 +213,11 @@ class CWLToolRunner(CWLRunner):
         """
         logger.debug("CWLToolRunner.set_arguments()")
         super().setup()
-        self.args['--parallel']
-        self.args['--timestamps']
-        if self.debug:
-            self.args["--debug"]
+        self.args.extend(['--disable-color'])
+        self.args.extend(['--parallel'])
+        self.args.extend(['--timestamps'])
+        if self.operation.debug_workflow:
+            self.args.extend(["--debug"])
 
     # def teardown(self) -> None:
     #     super().teardown()

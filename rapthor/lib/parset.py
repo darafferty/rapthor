@@ -174,15 +174,6 @@ def get_global_options(parset):
     if 'strategy' not in parset_dict:
         parset_dict['strategy'] = 'selfcal'
 
-    # Define CWL runner
-    parset_dict.setdefault('cwl_runner', 'toil')
-    cwl_runner = parset_dict['cwl_runner']
-    supported_cwl_runners = ('cwltool', 'toil', 'toil-cwl-runner')
-    if cwl_runner not in supported_cwl_runners:
-        log.critical("CWL runner '%s' is not supported; select one of: %s",
-                     cwl_runner, ', '.join(supported_cwl_runners))
-        sys.exit(1)
-
     # Flagging ranges (default = no flagging). A range of times, baselines, and
     # frequencies to flag can be specified (see the DPPP documentation for
     # details of syntax) By default, the ranges are AND-ed to produce the final flags,
@@ -216,7 +207,7 @@ def get_global_options(parset):
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
                        'flag_expr', 'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
-                       'final_data_fraction', 'cwl_runner']
+                       'final_data_fraction']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [global] section of the '
@@ -728,10 +719,27 @@ def get_cluster_options(parset):
     if 'container_type' not in parset_dict:
         parset_dict['container_type'] = 'docker'
 
+    # Define CWL runner
+    if 'cwl_runner' not in parset_dict:
+        parset_dict['cwl_runner'] = 'toil'
+    cwl_runner = parset_dict['cwl_runner']
+    supported_cwl_runners = ('cwltool', 'toil') #, 'toil-cwl-runner')
+    if cwl_runner not in supported_cwl_runners:
+        log.critical("CWL runner '%s' is not supported; select one of: %s",
+                     cwl_runner, ', '.join(supported_cwl_runners))
+        sys.exit(1)
+
+    # Check if debugging is enabled
+    if 'debug_workflow' in parset_dict:
+        parset_dict['debug_workflow'] = parset.getboolean('cluster', 'debug_workflow')
+    else:
+        parset_dict['debug_workflow'] = False
+
     # Check for invalid options
     allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
                        'max_threads', 'deconvolution_threads', 'dir_local',
-                       'mem_per_node_gb', 'use_container', 'container_type']
+                       'mem_per_node_gb', 'use_container', 'container_type',
+                       'cwl_runner', 'debug_workflow']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '
