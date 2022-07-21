@@ -44,8 +44,8 @@ def run(parset_file):
 
     # Read parset
     log.info('Reading parset and checking state...')
-    parset = parset_read(parset_file, use_log_file=False, skip_cluster=True)
-    if parset['cwl_runner'] != 'toil':
+    parset = parset_read(parset_file, use_log_file=False) #, skip_cluster=True)
+    if parset['cluster_specific']['cwl_runner'] != 'toil':
         log.error("Modifying state is only supported when using Toil as CWL runner")
         sys.exit(1)
 
