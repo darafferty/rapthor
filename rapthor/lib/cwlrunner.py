@@ -119,8 +119,6 @@ class CWLRunner:
                 "Don't know how to start CWL runner {}".format(self.__class__.__name__)
             )
         args = [self.command] + self.args
-        # for item in self.args.items():
-        #     args.extend(item)
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
         logger.debug("Executing command: %s", ' '.join(args))
@@ -184,8 +182,6 @@ class ToilRunner(CWLRunner):
         """
         for key in self.toil_env_variables:
             del os.environ[key]
-        # # Reset the logging level, as Toil may have changed it
-        # _logging.set_level(self.operation.log_level)
         super().teardown()
 
 
@@ -208,8 +204,6 @@ class CWLToolRunner(CWLRunner):
         if self.operation.debug_workflow:
             self.args.extend(["--debug"])
 
-    # def teardown(self) -> None:
-    #     super().teardown()
 
 def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
     """
