@@ -707,7 +707,7 @@ def get_cluster_options(parset):
     if 'dir_local' not in parset_dict:
         parset_dict['dir_local'] = None
     else:
-        parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
+        parset_dict['dir_local'] = parset_dict['dir_local']
 
     # Run the pipelines inside a container (default = False)? If True, the pipeline
     # for each operation (such as calibrate or image) will be run inside a container.
