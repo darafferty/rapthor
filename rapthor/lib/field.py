@@ -66,6 +66,11 @@ class Field(object):
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
+        if self.solveralgorithm =='lbfgs':
+           self.lbfgs_dof=self.parset['calibration_specific']['lbfgs_dof']
+           self.lbfgs_iter=self.parset['calibration_specific']['lbfgs_iter']
+           self.lbfgs_minibatches=self.parset['calibration_specific']['lbfgs_minibatches']
+
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
         self.peel_outliers = False
