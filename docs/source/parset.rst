@@ -110,7 +110,7 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of "directionsolve", "directioniterative",
-        or "hybrid"; default = "hybrid")?
+        "lbfgs", or "hybrid"; default = "hybrid")?
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =
@@ -166,6 +166,14 @@ The available options are described below under their respective sections.
     use_idg_predict
        Use IDG for predict during calibration (default = ``False``)?
 
+    lbfgs_dof
+       Degrees of freedom for LBFGS solver (solveralgorithm=``lbfgs``), (default 200.0)
+
+    lbfgs_minibatches
+       Number of minibatches for LBFGS solver (solveralgorithm=``lbfgs``), (default 1)
+
+    lbfgs_iter
+       Number of iterations per minibat in LBFGS solver (solveralgorithm=``lbfgs``), (default 4)
 
 .. _parset_imaging_options:
 
