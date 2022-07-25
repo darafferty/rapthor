@@ -143,6 +143,24 @@ inputs:
       The algorithm used for solving (length = 1).
     type: string
 
+  - id: lbfgs_dof
+    label: LBFGS degrees of freedom
+    doc: |
+      The degrees of freedom in LBFGS solver (length = 1).
+    type: float
+
+  - id: lbfgs_iter
+    label: LBFGS iterations per minibatch
+    doc: |
+      The number of iterations per minibatch in LBFGS solver (length = 1).
+    type: int 
+
+  - id: lbfgs_minibatches
+    label: LBFGS minibatches
+    doc: |
+      The number of minibatches in LBFGS solver (length = 1).
+    type: int
+
   - id: onebeamperpatch
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
@@ -401,6 +419,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs.dof
+        source: lbfgs_dof
+      - id: solverlbfgs.iter
+        source: lbfgs_iter
+      - id: solverlbfgs.minibatches
+        source: lbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines
@@ -489,6 +513,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs.dof
+        source: lbfgs_dof
+      - id: solverlbfgs.iter
+        source: lbfgs_iter
+      - id: solverlbfgs.minibatches
+        source: lbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines
@@ -607,6 +637,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs.dof
+        source: lbfgs_dof
+      - id: solverlbfgs.iter
+        source: lbfgs_iter
+      - id: solverlbfgs.minibatches
+        source: lbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines
@@ -804,6 +840,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs.dof
+        source: lbfgs_dof
+      - id: solverlbfgs.iter
+        source: lbfgs_iter
+      - id: solverlbfgs.minibatches
+        source: lbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines

@@ -359,6 +359,20 @@ def get_calibration_options(parset):
     else:
         parset_dict['parallelbaselines'] = False
 
+    if parset_dict['solveralgorithm'] == 'lbfgs':
+        if 'lbfgs_dof' in parset_dict:
+           parset_dict['lbfgs_dof'] = parset.getfloat('calibration', 'lbfgs_dof')
+        else:
+           parset_dict['lbfgs_dof'] = 200.0
+        if 'lbfgs_iter' in parset_dict:
+           parset_dict['lbfgs_iter'] = parset.getint('calibration', 'lbfgs_iter')
+        else:
+           parset_dict['lbfgs_iter'] = 4
+        if 'lbfgs_minibatches' in parset_dict:
+           parset_dict['lbfgs_minibatches'] = parset.getint('calibration', 'lbfgs_minibatches')
+        else:
+           parset_dict['lbfgs_minibatches'] = 1
+
 
     # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:
