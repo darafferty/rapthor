@@ -83,6 +83,12 @@ inputs:
       prefix: solve.onebeamperpatch=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
+  - id: parallelbaselines
+    type: boolean
+    inputBinding:
+      prefix: solve.parallelbaselines=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
   - id: stepsize
     type: float
     inputBinding:
@@ -92,16 +98,6 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.tolerance=
-      separate: False
-  - id: llsstarttolerance
-    type: float
-    inputBinding:
-      prefix: solve.llsstarttolerance=
-      separate: False
-  - id: llstolerance
-    type: float
-    inputBinding:
-      prefix: solve.llstolerance=
       separate: False
   - id: uvlambdamin
     type: float

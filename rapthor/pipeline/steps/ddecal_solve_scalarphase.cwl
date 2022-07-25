@@ -132,6 +132,16 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
+  - id: parallelbaselines
+    label: Parallelize over baselines
+    doc: |
+      Flag that enables parallel prediction over baselines.
+    type: boolean
+    inputBinding:
+      prefix: solve.parallelbaselines=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
   - id: stepsize
     label: Solver step size
     doc: |
@@ -148,24 +158,6 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.tolerance=
-      separate: False
-
-  - id: llsstarttolerance
-    label: LLS solver starting tolerance
-    doc: |
-      The linear least-squares solver starting tolerance used to define convergence.
-    type: float
-    inputBinding:
-      prefix: solve.llsstarttolerance=
-      separate: False
-
-  - id: llstolerance
-    label: LLS solver tolerance
-    doc: |
-      The linear least-squares solver tolerance used to define convergence.
-    type: float
-    inputBinding:
-      prefix: solve.llstolerance=
       separate: False
 
   - id: uvlambdamin
