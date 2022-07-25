@@ -389,7 +389,7 @@ def get_calibration_options(parset):
                        'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
                        'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
                        'use_idg_predict', 'debug', 'parallelbaselines',
-                       'solveralgorithm']
+                       'solveralgorithm', 'lbfgs_dof', 'lbfgs_iter', 'lbfgs_minibatches']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '
