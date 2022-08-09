@@ -44,7 +44,7 @@ setup(
                       'python-casacore'],
     scripts=['bin/rapthor',
              'bin/plotrapthor',
-             'bin/concat_prefactor_files',
+             'bin/concat_linc_files',
              'rapthor/scripts/blank_image.py',
              'rapthor/scripts/combine_h5parms.py',
              'rapthor/scripts/filter_skymodel.py',
