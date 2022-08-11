@@ -218,7 +218,8 @@ class Screen(object):
         # Add additional breaks to gaps_ind to keep memory usage within that available
         if len(self.times_ph) > 2:
             available_mem_gb = cluster.get_available_memory()
-            max_ntimes = max(1, int(available_mem_gb / (self.get_memory_usage(cellsize_deg))))
+            memory_usage = max(1, self.get_memory_usage(cellsize_deg))
+            max_ntimes = max(1, int(available_mem_gb / memory_usage))
             check_gaps = True
             while check_gaps:
                 check_gaps = False
