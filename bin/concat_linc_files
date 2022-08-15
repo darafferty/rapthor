@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to concatenate the MS files from Prefactor for input to Rapthor
+Script to concatenate the MS files from Linc for input to Rapthor
 """
 import argparse
 from argparse import RawTextHelpFormatter
@@ -14,12 +14,12 @@ import numpy as np
 
 def main(input_path, output_file):
     """
-    Concatenate MS files from Prefactor for input to Rapthor
+    Concatenate MS files from Linc for input to Rapthor
 
     Parameters
     ----------
     input_path : str
-        Full path to the directory with the Prefactor MS files
+        Full path to the directory with the Linc MS files
     output_file : str
         Filename of output file
     """
@@ -35,7 +35,6 @@ def main(input_path, output_file):
         # Get the frequency info
         sw = pt.table(ms+'::SPECTRAL_WINDOW', ack=False)
         freq = sw.col('REF_FREQUENCY')[0]
-        sw.close()
         if first:
             file_bandwidth = sw.col('TOTAL_BANDWIDTH')[0]
             nchans = sw.col('CHAN_WIDTH')[0].shape[0]
@@ -45,6 +44,7 @@ def main(input_path, output_file):
             assert file_bandwidth == sw.col('TOTAL_BANDWIDTH')[0]
             assert nchans == sw.col('CHAN_WIDTH')[0].shape[0]
             assert chwidth == sw.col('CHAN_WIDTH')[0][0]
+        sw.close()
         freqs.append(freq)
     freqlist = np.array(freqs)
     mslist = np.array(msfiles)
@@ -77,9 +77,9 @@ def main(input_path, output_file):
 
 
 if __name__ == "__main__":
-    descriptiontext = "Concatenate Prefactor MS files.\n"
+    descriptiontext = "Concatenate Linc MS files.\n"
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_path', help="Full path to the directory with the Prefactor MS files")
+    parser.add_argument('input_path', help="Full path to the directory with the Linc MS files")
     parser.add_argument('output_file', help="Output filename")
 
     args = parser.parse_args()
