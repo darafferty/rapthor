@@ -422,7 +422,7 @@ def get_imaging_options(parset):
     if 'grid_nsectors_ra' in parset_dict:
         parset_dict['grid_nsectors_ra'] = parset.getint('imaging', 'grid_nsectors_ra')
     else:
-        parset_dict['grid_nsectors_ra'] = 1
+        parset_dict['grid_nsectors_ra'] = 0
 
     # Center of grid to image (default = phase center of data)
     # grid_center_ra = 14h41m01.884
