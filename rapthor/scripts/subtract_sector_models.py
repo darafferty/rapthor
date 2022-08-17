@@ -365,12 +365,10 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     if len(model_list) == 0:
         # This means there is just a single sector and no reweighting is to be done
         msout = os.path.basename(msin_orig) + '.sector_1'
-        print(msout)
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
         subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
-        tin.close()
         return
 
     # Open input table and define chunks based on available memory, making sure each
