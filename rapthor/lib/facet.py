@@ -4,7 +4,6 @@ Module that holds functions and classes related to faceting
 import numpy as np
 import scipy as sp
 import scipy.spatial
-import sys
 
 
 def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
