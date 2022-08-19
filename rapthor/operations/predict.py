@@ -57,7 +57,7 @@ class Predict(Operation):
         sector_patches = []
         for sector in sectors:
             sector.set_prediction_parameters()
-            sector_skymodel.append(
+            sector_skymodel.extend(
                 [sector.predict_skymodel_file] * len(self.field.observations)
             )
             sector_filename.extend(sector.get_obs_parameters('ms_filename'))

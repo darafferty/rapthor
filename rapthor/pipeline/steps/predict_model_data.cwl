@@ -96,7 +96,7 @@ inputs:
   - id: directions
     label: Direction names
     doc: |
-      The list of direction names (matching those in the h5parm and sourcedb)
+      The list of direction names (matching those in the h5parm and sky model)
       used in the calibration.
     type: string[]
     inputBinding:
