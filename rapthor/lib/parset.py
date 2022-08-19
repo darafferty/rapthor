@@ -66,6 +66,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if use_log_file:
         set_log_file(os.path.join(parset_dict['dir_working'], 'logs', 'rapthor.log'))
     log.info("=========================================================\n")
+    log.info("CWLRunner is %s", parset_dict['cluster_specific']['cwl_runner'])
     log.info("Working directory is {}".format(parset_dict['dir_working']))
 
     # Get the input MS files
@@ -114,6 +115,8 @@ def get_global_options(parset):
         Dictionary with all global options
 
     """
+    # TODO: Repalce all "if 'some_key' in parset_dict:" with "parset_dict.setdefault(...)"
+
     parset_dict = parset._sections['global'].copy()
     parset_dict.update({'calibration_specific': {}, 'imaging_specific': {}, 'cluster_specific': {}})
 
@@ -704,7 +707,7 @@ def get_cluster_options(parset):
     if 'dir_local' not in parset_dict:
         parset_dict['dir_local'] = None
     else:
-        parset_dict['dir_local'] = parset_dict['dir_local'].rstrip('/')
+        parset_dict['dir_local'] = parset_dict['dir_local']
 
     # Run the pipelines inside a container (default = False)? If True, the pipeline
     # for each operation (such as calibrate or image) will be run inside a container.
@@ -717,10 +720,27 @@ def get_cluster_options(parset):
     if 'container_type' not in parset_dict:
         parset_dict['container_type'] = 'docker'
 
+    # Define CWL runner
+    if 'cwl_runner' not in parset_dict:
+        parset_dict['cwl_runner'] = 'toil'
+    cwl_runner = parset_dict['cwl_runner']
+    supported_cwl_runners = ('cwltool', 'toil') #, 'toil-cwl-runner')
+    if cwl_runner not in supported_cwl_runners:
+        log.critical("CWL runner '%s' is not supported; select one of: %s",
+                     cwl_runner, ', '.join(supported_cwl_runners))
+        sys.exit(1)
+
+    # Check if debugging is enabled
+    if 'debug_workflow' in parset_dict:
+        parset_dict['debug_workflow'] = parset.getboolean('cluster', 'debug_workflow')
+    else:
+        parset_dict['debug_workflow'] = False
+
     # Check for invalid options
     allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
                        'max_threads', 'deconvolution_threads', 'dir_local',
-                       'mem_per_node_gb', 'use_container', 'container_type']
+                       'mem_per_node_gb', 'use_container', 'container_type',
+                       'cwl_runner', 'debug_workflow']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '

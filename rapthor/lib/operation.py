@@ -4,6 +4,7 @@ Definition of the master Operation class
 import os
 import sys
 import logging
+import subprocess
 import json
 from rapthor import _logging
 from jinja2 import Environment, FileSystemLoader
@@ -13,6 +14,7 @@ from toil.cwl import cwltoil
 import toil.version as toil_version
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder
+from rapthor.lib.cwlrunner import create_cwl_runner
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 env_parset = Environment(loader=FileSystemLoader(os.path.join(DIR, '..', 'pipeline', 'parsets')))
@@ -63,6 +65,10 @@ class Operation(object):
                                                  'pipelines', self.name)
         misc.create_directory(self.pipeline_working_dir)
 
+        # CWL runner settings
+        self.cwl_runner = self.parset['cluster_specific']['cwl_runner']
+        self.debug_workflow = self.parset['cluster_specific']['debug_workflow']
+
         # Maximum number of nodes to use
         self.max_nodes = self.parset['cluster_specific']['max_nodes']
 
@@ -89,6 +95,7 @@ class Operation(object):
                                                  'pipeline_inputs.json')
         self.pipeline_outputs_file = os.path.join(self.pipeline_working_dir,
                                                   'pipeline_outputs.json')
+        self.pipeline_log_file = os.path.join(self.log_dir, 'pipeline.log')
 
         # MPI configuration file
         self.mpi_config_file = os.path.join(self.pipeline_working_dir,
@@ -183,90 +190,6 @@ class Operation(object):
         """
         pass
 
-    def call_toil(self):
-        """
-        Calls Toil to run the operation's pipeline
-        """
-        # Build the args list
-        args = []
-        if self.container is not None:
-            # If the container is Docker, no extra args are needed. For other
-            # containers, set the required args
-            if self.container == 'singularity':
-                args.extend(['--singularity'])
-            elif self.container == 'udocker':
-                args.extend(['--user-space-docker-cmd', 'udocker'])
-        else:
-            args.extend(['--no-container'])
-            args.extend(['--preserve-entire-environment'])
-        # args.extend(['--bypass-file-store'])  # for debugging weird issues!!
-        args.extend(['--batchSystem', self.batch_system])
-        if self.batch_system == 'slurm':
-            args.extend(['--disableCaching'])
-            args.extend(['--defaultCores', str(self.cpus_per_task)])
-            args.extend(['--defaultMemory', self.mem_per_node_gb])
-            self.toil_env_variables['TOIL_SLURM_ARGS'] = "--export=ALL"
-        args.extend(['--maxLocalJobs', str(self.max_nodes)])
-        args.extend(['--jobStore', self.jobstore])
-        if os.path.exists(self.jobstore):
-            args.extend(['--restart'])
-        args.extend(['--basedir', self.pipeline_working_dir])
-        args.extend(['--outdir', self.pipeline_working_dir])
-        args.extend(['--writeLogs', self.log_dir])
-        args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
-        args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
-        if self.scratch_dir is not None:
-            # Note: the trailing '/' is required by Toil v5.3+; in addition,
-            # --tmpdir-prefix and --tmp-outdir-prefix require a filename prefix
-            # when using --bypass-file-store, but it won't harm to use it anyway.
-            args.extend(['--tmpdir-prefix', self.scratch_dir+'/toil.'])
-            args.extend(['--tmp-outdir-prefix', self.scratch_dir+'/toil.'])
-            args.extend(['--workDir', self.scratch_dir+'/'])
-        args.extend(['--clean', 'never'])  # preserves the job store for future runs
-        args.extend(['--servicePollingInterval', '10'])
-        args.extend(['--stats'])
-        # The following three options should be enabled for debugging purposes only!!
-        # args.extend(['--cleanWorkDir', 'never'])  # enable for debugging purposes only!!
-        # args.extend(['--debugWorker'])  # enable for debugging purposes only!!
-        # args.extend(['--logLevel', 'DEBUG'])  # enable for debugging purposes only!!
-        if self.field.use_mpi and self.toil_major_version >= 5:
-            # Create the config file for MPI jobs and add the required args
-            if self.batch_system == 'slurm':
-                # Use salloc to request the SLRUM allocation and run the MPI job
-                config_lines = ["runner: 'mpi_runner.sh'", "nproc_flag: '-N'",
-                                "extra_flags: ['mpirun', '--map-by node']"]
-            else:
-                config_lines = ["runner: 'mpirun'", "nproc_flag: '-np'",
-                                "extra_flags: ['--map-by node']"]
-                self.log.warning('MPI support for non-Slurm clusters is experimental. '
-                                 'Please report any issues encountered.')
-            with open(self.mpi_config_file, 'w') as f:
-                f.write('\n'.join(config_lines))
-            args.extend(['--mpi-config-file', self.mpi_config_file])
-            args.extend(['--enable-ext'])
-        args.append(self.pipeline_parset_file)
-        args.append(self.pipeline_inputs_file)
-
-        # Set env variables, if any
-        for k, v in self.toil_env_variables.items():
-            os.environ[k] = v
-
-        # Run the pipeline
-        # print(f"**** Toil command-line arguments: {args} ****")
-        try:
-            with open(self.pipeline_outputs_file, 'w') as stdout:
-                status = cwltoil.main(args=args, stdout=stdout)
-            self.success = (status == 0)
-        except FailedJobsException:
-            self.success = False
-
-        # Unset env variables, if any
-        for k, v in self.toil_env_variables.items():
-            os.environ[k] = ''
-
-        # Reset the logging level, as the cwltoil call above can change it
-        _logging.set_level(self.parset['logging_level'])
-
     def run(self):
         """
         Runs the operation
@@ -275,7 +198,8 @@ class Operation(object):
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
         with Timer(self.log):
-            self.call_toil()
+            with create_cwl_runner(self.cwl_runner, self) as runner:
+                self.success = runner.run()
 
         # Finalize
         if self.success:
