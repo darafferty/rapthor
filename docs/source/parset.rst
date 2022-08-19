@@ -332,3 +332,18 @@ The available options are described below under their respective sections.
 
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
               section and ``dir_local`` is not on a shared filesystem.
+
+    cwl_runner
+        CWL runner to use. Currently supported runners are: cwltool and toil (default).
+        Toil is the recommended runner, since it provides much more fine-grained control
+        over the execution of a workflow. For example, Toil can use Slurm to automatically
+        distribute workflow steps over different compute nodes, whereas CWLTool can only
+        execute workflows on a single node. With CWLTool you also run the risk of
+        overloading your machine when too many jobs are run in parallel. For debugging
+        purposes CWLTool outshines Toil, because its logs are easier to understand.
+
+    debug_workflow
+        Debug workflow related issues. Enabling this will require significantly more
+        disk space. The working directory will never be cleaned up, stdout and stderr
+        will not be redirectied, and log level of the CWL runner will be set to DEBUG.
+        Use this option with care!
