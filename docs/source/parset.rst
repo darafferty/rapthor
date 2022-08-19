@@ -35,12 +35,19 @@ The available options are described below under their respective sections.
         Full path to directory containing the input MS files (required).
         Wildcards can be used (e.g., ``input_ms = /path/to/data/*.ms``). Note
         that Rapthor works on a copy of these files and does not modify the
-        originals in any way.
+        originals in any way. If multiple measurement sets are provided, they
+	should be split in time. This is (currently) inconsistent with how
+	`Linc <https://linc.readthedocs.io/>`_ 
+	outputs the measurement sets, which are split in frequency.
+	Processing Linc outputs requires concatenating the measurement sets,
+	see :doc:`preparation`.
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required).
         If you also have a sky model with apparent flux densities, specify it
         with the :term:`apparent_skymodel` option.
+
+	See :doc:`preparation` for more info on preparing the sky model.
 
     apparent_skymodel
         Full path to the input sky model file, with apparent-sky fluxes
