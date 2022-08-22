@@ -87,24 +87,16 @@ inputs:
   - id: sourcedb
     label: Sky model
     doc: |
-      The sourcedb sky model to use to predict the model visibilities.
+      The sky model to use to predict the model visibilities.
     type: File
     inputBinding:
       prefix: predict.sourcedb=
       separate: False
 
-  - id: sourcedb2
-    label: Dummy parameter
-    doc: |
-      A dummy parameter used to enforce step order.
-    type: File[]
-    inputBinding:
-      valueFrom: ''
-
   - id: directions
     label: Direction names
     doc: |
-      The list of direction names (matching those in the h5parm and sourcedb)
+      The list of direction names (matching those in the h5parm and sky model)
       used in the calibration.
     type: string[]
     inputBinding:

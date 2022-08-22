@@ -63,10 +63,6 @@ inputs:
     inputBinding:
       prefix: predict.sourcedb=
       separate: False
-  - id: sourcedb2
-    type: File[]
-    inputBinding:
-      valueFrom: ''
   - id: directions
     type: string[]
     inputBinding:

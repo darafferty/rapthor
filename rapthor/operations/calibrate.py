@@ -85,9 +85,8 @@ class Calibrate(Operation):
         combined_h5parms1 = 'combined_solutions1.h5'
         combined_h5parms2 = 'combined_solutions2.h5'
 
-        # Define the input sky model and its associated sourcedb
+        # Define the input sky model
         calibration_skymodel_file = self.field.calibration_skymodel_file
-        calibration_sourcedb = 'calibration_skymodel.sourcedb'
 
         # Get the calibrator names and fluxes (used in screen fitting)
         calibrator_patch_names = self.field.calibrator_patch_names
@@ -154,7 +153,6 @@ class Calibrate(Operation):
                             'output_slow_h5parm': output_slow_h5parm,
                             'combined_slow_h5parm': combined_slow_h5parm,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
-                            'calibration_sourcedb': calibration_sourcedb,
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
