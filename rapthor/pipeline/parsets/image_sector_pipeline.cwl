@@ -117,6 +117,7 @@ inputs:
     type: File?
 
 {% if use_screens %}
+# start use_screens
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
@@ -138,6 +139,8 @@ inputs:
 
 {% endif %}
 {% else %}
+# start not use_screens
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
@@ -146,6 +149,7 @@ inputs:
     type: File
 
 {% if use_facets %}
+# start use_facets
   - id: skymodel
     label: Filename of sky model
     doc: |
@@ -191,14 +195,19 @@ inputs:
     type: string
 
 {% else %}
+# start not use_facets
+
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
     type: string
 {% endif %}
+# end use_facets / not use_facets
 
 {% endif %}
+# end use_screens / not use_screens
+
   - id: channels_out
     label: Number of channels
     doc: |
@@ -330,11 +339,11 @@ steps:
       averaging, phase shifting, and optionally the application of the
       calibration solutions at the center.
 {% if use_screens or use_facets %}
-
+# start use_screens or use_facets
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
 
 {% else %}
-
+# start not use_screens and not use_facets
 {% if do_slowgain_solve %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
 {% else %}
@@ -342,6 +351,8 @@ steps:
 {% endif %}
 
 {% endif %}
+# end use_screens or use_facets / not use_screens and not use_facets
+
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -434,42 +445,61 @@ steps:
       This step makes an image using WSClean. Direction-dependent effects
       can be corrected for using a-term images.
 {% if use_screens %}
+# start use_screens
 {% if use_mpi %}
+# start use_mpi
 {% if do_multiscale_clean %}
+# start do_multiscale_clean
+
 {% if toil_version < 5 %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale_toil4.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
 {% endif %}
 {% else %}
+# start not do_multiscale_clean
+
 {% if toil_version < 5 %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_toil4.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
 {% endif %}
 {% endif %}
+# end do_multiscale_clean / not do_multiscale_clean
+
 {% else %}
+# start not use_mpi
+
 {% if do_multiscale_clean %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_multiscale.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
 {% endif %}
 {% endif %}
+# end use_mpi / not use_mpi
+
 {% else %}
+# start not use_screens
+
 {% if use_facets %}
+# start use_facets
 {% if do_multiscale_clean %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets_multiscale.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets.cwl
 {% endif %}
 {% else %}
+# start not use_facets
 {% if do_multiscale_clean %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens_multiscale.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
 {% endif %}
 {% endif %}
+# end use_facets / not use_facets
 {% endif %}
+# end use_screens / not use_screens
+
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -544,6 +574,7 @@ steps:
       - id: skymodel_pb
 
 {% if peel_bright_sources %}
+# start peel_bright_sources
   - id: restore_pb
     label: Restore sources to PB image
     doc: |
@@ -594,6 +625,7 @@ steps:
     out:
       - id: restored_image
 {% endif %}
+# end peel_bright_sources
 
   - id: filter
     label: Filter sources

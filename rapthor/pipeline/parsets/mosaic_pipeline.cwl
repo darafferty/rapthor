@@ -6,6 +6,7 @@ doc: |
   If only a single image was made, processing is (mostly) skipped.
 
 {% if not skip_processing %}
+# start not skip_processing
 
 requirements:
   ScatterFeatureRequirement: {}
@@ -121,9 +122,11 @@ steps:
       - id: mosaic_image
 
 {% else %}
+# start skip_processing
 
 inputs: []
 outputs: []
 steps: []
 
 {% endif %}
+# end skip_processing / not skip_processing

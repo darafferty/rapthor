@@ -149,6 +149,7 @@ inputs:
         - "null"
 
 {% if use_screens %}
+# start use_screens
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
@@ -170,6 +171,7 @@ inputs:
 
 {% endif %}
 {% else %}
+# start not use_screens
   - id: h5parm
     label: Filename of h5parm
     doc: |
@@ -178,6 +180,7 @@ inputs:
     type: File
 
 {% if use_facets %}
+# start use_facets
   - id: skymodel
     label: Filename of sky model
     doc: |
@@ -226,6 +229,7 @@ inputs:
     type: string
 
 {% else %}
+# start not use_facets
 
   - id: central_patch_name
     label: Name of central patch
@@ -233,8 +237,11 @@ inputs:
       The name of the central patch of the sector (length = n_sectors).
     type: string[]
 {% endif %}
+# end use_facets / not use_facets
 
 {% endif %}
+# end use_screens / not use_screens
+
   - id: channels_out
     label: Number of channels
     doc: |
@@ -399,6 +406,7 @@ steps:
       - id: region_file
         source: region_file
 {% if use_screens %}
+# start use_screens
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
@@ -408,9 +416,11 @@ steps:
         source: mpi_nnodes
 {% endif %}
 {% else %}
+# start not use_screens
       - id: h5parm
         source: h5parm
 {% if use_facets %}
+# start use_facets
       - id: skymodel
         source: skymodel
       - id: ra_mid
@@ -426,10 +436,13 @@ steps:
       - id: soltabs
         source: soltabs
 {% else %}
+# start not use_facets
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
+# end use_facets / not use_facets
 {% endif %}
+# end use_screens / not use_screens
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
@@ -467,6 +480,7 @@ steps:
       - id: peel_bright
         source: peel_bright
 {% if use_screens %}
+# start use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
@@ -483,6 +497,7 @@ steps:
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% else %}
+# start not use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
@@ -504,6 +519,8 @@ steps:
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% endif %}
+# end use_screens / not use_screens
+
     scatterMethod: dotproduct
 
     out:

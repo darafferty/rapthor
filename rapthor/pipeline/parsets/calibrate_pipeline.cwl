@@ -216,6 +216,7 @@ inputs:
     type: string
 
 {% if do_slowgain_solve %}
+# start do_slowgain_solve
   - id: freqchunk_filename
     label: Filename of input MS (frequency)
     doc: |
@@ -353,7 +354,9 @@ inputs:
   - id: combined_slow_h5parm_debug
     type: string
 {% endif %}
+
 {% endif %}
+# end do_slowgain_solve
 
 
 outputs:
@@ -474,7 +477,7 @@ steps:
       - id: outh5parm
 
 {% if do_slowgain_solve %}
-# Solve for slow gains
+# start do_slowgain_solve
 
   - id: solve_slow_gains1
     label: Solve for slow gains 1
@@ -760,6 +763,7 @@ steps:
       - id: combinedh5parm
 
 {% if use_screens %}
+# start use_screens
 
   - id: split_h5parms
     label: Split solution table
@@ -805,8 +809,10 @@ steps:
       - id: output_images
 
 {% endif %}
+# end use_screens
 
 {% if debug %}
+# start debug
 # Solve for slow gains again, applying the first ones
 
   - id: solve_slow_gains_debug
@@ -880,11 +886,13 @@ steps:
       - id: outh5parm
 
 {% endif %}
+# end debug
 
 {% else %}
-# Don't solve for slow gains
+# start not do_slowgain_solve
 
 {% if use_screens %}
+# start use_screens
 
   - id: split_h5parms
     label: Split solution table
@@ -930,8 +938,10 @@ steps:
       - id: output_images
 
 {% endif %}
+# end use_screens
 
 {% endif %}
+# end do_slowgain_solve / not do_slowgain_solve
 
 {% if use_screens %}
 
