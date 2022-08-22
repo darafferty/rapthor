@@ -4,6 +4,7 @@ Module that holds functions and classes related to faceting
 import numpy as np
 import scipy as sp
 import scipy.spatial
+import sys
 
 
 def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
@@ -216,7 +217,7 @@ def voronoi(cal_coords, bounding_box):
                        bounding_box[2] - eps <= y and y <= bounding_box[3] + eps):
                     flag = False
                     break
-        if region != [] and flag:
+        if region and flag:
             regions.append(region)
     vor.filtered_points = points_center
     vor.filtered_regions = regions
@@ -245,6 +246,10 @@ def make_ds9_region_file(center_coords, facet_polygons, outfile, names=None):
                  'move=1 delete=1 include=1 fixed=0 source=1\nfk5\n')
     if names is None:
         names = [None] * len(center_coords)
+    if not (len(names) == len(center_coords) == len(facet_polygons)):
+        print('ERROR: the input lists of facet coordinates, vertices, and names must '
+              'have the same length')
+        sys.exit(1)
     for name, center_coord, vertices in zip(names, center_coords, facet_polygons):
         radec_list = []
         RAs = vertices.T[0]
