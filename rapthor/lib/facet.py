@@ -27,19 +27,17 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         Width of bounding box in Dec in degrees
     """
     # Build the bounding box corner coordinates
-    dec_min = dec_mid - width_dec / 2.0
-    dec_max = dec_mid + width_dec / 2.0
-    ra_corner = [ra_mid - width_ra / 2.0 / np.cos(dec_min),
-                 ra_mid + width_ra / 2.0 / np.cos(dec_min),
-                 ra_mid - width_ra / 2.0 / np.cos(dec_max),
-                 ra_mid + width_ra / 2.0 / np.cos(dec_max)]
-    dec_corner = [dec_min, dec_min, dec_max, dec_max]
-
-    # Convert all coordinates to x, y
-    wcs = makeWCS(ra_mid, dec_mid)
+    if width_ra <= 0.0 or width_dec <= 0.0:
+        print('ERROR: the width cannot be zero or less')
+        sys.exit(1)
+    wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
+    wcs = makeWCS(ra_mid, dec_mid, wcs_pixel_scale)
     x_cal, y_cal = radec2xy(wcs, ra_cal, dec_cal)
-    x_corner, y_corner = radec2xy(wcs, ra_corner, dec_corner)
-    bounding_box = np.array([min(x_corner), max(x_corner), min(y_corner), max(y_corner)])
+    x_mid, y_mid = radec2xy(wcs, [ra_mid], [dec_mid])
+    width_x = width_ra / wcs_pixel_scale / 2.0
+    width_y = width_dec / wcs_pixel_scale / 2.0
+    bounding_box = np.array([x_mid[0] - width_x, x_mid[0] + width_x,
+                             y_mid[0] - width_y, y_mid[0] + width_y])
 
     # Tessellate and convert resulting facet polygons from (x, y) to (RA, Dec)
     vor = voronoi(np.stack((x_cal, y_cal)).T, bounding_box)
@@ -115,9 +113,18 @@ def xy2radec(wcs, x, y):
     return RA, Dec
 
 
-def makeWCS(ra, dec):
+def makeWCS(ra, dec, wcs_pixel_scale=10.0/3600.0):
     """
     Makes simple WCS object
+
+    Parameters
+    ----------
+    ra : float
+        Reference RA in degrees
+    dec : float
+        Reference Dec in degrees
+    wcs_pixel_scale : float, optional
+        Pixel scale in degrees/pixel (default = 10"/pixel)
 
     Returns
     -------
@@ -126,7 +133,6 @@ def makeWCS(ra, dec):
     """
     from astropy.wcs import WCS
 
-    wcs_pixel_scale = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
     w = WCS(naxis=2)
     w.wcs.crpix = [1000, 1000]
     w.wcs.cdelt = np.array([-wcs_pixel_scale, wcs_pixel_scale])
