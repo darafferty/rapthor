@@ -43,6 +43,320 @@ def expand_array(array, new_shape, new_axis_ind):
     return new_array
 
 
+def combine_phase1_amp2(ss1, ss2, sso):
+    """
+    Take phases from 1 and amplitudes from 2
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+    sso : solset
+        Output solution set
+
+    Returns
+    -------
+    sso : solset
+        Updated output solution set
+    """
+    # Remove unneeded soltabs from 1 and 2, then copy
+    if 'amplitude000' in ss1.getSoltabNames():
+        st = ss1.getSoltab('amplitude000')
+        st.delete()
+    if 'phase000' in ss2.getSoltabNames():
+        st = ss2.getSoltab('phase000')
+        st.delete()
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+    ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    return sso
+
+
+def combine_phase1_amp1_amp2(ss1, ss2, sso):
+    """
+    Take phases and amplitudes from 1 and amplitudes from 2 (amplitudes 1 and 2
+    are multiplied to create combined values)
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+    sso : solset
+        Output solution set
+
+    Returns
+    -------
+    sso : solset
+        Updated output solution set
+    """
+    # First, copy phases and amplitudes from 1
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    # Then read amplitudes from 1 and 2, multiply them together, and store
+    st1 = ss1.getSoltab('amplitude000')
+    st2 = ss2.getSoltab('amplitude000')
+    sto = sso.getSoltab('amplitude000')
+    sto.setValues(st1.val*st2.val)
+
+    return sso
+
+
+def combine_phase1_phase2_amp2(ss1, ss2, sso):
+    """
+    Take phases from 1 and phases and amplitudes from 2 (phases 2 are averaged
+    over XX and YY, then interpolated to time grid of 1 and summed)
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+    sso : solset
+        Output solution set
+
+    Returns
+    -------
+    sso : solset
+        Updated output solution set
+    """
+
+    # First, copy phases from 1
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    # Read phases from 2, average XX and YY (using circmean), interpolate to match
+    # those from 1, and sum. Note: the interpolation is done in phase space (instead
+    # of real/imag space) since phase wraps are not expected to be present in the
+    # slow phases
+    st1 = ss1.getSoltab('phase000')
+    st2 = ss2.getSoltab('phase000')
+    axis_names = st1.getAxesNames()
+    time_ind = axis_names.index('time')
+    freq_ind = axis_names.index('freq')
+    axis_names = st2.getAxesNames()
+    pol_ind = axis_names.index('pol')
+    val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
+    if len(st2.time) > 1:
+        f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
+        v1 = f(st1.time)
+    else:
+        v1 = val2
+    if len(st2.freq) > 1:
+        f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
+        v2 = f(st1.freq)
+        vals = v2 + st1.val
+    else:
+        vals = v1 + st1.val
+    sto = sso.getSoltab('phase000')
+    sto.setValues(vals)
+
+    # Copy amplitudes from 2
+    # Remove unneeded phase soltab from 2, then copy
+    if 'phase000' in ss2.getSoltabNames():
+        st = ss2.getSoltab('phase000')
+        st.delete()
+    ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    return sso
+
+
+def combine_phase1_phase2_amp2_diagonal(ss1, ss2, sso, interpolate_amplitudes=False):
+    """
+    Take phases from 1 and phases and amplitudes from 2, XX and YY for both
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+    sso : solset
+        Output solution set
+    interpolate_amplitudes : bool, optional
+        If True, interpolate the amplitudes to the time and frequency grid
+        of the fast phases
+
+    Returns
+    -------
+    sso : solset
+        Updated output solution set
+    """
+    # First, copy phases from 1
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    # Next, make the axes and their values for the output soltab
+    st1 = ss1.getSoltab('phase000')
+    st2 = ss2.getSoltab('phase000')
+    axes_names = st2.getAxesNames()
+    axis_names2 = st2.getAxesNames()
+    axes_vals = []
+    for axis in axes_names:
+        if axis == 'time' or axis == 'freq':
+            # Take time and frequency values from 1
+            axis_vals = st1.getAxisValues(axis)
+        else:
+            # Take other values from 2
+            axis_vals = st2.getAxisValues(axis)
+        axes_vals.append(axis_vals)
+    axes_shapes = [len(axis) for axis in axes_vals]
+
+    # Read phases from 2, interpolate to match those from 1, and sum. Note:
+    # the interpolation is done in phase space (instead of real/imag space)
+    # since phase wraps are not expected to be present in the slow phases
+    time_ind = axes_names.index('time')
+    freq_ind = axes_names.index('freq')
+    pol_ind = axes_names.index('pol')
+    st1_vals = expand_array(st1.val, axes_shapes, pol_ind)
+    if len(st2.time) > 1:
+        f = si.interp1d(st2.time, st2.val, axis=time_ind, kind='nearest', fill_value='extrapolate')
+        v1 = f(st1.time)
+    else:
+        # Just duplicate the single time to all times, without altering the freq axis
+        axes_shapes1 = axes_shapes[:]
+        axes_shapes1[freq_ind] = st2.val.shape[freq_ind]
+        v1 = expand_array(st2.val, axes_shapes1, time_ind)
+    if len(st2.freq) > 1:
+        f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
+        vals = f(st1.freq) + st1_vals
+    else:
+        # Just duplicate the single frequency to all frequencies
+        v2 = expand_array(v1, axes_shapes, freq_ind)
+        vals = v2 + st1_vals
+    if 'phase000' in sso.getSoltabNames():
+        st = sso.getSoltab('phase000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
+
+    # Copy amplitudes from 2
+    # Remove unneeded phase soltab from 2, then copy
+    if interpolate_amplitudes:
+        st2 = ss2.getSoltab('amplitude000')
+        if len(st2.time) > 1:
+            f = si.interp1d(st2.time, st2.val, axis=time_ind, kind='nearest', fill_value='extrapolate')
+            v1 = f(st1.time)
+        else:
+            v1 = st2.val
+        if len(st2.freq) > 1:
+            f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
+            v2 = f(st1.freq)
+            vals = v2
+        else:
+            vals = v1
+        if 'amplitude000' in sso.getSoltabNames():
+            st = sso.getSoltab('amplitude000')
+            st.delete()
+        sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axis_names2,
+                             axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
+    else:
+        if 'phase000' in ss2.getSoltabNames():
+            st = ss2.getSoltab('phase000')
+            st.delete()
+        ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    return sso
+
+
+def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=False):
+    """
+    Take phases from 1 and phases and amplitudes from 2, scalar for both
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+    sso : solset
+        Output solution set
+    interpolate_amplitudes : bool, optional
+        If True, interpolate the amplitudes to the time and frequency grid
+        of the fast phases
+
+    Returns
+    -------
+    sso : solset
+        Updated output solution set
+    """
+    # First, copy phases from 1
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    # Next, make the axes and their values for the output soltab
+    st1 = ss1.getSoltab('phase000')
+    st2 = ss2.getSoltab('phase000')
+    axes_names = st1.getAxesNames()
+    axes_names2 = st2.getAxesNames()
+    axes_vals = []
+    for axis in axes_names:
+        axis_vals = st1.getAxisValues(axis)
+        axes_vals.append(axis_vals)
+    axes_shapes = [len(axis) for axis in axes_vals]
+
+    # Read phases from 2, average, interpolate to match those from 1, and sum. Note:
+    # the interpolation is done in phase space (instead of real/imag space)
+    # since phase wraps are not expected to be present in the slow phases
+    time_ind = axes_names.index('time')
+    freq_ind = axes_names.index('freq')
+    pol_ind = axes_names2.index('pol')
+    st1_vals = st1.val
+    val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
+    if len(st2.time) > 1:
+        f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
+        v1 = f(st1.time)
+    else:
+        # Just duplicate the single time to all times, without altering the freq axis
+        axes_shapes1 = axes_shapes[:]
+        axes_shapes1[freq_ind] = val2.shape[freq_ind]
+        v1 = expand_array(val2, axes_shapes1, time_ind)
+    if len(st2.freq) > 1:
+        f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
+        vals = f(st1.freq) + st1_vals
+    else:
+        # Just duplicate the single frequency to all frequencies
+        v2 = expand_array(v1, axes_shapes, freq_ind)
+        vals = v2 + st1_vals
+    if 'phase000' in sso.getSoltabNames():
+        st = sso.getSoltab('phase000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
+
+    # Copy amplitudes from 2
+    # Remove unneeded phase soltab from 2, then copy
+    if interpolate_amplitudes:
+        st2 = ss2.getSoltab('amplitude000')
+        val2 = np.log10(st2.val)
+        val2 = np.mean(val2, axis=pol_ind)  # average over XX and YY
+        val2 = 10**val2
+        if len(st2.time) > 1:
+            f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
+            v1 = f(st1.time)
+        else:
+            v1 = val2
+        if len(st2.freq) > 1:
+            f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
+            v2 = f(st1.freq)
+            vals = v2
+        else:
+            vals = v1
+        if 'amplitude000' in sso.getSoltabNames():
+            st = sso.getSoltab('amplitude000')
+            st.delete()
+        sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
+                             axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
+    else:
+        if 'phase000' in ss2.getSoltabNames():
+            st = ss2.getSoltab('phase000')
+            st.delete()
+        ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
+    return sso
+
+
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
          reweight=False, cal_names=None, cal_fluxes=None, interpolate_amplitudes=False):
     """
@@ -75,6 +389,9 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         List of calibrator names (for use in reweighting)
     cal_fluxes : str or list, optional
         List of calibrator flux densities (for use in reweighting)
+    interpolate_amplitudes : bool, optional
+        If True, interpolate the amplitudes to the time and frequency grid
+        of the fast phases
     """
     reweight = misc.string2bool(reweight)
     cal_names = misc.string2list(cal_names)
@@ -88,235 +405,43 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         h1 = h5parm(h5parm1_copy, readonly=False)
         h2 = h5parm(h5parm2_copy, readonly=False)
 
-    ss1 = h1.getSolset(solset=solset1)
-    ss2 = h2.getSolset(solset=solset2)
+        ss1 = h1.getSolset(solset=solset1)
+        ss2 = h2.getSolset(solset=solset2)
 
-    # Initialize the output h5parm
-    if os.path.exists(outh5parm):
-        os.remove(outh5parm)
-    ho = h5parm(outh5parm, readonly=False)
-    sso = ho.makeSolset(solsetName='sol000', addTables=False)
+        # Initialize the output h5parm
+        if os.path.exists(outh5parm):
+            os.remove(outh5parm)
+        ho = h5parm(outh5parm, readonly=False)
+        sso = ho.makeSolset(solsetName='sol000', addTables=False)
 
-    if mode == 'p1a2':
-        # Take phases from 1 and amplitudes from 2
-        # Remove unneeded soltabs from 1 and 2, then copy
-        if 'amplitude000' in ss1.getSoltabNames():
-            st = ss1.getSoltab('amplitude000')
-            st.delete()
-        if 'phase000' in ss2.getSoltabNames():
-            st = ss2.getSoltab('phase000')
-            st.delete()
-        ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-        ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+        if mode == 'p1a2':
+            # Take phases from 1 and amplitudes from 2
+            sso = combine_phase1_amp2(ss1, ss2, sso)
 
-    elif mode == 'p1a1a2':
-        # Take phases and amplitudes from 1 and amplitudes from 2 (amplitudes 1 and 2
-        # are multiplied to create combined values)
-        # First, copy phases and amplitudes from 1
-        ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+        elif mode == 'p1a1a2':
+            # Take phases and amplitudes from 1 and amplitudes from 2
+            sso = combine_phase1_amp1_amp2(ss1, ss2, sso)
 
-        # Then read amplitudes from 1 and 2, multiply them together, and store
-        st1 = ss1.getSoltab('amplitude000')
-        st2 = ss2.getSoltab('amplitude000')
-        sto = sso.getSoltab('amplitude000')
-        sto.setValues(st1.val*st2.val)
+        elif mode == 'p1p2a2':
+            # Take phases from 1 and phases and amplitudes from 2
+            sso = combine_phase1_phase2_amp2(ss1, ss2, sso)
 
-    elif mode == 'p1p2a2':
-        # Take phases from 1 and phases and amplitudes from 2 (phases 2 are averaged
-        # over XX and YY, then interpolated to time grid of 1 and summed)
-        # First, copy phases from 1
-        ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+        elif mode == 'p1p2a2_diagonal':
+            # Take phases from 1 and phases and amplitudes from 2, diagonal
+            sso = combine_phase1_phase2_amp2_diagonal(ss1, ss2, sso, interpolate_amplitudes=interpolate_amplitudes)
 
-        # Read phases from 2, average XX and YY (using circmean), interpolate to match
-        # those from 1, and sum. Note: the interpolation is done in phase space (instead
-        # of real/imag space) since phase wraps are not expected to be present in the
-        # slow phases
-        st1 = ss1.getSoltab('phase000')
-        st2 = ss2.getSoltab('phase000')
-        axis_names = st1.getAxesNames()
-        time_ind = axis_names.index('time')
-        freq_ind = axis_names.index('freq')
-        axis_names = st2.getAxesNames()
-        pol_ind = axis_names.index('pol')
-        val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
-        if len(st2.time) > 1:
-            f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
-            v1 = f(st1.time)
+        elif mode == 'p1p2a2_scalar':
+            # Take phases from 1 and phases and amplitudes from 2, scalar
+            sso = combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=interpolate_amplitudes)
+
         else:
-            v1 = val2
-        if len(st2.freq) > 1:
-            f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
-            v2 = f(st1.freq)
-            vals = v2 + st1.val
-        else:
-            vals = v1 + st1.val
-        sto = sso.getSoltab('phase000')
-        sto.setValues(vals)
+            print('ERROR: mode not understood')
+            sys.exit(1)
 
-        # Copy amplitudes from 2
-        # Remove unneeded phase soltab from 2, then copy
-        if 'phase000' in ss2.getSoltabNames():
-            st = ss2.getSoltab('phase000')
-            st.delete()
-        ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-    elif mode == 'p1p2a2_diagonal':
-        # phases from 1 and phases and amplitudes from 2, XX and YY for both
-        # First, copy phases from 1
-        ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-        # Next, make the axes and their values for the output soltab
-        st1 = ss1.getSoltab('phase000')
-        st2 = ss2.getSoltab('phase000')
-        axes_names = st2.getAxesNames()
-        axis_names2 = st2.getAxesNames()
-        axes_vals = []
-        for axis in axes_names:
-            if axis == 'time' or axis == 'freq':
-                # Take time and frequency values from 1
-                axis_vals = st1.getAxisValues(axis)
-            else:
-                # Take other values from 2
-                axis_vals = st2.getAxisValues(axis)
-            axes_vals.append(axis_vals)
-        axes_shapes = [len(axis) for axis in axes_vals]
-
-        # Read phases from 2, interpolate to match those from 1, and sum. Note:
-        # the interpolation is done in phase space (instead of real/imag space)
-        # since phase wraps are not expected to be present in the slow phases
-        time_ind = axes_names.index('time')
-        freq_ind = axes_names.index('freq')
-        pol_ind = axes_names.index('pol')
-        st1_vals = expand_array(st1.val, axes_shapes, pol_ind)
-        if len(st2.time) > 1:
-            f = si.interp1d(st2.time, st2.val, axis=time_ind, kind='nearest', fill_value='extrapolate')
-            v1 = f(st1.time)
-        else:
-            # Just duplicate the single time to all times, without altering the freq axis
-            axes_shapes1 = axes_shapes[:]
-            axes_shapes1[freq_ind] = st2.val.shape[freq_ind]
-            v1 = expand_array(st2.val, axes_shapes1, time_ind)
-        if len(st2.freq) > 1:
-            f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
-            vals = f(st1.freq) + st1_vals
-        else:
-            # Just duplicate the single frequency to all frequencies
-            v2 = expand_array(v1, axes_shapes, freq_ind)
-            vals = v2 + st1_vals
-        if 'phase000' in sso.getSoltabNames():
-            st = sso.getSoltab('phase000')
-            st.delete()
-        sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                             axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
-
-        # Copy amplitudes from 2
-        # Remove unneeded phase soltab from 2, then copy
-        if interpolate_amplitudes:
-            st2 = ss2.getSoltab('amplitude000')
-            if len(st2.time) > 1:
-                f = si.interp1d(st2.time, st2.val, axis=time_ind, kind='nearest', fill_value='extrapolate')
-                v1 = f(st1.time)
-            else:
-                v1 = st2.val
-            if len(st2.freq) > 1:
-                f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
-                v2 = f(st1.freq)
-                vals = v2
-            else:
-                vals = v1
-            if 'amplitude000' in sso.getSoltabNames():
-                st = sso.getSoltab('amplitude000')
-                st.delete()
-            sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axis_names2,
-                                 axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
-        else:
-            if 'phase000' in ss2.getSoltabNames():
-                st = ss2.getSoltab('phase000')
-                st.delete()
-            ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-    elif mode == 'p1p2a2_scalar':
-        # phases from 1 and phases and amplitudes from 2, scalar for both
-        # First, copy phases from 1
-        ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-        # Next, make the axes and their values for the output soltab
-        st1 = ss1.getSoltab('phase000')
-        st2 = ss2.getSoltab('phase000')
-        axes_names = st1.getAxesNames()
-        axes_names2 = st2.getAxesNames()
-        axes_vals = []
-        for axis in axes_names:
-            axis_vals = st1.getAxisValues(axis)
-            axes_vals.append(axis_vals)
-        axes_shapes = [len(axis) for axis in axes_vals]
-
-        # Read phases from 2, average, interpolate to match those from 1, and sum. Note:
-        # the interpolation is done in phase space (instead of real/imag space)
-        # since phase wraps are not expected to be present in the slow phases
-        time_ind = axes_names.index('time')
-        freq_ind = axes_names.index('freq')
-        pol_ind = axes_names2.index('pol')
-        st1_vals = st1.val
-        val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
-        if len(st2.time) > 1:
-            f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
-            v1 = f(st1.time)
-        else:
-            # Just duplicate the single time to all times, without altering the freq axis
-            axes_shapes1 = axes_shapes[:]
-            axes_shapes1[freq_ind] = val2.shape[freq_ind]
-            v1 = expand_array(val2, axes_shapes1, time_ind)
-        if len(st2.freq) > 1:
-            f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
-            vals = f(st1.freq) + st1_vals
-        else:
-            # Just duplicate the single frequency to all frequencies
-            v2 = expand_array(v1, axes_shapes, freq_ind)
-            vals = v2 + st1_vals
-        if 'phase000' in sso.getSoltabNames():
-            st = sso.getSoltab('phase000')
-            st.delete()
-        sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
-                             axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
-
-        # Copy amplitudes from 2
-        # Remove unneeded phase soltab from 2, then copy
-        if interpolate_amplitudes:
-            st2 = ss2.getSoltab('amplitude000')
-            val2 = np.log10(st2.val)
-            val2 = np.mean(val2, axis=pol_ind)  # average over XX and YY
-            val2 = 10**val2
-            if len(st2.time) > 1:
-                f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
-                v1 = f(st1.time)
-            else:
-                v1 = val2
-            if len(st2.freq) > 1:
-                f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
-                v2 = f(st1.freq)
-                vals = v2
-            else:
-                vals = v1
-            if 'amplitude000' in sso.getSoltabNames():
-                st = sso.getSoltab('amplitude000')
-                st.delete()
-            sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
-                                 axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
-        else:
-            if 'phase000' in ss2.getSoltabNames():
-                st = ss2.getSoltab('phase000')
-                st.delete()
-            ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-    else:
-        print('ERROR: mode not understood')
-        sys.exit(1)
-
-    # Close the files, copies are removed automatically
-    h1.close()
-    h2.close()
-    ho.close()
+        # Close the files, copies are removed automatically
+        h1.close()
+        h2.close()
+        ho.close()
 
     # Reweight
     if reweight:
@@ -353,12 +478,10 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
                 # Ensure window is odd
                 nstddev += 1
             losoto.operations.reweight.run(soltab_amp, mode='window', nmedian=5, nstddev=nstddev)
-        ho.close()
 
         # Use the input calibrator flux densities to adjust the weighting done above
         # to ensure that the average weights are proportional to the square of the
         # calibrator flux densities
-        ho = h5parm(outh5parm, readonly=False)
         sso = ho.getSolset(solset='sol000')
         soltab_ph = sso.getSoltab('phase000')
         soltab_amp = sso.getSoltab('amplitude000')
