@@ -29,6 +29,8 @@ arguments:
   - -join-channels
   - -use-idg
   - -log-time
+  - valueFrom: '$(runtime.tmpdir)'
+    prefix: -temp-dir
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
@@ -137,13 +139,6 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
-  - id: dir_local
-    label: Scratch directory
-    doc: |
-      The path to a (node-local) scratch directory.
-    type: string
-    inputBinding:
-      prefix: -temp-dir
   - id: channels_out
     label: Number of channels
     doc: |
