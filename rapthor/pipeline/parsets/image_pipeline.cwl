@@ -8,6 +8,7 @@ doc: |
   using PyBDSF.
 
 requirements:
+  MultipleInputFeatureRequirement: {}
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
   SubworkflowFeatureRequirement: {}

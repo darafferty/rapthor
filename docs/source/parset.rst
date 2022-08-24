@@ -35,12 +35,19 @@ The available options are described below under their respective sections.
         Full path to directory containing the input MS files (required).
         Wildcards can be used (e.g., ``input_ms = /path/to/data/*.ms``). Note
         that Rapthor works on a copy of these files and does not modify the
-        originals in any way.
+        originals in any way. If multiple measurement sets are provided, they
+	should be split in time. This is (currently) inconsistent with how
+	`Linc <https://linc.readthedocs.io/>`_ 
+	outputs the measurement sets, which are split in frequency.
+	Processing Linc outputs requires concatenating the measurement sets,
+	see :doc:`preparation`.
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required).
         If you also have a sky model with apparent flux densities, specify it
         with the :term:`apparent_skymodel` option.
+
+	See :doc:`preparation` for more info on preparing the sky model.
 
     apparent_skymodel
         Full path to the input sky model file, with apparent-sky fluxes
@@ -332,3 +339,18 @@ The available options are described below under their respective sections.
 
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
               section and ``dir_local`` is not on a shared filesystem.
+
+    cwl_runner
+        CWL runner to use. Currently supported runners are: cwltool and toil (default).
+        Toil is the recommended runner, since it provides much more fine-grained control
+        over the execution of a workflow. For example, Toil can use Slurm to automatically
+        distribute workflow steps over different compute nodes, whereas CWLTool can only
+        execute workflows on a single node. With CWLTool you also run the risk of
+        overloading your machine when too many jobs are run in parallel. For debugging
+        purposes CWLTool outshines Toil, because its logs are easier to understand.
+
+    debug_workflow
+        Debug workflow related issues. Enabling this will require significantly more
+        disk space. The working directory will never be cleaned up, stdout and stderr
+        will not be redirectied, and log level of the CWL runner will be set to DEBUG.
+        Use this option with care!

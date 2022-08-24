@@ -72,15 +72,9 @@ inputs:
   - id: sector_skymodel
     label: Filename of sky model
     doc: |
-      The filename of the input sky model text file of each sector (length = n_sectors).
+      The filename of the input sky model text file of each sector (length = n_obs
+      * n_sectors).
     type: File[]
-
-  - id: sector_sourcedb
-    label: Filename of sourcedb
-    doc: |
-      The filename of the output sourcedb sky model file of each sector (length =
-      n_sectors).
-    type: string[]
 
   - id: obs_filename
     label: Filename of input MS
@@ -159,32 +153,12 @@ inputs:
     type: boolean
 
 outputs:
-  - id: sourcedbs
-    outputSource:
-      - make_sourcedb/sourcedb
-    type: File[]
-  - id: subtracted_models
+  - id: subtract_models
     outputSource:
       - merge_subtract_sector_models/output
     type: Directory[]
 
 steps:
-  - id: make_sourcedb
-    label: Make a sourcedb
-    doc: |
-      A sourcedb (defining the model) is required by DPPP for prediction. This
-      step converts the input sky model into a sourcedb (one per sector).
-    run: {{ rapthor_pipeline_dir }}/steps/make_sourcedb.cwl
-    in:
-      - id: in
-        source: sector_skymodel
-      - id: out
-        source: sector_sourcedb
-    scatter: [in, out]
-    scatterMethod: dotproduct
-    out:
-      - id: sourcedb
-
   - id: predict_model_data
     label: Predict the model uv data
     doc: |
@@ -218,9 +192,7 @@ steps:
       - id: h5parm
         source: h5parm
       - id: sourcedb
-        source: make_sourcedb/sourcedb
-      - id: sourcedb2
-        source: make_sourcedb/sourcedb
+        source: sector_skymodel
       - id: directions
         source: sector_patches
       - id: numthreads

@@ -191,3 +191,11 @@ input_skymodel = /data/skymodel.txt
 # singularity; default = docker)
 # use_container = False
 # container_type = docker
+
+# CWL runner to use. Currently supported runners are: cwltool and toil (default)
+# cwl_runner = toil
+
+# Debug workflow related issues. Enabling this will require significantly more
+# disk space. The working directory will never be cleaned up, stdout and stderr
+# will not be redirectied, and log level of the CWL runner will be set to DEBUG.
+# debug_workflow = False

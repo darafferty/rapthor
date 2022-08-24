@@ -50,7 +50,6 @@ class Predict(Operation):
 
         # Set sector-dependent parameters (input and output filenames, patch names, etc.)
         sector_skymodel = []
-        sector_sourcedb = []
         sector_filename = []
         sector_starttime = []
         sector_ntimes = []
@@ -58,11 +57,9 @@ class Predict(Operation):
         sector_patches = []
         for sector in sectors:
             sector.set_prediction_parameters()
-            sector_skymodel.extend([sector.predict_skymodel_file] * len(sector.observations))
-            sdb_dir, sdb_file = os.path.split(
-                os.path.splitext(sector.predict_skymodel_file)[0]+'.sourcedb'
+            sector_skymodel.extend(
+                [sector.predict_skymodel_file] * len(self.field.observations)
             )
-            sector_sourcedb.extend([sdb_file] * len(sector.observations))
             sector_filename.extend(sector.get_obs_parameters('ms_filename'))
             sector_model_filename.extend(
                 [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
@@ -99,7 +96,6 @@ class Predict(Operation):
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
-                            'sector_sourcedb': sector_sourcedb,
                             'sector_patches': sector_patches,
                             'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
                             'obs_solint_sec': obs_solint_sec,

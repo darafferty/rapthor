@@ -93,12 +93,6 @@ inputs:
       The filename of the input sky model text file (length = 1).
     type: File
 
-  - id: calibration_sourcedb
-    label: Filename of sourcedb
-    doc: |
-      The filename of the output sourcedb sky model file (length = 1).
-    type: string
-
   - id: fast_smoothnessconstraint
     label: Fast smoothnessconstraint
     doc: |
@@ -379,20 +373,6 @@ outputs:
 
 
 steps:
-  - id: make_sourcedb
-    label: Make a sourcedb
-    doc: |
-      A sourcedb (defining the model) is required by DPPP for calibration. This
-      step converts the input sky model into a sourcedb.
-    run: {{ rapthor_pipeline_dir }}/steps/make_sourcedb.cwl
-    in:
-      - id: in
-        source: calibration_skymodel_file
-      - id: out
-        source: calibration_sourcedb
-    out:
-      - id: sourcedb
-
   - id: solve_fast_phases
     label: Solve for fast phases
     doc: |
@@ -424,7 +404,7 @@ steps:
       - id: nchan
         source: solint_fast_freqstep
       - id: sourcedb
-        source: make_sourcedb/sourcedb
+        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -514,7 +494,7 @@ steps:
       - id: solve_nchan
         source: solint_slow_freqstep
       - id: sourcedb
-        source: make_sourcedb/sourcedb
+        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -634,7 +614,7 @@ steps:
       - id: solve_nchan
         source: solint_slow_freqstep2
       - id: sourcedb
-        source: make_sourcedb/sourcedb
+        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter
@@ -844,7 +824,7 @@ steps:
       - id: solve_nchan
         source: solint_slow_freqstep
       - id: sourcedb
-        source: make_sourcedb/sourcedb
+        source: calibration_skymodel_file
       - id: llssolver
         source: llssolver
       - id: maxiter

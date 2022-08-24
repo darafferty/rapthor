@@ -35,7 +35,7 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         beam correction
     output_root : str
         Root of filename of output makesourcedb sky models. Output filenames will be
-        output_root+'.apparent_sky' and output_root+'.true_sky'
+        output_root+'.apparent_sky.txt' and output_root+'.true_sky.txt'
     vertices_file : str
         Filename of file with vertices
     threshisl : float, optional
@@ -181,8 +181,8 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
                 # Write out apparent and true-sky models
                 del(img)  # helps reduce memory usage
                 s.group(maskfile)  # group the sky model by mask islands
-                s.write(output_root+'.true_sky', clobber=True)
-                s.write(output_root+'.apparent_sky', clobber=True, applyBeam=True)
+                s.write(output_root+'.true_sky.txt', clobber=True)
+                s.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
     else:
         emptysky = True
 
@@ -202,9 +202,9 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         dummylines.append(',,p1,{0},{1}\n'.format(sra, sdec))
         dummylines.append('s0c0,POINT,p1,{0},{1},0.00000001,'
                           '[0.0,0.0],false,100000000.0,,,\n'.format(sra, sdec))
-        with open(output_root+'.apparent_sky', 'w') as f:
+        with open(output_root+'.apparent_sky.txt', 'w') as f:
             f.writelines(dummylines)
-        with open(output_root+'.true_sky', 'w') as f:
+        with open(output_root+'.true_sky.txt', 'w') as f:
             f.writelines(dummylines)
 
     # Set the TMPDIR env var back to its original value
