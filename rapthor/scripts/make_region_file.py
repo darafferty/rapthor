@@ -113,9 +113,9 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
         # been filtered out if they lie outside the bounding box
         for ra, dec, name in zip(ra_cal, dec_cal, name_cal):
             if misc.approx_equal(ra, facet_point[0], tol=1e-6) and misc.approx_equal(dec, facet_point[1], tol=1e-6):
-                # Note: some versions of ds9 have problems when there is an underscore in any of
-                # the names, so replace any underscores with "-"
-                facet_names.append(name.replace('_', '-'))
+                # Note: some versions of ds9 have problems when there are certain characters
+                # ('_' and '-' are the two known so far) in any of the names, so remove them
+                facet_names.append(name.replace('_', '').replace('-', ''))
                 break
 
     # Make the ds9 region file
