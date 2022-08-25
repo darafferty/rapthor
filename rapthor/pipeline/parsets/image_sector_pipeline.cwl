@@ -202,12 +202,6 @@ inputs:
     type: string
 
 {% endif %}
-  - id: dir_local
-    label: Scratch directory
-    doc: |
-      The path to a (node-local) scratch directory (length = 1).
-    type: string
-
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -433,8 +427,6 @@ steps:
       - id: multiscale_scales_pixel
         source: multiscale_scales_pixel
 {% endif %}
-      - id: dir_local
-        source: dir_local
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
