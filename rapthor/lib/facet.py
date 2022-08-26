@@ -4,12 +4,12 @@ Module that holds functions and classes related to faceting
 import numpy as np
 import scipy as sp
 import scipy.spatial
-import sys
 
 
 def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     """
-    Makes a Voronoi tessellation and returns the resulting facet polygons
+    Makes a Voronoi tessellation and returns the resulting facet centers
+    and polygons
 
     Parameters
     ----------
@@ -25,11 +25,18 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         Width of bounding box in RA in degrees, corrected to Dec = 0
     width_dec : float
         Width of bounding box in Dec in degrees
+
+    Returns
+    -------
+    facet_points, facet_polys : list of tuples, list of arrays
+        List of facet points (centers) as (RA, Dec) tuples in degrees and
+        list of facet polygons (vertices) as [RA, Dec] arrays in degrees
+        (each of shape N x 2, where N is the number of vertices in a given
+        facet)
     """
     # Build the bounding box corner coordinates
     if width_ra <= 0.0 or width_dec <= 0.0:
-        print('ERROR: the width cannot be zero or less')
-        sys.exit(1)
+        raise ValueError('The RA/Dec width cannot be zero or less')
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
     wcs = makeWCS(ra_mid, dec_mid, wcs_pixel_scale)
     x_cal, y_cal = radec2xy(wcs, ra_cal, dec_cal)
@@ -166,7 +173,7 @@ def in_box(cal_coords, bounding_box):
 
 def voronoi(cal_coords, bounding_box):
     """
-    Checks if coordinates are inside the bounding box
+    Produces a Voronoi tessellation for the given coordinates and bounding box
 
     Parameters
     ----------
@@ -237,10 +244,11 @@ def make_ds9_region_file(center_coords, facet_polygons, outfile, names=None):
 
     Parameters
     ----------
-    center_coords : list
+    center_coords : list of tuples
         List of (RA, Dec) of the facet center coordinates
-    facet_polygons : list
-        List of vertices for the facets
+    facet_polygons : list of arrays
+        List of [RA, Dec] arrays of the facet vertices (each of shape N x 2, where N
+        is the number of vertices in a given facet)
     outfile : str
         Name of output region file
     names : list, optional
@@ -253,9 +261,8 @@ def make_ds9_region_file(center_coords, facet_polygons, outfile, names=None):
     if names is None:
         names = [None] * len(center_coords)
     if not (len(names) == len(center_coords) == len(facet_polygons)):
-        print('ERROR: the input lists of facet coordinates, vertices, and names must '
-              'have the same length')
-        sys.exit(1)
+        raise ValueError('Input lists of facet coordinates, vertices, and names '
+                         'must have the same length')
     for name, center_coord, vertices in zip(names, center_coords, facet_polygons):
         radec_list = []
         RAs = vertices.T[0]
