@@ -7,68 +7,6 @@ from argparse import RawTextHelpFormatter
 from rapthor.lib import facet
 from rapthor.lib import miscellaneous as misc
 import lsmtool
-from math import floor, ceil
-
-
-def normalize_ra(num):
-    """
-    Normalize RA to be in the range [0, 360).
-
-    Based on https://github.com/phn/angles/blob/master/angles.py
-
-    Parameters
-    ----------
-    num : float
-        The RA in degrees to be normalized.
-
-    Returns
-    -------
-    res : float
-        RA in degrees in the range [0, 360).
-    """
-    lower = 0.0
-    upper = 360.0
-    res = num
-    if num > upper or num == lower:
-        num = lower + abs(num + upper) % (abs(lower) + abs(upper))
-    if num < lower or num == upper:
-        num = upper - abs(num - lower) % (abs(lower) + abs(upper))
-    res = lower if num == upper else num
-
-    return res
-
-
-def normalize_dec(num):
-    """
-    Normalize Dec to be in the range [-90, 90].
-
-    Based on https://github.com/phn/angles/blob/master/angles.py
-
-    Parameters
-    ----------
-    num : float
-        The Dec in degrees to be normalized.
-
-    Returns
-    -------
-    res : float
-        Dec in degrees in the range [-90, 90].
-    """
-    lower = -90.0
-    upper = 90.0
-    res = num
-    total_length = abs(lower) + abs(upper)
-    if num < -total_length:
-        num += ceil(num / (-2 * total_length)) * 2 * total_length
-    if num > total_length:
-        num -= floor(num / (2 * total_length)) * 2 * total_length
-    if num > upper:
-        num = total_length - num
-    if num < lower:
-        num = -total_length - num
-    res = num
-
-    return res
 
 
 def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
@@ -100,8 +38,8 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
     for k, v in source_dict.items():
         name_cal.append(k)
         # Make sure RA is between [0, 360) deg and Dec between [-90, 90]
-        ra = normalize_ra(v[0].value)
-        dec = normalize_dec(v[1].value)
+        ra = misc.normalize_ra(v[0].value)
+        dec = misc.normalize_dec(v[1].value)
         ra_cal.append(ra)
         dec_cal.append(dec)
 

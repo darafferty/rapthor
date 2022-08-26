@@ -9,6 +9,7 @@ import numpy as np
 from astropy.time import Time
 from rapthor.lib.cluster import get_fast_solve_intervals, get_slow_solve_intervals
 from scipy.special import erf
+from rapthor.lib import miscellaneous as misc
 import copy
 
 
@@ -109,10 +110,8 @@ class Observation(object):
 
         # Get pointing info
         obs = pt.table(self.ms_filename+'::FIELD', ack=False)
-        self.ra = np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0]))
-        if self.ra < 0.:
-            self.ra = 360.0 + (self.ra)
-        self.dec = np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1]))
+        self.ra = misc.normalize_ra(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][0])))
+        self.dec = misc.normalize_dec(np.degrees(float(obs.col('REFERENCE_DIR')[0][0][1])))
         obs.close()
 
         # Get station names and diameter

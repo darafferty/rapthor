@@ -5,7 +5,8 @@ import logging
 import numpy as np
 from rapthor.lib import miscellaneous as misc
 import lsmtool
-from astropy.coordinates import Angle
+from astropy.coordinates import Angle,  SkyCoord
+import astropy.units as u
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from PIL import Image, ImageDraw
@@ -41,8 +42,8 @@ class Sector(object):
             ra = Angle(ra).to('deg').value
         if type(dec) is str:
             dec = Angle(dec).to('deg').value
-        self.ra = ra
-        self.dec = dec
+        self.ra = misc.normalize_ra(ra)
+        self.dec = misc.normalize_dec(dec)
         self.width_ra = width_ra
         self.width_dec = width_dec
         self.field = field
@@ -166,8 +167,8 @@ class Sector(object):
             # Find total observation time in hours
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
         scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
-        dist_deg = np.min(self.get_distance_to_obs_center())
-        sens_factor = np.e**(-4.0 * np.log(2.0) * dist_deg**2 / self.field.fwhm_deg**2)
+        min_dist_deg, max_dist_deg = self.get_distance_to_obs_center()
+        sens_factor = np.e**(-4.0 * np.log(2.0) * min_dist_deg**2 / self.field.fwhm_deg**2)
         self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
         self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
         if self.field.peel_bright_sources:
@@ -515,24 +516,28 @@ class Sector(object):
 
     def get_distance_to_obs_center(self):
         """
-        Return the distance in degrees to the phase center of the observation(s)
+        Return the minimum and maximum distance in degrees from any sector vertex
+        to the phase center of the observation
 
         Returns
         -------
-        distance : list
-            List of distances: [center, lower-left corner, upper-left corner,
-                                lower-right corner, upper-right corner]
+        min_dist, max_dist : float, float
+            Minimum and maximum distance in degrees
         """
-        from astropy.coordinates import SkyCoord
-        import astropy.units as u
+        obs_coord = SkyCoord(self.observations[0].ra, self.observations[0].dec,
+                             unit=(u.degree, u.degree), frame='fk5')
 
-        coordc = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
-        coordll = SkyCoord(self.ra+self.width_ra/2.0, self.dec-self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
-        coordul = SkyCoord(self.ra+self.width_ra/2.0, self.dec+self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
-        coordlr = SkyCoord(self.ra-self.width_ra/2.0, self.dec-self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
-        coordur = SkyCoord(self.ra-self.width_ra/2.0, self.dec+self.width_dec/2.0, unit=(u.degree, u.degree), frame='fk5')
-        coord2 = SkyCoord(self.observations[0].ra, self.observations[0].dec, unit=(u.degree, u.degree), frame='fk5')
+        # Calculate the distance from each vertex to the observation phase center
+        vertices = self.get_vertices_radec()
+        RAs = vertices[0]
+        Decs = vertices[1]
+        distances = []
+        for ra, dec in zip(RAs, Decs):
+            coord = SkyCoord(misc.normalize_ra(ra), misc.normalize_dec(dec), unit=(u.degree, u.degree), frame='fk5')
+            distances.append(obs_coord.separation(coord).value)
 
-        return [coordc.separation(coord2).value, coordll.separation(coord2).value,
-                coordul.separation(coord2).value, coordlr.separation(coord2).value,
-                coordur.separation(coord2).value]
+        # Also calculate the distance to the sector center
+        coord = SkyCoord(self.ra, self.dec, unit=(u.degree, u.degree), frame='fk5')
+        distances.append(obs_coord.separation(coord).value)
+
+        return np.min(distances), np.max(distances)
