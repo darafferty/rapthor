@@ -143,19 +143,19 @@ inputs:
       The algorithm used for solving (length = 1).
     type: string
 
-  - id: lbfgs_dof
+  - id: solverlbfgs_dof
     label: LBFGS degrees of freedom
     doc: |
       The degrees of freedom in LBFGS solver (length = 1).
     type: float
 
-  - id: lbfgs_iter
+  - id: solverlbfgs_iter
     label: LBFGS iterations per minibatch
     doc: |
       The number of iterations per minibatch in LBFGS solver (length = 1).
     type: int 
 
-  - id: lbfgs_minibatches
+  - id: solverlbfgs_minibatches
     label: LBFGS minibatches
     doc: |
       The number of minibatches in LBFGS solver (length = 1).
@@ -419,12 +419,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
-      - id: solverlbfgs.dof
-        source: lbfgs_dof
-      - id: solverlbfgs.iter
-        source: lbfgs_iter
-      - id: solverlbfgs.minibatches
-        source: lbfgs_minibatches
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines
@@ -513,12 +513,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
-      - id: solverlbfgs.dof
-        source: lbfgs_dof
-      - id: solverlbfgs.iter
-        source: lbfgs_iter
-      - id: solverlbfgs.minibatches
-        source: lbfgs_minibatches
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines
@@ -637,12 +637,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
-      - id: solverlbfgs.dof
-        source: lbfgs_dof
-      - id: solverlbfgs.iter
-        source: lbfgs_iter
-      - id: solverlbfgs.minibatches
-        source: lbfgs_minibatches
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines
@@ -840,12 +840,12 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
-      - id: solverlbfgs.dof
-        source: lbfgs_dof
-      - id: solverlbfgs.iter
-        source: lbfgs_iter
-      - id: solverlbfgs.minibatches
-        source: lbfgs_minibatches
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
       - id: parallelbaselines

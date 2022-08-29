@@ -100,17 +100,17 @@ inputs:
     inputBinding:
       prefix: solve.solveralgorithm=
       separate: False
-  - id: lbfgs_dof
+  - id: solverlbfgs_dof
     type: float
     inputBinding:
       prefix: solve.solverlbfgs.dof=
       separate: False
-  - id: lbfgs_iter
+  - id: solverlbfgs_iter
     type: int
     inputBinding:
       prefix: solve.solverlbfgs.iter=
       separate: False
-  - id: lbfgs_minibatches
+  - id: solverlbfgs_minibatches
     type: int
     inputBinding:
       prefix: solve.solverlbfgs.minibatches=

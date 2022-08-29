@@ -111,10 +111,14 @@ class Calibrate(Operation):
         tolerance = self.field.tolerance
         uvlambdamin = self.field.solve_min_uv_lambda
         parallelbaselines=self.field.parallelbaselines
-        if solveralgorithm =='lbfgs':
-            lbfgs_dof=self.field.lbfgs_dof
-            lbfgs_iter=self.field.lbfgs_iter
-            lbfgs_minibatches=self.field.lbfgs_minibatches
+        if solveralgorithm=='lbfgs':
+           solverlbfgs_dof=float(self.field.solverlbfgs_dof)
+           solverlbfgs_iter=int(self.field.solverlbfgs_iter)
+           solverlbfgs_minibatches=int(self.field.solverlbfgs_minibatches)
+        else:
+           solverlbfgs_dof=200.0
+           solverlbfgs_iter=4
+           solverlbfgs_minibatches=1
 
         # Get the size of the imaging area (for use in making the a-term images)
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
@@ -185,11 +189,9 @@ class Calibrate(Operation):
                             'combined_slow_h5parm2': combined_slow_h5parm2,
                             'combined_h5parms1': combined_h5parms1,
                             'combined_h5parms2': combined_h5parms2}
-
-        if solveralgorithm =='lbfgs':
-            self.input_parms.update({'solverlbfgs.dof':lbfgs_dof,
-                 'solverlbfgs.iter':lbfgs_iter,
-                 'solverlbfgs.minibatches':lbfgs_minibatches})
+        self.input_parms.update({'solverlbfgs_dof':solverlbfgs_dof,
+                 'solverlbfgs_iter':solverlbfgs_iter,
+                 'solverlbfgs_minibatches':solverlbfgs_minibatches})
 
         if self.field.debug:
             output_slow_h5parm_debug = ['slow_gain_{}_debug.h5parm'.format(i)

@@ -360,18 +360,18 @@ def get_calibration_options(parset):
         parset_dict['parallelbaselines'] = False
 
     if parset_dict['solveralgorithm'] == 'lbfgs':
-        if 'lbfgs_dof' in parset_dict:
-           parset_dict['lbfgs_dof'] = parset.getfloat('calibration', 'lbfgs_dof')
+        if 'solverlbfgs_dof' in parset_dict:
+           parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
         else:
-           parset_dict['lbfgs_dof'] = 200.0
-        if 'lbfgs_iter' in parset_dict:
-           parset_dict['lbfgs_iter'] = parset.getint('calibration', 'lbfgs_iter')
+           parset_dict['solverlbfgs_dof'] = 200.0
+        if 'solverlbfgs_iter' in parset_dict:
+           parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
         else:
-           parset_dict['lbfgs_iter'] = 4
-        if 'lbfgs_minibatches' in parset_dict:
-           parset_dict['lbfgs_minibatches'] = parset.getint('calibration', 'lbfgs_minibatches')
+           parset_dict['solverlbfgs_iter'] = 4
+        if 'solverlbfgs_minibatches' in parset_dict:
+           parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
         else:
-           parset_dict['lbfgs_minibatches'] = 1
+           parset_dict['solverlbfgs_minibatches'] = 1
 
 
     # Do a extra "debug" step during calibration (default = False)?
@@ -389,7 +389,7 @@ def get_calibration_options(parset):
                        'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
                        'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
                        'use_idg_predict', 'debug', 'parallelbaselines',
-                       'solveralgorithm', 'lbfgs_dof', 'lbfgs_iter', 'lbfgs_minibatches']
+                       'solveralgorithm', 'solverlbfgs_dof', 'solverlbfgs_iter', 'solverlbfgs_minibatches']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '
