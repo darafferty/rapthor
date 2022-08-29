@@ -327,32 +327,27 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=Fals
 
     # Copy amplitudes from 2
     # Remove unneeded phase soltab from 2, then copy
+    st2 = ss2.getSoltab('amplitude000')
+    vals = np.log10(st2.val)
+    vals = np.mean(vals, axis=pol_ind)  # average over XX and YY
+    vals = 10**vals
     if interpolate_amplitudes:
-        st2 = ss2.getSoltab('amplitude000')
-        val2 = np.log10(st2.val)
-        val2 = np.mean(val2, axis=pol_ind)  # average over XX and YY
-        val2 = 10**val2
         if len(st2.time) > 1:
-            f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
+            f = si.interp1d(st2.time, vals, axis=time_ind, kind='nearest', fill_value='extrapolate')
             v1 = f(st1.time)
         else:
-            v1 = val2
+            v1 = vals
         if len(st2.freq) > 1:
             f = si.interp1d(st2.freq, v1, axis=freq_ind, kind='linear', fill_value='extrapolate')
             v2 = f(st1.freq)
             vals = v2
         else:
             vals = v1
-        if 'amplitude000' in sso.getSoltabNames():
-            st = sso.getSoltab('amplitude000')
-            st.delete()
-        sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
-                             axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
-    else:
-        if 'phase000' in ss2.getSoltabNames():
-            st = ss2.getSoltab('phase000')
-            st.delete()
-        ss2.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+    if 'amplitude000' in sso.getSoltabNames():
+        st = sso.getSoltab('amplitude000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
 
     return sso
 
