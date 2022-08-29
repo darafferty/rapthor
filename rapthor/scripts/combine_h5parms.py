@@ -346,7 +346,12 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=Fals
     if 'amplitude000' in sso.getSoltabNames():
         st = sso.getSoltab('amplitude000')
         st.delete()
-    sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
+    axes_vals = []
+    axes_names2.pop(axes_names2.index('pol'))  # remove pol axis in output axis names
+    for axis in axes_names2:
+        axis_vals = st2.getAxisValues(axis)
+        axes_vals.append(axis_vals)
+    sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names2,
                          axesVals=axes_vals, vals=vals, weights=np.ones(vals.shape))
 
     return sso
