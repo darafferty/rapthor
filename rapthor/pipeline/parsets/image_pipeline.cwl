@@ -293,12 +293,6 @@ inputs:
     type: string[]
 {% endif %}
 
-  - id: dir_local
-    label: Scratch directory
-    doc: |
-      The path to a (node-local) scratch directory (length = n_sectors).
-    type: string[]
-
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -462,8 +456,6 @@ steps:
       - id: multiscale_scales_pixel
         source: multiscale_scales_pixel
 {% endif %}
-      - id: dir_local
-        source: dir_local
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem
@@ -494,7 +486,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, dir_local, taper_arcsec, wsclean_mem,
+              max_uv_lambda, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% else %}
@@ -516,7 +508,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, dir_local, taper_arcsec, wsclean_mem,
+              max_uv_lambda, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
               peel_bright]
 {% endif %}

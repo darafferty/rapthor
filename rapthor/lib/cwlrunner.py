@@ -165,7 +165,10 @@ class ToilRunner(CWLRunner):
         self.args.extend(['--writeLogsFromAllJobs'])  # also keep logs of successful jobs
         self.args.extend(['--maxLogFileSize', '0'])  # disable truncation of log files
         if self.operation.scratch_dir is not None:
-            # Note: add a trailing directory separator, required by Toil v5.3+
+            # Note: option --workDir seems to take precedence over both --tmpdir-prefix,
+            #       and --tmp-outdir-prefix. So, we may not want to set it.
+            # Note: add a trailing directory separator, required by Toil v5.3+, using
+            #       os.path.join()
             self.args.extend(['--workDir', os.path.join(self.operation.scratch_dir, '')])
         self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])

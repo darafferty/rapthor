@@ -18,6 +18,8 @@ arguments:
   - -grid-with-beam
   - -use-differential-lofar-beam
   - -log-time
+  - valueFrom: '$(runtime.tmpdir)'
+    prefix: -temp-dir
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
@@ -81,10 +83,6 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
-  - id: dir_local
-    type: string
-    inputBinding:
-      prefix: -temp-dir
   - id: channels_out
     type: int
     inputBinding:
@@ -134,4 +132,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: 'loose/rapthor'
+    dockerPull: 'astronrd/rapthor'

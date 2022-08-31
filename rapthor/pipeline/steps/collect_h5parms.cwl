@@ -38,4 +38,4 @@ outputs:
       glob: $(inputs.outputh5parm)
 hints:
   - class: DockerRequirement
-    dockerPull: 'loose/rapthor'
+    dockerPull: 'astronrd/rapthor'
