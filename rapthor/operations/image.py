@@ -99,7 +99,6 @@ class Image(Operation):
                 previous_mask_filename.append(sector.I_mask_file)
             else:
                 # Use a dummy mask
-                #previous_mask_filename.append(image_root[-1] + '_dummy.fits')
                 previous_mask_filename.append(None)
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
@@ -149,10 +148,10 @@ class Image(Operation):
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
                             'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
-                            'bright_skymodel_pb': [CWLFile(self.field.bright_source_skymodel_file).to_json()] * nsectors,
-                            'peel_bright': [self.field.peel_bright_sources] * nsectors}
+                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors]}
 
+        if self.field.peel_bright_sources:
+            self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_screens:
             # The following parameters were set by the preceding calibrate operation, where
             # aterm image files were generated. They do not need to be set separately for

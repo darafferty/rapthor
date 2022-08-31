@@ -294,18 +294,13 @@ inputs:
       The PyBDSF pixel threshold (length = 1).
     type: float
 
+{% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = 1).
     type: File
-
-  - id: peel_bright
-    label: Peeling flag
-    doc: |
-      The flag that sets whether peeling of bright sources was done in the predict
-      pipeline (length = 1).
-    type: boolean
+{% endif %}
 
 outputs:
   - id: filtered_skymodels
@@ -626,16 +621,17 @@ steps:
       a clean mask for the next iteration.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
-      - id: input_image
 {% if peel_bright_sources %}
+      - id: input_image
         source: restore_nonpb/restored_image
+      - id: input_bright_skymodel_pb
+        source: bright_skymodel_pb
 {% else %}
+      - id: input_image
         source: image/image_nonpb_name
 {% endif %}
       - id: input_skymodel_pb
         source: image/skymodel_pb
-      - id: input_bright_skymodel_pb
-        source: bright_skymodel_pb
       - id: output_root
         source: image_name
       - id: vertices_file
@@ -646,7 +642,5 @@ steps:
         source: threshpix
       - id: beamMS
         source: prepare_imaging_data/msimg
-      - id: peel_bright
-        source: peel_bright
     out:
       - id: skymodels

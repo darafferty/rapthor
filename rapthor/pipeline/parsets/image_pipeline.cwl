@@ -329,18 +329,13 @@ inputs:
       The PyBDSF pixel threshold (length = n_sectors).
     type: float[]
 
+{% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
     doc: |
-      The primary-beam-corrected bright-source sky model (length = n_sectors).
-    type: File[]
-
-  - id: peel_bright
-    label: Peeling flag
-    doc: |
-      The flag that sets whether peeling of bright sources was done in the predict
-      pipeline (length = n_sectors).
-    type: boolean[]
+      The primary-beam-corrected bright-source sky model (length = 1).
+    type: File
+{% endif %}
 
 outputs:
   - id: filtered_skymodels
@@ -468,10 +463,10 @@ steps:
         source: threshisl
       - id: threshpix
         source: threshpix
+{% if peel_bright_sources %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
-      - id: peel_bright
-        source: peel_bright
+{% endif %}
 {% if use_screens %}
 # start use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
@@ -487,8 +482,7 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
-              peel_bright]
+              auto_mask, idg_mode, threshisl, threshpix]
 {% else %}
 # start not use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
@@ -509,8 +503,7 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
-              peel_bright]
+              auto_mask, idg_mode, threshisl, threshpix]
 {% endif %}
 # end use_screens / not use_screens
 

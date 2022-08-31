@@ -15,11 +15,10 @@ from astropy import wcs
 import os
 
 
-def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
-         vertices_file, threshisl=5.0, threshpix=7.5, rmsbox=(150, 50),
-         rmsbox_bright=(35, 7), adaptive_rmsbox=True,
-         use_adaptive_threshold=False, adaptive_thresh=75.0, beamMS=None,
-         peel_bright=False):
+def main(input_image, input_skymodel_pb, output_root, vertices_file,
+         input_bright_skymodel_pb=None, threshisl=5.0, threshpix=7.5,
+         rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_rmsbox=True,
+         use_adaptive_threshold=False, adaptive_thresh=75.0, beamMS=None):
     """
     Filter the input sky model so that they lie in islands in the image
 
@@ -30,14 +29,14 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
         should be a flat-noise image (i.e., without primary-beam correction)
     input_skymodel_pb : str
         Filename of input makesourcedb sky model, with primary-beam correction
-    input_bright_skymodel_pb : str
-        Filename of input makesourcedb sky model of bright sources only, with primary-
-        beam correction
     output_root : str
         Root of filename of output makesourcedb sky models. Output filenames will be
         output_root+'.apparent_sky.txt' and output_root+'.true_sky.txt'
     vertices_file : str
         Filename of file with vertices
+    input_bright_skymodel_pb : str, optional
+        Filename of input makesourcedb sky model of bright sources only, with primary-
+        beam correction
     threshisl : float, optional
         Value of thresh_isl PyBDSF parameter
     threshpix : float, optional
@@ -54,8 +53,6 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
     adaptive_thresh : float, optional
         If adaptive_rmsbox is True, this value sets the threshold above
         which a source will use the small rms box
-    peel_bright : bool, optional
-        If True, bright sources were peeled, so add then back before filtering
     """
     if rmsbox is not None and isinstance(rmsbox, str):
         rmsbox = eval(rmsbox)
@@ -65,7 +62,6 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
     use_adaptive_threshold = misc.string2bool(use_adaptive_threshold)
     if isinstance(beamMS, str):
         beamMS = misc.string2list(beamMS)
-    peel_bright = misc.string2bool(peel_bright)
 
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
     # limits for socket paths (used by the mulitprocessing module). We try a number of
@@ -156,7 +152,7 @@ def main(input_image, input_skymodel_pb, input_bright_skymodel_pb, output_root,
             s = lsmtool.load(input_skymodel_pb, beamMS=beamMS[beam_ind])
         except astropy.io.ascii.InconsistentTableError:
             emptysky = True
-        if peel_bright:
+        if input_bright_skymodel_pb is not None:
             try:
                 # If bright sources were peeled before imaging, add them back
                 s_bright = lsmtool.load(input_bright_skymodel_pb, beamMS=beamMS[beam_ind])
@@ -217,9 +213,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('input_image', help='Filename of input image')
     parser.add_argument('input_skymodel_pb', help='Filename of input sky model')
-    parser.add_argument('input_bright_skymodel_pb', help='Filename of input bright-source sky model')
     parser.add_argument('output_skymodel', help='Filename of output sky model')
     parser.add_argument('vertices_file', help='Filename of vertices file')
+    parser.add_argument('--input_bright_skymodel_pb', help='Filename of input bright-source sky model', type=str, default=None)
     parser.add_argument('--threshisl', help='Island threshold', type=float, default=3.0)
     parser.add_argument('--threshpix', help='Peak pixel threshold', type=float, default=5.0)
     parser.add_argument('--rmsbox', help='Rms box width and step (e.g., "(60, 20)")',
@@ -228,12 +224,10 @@ if __name__ == '__main__':
                         type=str, default='(60, 20)')
     parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='False')
     parser.add_argument('--beamMS', help='MS filename to use for beam attenuation', type=str, default=None)
-    parser.add_argument('--peel_bright', help='Bright sources were peeling before imaging',
-                        type=str, default='False')
 
     args = parser.parse_args()
-    main(args.input_image, args.input_skymodel_pb, args.input_bright_skymodel_pb,
-         args.output_skymodel, args.vertices_file, threshisl=args.threshisl,
-         threshpix=args.threshpix, rmsbox=args.rmsbox,
+    main(args.input_image, args.input_skymodel_pb, args.output_skymodel,
+         args.vertices_file, input_bright_skymodel_pb=args.input_bright_skymodel_pb,
+         threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
          rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox,
-         beamMS=args.beamMS, peel_bright=args.peel_bright)
+         beamMS=args.beamMS)

@@ -29,27 +29,29 @@ inputs:
     type: File
     inputBinding:
       position: 2
-  - id: input_bright_skymodel_pb
-    label: Bright-source PB-corrected model
-    doc: |
-      The filename of the input bright-source primary-beam-corrected sky model.
-    type: File
-    inputBinding:
-      position: 3
   - id: output_root
     label: Output root name
     doc: |
       The root of the filenames of the output filtered sky models.
     type: string
     inputBinding:
-      position: 4
+      position: 3
   - id: vertices_file
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
     type: File
     inputBinding:
-      position: 5
+      position: 4
+  - id: input_bright_skymodel_pb
+    label: Bright-source PB-corrected model
+    doc: |
+      The filename of the input bright-source primary-beam-corrected sky model. Should
+      not be given if peeling of bright sources was not done.
+    type: File?
+    inputBinding:
+      prefix: --input_bright_skymodel_pb=
+      separate: false
   - id: threshisl
     label: Island threshold
     doc: |
@@ -74,16 +76,6 @@ inputs:
     inputBinding:
       prefix: --beamMS=
       itemSeparator: ","
-      separate: false
-  - id: peel_bright
-    label: Peeling flag
-    doc: |
-      The flag that sets whether peeling of bright sources was done in the predict
-      pipeline.
-    type: boolean
-    inputBinding:
-      prefix: --peel_bright=
-      valueFrom: "$(self ? 'True': 'False')"
       separate: false
 
 outputs:
