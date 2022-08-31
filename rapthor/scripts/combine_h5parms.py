@@ -234,6 +234,9 @@ def combine_phase1_phase2_amp2_diagonal(ss1, ss2, sso, interpolate_amplitudes=Fa
 
     # Copy amplitudes from 2
     # Remove unneeded phase soltab from 2, then copy
+    time_ind = axes_names.index('time')
+    freq_ind = axes_names.index('freq')
+    pol_ind = axes_names.index('pol')
     if interpolate_amplitudes:
         st2 = ss2.getSoltab('amplitude000')
         if len(st2.time) > 1:
@@ -329,6 +332,9 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=Fals
     # Remove unneeded phase soltab from 2, then copy
     st2 = ss2.getSoltab('amplitude000')
     vals = np.log10(st2.val)
+    time_ind = axes_names.index('time')
+    freq_ind = axes_names.index('freq')
+    pol_ind = axes_names2.index('pol')
     vals = np.mean(vals, axis=pol_ind)  # average over XX and YY
     vals = 10**vals
     if interpolate_amplitudes:
