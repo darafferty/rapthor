@@ -127,7 +127,7 @@ The available options are described below under their respective sections.
         patches are large.
 
     parallelbaselines 
-        Parellalize model calculation over baselines, insted of directions.
+        Parallelize model calculation over baselines, instead of parallelizing over directions (default = ``False``).
 
     stepsize
         Size of steps used during calibration (default = 0.02).
@@ -174,13 +174,13 @@ The available options are described below under their respective sections.
        Use IDG for predict during calibration (default = ``False``)?
 
     solverlbfgs_dof
-       Degrees of freedom for LBFGS solver (solveralgorithm=``lbfgs``), (default 200.0)
+       Degrees of freedom for LBFGS solver (solveralgorithm=``lbfgs``), (default 200.0).
 
     solverlbfgs_minibatches
-       Number of minibatches for LBFGS solver (solveralgorithm=``lbfgs``), (default 1)
+       Number of minibatches for LBFGS solver (solveralgorithm=``lbfgs``), (default 1).
 
     solverlbfgs_iter
-       Number of iterations per minibat in LBFGS solver (solveralgorithm=``lbfgs``), (default 4)
+       Number of iterations per minibat in LBFGS solver (solveralgorithm=``lbfgs``), (default 4).
 
 .. _parset_imaging_options:
 
