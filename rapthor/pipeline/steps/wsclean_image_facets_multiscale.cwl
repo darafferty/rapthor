@@ -18,6 +18,8 @@ arguments:
   - -multiscale
   - -log-time
   - -use-wgridder
+  - valueFrom: '$(runtime.tmpdir)'
+    prefix: -temp-dir
   - valueFrom: '4'
     prefix: -parallel-gridding
   - valueFrom: 'I'
@@ -91,10 +93,6 @@ inputs:
     type: string
     inputBinding:
       prefix: -multiscale-scales
-  - id: dir_local
-    type: string
-    inputBinding:
-      prefix: -temp-dir
   - id: channels_out
     type: int
     inputBinding:
@@ -157,4 +155,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: 'loose/rapthor'
+    dockerPull: 'astronrd/rapthor'
