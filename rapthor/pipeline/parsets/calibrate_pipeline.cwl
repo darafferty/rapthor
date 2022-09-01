@@ -143,10 +143,33 @@ inputs:
       The algorithm used for solving (length = 1).
     type: string
 
+  - id: solverlbfgs_dof
+    label: LBFGS degrees of freedom
+    doc: |
+      The degrees of freedom in LBFGS solver (length = 1).
+    type: float
+
+  - id: solverlbfgs_iter
+    label: LBFGS iterations per minibatch
+    doc: |
+      The number of iterations per minibatch in LBFGS solver (length = 1).
+    type: int 
+
+  - id: solverlbfgs_minibatches
+    label: LBFGS minibatches
+    doc: |
+      The number of minibatches in LBFGS solver (length = 1).
+    type: int
+
   - id: onebeamperpatch
     doc: |
       Flag that determines whether to apply the beam once per patch or per each
       source (length = 1).
+    type: boolean
+
+  - id: parallelbaselines
+    doc: |
+      Flag that enables parallelization of model computation over baselines.
     type: boolean
 
   - id: stepsize
@@ -159,18 +182,6 @@ inputs:
     label: Solver tolerance
     doc: |
       The solver tolerance used to define convergence (length = 1).
-    type: float
-
-  - id: llsstarttolerance
-    label: LLS solver starting tolerance
-    doc: |
-      The linear least-squares solver starting tolerance used to define convergence (length = 1).
-    type: float
-
-  - id: llstolerance
-    label: LLS solver tolerance
-    doc: |
-      The linear least-squares solver tolerance used to define convergence (length = 1).
     type: float
 
   - id: uvlambdamin
@@ -408,16 +419,20 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
       - id: stepsize
         source: stepsize
       - id: tolerance
         source: tolerance
-      - id: llsstarttolerance
-        source: llsstarttolerance
-      - id: llstolerance
-        source: llstolerance
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint
@@ -498,16 +513,20 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
       - id: stepsize
         source: stepsize
       - id: tolerance
         source: tolerance
-      - id: llsstarttolerance
-        source: llsstarttolerance
-      - id: llstolerance
-        source: llstolerance
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint
@@ -618,16 +637,20 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
       - id: stepsize
         source: stepsize
       - id: tolerance
         source: tolerance
-      - id: llsstarttolerance
-        source: llsstarttolerance
-      - id: llstolerance
-        source: llstolerance
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint
@@ -817,16 +840,20 @@ steps:
         source: propagatesolutions
       - id: solveralgorithm
         source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
       - id: stepsize
         source: stepsize
       - id: tolerance
         source: tolerance
-      - id: llsstarttolerance
-        source: llsstarttolerance
-      - id: llstolerance
-        source: llstolerance
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint

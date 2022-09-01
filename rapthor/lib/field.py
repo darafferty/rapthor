@@ -58,15 +58,19 @@ class Field(object):
         self.maxiter = self.parset['calibration_specific']['maxiter']
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
-        self.llsstarttolerance = self.parset['calibration_specific']['llsstarttolerance']
-        self.llstolerance = self.parset['calibration_specific']['llstolerance']
         self.use_screens = self.parset['imaging_specific']['use_screens']
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
+        self.parallelbaselines= self.parset['calibration_specific']['parallelbaselines']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
+        if self.solveralgorithm=='lbfgs':
+          self.solverlbfgs_dof=self.parset['calibration_specific']['solverlbfgs_dof']
+          self.solverlbfgs_iter=self.parset['calibration_specific']['solverlbfgs_iter']
+          self.solverlbfgs_minibatches=self.parset['calibration_specific']['solverlbfgs_minibatches']
+
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
         self.peel_outliers = False

@@ -117,7 +117,7 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of "directionsolve", "directioniterative",
-        or "hybrid"; default = "hybrid")?
+        "lbfgs", or "hybrid"; default = "hybrid")? When using "lbfgs", the "stepsize" should be set to a small value like 0.001.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =
@@ -126,19 +126,14 @@ The available options are described below under their respective sections.
         calibration and prediction, but can also reduce the quality when the
         patches are large.
 
+    parallelbaselines 
+        Parallelize model calculation over baselines, instead of parallelizing over directions (default = ``False``).
+
     stepsize
         Size of steps used during calibration (default = 0.02).
 
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
-
-    llsstarttolerance
-        The linear least-squares solver starting tolerance used to define
-        convergence (default = 1e-2).
-
-    llstolerance
-        The linear least-squares solver tolerance used to define convergence
-        (default = 1e-7).
 
     solve_min_uv_lambda
         Minimum uv distance in lambda used during calibration (default = 80).
@@ -178,6 +173,14 @@ The available options are described below under their respective sections.
     use_idg_predict
        Use IDG for predict during calibration (default = ``False``)?
 
+    solverlbfgs_dof
+       Degrees of freedom for LBFGS solver (solveralgorithm=``lbfgs``), (default 200.0).
+
+    solverlbfgs_minibatches
+       Number of minibatches for LBFGS solver (solveralgorithm=``lbfgs``), (default 1).
+
+    solverlbfgs_iter
+       Number of iterations per minibat in LBFGS solver (solveralgorithm=``lbfgs``), (default 4).
 
 .. _parset_imaging_options:
 

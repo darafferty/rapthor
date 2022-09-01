@@ -100,10 +100,31 @@ inputs:
     inputBinding:
       prefix: solve.solveralgorithm=
       separate: False
+  - id: solverlbfgs_dof
+    type: float
+    inputBinding:
+      prefix: solve.solverlbfgs.dof=
+      separate: False
+  - id: solverlbfgs_iter
+    type: int
+    inputBinding:
+      prefix: solve.solverlbfgs.iter=
+      separate: False
+  - id: solverlbfgs_minibatches
+    type: int
+    inputBinding:
+      prefix: solve.solverlbfgs.minibatches=
+      separate: False
   - id: onebeamperpatch
     type: boolean
     inputBinding:
       prefix: solve.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+  - id: parallelbaselines
+    type: boolean
+    inputBinding:
+      prefix: solve.parallelbaselines=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: stepsize
@@ -115,16 +136,6 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.tolerance=
-      separate: False
-  - id: llsstarttolerance
-    type: float
-    inputBinding:
-      prefix: solve.llsstarttolerance=
-      separate: False
-  - id: llstolerance
-    type: float
-    inputBinding:
-      prefix: solve.llstolerance=
       separate: False
   - id: uvlambdamin
     type: float
