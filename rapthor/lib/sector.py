@@ -172,7 +172,7 @@ class Sector(object):
         self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
         self.wsclean_nmiter = min(self.max_nmiter, max(2, int(round(8 * scaling_factor * sens_factor))))
         if self.field.peel_bright_sources:
-            # If bright sources are peeled, reduce nmiter by 75% (since they no longer
+            # If bright sources are peeled, reduce nmiter by 25% (since they no longer
             # need to be cleaned)
             self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
             self.wsclean_nmiter = max(2, int(round(self.wsclean_nmiter * 0.75)))
@@ -516,8 +516,8 @@ class Sector(object):
 
     def get_distance_to_obs_center(self):
         """
-        Return the minimum and maximum distance in degrees from any sector vertex
-        to the phase center of the observation
+        Return the overall minimum and maximum distance in degrees from any sector vertex
+        (and sector center) to the phase center of the observation
 
         Returns
         -------

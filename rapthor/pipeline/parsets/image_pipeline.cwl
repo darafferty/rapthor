@@ -226,7 +226,7 @@ inputs:
   - id: soltabs
     label: Names of calibration soltabs
     doc: |
-      The names of the calibration solution tables (length = 1).
+      The name of the calibration solution table (length = 1).
     type: string
 
 {% else %}

@@ -181,7 +181,7 @@ class Image(Operation):
                 width_ra = []
                 width_dec = []
                 facet_region_file = []
-                for i, sector in enumerate(self.field.imaging_sectors):
+                for sector in self.field.imaging_sectors:
                     # Note: WSClean requires that all sources in the h5parm must have
                     # corresponding regions in the facets region file. We ensure this
                     # requirement is met by making the region file very large so that
