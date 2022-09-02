@@ -145,6 +145,7 @@ class Sector(object):
         # (the maximum averaging allowed for typical dTEC values of -0.5 < dTEC < 0.5)
         min_freq = np.min([obs.startfreq for obs in self.observations])
         target_bandwidth = 4e6 * min_freq / 120e6
+        max_nchannels = np.max([obs.numchannels for obs in self.observations])
         min_nchannels = 4  # we want at least 4 channels -- see below
         tot_bandwidth = 0.0
         for obs in self.observations:
@@ -152,7 +153,7 @@ class Sector(object):
             obs_bandwidth = obs.numchannels * obs.channelwidth
             if obs_bandwidth > tot_bandwidth:
                 tot_bandwidth = obs_bandwidth
-        self.wsclean_nchannels = max(min_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth)))
+        self.wsclean_nchannels = max(min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth))))
 
         # Set number of channels to use in spectral fitting. Since we always use
         # -fit-spectral-pol = 3 in the WSClean calls, simply set this to 4 channels

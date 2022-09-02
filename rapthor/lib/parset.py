@@ -346,20 +346,33 @@ def get_calibration_options(parset):
         parset_dict['tolerance'] = parset.getfloat('calibration', 'tolerance')
     else:
         parset_dict['tolerance'] = 5e-3
-    if 'llsstarttolerance' in parset_dict:
-        parset_dict['llsstarttolerance'] = parset.getfloat('calibration', 'llsstarttolerance')
-    else:
-        parset_dict['llsstarttolerance'] = 1e-2
-    if 'llstolerance' in parset_dict:
-        parset_dict['llstolerance'] = parset.getfloat('calibration', 'llstolerance')
-    else:
-        parset_dict['llstolerance'] = 1e-7
 
     # Use the IDG for predict during calibration (default = False)?
     if 'use_idg_predict' in parset_dict:
         parset_dict['use_idg_predict'] = parset.getboolean('calibration', 'use_idg_predict')
     else:
         parset_dict['use_idg_predict'] = False
+
+    # Parallel predict over baselines
+    if 'parallelbaselines' in parset_dict:
+        parset_dict['parallelbaselines'] = parset.getboolean('calibration', 'parallelbaselines')
+    else:
+        parset_dict['parallelbaselines'] = False
+
+    if parset_dict['solveralgorithm'] == 'lbfgs':
+        if 'solverlbfgs_dof' in parset_dict:
+           parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
+        else:
+           parset_dict['solverlbfgs_dof'] = 200.0
+        if 'solverlbfgs_iter' in parset_dict:
+           parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
+        else:
+           parset_dict['solverlbfgs_iter'] = 4
+        if 'solverlbfgs_minibatches' in parset_dict:
+           parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
+        else:
+           parset_dict['solverlbfgs_minibatches'] = 1
+
 
     # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:
@@ -375,8 +388,8 @@ def get_calibration_options(parset):
                        'patch_target_flux_jy', 'fast_smoothnessconstraint',
                        'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
                        'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
-                       'use_idg_predict', 'debug', 'llsstarttolerance', 'llstolerance',
-                       'solveralgorithm']
+                       'use_idg_predict', 'debug', 'parallelbaselines',
+                       'solveralgorithm', 'solverlbfgs_dof', 'solverlbfgs_iter', 'solverlbfgs_minibatches']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '

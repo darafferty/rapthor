@@ -92,6 +92,21 @@ inputs:
     inputBinding:
       prefix: solve.solveralgorithm=
       separate: False
+  - id: solverlbfgs_dof
+    type: float
+    inputBinding:
+      prefix: solve.solverlbfgs.dof=
+      separate: False
+  - id: solverlbfgs_iter
+    type: int
+    inputBinding:
+      prefix: solve.solverlbfgs.iter=
+      separate: False
+  - id: solverlbfgs_minibatches
+    type: int
+    inputBinding:
+      prefix: solve.solverlbfgs.minibatches=
+      separate: False
   - id: onebeamperpatch
     type: boolean
     inputBinding:
