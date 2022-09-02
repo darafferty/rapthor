@@ -542,17 +542,26 @@ def get_imaging_options(parset):
     # be cpu, gpu, or hybrid.
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'cpu'
+    if parset_dict['idg_mode'] not in ['cpu', 'gpu', 'hybrid']:
+        log.error('The option dde_method must be one of "cpu", "gpu", or "hybrid"')
+        sys.exit(1)
 
-    # Use screens during imaging (default = True)? If False, the solutions closest
-    # to the image centers will be used. If True, the type of screen to use can be
-    # specified with screen_type: tessellated (simple, smoothed tessellated screens)
-    # or kl (Karhunen-Lo`eve screens) (default = tessellated)
-    if 'use_screens' in parset_dict:
-        parset_dict['use_screens'] = parset.getboolean('imaging', 'use_screens')
-    else:
-        parset_dict['use_screens'] = True
+    # Method to use to apply direction-dependent effects during imaging: "none",
+    # "facets", or "screens". If "none", the solutions closest to the image centers
+    # will be used. If "facets", Voronoi faceting is used. If "screens", smooth 2-D
+    # are used; the type of screen to use can be specified with screen_type:
+    # "tessellated" (simple, smoothed tessellated screens) or "kl" (Karhunen-Lo`eve
+    # screens) (default = kl)
+    if 'dde_method' not in parset_dict:
+        parset_dict['dde_method'] = 'screens'
+    if parset_dict['dde_method'] not in ['none', 'screens', 'facets']:
+        log.error('The option dde_method must be one of "none", "screens", or "facets"')
+        sys.exit(1)
     if 'screen_type' not in parset_dict:
-        parset_dict['screen_type'] = 'tessellated'
+        parset_dict['screen_type'] = 'kl'
+    if parset_dict['screen_type'] not in ['kl', 'tessellated']:
+        log.error('The option screen_type must be one of "kl", or "tessellated"')
+        sys.exit(1)
 
     # Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
     if 'mem_fraction' in parset_dict:
@@ -629,7 +638,7 @@ def get_imaging_options(parset):
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'sector_do_multiscale_list', 'use_mpi',
-                       'use_screens', 'skip_corner_sectors']
+                       'dde_method', 'skip_corner_sectors']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [imaging] section of the '

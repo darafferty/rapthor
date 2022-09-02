@@ -29,10 +29,15 @@ class Image(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
+        if self.field.dde_method == 'facets':
+            use_facets = True
+        else:
+            use_facets = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
+                             'use_facets': use_facets,
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
@@ -52,7 +57,6 @@ class Image(Operation):
         mask_filename = []
         starttime = []
         ntimes = []
-        aterm_image_filenames = []
         image_freqstep = []
         image_timestep = []
         multiscale_scales_pixel = []
@@ -95,7 +99,6 @@ class Image(Operation):
                 previous_mask_filename.append(sector.I_mask_file)
             else:
                 # Use a dummy mask
-                #previous_mask_filename.append(image_root[-1] + '_dummy.fits')
                 previous_mask_filename.append(None)
             mask_filename.append(image_root[-1] + '_mask.fits')
             image_freqstep.append(sector.get_obs_parameters('image_freqstep'))
@@ -145,9 +148,10 @@ class Image(Operation):
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
                             'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
-                            'bright_skymodel_pb': [CWLFile(self.field.bright_source_skymodel_file).to_json()] * nsectors,
-                            'peel_bright': [self.field.peel_bright_sources] * nsectors}
+                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors]}
+
+        if self.field.peel_bright_sources:
+            self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_screens:
             # The following parameters were set by the preceding calibrate operation, where
             # aterm image files were generated. They do not need to be set separately for
@@ -167,9 +171,37 @@ class Image(Operation):
                 self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
                 self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
-            self.input_parms.update({'h5parm': [self.field.h5parm_filename] * nsectors})
-            self.input_parms.update({'central_patch_name': central_patch_name})
+            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
+            if self.field.dde_method == 'facets':
+                # For faceting, we need inputs for making the ds9 facet region files
+                self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
+                ra_mid = []
+                dec_mid = []
+                width_ra = []
+                width_dec = []
+                facet_region_file = []
+                for sector in self.field.imaging_sectors:
+                    # Note: WSClean requires that all sources in the h5parm must have
+                    # corresponding regions in the facets region file. We ensure this
+                    # requirement is met by making the region file very large so that
+                    # it covers the full field (10x10 deg)
+                    ra_mid.append(self.field.ra)
+                    dec_mid.append(self.field.dec)
+                    width_ra.append(10.0)
+                    width_dec.append(10.0)
+                    facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
+                self.input_parms.update({'ra_mid': ra_mid})
+                self.input_parms.update({'dec_mid': dec_mid})
+                self.input_parms.update({'width_ra': width_ra})
+                self.input_parms.update({'width_dec': width_dec})
+                self.input_parms.update({'facet_region_file': facet_region_file})
+                if self.field.do_slowgain_solve:
+                    self.input_parms.update({'soltabs': 'amplitude000,phase000'})
+                else:
+                    self.input_parms.update({'soltabs': 'phase000'})
+            else:
+                self.input_parms.update({'central_patch_name': central_patch_name})
 
     def finalize(self):
         """

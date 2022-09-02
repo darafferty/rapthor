@@ -58,7 +58,11 @@ class Field(object):
         self.maxiter = self.parset['calibration_specific']['maxiter']
         self.stepsize = self.parset['calibration_specific']['stepsize']
         self.tolerance = self.parset['calibration_specific']['tolerance']
-        self.use_screens = self.parset['imaging_specific']['use_screens']
+        self.dde_method = self.parset['imaging_specific']['dde_method']
+        if self.dde_method == 'screens':
+            self.use_screens = True
+        else:
+            self.use_screens = False
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']

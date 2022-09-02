@@ -150,6 +150,7 @@ inputs:
         - "null"
 
 {% if use_screens %}
+# start use_screens
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
@@ -171,20 +172,77 @@ inputs:
 
 {% endif %}
 {% else %}
+# start not use_screens
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
+      1).
+    type: File
+
+{% if use_facets %}
+# start use_facets
+  - id: skymodel
+    label: Filename of sky model
+    doc: |
+      The filename of the sky model file with the calibration patches (length =
+      1).
+    type: File
+
+  - id: ra_mid
+    label: RA of the midpoint
+    doc: |
+        The RA in degrees of the middle of the region to be imaged (length =
+        n_sectors).
+    type: float[]
+
+  - id: dec_mid
+    label: Dec of the midpoint
+    doc: |
+        The Dec in degrees of the middle of the region to be imaged (length =
+        n_sectors).
+    type: float[]
+
+  - id: width_ra
+    label: Width along RA
+    doc: |
+      The width along RA in degrees (corrected to Dec = 0) of the region to be
+      imaged (length = n_sectors).
+    type: float[]
+
+  - id: width_dec
+    label:  Width along Dec
+    doc: |
+      The width along Dec in degrees of the region to be imaged (length =
       n_sectors).
+    type: float[]
+
+  - id: facet_region_file
+    label: Filename of output region file
+    doc: |
+      The filename of the output ds9 region file (length = n_sectors).
     type: string[]
+
+  - id: soltabs
+    label: Names of calibration soltabs
+    doc: |
+      The name of the calibration solution table (length = 1).
+    type: string
+
+{% else %}
+# start not use_facets
 
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central patch of the sector (length = n_sectors).
     type: string[]
+{% endif %}
+# end use_facets / not use_facets
 
 {% endif %}
+# end use_screens / not use_screens
+
   - id: channels_out
     label: Number of channels
     doc: |
@@ -233,8 +291,8 @@ inputs:
     doc: |
       The WSClean multiscale scales in pixels (length = n_sectors).
     type: string[]
-
 {% endif %}
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -271,18 +329,13 @@ inputs:
       The PyBDSF pixel threshold (length = n_sectors).
     type: float[]
 
+{% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
     doc: |
-      The primary-beam-corrected bright-source sky model (length = n_sectors).
-    type: File[]
-
-  - id: peel_bright
-    label: Peeling flag
-    doc: |
-      The flag that sets whether peeling of bright sources was done in the predict
-      pipeline (length = n_sectors).
-    type: boolean[]
+      The primary-beam-corrected bright-source sky model (length = 1).
+    type: File
+{% endif %}
 
 outputs:
   - id: filtered_skymodels
@@ -343,6 +396,7 @@ steps:
       - id: region_file
         source: region_file
 {% if use_screens %}
+# start use_screens
       - id: aterm_image_filenames
         source: aterm_image_filenames
 {% if use_mpi %}
@@ -352,11 +406,33 @@ steps:
         source: mpi_nnodes
 {% endif %}
 {% else %}
+# start not use_screens
       - id: h5parm
         source: h5parm
+{% if use_facets %}
+# start use_facets
+      - id: skymodel
+        source: skymodel
+      - id: ra_mid
+        source: ra_mid
+      - id: dec_mid
+        source: dec_mid
+      - id: width_ra
+        source: width_ra
+      - id: width_dec
+        source: width_dec
+      - id: facet_region_file
+        source: facet_region_file
+      - id: soltabs
+        source: soltabs
+{% else %}
+# start not use_facets
       - id: central_patch_name
         source: central_patch_name
 {% endif %}
+# end use_facets / not use_facets
+{% endif %}
+# end use_screens / not use_screens
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
@@ -387,11 +463,12 @@ steps:
         source: threshisl
       - id: threshpix
         source: threshpix
+{% if peel_bright_sources %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
-      - id: peel_bright
-        source: peel_bright
+{% endif %}
 {% if use_screens %}
+# start use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
@@ -405,13 +482,18 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
-              peel_bright]
+              auto_mask, idg_mode, threshisl, threshpix]
 {% else %}
+# start not use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
-              vertices_file, region_file, h5parm, central_patch_name,
+              vertices_file, region_file,
+{% if use_facets %}
+              ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
+{% else %}
+              central_patch_name,
+{% endif %}
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
@@ -421,9 +503,10 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix, bright_skymodel_pb,
-              peel_bright]
+              auto_mask, idg_mode, threshisl, threshpix]
 {% endif %}
+# end use_screens / not use_screens
+
     scatterMethod: dotproduct
 
     out:

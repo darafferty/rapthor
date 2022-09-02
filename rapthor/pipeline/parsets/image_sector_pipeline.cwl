@@ -117,6 +117,7 @@ inputs:
     type: File?
 
 {% if use_screens %}
+# start use_screens
   - id: aterm_image_filenames
     label: Filenames of a-terms
     doc: |
@@ -138,20 +139,75 @@ inputs:
 
 {% endif %}
 {% else %}
+# start not use_screens
+
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
       1).
+    type: File
+
+{% if use_facets %}
+# start use_facets
+  - id: skymodel
+    label: Filename of sky model
+    doc: |
+      The filename of the sky model file with the calibration patches (length =
+      1).
+    type: File
+
+  - id: ra_mid
+    label: RA of the midpoint
+    doc: |
+        The RA in degrees of the middle of the region to be imaged (length = 1).
+    type: float
+
+  - id: dec_mid
+    label: Dec of the midpoint
+    doc: |
+        The Dec in degrees of the middle of the region to be imaged (length = 1).
+    type: float
+
+  - id: width_ra
+    label: Width along RA
+    doc: |
+      The width along RA in degrees (corrected to Dec = 0) of the region to be
+      imaged (length = 1).
+    type: float
+
+  - id: width_dec
+    label:  Width along Dec
+    doc: |
+      The width along Dec in degrees of the region to be imaged (length = 1).
+    type: float
+
+  - id: facet_region_file
+    label: Filename of output region file
+    doc: |
+      The filename of the output ds9 region file (length =1).
     type: string
+
+  - id: soltabs
+    label: Names of calibration soltabs
+    doc: |
+      The names of the calibration solution tables (length = 1).
+    type: string
+
+{% else %}
+# start not use_facets
 
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
     type: string
+{% endif %}
+# end use_facets / not use_facets
 
 {% endif %}
+# end use_screens / not use_screens
+
   - id: channels_out
     label: Number of channels
     doc: |
@@ -238,18 +294,13 @@ inputs:
       The PyBDSF pixel threshold (length = 1).
     type: float
 
+{% if peel_bright_sources %}
   - id: bright_skymodel_pb
     label: Bright-source sky model
     doc: |
       The primary-beam-corrected bright-source sky model (length = 1).
     type: File
-
-  - id: peel_bright
-    label: Peeling flag
-    doc: |
-      The flag that sets whether peeling of bright sources was done in the predict
-      pipeline (length = 1).
-    type: boolean
+{% endif %}
 
 outputs:
   - id: filtered_skymodels
@@ -276,12 +327,12 @@ steps:
       This step uses DPPP to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions at the center.
-{% if use_screens %}
-
+{% if use_screens or use_facets %}
+# start use_screens or use_facets
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
 
 {% else %}
-
+# start not use_screens and not use_facets
 {% if do_slowgain_solve %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
 {% else %}
@@ -289,6 +340,8 @@ steps:
 {% endif %}
 
 {% endif %}
+# end use_screens or use_facets / not use_screens and not use_facets
+
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -314,7 +367,7 @@ steps:
         source: phasecenter
       - id: numthreads
         valueFrom: '{{ max_threads }}'
-{% if use_screens %}
+{% if use_screens or use_facets %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
       - id: h5parm
@@ -352,40 +405,90 @@ steps:
     out:
       - id: maskimg
 
+{% if use_facets %}
+  - id: make_region_file
+    label: Make a ds9 region file
+    doc: |
+      This step makes a ds9 region file for the imaging.
+    run: {{ rapthor_pipeline_dir }}/steps/make_region_file.cwl
+    in:
+      - id: skymodel
+        source: skymodel
+      - id: ra_mid
+        source: ra_mid
+      - id: dec_mid
+        source: dec_mid
+      - id: width_ra
+        source: width_ra
+      - id: width_dec
+        source: width_dec
+      - id: outfile
+        source: facet_region_file
+    out:
+      - id: region_file
+{% endif %}
+
   - id: image
     label: Make an image
     doc: |
       This step makes an image using WSClean. Direction-dependent effects
       can be corrected for using a-term images.
 {% if use_screens %}
+# start use_screens
 {% if use_mpi %}
+# start use_mpi
 {% if do_multiscale_clean %}
+# start do_multiscale_clean
+
 {% if toil_version < 5 %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale_toil4.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
 {% endif %}
 {% else %}
+# start not do_multiscale_clean
+
 {% if toil_version < 5 %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_toil4.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
 {% endif %}
 {% endif %}
+# end do_multiscale_clean / not do_multiscale_clean
+
 {% else %}
+# start not use_mpi
+
 {% if do_multiscale_clean %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_multiscale.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
 {% endif %}
 {% endif %}
+# end use_mpi / not use_mpi
+
 {% else %}
+# start not use_screens
+
+{% if use_facets %}
+# start use_facets
+{% if do_multiscale_clean %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets_multiscale.cwl
+{% else %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets.cwl
+{% endif %}
+{% else %}
+# start not use_facets
 {% if do_multiscale_clean %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens_multiscale.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
 {% endif %}
 {% endif %}
+# end use_facets / not use_facets
+{% endif %}
+# end use_screens / not use_screens
+
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -408,6 +511,14 @@ steps:
       - id: nnodes
         source: mpi_nnodes
 {% endif %}
+{% endif %}
+{% if use_facets %}
+      - id: h5parm
+        source: h5parm
+      - id: soltabs
+        source: soltabs
+      - id: region_file
+        source: make_region_file/region_file
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize
@@ -450,6 +561,7 @@ steps:
       - id: skymodel_pb
 
 {% if peel_bright_sources %}
+# start peel_bright_sources
   - id: restore_pb
     label: Restore sources to PB image
     doc: |
@@ -500,6 +612,7 @@ steps:
     out:
       - id: restored_image
 {% endif %}
+# end peel_bright_sources
 
   - id: filter
     label: Filter sources
@@ -508,16 +621,17 @@ steps:
       a clean mask for the next iteration.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
-      - id: input_image
 {% if peel_bright_sources %}
+      - id: input_image
         source: restore_nonpb/restored_image
+      - id: input_bright_skymodel_pb
+        source: bright_skymodel_pb
 {% else %}
+      - id: input_image
         source: image/image_nonpb_name
 {% endif %}
       - id: input_skymodel_pb
         source: image/skymodel_pb
-      - id: input_bright_skymodel_pb
-        source: bright_skymodel_pb
       - id: output_root
         source: image_name
       - id: vertices_file
@@ -528,7 +642,5 @@ steps:
         source: threshpix
       - id: beamMS
         source: prepare_imaging_data/msimg
-      - id: peel_bright
-        source: peel_bright
     out:
       - id: skymodels

@@ -26,6 +26,10 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
         Number of imaging sectors
     fraction : float
         Fraction of MS file to be read
+    reweight: bool
+        True if reweighting is to be done
+    compressed: bool
+        True if data are compressed (by Dysco)
 
     Returns
     -------
@@ -132,6 +136,24 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         If True, reweight using the residuals
     starttime : str, optional
         Start time in JD seconds
+    solint_sec : float
+        Solution interval in s
+    solint_hz : float
+        Solution interval in Hz
+    weights_colname : str
+        Name of weight column
+    gainfile : str
+        Filename of gain file
+    uvcut_min : float
+        Min uv cut in lambda
+    uvcut_max : float
+        Max uv cut in lambda
+    phaseonly : bool
+        Reweight with phases only
+    dirname : str
+        Name of gain file directory
+    quiet : bool
+        If True, suppress (most) output
     infix : str, optional
         Infix string used in filenames
     """
@@ -148,6 +170,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     phaseonly = misc.string2bool(phaseonly)
     reweight = misc.string2bool(reweight)
     model_list = misc.string2list(msmod_list)
+    msin_orig = msin
 
     # Get the model data filenames, filtering any that do not have the right start time
     if starttime is not None:
@@ -168,7 +191,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if len(set(nrows_list)) > 1:
             print('subtract_sector_models: Model data files have differing number of rows...')
             sys.exit(1)
-
     nsectors = len(model_list)
     if nsectors == 0:
         print('subtract_sector_models: No model data found. Exiting...')
@@ -199,13 +221,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
         msout = '{0}{1}_field'.format(root_filename, infix)
-        if infix != '':
-            # This implies we have a subrange of a full dataset, so use a model ms
-            # file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct subrange)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
+        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -278,13 +294,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
         msout = '{0}{1}_field_no_bright'.format(root_filename, infix)
-        if infix != '':
-            # This implies we have a subrange of a full dataset, so use a model ms
-            # file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct subrange)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
+        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -352,6 +362,15 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         datamod_all = None
         datamod_list = None
 
+    if len(model_list) == 0:
+        # This means there is just a single sector and no reweighting is to be done
+        msout = os.path.basename(msin_orig) + '.sector_1'
+        if os.path.exists(msout):
+            # File may exist from a previous iteration; delete it if so
+            misc.delete_directory(msout)
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
+        return
+
     # Open input table and define chunks based on available memory, making sure each
     # chunk gives a full timeslot (needed for reweighting)
     tin = pt.table(msin, readonly=True, ack=False)
@@ -390,12 +409,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             # Break so we don't open output tables for the bright sources
             break
         msout = os.path.basename(msmod).rstrip('_modeldata')
-        if starttime is not None:
-            # Use a model ms file as source for the copy (since otherwise we could copy the
-            # entire msin and not just the data for the correct time range)
-            mssrc = model_list[-1]
-        else:
-            mssrc = msin
+        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -452,11 +466,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     for tout in tout_list:
         tout.close()
     tin.close()
-
-    # Delete model data
-#     for msmod in model_list:
-#         if os.path.exists(msmod):
-#             os.system('/bin/rm -rf {0}'.format(msmod))
 
 
 """
@@ -569,7 +578,7 @@ class CovWeights:
             CoeffArray[:, :, i][tempars < thres] = thres
         return CoeffArray
 
-    def calcWeights(self, CoeffArray, max_radius = 5e3):
+    def calcWeights(self, CoeffArray, max_radius=5e3):
         ms = pt.table(self.MSName, readonly=True, ack=False)
         ants = pt.table(ms.getkeyword("ANTENNA"), ack=False)
         antnames = ants.getcol("NAME")
@@ -712,7 +721,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('msin', help='Filename of input MS data file')
-    parser.add_argument('msmod', help='Filename of input MS model data file', type=str, default='phase000')
+    parser.add_argument('msmod', help='Filename of input MS model data file')
     parser.add_argument('--msin_column', help='Name of msin column', type=str, default='DATA')
     parser.add_argument('--model_column', help='Name of msmod column', type=str, default='DATA')
     parser.add_argument('--out_column', help='Name of output column', type=str, default='DATA')

@@ -221,6 +221,7 @@ inputs:
     type: string
 
 {% if do_slowgain_solve %}
+# start do_slowgain_solve
   - id: freqchunk_filename
     label: Filename of input MS (frequency)
     doc: |
@@ -358,7 +359,9 @@ inputs:
   - id: combined_slow_h5parm_debug
     type: string
 {% endif %}
+
 {% endif %}
+# end do_slowgain_solve
 
 
 outputs:
@@ -372,10 +375,12 @@ outputs:
       - combine_fast_and_slow_h5parms2/combinedh5parm
     type: File
 {% endif %}
+{% if use_screens %}
   - id: diagonal_aterms
     outputSource:
       - merge_aterm_files/output
     type: File[]
+{% endif %}
 
 
 steps:
@@ -467,7 +472,7 @@ steps:
       - id: outh5parm
 
 {% if do_slowgain_solve %}
-# Solve for slow gains
+# start do_slowgain_solve
 
   - id: solve_slow_gains1
     label: Solve for slow gains 1
@@ -746,7 +751,11 @@ steps:
       - id: outh5parm
         source: combined_h5parms
       - id: mode
+{% if use_screens %}
         valueFrom: 'p1p2a2'
+{% else %}
+        valueFrom: 'p1p2a2_scalar'
+{% endif %}
       - id: reweight
         valueFrom: 'True'
       - id: calibrator_names
@@ -755,6 +764,9 @@ steps:
         source: calibrator_fluxes
     out:
       - id: combinedh5parm
+
+{% if use_screens %}
+# start use_screens
 
   - id: split_h5parms
     label: Split solution table
@@ -799,7 +811,11 @@ steps:
     out:
       - id: output_images
 
+{% endif %}
+# end use_screens
+
 {% if debug %}
+# start debug
 # Solve for slow gains again, applying the first ones
 
   - id: solve_slow_gains_debug
@@ -877,9 +893,13 @@ steps:
       - id: outh5parm
 
 {% endif %}
+# end debug
 
 {% else %}
-# Don't solve for slow gains
+# start not do_slowgain_solve
+
+{% if use_screens %}
+# start use_screens
 
   - id: split_h5parms
     label: Split solution table
@@ -925,6 +945,12 @@ steps:
       - id: output_images
 
 {% endif %}
+# end use_screens
+
+{% endif %}
+# end do_slowgain_solve / not do_slowgain_solve
+
+{% if use_screens %}
 
   - id: merge_aterm_files
     in:
@@ -935,3 +961,5 @@ steps:
       - id: output
     run: {{ rapthor_pipeline_dir }}/steps/merge_array_files.cwl
     label: merge_aterm_files
+
+{% endif %}
