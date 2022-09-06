@@ -32,9 +32,8 @@ outputs:
       parameter "h5parm".
     type:
       - File
-      - string
     outputBinding:
-      glob: $(inputs.h5parm)
+      glob: $(inputs.h5parm.basename)
 
 hints:
   - class: DockerRequirement
