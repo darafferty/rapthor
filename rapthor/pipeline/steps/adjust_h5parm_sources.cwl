@@ -15,14 +15,14 @@ inputs:
       The filename of the input sky model file that defines the calibration patches.
     type: File
     inputBinding:
-      position: 1
+      position: 0
   - id: h5parm
-    label: Filename of the h5parm file
+    label: Filename of h5parm file
     doc: |
       The filename of the input h5parm file that contains the calibration solutions.
-    type: string
+    type: File
     inputBinding:
-      position: 6
+      position: 1
 
 outputs:
   - id: adjustedh5parm

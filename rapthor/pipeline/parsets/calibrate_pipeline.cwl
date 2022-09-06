@@ -365,16 +365,10 @@ inputs:
 
 
 outputs:
-  - id: fast_phases
-    outputSource:
-      - combine_fast_phases/outh5parm
-    type: File
-{% if do_slowgain_solve %}
   - id: combined_solutions
     outputSource:
-      - combine_fast_and_slow_h5parms2/combinedh5parm
+      - adjust_h5parm_sources/adjustedh5parm
     type: File
-{% endif %}
 {% if use_screens %}
   - id: diagonal_aterms
     outputSource:
