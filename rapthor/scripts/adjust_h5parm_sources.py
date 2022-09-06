@@ -8,6 +8,7 @@ from rapthor.lib import miscellaneous as misc
 import lsmtool
 from losoto.h5parm import h5parm
 import numpy as np
+import sys
 
 
 def main(skymodel, h5parm_file, solset_name='sol000'):
@@ -25,27 +26,45 @@ def main(skymodel, h5parm_file, solset_name='sol000'):
         Name of the solution set to adjust
     """
     # Open the input sky model and h5parm file and match up the source names and
-    # positions
+    # positions to get the adjusted values
     skymod = lsmtool.load(skymodel)
     source_dict = skymod.getPatchPositions()
     H = h5parm(h5parm_file, readonly=False)
     solset = H.getSolset(solset_name)
-    soltab = solset.getSoltabs()[0]  # take the first soltab (all soltabs have the same directions)
+    soltab = solset.getSoltabs()[0]  # take the first soltab (all have the same directions)
+    if not len(source_dict) == len(soltab.dir):
+        print('ERROR: The patches in the sky model and the directions in the h5parm '
+              'must have the same length')
+        H.close()
+        sys.exit(1)
     source_positions = []
     for source in soltab.dir:
         # For each source in the soltab, find its coordinates in the sky model
         # (stored in the source_dict dictionary)
-        radecpos = source_dict[source.strip('[]')]  # degrees
+        try:
+            radecpos = source_dict[source.strip('[]')]  # degrees
+        except KeyError:
+            print('ERROR: A direction is present in the h5parm that is not in the sky model')
+            H.close()
+            sys.exit(1)
         source_positions.append([misc.normalize_ra(radecpos[0].value),
                                  misc.normalize_dec(radecpos[1].value)])
     source_positions = np.array(source_positions)
     ra_deg = source_positions.T[0]
     dec_deg = source_positions.T[1]
-
-    # Update the source table of the solution set
-    sourceTable = solset.obj._f_get_child('source')
     vals = [[ra*np.pi/180.0, dec*np.pi/180.0] for ra, dec in zip(ra_deg, dec_deg)]  # radians
-    sourceTable = list(zip(*(soltab.dir, vals)))
+
+    # Remove the old source table and make a new empty one
+    sourceTable = solset.obj._f_get_child('source')
+    sourceTable._f_remove(recursive=True)
+    descriptor = np.dtype([('name', np.str_, 128), ('dir', np.float32, 2)])
+    snode = H.H.get_node('/', solset_name)
+    stable = H.H.create_table(snode, 'source', descriptor,
+                              title='Source names and directions', expectedrows=25)
+
+    # Add the adjusted values to the new table
+    sourceTable = solset.obj._f_get_child('source')
+    sourceTable.append(list(zip(*(soltab.dir, vals))))
     H.close()
 
 
