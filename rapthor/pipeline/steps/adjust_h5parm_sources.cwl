@@ -6,7 +6,11 @@ doc: |
   This tool adjusts the h5parm source coordinates to match those in the sky model.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.h5parm)
+        writable: true
 
 inputs:
   - id: skymodel
