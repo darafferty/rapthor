@@ -6,7 +6,7 @@ import argparse
 from argparse import RawTextHelpFormatter
 from rapthor.lib import miscellaneous as misc
 import lsmtool
-from losoto import h5parm
+from losoto.h5parm import h5parm
 import numpy as np
 
 
