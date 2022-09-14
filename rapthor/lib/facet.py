@@ -212,8 +212,11 @@ def voronoi(cal_coords, bounding_box):
                                  axis=0),
                        axis=0)
 
-    # Compute Voronoi
+    # Compute Voronoi, sorting the output regions to match the order of the
+    # input coordinates
     vor = sp.spatial.Voronoi(points)
+    sorted_regions = np.array(vor.regions)[np.array(vor.point_region)]
+    vor.regions = sorted_regions.tolist()
 
     # Filter regions
     regions = []

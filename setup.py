@@ -45,6 +45,7 @@ setup(
     scripts=['bin/rapthor',
              'bin/plotrapthor',
              'bin/concat_linc_files',
+             'rapthor/scripts/adjust_h5parm_sources.py',
              'rapthor/scripts/blank_image.py',
              'rapthor/scripts/combine_h5parms.py',
              'rapthor/scripts/filter_skymodel.py',

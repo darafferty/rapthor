@@ -153,7 +153,7 @@ inputs:
     label: LBFGS iterations per minibatch
     doc: |
       The number of iterations per minibatch in LBFGS solver (length = 1).
-    type: int 
+    type: int
 
   - id: solverlbfgs_minibatches
     label: LBFGS minibatches
@@ -365,16 +365,10 @@ inputs:
 
 
 outputs:
-  - id: fast_phases
-    outputSource:
-      - combine_fast_phases/outh5parm
-    type: File
-{% if do_slowgain_solve %}
   - id: combined_solutions
     outputSource:
-      - combine_fast_and_slow_h5parms2/combinedh5parm
+      - adjust_h5parm_sources/adjustedh5parm
     type: File
-{% endif %}
 {% if use_screens %}
   - id: diagonal_aterms
     outputSource:
@@ -765,6 +759,19 @@ steps:
     out:
       - id: combinedh5parm
 
+  - id: adjust_h5parm_sources
+    label: Adjust h5parm sources
+    doc: |
+      This step adjusts the h5parm source coordinates to match those in the sky model.
+    run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: h5parm
+        source: combine_fast_and_slow_h5parms2/combinedh5parm
+    out:
+      - id: adjustedh5parm
+
 {% if use_screens %}
 # start use_screens
 
@@ -776,7 +783,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
     in:
       - id: inh5parm
-        source: combine_fast_and_slow_h5parms2/combinedh5parm
+        source: adjust_h5parm_sources/adjustedh5parm
       - id: outh5parms
         source: split_outh5parm
       - id: soltabname
@@ -898,6 +905,19 @@ steps:
 {% else %}
 # start not do_slowgain_solve
 
+  - id: adjust_h5parm_sources
+    label: Adjust h5parm sources
+    doc: |
+      This step adjusts the h5parm source coordinates to match those in the sky model.
+    run: {{ rapthor_pipeline_dir }}/steps/adjust_h5parm_sources.cwl
+    in:
+      - id: skymodel
+        source: calibration_skymodel_file
+      - id: h5parm
+        source: combine_fast_phases/outh5parm
+    out:
+      - id: adjustedh5parm
+
 {% if use_screens %}
 # start use_screens
 
@@ -909,7 +929,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/split_h5parms.cwl
     in:
       - id: inh5parm
-        source: combine_fast_phases/outh5parm
+        source: adjust_h5parm_sources/adjustedh5parm
       - id: outh5parms
         source: split_outh5parm
       - id: soltabname
