@@ -1,14 +1,10 @@
 """
 Classes that wrap the CWL runners that Rapthor supports.
 """
-from __future__ import annotations
 import logging
 import os
 import subprocess
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from rapthor.lib.operation import Operation
 
 logger = logging.getLogger("rapthor:cwlrunner")
 
@@ -19,7 +15,7 @@ class CWLRunner:
     properly configured when its `run()` method is invoked. We need to have access
     to some of the settings in the `operation` that is calling us.
     """
-    def __init__(self, operation: Operation) -> None:
+    def __init__(self, operation):
         """
         Initalizer
         """
@@ -27,20 +23,20 @@ class CWLRunner:
         self.command = None
         self.operation = operation
 
-    def __enter__(self) -> "CWLRunner":
+    def __enter__(self):
         """
         Called when entering a context.
         """
         self.setup()
         return self
 
-    def __exit__(self, *_) -> None:
+    def __exit__(self, *_):
         """
         Called when exiting a context.
         """
         self.teardown()
 
-    def _create_mpi_config_file(self) -> None:
+    def _create_mpi_config_file(self):
         """
         Create the config file for MPI jobs and add the required args
         """
@@ -62,13 +58,13 @@ class CWLRunner:
         with open(self.operation.mpi_config_file, 'w') as cfg_file:
             cfg_file.write('\n'.join(mpi_config_lines))
 
-    def _delete_mpi_config_file(self) -> None:
+    def _delete_mpi_config_file(self):
         """
         Delete the MPI config file
         """
         os.remove(self.operation.mpi_config_file)
 
-    def setup(self) -> None:
+    def setup(self):
         """
         Prepare runner for running. Set up the list of arguments to pass to the
         actual CWL runner.
@@ -94,14 +90,14 @@ class CWLRunner:
             self.args.extend(['--mpi-config-file', self.operation.mpi_config_file])
             self.args.extend(['--enable-ext'])
 
-    def teardown(self) -> None:
+    def teardown(self):
         """
         Clean up after the runner has run.
         """
         if self.operation.field.use_mpi:
             self._delete_mpi_config_file()
 
-    def run(self) -> bool:
+    def run(self):
         """
         Start the runner in a subprocess.
         Every CWL runner requires two input files:
@@ -137,7 +133,7 @@ class ToilRunner(CWLRunner):
     """
     Wrapper class for the Toil CWL runner
     """
-    def __init__(self, operation: Operation) -> None:
+    def __init__(self, operation):
         """
         Initializer
         """
@@ -192,11 +188,11 @@ class CWLToolRunner(CWLRunner):
     """
     Wrapper class for the CWLTool CWL runner
     """
-    def __init__(self, operation: Operation) -> None:
+    def __init__(self, operation):
         super().__init__(operation)
         self.command = "cwltool"
 
-    def setup(self) -> None:
+    def setup(self):
         """
         Set arguments that are specific to this CWL runner.
         """
@@ -208,7 +204,7 @@ class CWLToolRunner(CWLRunner):
             self.args.extend(["--debug"])
 
 
-def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
+def create_cwl_runner(runner, operation):
     """
     Factory method that creates a CWLRunner instance based on the `runner` argument.
     We need access to some information inside the `operation` that calls us.
