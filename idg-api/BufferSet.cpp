@@ -580,7 +580,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   m_set_image_watch->Pause();
 }
 
-void BufferSetImpl::write_grid(idg::Grid& grid) {
+void BufferSetImpl::write_grid(const idg::Grid& grid) {
   size_t nr_w_layers = grid.get_w_dim();
   size_t nr_polarizations = grid.get_z_dim();
   size_t grid_size = grid.get_y_dim();

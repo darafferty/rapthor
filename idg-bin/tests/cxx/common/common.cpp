@@ -166,6 +166,9 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   idg::Array2D<float> spheroidal =
       idg::get_example_spheroidal(proxy2, subgrid_size, subgrid_size);
   idg::Array1D<float> shift = idg::get_zero_shift();
+  // Set shift to some random non-zero value
+  shift(0) = 0.02;  // shift is in radians, 0.02rad is about 1deg
+  shift(1) = -0.03;
   auto grid = proxy2.allocate_grid(1, nr_polarizations, grid_size, grid_size);
   auto grid_ref =
       proxy1.allocate_grid(1, nr_polarizations, grid_size, grid_size);
