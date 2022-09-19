@@ -20,7 +20,7 @@ requirements:
 {% if max_cores is not none %}
 hints:
   ResourceRequirement:
-    coresMin: 1
+    coresMin: {{ max_cores }}
     coresMax: {{ max_cores }}
 {% endif %}
 
@@ -392,7 +392,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: 1
+        coresMin: {{ max_cores }}
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -480,7 +480,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: 1
+        coresMin: {{ max_cores }}
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -604,7 +604,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: 1
+        coresMin: {{ max_cores }}
         coresMax: {{ max_cores }}
 {% endif %}
     in:
@@ -831,7 +831,7 @@ steps:
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
-        coresMin: 1
+        coresMin: {{ max_cores }}
         coresMax: {{ max_cores }}
 {% endif %}
     in:
