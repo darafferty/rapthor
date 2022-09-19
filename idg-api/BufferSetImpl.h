@@ -140,7 +140,7 @@ class BufferSetImpl : public virtual BufferSet {
   std::unique_ptr<Stopwatch> m_degridding_watch;
 
   // debug
-  static void write_grid(idg::Grid& grid);
+  static void write_grid(const idg::Grid& grid);
 };
 
 }  // namespace api

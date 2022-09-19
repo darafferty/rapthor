@@ -346,10 +346,10 @@ void kernel_adder_wtiles_to_grid(
                                      tile_ids[tile_idx] + 1, 0, 0, 0)],
                 std::complex<float>({0.0, 0.0}));
 
-      // Forward FFT
+      // Backward FFT
       std::complex<float>* tile_ptr =
           reinterpret_cast<std::complex<float>*>(tile_buffers.data(i, 0, 0, 0));
-      kernel_fft_composite(plan_forward, nr_polarizations, w_padded_tile_size,
+      kernel_fft_composite(plan_backward, nr_polarizations, w_padded_tile_size,
                            tile_ptr);
 
       // Multiply w term
@@ -357,8 +357,8 @@ void kernel_adder_wtiles_to_grid(
                           w_step, shift, coordinate,
                           tile_buffers.data(i, 0, 0, 0), -1);
 
-      // Backwards FFT
-      kernel_fft_composite(plan_backward, nr_polarizations, w_padded_tile_size,
+      // Forward FFT
+      kernel_fft_composite(plan_forward, nr_polarizations, w_padded_tile_size,
                            tile_ptr);
     }
 
