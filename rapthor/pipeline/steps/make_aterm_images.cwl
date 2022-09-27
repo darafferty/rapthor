@@ -7,7 +7,11 @@ doc: |
   are suitable for use with WSClean+IDG.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.h5parm)
+        writable: true
 
 arguments:
   - '--smooth_deg=0.1'
