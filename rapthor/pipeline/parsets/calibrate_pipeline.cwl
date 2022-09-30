@@ -476,7 +476,11 @@ steps:
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same solutions.
+{% if use_facets %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar1.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
+{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -600,7 +604,11 @@ steps:
       phase solutions and first slow-gain solutions are preapplied and stations
       are unconstrainted (so different stations are free to have different
       solutions).
+{% if use_facets %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar1.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
+{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:

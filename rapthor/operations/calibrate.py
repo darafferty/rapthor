@@ -28,8 +28,13 @@ class Calibrate(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
+        if self.field.dde_method == 'facets':
+            use_facets = True
+        else:
+            use_facets = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_screens': self.field.use_screens,
+                             'use_facets': use_facets,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'max_cores': max_cores,

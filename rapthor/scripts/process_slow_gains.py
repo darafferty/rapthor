@@ -92,10 +92,16 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
             stat_names = []
             for s in range(len(station_names)):
                 if 'CS' in station_names[s] and s != ref_id:
-                    if not np.all(np.isnan(parms[:, :, s, dir, :])):
-                        mean_vals.append(np.nanmean(parms[:, :, s, dir, :]))
-                        dist_vals.append(dist[s])
-                        stat_names.append(station_names[s])
+                    if 'pol' in soltab.axes:
+                        if not np.all(np.isnan(parms[:, :, s, dir, :])):
+                            mean_vals.append(np.nanmean(parms[:, :, s, dir, :]))
+                            dist_vals.append(dist[s])
+                            stat_names.append(station_names[s])
+                    else:
+                        if not np.all(np.isnan(parms[:, :, s, dir])):
+                            mean_vals.append(np.nanmean(parms[:, :, s, dir]))
+                            dist_vals.append(dist[s])
+                            stat_names.append(station_names[s])
 
             # Find best-fit gradient for core only
             x = np.log10(np.array(dist_vals))
@@ -118,8 +124,12 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     # Normalize each direction separately to have a mean of unity over all
     # times, frequencies, and pols
     for dir in range(len(soltab.dir[:])):
-        norm_factor = np.nanmean(parms[:, :, :, dir, :][initial_unflagged_indx[:, :, :, dir, :]])
-        parms[:, :, :, dir, :] -= norm_factor
+        if 'pol' in soltab.axes:
+            norm_factor = np.nanmean(parms[:, :, :, dir, :][initial_unflagged_indx[:, :, :, dir, :]])
+            parms[:, :, :, dir, :] -= norm_factor
+        else:
+            norm_factor = np.nanmean(parms[:, :, :, dir][initial_unflagged_indx[:, :, :, dir]])
+            parms[:, :, :, dir] -= norm_factor
 
     # Convert back to non-log values and make sure flagged solutions are still flagged
     parms = 10**parms
