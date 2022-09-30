@@ -155,8 +155,12 @@ inputs:
 outputs:
   - id: subtract_models
     outputSource:
-      - merge_subtract_sector_models/output
-    type: Directory[]
+      - subtract_sector_models/output_models
+    type:
+      - type: array
+        items:
+          - type: array
+            items: Directory
 
 steps:
   - id: predict_model_data
@@ -248,14 +252,3 @@ steps:
     scatterMethod: dotproduct
     out:
       - id: output_models
-
-  - id: merge_subtract_sector_models
-    label: Merge subtracted sector model data
-    in:
-      - id: input
-        source:
-          - subtract_sector_models/output_models
-    out:
-      - id: output
-    run: {{ rapthor_pipeline_dir }}/steps/merge_array_directories.cwl
-
