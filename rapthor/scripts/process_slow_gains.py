@@ -113,13 +113,22 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
             # are more likely correct (and so should be around 1.0, after normalization)
             for s in range(len(station_names)):
                 if 'CS' in station_names[s]:
-                    if s == ref_id:
-                        # For the reference station, take as the distance that of a
-                        # neighboring station, to avoid large extrapolations to zero
-                        # distance
-                        parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s+1]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
+                    if 'pol' in soltab.axes:
+                        if s == ref_id:
+                            # For the reference station, take as the distance that of a
+                            # neighboring station, to avoid large extrapolations to zero
+                            # distance
+                            parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s+1]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
+                        else:
+                            parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
                     else:
-                        parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
+                        if s == ref_id:
+                            # For the reference station, take as the distance that of a
+                            # neighboring station, to avoid large extrapolations to zero
+                            # distance
+                            parms[:, :, s, dir] -= popt[0]*np.log10(dist[s+1]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
+                        else:
+                            parms[:, :, s, dir] -= popt[0]*np.log10(dist[s]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
 
     # Normalize each direction separately to have a mean of unity over all
     # times, frequencies, and pols
@@ -185,9 +194,15 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
     csindx = None
     for s in range(len(soltab.ant[:])):
         if 'CS' in soltab.ant[s]:
-            if not np.all(initial_flagged_indx[:, :, s, :, :]):
-                csindx = s
-                break
+            if 'pol' in soltab.axes:
+                if not np.all(initial_flagged_indx[:, :, s, :, :]):
+                    csindx = s
+                    break
+            else:
+                if not np.all(initial_flagged_indx[:, :, s, :]):
+                    csindx = s
+                    break
+
     if csindx is None:
         print('ERROR: all core stations are fully flagged! Smoothing cannot be done')
         sys.exit(1)
@@ -213,11 +228,18 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
                     time_slice = slice(g_start, g_stop, time_sampling)
 
                     # Do the smoothing with LOESS
-                    for pol in [0, 1]:
+                    if 'pol' in soltab.axes:
+                        pol_list = [0, 1]
+                    else:
+                        pol_list = [0]
+                    for pol in pol_list:
                         yv, xv = np.meshgrid(soltab.freq[freq_slice], times[time_slice])
                         yv /= np.min(yv)
                         xv -= np.min(xv)
-                        z = parms[time_slice, freq_slice, s, dir, pol]
+                        if 'pol' in soltab.axes:
+                            z = parms[time_slice, freq_slice, s, dir, pol]
+                        else:
+                            z = parms[time_slice, freq_slice, s, dir]
                         nanind = np.where(~np.isnan(z))
                         if len(nanind[0]) == 0:
                             # All solutions are flagged, so skip processing
@@ -266,7 +288,10 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
                             zr = f(soltab.freq)
                         else:
                             zr = zr1
-                        parms[time_slice, freq_slice, s, dir, pol] = zr
+                        if 'pol' in soltab.axes:
+                            parms[time_slice, freq_slice, s, dir, pol] = zr
+                        else:
+                            parms[time_slice, freq_slice, s, dir] = zr
                     g_start = g_stop
 
     # Convert back to non-log values and make sure flagged solutions are still flagged
@@ -305,9 +330,15 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
     # Work in real/image space, as required for phases
     if parms is None:
         parms = soltab.val[:]  # axes are ['time', 'freq', 'ant', 'dir', 'pol']
-    parms_ref = parms[:, :, ref_id, :, :].copy()
+    if 'pol' in soltab.axes:
+        parms_ref = parms[:, :, ref_id, :, :].copy()
+    else:
+        parms_ref = parms[:, :, ref_id, :].copy()
     for i in range(len(soltab.ant)):
-        parms[:, :, i, :, :] -= parms_ref
+        if 'pol' in soltab.axes:
+            parms[:, :, i, :, :] -= parms_ref
+        else:
+            parms[:, :, i, :] -= parms_ref
     if weights is None:
         weights = soltab.weight[:]
     initial_flagged_indx = np.logical_or(np.isnan(parms), weights == 0.0)
@@ -328,9 +359,14 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
         if s == ref_id:
             continue
         if 'CS' in soltab.ant[s]:
-            if not np.all(initial_flagged_indx[:, :, s, :, :]):
-                csindx = s
-                break
+            if 'pol' in soltab.axes:
+                if not np.all(initial_flagged_indx[:, :, s, :, :]):
+                    csindx = s
+                    break
+            else:
+                if not np.all(initial_flagged_indx[:, :, s, :]):
+                    csindx = s
+                    break
 
     for dir in range(len(soltab.dir[:])):
         # Find standard deviation of the real part of a a core station and determine
@@ -351,12 +387,20 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
                     time_slice = slice(g_start, g_stop, time_sampling)
 
                     # Do the smoothing with LOESS
-                    for pol in [0, 1]:
+                    if 'pol' in soltab.axes:
+                        pol_list = [0, 1]
+                    else:
+                        pol_list = [0]
+                    for pol in pol_list:
                         yv, xv = np.meshgrid(soltab.freq[freq_slice], times[time_slice])
                         yv /= np.min(yv)
                         xv -= np.min(xv)
-                        zreal = np.cos(parms[time_slice, freq_slice, s, dir, pol])
-                        zimag = np.sin(parms[time_slice, freq_slice, s, dir, pol])
+                        if 'pol' in soltab.axes:
+                            zreal = np.cos(parms[time_slice, freq_slice, s, dir, pol])
+                            zimag = np.sin(parms[time_slice, freq_slice, s, dir, pol])
+                        else:
+                            zreal = np.cos(parms[time_slice, freq_slice, s, dir])
+                            zimag = np.sin(parms[time_slice, freq_slice, s, dir])
                         nanind = np.where(~np.isnan(zreal))
                         if len(nanind[0]) == 0:
                             # All solutions are flagged, so skip processing
@@ -423,7 +467,10 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
                         else:
                             zr = zr1
                             zi = zi1
-                        parms[time_slice, freq_slice, s, dir, pol] = np.arctan2(zi, zr)
+                        if 'pol' in soltab.axes:
+                            parms[time_slice, freq_slice, s, dir, pol] = np.arctan2(zi, zr)
+                        else:
+                            parms[time_slice, freq_slice, s, dir] = np.arctan2(zi, zr)
                     g_start = g_stop
 
     # Make sure flagged solutions are still flagged

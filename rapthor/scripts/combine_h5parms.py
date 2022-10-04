@@ -296,14 +296,17 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=Fals
         axes_vals.append(axis_vals)
     axes_shapes = [len(axis) for axis in axes_vals]
 
-    # Read phases from 2, average, interpolate to match those from 1, and sum. Note:
+    # Read phases from 2, average XX and YY if needed, interpolate to match those from 1, and sum. Note:
     # the interpolation is done in phase space (instead of real/imag space)
     # since phase wraps are not expected to be present in the slow phases
     time_ind = axes_names.index('time')
     freq_ind = axes_names.index('freq')
-    pol_ind = axes_names2.index('pol')
+    if 'pol' in axes_names2:
+        pol_ind = axes_names2.index('pol')
+        val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
+    else:
+        val2 = st2.val[:]
     st1_vals = st1.val
-    val2 = circmean(st2.val, axis=pol_ind)  # average over XX and YY
     if len(st2.time) > 1:
         f = si.interp1d(st2.time, val2, axis=time_ind, kind='nearest', fill_value='extrapolate')
         v1 = f(st1.time)
@@ -329,7 +332,8 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=Fals
     # Remove unneeded phase soltab from 2, then copy
     st2 = ss2.getSoltab('amplitude000')
     vals = np.log10(st2.val)
-    vals = np.mean(vals, axis=pol_ind)  # average over XX and YY
+    if 'pol' in axes_names2:
+        vals = np.mean(vals, axis=pol_ind)  # average over XX and YY
     vals = 10**vals
     if interpolate_amplitudes:
         if len(st2.time) > 1:
@@ -347,7 +351,8 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso, interpolate_amplitudes=Fals
         st = sso.getSoltab('amplitude000')
         st.delete()
     axes_vals = []
-    axes_names2.pop(axes_names2.index('pol'))  # remove pol axis in output axis names
+    if 'pol' in axes_names2:
+        axes_names2.pop(axes_names2.index('pol'))  # remove pol axis in output axis names
     for axis in axes_names2:
         axis_vals = st2.getAxisValues(axis)
         axes_vals.append(axis_vals)

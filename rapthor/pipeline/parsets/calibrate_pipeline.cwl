@@ -605,7 +605,7 @@ steps:
       are unconstrainted (so different stations are free to have different
       solutions).
 {% if use_facets %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar1.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar2.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
 {% endif %}
