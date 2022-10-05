@@ -17,7 +17,7 @@ arguments:
   - msout=
   - steps=[solve]
   - solve.type=ddecal
-  - solve.mode=sclar
+  - solve.mode=scalar
   - solve.usebeammodel=True
   - solve.beammode=array_factor
   - solve.applycal.steps=[fastphase]
