@@ -13,8 +13,12 @@ requirements:
   - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
     listing:
-      - entry: [$(inputs.msobs), $(inputs.msmod)]
+      - entry: $(inputs.msobs)
         writable: false
+      - entry: $(inputs.msmod)
+        writable: false
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true
 
 arguments:
   - '--weights_colname=WEIGHT_SPECTRUM'

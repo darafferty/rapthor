@@ -15,6 +15,8 @@ requirements:
     listing:
       - entry: $(inputs.msin)
         writable: false
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true
 
 arguments:
   - msin.datacolumn=DATA
