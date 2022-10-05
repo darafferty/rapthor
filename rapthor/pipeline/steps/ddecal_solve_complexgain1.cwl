@@ -10,7 +10,11 @@ doc: |
   outputs not documented below.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: false
 
 arguments:
   - msin.datacolumn=DATA
@@ -120,7 +124,7 @@ inputs:
       prefix: solve.onebeamperpatch=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
-  - id: parallelbaselines 
+  - id: parallelbaselines
     type: boolean
     inputBinding:
       prefix: solve.parallelbaselines=

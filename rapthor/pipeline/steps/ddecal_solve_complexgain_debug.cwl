@@ -10,7 +10,11 @@ doc: |
   outputs not documented below. This tool is used for debugging purposes only.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: false
 
 arguments:
   - msin.datacolumn=DATA

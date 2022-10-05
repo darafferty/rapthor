@@ -7,8 +7,12 @@ doc: |
   the beam model, phase shifting, and averaging.
 
 requirements:
-  InlineJavascriptRequirement: {}
-  ShellCommandRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: false
+  - class: ShellCommandRequirement
 
 arguments:
   - msin.datacolumn=DATA

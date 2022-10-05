@@ -11,6 +11,10 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: [$(inputs.msobs), $(inputs.msmod)]
+        writable: false
 
 arguments:
   - '--weights_colname=WEIGHT_SPECTRUM'
