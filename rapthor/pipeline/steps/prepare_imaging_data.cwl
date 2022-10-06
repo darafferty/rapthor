@@ -11,7 +11,9 @@ requirements:
   - class: InitialWorkDirRequirement
     listing:
       - entry: $(inputs.msin)
-        writable: false
+        writable: true
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true
   - class: ShellCommandRequirement
 
 arguments:

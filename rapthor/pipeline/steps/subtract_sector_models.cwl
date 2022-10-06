@@ -14,9 +14,9 @@ requirements:
   - class: InitialWorkDirRequirement
     listing:
       - entry: $(inputs.msobs)
-        writable: false
+        writable: true
       - entry: $(inputs.msmod)
-        writable: false
+        writable: true
   - class: InplaceUpdateRequirement
     inplaceUpdate: true
 
