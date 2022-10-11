@@ -211,10 +211,9 @@ __device__ void
         }
 
         // Iterate timesteps
-        int current_nr_timesteps = BATCH_SIZE / current_nr_channels;
+        int current_nr_timesteps = max(1, BATCH_SIZE / current_nr_channels);
         for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-            current_nr_timesteps = nr_timesteps - time_offset_local < current_nr_timesteps ?
-                                   nr_timesteps - time_offset_local : current_nr_timesteps;
+            current_nr_timesteps = min(current_nr_timesteps, nr_timesteps - time_offset_local);
 
             __syncthreads();
 
