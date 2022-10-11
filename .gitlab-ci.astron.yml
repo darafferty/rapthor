@@ -61,7 +61,7 @@ test-tuning-das:
     # Prepare environment to run kernel_tuner
     - source idg-bin/tuning/load_modules_das6.sh
     # Install the latest kernel_tuner directly from the repository
-    - python -m pip install --user --upgrade git+https://github.com/benvanwerkhoven/kernel_tuner.git@master
+    - python -m pip install --user --upgrade git+https://github.com/KernelTuner/kernel_tuner.git@master
   script:
     # There is no need to install IDG, run the tests directly
     - idg-bin/tuning/tTuneCUDAGridder
