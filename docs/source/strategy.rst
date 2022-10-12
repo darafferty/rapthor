@@ -34,6 +34,9 @@ The following processing parameters my be set:
     do_slowgain_solve
         Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle.
 
+    apply_slow_amps
+        Boolean flag that determines whether the amplitudes from the slow-gain part of calibration should be applied during imaging. This flag is ignored if ``do_slowgain_solve`` is not ``True``.
+
     peel_outliers
         Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector) should be peeled for this cycle.
 
