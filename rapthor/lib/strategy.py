@@ -39,10 +39,11 @@ def set_strategy(field):
             strategy_steps.append({})
 
             strategy_steps[i]['do_calibrate'] = True
+            strategy_steps[i]['do_slowgain_solve'] = True
             if i == 0:
-                strategy_steps[i]['do_slowgain_solve'] = False
+                strategy_steps[i]['apply_slow_amps'] = False
             else:
-                strategy_steps[i]['do_slowgain_solve'] = True
+                strategy_steps[i]['apply_slow_amps'] = True
 
             if i == 0:
                 strategy_steps[i]['peel_outliers'] = True

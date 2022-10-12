@@ -800,7 +800,11 @@ steps:
       - id: h5parm
         source: split_h5parms/splith5parms
       - id: soltabname
+{% if apply_slow_amps %}
         valueFrom: 'gain000'
+{% else %}
+        valueFrom: 'phase000'
+{% endif %}
       - id: screen_type
         source: screen_type
       - id: skymodel

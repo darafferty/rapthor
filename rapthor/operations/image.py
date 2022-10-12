@@ -36,6 +36,7 @@ class Image(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
+                             'apply_slow_amps': self.field.apply_slow_amps,
                              'use_screens': self.field.use_screens,
                              'use_facets': use_facets,
                              'peel_bright_sources': self.field.peel_bright_sources,
@@ -196,7 +197,7 @@ class Image(Operation):
                 self.input_parms.update({'width_ra': width_ra})
                 self.input_parms.update({'width_dec': width_dec})
                 self.input_parms.update({'facet_region_file': facet_region_file})
-                if self.field.do_slowgain_solve:
+                if self.field.do_slowgain_solve and self.field.apply_slow_amps:
                     self.input_parms.update({'soltabs': 'amplitude000,phase000'})
                 else:
                     self.input_parms.update({'soltabs': 'phase000'})

@@ -333,7 +333,7 @@ steps:
 
 {% else %}
 # start not use_screens and not use_facets
-{% if do_slowgain_solve %}
+{% if do_slowgain_solve and apply_slow_amps %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_phase_only.cwl

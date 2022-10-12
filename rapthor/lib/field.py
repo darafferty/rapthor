@@ -81,6 +81,7 @@ class Field(object):
         self.imaged_sources_only = False
         self.peel_bright_sources = False
         self.use_scalarphase = True
+        self.apply_slow_amps = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
 

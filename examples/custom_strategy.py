@@ -8,6 +8,7 @@ for i in range(max_selfcal_loops):
 
     strategy_steps[i]['do_calibrate'] = True
     strategy_steps[i]['do_slowgain_solve'] = True
+    strategy_steps[i]['apply_slow_amps'] = True
 
     if i == 0:
         strategy_steps[i]['peel_outliers'] = True
