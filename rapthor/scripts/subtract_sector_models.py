@@ -43,7 +43,7 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
     if compressed:
         scale_rapthor *= 5.0
     tot_m, used_m, free_m = list(map(int, os.popen('free -tm').readlines()[-1].split()[1:]))
-    msin_m = float(subprocess.check_output(['du', '-sm', msin]).split()[0]) * fraction
+    msin_m = float(subprocess.check_output(['du', '-smL', msin]).split()[0]) * fraction
     tot_required_m = msin_m * nsectors * scale_rapthor * 2.0
     nchunks = max(1, int(np.ceil(tot_required_m / tot_m)))
     return nchunks
