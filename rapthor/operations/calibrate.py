@@ -190,7 +190,7 @@ class Calibrate(Operation):
                             'screen_type': screen_type,
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
-                            'slow_antennaconstraint': alow_antennaconstraint,
+                            'slow_antennaconstraint': slow_antennaconstraint,
                             'solint_slow_timestep2': solint_slow_timestep2,
                             'solint_slow_freqstep2': solint_slow_freqstep2,
                             'slow_smoothnessconstraint2': slow_smoothnessconstraint2,
