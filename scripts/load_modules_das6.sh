@@ -24,5 +24,5 @@ module load py-matplotlib/3.5.1
 # Load modulefiles from the "schaap-stack"
 module load aoflagger/3.1.0
 module load casacore/3.4.0
-module load everybeam/latest
+module load everybeam/0.4.0
 module load dp3/latest

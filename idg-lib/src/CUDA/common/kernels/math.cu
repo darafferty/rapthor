@@ -144,7 +144,7 @@ inline __device__ void compute_reduction_extrapolate(
                 cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
             } else if (nr_polarizations == 1) {
                 cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
-                cmac(output[idx + 3], phasor, make_float2(a.z, a.w));
+                cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
             }
 
             if (i < n - 1) {
@@ -181,7 +181,7 @@ inline __device__ void compute_reduction(
                 cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
             } else if (nr_polarizations == 1) {
                 cmac(output[idx + 0], phasor, make_float2(a.x, a.y));
-                cmac(output[idx + 3], phasor, make_float2(a.z, a.w));
+                cmac(output[idx + 3], phasor, make_float2(b.z, b.w));
             }
         }
     }
