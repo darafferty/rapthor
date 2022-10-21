@@ -60,8 +60,18 @@ test-tuning-das:
   before_script:
     # Prepare environment to run kernel_tuner
     - source idg-bin/tuning/load_modules_das6.sh
-    # Install the latest kernel_tuner directly from the repository
-    - python -m pip install --user --upgrade git+https://github.com/KernelTuner/kernel_tuner.git@master
+    # Install the latest kernel_tuner directly from the repository.
+    # This is done in two steps, because the original one liner
+    #    python -m pip install --user --upgrade git+https://github.com/KernelTuner/kernel_tuner.git@master
+    # does not work, because pip and git disagree on the correct format 
+    # of the https_proxy variable. For pip https_proxy needs to start with
+    # 'https://', but that breaks git
+    # Furthermore it looks like pip can not install from local files when
+    # https_proxy is set.
+    - git clone https://github.com/KernelTuner/kernel_tuner.git
+    - cd kernel_tuner
+    - https_proxy= python3 -m pip install --user --upgrade .
+    - cd ..
   script:
     # There is no need to install IDG, run the tests directly
     - idg-bin/tuning/tTuneCUDAGridder

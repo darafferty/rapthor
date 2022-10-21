@@ -126,7 +126,7 @@ def load_data_and_reformat(im, axes):
     for i in range(len(axes)):
         slicer[index[i]] = slice(data.shape[index[i]])
 
-    return (np.transpose(data[slicer], renumber(index)), index)
+    return (np.transpose(data[tuple(slicer)], renumber(index)), index)
 
 
 def main(options, args):

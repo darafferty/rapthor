@@ -250,7 +250,14 @@ __device__ void
                     long idx_vis = index_visibility(2, nr_channels, idx_time, idx_chan, 0);
                     if (time < nr_timesteps) {
                         float4 *vis_ptr = (float4 *) &visibilities[idx_vis];
-                        visibilities_[0][k] = vis_ptr[0];
+                        visibilities_[0][k].x = vis_ptr[0].x;
+                        visibilities_[0][k].y = vis_ptr[0].y;
+                        visibilities_[0][k].z = 0.0;
+                        visibilities_[0][k].w = 0.0;
+                        visibilities_[1][k].x = 0.0;
+                        visibilities_[1][k].y = 0.0;
+                        visibilities_[1][k].z = vis_ptr[0].z;
+                        visibilities_[1][k].w = vis_ptr[0].w;
                     }
                 }
             }

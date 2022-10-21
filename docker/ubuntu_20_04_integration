@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 # Use specific versions of aoflagger and everybeam. When changing the version,
 # this docker file changes and CI will update the docker image.
 ENV AOFLAGGER_VERSION_TAG 71ab10cd15d04dd3997cd5d12bfe0655f013a907
-ENV EVERYBEAM_VERSION_TAG 82139905041689cf3669cf89c012515e09514628
+ENV EVERYBEAM_VERSION_TAG v0.4.0
 
 RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
     apt-get install -y \
