@@ -99,8 +99,17 @@ class Calibrate(Operation):
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
         slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint_joint
         slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint_separate
-        antennaconstraint_core = '[[{}]]'.format(','.join(self.get_core_stations()))
-        antennaconstraint_all = '[[{}]]'.format(','.join(self.field.stations))
+        if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
+            # Use the core stationconstraint if the slow solves will be done or if
+            # we have LBA data (which has lower sensitivity than HBA data)
+            fast_antennaconstraint = '[[{}]]'.format(','.join(self.get_core_stations()))
+        else:
+            # For HBA data, if the slow solves will not be done, we remove the
+            # stationconstraint to allow each station to get its own fast phase
+            # corrections
+            fast_antennaconstraint = '[]'
+        slow_antennaconstraint = '[[{}]]'.format(','.join(self.field.stations))
+
 
         # Get various DDECal solver parameters
         llssolver = self.field.llssolver
@@ -180,8 +189,8 @@ class Calibrate(Operation):
                             'output_aterms_root': self.output_aterms_root,
                             'screen_type': screen_type,
                             'combined_h5parms': self.combined_h5parms,
-                            'fast_antennaconstraint': antennaconstraint_core,
-                            'slow_antennaconstraint': antennaconstraint_all,
+                            'fast_antennaconstraint': fast_antennaconstraint,
+                            'slow_antennaconstraint': slow_antennaconstraint,
                             'solint_slow_timestep2': solint_slow_timestep2,
                             'solint_slow_freqstep2': solint_slow_freqstep2,
                             'slow_smoothnessconstraint2': slow_smoothnessconstraint2,
