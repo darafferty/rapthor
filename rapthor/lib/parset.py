@@ -77,7 +77,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         ms_files += glob.glob(os.path.join(search_str))
     parset_dict['mss'] = sorted(ms_files)
     if len(parset_dict['mss']) == 0:
-        log.error('No input MS files were not found!')
+        log.error('No input MS files were found!')
         sys.exit(1)
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
