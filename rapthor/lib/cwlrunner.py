@@ -101,6 +101,19 @@ class CWLRunner:
         if self.operation.field.use_mpi:
             self._delete_mpi_config_file()
 
+    def set_completed(self) -> None:
+        """
+        Set the state to completed.
+        A file named '.done' is created in pipeline_working_dir
+        """
+        open(os.path.join(self.operation.pipeline_working_dir, '.done'), 'a').close()
+
+    def check_completed(self) -> bool:
+        """
+        Return True if state is completed, False otherwise.
+        """
+        return os.path.exists(os.path.join(self.operation.pipeline_working_dir, '.done'))
+
     def run(self) -> bool:
         """
         Start the runner in a subprocess.
@@ -118,6 +131,8 @@ class CWLRunner:
             raise RuntimeError(
                 "Don't know how to start CWL runner {}".format(self.__class__.__name__)
             )
+        if self.check_completed():
+            return True
         args = [self.command] + self.args
         args.extend([self.operation.pipeline_parset_file,
                      self.operation.pipeline_inputs_file])
@@ -127,6 +142,7 @@ class CWLRunner:
             try:
                 result = subprocess.run(args=args, stdout=stdout, stderr=stderr, check=True)
                 logger.debug(str(result))
+                self.set_completed()
                 return True
             except subprocess.CalledProcessError as err:
                 logger.critical(str(err))

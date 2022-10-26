@@ -23,7 +23,8 @@ def check_operation(operation):
     """
     pipelines = []
     jobstore = os.path.join(operation, 'jobstore')
-    if os.path.exists(jobstore):
+    donefile = os.path.join(operation, '.done')
+    if os.path.exists(jobstore) or os.path.exists(donefile):
         pipelines.append(os.path.basename(operation))
 
     return pipelines
@@ -44,10 +45,7 @@ def run(parset_file):
 
     # Read parset
     log.info('Reading parset and checking state...')
-    parset = parset_read(parset_file, use_log_file=False) #, skip_cluster=True)
-    if parset['cluster_specific']['cwl_runner'] != 'toil':
-        log.error("Modifying state is only supported when using Toil as CWL runner")
-        sys.exit(1)
+    parset = parset_read(parset_file, use_log_file=False)
 
     # Initialize minimal field object
     field = Field(parset, mininmal=True)
@@ -111,7 +109,11 @@ def run(parset_file):
             print('Reseting state...')
             for pipeline in pipelines[int(p_number_raw)-1:]:
                 jobstore = os.path.join(parset['dir_working'], 'pipelines', pipeline, 'jobstore')
-                shutil.rmtree(jobstore, ignore_errors=True)
+                if os.path.exists(jobstore):
+                    shutil.rmtree(jobstore, ignore_errors=True)
+                donefile = os.path.join(parset['dir_working'], 'pipelines', pipeline, '.done')
+                if os.path.exists(donefile):
+                    os.remove(donefile)
 
                 # Remove associated sky models as well
                 skymodel = os.path.join(parset['dir_working'], 'skymodels', pipeline)
