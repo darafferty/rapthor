@@ -67,7 +67,7 @@ class TestFacet(unittest.TestCase):
         for point in facet_polys_control_flat:
             if point not in facet_polys_flat:
                 all_present = False
-        self.assertTrue(all_present)
+        self.assertTrue(all_present, msg='polys: {0}, control: {1}'.format(facet_polys_flat, facet_polys_control_flat))
 
 
 def suite():
