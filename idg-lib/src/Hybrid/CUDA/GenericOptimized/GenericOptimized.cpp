@@ -10,6 +10,7 @@
 #include <csignal>
 
 #include "InstanceCUDA.h"
+#include "kernels/KernelGridder.cuh"
 
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
@@ -69,6 +70,13 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
   if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
     options.w_step = m_cache_state.w_step;
     options.nr_w_layers = INT_MAX;
+    // The number of channels per channel group should not exceed the number of
+    // threads in a thread block for the CUDA gridder kernel
+    options.max_nr_channels_per_subgrid =
+        options.max_nr_channels_per_subgrid
+            ? min(options.max_nr_channels_per_subgrid,
+                  KernelGridder::block_size_x)
+            : KernelGridder::block_size_x;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
