@@ -30,6 +30,16 @@ class IDGCalDPStep(dp3.Step):
             print("  beammode:      ", self.beammode)
         print()
 
+    def get_required_fields(self):
+        return (
+            dp3.Fields.DATA | 
+            dp3.Fields.FLAGS | 
+            dp3.Fields.WEIGHTS | 
+            dp3.Fields.UVW)
+                                    
+    def get_provided_fields(self):
+        return dp3.Fields()
+
     def process(self, dpbuffer):
         # Accumulate buffers
         self.dpbuffers.append(dpbuffer)
