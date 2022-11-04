@@ -488,7 +488,7 @@ steps:
       - id: h5parm
         source: combine_fast_phases/outh5parm
       - id: soltype
-        source: phase
+        valueFrom: 'phase'
     out:
       - id: plots
 
@@ -764,7 +764,7 @@ steps:
       - id: h5parm
         source: normalize_slow_amplitudes/outh5parm
       - id: soltype
-        source: phase
+        valueFrom: 'phase'
     out:
       - id: plots
 
@@ -777,7 +777,7 @@ steps:
       - id: h5parm
         source: normalize_slow_amplitudes/outh5parm
       - id: soltype
-        source: amplitude
+        valueFrom: 'amplitude'
     out:
       - id: plots
 
