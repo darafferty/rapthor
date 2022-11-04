@@ -105,11 +105,10 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                 st = ss.getSoltab(soltab)
             ref = st.ant[0]
             ncol = 0
-            npol = len(st.pol)
-            if npol == 1:
-                color = ''
-            else:
+            if 'pol' in st.axesNames:
                 color = 'pol'
+            else:
+                color = ''
             minmax = [-3.2, 3.2]
         elif soltype == 'amplitude':
             if soltab is None:
@@ -118,10 +117,10 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                 st = ss.getSoltab(soltab)
             ref = ''
             ncol = 0
-            if npol == 1:
-                color = ''
-            else:
+            if 'pol' in st.axesNames:
                 color = 'pol'
+            else:
+                color = ''
             minmax = [0, 0]
         else:
             print('ERROR: solution type "{}" not understood. Must be one of phase, '
