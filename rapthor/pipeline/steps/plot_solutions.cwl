@@ -6,7 +6,7 @@ doc: |
   This tool plots the calibration solutions.
 
 inputs:
-  - id: inh5parm
+  - id: h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
