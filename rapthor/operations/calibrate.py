@@ -308,7 +308,7 @@ class Calibrate(Operation):
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
-        plot_filenames = glob.glob(self.pipeline_working_dir, '*.png')
+        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
         for plot_filename in plot_filenames:
             dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
             if os.path.exists(dst_filename):
