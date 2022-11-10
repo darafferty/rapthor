@@ -521,3 +521,4 @@ steps:
     out:
       - id: filtered_skymodels
       - id: sector_images
+      - id: region_file
