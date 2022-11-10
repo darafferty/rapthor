@@ -3,6 +3,8 @@ Module that holds the Image class
 """
 import os
 import logging
+import shutil
+from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
 
@@ -207,7 +209,7 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save output FITS image and model for each sector
+        # Save output FITS image, sky model, and ds9 region file for each sector
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
         # pols, save them all
         for sector in self.field.imaging_sectors:
@@ -229,6 +231,17 @@ class Image(Operation):
             # in the rapthor/scripts/filter_skymodel.py file)
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
             sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
+
+            # The ds9 region file, if made
+            if self.field.dde_method == 'facets':
+                dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
+                misc.create_directory(dst_dir)
+                region_filename = '{}_facets_ds9.reg'.format(sector.name)
+                src_filename = os.path.join(self.pipeline_working_dir, region_filename)
+                dst_filename = os.path.join(dst_dir, region_filename)
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(src_filename, dst_filename)
 
         # Symlink to datasets and remove old ones
 #         dst_dir = os.path.join(self.parset['dir_working'], 'datasets', self.direction.name)

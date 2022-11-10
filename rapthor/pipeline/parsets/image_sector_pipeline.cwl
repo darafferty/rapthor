@@ -319,6 +319,12 @@ outputs:
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
+{% if use_facets %}
+  - id: region_file
+    outputSource:
+      - make_region_file/region_file
+    type: File
+{% endif %}
 
 steps:
   - id: prepare_imaging_data
