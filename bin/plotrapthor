@@ -10,13 +10,27 @@ from rapthor.lib import miscellaneous as misc
 import sys
 from losoto.lib_operations import normalize_phase, multiprocManager
 from losoto.operations.directionscreen import _calc_piercepoint
-from losoto._logging import logger as logging
+import logging
+if 'matplotlib' not in sys.modules:
+    import matplotlib as mpl
+    mpl.rc('figure.subplot', left=0.05, bottom=0.05, right=0.95, top=0.95, wspace=0.22, hspace=0.22)
+    mpl.use("Agg")
+import matplotlib as mpl
+from matplotlib.colors import ListedColormap
+import matplotlib.pyplot as plt  # after setting "Agg" to speed up
+from losoto.operations.stationscreen import _makeWCS, _circ_chi2
+from numpy import concatenate, newaxis
+from numpy.linalg import norm
+import numpy as np
+import os
+
+log = logging.getLogger('plotrapthor')
 
 
 def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=None,
          freq=None, pol='XX'):
     """
-    Plot solutions vs. time
+    Plot solutions
 
     Parameters
     ----------
@@ -32,6 +46,14 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
         Name of soltab to use. If None, the default for the given soltype is used
     dir : str, optional
         Name of direction to use. If None, all directions are used
+    ant : list of str, optional
+        Name of antennas to use for screen plots. If None, RS210HBA is used
+    freq : float, optional
+        Frequency in Hz to use for screen plots. If None, the first frequency of
+        the input screen solutions is used
+    pol : str, optional
+        Name of the polarization to use for screen plots. If None, XX is used
+
     """
     if 'screen' in soltype:
         h = h5parm(h5file, readonly=False)
@@ -52,19 +74,18 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                 st = ss.getSoltab(soltab)
                 st_resid = ss.getSoltab(soltab+'resid')
         else:
-            print('ERROR: solution type "{}" not understood. Must be one of '
-                  'phase, amplitude, phasescreen, or ampscreen'.format(soltype))
-            sys.exit(1)
+            raise ValueError('Solution type "{}" not understood. Must be one of phase, '
+                             'amplitude, phasescreen, or ampscreen'.format(soltype))
 
         if root is None:
             root = soltype + '_'
-        print('Plotting {} solutions...'.format(soltype))
+        log.info('Plotting {} solutions...'.format(soltype))
         if freq is None:
             freq = st.freq[0]
-            print('Frequency not specified, using {} MHz...'.format(freq/1e6))
+            log.info('Frequency not specified, using {} MHz...'.format(freq/1e6))
         if ant is None:
             ant = ['RS210HBA']
-            print('Antenna not specified, using {}...'.format(ant[0]))
+            log.info('Antenna not specified, using {}...'.format(ant[0]))
         else:
             ant = misc.string2list(ant)
         if soltype == 'phasescreen':
@@ -82,7 +103,7 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
         else:
             if pol is None:
                 pol = 'XX'
-                print('Polarization not specified, using {}...'.format(pol))
+                log.info('Polarization not specified, using {}...'.format(pol))
             st.setSelection(freq=freq, ant=ant, pol=pol)
             st_resid.setSelection(freq=freq, ant=ant, pol=pol)
             misc.remove_soltabs(ss, 'amplitude_screen000resid_filt')
@@ -123,9 +144,8 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                 color = ''
             minmax = [0, 0]
         else:
-            print('ERROR: solution type "{}" not understood. Must be one of phase, '
-                  'amplitude, phasescreen, or ampscreen'.format(soltype))
-            sys.exit(1)
+            raise ValueError('Solution type "{}" not understood. Must be one of phase, '
+                             'amplitude, phasescreen, or ampscreen'.format(soltype))
 
         if root is None:
             if 'pol' not in st.axesNames:
@@ -134,7 +154,7 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
                 root = soltype + '_'
         if refstat is not None:
             ref = refstat
-        print('Plotting {} solutions...'.format(soltype))
+        log.info('Plotting {} solutions...'.format(soltype))
         if dir is not None:
             st.setSelection(dir=dir)
         if len(st.time) > 1 and len(st.freq) > 1:
@@ -144,11 +164,10 @@ def main(h5file, soltype, root=None, refstat=None, soltab=None, dir=None, ant=No
             plot.run(st, ['time'], axisInTable='ant', axisInCol=color, NColFig=ncol, refAnt=ref,
                      prefix=root, minmax=minmax, plotFlag=True, markerSize=4)
         elif len(st.freq) > 1:
-            print('here')
             plot.run(st, ['freq'], axisInTable='ant', axisInCol=color, NColFig=ncol, refAnt=ref,
                      prefix=root, minmax=minmax, plotFlag=True, markerSize=4)
         else:
-            print('WARNING: Solution table contains only a single time and frequency. No plots made.')
+            log.warn('Solution table contains only a single time and frequency. No plots made.')
         h.close()
 
 
@@ -156,8 +175,6 @@ def _phase_cm():
     """
     Returns colormap for phase plots
     """
-    from matplotlib.colors import ListedColormap
-
     cm_data = [[0.65830839, 0.46993917, 0.04941288],
                [0.66433742, 0.46620190, 0.05766473],
                [0.67020869, 0.46248014, 0.06534560],
@@ -461,8 +478,6 @@ def _calculate_screen(inscreen, residuals, pp, N_piercepoints, k, east, north, u
         input screen is a phase screen
 
     """
-    import numpy as np
-
     screen = np.zeros((Nx, Ny))
 
     if height == 0.0:
@@ -556,24 +571,6 @@ def _plot_frame(screen, fitted_phase1, residuals, weights, x, y, k, lower,
         True if screens are phase screens
 
     """
-    if 'matplotlib' not in sys.modules:
-        import matplotlib as mpl
-        mpl.rc('figure.subplot', left=0.05, bottom=0.05, right=0.95, top=0.95, wspace=0.22, hspace=0.22)
-        mpl.use("Agg")
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt  # after setting "Agg" to speed up
-    from losoto.operations.stationscreen import _makeWCS, _circ_chi2
-    import numpy as np
-    try:
-        try:
-            from astropy.visualization.wcsaxes import WCSAxes
-            hasWCSaxes = True
-        except ImportError:
-            from wcsaxes import WCSAxes
-            hasWCSaxes = True
-    except ImportError:
-        hasWCSaxes = False
-
     fig = plt.figure(figsize=(6, 6))
 
     # Set colormap
@@ -584,7 +581,7 @@ def _plot_frame(screen, fitted_phase1, residuals, weights, x, y, k, lower,
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=mpl.colors.Normalize(vmin=vmin, vmax=vmax))
     sm._A = []
 
-    if is_image_plane and hasWCSaxes:
+    if is_image_plane:
         wcs = _makeWCS(midRA, midDec)
         ax = fig.add_axes([0.15, 0.1, 0.8, 0.8], projection=wcs)
     else:
@@ -656,19 +653,13 @@ def _plot_frame(screen, fitted_phase1, residuals, weights, x, y, k, lower,
         ax.set_xlim(lower[0], upper[0])
         ax.set_ylim(lower[1], upper[1])
         ax.set_aspect('equal')
-        if hasWCSaxes:
-            RAAxis = ax.coords['ra']
-            RAAxis.set_axislabel('RA', minpad=0.75)
-            RAAxis.set_major_formatter('hh:mm:ss')
-            DecAxis = ax.coords['dec']
-            DecAxis.set_axislabel('Dec', minpad=0.75)
-            DecAxis.set_major_formatter('dd:mm:ss')
-            ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
-            # plt.xlabel("RA")
-            # plt.ylabel("Dec")
-        else:
-            plt.xlabel("RA (arb. units)")
-            plt.ylabel("Dec (arb. units)")
+        RAAxis = ax.coords['ra']
+        RAAxis.set_axislabel('RA', minpad=0.75)
+        RAAxis.set_major_formatter('hh:mm:ss')
+        DecAxis = ax.coords['dec']
+        DecAxis.set_axislabel('Dec', minpad=0.75)
+        DecAxis.set_major_formatter('dd:mm:ss')
+        ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
     else:
         # Reverse the axis so that RA coord increases to left
         plt.xlim(upper[0], lower[0])
@@ -732,11 +723,6 @@ def _make_screen_plots(pp, inscreen, inresiduals, weights, station_names,
         Number of CPUs to use
 
     """
-    from numpy import concatenate, newaxis
-    from numpy.linalg import norm
-    import numpy as np
-    import os
-
     # input check
     root_dir = os.path.dirname(prefix)
     if root_dir == '':
@@ -807,7 +793,7 @@ def _make_screen_plots(pp, inscreen, inresiduals, weights, station_names,
 
     if height == 0.0:
         for sindx in range(station_positions.shape[0]):
-            logging.info('Calculating screen images...')
+            log.info('Calculating screen images...')
             residuals = inresiduals[:, :, sindx, newaxis].transpose([0, 2, 1]).reshape(N_piercepoints, N_times)
             mpm = multiprocManager(ncpu, _calculate_screen)
             for k in range(N_times):
@@ -839,7 +825,7 @@ def _make_screen_plots(pp, inscreen, inresiduals, weights, station_names,
             else:
                 vmax = max_val
 
-            logging.info('Plotting screens...')
+            log.info('Plotting screens...')
             mpm = multiprocManager(ncpu, _plot_frame)
             for k in range(N_times):
                 mpm.put([screen[:, :, k], fitted_phase1[:, k], residuals[:, k],
@@ -849,7 +835,7 @@ def _make_screen_plots(pp, inscreen, inresiduals, weights, station_names,
                         is_phase])
             mpm.wait()
     else:
-        logging.info('Calculating screen images...')
+        log.info('Calculating screen images...')
         residuals = inresiduals.transpose([0, 2, 1]).reshape(N_piercepoints, N_times)
         weights = weights.transpose([0, 2, 1]).reshape(N_piercepoints, N_times)
         mpm = multiprocManager(ncpu, _calculate_screen)
@@ -882,7 +868,7 @@ def _make_screen_plots(pp, inscreen, inresiduals, weights, station_names,
         else:
             vmax = max_val
 
-        logging.info('Plotting screens...')
+        log.info('Plotting screens...')
         if show_source_names:
             pp_names = []
             for stat in station_names:
@@ -917,7 +903,6 @@ def _fitPLaneLTSQ(XYZ):
         plane parameters, where Z = aX + bY + c
 
     """
-    import numpy as np
     [rows, cols] = XYZ.shape
     G = np.ones((rows, 3))
     G[:, 0] = XYZ[:, 0]  # X
@@ -952,14 +937,12 @@ def runplots(soltab, resSoltab='', minZ=-3.2, maxZ=3.2, prefix='', remove_gradie
         Number of CPUs to use. If 0, all are used.
 
     """
-    import numpy as np
-
     screen_type = soltab.getType()
     if screen_type == 'phasescreen':
         is_phase = True
     else:
         is_phase = False
-    logging.info('Using input {0} soltab {1}'.format(screen_type, soltab.name))
+    log.info('Using input {0} soltab {1}'.format(screen_type, soltab.name))
 
     # Get values from soltabs
     solset = soltab.getSolset()
@@ -967,13 +950,12 @@ def runplots(soltab, resSoltab='', minZ=-3.2, maxZ=3.2, prefix='', remove_gradie
         try:
             # Look for residual soltab assuming standard naming conventions
             ressoltab = solset.getSoltab(soltab.name+'resid')
-        except:
-            logging.error('Could not find the soltab with associated screen residuals. '
-                          'Please specify it with the "resSoltab" argument.')
-            return 1
+        except Exception:
+            raise ValueError('Could not find the soltab with associated screen residuals. '
+                             'Please specify it with the "resSoltab" argument.')
     else:
         ressoltab = solset.getSoltab(resSoltab)
-    logging.info('Using input screen residual soltab: {}'.format(ressoltab.name))
+    log.info('Using input screen residual soltab: {}'.format(ressoltab.name))
     screen = np.array(soltab.val)
     weights = np.array(soltab.weight)
     residuals = np.array(ressoltab.val)
@@ -1060,5 +1042,8 @@ if __name__ == "__main__":
     parser.add_argument('--pol', help="Name of direction (default: all)", type=str, default=None)
 
     args = parser.parse_args()
-    main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir, args.ant,
-         args.freq, args.pol)
+    try:
+        main(args.h5file, args.soltype, args.root, args.refstat, args.soltab, args.dir, args.ant,
+             args.freq, args.pol)
+    except Exception as e:
+        log.error('{0}.'.format(e))
