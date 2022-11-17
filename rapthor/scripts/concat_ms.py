@@ -98,7 +98,7 @@ def concat_ms(msfiles, output_file):
 
 def main():
     """
-    Concatentates one or more input Measurement Sets into one output Measurement Set.
+    Concatentates two or more input Measurement Sets into one output Measurement Set.
 
     Returns
     -------
