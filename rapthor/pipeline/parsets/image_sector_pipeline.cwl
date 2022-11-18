@@ -307,6 +307,10 @@ outputs:
     outputSource:
       - filter/skymodels
     type: File[]
+  - id: sector_diagnostics
+    outputSource:
+      - filter/diagnostics
+    type: File
   - id: sector_images
     outputSource:
 {% if peel_bright_sources %}
@@ -644,3 +648,4 @@ steps:
         source: prepare_imaging_data/msimg
     out:
       - id: skymodels
+      - id: diagnostics

@@ -346,6 +346,10 @@ outputs:
       items:
         type: array
         items: File
+  - id: sector_diagnostics
+    outputSource:
+      - image_sector/sector_diagnostics
+    type: File[]
   - id: sector_images
     outputSource:
       - image_sector/sector_images
@@ -512,3 +516,4 @@ steps:
     out:
       - id: filtered_skymodels
       - id: sector_images
+      - id: sector_diagnostics

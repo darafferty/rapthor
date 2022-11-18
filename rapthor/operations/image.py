@@ -2,6 +2,7 @@
 Module that holds the Image class
 """
 import os
+import json
 import logging
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
@@ -207,9 +208,9 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save output FITS image and model for each sector
+        # Copy the output FITS image, the clean mask, and sky models for each sector
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
-        # pols, save them all
+        # pols, copy them all
         for sector in self.field.imaging_sectors:
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
@@ -230,17 +231,23 @@ class Image(Operation):
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
             sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
 
-        # Symlink to datasets and remove old ones
-#         dst_dir = os.path.join(self.parset['dir_working'], 'datasets', self.direction.name)
-#         misc.create_directory(dst_dir)
-#         ms_map = DataMap.load(os.path.join(self.pipeline_mapfile_dir,
-#                                            'prepare_imaging_data.mapfile'))
-#         for ms in ms_map:
-#             dst = os.path.join(dst_dir, os.path.basename(ms.file))
-#             os.system('ln -fs {0} {1}'.format(ms.file, dst))
-#         if self.index > 1:
-#             prev_iter_mapfile_dir = self.pipeline_mapfile_dir.replace('image_{}'.format(self.index),
-#                                                                       'image_{}'.format(self.index-1))
-#             self.cleanup_mapfiles = [os.path.join(prev_iter_mapfile_dir,
-#                                      'prepare_imaging_data.mapfile')]
-#         self.cleanup()
+        # Read in the image diagnostics and log a summary of them
+        for sector in self.field.imaging_sectors:
+            diagnostics_file = os.path.join(self.pipeline_working_dir, 'out.json')
+            with open(diagnostics_file, 'r') as f:
+                diagnostics_dict = json.load(f)
+            sector.diagnostics.append(diagnostics_dict)
+            rms = '{0:.5g} Jy/beam'.format(diagnostics_dict['min_rms'])
+            dynr = '{0:.1g}'.format(diagnostics_dict['dynamic_range_global'])
+            freq = '{0:.2g} MHz'.format(diagnostics_dict['freq']/1e6)
+            beam = ('({0:.2g} arcsec, '
+                    '{1:.2g} arcsec, '
+                    '{2:.2g} deg)'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+                                          diagnostics_dict['beam_fwhm'][1]*3600,
+                                          diagnostics_dict['beam_fwhm'][2]))
+            self.log.info('Diagnostics for {0}:\n'
+                          '    RMS noise = {1}\n'
+                          '    Dynamic range = {2}\n'
+                          '    Reference frequency = {3}\n'
+                          '    Beam (Maj, Min, PA) =\n'
+                          '        {4}'.format(sector.name, rms, dynr, freq, beam))

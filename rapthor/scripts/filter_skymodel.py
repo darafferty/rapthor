@@ -13,6 +13,7 @@ import astropy.io.ascii
 from astropy.io import fits as pyfits
 from astropy import wcs
 import os
+import json
 
 
 def main(input_image, input_skymodel_pb, output_root, vertices_file,
@@ -21,6 +22,12 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
          use_adaptive_threshold=False, adaptive_thresh=75.0, beamMS=None):
     """
     Filter the input sky model so that they lie in islands in the image
+
+    Note: If no islands of emission are detected in the input image, a
+    blank sky model is made. If any islands are detected in the input image,
+    filtered true-sky and apparent-sky models are made, as well as a FITS clean
+    mask (with the filename input_image+'.mask'). Various diagnostics are also
+    derived and saved in JSON format to the file 'out.json'.
 
     Parameters
     ----------
@@ -103,6 +110,25 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                              thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
+
+    # Save some numbers for later reporting
+    min_rms = np.min(img.rms_arr)  # Jy/beam
+    max_rms = np.max(img.rms_arr)  # Jy/beam
+    mean_rms = np.mean(img.rms_arr)  # Jy/beam
+    dynamic_range_global = np.max(img.ch0_arr) / min_rms
+    max_pix_coord = np.where(img.ch0_arr == np.max(img.ch0_arr))
+    dynamic_range_local = np.max(img.ch0_arr) / img.rms_arr[max_pix_coord]
+    beam_fwhm = img.beam  # (bmaj, bmin, bpa), all in deg
+    freq = img.frequency  # Hz
+    cwl_output = {'min_rms': min_rms,
+                  'max_rms': max_rms,
+                  'mean_rms': mean_rms,
+                  'dynamic_range_global': dynamic_range_global,
+                  'dynamic_range_local': dynamic_range_local,
+                  'freq': freq,
+                  'beam_fwhm': beam_fwhm}
+    with open('./out.json', 'w') as fp:
+        json.dump(cwl_output, fp)
 
     emptysky = False
     if img.nisl > 0:
