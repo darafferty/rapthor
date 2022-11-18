@@ -35,7 +35,9 @@ def concat_ms(msfiles, output_file):
         or if DP3 encounters an error while concatenating.
     """
     # Check pre-conditions
-    if not isinstance(msfiles, list) or not all(isinstance(item, str) for item in msfiles):
+    if not isinstance(msfiles, list) or not all(
+        isinstance(item, str) for item in msfiles
+    ):
         raise TypeError("Input Measurement Sets must provided as a list of strings")
     if len(msfiles) == 0:
         raise ValueError("At least one input Measurement Set must be provided")
