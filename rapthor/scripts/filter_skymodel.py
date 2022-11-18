@@ -73,7 +73,10 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
     # limits for socket paths (used by the mulitprocessing module). We try a number of
     # standard paths (the same ones used in the tempfile Python library)
-    old_tmpdir = os.environ["TMPDIR"]
+    try:
+        old_tmpdir = os.environ["TMPDIR"]
+    except KeyError:
+        old_tmpdir = None
     for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
         if os.path.exists(tmpdir):
             os.environ["TMPDIR"] = tmpdir
@@ -116,8 +119,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     max_rms = np.max(img.rms_arr)  # Jy/beam
     mean_rms = np.mean(img.rms_arr)  # Jy/beam
     dynamic_range_global = np.max(img.ch0_arr) / min_rms
-    max_pix_coord = np.where(img.ch0_arr == np.max(img.ch0_arr))
-    dynamic_range_local = np.max(img.ch0_arr) / img.rms_arr[max_pix_coord]
+    dynamic_range_local = np.max(img.ch0_arr / img.rms_arr)
     beam_fwhm = img.beam  # (bmaj, bmin, bpa), all in deg
     freq = img.frequency  # Hz
     cwl_output = {'min_rms': min_rms,
@@ -230,7 +232,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
             f.writelines(dummylines)
 
     # Set the TMPDIR env var back to its original value
-    os.environ["TMPDIR"] = old_tmpdir
+    if old_tmpdir is not None:
+        os.environ["TMPDIR"] = old_tmpdir
 
 
 if __name__ == '__main__':
