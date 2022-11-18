@@ -23,42 +23,48 @@ def concat_ms(msfiles, output_file):
     Returns
     -------
     int : 0 if successfull; non-zero otherwise
-    
+
     Raises
     ------
+    TypeError
+        If input Measurement Sets are not provided as a list of strings.
     ValueError
-        If less than two input Measurement Sets are provided
+        If no input Measurement Sets are provided.
     RuntimeError
         If one or more of the input Measurement Sets contain invalid data,
         or if DP3 encounters an error while concatenating.
     """
-    if len(msfiles) < 2:
-        raise ValueError("At least two input Measurement Set must be provided")
+    # Check pre-conditions
+    if not isinstance(msfiles, list) or not all(isinstance(item, str) for item in msfiles):
+        raise TypeError("Input Measurement Sets must provided as a list of strings")
+    if len(msfiles) == 0:
+        raise ValueError("At least one input Measurement Set must be provided")
+
     # Order the files by frequency, filling any gaps with dummy files
     first = True
     nchans = 0
     freqs = []
     for ms in msfiles:
         # Get the frequency info
-        sw = pt.table(ms + "::SPECTRAL_WINDOW", ack=False)
-        freq = sw.col("REF_FREQUENCY")[0]
-        if first:
-            file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
-            nchans = sw.col("CHAN_WIDTH")[0].shape[0]
-            chwidth = sw.col("CHAN_WIDTH")[0][0]
-            first = False
-        else:
-            assert file_bandwidth == sw.col("TOTAL_BANDWIDTH")[0]
-            assert nchans == sw.col("CHAN_WIDTH")[0].shape[0]
-            assert chwidth == sw.col("CHAN_WIDTH")[0][0]
-        sw.close()
+        with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
+            freq = sw.col("REF_FREQUENCY")[0]
+            if first:
+                file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
+                nchans = sw.col("CHAN_WIDTH")[0].shape[0]
+                chwidth = sw.col("CHAN_WIDTH")[0][0]
+                first = False
+            else:
+                assert file_bandwidth == sw.col("TOTAL_BANDWIDTH")[0]
+                assert nchans == sw.col("CHAN_WIDTH")[0].shape[0]
+                assert chwidth == sw.col("CHAN_WIDTH")[0][0]
         freqs.append(freq)
     freqlist = np.array(freqs)
     mslist = np.array(msfiles)
     sorted_ind = np.argsort(freqlist)
     freqlist = freqlist[sorted_ind]
     mslist = mslist[sorted_ind]
-    freq_width = np.min(freqlist[1:] - freqlist[:-1])
+    # Determine frequency width, set to arbirary positive value if there's only one frequency
+    freq_width = np.min(freqlist[1:] - freqlist[:-1]) if len(freqlist) > 1 else 1.0
     dp3_mslist = []
     dp3_freqlist = np.arange(
         np.min(freqlist), np.max(freqlist) + freq_width, freq_width
