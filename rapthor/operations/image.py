@@ -233,14 +233,14 @@ class Image(Operation):
 
         # Read in the image diagnostics and log a summary of them
         for sector in self.field.imaging_sectors:
-            diagnostics_file = os.path.join(self.pipeline_working_dir, 'out.json')
+            diagnostics_file = os.path.join(self.pipeline_working_dir, 'image_diagnostics.json')
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             sector.diagnostics.append(diagnostics_dict)
             rms = '{0:.5g} Jy/beam'.format(diagnostics_dict['min_rms'])
-            dynr = '{0:.1g}'.format(diagnostics_dict['dynamic_range_global'])
-            freq = '{0:.2} MHz'.format(diagnostics_dict['freq']/1e6)
-            beam = '{0:.2g}", {1:.2g}", {2:.2g} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+            dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+            freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
+            beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
                                                             diagnostics_dict['beam_fwhm'][1]*3600,
                                                             diagnostics_dict['beam_fwhm'][2])
             self.log.info('Diagnostics for {}:'.format(sector.name))
