@@ -115,13 +115,15 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
 
     # Save some numbers for later reporting
-    min_rms = np.min(img.rms_arr)  # Jy/beam
-    max_rms = np.max(img.rms_arr)  # Jy/beam
-    mean_rms = np.mean(img.rms_arr)  # Jy/beam
-    dynamic_range_global = np.max(img.ch0_arr) / min_rms
-    dynamic_range_local = np.max(img.ch0_arr / img.rms_arr)
-    beam_fwhm = img.beam  # (bmaj, bmin, bpa), all in deg
-    freq = img.frequency  # Hz
+    # Note: we ensure all numbers are float, as, e.g., np.float32 is not
+    # supported by json.dump()
+    min_rms = float(np.min(img.rms_arr))  # Jy/beam
+    max_rms = float(np.max(img.rms_arr))  # Jy/beam
+    mean_rms = float(np.mean(img.rms_arr))  # Jy/beam
+    dynamic_range_global = float(np.max(img.ch0_arr) / min_rms)
+    dynamic_range_local = float(np.max(img.ch0_arr / img.rms_arr))
+    beam_fwhm = [float(img.beam[0]), float(img.beam[1]), float(img.beam[2])]  # (maj, min, pa), all in deg
+    freq = float(img.frequency)  # Hz
     cwl_output = {'min_rms': min_rms,
                   'max_rms': max_rms,
                   'mean_rms': mean_rms,
@@ -129,7 +131,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                   'dynamic_range_local': dynamic_range_local,
                   'freq': freq,
                   'beam_fwhm': beam_fwhm}
-    with open('./out.json', 'w') as fp:
+    with open('./image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
 
     emptysky = False

@@ -92,7 +92,7 @@ outputs:
       The image diagnostics, including RMS noise, dynamic range, frequency, and beam.
     type: File
     outputBinding:
-      glob: 'out.json'
+      glob: 'image_diagnostics.json'
 
 
 hints:

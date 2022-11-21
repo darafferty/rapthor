@@ -239,15 +239,12 @@ class Image(Operation):
             sector.diagnostics.append(diagnostics_dict)
             rms = '{0:.5g} Jy/beam'.format(diagnostics_dict['min_rms'])
             dynr = '{0:.1g}'.format(diagnostics_dict['dynamic_range_global'])
-            freq = '{0:.2g} MHz'.format(diagnostics_dict['freq']/1e6)
-            beam = ('({0:.2g} arcsec, '
-                    '{1:.2g} arcsec, '
-                    '{2:.2g} deg)'.format(diagnostics_dict['beam_fwhm'][0]*3600,
-                                          diagnostics_dict['beam_fwhm'][1]*3600,
-                                          diagnostics_dict['beam_fwhm'][2]))
-            self.log.info('Diagnostics for {0}:\n'
-                          '    RMS noise = {1}\n'
-                          '    Dynamic range = {2}\n'
-                          '    Reference frequency = {3}\n'
-                          '    Beam (Maj, Min, PA) =\n'
-                          '        {4}'.format(sector.name, rms, dynr, freq, beam))
+            freq = '{0:.2} MHz'.format(diagnostics_dict['freq']/1e6)
+            beam = '{0:.2g}", {1:.2g}", {2:.2g} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+                                                            diagnostics_dict['beam_fwhm'][1]*3600,
+                                                            diagnostics_dict['beam_fwhm'][2])
+            self.log.info('Diagnostics for {}:'.format(sector.name))
+            self.log.info('    Min RMS noise = {}'.format(rms))
+            self.log.info('    Dynamic range = {}'.format(dynr))
+            self.log.info('    Reference frequency = {}'.format(freq))
+            self.log.info('    Beam (maj, min, PA) = {}'.format(beam))
