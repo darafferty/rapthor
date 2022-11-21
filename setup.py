@@ -48,6 +48,7 @@ setup(
              'rapthor/scripts/adjust_h5parm_sources.py',
              'rapthor/scripts/blank_image.py',
              'rapthor/scripts/combine_h5parms.py',
+             'rapthor/scripts/concat_ms.py',
              'rapthor/scripts/filter_skymodel.py',
              'rapthor/scripts/make_aterm_images.py',
              'rapthor/scripts/make_region_file.py',
