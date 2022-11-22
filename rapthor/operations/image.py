@@ -4,6 +4,8 @@ Module that holds the Image class
 import os
 import json
 import logging
+import shutil
+from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
 
@@ -208,7 +210,9 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Copy the output FITS image, the clean mask, and sky models for each sector
+        # Copy the output FITS image, the clean mask, sky models, , and ds9 facet
+        # region file for each sector. Also read the image diagnostics (rms noise,
+        # etc.) derived by PyBDSF and print them to the log.
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
         # pols, copy them all
         for sector in self.field.imaging_sectors:
@@ -231,8 +235,18 @@ class Image(Operation):
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
             sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
 
-        # Read in the image diagnostics and log a summary of them
-        for sector in self.field.imaging_sectors:
+            # The ds9 region file, if made
+            if self.field.dde_method == 'facets':
+                dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
+                misc.create_directory(dst_dir)
+                region_filename = '{}_facets_ds9.reg'.format(sector.name)
+                src_filename = os.path.join(self.pipeline_working_dir, region_filename)
+                dst_filename = os.path.join(dst_dir, region_filename)
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(src_filename, dst_filename)
+
+            # Read in the image diagnostics and log a summary of them
             diagnostics_file = os.path.join(self.pipeline_working_dir, 'image_diagnostics.json')
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)

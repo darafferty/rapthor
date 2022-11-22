@@ -61,7 +61,6 @@ outputs:
       parameter "outfile".
     type:
       - File
-      - string
     outputBinding:
       glob: $(inputs.outfile)
 

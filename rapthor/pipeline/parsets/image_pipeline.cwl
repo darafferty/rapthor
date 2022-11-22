@@ -358,6 +358,15 @@ outputs:
       items:
         type: array
         items: File
+{% if use_facets %}
+  - id: region_file
+    outputSource:
+      - image_sector/region_file
+    type:
+      type: array
+      items: File
+{% endif %}
+
 
 steps:
   - id: image_sector
@@ -517,3 +526,4 @@ steps:
       - id: filtered_skymodels
       - id: sector_images
       - id: sector_diagnostics
+      - id: region_file

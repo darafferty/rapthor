@@ -4,6 +4,7 @@ Module that holds the Calibrate class
 import os
 import logging
 import shutil
+import glob
 from rapthor.lib.operation import Operation
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.cwl import CWLFile, CWLDir
@@ -110,7 +111,6 @@ class Calibrate(Operation):
             fast_antennaconstraint = '[]'
         slow_antennaconstraint = '[[{}]]'.format(','.join(self.field.stations))
 
-
         # Get various DDECal solver parameters
         llssolver = self.field.llssolver
         maxiter = self.field.maxiter
@@ -120,15 +120,10 @@ class Calibrate(Operation):
         stepsize = self.field.stepsize
         tolerance = self.field.tolerance
         uvlambdamin = self.field.solve_min_uv_lambda
-        parallelbaselines=self.field.parallelbaselines
-        if solveralgorithm=='lbfgs':
-           solverlbfgs_dof=float(self.field.solverlbfgs_dof)
-           solverlbfgs_iter=int(self.field.solverlbfgs_iter)
-           solverlbfgs_minibatches=int(self.field.solverlbfgs_minibatches)
-        else:
-           solverlbfgs_dof=200.0
-           solverlbfgs_iter=4
-           solverlbfgs_minibatches=1
+        parallelbaselines = self.field.parallelbaselines
+        solverlbfgs_dof = self.field.solverlbfgs_dof
+        solverlbfgs_iter = self.field.solverlbfgs_iter
+        solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
 
         # Get the size of the imaging area (for use in making the a-term images)
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
@@ -198,10 +193,10 @@ class Calibrate(Operation):
                             'combined_slow_h5parm1': combined_slow_h5parm1,
                             'combined_slow_h5parm2': combined_slow_h5parm2,
                             'combined_h5parms1': combined_h5parms1,
-                            'combined_h5parms2': combined_h5parms2}
-        self.input_parms.update({'solverlbfgs_dof':solverlbfgs_dof,
-                 'solverlbfgs_iter':solverlbfgs_iter,
-                 'solverlbfgs_minibatches':solverlbfgs_minibatches})
+                            'combined_h5parms2': combined_h5parms2,
+                            'solverlbfgs_dof': solverlbfgs_dof,
+                            'solverlbfgs_iter': solverlbfgs_iter,
+                            'solverlbfgs_minibatches': solverlbfgs_minibatches}
 
         if self.field.debug:
             output_slow_h5parm_debug = ['slow_gain_{}_debug.h5parm'.format(i)
@@ -292,7 +287,7 @@ class Calibrate(Operation):
             self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
                                                 for af in self.field.aterm_image_filenames]
 
-        # Save the solutions
+        # Copy the solutions (h5parm files)
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
@@ -304,3 +299,13 @@ class Calibrate(Operation):
         else:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+
+        # Copy the plots (PNG files)
+        dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
+        misc.create_directory(dst_dir)
+        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
+        for plot_filename in plot_filenames:
+            dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
+            if os.path.exists(dst_filename):
+                os.remove(dst_filename)
+            shutil.copy(plot_filename, dst_filename)
