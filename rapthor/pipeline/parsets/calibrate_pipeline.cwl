@@ -10,7 +10,7 @@ doc: |
   further unconstrained slow gain calibration to correct for station-to-station
   differences. Steps (2) and (3) are skipped if the calibration is phase-only.
   This calibration scheme works for both HBA and LBA data. The final products of
-  this pipeline are solution tables (h5parm files) and a-term screens (FITS
+  this pipeline are solution tables (h5parm files), plots, and a-term screens (FITS
   files).
 
 requirements:
@@ -369,10 +369,24 @@ outputs:
     outputSource:
       - adjust_h5parm_sources/adjustedh5parm
     type: File
+  - id: fast_phase_plots
+    outputSource:
+      - plot_fast_phase_solutions/plots
+    type: File[]
 {% if use_screens %}
   - id: diagonal_aterms
     outputSource:
       - merge_aterm_files/output
+    type: File[]
+{% endif %}
+{% if do_slowgain_solve %}
+  - id: slow_phase_plots
+    outputSource:
+      - plot_slow_phase_solutions/plots
+    type: File[]
+  - id: slow_amp_plots
+    outputSource:
+      - plot_slow_amp_solutions/plots
     type: File[]
 {% endif %}
 
@@ -464,6 +478,19 @@ steps:
         source: combined_fast_h5parm
     out:
       - id: outh5parm
+
+  - id: plot_fast_phase_solutions
+    label: Plot fast phase solutions
+    doc: |
+      This step makes plots of the fast phase solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
+    in:
+      - id: h5parm
+        source: combine_fast_phases/outh5parm
+      - id: soltype
+        valueFrom: 'phase'
+    out:
+      - id: plots
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
@@ -727,6 +754,32 @@ steps:
         valueFrom: 'False'
     out:
       - id: outh5parm
+
+  - id: plot_slow_phase_solutions
+    label: Plot slow phase solutions
+    doc: |
+      This step makes plots of the slow phase solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
+    in:
+      - id: h5parm
+        source: normalize_slow_amplitudes/outh5parm
+      - id: soltype
+        valueFrom: 'phase'
+    out:
+      - id: plots
+
+  - id: plot_slow_amp_solutions
+    label: Plot slow amp solutions
+    doc: |
+      This step makes plots of the slow amplitude solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
+    in:
+      - id: h5parm
+        source: normalize_slow_amplitudes/outh5parm
+      - id: soltype
+        valueFrom: 'amplitude'
+    out:
+      - id: plots
 
   - id: combine_fast_and_slow_h5parms2
     label: Combine fast-phase and slow-gain solutions
