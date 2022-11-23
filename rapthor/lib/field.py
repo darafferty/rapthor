@@ -1106,9 +1106,11 @@ class Field(object):
         to self.convergence_ratio, which is the minimum ratio of the current noise
         to the previous noise above which selfcal is considered to have
         converged (must be in the range 0.5 -- 2). E.g., self.convergence_ratio
-        = 0.95 means that the image noise must improve by ~ 5% or more from the
+        = 0.95 means that the image noise must decrease by ~ 5% or more from the
         previous cycle for selfcal to be considered as nonconverged. The same is
-        true for the dynamic range.
+        true for the dynamic range but reversed (the dynamic range must increase
+        by ~ 5% or more from the previous cycle for selfcal to be considered as
+        nonconverged).
 
         Divergence is determined by comparing the noise ratio to
         self.divergence_ratio, which is the minimum ratio of the current noise
@@ -1157,7 +1159,7 @@ class Field(object):
             dynrpost = sector.diagnostics[-1]['dynamic_range_global']
             self.log.info('Ratio of current image dynamic range to previous image '
                           'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
-            if (rmspost / rmspre < convergence_ratio or dynrpost / dynrpre < convergence_ratio):
+            if (rmspost / rmspre < convergence_ratio or dynrpost / dynrpre > 1/convergence_ratio):
                 # Report not converged (and not diverged)
                 converged.append(False)
                 diverged.append(False)
