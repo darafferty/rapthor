@@ -359,20 +359,19 @@ def get_calibration_options(parset):
     else:
         parset_dict['parallelbaselines'] = False
 
-    if parset_dict['solveralgorithm'] == 'lbfgs':
-        if 'solverlbfgs_dof' in parset_dict:
-           parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
-        else:
-           parset_dict['solverlbfgs_dof'] = 200.0
-        if 'solverlbfgs_iter' in parset_dict:
-           parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
-        else:
-           parset_dict['solverlbfgs_iter'] = 4
-        if 'solverlbfgs_minibatches' in parset_dict:
-           parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
-        else:
-           parset_dict['solverlbfgs_minibatches'] = 1
-
+    # LBFGS solver parameters
+    if 'solverlbfgs_dof' in parset_dict:
+       parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
+    else:
+       parset_dict['solverlbfgs_dof'] = 200.0
+    if 'solverlbfgs_iter' in parset_dict:
+       parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
+    else:
+       parset_dict['solverlbfgs_iter'] = 4
+    if 'solverlbfgs_minibatches' in parset_dict:
+       parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
+    else:
+       parset_dict['solverlbfgs_minibatches'] = 1
 
     # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:
