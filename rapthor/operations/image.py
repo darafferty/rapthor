@@ -251,14 +251,15 @@ class Image(Operation):
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             sector.diagnostics.append(diagnostics_dict)
-            rms = '{0:.5g} Jy/beam'.format(diagnostics_dict['min_rms'])
+            theoretical_rms = '{0:.2f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
+            rms = '{0:.2f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
             dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
             freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
             beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
-                                                            diagnostics_dict['beam_fwhm'][1]*3600,
-                                                            diagnostics_dict['beam_fwhm'][2])
+                                                                  diagnostics_dict['beam_fwhm'][1]*3600,
+                                                                  diagnostics_dict['beam_fwhm'][2])
             self.log.info('Diagnostics for {}:'.format(sector.name))
-            self.log.info('    Min RMS noise = {}'.format(rms))
+            self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(rms, theoretical_rms))
             self.log.info('    Dynamic range = {}'.format(dynr))
             self.log.info('    Reference frequency = {}'.format(freq))
             self.log.info('    Beam (maj, min, PA) = {}'.format(beam))

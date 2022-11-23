@@ -14,6 +14,101 @@ from astropy.io import fits as pyfits
 from astropy import wcs
 import os
 import json
+from rapthor.lib.observation import Observation
+from scipy.interpolate import interp1d
+import subprocess
+
+
+def calc_theoretical_noise(mslist, w_factor=1.5):
+    """
+    Return the expected theoretical image noise for a dataset
+
+    Note: the calculations follow those of SKA Memo 113 (see
+    http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf) and
+    assume no tapering. International stations and the effects of flagged
+    data are not included.
+
+    Parameters
+    ----------
+    mslist : list of str
+        List of the filenames of the input MS files
+    w_factor : float, optional
+        Factor for increase of noise due to the weighting scheme used
+        in imaging (typically ranges from 1.3 - 2)
+
+    Returns
+    -------
+    noise : float
+        Estimate of the expected theoretical noise in Jy
+    """
+    # Find the total time and the average total bandwidth, average frequency,
+    # average unflagged fraction, and average number of core and remote stations
+    # (for the averages, assume each observation has equal weight)
+    total_time = 0
+    total_bandwidth = 0
+    ncore = 0
+    nremote = 0
+    mid_freq = 0
+    unflagged_fraction = 0
+    for ms in mslist:
+        obs = Observation(ms)
+        total_time += obs.endtime - obs.starttime  # sec
+        total_bandwidth += obs.endfreq - obs.startfreq  # Hz
+        ncore += len([stat for stat in obs.stations if stat.startswith('CS')])
+        nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
+        mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
+        unflagged_fraction += find_unflagged_fraction(ms)
+    total_bandwidth /= len(mslist)
+    ncore = int(np.round(ncore / len(mslist)))
+    nremote = int(np.round(nremote / len(mslist)))
+    mean_freq = mid_freq / len(mslist)
+    unflagged_fraction /= len(mslist)
+
+    # Define table of system equivalent flux densities and interpolate
+    # to get the values at the mean frequency of the input observations.
+    # Note: values were taken from Table 9 of SKA Memo 113
+    sefd_freq_MHz = np.array([15, 30, 45, 60, 75, 120, 150, 180, 210, 240])
+    sefd_core_kJy = np.array([483, 89, 48, 32, 51, 3.6, 2.8, 3.2, 3.7, 4.1])
+    sefd_remote_kJy = np.array([483, 89, 48, 32, 51, 1.8, 1.4, 1.6, 1.8, 2.0])
+    f_core = interp1d(sefd_freq_MHz, sefd_core_kJy)
+    f_remote = interp1d(sefd_freq_MHz, sefd_remote_kJy)
+    sefd_core = f_core(mean_freq) * 1e3  # Jy
+    sefd_remote = f_remote(mean_freq) * 1e3  # Jy
+
+    # Calculate the theoretical noise, adjusted for the unflagged fraction
+    core_term = ncore * (ncore - 1) / 2 / sefd_core**2
+    remote_term = nremote * (nremote - 1) / 2 / sefd_remote**2
+    mixed_term = ncore * nremote / (sefd_core * sefd_remote)
+    noise = w_factor / np.sqrt(2 * (2 * total_time * total_bandwidth) *
+                               (core_term + mixed_term + remote_term))  # Jy
+    noise /= np.sqrt(unflagged_fraction)
+
+    return noise
+
+
+def find_unflagged_fraction(ms_file):
+    """
+    Finds the fraction of data that is unflagged
+
+    Parameters
+    ----------
+    ms_file : str
+        Filename of input MS
+
+    Returns
+    -------
+    unflagged_fraction : float
+        Fraction of unflagged data
+    """
+    # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
+    # hanging/locking issues on some systems
+    p = subprocess.Popen("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                         "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                         shell=True, stdout=subprocess.PIPE)
+    r = p.communicate()
+    unflagged_fraction = float(r[0])
+
+    return unflagged_fraction
 
 
 def main(input_image, input_skymodel_pb, output_root, vertices_file,
@@ -114,9 +209,10 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
 
-    # Save some numbers for later reporting
+    # Save some diagnostic numbers for later reporting
     # Note: we ensure all numbers are float, as, e.g., np.float32 is not
     # supported by json.dump()
+    theoretical_rms = calc_theoretical_noise(beamMS)  # Jy/beam
     min_rms = float(np.min(img.rms_arr))  # Jy/beam
     max_rms = float(np.max(img.rms_arr))  # Jy/beam
     mean_rms = float(np.mean(img.rms_arr))  # Jy/beam
@@ -124,7 +220,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     dynamic_range_local = float(np.max(img.ch0_arr / img.rms_arr))
     beam_fwhm = [float(img.beam[0]), float(img.beam[1]), float(img.beam[2])]  # (maj, min, pa), all in deg
     freq = float(img.frequency)  # Hz
-    cwl_output = {'min_rms': min_rms,
+    cwl_output = {'theoretical_rms': theoretical_rms,
+                  'min_rms': min_rms,
                   'max_rms': max_rms,
                   'mean_rms': mean_rms,
                   'dynamic_range_global': dynamic_range_global,

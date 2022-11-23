@@ -10,7 +10,6 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
-from rapthor.lib.image import FITSImage
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
@@ -66,14 +65,13 @@ class Field(object):
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
-        self.parallelbaselines= self.parset['calibration_specific']['parallelbaselines']
+        self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.debug = self.parset['calibration_specific']['debug']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
-        if self.solveralgorithm=='lbfgs':
-          self.solverlbfgs_dof=self.parset['calibration_specific']['solverlbfgs_dof']
-          self.solverlbfgs_iter=self.parset['calibration_specific']['solverlbfgs_iter']
-          self.solverlbfgs_minibatches=self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
+        self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
+        self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
 
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
@@ -1104,12 +1102,13 @@ class Field(object):
         Checks whether selfcal has converged or diverged by comparing the current
         image noise to that of the previous cycle
 
-        Convergence is determined by comparing the noise ratio to
-        self.convergence_ratio, which is the minimum ratio of the current noise
+        Convergence is determined by comparing the noise and dynamic range ratios
+        to self.convergence_ratio, which is the minimum ratio of the current noise
         to the previous noise above which selfcal is considered to have
         converged (must be in the range 0.5 -- 2). E.g., self.convergence_ratio
         = 0.95 means that the image noise must improve by ~ 5% or more from the
-        previous cycle for selfcal to be considered as nonconverged
+        previous cycle for selfcal to be considered as nonconverged. The same is
+        true for the dynamic range.
 
         Divergence is determined by comparing the noise ratio to
         self.divergence_ratio, which is the minimum ratio of the current noise
@@ -1146,25 +1145,39 @@ class Field(object):
             # No previous iteration, so report not converged and not diverged
             return False, False
 
-        # Get noise from previous and current images
-        image = FITSImage(self.field_image_filename_prev)
-        image.calc_noise()
-        rmspre = image.noise
-        image = FITSImage(self.field_image_filename)
-        image.calc_noise()
-        rmspost = image.noise
-        self.log.info('Ratio of current image noise to previous image '
-                      'noise = {0:.2f}'.format(rmspost/rmspre))
-
-        if rmspost / rmspre < convergence_ratio:
-            # Report not converged (and not diverged)
-            return False, False
-        elif rmspost / rmspre > divergence_ratio:
+        # Get noise and dynamic range from previous and current images of each sector
+        converged = []
+        diverged = []
+        for sector in self.imaging_sectors:
+            rmspre = sector.diagnostics[-2]['min_rms']
+            rmspost = sector.diagnostics[-1]['min_rms']
+            self.log.info('Ratio of current image noise to previous image '
+                          'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
+            dynrpre = sector.diagnostics[-2]['dynamic_range_global']
+            dynrpost = sector.diagnostics[-1]['dynamic_range_global']
+            self.log.info('Ratio of current image dynamic range to previous image '
+                          'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
+            if (rmspost / rmspre < convergence_ratio or dynrpost / dynrpre < convergence_ratio):
+                # Report not converged (and not diverged)
+                converged.append(False)
+                diverged.append(False)
+            elif rmspost / rmspre > divergence_ratio:
+                # Report diverged (and not converged)
+                converged.append(False)
+                diverged.append(True)
+            else:
+                # Report converged (and not diverged)
+                converged.append(True)
+                diverged.append(False)
+        if any(diverged):
             # Report diverged (and not converged)
             return False, True
-        else:
+        elif all(converged):
             # Report converged (and not diverged)
             return True, False
+        else:
+            # Report not converged (and not diverged)
+            return False, False
 
     def update(self, step_dict, index, final=False):
         """
