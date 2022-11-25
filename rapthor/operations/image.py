@@ -262,4 +262,4 @@ class Image(Operation):
             self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(rms, theoretical_rms))
             self.log.info('    Dynamic range = {}'.format(dynr))
             self.log.info('    Reference frequency = {}'.format(freq))
-            self.log.info('    Beam (maj, min, PA) = {}'.format(beam))
+            self.log.info('    Beam = {}'.format(beam))

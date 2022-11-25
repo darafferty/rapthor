@@ -39,7 +39,7 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
     Returns
     -------
     noise : float
-        Estimate of the expected theoretical noise in Jy
+        Estimate of the expected theoretical noise in Jy/beam
     """
     # Find the total time and the average total bandwidth, average frequency,
     # average unflagged fraction, and average number of core and remote stations
