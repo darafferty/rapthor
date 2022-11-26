@@ -25,8 +25,7 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
 
     Note: the calculations follow those of SKA Memo 113 (see
     http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf) and
-    assume no tapering. International stations and the effects of flagged
-    data are not included.
+    assume no tapering. International stations are not included.
 
     Parameters
     ----------
