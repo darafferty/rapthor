@@ -1107,10 +1107,10 @@ class Field(object):
         to the previous noise above which selfcal is considered to have
         converged (must be in the range 0.5 -- 2). E.g., self.convergence_ratio
         = 0.95 means that the image noise must decrease by ~ 5% or more from the
-        previous cycle for selfcal to be considered as nonconverged. The same is
-        true for the dynamic range but reversed (the dynamic range must increase
+        previous cycle for selfcal to be considered as not yet converged. The same
+        is true for the dynamic range but reversed (the dynamic range must increase
         by ~ 5% or more from the previous cycle for selfcal to be considered as
-        nonconverged).
+        not yet converged).
 
         Divergence is determined by comparing the noise ratio to
         self.divergence_ratio, which is the minimum ratio of the current noise
@@ -1121,10 +1121,11 @@ class Field(object):
 
         Returns
         -------
-        converged : bool
-            True if selfcal has converged, False if not
-        diverged : bool
-            True if selfcal has diverged, False if not
+        converged, diverged : tuple of bools
+            The selfcal state, where (converged, diverged) is one of:
+                (True, False) - if selfcal has converged
+                (False, False) - if selfcal has not yet converged (or diverged)
+                (False, True) - if selfcal has diverged
         """
         convergence_ratio = self.convergence_ratio
         divergence_ratio = self.divergence_ratio
@@ -1143,8 +1144,8 @@ class Field(object):
                           'Using 1.0 instead'.format(divergence_ratio))
             divergence_ratio = 1.0
 
-        if self.field_image_filename_prev is None:
-            # No previous iteration, so report not converged and not diverged
+        if len(self.imaging_sectors[0].diagnostics) <= 1:
+            # No previous iteration, so report not yet converged (or diverged)
             return False, False
 
         # Get noise and dynamic range from previous and current images of each sector

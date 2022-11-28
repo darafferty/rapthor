@@ -247,7 +247,7 @@ class Image(Operation):
                 shutil.copy(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
-            diagnostics_file = os.path.join(self.pipeline_working_dir, 'image_diagnostics.json')
+            diagnostics_file = image_root + '.image_diagnostics.json'
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             sector.diagnostics.append(diagnostics_dict)

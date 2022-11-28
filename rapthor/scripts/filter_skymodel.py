@@ -40,6 +40,12 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
     noise : float
         Estimate of the expected theoretical noise in Jy/beam
     """
+    nobs = len(mslist)
+    if nobs == 0:
+        # If no MS files, just return zero for the noise as we cannot
+        # estimate it
+        return 0.0
+
     # Find the total time and the average total bandwidth, average frequency,
     # average unflagged fraction, and average number of core and remote stations
     # (for the averages, assume each observation has equal weight)
@@ -57,11 +63,11 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
         nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
         mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
         unflagged_fraction += find_unflagged_fraction(ms)
-    total_bandwidth /= len(mslist)
-    ncore = int(np.round(ncore / len(mslist)))
-    nremote = int(np.round(nremote / len(mslist)))
-    mean_freq = mid_freq / len(mslist)
-    unflagged_fraction /= len(mslist)
+    total_bandwidth /= nobs
+    ncore = int(np.round(ncore / nobs))
+    nremote = int(np.round(nremote / nobs))
+    mean_freq = mid_freq / nobs
+    unflagged_fraction /= nobs
 
     # Define table of system equivalent flux densities and interpolate
     # to get the values at the mean frequency of the input observations.
@@ -101,11 +107,10 @@ def find_unflagged_fraction(ms_file):
     """
     # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
     # hanging/locking issues on some systems
-    p = subprocess.Popen("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
-                         "sum([select nelements(FLAG) from {0}])'".format(ms_file),
-                         shell=True, stdout=subprocess.PIPE)
-    r = p.communicate()
-    unflagged_fraction = float(r[0])
+    result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                            "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                            shell=True, capture_output=True, check=True)
+    unflagged_fraction = float(result.stdout[0])
 
     return unflagged_fraction
 
@@ -227,7 +232,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                   'dynamic_range_local': dynamic_range_local,
                   'freq': freq,
                   'beam_fwhm': beam_fwhm}
-    with open('./image_diagnostics.json', 'w') as fp:
+    with open(output_root+'.image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
 
     emptysky = False
