@@ -1,0 +1,7 @@
+{
+    "surls": [
+        "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_121MHz_uv_pre-cal.ms.tar",
+        "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_123MHz_uv_pre-cal.ms.tar"
+    ],
+    "ms": "out.ms"
+}
