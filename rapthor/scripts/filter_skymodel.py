@@ -110,7 +110,7 @@ def find_unflagged_fraction(ms_file):
     result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
                             "sum([select nelements(FLAG) from {0}])'".format(ms_file),
                             shell=True, capture_output=True, check=True)
-    unflagged_fraction = float(result.stdout[0])
+    unflagged_fraction = float(result.stdout)
 
     return unflagged_fraction
 
