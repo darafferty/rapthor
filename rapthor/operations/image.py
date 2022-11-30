@@ -2,6 +2,7 @@
 Module that holds the Image class
 """
 import os
+import json
 import logging
 import shutil
 from rapthor.lib import miscellaneous as misc
@@ -209,9 +210,11 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save output FITS image, sky model, and ds9 region file for each sector
+        # Copy the output FITS image, the clean mask, sky models, , and ds9 facet
+        # region file for each sector. Also read the image diagnostics (rms noise,
+        # etc.) derived by PyBDSF and print them to the log.
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
-        # pols, save them all
+        # pols, copy them all
         for sector in self.field.imaging_sectors:
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
@@ -243,17 +246,22 @@ class Image(Operation):
                     os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
 
-        # Symlink to datasets and remove old ones
-#         dst_dir = os.path.join(self.parset['dir_working'], 'datasets', self.direction.name)
-#         misc.create_directory(dst_dir)
-#         ms_map = DataMap.load(os.path.join(self.pipeline_mapfile_dir,
-#                                            'prepare_imaging_data.mapfile'))
-#         for ms in ms_map:
-#             dst = os.path.join(dst_dir, os.path.basename(ms.file))
-#             os.system('ln -fs {0} {1}'.format(ms.file, dst))
-#         if self.index > 1:
-#             prev_iter_mapfile_dir = self.pipeline_mapfile_dir.replace('image_{}'.format(self.index),
-#                                                                       'image_{}'.format(self.index-1))
-#             self.cleanup_mapfiles = [os.path.join(prev_iter_mapfile_dir,
-#                                      'prepare_imaging_data.mapfile')]
-#         self.cleanup()
+            # Read in the image diagnostics and log a summary of them
+            diagnostics_file = image_root + '.image_diagnostics.json'
+            with open(diagnostics_file, 'r') as f:
+                diagnostics_dict = json.load(f)
+            sector.diagnostics.append(diagnostics_dict)
+            theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
+            min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
+            mean_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['mean_rms']*1e6)
+            dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+            freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
+            beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+                                                                  diagnostics_dict['beam_fwhm'][1]*3600,
+                                                                  diagnostics_dict['beam_fwhm'][2])
+            self.log.info('Diagnostics for {}:'.format(sector.name))
+            self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
+            self.log.info('    Mean RMS noise = {}'.format(mean_rms))
+            self.log.info('    Dynamic range = {}'.format(dynr))
+            self.log.info('    Reference frequency = {}'.format(freq))
+            self.log.info('    Beam = {}'.format(beam))
