@@ -1144,8 +1144,11 @@ class Field(object):
                           'Using 1.0 instead'.format(divergence_ratio))
             divergence_ratio = 1.0
 
-        if len(self.imaging_sectors[0].diagnostics) <= 1:
-            # No previous iteration, so report not yet converged (or diverged)
+        if (not hasattr(self, 'imaging_sectors') or
+                not self.imaging_sectors or
+                len(self.imaging_sectors[0].diagnostics) <= 1):
+            # Either no imaging sectors or no previous iteration, so report not yet
+            # converged (or diverged)
             return False, False
 
         # Get noise and dynamic range from previous and current images of each sector
