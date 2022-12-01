@@ -81,6 +81,7 @@ class Field(object):
         self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
+        self.download_initial_skymodel = self.parset['download_skymodel']
 
         if not mininmal:
             # Scan MS files to get observation info

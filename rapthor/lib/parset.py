@@ -82,9 +82,17 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
     # Make sure the initial skymodel is present
+    parset_dict['download_skymodel'] = parset.getboolean('global', 'download_skymodel')
     if 'input_skymodel' not in parset_dict:
-        log.error('No input sky model file given. Exiting...')
-        sys.exit(1)
+        if parset_dict['download_skymodel']:
+            log.info('No input sky model file given, but download requested. Will automatically download skymodel.')
+            parset_dict.update({'input_skymodel':os.path.join(parset_dict['dir_working'], 'skymodels', 'skymodel.txt')})
+        else:
+            log.error('No input sky model file given and no download requested. Exiting...')
+            sys.exit(1)
+    elif parset_dict['download_skymodel']:
+        # If download is requested, ignore the given skymodel.
+        parset_dict['input_skymodel'] = os.path.join(parset_dict['dir_working'], 'skymodels', 'skymodel.txt')
     elif not os.path.exists(parset_dict['input_skymodel']):
         log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
         sys.exit(1)
@@ -206,7 +214,7 @@ def get_global_options(parset):
     given_options = parset.options('global')
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
-                       'flag_expr', 'input_skymodel', 'apparent_skymodel',
+                       'flag_expr', 'download_skymodel', 'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
                        'final_data_fraction']
     for option in given_options:
