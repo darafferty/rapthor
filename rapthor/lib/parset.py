@@ -82,7 +82,6 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
     # Make sure the initial skymodel is present
-    parset_dict['download_skymodel'] = parset.getboolean('global', 'download_skymodel')
     if 'input_skymodel' not in parset_dict:
         if parset_dict['download_skymodel']:
             log.info('No input sky model file given, but download requested. Will automatically download skymodel.')
@@ -163,6 +162,12 @@ def get_global_options(parset):
     # Apparent-flux input sky model (default = None)
     if 'apparent_skymodel' not in parset_dict:
         parset_dict['apparent_skymodel'] = None
+
+    # Auto-download a sky model (default = True)?
+    if 'download_skymodel' not in parset_dict:
+        parset_dict['download_skymodel'] = True
+    else:
+        parset_dict['download_skymodel'] = parset.getboolean('global', 'download_skymodel')
 
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
