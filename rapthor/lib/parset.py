@@ -164,10 +164,13 @@ def get_global_options(parset):
         parset_dict['apparent_skymodel'] = None
 
     # Auto-download a sky model (default = True)?
-    if 'download_skymodel' not in parset_dict:
-        parset_dict['download_skymodel'] = True
+    if 'download_initial_skymodel' not in parset_dict:
+        parset_dict['download_initial_skymodel'] = True
     else:
-        parset_dict['download_skymodel'] = parset.getboolean('global', 'download_skymodel')
+        parset_dict['download_initial_skymodel'] = parset.getboolean('global', 'download_initial_skymodel')
+
+    if 'download_initial_skymodel_radius' not in parset_dict:
+        parset_dict['download_initial_skymodel_radius'] = 5.0
 
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
@@ -219,7 +222,7 @@ def get_global_options(parset):
     given_options = parset.options('global')
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
-                       'flag_expr', 'download_skymodel', 'input_skymodel', 'apparent_skymodel',
+                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
                        'final_data_fraction']
     for option in given_options:
