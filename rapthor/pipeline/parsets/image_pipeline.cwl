@@ -526,4 +526,6 @@ steps:
       - id: filtered_skymodels
       - id: sector_images
       - id: sector_diagnostics
+{% if use_facets %}
       - id: region_file
+{% endif %}
