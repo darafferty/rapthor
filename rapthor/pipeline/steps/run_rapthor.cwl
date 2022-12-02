@@ -69,7 +69,7 @@ requirements:
   - entryname: runner.sh
     entry: |
       #!/bin/bash
-      set -eux
+      set -ex
 
       # Read input JSON file, update paths, and write to INI (parset) file
       filter='
@@ -82,7 +82,7 @@ requirements:
 
       # Create virtual environment and activate it.
       python_version=`jq -r .virtualenv.python.version "$(inputs.json.path)"`
-      virtualenv --python="\${python_version}" venv
+      virtualenv --python="python\${python_version}" venv
       . venv/bin/activate
 
       echo "PWD: \${PWD}" >> log.txt
