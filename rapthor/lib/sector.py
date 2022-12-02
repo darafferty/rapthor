@@ -59,6 +59,7 @@ class Sector(object):
         self.is_bright_source = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
+        self.diagnostics = []  # list to hold dicts of image diagnostics
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings

@@ -80,9 +80,20 @@ inputs:
 
 outputs:
   - id: skymodels
+    label: Processed sky models, mask files, and images
+    doc: |
+      The filenames of the filtered sky models, the generated mask files, and images.
     type: File[]
     outputBinding:
       glob: ['$(inputs.output_root)-MFS-*.fits', '$(inputs.output_root)-MFS-*.mask', '$(inputs.output_root).*_sky.txt']
+  - id: diagnostics
+    label: Image diagnostics
+    doc: |
+      The image diagnostics, including RMS noise, dynamic range, frequency, and beam.
+    type: File
+    outputBinding:
+      glob: '$(inputs.output_root).image_diagnostics.json'
+
 
 hints:
   - class: DockerRequirement
