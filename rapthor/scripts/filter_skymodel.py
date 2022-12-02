@@ -37,8 +37,9 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
 
     Returns
     -------
-    noise : float
-        Estimate of the expected theoretical noise in Jy/beam
+    noise, unflagged_fraction : tuple of floats
+        Estimate of the expected theoretical noise in Jy/beam and the
+        unflagged fraction of the input data
     """
     nobs = len(mslist)
     if nobs == 0:
@@ -88,7 +89,7 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
                                (core_term + mixed_term + remote_term))  # Jy
     noise /= np.sqrt(unflagged_fraction)
 
-    return noise
+    return (noise, unflagged_fraction)
 
 
 def find_unflagged_fraction(ms_file):
@@ -115,10 +116,11 @@ def find_unflagged_fraction(ms_file):
     return unflagged_fraction
 
 
-def main(input_image, input_skymodel_pb, output_root, vertices_file,
+def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
          input_bright_skymodel_pb=None, threshisl=5.0, threshpix=7.5,
          rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_rmsbox=True,
-         use_adaptive_threshold=False, adaptive_thresh=75.0, beamMS=None):
+         use_adaptive_threshold=False, adaptive_thresh=75.0,
+         comparison_skymodel=None):
     """
     Filter the input sky model so that they lie in islands in the image
 
@@ -126,7 +128,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     blank sky model is made. If any islands are detected in the input image,
     filtered true-sky and apparent-sky models are made, as well as a FITS clean
     mask (with the filename input_image+'.mask'). Various diagnostics are also
-    derived and saved in JSON format to the file 'out.json'.
+    derived and saved in JSON format.
 
     Parameters
     ----------
@@ -136,10 +138,14 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     input_skymodel_pb : str
         Filename of input makesourcedb sky model, with primary-beam correction
     output_root : str
-        Root of filename of output makesourcedb sky models. Output filenames will be
-        output_root+'.apparent_sky.txt' and output_root+'.true_sky.txt'
+        Root of filenames of output makesourcedb sky models and image diagnostics
+        files. Output filenames will be output_root+'.apparent_sky.txt',
+        output_root+'.true_sky.txt', and output_root+'.image_diagnostics.json'
     vertices_file : str
         Filename of file with vertices
+    beamMS : list of str
+        The list of MS files to use to derive the beam attenuation and theorectical
+        image noise
     input_bright_skymodel_pb : str, optional
         Filename of input makesourcedb sky model of bright sources only, with primary-
         beam correction
@@ -159,6 +165,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     adaptive_thresh : float, optional
         If adaptive_rmsbox is True, this value sets the threshold above
         which a source will use the small rms box
+    comparison_skymodel : str, optional
+        The filename of the sky model to use for flux scale and astrometry
+        comparisons
     """
     if rmsbox is not None and isinstance(rmsbox, str):
         rmsbox = eval(rmsbox)
@@ -213,10 +222,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
 
-    # Save some diagnostic numbers for later reporting
-    # Note: we ensure all numbers are float, as, e.g., np.float32 is not
-    # supported by json.dump()
-    theoretical_rms = calc_theoretical_noise(beamMS)  # Jy/beam
+    # Colletc some diagnostic numbers for later reporting. Note: we ensure all
+    # numbers are float, as, e.g., np.float32 is not supported by json.dump()
+    theoretical_rms, unflagged_fraction = calc_theoretical_noise(beamMS)  # Jy/beam
     min_rms = float(np.min(img.rms_arr))  # Jy/beam
     max_rms = float(np.max(img.rms_arr))  # Jy/beam
     mean_rms = float(np.mean(img.rms_arr))  # Jy/beam
@@ -225,6 +233,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
     beam_fwhm = [float(img.beam[0]), float(img.beam[1]), float(img.beam[2])]  # (maj, min, pa), all in deg
     freq = float(img.frequency)  # Hz
     cwl_output = {'theoretical_rms': theoretical_rms,
+                  'unflagged_data_fraction': unflagged_fraction,
                   'min_rms': min_rms,
                   'max_rms': max_rms,
                   'mean_rms': mean_rms,
@@ -232,8 +241,6 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                   'dynamic_range_local': dynamic_range_local,
                   'freq': freq,
                   'beam_fwhm': beam_fwhm}
-    with open(output_root+'.image_diagnostics.json', 'w') as fp:
-        json.dump(cwl_output, fp)
 
     emptysky = False
     if img.nisl > 0:
@@ -312,6 +319,31 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file,
                 s.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
     else:
         emptysky = True
+
+    # Get the flux scale and astrometry diagnostics if possible and save all the image
+    # diagnostics to the output JSON file
+    if not emptysky and comparison_skymodel is not None:
+        # Select sources that are only composed of type "POINT", as the comparison
+        # method in LSMTool works only for this type
+        s_comp = lsmtool.load(comparison_skymodel)
+        for sm in [s, s_comp]:
+            source_type = sm.getColValues('Type')
+            patch_names = sm.getColValues('Patch')
+            non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
+            for patch_name in non_point_patch_names:
+                sm.remove('Patch == {}'.format(patch_name))
+
+        # Check if there is a sufficient number of sources to do the comparison with.
+        # If there is, do it and append the resulting diagnostics dict to the
+        # existing one
+        #
+        # Note: the various ratios are all calculated as (s / s_comp) and the differences
+        # as (s - s_comp)
+        if (s and s_comp and len(s.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
+            flux_astrometry_diagnostics = s.compare(s_comp, radius='5 arcsec', excludeMultiple=True)
+            cwl_output.update(flux_astrometry_diagnostics)
+    with open(output_root+'.image_diagnostics.json', 'w') as fp:
+        json.dump(cwl_output, fp)
 
     if emptysky:
         # No sources cleaned/found in image, so just make a dummy sky model with single,

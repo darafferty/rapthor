@@ -259,9 +259,11 @@ class Image(Operation):
             beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
                                                                   diagnostics_dict['beam_fwhm'][1]*3600,
                                                                   diagnostics_dict['beam_fwhm'][2])
+            unflagged_data_fraction = '{0:.1f}'.format(diagnostics_dict['unflagged_data_fraction'])
             self.log.info('Diagnostics for {}:'.format(sector.name))
             self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
             self.log.info('    Mean RMS noise = {}'.format(mean_rms))
             self.log.info('    Dynamic range = {}'.format(dynr))
             self.log.info('    Reference frequency = {}'.format(freq))
             self.log.info('    Beam = {}'.format(beam))
+            self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
