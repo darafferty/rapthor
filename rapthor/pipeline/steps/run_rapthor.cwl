@@ -36,18 +36,34 @@ inputs:
 
 # Anything that the Rapthor pipeline will produce as outputs.
 outputs:
-- id: log
-  type: File
+- id: images
+  type: Directory[]
   outputBinding:
-    glob: log.txt
+    glob: images
+- id: logs
+  type: Directory[]
+  outputBinding:
+    glob: logs
 - id: parset
   type: File
   outputBinding:
     glob: rapthor.parset
-# - id: strace
-#   type: File
-#   outputBinding:
-#     glob: strace.log
+- id: plots
+  type: Directory[]
+  outputBinding:
+    glob: plots
+- id: regions
+  type: Directory[]
+  outputBinding:
+    glob: regions
+- id: skymodels
+  type: Directory[]
+  outputBinding:
+    glob: skymodels
+- id: solutions
+  type: Directory[]
+  outputBinding:
+    glob: solutions
 
 baseCommand:
   - bash
@@ -85,16 +101,9 @@ requirements:
       virtualenv --python="python\${python_version}" venv
       . venv/bin/activate
 
-      echo "PWD: \${PWD}" >> log.txt
-      echo "python: `which pyhton`" >> log.txt
-      echo "  version: `python --version`" >> log.txt
-
       # Install rapthor
       rapthor_version=`jq -r .virtualenv.rapthor.version "$(inputs.json.path)"`
-      echo "pip: `which pip`" >> log.txt
       pip install git+https://git.astron.nl/RD/rapthor.git@\${rapthor_version}
-      echo "pip list:" >> log.txt
-      pip list >> log.txt
 
       # Download and install casacore data files, and make them findable
       data_dir="\${VIRTUAL_ENV}/share/casacore/data"
