@@ -28,13 +28,16 @@ Rapthor requires the following packages (beyond those installed automatically wi
 
 Get the latest developer version by cloning the git repository:
 
-    git clone https://github.com/darafferty/rapthor.git
+    git clone https://git.astron.nl/RD/rapthor.git
 
 Then install with:
 
     cd rapthor
-    python setup.py install
+    pip install .
 
+Or, alternatively, in one go:
+
+    pip install git+https://git.astron.nl/RD/rapthor.git
 
 Usage
 -----
