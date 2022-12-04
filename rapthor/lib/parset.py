@@ -171,6 +171,8 @@ def get_global_options(parset):
 
     if 'download_initial_skymodel_radius' not in parset_dict:
         parset_dict['download_initial_skymodel_radius'] = 5.0
+    else:
+        parset_dict['download_initial_skymodel_radius'] = parset.getfloat('global', 'download_initial_skymodel_radius')
 
     if 'download_initial_skymodel_server' not in parset_dict:
         parset_dict['download_initial_skymodel_server'] = 'TGSS'
