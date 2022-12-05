@@ -48,24 +48,19 @@ def download(ms_input, skymodel_path, radius=5.0, overwrite=False, source="TGSS"
         Full name (with path) to the skymodel; if YES is true, the skymodel will be downloaded here.
     radius : float
         Radius for the TGSS/GSM cone search in degrees.
-    ForceDownload : bool
-        Download or not the TGSS skymodel or GSM.
-        "Force": download skymodel from TGSS or GSM, delete existing skymodel if needed.
-        "True" or "Yes": use existing skymodel file if it exists, download skymodel from
-                         TGSS or GSM if it does not.
-        "False" or "No": Do not download skymodel, raise an exception if skymodel
-                         file does not exist.
+    overwrite : bool
+        Overwrite the existing skymodel pointed to by skymodel_path.
     targetname : str
         Give the patch a certain name, default: "Patch"
     """
     FileExists = os.path.isfile(skymodel_path)
     if FileExists and not overwrite:
-        logger.error(f'Skymodel {SkyModelPath} exists and overwrite is set to False!')
-        raise ValueError(f'Skymodel {SkyModelPath} exists and overwrite is set to False!')
+        logger.error('Skymodel "%s" exists and overwrite is set to False!' % skymodel_path)
+        raise ValueError('Skymodel "%s" exists and overwrite is set to False!' % skymodel_path)
 
     if (not FileExists and os.path.exists(skymodel_path)):
-        logger.error("Path \"%s\" exists but is not a file!"%(skymodel_path))
-        raise ValueError("Path \"%s\" exists but is not a file!"%(skymodel_path))
+        logger.error('Path "%s" exists but is not a file!' % skymodel_path)
+        raise ValueError('Path "%s" exists but is not a file!' % skymodel_path)
 
     if not os.path.exists(os.path.dirname(skymodel_path)):
         os.makedirs(os.path.dirname(skymodel_path))
@@ -74,7 +69,7 @@ def download(ms_input, skymodel_path, radius=5.0, overwrite=False, source="TGSS"
         if FileExists:
             os.remove(skymodel_path)
 
-    logger.info("Downloading skymodel for the target into "+ skymodel_path)
+    logger.info('Downloading skymodel for the target into ' + skymodel_path)
 
     # Reading a MS to find the coordinate (pyrap)
     RATar, DECTar = get_ms_phasedir(ms_input)
@@ -84,15 +79,15 @@ def download(ms_input, skymodel_path, radius=5.0, overwrite=False, source="TGSS"
     tries     = 0
     while errorcode != 0 and tries < 5:
         if source == 'TGSS':
-            errorcode = os.system("wget -O "+skymodel_path+ " \'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord="+str(RATar)+","+str(DECTar)+"&radius="+str(radius)+"&unit=deg&deconv=y\' ")
+            errorcode = os.system('wget -O ' + skymodel_path + " \'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord="+str(RATar)+","+str(DECTar)+"&radius="+str(radius)+"&unit=deg&deconv=y\' ")
         elif source == 'GSM':
-            errorcode = os.system("wget -O "+skymodel_path+ " \'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord="+str(RATar)+","+str(DECTar)+"&radius="+str(radius)+"&unit=deg&deconv=y\' ")
+            errorcode = os.system('wget -O ' + skymodel_path + " \'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord="+str(RATar)+","+str(DECTar)+"&radius="+str(radius)+"&unit=deg&deconv=y\' ")
         time.sleep(5)
         tries += 1
 
     if not os.path.isfile(skymodel_path):
-        logger.error("Path: \"%s\" does not exist after trying to download the skymodel."%(skymodel_path))
-        raise IOError("Path: \"%s\" does not exist after trying to download the skymodel."%(skymodel_path))
+        logger.error('Path: "%s" does not exist after trying to download the skymodel.' % skymodel_path)
+        raise IOError('Path: "%s" does not exist after trying to download the skymodel.' % skymodel_path)
 
     # Treat all sources as one group (direction)
     skymodel = lsmtool.load(skymodel_path)
