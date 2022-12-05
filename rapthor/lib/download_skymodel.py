@@ -1,15 +1,19 @@
 #!/usr/bin/env python
-import os,sys
 import glob
-import casacore.tables as ct
-import numpy as np
+import os
+import sys
 import time
+
+from rapthor.lib import miscellaneous
+import casacore.tables as ct
 import lsmtool
+import numpy as np
+
 import logging
 logger = logging.getLogger('rapthor:skymodel')
 
-def grab_coord_MS(MS):
-    """ Read the coordinates of a field from one MS corresponding to the selection given in the parameters
+def get_ms_phasedir(MS):
+    """ Read the PHASE_DIR from one Measurement Set and return its RA and DEC in degrees.
 
     Parameters
     ----------
@@ -18,20 +22,17 @@ def grab_coord_MS(MS):
 
     Returns
     -------
-    RA, Dec : "tuple"
+    ra, dec : "tuple"
         Coordinates of the field (RA, Dec in deg , J2000)
     """
-    # Read coordinates from the MS
     ra, dec = ct.table(MS+'::FIELD', readonly=True, ack=False).getcol('PHASE_DIR').squeeze()
 
-    # RA is stocked in the MS in [-pi;pi]
-    # => shift for the negative angles before the conversion to deg (so that RA in [0;2pi])
-    if ra<0:
-        ra=ra+2*np.pi
-
     # convert radians to degrees
-    ra_deg =  ra/np.pi*180.
-    dec_deg = dec/np.pi*180.
+    ra_deg =  ra / np.pi * 180.
+    dec_deg = dec / np.pi * 180.
+
+    # In case RA happens to be negative, fix it to a 0 < ra < 360 value again.
+    ra = miscellaneous.normalize_ra(ra)
 
     # and sending the coordinates in deg
     return (ra_deg, dec_deg)
@@ -87,7 +88,7 @@ def download(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGS
     logger.info("DOWNLOADING skymodel for the target into "+ SkymodelPath)
 
     # Reading a MS to find the coordinate (pyrap)
-    RATar, DECTar = grab_coord_MS(ms_input)
+    RATar, DECTar = get_ms_phasedir(ms_input)
 
     # Downloading the skymodel, skip after five tries
     errorcode = 1
