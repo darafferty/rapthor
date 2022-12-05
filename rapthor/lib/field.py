@@ -586,7 +586,7 @@ class Field(object):
             if self.parset['download_initial_skymodel']:
                 # First time run, so get an initial sky model.
                 # Assumes we only have a single pointing centre among all MSes.
-                ms_filenames = glob.glob(self.parset['input_ms'])
+                ms_filenames = sorted(list(glob.glob(self.parset['input_ms'])))
                 download_skymodel.download(ms_filenames[0], SkymodelPath=os.path.join(self.working_dir, 'skymodels/skymodel.txt'), Radius=self.parset['download_initial_skymodel_radius'], Source=self.parset['download_initial_skymodel_server'])
             # Make initial calibration and source sky models
             self.make_skymodels(self.parset['input_skymodel'],

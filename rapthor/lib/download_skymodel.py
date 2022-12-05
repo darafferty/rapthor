@@ -32,7 +32,7 @@ def get_ms_phasedir(MS):
     dec_deg = dec / np.pi * 180.
 
     # In case RA happens to be negative, fix it to a 0 < ra < 360 value again.
-    ra = miscellaneous.normalize_ra(ra)
+    ra_deg = miscellaneous.normalize_ra(ra_deg)
 
     # and sending the coordinates in deg
     return (ra_deg, dec_deg)
