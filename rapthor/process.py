@@ -44,10 +44,6 @@ def run(parset_file, logging_level='info'):
 
     # Run the strategy
     for index, step in enumerate(strategy_steps):
-        if (index == 0) and parset['download_initial_skymodel']:
-            # First time run, so get an initial sky model.
-            # Assumes we only have a single pointing centre among all MSes.
-            download_skymodel_target.main(field.ms_filenames[0], SkymodelPath=os.path.join(field.working_dir, 'skymodels/skymodel.txt'), Radius=parset['download_initial_skymodel_radius'], Source=parset['download_initial_skymodel_server'])
 
         # Update the field object for the current step
         field.update(step, index+1)

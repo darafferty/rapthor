@@ -10,6 +10,7 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
+from rapthor.lib import download_skymodel
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
@@ -582,6 +583,11 @@ class Field(object):
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
         if index == 1:
+            if self.parset['download_initial_skymodel']:
+                # First time run, so get an initial sky model.
+                # Assumes we only have a single pointing centre among all MSes.
+                ms_filenames = glob.glob(self.parset['input_ms'])
+                download_skymodel.download(ms_filenames[0], SkymodelPath=os.path.join(self.working_dir, 'skymodels/skymodel.txt'), Radius=self.parset['download_initial_skymodel_radius'], Source=self.parset['download_initial_skymodel_server'])
             # Make initial calibration and source sky models
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],

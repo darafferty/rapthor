@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 import os,sys
 import glob
-import pyrap.tables as pt
+import casacore.tables as ct
 import numpy as np
 import time
 import lsmtool
 import logging
-logger = logging.getLogger('rapthor:field')
-########################################################################
+logger = logging.getLogger('rapthor:skymodel')
+
 def grab_coord_MS(MS):
-    """
-    Read the coordinates of a field from one MS corresponding to the selection given in the parameters
+    """ Read the coordinates of a field from one MS corresponding to the selection given in the parameters
 
     Parameters
     ----------
@@ -20,12 +19,10 @@ def grab_coord_MS(MS):
     Returns
     -------
     RA, Dec : "tuple"
-        coordinates of the field (RA, Dec in deg , J2000)
+        Coordinates of the field (RA, Dec in deg , J2000)
     """
-
-    # reading the coordinates ("position") from the MS
-    # NB: they are given in rad,rad (J2000)
-    [[[ra,dec]]] = pt.table(MS+'::FIELD', readonly=True, ack=False).getcol('PHASE_DIR')
+    # Read coordinates from the MS
+    ra, dec = ct.table(MS+'::FIELD', readonly=True, ack=False).getcol('PHASE_DIR').squeeze()
 
     # RA is stocked in the MS in [-pi;pi]
     # => shift for the negative angles before the conversion to deg (so that RA in [0;2pi])
@@ -37,37 +34,16 @@ def grab_coord_MS(MS):
     dec_deg = dec/np.pi*180.
 
     # and sending the coordinates in deg
-    return(ra_deg,dec_deg)
+    return (ra_deg, dec_deg)
 
-
-########################################################################
-def input2strlist_nomapfile(invar):
-    """ from bin/download_IONEX.py
-    give the list of MSs from the list provided as a string
-    """
-
-    str_list = None
-    if type(invar) is str:
-        if invar.startswith('[') and invar.endswith(']'):
-            str_list = [f.strip(' \'\"') for f in invar.strip('[]').split(',')]
-        else:
-            str_list = [invar.strip(' \'\"')]
-    elif type(invar) is list:
-        str_list = [str(f).strip(' \'\"') for f in invar]
-    else:
-        raise TypeError('input2strlist: Type '+str(type(invar))+' unknown!')
-    return(str_list)
-
-
-########################################################################
-def main(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGSS", targetname = "Patch"):
+def download(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGSS", targetname = "Patch"):
     """
     Download the skymodel for the target field
 
     Parameters
     ----------
     ms_input : str
-        String from the list (map) of the target MSs
+        Input Measurement Set to download a skymodel for.
     SkymodelPath : str
         Full name (with path) to the skymodel; if YES is true, the skymodel will be downloaded here
     Radius : string with float (default = "5.")
@@ -85,7 +61,7 @@ def main(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGSS", 
 
     FileExists = os.path.isfile(SkymodelPath)
     if (not FileExists and os.path.exists(SkymodelPath)):
-        raise ValueError("download_tgss_skymodel_target: Path: \"%s\" exists but is not a file!"%(SkymodelPath))
+        raise ValueError("Path: \"%s\" exists but is not a file!"%(SkymodelPath))
     download_flag = False
     if not os.path.exists(os.path.dirname(SkymodelPath)):
         os.makedirs(os.path.dirname(SkymodelPath))
@@ -111,7 +87,7 @@ def main(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGSS", 
     logger.info("DOWNLOADING skymodel for the target into "+ SkymodelPath)
 
     # Reading a MS to find the coordinate (pyrap)
-    [RATar,DECTar]=grab_coord_MS(input2strlist_nomapfile(ms_input)[0])
+    RATar, DECTar = grab_coord_MS(ms_input)
 
     # Downloading the skymodel, skip after five tries
     errorcode = 1
@@ -158,4 +134,4 @@ if __name__ == '__main__':
     if args.Radius:
         radius=args.Radius
 
-    main(args.MSfile, args.SkyTar, str(radius), args.DoDownload, args.Source, args.targetname)
+    download(args.MSfile, args.SkyTar, str(radius), args.DoDownload, args.Source, args.targetname)
