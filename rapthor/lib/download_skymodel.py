@@ -37,7 +37,7 @@ def get_ms_phasedir(MS):
     # and sending the coordinates in deg
     return (ra_deg, dec_deg)
 
-def download(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGSS", targetname = "Patch"):
+def download(ms_input, SkymodelPath, Radius=5.0, DoDownload="True", Source="TGSS", targetname = "Patch"):
     """
     Download the skymodel for the target field
 
@@ -46,9 +46,9 @@ def download(ms_input, SkymodelPath, Radius="5.", DoDownload="True", Source="TGS
     ms_input : str
         Input Measurement Set to download a skymodel for.
     SkymodelPath : str
-        Full name (with path) to the skymodel; if YES is true, the skymodel will be downloaded here
-    Radius : string with float (default = "5.")
-        Radius for the TGSS/GSM cone search in degrees
+        Full name (with path) to the skymodel; if YES is true, the skymodel will be downloaded here.
+    Radius : float
+        Radius for the TGSS/GSM cone search in degrees.
     DoDownload : str ("Force" or "True" or "False")
         Download or not the TGSS skymodel or GSM.
         "Force": download skymodel from TGSS or GSM, delete existing skymodel if needed.
@@ -131,8 +131,5 @@ if __name__ == '__main__':
                         help='Name of the patch of the skymodel')
 
     args = parser.parse_args()
-    radius=5
-    if args.Radius:
-        radius=args.Radius
 
-    download(args.MSfile, args.SkyTar, str(radius), args.DoDownload, args.Source, args.targetname)
+    download(args.MSfile, args.SkyTar, args.radius, args.DoDownload, args.Source, args.targetname)
