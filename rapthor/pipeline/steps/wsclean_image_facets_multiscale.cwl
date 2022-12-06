@@ -22,6 +22,8 @@ arguments:
     prefix: -temp-dir
   - valueFrom: '4'
     prefix: -parallel-gridding
+  - valueFrom: '2048'
+    prefix: -parallel-deconvolution
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
