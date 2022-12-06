@@ -461,8 +461,8 @@ steps:
       - id: max_uv_lambda
         source: max_uv_lambda
 {% if do_multiscale_clean %}
-      - id: multiscale_scales_pixel
-        source: multiscale_scales_pixel
+#      - id: multiscale_scales_pixel
+#        source: multiscale_scales_pixel
 {% endif %}
       - id: taper_arcsec
         source: taper_arcsec
@@ -490,7 +490,7 @@ steps:
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
 {% if do_multiscale_clean %}
-              multiscale_scales_pixel,
+#              multiscale_scales_pixel,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
@@ -511,7 +511,7 @@ steps:
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
 {% if do_multiscale_clean %}
-              multiscale_scales_pixel,
+#              multiscale_scales_pixel,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
