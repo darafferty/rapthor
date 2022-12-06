@@ -196,7 +196,10 @@ class Sector(object):
 #             else:
 #                 self.multiscale = False
         if self.multiscale:
-            self.multiscale_scales_pixel = self.field.parset['imaging_specific']['multiscale_scales_pixel']
+# This is old code that is probably no longer necessary: WSClean can
+# decide on its own whta scales to use, and it's not affecting performance
+# much. TODO remove?
+#            self.multiscale_scales_pixel = self.field.parset['imaging_specific']['multiscale_scales_pixel']
 #             if self.multiscale_scales_pixel is None:
 #                 largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
 #                 if largest_scale < 3:
@@ -209,8 +212,8 @@ class Sector(object):
 #                     self.multiscale_scales_pixel = None  # let WSClean decide
             self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
             self.log.debug("Will do multiscale cleaning.")
-        else:
-            self.multiscale_scales_pixel = 0
+#        else:
+#            self.multiscale_scales_pixel = 0
 
         # Set the observation-specific parameters
         max_peak_smearing = self.field.parset['imaging_specific']['max_peak_smearing']

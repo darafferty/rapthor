@@ -251,12 +251,12 @@ inputs:
     type: float
 
 {% if do_multiscale_clean %}
-  - id: multiscale_scales_pixel
-    label: Multiscale scales
-    doc: |
-      The WSClean multiscale scales in pixels (length = 1).
-    type: string
-
+#  - id: multiscale_scales_pixel
+#    label: Multiscale scales
+#    doc: |
+#      The WSClean multiscale scales in pixels (length = 1).
+#    type: string
+#
 {% endif %}
   - id: taper_arcsec
     label: Taper value
