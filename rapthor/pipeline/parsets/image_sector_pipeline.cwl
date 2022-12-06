@@ -545,8 +545,8 @@ steps:
       - id: cellsize_deg
         source: cellsize_deg
 {% if do_multiscale_clean %}
-      - id: multiscale_scales_pixel
-        source: multiscale_scales_pixel
+#      - id: multiscale_scales_pixel
+#        source: multiscale_scales_pixel
 {% endif %}
       - id: channels_out
         source: channels_out
