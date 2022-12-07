@@ -16,6 +16,7 @@ inputs:
 - id: msout_name
   doc: Output Measurement Set
   type: string
+  default: out.ms
   inputBinding:
     position: 1
 
@@ -24,3 +25,7 @@ outputs:
   type: Directory
   outputBinding:
     glob: $(inputs.msout_name)
+
+hints:
+  - class: DockerRequirement
+    dockerPull: 'astronrd/rapthor'
