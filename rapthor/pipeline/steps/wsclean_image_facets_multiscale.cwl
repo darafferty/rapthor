@@ -24,6 +24,8 @@ arguments:
     prefix: -parallel-gridding
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
+  - valueFrom: '6'
+    prefix: -deconvolution-threads
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
