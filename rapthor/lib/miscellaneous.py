@@ -48,7 +48,8 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         logger.error('Path "%s" exists but is not a file!' % skymodel_path)
         raise ValueError('Path "%s" exists but is not a file!' % skymodel_path)
 
-    if (not file_exists) and (not os.path.exists(os.path.dirname(skymodel_path))):
+    # Empty strings are False. Only attempt directory creation if there is a directory path involved.
+    if (not file_exists) and os.path.dirname(skymodel_path) and (not os.path.exists(os.path.dirname(skymodel_path))):
         os.makedirs(os.path.dirname(skymodel_path))
 
     if file_exists and overwrite:
