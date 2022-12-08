@@ -43,7 +43,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     if source.upper() not in SKY_SERVERS.keys():
         raise ValueError('Unsupported skymodel source specified! Please use TGSS or GSM.')
     
-    logger = logging.getLogger('raphtor:skymodel')
+    logger = logging.getLogger('rapthor:skymodel')
 
     file_exists = os.path.isfile(skymodel_path)
     if file_exists and not overwrite:
