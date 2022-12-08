@@ -50,7 +50,7 @@ The available options are described below under their respective sections.
 
     download_initial_skymodel_server
         Place to download the initial skymodel from (default is TGSS).
-        This can either be `TGSS` to use the TFIR GMRT Sky Survey, or `GSM` to use the `Global Sky Model`.
+        This can either be `TGSS` to use the `TFIR GMRT Sky Survey`, or `GSM` to use the `Global Sky Model`.
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required if automatic download is disabled).
