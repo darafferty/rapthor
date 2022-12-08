@@ -8,6 +8,7 @@ import subprocess
 import errno
 import numpy as np
 import pickle
+import time
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from astropy.io import fits as pyfits
