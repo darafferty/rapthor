@@ -84,7 +84,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     # Make sure the initial skymodel is present
     if 'input_skymodel' not in parset_dict:
         if parset_dict['download_initial_skymodel']:
-            log.info('No input sky model file given, but download requested. Will automatically download skymodel.')
+            log.info('No input sky model file given and download requested. Will automatically download skymodel.')
             parset_dict.update({'input_skymodel':os.path.join(parset_dict['dir_working'], 'skymodels', 'skymodel.txt')})
         else:
             log.error('No input sky model file given and no download requested. Exiting...')

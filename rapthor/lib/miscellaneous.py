@@ -38,7 +38,13 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     target_name : str
         Give the patch a certain name. Default is "Patch".
     """
+    SKY_SERVERS = {'TGSS':'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
+                'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
+    if source.upper() not in SKY_SERVERS.keys():
+        raise ValueError('Unsupported skymodel source specified! Please use TGSS or GSM.')
+    
     logger = logging.getLogger('raphtor:skymodel')
+
     file_exists = os.path.isfile(skymodel_path)
     if file_exists and not overwrite:
         logger.warning('Skymodel "%s" exists and overwrite is set to False! Not downloading skymodel. If this is a restart this may be intentional.' % skymodel_path)
@@ -57,10 +63,6 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         os.remove(skymodel_path)
 
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
-    SKY_SERVERS = {'TGSS':'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
-    if source.upper() not in SKY_SERVERS.keys():
-        raise ValueError('Unsupported skymodel source specified! Please use TGSS or GSM.')
 
     tries = 0
     while tries < 5:
