@@ -92,7 +92,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     elif parset_dict['download_initial_skymodel']:
         # If download is requested, ignore the given skymodel.
         log.info('Skymodel download requested, ignoring given skymodel and downloading one automatically.')
-        parset_dict['input_skymodel'] = os.path.join(parset_dict['dir_working'], 'skymodels', 'skymodel.txt')
+        parset_dict['input_skymodel'] = os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')
     elif not os.path.exists(parset_dict['input_skymodel']):
         log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
         sys.exit(1)
