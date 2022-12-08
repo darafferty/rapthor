@@ -19,7 +19,7 @@ Rapthor requires an initial model that is used during the first iteration. After
 
 Automatic skymodel download
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Rapthor can also download a suitable skymodel automatically. If `download_initial_skymodel` is set to True in the parset, rapthor will use the additional `download_initial_skymodel_radius` and `download_initial_skymodel_server` to download a skymodel out to the given radius from the given source. See :ref:`parset` for more explanation about these parameters.
+Rapthor can also download a suitable skymodel automatically. If `download_initial_skymodel` is set to True in the parset, rapthor will use the additional `download_initial_skymodel_radius` and `download_initial_skymodel_server` to download a skymodel out to the given radius from the given source. See :ref:`rapthor_parset` for more explanation about these parameters.
 
 .. [1] In the future, we will try to automate this.
 
