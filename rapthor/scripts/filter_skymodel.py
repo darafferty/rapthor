@@ -336,34 +336,41 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             # Download a TGSS sky model around the midpoint of the input sky model,
             # using a 5-deg radius to ensure the field is fully covered
             _, _, midRA, midDec = s._getXY()
-            s_comp = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
+            try:
+                s_comp = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
+            except OSError:
+                # Problem encountered when downloading model from the TGSS server, so
+                # skip the comparison
+                s_comp = None
         else:
             s_comp = lsmtool.load(comparison_skymodel)
 
         # Group the comparison sky model into sources and select only those sources
         # that are composed entirely of type "POINT", as the comparison method in
         # LSMTool works reliably only for this type
-        s_comp.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
-        for sm in [s, s_comp]:
-            source_type = sm.getColValues('Type')
-            patch_names = sm.getColValues('Patch')
-            non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
-            ind = []
-            for patch_name in non_point_patch_names:
-                ind.extend(sm.getRowIndex(patch_name))
-            sm.remove(np.array(ind))
+        if s_comp is not None:
+            s_comp.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
+            for sm in [s, s_comp]:
+                source_type = sm.getColValues('Type')
+                patch_names = sm.getColValues('Patch')
+                non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
+                ind = []
+                for patch_name in non_point_patch_names:
+                    ind.extend(sm.getRowIndex(patch_name))
+                sm.remove(np.array(ind))
 
-        # Check if there is a sufficient number of sources to do the comparison with.
-        # If there is, do it and append the resulting diagnostics dict to the
-        # existing one
-        #
-        # Note: the various ratios are all calculated as (s / s_comp) and the differences
-        # as (s - s_comp)
-        if (s and s_comp and len(s.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
-            flux_astrometry_diagnostics = s.compare(s_comp, radius='5 arcsec',
-                                                    excludeMultiple=True, make_plots=False)
-            if flux_astrometry_diagnostics is not None:
-                cwl_output.update(flux_astrometry_diagnostics)
+            # Check if there is a sufficient number of sources to do the comparison with.
+            # If there is, do it and append the resulting diagnostics dict to the
+            # existing one
+            #
+            # Note: the various ratios are all calculated as (s / s_comp) and the differences
+            # as (s - s_comp). If there are no successful matches, the compare() method
+            # returns None
+            if (s and s_comp and len(s.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
+                flux_astrometry_diagnostics = s.compare(s_comp, radius='5 arcsec',
+                                                        excludeMultiple=True, make_plots=False)
+                if flux_astrometry_diagnostics is not None:
+                    cwl_output.update(flux_astrometry_diagnostics)
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
 
