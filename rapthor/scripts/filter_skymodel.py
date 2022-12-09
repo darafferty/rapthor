@@ -17,6 +17,7 @@ import json
 from rapthor.lib.observation import Observation
 from scipy.interpolate import interp1d
 import subprocess
+import platform
 
 
 def calc_theoretical_noise(mslist, w_factor=1.5):
@@ -108,10 +109,18 @@ def find_unflagged_fraction(ms_file):
     """
     # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
     # hanging/locking issues on some systems
-    result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
-                            "sum([select nelements(FLAG) from {0}])'".format(ms_file),
-                            shell=True, capture_output=True, check=True)
-    unflagged_fraction = float(result.stdout)
+    if int(platform.python_version_tuple()[1]) >= 7:
+        # Note: the capture_output argument was added in Python 3.7
+        result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                                "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                                shell=True, capture_output=True, check=True)
+        unflagged_fraction = float(result.stdout)
+    else:
+        p = subprocess.Popen("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                             "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                             shell=True, stdout=subprocess.PIPE)
+        r = p.communicate()
+        unflagged_fraction = float(r[0])
 
     return unflagged_fraction
 
@@ -351,7 +360,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         # Note: the various ratios are all calculated as (s / s_comp) and the differences
         # as (s - s_comp)
         if (s and s_comp and len(s.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
-            flux_astrometry_diagnostics = s.compare(s_comp, radius='5 arcsec', excludeMultiple=True)
+            flux_astrometry_diagnostics = s.compare(s_comp, radius='5 arcsec',
+                                                    excludeMultiple=True, make_plots=False)
             if flux_astrometry_diagnostics is not None:
                 cwl_output.update(flux_astrometry_diagnostics)
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
