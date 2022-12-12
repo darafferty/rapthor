@@ -110,11 +110,11 @@ inputs:
     inputBinding:
       prefix: -idg-mode
   - id: num_threads
-    type: string
+    type: int
     inputBinding:
       prefix: -j
   - id: num_deconvolution_threads
-    type: string
+    type: int
     inputBinding:
       prefix: -deconvolution-threads
 

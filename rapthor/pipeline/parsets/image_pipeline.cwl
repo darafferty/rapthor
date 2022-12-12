@@ -289,7 +289,7 @@ inputs:
     label: Activate multiscale
     doc: |
       Activate multiscale clean (length = n_sectors).
-    type: boolean
+    type: boolean[]
 
   - id: taper_arcsec
     label: Taper value

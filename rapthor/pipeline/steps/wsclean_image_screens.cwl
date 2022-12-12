@@ -191,14 +191,14 @@ inputs:
     inputBinding:
       prefix: -idg-mode
   - id: num_threads
-    type: string
+    type: int
     inputBinding:
       prefix: -j
   - id: num_deconvolution_threads
     label: Number of threads
     doc: |
       The number of threads to use.
-    type: string
+    type: int
     inputBinding:
       prefix: -deconvolution-threads
 

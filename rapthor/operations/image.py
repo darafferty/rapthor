@@ -66,7 +66,6 @@ class Image(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
-        do_multiscale = []
         for i, sector in enumerate(self.field.imaging_sectors):
             image_root.append(sector.name)
 
