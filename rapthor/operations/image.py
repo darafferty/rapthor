@@ -45,7 +45,7 @@ class Image(Operation):
                              'max_cores': max_cores,
                              'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
-                             'do_multiscale_clean': self.field.do_multiscale_clean,
+                             'parallel_gridding_threads': self.field.parset['cluster_specific']['parallel_gridding_threads'],
                              'use_mpi': self.field.use_mpi,
                              'toil_version': self.toil_major_version}
 
@@ -62,11 +62,11 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
-#        multiscale_scales_pixel = []
         dir_local = []
         phasecenter = []
         image_root = []
         central_patch_name = []
+        do_multiscale = []
         for i, sector in enumerate(self.field.imaging_sectors):
             image_root.append(sector.name)
 
@@ -76,15 +76,8 @@ class Image(Operation):
             # Generally, this should work fine, since we do not expect large changes in
             # the size of the sector from iteration to iteration (small changes are OK,
             # given the padding we use during imaging)
-            if self.field.do_multiscale_clean:
-                sector_do_multiscale_list = self.field.parset['imaging_specific']['sector_do_multiscale_list']
-                if len(sector_do_multiscale_list) == nsectors:
-                    do_multiscale = sector_do_multiscale_list[i]
-                else:
-                    do_multiscale = None
-            else:
-                do_multiscale = False
-            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
+            sector.set_imaging_parameters(do_multiscale=self.field.do_multiscale_clean,
+                                          recalculate_imsize=False)
 
             # Set input MS filenames
             if self.field.do_predict:
@@ -118,7 +111,6 @@ class Image(Operation):
                 dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
-#            multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -151,7 +143,8 @@ class Image(Operation):
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
                             'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors]}
+                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
+                            'do_multiscale': [sector.multiscale for sector in self.field.imaging_sectors]}
 
         if self.field.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
@@ -160,10 +153,6 @@ class Image(Operation):
             # aterm image files were generated. They do not need to be set separately for
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
-
-#            if self.field.do_multiscale_clean:
-#                self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
-
             if self.field.use_mpi:
                 # Set number of nodes to allocate to each imaging subpipeline. We subtract
                 # one node because Toil must use one node for its job, which in turn calls
@@ -175,7 +164,6 @@ class Image(Operation):
                 self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-#            self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})

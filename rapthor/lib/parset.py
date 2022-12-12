@@ -590,24 +590,10 @@ def get_imaging_options(parset):
     else:
         parset_dict['max_peak_smearing'] = 0.15
 
-    # List of scales in pixels to use when multiscale clean is activated (default =
-    # auto). Note that multiscale clean is activated for a direction only when the
-    # calibrator or a source in the facet is determined to be larger than 4 arcmin,
-    # the facet contains the target (specified below with target_ra and target_dec),
-    # or mscale_selfcal_do / mscale_facet_do is set for the direction in the
-    # directions file
-    if 'multiscale_scales_pixel' in parset_dict:
-        val_list = parset_dict['multiscale_scales_pixel'].strip('[]').split(',')
-        str_list = ','.join([v.strip() for v in val_list])
-        parset_dict['multiscale_scales_pixel'] = str_list
-    else:
-        parset_dict['multiscale_scales_pixel'] = None
-
-    # Selfcal imaging parameters: pixel size in arcsec (default = 1.25), Briggs
-    # robust parameter (default = -0.5) and minimum uv distance in lambda
-    # (default = 80). These settings apply both to selfcal images and to the
-    # full facet image used to make the improved facet model that is subtracted
-    # from the data
+    # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
+    # robust parameter (default = -0.5), min and max uv distance in lambda (default = 80, none),
+    # taper in arcsec (default = none), and whether multiscale clean should be used (default =
+    # True)
     if 'cellsize_arcsec' in parset_dict:
         parset_dict['cellsize_arcsec'] = parset.getfloat('imaging', 'cellsize_arcsec')
     else:
@@ -628,15 +614,19 @@ def get_imaging_options(parset):
         parset_dict['taper_arcsec'] = parset.getfloat('imaging', 'taper_arcsec')
     else:
         parset_dict['taper_arcsec'] = 0.0
+    if 'do_multiscale_clean' in parset_dict:
+        parset_dict['do_multiscale_clean'] = parset.getboolean('imaging', 'do_multiscale_clean')
+    else:
+        parset_dict['do_multiscale_clean'] = True
 
     # Check for invalid options
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
-                       'multiscale_scales_pixel', 'grid_center_ra', 'grid_center_dec',
+                       'grid_center_ra', 'grid_center_dec',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
                        'min_uv_lambda', 'max_uv_lambda', 'mem_fraction', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
-                       'idg_mode', 'sector_do_multiscale_list', 'use_mpi',
+                       'idg_mode', 'do_multiscale_clean', 'use_mpi',
                        'dde_method', 'skip_corner_sectors']
     for option in given_options:
         if option not in allowed_options:
@@ -715,13 +705,21 @@ def get_cluster_options(parset):
     if parset_dict['max_threads'] == 0:
         parset_dict['max_threads'] = multiprocessing.cpu_count()
 
-    # Number of threads to use by WSClean during deconvolution (default = 0 = all)
+    # Number of threads to use by WSClean during deconvolution and parallel gridding
+    # (default = 0 = 2/5 of max_threads). Higher values will speed up imaging at the
+    # expense of higher memory usage
     if 'deconvolution_threads' in parset_dict:
         parset_dict['deconvolution_threads'] = parset.getint('cluster', 'deconvolution_threads')
     else:
         parset_dict['deconvolution_threads'] = 0
     if parset_dict['deconvolution_threads'] == 0:
-        parset_dict['deconvolution_threads'] = multiprocessing.cpu_count()
+        parset_dict['deconvolution_threads'] = int(parset_dict['max_threads'] * 2 / 5)
+    if 'parallel_gridding_threads' in parset_dict:
+        parset_dict['parallel_gridding_threads'] = parset.getint('cluster', 'parallel_gridding_threads')
+    else:
+        parset_dict['parallel_gridding_threads'] = 0
+    if parset_dict['parallel_gridding_threads'] == 0:
+        parset_dict['parallel_gridding_threads'] = int(parset_dict['max_threads'] * 2 / 5)
 
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes

@@ -395,7 +395,7 @@ steps:
   - id: solve_fast_phases
     label: Solve for fast phases
     doc: |
-      This step uses DDECal (in DPPP) to solve for phase corrections on short
+      This step uses DDECal (in DP3) to solve for phase corrections on short
       timescales (< 1 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for ionospheric effects.
 {% if use_scalarphase %}
@@ -498,7 +498,7 @@ steps:
   - id: solve_slow_gains1
     label: Solve for slow gains 1
     doc: |
-      This step uses DDECal (in DPPP) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
@@ -621,7 +621,7 @@ steps:
   - id: solve_slow_gains2
     label: Solve for slow gains 2
     doc: |
-      This step uses DDECal (in DPPP) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions and first slow-gain solutions are preapplied and stations

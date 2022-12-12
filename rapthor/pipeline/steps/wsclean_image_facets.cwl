@@ -3,8 +3,8 @@ class: CommandLineTool
 baseCommand: [wsclean]
 label: Make an image
 doc: |
-  This tool makes an image using WSClean with facets corrections. See
-  wsclean_image.cwl for a detailed description of the inputs and outputs.
+  This tool makes an image using WSClean with facet-based corrections. See
+  wsclean_image_screens.cwl for a detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -16,11 +16,14 @@ arguments:
   - -join-channels
   - -apply-facet-beam
   - -log-time
-  - -use-wgridder
+  - valueFrom: 'gaussian'
+    prefix: -multiscale-shape
+  - valueFrom: 'wgridder'
+    prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
-  - valueFrom: '4'
-    prefix: -parallel-gridding
+  - valueFrom: '2048'
+    prefix: -parallel-deconvolution
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
@@ -80,6 +83,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -maxuv-l
+  - id: multiscale
+    type: boolean
+    inputBinding:
+      prefix: -multiscale
   - id: cellsize_deg
     type: float
     inputBinding:
@@ -113,19 +120,35 @@ inputs:
     inputBinding:
       prefix: -j
   - id: num_deconvolution_threads
-    type: string
+    type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: num_gridding_threads
+    label: Number of gridding threads
+    doc: |
+      The number of threads to use during gridding.
+    type: int
+    inputBinding:
+      prefix: -parallel-gridding
   - id: h5parm
+    label: h5parm filename
+    doc: |
+      The filename of the h5parm containing the solutions to apply to correct for DDEs.
     type: File
     inputBinding:
       prefix: -apply-facet-solutions
       position: 3
   - id: soltabs
+    label: Solution tables
+    doc: |
+      The solution table names to apply to correct for DDEs.
     type: string
     inputBinding:
       position: 4
   - id: region_file
+    label: ds9 region file
+    doc: |
+      The ds9 region file that defines the facets.
     type: File
     inputBinding:
       prefix: -facet-regions

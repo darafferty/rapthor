@@ -82,15 +82,14 @@ class Sector(object):
             obs.set_prediction_parameters(self.name, self.patches,
                                           os.path.join(self.field.working_dir, 'scratch'))
 
-    def set_imaging_parameters(self, do_multiscale=None, recalculate_imsize=False):
+    def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False):
         """
         Sets the parameters needed for the imaging pipeline
 
         Parameters
         ----------
         do_multiscale : bool, optional
-            If True, multiscale clean is done. If None, multiscale clean is done only
-            when a large source is detected
+            If True, multiscale clean is done
         recalculate_imsize : bool, optional
             If True, the image size is recalculated based on the current sector region
         """
@@ -179,41 +178,11 @@ class Sector(object):
             self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
             self.wsclean_nmiter = max(2, int(round(self.wsclean_nmiter * 0.75)))
 
-        # Set multiscale: get source sizes and check for large sources
+        # Set multiscale clean
         self.multiscale = do_multiscale
-        if self.multiscale is None:
-            # TODO: figure out good way to determine whether multiscale should be used
-            # and the scales, maybe using the presence of Gaussians on larger wavelet
-            # scales? For now, force it to off, as it takes a long time and so should
-            # only be used when necessary
-            self.multiscale = False
-
-#             largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
-#             large_size_arcmin = 4.0  # threshold source size for multiscale to be activated
-#             sizes_arcmin = self.source_sizes * 60.0
-#             if sizes_arcmin is not None and any([s > large_size_arcmin for s in sizes_arcmin]):
-#                 self.multiscale = True
-#             else:
-#                 self.multiscale = False
         if self.multiscale:
-# This is old code that is probably no longer necessary: WSClean can
-# decide on its own whta scales to use, and it's not affecting performance
-# much. TODO remove?
-#            self.multiscale_scales_pixel = self.field.parset['imaging_specific']['multiscale_scales_pixel']
-#             if self.multiscale_scales_pixel is None:
-#                 largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
-#                 if largest_scale < 3:
-#                     self.multiscale_scales_pixel = [0]
-#                 elif largest_scale < 5:
-#                     self.multiscale_scales_pixel = [0, 3]
-#                 elif largest_scale < 15:
-#                     self.multiscale_scales_pixel = [0, 6, 12]
-#                 else:
-#                     self.multiscale_scales_pixel = None  # let WSClean decide
             self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
             self.log.debug("Will do multiscale cleaning.")
-#        else:
-#            self.multiscale_scales_pixel = 0
 
         # Set the observation-specific parameters
         max_peak_smearing = self.field.parset['imaging_specific']['max_peak_smearing']

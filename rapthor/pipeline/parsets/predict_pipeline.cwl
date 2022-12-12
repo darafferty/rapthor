@@ -166,7 +166,7 @@ steps:
   - id: predict_model_data
     label: Predict the model uv data
     doc: |
-      This step uses DPPP to predict uv data (using the input sourcedb) from the
+      This step uses DP3 to predict uv data (using the input sky model) from the
       input MS files. It also corrupts the model data with the calibration
       solutions. For each sector, prediction is done for all observations.
 {% if do_slowgain_solve %}

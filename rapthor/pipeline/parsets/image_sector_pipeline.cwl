@@ -3,7 +3,7 @@ class: Workflow
 label: Rapthor imaging subpipeline
 doc: |
   This subworkflow performs imaging with direction-dependent corrections. The
-  imaging data are generated (and averaged if possible) and WSClean+IDG is
+  imaging data are generated (and averaged if possible) and WSClean is
   used to perform the imaging. Masking and sky model filtering is then done
   using PyBDSF.
 
@@ -239,25 +239,23 @@ inputs:
     type: float
 
   - id: min_uv_lambda
-    label: Minimum us distance
+    label: Minimum uv distance
     doc: |
       The WSClean minimum uv distance in lambda (length = 1).
     type: float
 
   - id: max_uv_lambda
-    label: Maximum us distance
+    label: Maximum uv distance
     doc: |
       The WSClean maximum uv distance in lambda (length = 1).
     type: float
 
-{% if do_multiscale_clean %}
-#  - id: multiscale_scales_pixel
-#    label: Multiscale scales
-#    doc: |
-#      The WSClean multiscale scales in pixels (length = 1).
-#    type: string
-#
-{% endif %}
+  - id: do_multiscale
+    label: Activate multiscale
+    doc: |
+      Activate multiscale clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -334,7 +332,7 @@ steps:
   - id: prepare_imaging_data
     label: Prepare imaging data
     doc: |
-      This step uses DPPP to prepare the input data for imaging. This involves
+      This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions at the center.
 {% if use_screens or use_facets %}
@@ -442,60 +440,25 @@ steps:
     label: Make an image
     doc: |
       This step makes an image using WSClean. Direction-dependent effects
-      can be corrected for using a-term images.
+      can be corrected for using a-term images or facet-based corrections.
 {% if use_screens %}
 # start use_screens
+
 {% if use_mpi %}
-# start use_mpi
-{% if do_multiscale_clean %}
-# start do_multiscale_clean
-
-{% if toil_version < 5 %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale_toil4.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_screens.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_screens.cwl
 {% endif %}
-{% else %}
-# start not do_multiscale_clean
-
-{% if toil_version < 5 %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_toil4.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
-{% endif %}
-{% endif %}
-# end do_multiscale_clean / not do_multiscale_clean
-
-{% else %}
-# start not use_mpi
-
-{% if do_multiscale_clean %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_multiscale.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
-{% endif %}
-{% endif %}
-# end use_mpi / not use_mpi
 
 {% else %}
 # start not use_screens
 
 {% if use_facets %}
-# start use_facets
-{% if do_multiscale_clean %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets_multiscale.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets.cwl
-{% endif %}
 {% else %}
-# start not use_facets
-{% if do_multiscale_clean %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens_multiscale.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_dde.cwl
 {% endif %}
-{% endif %}
-# end use_facets / not use_facets
+
 {% endif %}
 # end use_screens / not use_screens
 
@@ -542,12 +505,10 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
+      - id: multiscale
+        source: do_multiscale
       - id: cellsize_deg
         source: cellsize_deg
-{% if do_multiscale_clean %}
-#      - id: multiscale_scales_pixel
-#        source: multiscale_scales_pixel
-{% endif %}
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
@@ -564,6 +525,10 @@ steps:
         valueFrom: '{{ max_threads }}'
       - id: num_deconvolution_threads
         valueFrom: '{{ deconvolution_threads }}'
+{% if use_facets %}
+      - id: num_gridding_threads
+        valueFrom: '{{ parallel_gridding_threads }}'
+{% endif %}
     out:
       - id: image_nonpb_name
       - id: image_pb_name
@@ -628,7 +593,8 @@ steps:
     label: Filter sources
     doc: |
       This step uses PyBDSF to filter artifacts from the sky model and make
-      a clean mask for the next iteration.
+      a clean mask for the next iteration, as well as derive various image
+      diagnostics.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
 {% if peel_bright_sources %}
