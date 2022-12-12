@@ -153,7 +153,7 @@ inputs:
       prefix: solve.smoothnessconstraint=
       separate: False
   - id: numthreads
-    type: string
+    type: int
     inputBinding:
       prefix: numthreads=
       separate: False

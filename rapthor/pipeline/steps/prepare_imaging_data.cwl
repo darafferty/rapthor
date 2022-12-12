@@ -96,7 +96,7 @@ inputs:
     label: Number of threads
     doc: |
       The number of threads to use during solve (0 = all).
-    type: string
+    type: int
     inputBinding:
       prefix: numthreads=
       separate: False
