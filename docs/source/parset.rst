@@ -36,11 +36,11 @@ The available options are described below under their respective sections.
         Wildcards can be used (e.g., ``input_ms = /path/to/data/*.ms``). Note
         that Rapthor works on a copy of these files and does not modify the
         originals in any way. If multiple measurement sets are provided, they
-	should be split in time. This is (currently) inconsistent with how
-	`Linc <https://linc.readthedocs.io/>`_ 
-	outputs the measurement sets, which are split in frequency.
-	Processing Linc outputs requires concatenating the measurement sets,
-	see :doc:`preparation`.
+	    should be split in time. This is (currently) inconsistent with how
+	    `Linc <https://linc.readthedocs.io/>`_
+	    outputs the measurement sets, which are split in frequency.
+	    Processing Linc outputs requires concatenating the measurement sets,
+	    see :doc:`preparation`.
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required).
@@ -107,7 +107,7 @@ The available options are described below under their respective sections.
 
     llssolver
         The linear least-squares solver to use (one of "qr", "svd", or "lsmr";
-        default = "qr")
+        default = ``qr``)
 
     maxiter
         Maximum number of iterations to perform during calibration (default = 50).
@@ -117,7 +117,8 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of "directionsolve", "directioniterative",
-        "lbfgs", or "hybrid"; default = "hybrid")? When using "lbfgs", the "stepsize" should be set to a small value like 0.001.
+        "lbfgs", or "hybrid"; default = ``hybrid``)? When using "lbfgs", the :term:`stepsize`
+        should be set to a small value like 0.001.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =
@@ -126,11 +127,12 @@ The available options are described below under their respective sections.
         calibration and prediction, but can also reduce the quality when the
         patches are large.
 
-    parallelbaselines 
+    parallelbaselines
         Parallelize model calculation over baselines, instead of parallelizing over directions (default = ``False``).
 
     stepsize
-        Size of steps used during calibration (default = 0.02).
+        Size of steps used during calibration (default = 0.02). When using
+        ``solveralgorithm = lbfgs``, the stepsize should be set to a small value like 0.001.
 
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
@@ -174,13 +176,13 @@ The available options are described below under their respective sections.
        Use IDG for predict during calibration (default = ``False``)?
 
     solverlbfgs_dof
-       Degrees of freedom for LBFGS solver (solveralgorithm=``lbfgs``), (default 200.0).
+       Degrees of freedom for LBFGS solver (``solveralgorithm = lbfgs``), (default 200.0).
 
     solverlbfgs_minibatches
-       Number of minibatches for LBFGS solver (solveralgorithm=``lbfgs``), (default 1).
+       Number of minibatches for LBFGS solver (``solveralgorithm = lbfgs``), (default 1).
 
     solverlbfgs_iter
-       Number of iterations per minibat in LBFGS solver (solveralgorithm=``lbfgs``), (default 4).
+       Number of iterations per minibat in LBFGS solver (``solveralgorithm = lbfgs``), (default 4).
 
 .. _parset_imaging_options:
 
@@ -204,18 +206,17 @@ The available options are described below under their respective sections.
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).
 
-    multiscale_scales_pixel
-        Scale sizes in pixels to use during multiscale clean (default = ``[0, 5, 10, 15]``).
+    do_multiscale_clean
+        Use multiscale cleaning (default = ``True``)?
 
-    do_multiscale
-        Use multiscale cleaning (default = auto)?
-
-    use_screens
-        Use screens during imaging (default = ``True``)? If ``False``, the
-        solutions closest to the image centers will be used.
+    dde_method
+        UMethod to use to correct for direction-dependent effects during imaging: "none",
+        "facets", or "screens" (default = ``facets``). If "none", the solutions closest to the image centers
+        will be used. If "facets", Voronoi faceting is used. If "screens", smooth 2-D
+        screens are used.
 
     screen_type
-        Type of screen to use (default = tessellated), if use_screens = ``True``:
+        Type of screen to use (default = ``tessellated``), if ``dde_method = screens``:
         "tessellated" (simple, smoothed Voronoi tessellated screens) or
         "kl" (Karhunen-Lo`eve screens).
 
@@ -230,7 +231,8 @@ The available options are described below under their respective sections.
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each
         WSClean job (i.e., max_nodes / num_images >= 2), then distributed
-        imaging will be used (only available if batch_system = slurm).
+        imaging will be used (only available if ``batch_system = slurm`` and
+        ``dde_method = screens``).
 
         .. note::
 
@@ -239,7 +241,7 @@ The available options are described below under their respective sections.
             it is on a shared filesystem.
 
     reweight
-        Reweight the visibility data before imaging (default = ``True``).
+        Reweight the visibility data before imaging (default = ``False``).
 
     grid_width_ra_deg
         Size of area to image when using a grid (default = mean FWHM of the
@@ -276,11 +278,6 @@ The available options are described below under their respective sections.
 
     sector_width_dec_deg_list
         List of image  widths, in degrees (default = ``[]``).
-
-    sector_do_multiscale_list
-        List of multiscale flags, one per sector (default = ``[]``). ``None``
-        indicates that multiscale clean should be activated automatically if a
-        large source is detected in the sector.
 
     max_peak_smearing
         Max desired peak flux density reduction at center of the image edges due
@@ -323,7 +320,12 @@ The available options are described below under their respective sections.
         all).
 
     deconvolution_threads
-        Number of threads to use by WSClean during deconvolution (default = 0 = all).
+        Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
+        of ``max_threads``).
+
+    parallel_gridding_threads
+        Number of threads to use by WSClean during parallel gridding (default = 0 = 2/5
+        of ``max_threads``).
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default =
@@ -337,7 +339,7 @@ The available options are described below under their respective sections.
 
             This parameter should not be set in the following situations:
 
-            - when :term:`batch_system` = ``singleMachine`` and multiple imaging sectors are
+            - when :term:`batch_system` = ``single_machine`` and multiple imaging sectors are
               used (as each sector will overwrite files from the other sectors)
 
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`

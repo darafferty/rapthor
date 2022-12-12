@@ -141,9 +141,9 @@ input_skymodel = /data/skymodel.txt
 
 
 [cluster]
-# Cluster batch system (default = singleMachine). Use batch_system = slurm to
+# Cluster batch system (default = single_machine). Use batch_system = slurm to
 # use a SLURM-based cluster
-# batch_system = singleMachine
+# batch_system = single_machine
 
 # For batch_system = slurm, the maximum number of nodes of the cluster to use at
 # once can be specified with the max_nodes option (default = 12), the number of

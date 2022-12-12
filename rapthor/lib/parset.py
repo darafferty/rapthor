@@ -501,40 +501,12 @@ def get_imaging_options(parset):
         len_list.append(len(val_list))
     else:
         parset_dict['sector_width_dec_deg_list'] = []
-    if 'sector_do_multiscale_list' in parset_dict:
-        val_list = parset_dict['sector_do_multiscale_list'].strip('[]').split(',')
-        if val_list[0] == '':
-            val_list = []
-        bool_list = []
-        for v in val_list:
-            if v.lower().strip() == 'true':
-                b = True
-            elif v.lower().strip() == 'false':
-                b = False
-            elif v.lower().strip() == 'none':
-                b = None
-            else:
-                log.error('The entry "{}" in sector_do_multiscale_list is invalid. It must '
-                          'be one of True, False, or None'.format(v))
-                sys.exit(1)
-            bool_list.append(b)
-        parset_dict['sector_do_multiscale_list'] = bool_list
-        len_list.append(len(bool_list))
-    else:
-        parset_dict['sector_do_multiscale_list'] = []
-    if (len(parset_dict['sector_do_multiscale_list']) == 0 or
-            (True not in parset_dict['sector_do_multiscale_list'] and
-             None not in parset_dict['sector_do_multiscale_list'])):
-        parset_dict['do_multiscale_clean'] = False
-    else:
-        parset_dict['do_multiscale_clean'] = True
 
     # Check that all the above options have the same number of entries
     if len(set(len_list)) > 1:
         log.error('The options sector_center_ra_list, sector_center_dec_list, '
-                  'sector_width_ra_deg_list, sector_width_dec_deg_list, and '
-                  'sector_do_multiscale_list (if specified) must all have the same number of '
-                  'entires')
+                  'sector_width_ra_deg_list, and sector_width_dec_deg_list '
+                  'must all have the same number of entires')
         sys.exit(1)
 
     # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can
