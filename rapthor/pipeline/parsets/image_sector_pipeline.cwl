@@ -194,6 +194,12 @@ inputs:
       The names of the calibration solution tables (length = 1).
     type: string
 
+  - id: parallel_gridding_threads
+    label: Max number of gridding threads
+    doc: |
+      The maximum number of threads to use during parallel gridding (length = 1).
+    type: int
+
 {% else %}
 # start not use_facets
 
@@ -300,6 +306,18 @@ inputs:
     type: File
 {% endif %}
 
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
+  - id: deconvolution_threads
+    label: Max number of deconvolution threads
+    doc: |
+      The maximum number of threads to use during deconvolution (length = 1).
+    type: int
+
 outputs:
   - id: filtered_skymodels
     outputSource:
@@ -374,7 +392,7 @@ steps:
       - id: beamdir
         source: phasecenter
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
 {% if use_screens or use_facets %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
@@ -492,6 +510,8 @@ steps:
         source: soltabs
       - id: region_file
         source: make_region_file/region_file
+      - id: num_gridding_threads
+        source: parallel_gridding_threads
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize
@@ -522,13 +542,9 @@ steps:
       - id: idg_mode
         source: idg_mode
       - id: num_threads
-        valueFrom: {{ max_threads }}
+        source: max_threads
       - id: num_deconvolution_threads
-        valueFrom: {{ deconvolution_threads }}
-{% if use_facets %}
-      - id: num_gridding_threads
-        valueFrom: {{ parallel_gridding_threads }}
-{% endif %}
+        source: deconvolution_threads
     out:
       - id: image_nonpb_name
       - id: image_pb_name
@@ -558,7 +574,7 @@ steps:
         source: image/image_pb_name
         valueFrom: $(self.basename)
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        source: max_threads
     out:
       - id: restored_image
 
@@ -583,7 +599,7 @@ steps:
         source: image/image_nonpb_name
         valueFrom: $(self.basename)
       - id: numthreads
-        valueFrom: {{ max_threads }}
+        source: max_threads
     out:
       - id: restored_image
 {% endif %}

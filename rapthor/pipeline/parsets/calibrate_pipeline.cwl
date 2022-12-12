@@ -220,6 +220,12 @@ inputs:
       The screen type to use to derive the a-term images (length = 1).
     type: string
 
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
   - id: freqchunk_filename
@@ -457,7 +463,7 @@ steps:
       - id: antennaconstraint
         source: fast_antennaconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency]
     scatterMethod: dotproduct
     out:
@@ -560,7 +566,7 @@ steps:
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -682,7 +688,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint2
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -865,7 +871,7 @@ steps:
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
       - id: ncpu
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
     out:
@@ -935,7 +941,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -1011,7 +1017,7 @@ steps:
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
       - id: ncpu
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
     out:

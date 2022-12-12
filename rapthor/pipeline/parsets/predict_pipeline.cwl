@@ -152,6 +152,13 @@ inputs:
       The flag that sets reweighting of uv data (length = 1).
     type: boolean
 
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
+
 outputs:
   - id: subtract_models
     outputSource:
@@ -200,7 +207,7 @@ steps:
       - id: directions
         source: sector_patches
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
     scatterMethod: dotproduct
     out:

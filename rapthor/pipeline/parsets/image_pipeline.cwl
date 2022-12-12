@@ -229,6 +229,12 @@ inputs:
       The name of the calibration solution table (length = 1).
     type: string
 
+  - id: parallel_gridding_threads
+    label: Max number of gridding threads
+    doc: |
+      The maximum number of threads to use during parallel gridding (length = 1).
+    type: int
+
 {% else %}
 # start not use_facets
 
@@ -334,6 +340,19 @@ inputs:
       The primary-beam-corrected bright-source sky model (length = 1).
     type: File
 {% endif %}
+
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
+  - id: deconvolution_threads
+    label: Max number of deconvolution threads
+    doc: |
+      The maximum number of threads to use during deconvolution (length = 1).
+    type: int
+
 
 outputs:
   - id: filtered_skymodels
@@ -472,6 +491,14 @@ steps:
         source: threshisl
       - id: threshpix
         source: threshpix
+      - id: max_threads
+        source: max_threads
+      - id: deconvolution_threads
+        source: deconvolution_threads
+{% if use_facets %}
+      - id: parallel_gridding_threads
+        source: parallel_gridding_threads
+{% endif %}
 {% if peel_bright_sources %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
