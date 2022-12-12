@@ -272,14 +272,18 @@ class Image(Operation):
                 # comparison diagnostics are available (these are only generated if there
                 # is a sufficient number of appropriate sources in the image to make the
                 # comparison)
+                #
+                # Note: the reported error is not allowed to fall below
+                # 10% for the flux ratio and 0.5" for the astrometry, as these
+                # are the realistic minimum uncertainties in these values
                 ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio'])
-                stdratio = '{0:.1f}'.format(diagnostics_dict['stdClippedRatio'])
+                stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
                 self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
                 raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
-                stdraoff = '{0:.1f}"'.format(diagnostics_dict['stdClippedRAOffsetDeg']*3600)
+                stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
                 self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
                 decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
-                stddecoff = '{0:.1f}"'.format(diagnostics_dict['stdClippedDecOffsetDeg']*3600)
+                stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
                 self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
             else:
                 self.log.info('    LOFAR/TGSS flux ratio = N/A')
