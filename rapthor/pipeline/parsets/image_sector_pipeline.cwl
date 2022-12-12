@@ -522,12 +522,12 @@ steps:
       - id: idg_mode
         source: idg_mode
       - id: num_threads
-        valueFrom: '{{ max_threads }}'
+        valueFrom: {{ max_threads }}
       - id: num_deconvolution_threads
-        valueFrom: '{{ deconvolution_threads }}'
+        valueFrom: {{ deconvolution_threads }}
 {% if use_facets %}
       - id: num_gridding_threads
-        valueFrom: '{{ parallel_gridding_threads }}'
+        valueFrom: {{ parallel_gridding_threads }}
 {% endif %}
     out:
       - id: image_nonpb_name
@@ -558,7 +558,7 @@ steps:
         source: image/image_pb_name
         valueFrom: $(self.basename)
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        valueFrom: {{ max_threads }}
     out:
       - id: restored_image
 
@@ -583,7 +583,7 @@ steps:
         source: image/image_nonpb_name
         valueFrom: $(self.basename)
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        valueFrom: {{ max_threads }}
     out:
       - id: restored_image
 {% endif %}
