@@ -151,6 +151,7 @@ class Image(Operation):
             # aterm image files were generated. They do not need to be set separately for
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
+
             if self.field.use_mpi:
                 # Set number of nodes to allocate to each imaging subpipeline. We subtract
                 # one node because Toil must use one node for its job, which in turn calls
