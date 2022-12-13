@@ -62,7 +62,6 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
-#        multiscale_scales_pixel = []
         dir_local = []
         phasecenter = []
         image_root = []
@@ -118,7 +117,6 @@ class Image(Operation):
                 dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
-#            multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -161,9 +159,6 @@ class Image(Operation):
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
 
-#            if self.field.do_multiscale_clean:
-#                self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
-
             if self.field.use_mpi:
                 # Set number of nodes to allocate to each imaging subpipeline. We subtract
                 # one node because Toil must use one node for its job, which in turn calls
@@ -175,7 +170,6 @@ class Image(Operation):
                 self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-#            self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})

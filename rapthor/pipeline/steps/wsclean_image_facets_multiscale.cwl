@@ -91,10 +91,6 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
-#  - id: multiscale_scales_pixel
-#    type: string
-#    inputBinding:
-#      prefix: -multiscale-scales
   - id: channels_out
     type: int
     inputBinding:
