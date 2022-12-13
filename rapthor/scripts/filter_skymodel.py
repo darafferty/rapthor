@@ -17,7 +17,7 @@ import json
 from rapthor.lib.observation import Observation
 from scipy.interpolate import interp1d
 import subprocess
-import platform
+import sys
 
 
 def calc_theoretical_noise(mslist, w_factor=1.5):
@@ -109,7 +109,7 @@ def find_unflagged_fraction(ms_file):
     """
     # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
     # hanging/locking issues on some systems
-    if int(platform.python_version_tuple()[1]) >= 7:
+    if (sys.version_info.major, sys.version_info.minor) >= (3, 7):
         # Note: the capture_output argument was added in Python 3.7
         result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
                                 "sum([select nelements(FLAG) from {0}])'".format(ms_file),
@@ -120,6 +120,8 @@ def find_unflagged_fraction(ms_file):
                              "sum([select nelements(FLAG) from {0}])'".format(ms_file),
                              shell=True, stdout=subprocess.PIPE)
         r = p.communicate()
+        if p.returncode != 0:
+            raise subprocess.CalledProcessError(p.returncode, p.args)
         unflagged_fraction = float(r[0])
 
     return unflagged_fraction
@@ -296,7 +298,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         else:
             beam_ind = 0
         try:
-            s = lsmtool.load(input_skymodel_pb, beamMS=beamMS[beam_ind])
+            s_in = lsmtool.load(input_skymodel_pb, beamMS=beamMS[beam_ind])
         except astropy.io.ascii.InconsistentTableError:
             emptysky = True
         if input_bright_skymodel_pb is not None:
@@ -310,22 +312,22 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                 new_names = [name.split('_sector')[0] for name in s_bright.getColValues('Name')]
                 s_bright.setColValues('Name', new_names)
                 if not emptysky:
-                    s.concatenate(s_bright)
+                    s_in.concatenate(s_bright)
                 else:
-                    s = s_bright
+                    s_in = s_bright
                     emptysky = False
             except astropy.io.ascii.InconsistentTableError:
                 pass
         if not emptysky:
-            s.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
-            if len(s) == 0:
+            s_in.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
+            if len(s_in) == 0:
                 emptysky = True
             else:
                 # Write out apparent and true-sky models
                 del(img)  # helps reduce memory usage
-                s.group(maskfile)  # group the sky model by mask islands
-                s.write(output_root+'.true_sky.txt', clobber=True)
-                s.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
+                s_in.group(maskfile)  # group the sky model by mask islands
+                s_in.write(output_root+'.true_sky.txt', clobber=True)
+                s_in.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
     else:
         emptysky = True
 
@@ -335,7 +337,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         if comparison_skymodel is None:
             # Download a TGSS sky model around the midpoint of the input sky model,
             # using a 5-deg radius to ensure the field is fully covered
-            _, _, midRA, midDec = s._getXY()
+            _, _, midRA, midDec = s_in._getXY()
             try:
                 s_comp = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
             except OSError:
@@ -350,7 +352,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         # LSMTool works reliably only for this type
         if s_comp is not None:
             s_comp.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
-            for sm in [s, s_comp]:
+            for sm in [s_in, s_comp]:
                 source_type = sm.getColValues('Type')
                 patch_names = sm.getColValues('Patch')
                 non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
@@ -366,9 +368,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             # Note: the various ratios are all calculated as (s / s_comp) and the differences
             # as (s - s_comp). If there are no successful matches, the compare() method
             # returns None
-            if (s and s_comp and len(s.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
-                flux_astrometry_diagnostics = s.compare(s_comp, radius='5 arcsec',
-                                                        excludeMultiple=True, make_plots=False)
+            if (s_in and s_comp and len(s_in.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
+                flux_astrometry_diagnostics = s_in.compare(s_comp, radius='5 arcsec',
+                                                           excludeMultiple=True, make_plots=False)
                 if flux_astrometry_diagnostics is not None:
                     cwl_output.update(flux_astrometry_diagnostics)
     with open(output_root+'.image_diagnostics.json', 'w') as fp:

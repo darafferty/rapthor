@@ -251,41 +251,45 @@ class Image(Operation):
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             sector.diagnostics.append(diagnostics_dict)
-            theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
-            min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
-            mean_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['mean_rms']*1e6)
-            dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
-            freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
-            beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
-                                                                  diagnostics_dict['beam_fwhm'][1]*3600,
-                                                                  diagnostics_dict['beam_fwhm'][2])
-            unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
-            self.log.info('Diagnostics for {}:'.format(sector.name))
-            self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
-            self.log.info('    Mean RMS noise = {}'.format(mean_rms))
-            self.log.info('    Dynamic range = {}'.format(dynr))
-            self.log.info('    Reference frequency = {}'.format(freq))
-            self.log.info('    Beam = {}'.format(beam))
-            self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
-            if 'meanClippedRatio' in diagnostics_dict:
-                # If 'meanClippedRatio' is present, assume all of the LSMTool-generated
-                # comparison diagnostics are available (these are only generated if there
-                # is a sufficient number of appropriate sources in the image to make the
-                # comparison)
-                #
-                # Note: the reported error is not allowed to fall below
-                # 10% for the flux ratio and 0.5" for the astrometry, as these
-                # are the realistic minimum uncertainties in these values
-                ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio'])
-                stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
-                self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
-                raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
-                stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
-                self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
-                decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
-                stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
-                self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
-            else:
-                self.log.info('    LOFAR/TGSS flux ratio = N/A')
-                self.log.info('    LOFAR-TGSS RA offset = N/A')
-                self.log.info('    LOFAR-TGSS Dec offset = N/A')
+            try:
+                theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
+                min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
+                mean_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['mean_rms']*1e6)
+                dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+                freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
+                beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+                                                                      diagnostics_dict['beam_fwhm'][1]*3600,
+                                                                      diagnostics_dict['beam_fwhm'][2])
+                unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
+                self.log.info('Diagnostics for {}:'.format(sector.name))
+                self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
+                self.log.info('    Mean RMS noise = {}'.format(mean_rms))
+                self.log.info('    Dynamic range = {}'.format(dynr))
+                self.log.info('    Reference frequency = {}'.format(freq))
+                self.log.info('    Beam = {}'.format(beam))
+                self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
+                if 'meanClippedRatio' in diagnostics_dict:
+                    # If 'meanClippedRatio' is present, assume all of the LSMTool-generated
+                    # comparison diagnostics are available (these are only generated if there
+                    # is a sufficient number of appropriate sources in the image to make the
+                    # comparison)
+                    #
+                    # Note: the reported error is not allowed to fall below
+                    # 10% for the flux ratio and 0.5" for the astrometry, as these
+                    # are the realistic minimum uncertainties in these values
+                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio'])
+                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
+                    self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
+                    raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
+                    stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
+                    self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
+                    decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
+                    stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
+                    self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
+                else:
+                    self.log.info('    LOFAR/TGSS flux ratio = N/A')
+                    self.log.info('    LOFAR-TGSS RA offset = N/A')
+                    self.log.info('    LOFAR-TGSS Dec offset = N/A')
+            except KeyError:
+                self.log.warn('One or more of the expected image diagnostics unavailable '
+                              'for {}. Logging of diagnostics skipped.'.format(sector.name))
