@@ -22,8 +22,18 @@ inputs:
   type: Directory
   doc: Input Measurement Set
 - id: skymodel
-  type: File
-  doc: Input Sky model
+  type: File?
+  doc: Optional input sky model
+- id: apparent_sky
+  type: File?
+  doc: Optional apparent sky model
+- id: strategy
+  type:
+  - File?
+  - string?
+  doc: |
+    Optional strategy; either a name (e.g., "selfcal"), or a path to a python
+    strategy file (e.g., "/path/to/my_fancy_strategy.py")
 
 # Anything that the Rapthor pipeline will produce as outputs.
 outputs:
@@ -78,12 +88,33 @@ requirements:
       #!/bin/bash
       set -ex
 
+      # Compose a filter to update the relevant items in the input JSON file.
+      # NOTE: the JavaScript expressions are *always* evaluated. Hence, the
+      # extra check in the `then`-clause. Also note that `.global.strategy`
+      # can either be a string or a File, hence the ternary expression.
+      filter='.config
+        | .global.dir_working |= "$(runtime.outdir)"
+        | .global.input_ms |= "$(inputs.ms.path)"
+        | .global.input_skymodel |=
+            if $(inputs.skymodel != null)
+            then "$(inputs.skymodel && inputs.skymodel.path)"
+            else empty
+            end
+        | .global.apparent_skymodel |=
+            if $(inputs.apparent_sky != null)
+            then "$(inputs.apparent_sky && inputs.apparent_sky.path)"
+            else empty
+            end
+        | .global.strategy |=
+            if $(inputs.strategy != null)
+            then "$(inputs.strategy && inputs.strategy.path
+                    ? inputs.strategy.path
+                    : inputs.strategy)"
+            else empty
+            end
+      '
+
       # Read input JSON file, update paths, and write to INI (parset) file
-      filter='
-        .config |
-        .global.dir_working |= "$(runtime.outdir)" |
-        .global.input_ms |= "$(inputs.ms.path)" |
-        .global.input_skymodel |= "$(inputs.skymodel.path)"'
       jq -c "\${filter}" "$(inputs.json.path)" | \
         jq -rf json2ini.jq > rapthor.parset
 
