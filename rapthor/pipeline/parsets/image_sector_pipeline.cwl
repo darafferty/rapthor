@@ -250,14 +250,6 @@ inputs:
       The WSClean maximum uv distance in lambda (length = 1).
     type: float
 
-{% if do_multiscale_clean %}
-  - id: multiscale_scales_pixel
-    label: Multiscale scales
-    doc: |
-      The WSClean multiscale scales in pixels (length = 1).
-    type: string
-
-{% endif %}
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -544,10 +536,6 @@ steps:
         source: max_uv_lambda
       - id: cellsize_deg
         source: cellsize_deg
-{% if do_multiscale_clean %}
-      - id: multiscale_scales_pixel
-        source: multiscale_scales_pixel
-{% endif %}
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
