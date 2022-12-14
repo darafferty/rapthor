@@ -54,11 +54,6 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
         Input set, needed if remove_core_gradient is True
     ref_id : int, optional
         Index of reference station, needed if remove_core_gradient is True
-
-    Returns
-    -------
-    parms, weights : arrays
-        The normalized parameters and weights
     """
     if parms is None:
         parms = soltab.val[:]  # axes are ['time', 'freq', 'ant', 'dir', 'pol']
@@ -125,8 +120,8 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     parms = 10**parms
     parms[initial_flagged_indx] = np.nan
     weights[initial_flagged_indx] = 0.0
-
-    return parms, weights
+    soltab.setValues(parms)
+    soltab.setValues(weights, weight=True)
 
 
 def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
@@ -146,11 +141,6 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
         Sampling stride to use for time when doing LOESS smooth
     smooth_over_gaps : bool, optional
         If True, ignore gaps in time when smoothing
-
-    Returns
-    -------
-    parms, weights : arrays
-        The smoothed parameters and associated weights
     """
     # Work in log space, as required for amplitudes
     if parms is None:
@@ -263,8 +253,8 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
     parms = 10**parms
     parms[initial_flagged_indx] = np.nan
     weights[initial_flagged_indx] = 0.0
-
-    return parms, weights
+    soltab.setValues(parms)
+    soltab.setValues(weights, weight=True)
 
 
 def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
@@ -286,11 +276,6 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
         Index of reference station
     smooth_over_gaps : bool, optional
         If True, ignore gaps in time when smoothing
-
-    Returns
-    -------
-    parms, weights : arrays
-        The smoothed parameters and associated weights
     """
     # Work in real/image space, as required for phases
     if parms is None:
@@ -419,14 +404,110 @@ def smooth_phases(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1
     # Make sure flagged solutions are still flagged
     parms[initial_flagged_indx] = np.nan
     weights[initial_flagged_indx] = 0.0
+    soltab.setValues(parms)
+    soltab.setValues(weights, weight=True)
 
-    return parms, weights
+
+def get_median_amp(soltab):
+    """
+    Returns the mean of the XX and YY median amplitudes
+
+    Parameters
+    ----------
+    soltab : solution table
+        Input table with solutions
+
+    Returns
+    -------
+    medamps : float
+        The mean of the XX and YY median amplitudes
+    """
+    amps = soltab.val[:]
+    weights = soltab.weight[:]
+    amps_xx = amps[..., 0]
+    amps_yy = amps[..., -1]
+    weights_xx = weights[..., 0]
+    weights_yy = weights[..., -1]
+
+    idx_xx = np.where(weights_xx != 0.0)
+    idx_yy = np.where(weights_yy != 0.0)
+    medamps = 0.5 * (10**(np.nanmedian(np.log10(amps_xx[idx_xx]))) +
+                     10**(np.nanmedian(np.log10(amps_yy[idx_yy]))))
+
+    return medamps
+
+
+def flag_amps(soltab, lowampval=None, highampval=None):
+    """
+    Flag low amplitudes
+
+    Parameters
+    ----------
+    soltab : solution table
+        Input table with solutions
+    lowampval : float, optional
+        The threshold value below which amplitudes are flagged. If None, the
+        threshold is set to 0.1 times the median
+    highampval : float, optional
+        The threshold value above which amplitudes are flagged. If None, the
+        threshold is set to 10 times the median
+    """
+    if lowampval is None or highampval is None:
+        medamp = get_median_amp(soltab)
+        if lowampval is None:
+            lowampval = medamp * 0.1
+        if highampval is None:
+            highampval = medamp * 10
+
+    # Get the current flags
+    amps = soltab.val[:]
+    weights = soltab.weight[:]
+    initial_flagged_indx = np.logical_or(np.isnan(amps), weights == 0.0)
+
+    # Flag, setting flagged values to NaN and weights to 0
+    amps[initial_flagged_indx] = 1.0
+    lowampind = np.where(amps < lowampval)
+    highampind = np.where(amps > highampval)
+    amps[initial_flagged_indx] = np.nan
+    amps[lowampind] = np.nan
+    amps[highampind] = np.nan
+    weights[lowampind] = 0.0
+    weights[highampind] = 0.0
+
+    # Save the new flags
+    soltab.setValues(amps)
+    soltab.setValues(weights, weight=True)
+
+
+def transfer_flags(soltab1, soltab2):
+    """
+    Transfers the flags from soltab1 to soltab2
+
+    Note: exiting flags in soltab2 are not affected
+
+    Parameters
+    ----------
+    soltab : solution table
+        Table from which flags are transferred
+    soltab : solution table
+        Table 2 to which flags are transferred
+    """
+    flagged_indx = np.logical_or(np.isnan(soltab1.val), soltab1.weight == 0.0)
+    vals2 = soltab2.val[:]
+    weights2 = soltab2.weight[:]
+    vals2[flagged_indx] = np.nan
+    weights2[flagged_indx] = 0.0
+
+    # Save the new flags
+    soltab2.setValues(vals2)
+    soltab2.setValues(weights2, weight=True)
 
 
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
-         phasesoltabname='phase000', ref_id=0, smooth=False, normalize=True):
+         phasesoltabname='phase000', ref_id=None, smooth=False, normalize=True,
+         flag=True, lowampval=None, highampval=None):
     """
-    Fit screens to gain solutions
+    Process gain solutions
 
     Parameters
     ----------
@@ -439,41 +520,38 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     phasesoltabname : str, optional
         Name of phase soltab
     ref_id : int, optional
-        Index of reference station
+        Index of reference station. If None, a reference station is chosen
+        automatically
     smooth : bool, optional
         Smooth amp solutions
     normalize : bool, optional
         Normalize amp solutions
+    flag : bool, optional
+        Flag amp solutions
+    lowampval : float, optional
+        The threshold value below which amplitudes are flagged. If None, the
+        threshold is set to 0.1 times the median
+    highampval : float, optional
+        The threshold value above which amplitudes are flagged. If None, the
+        threshold is set to 10 times the median
     """
-    ref_id = int(ref_id)
-    normalize = misc.string2bool(normalize)
-    smooth = misc.string2bool(smooth)
-
     # Read in solutions
     H = h5parm(h5parmfile, readonly=False)
     solset = H.getSolset(solsetname)
     ampsoltab = solset.getSoltab(ampsoltabname)
-    amp = np.array(ampsoltab.val)
-    damp = np.ones(amp.shape)
     phasesoltab = solset.getSoltab(phasesoltabname)
-    phase = np.array(phasesoltab.val)
-    dphase = np.ones(phase.shape)
+    if ref_id is None:
+        ref_id = misc.get_reference_station(phasesoltab, 10)
 
-    # Smooth and normalize if desired
+    # Process the solutions
+    if flag:
+        flag_amps(ampsoltab, lowampval=lowampval, highampval=highampval)
+        transfer_flags(ampsoltab, phasesoltab)
     if smooth:
-        amp, damp = smooth_amps(ampsoltab, parms=amp, weights=damp)
-        phase, dphase = smooth_phases(phasesoltab, parms=phase, weights=dphase,
-                                      ref_id=ref_id)
+        smooth_amps(ampsoltab)
+        smooth_phases(phasesoltab, ref_id=ref_id)
     if normalize:
-        amp, damp = normalize_direction(ampsoltab, remove_core_gradient=True,
-                                        solset=solset, ref_id=ref_id, parms=amp,
-                                        weights=damp)
-
-    # Write the solutions back
-    ampsoltab.setValues(amp)
-    ampsoltab.setValues(damp, weight=True)
-    phasesoltab.setValues(phase)
-    phasesoltab.setValues(dphase, weight=True)
+        normalize_direction(ampsoltab, remove_core_gradient=True, solset=solset, ref_id=ref_id)
     H.close()
 
 
@@ -486,9 +564,13 @@ if __name__ == '__main__':
     parser.add_argument('--ampsoltabname', help='Amplitude soltab name', type=str, default='amplitude000')
     parser.add_argument('--phasesoltabname', help='Phase soltab name', type=str, default='phase000')
     parser.add_argument('--ref_id', help='Reference station', type=int, default=0)
-    parser.add_argument('--normalize', help='Normalize amplitude solutions', type=str, default='False')
-    parser.add_argument('--smooth', help='Smooth amplitude solutions', type=str, default='False')
+    parser.add_argument('--normalize', help='Normalize amplitude solutions', type=bool, default=False)
+    parser.add_argument('--smooth', help='Smooth amplitude solutions', type=bool, default=False)
+    parser.add_argument('--flag', help='Flag amplitude solutions', type=bool, default=False)
+    parser.add_argument('--lowampval', help='Low threshold for amplitude flagging', type=float, default=None)
+    parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
     args = parser.parse_args()
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
          phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
-         normalize=args.normalize)
+         normalize=args.normalize, flag=args.flag, lowampval=args.lowampval,
+         highampval=args.highampval)
