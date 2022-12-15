@@ -437,9 +437,9 @@ def get_median_amp(soltab):
     return medamps
 
 
-def flag_amps(soltab, lowampval=None, highampval=None):
+def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
     """
-    Flag low amplitudes
+    Flag high and low amplitudes
 
     Parameters
     ----------
@@ -447,17 +447,20 @@ def flag_amps(soltab, lowampval=None, highampval=None):
         Input table with solutions
     lowampval : float, optional
         The threshold value below which amplitudes are flagged. If None, the
-        threshold is set to 0.1 times the median
+        threshold is calculated as lowampval = median_val * threshold_factor
     highampval : float, optional
         The threshold value above which amplitudes are flagged. If None, the
-        threshold is set to 10 times the median
+        threshold is calculated as highampval = median_val / threshold_factor
+    threshold_factor : float, optional
+        If lowampval and/or highampval is None, this factor is used to
+        determine their values
     """
+    medamp = get_median_amp(soltab)
     if lowampval is None or highampval is None:
-        medamp = get_median_amp(soltab)
         if lowampval is None:
-            lowampval = medamp * 0.1
+            lowampval = medamp * threshold_factor
         if highampval is None:
-            highampval = medamp * 10
+            highampval = medamp / threshold_factor
 
     # Get the current flags
     amps = soltab.val[:]
@@ -465,12 +468,13 @@ def flag_amps(soltab, lowampval=None, highampval=None):
     initial_flagged_indx = np.logical_or(np.isnan(amps), weights == 0.0)
 
     # Flag, setting flagged values to NaN and weights to 0
-    amps[initial_flagged_indx] = 1.0
+    amps[initial_flagged_indx] = medamp
     lowampind = np.where(amps < lowampval)
     highampind = np.where(amps > highampval)
     amps[initial_flagged_indx] = np.nan
     amps[lowampind] = np.nan
     amps[highampind] = np.nan
+    weights[initial_flagged_indx] = 0.0
     weights[lowampind] = 0.0
     weights[highampind] = 0.0
 
@@ -483,13 +487,14 @@ def transfer_flags(soltab1, soltab2):
     """
     Transfers the flags from soltab1 to soltab2
 
-    Note: exiting flags in soltab2 are not affected
+    Note: both solution tables must have the same shape. Existing flagged data in
+    soltab2 are not affected
 
     Parameters
     ----------
-    soltab : solution table
+    soltab1 : solution table
         Table from which flags are transferred
-    soltab : solution table
+    soltab2 : solution table
         Table 2 to which flags are transferred
     """
     flagged_indx = np.logical_or(np.isnan(soltab1.val), soltab1.weight == 0.0)

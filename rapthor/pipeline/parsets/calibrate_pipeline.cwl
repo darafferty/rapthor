@@ -583,11 +583,13 @@ steps:
   - id: process_slow_gains1
     label: Process slow-gain solutions 1
     doc: |
-      This step processes the gain solutions, smoothing and renormalizing them.
+      This step processes the gain solutions, flagging, smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow_gains1/outh5parm
+      - id: flag
+        valueFrom: 'True'
       - id: smooth
         valueFrom: 'True'
     out:
@@ -705,11 +707,13 @@ steps:
   - id: process_slow_gains2
     label: Process slow-gain solutions 2
     doc: |
-      This step processes the gain solutions, smoothing and renormalizing them.
+      This step processes the gain solutions, flagging, smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow_gains2/outh5parm
+      - id: flag
+        valueFrom: 'True'
       - id: smooth
         valueFrom: 'True'
     out:
@@ -745,11 +749,13 @@ steps:
     label: Normalize slow-gain amplitudes
     doc: |
       This step processes the combined amplitude solutions from
-      combine_slow1_and_slow2_h5parms, renormalizing them.
+      combine_slow1_and_slow2_h5parms, flagging and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow1_and_slow2_h5parms/combinedh5parm
+      - id: flag
+        valueFrom: 'True'
       - id: smooth
         valueFrom: 'False'
     out:
