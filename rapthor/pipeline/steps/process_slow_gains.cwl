@@ -3,8 +3,8 @@ class: CommandLineTool
 baseCommand: [process_slow_gains.py]
 label: Process slow gain solutions
 doc: |
-  This tool processes the slow-gain solutions, smoothing and normalizing
-  them.
+  This tool processes the slow-gain solutions, smoothing, flagging, and normalizing
+  them. Note: normalization is always done, but smoothing and flagging are optional
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -31,6 +31,14 @@ inputs:
     type: string
     inputBinding:
       prefix: --smooth=
+      separate: false
+  - id: flag
+    label: Flagging flag
+    doc: |
+      The flag that determines whether flagging of the solutions will be done.
+    type: string
+    inputBinding:
+      prefix: --flag=
       separate: false
 
 outputs:

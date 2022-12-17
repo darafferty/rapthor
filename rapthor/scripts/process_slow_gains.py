@@ -169,8 +169,7 @@ def smooth_amps(soltab, stddev_threshold=0.1, freq_sampling=1, time_sampling=1,
                 csindx = s
                 break
     if csindx is None:
-        print('ERROR: all core stations are fully flagged! Smoothing cannot be done')
-        sys.exit(1)
+        sys.exit('ERROR: all core stations are fully flagged! Smoothing cannot be done')
 
     for dir in range(len(soltab.dir[:])):
         # Find standard deviation of a core station and determine
@@ -453,14 +452,21 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
         threshold is calculated as highampval = median_val / threshold_factor
     threshold_factor : float, optional
         If lowampval and/or highampval is None, this factor is used to
-        determine their values
+        determine their values. It must lie in the range (0, 1)
     """
+    if threshold_factor <= 0.0 or threshold_factor >= 1.0:
+        sys.exit('ERROR: threshold_factor must be in the range (0, 1)')
     medamp = get_median_amp(soltab)
-    if lowampval is None or highampval is None:
-        if lowampval is None:
-            lowampval = medamp * threshold_factor
-        if highampval is None:
-            highampval = medamp / threshold_factor
+    if lowampval is None:
+        lowampval = medamp * threshold_factor
+    if highampval is None:
+        highampval = medamp / threshold_factor
+    if lowampval <= 0.0:
+        sys.exit('ERROR: lowampval cannot be zero or less')
+    if highampval <= 0.0:
+        sys.exit('ERROR: highampval cannot be zero or less')
+    if lowampval >= highampval:
+        sys.exit('ERROR: lowampval cannot be greater than or equal to highampval')
 
     # Get the current flags
     amps = soltab.val[:]
@@ -469,14 +475,11 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
 
     # Flag, setting flagged values to NaN and weights to 0
     amps[initial_flagged_indx] = medamp
-    lowampind = np.where(amps < lowampval)
-    highampind = np.where(amps > highampval)
+    new_flag_indx = np.logical_or(amps < lowampval, amps > highampval)
     amps[initial_flagged_indx] = np.nan
-    amps[lowampind] = np.nan
-    amps[highampind] = np.nan
+    amps[new_flag_indx] = np.nan
     weights[initial_flagged_indx] = 0.0
-    weights[lowampind] = 0.0
-    weights[highampind] = 0.0
+    weights[new_flag_indx] = 0.0
 
     # Save the new flags
     soltab.setValues(amps)
