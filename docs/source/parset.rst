@@ -36,11 +36,11 @@ The available options are described below under their respective sections.
         Wildcards can be used (e.g., ``input_ms = /path/to/data/*.ms``). Note
         that Rapthor works on a copy of these files and does not modify the
         originals in any way. If multiple measurement sets are provided, they
-	should be split in time. This is (currently) inconsistent with how
-	`Linc <https://linc.readthedocs.io/>`_ 
-	outputs the measurement sets, which are split in frequency.
-	Processing Linc outputs requires concatenating the measurement sets,
-	see :doc:`preparation`.
+	    should be split in time. This is (currently) inconsistent with how
+	    `LINC <https://linc.readthedocs.io/>`_
+	    outputs the measurement sets, which are split in frequency.
+	    Processing LINC outputs requires concatenating the measurement sets,
+	    see :doc:`preparation`.
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required).
@@ -65,9 +65,11 @@ The available options are described below under their respective sections.
         strategy file.
 
     selfcal_data_fraction
-        Fraction of data to use (default = 1.0). If less than one, the input
+        Fraction of data to use (default = 0.2). If less than one, the input
         data are divided by time into chunks that sum to the requested fraction,
-        spaced out evenly over the full time range.
+        spaced out evenly over the full time range. Using a low value (0.2 or so)
+        is strongly recommended for large observations (e.g., with full-bandwidth
+        and of more than a few hours).
 
     final_data_fraction
         A final data fraction can be specified (default = ``selfcal_data_fraction``)
@@ -126,7 +128,7 @@ The available options are described below under their respective sections.
         calibration and prediction, but can also reduce the quality when the
         patches are large.
 
-    parallelbaselines 
+    parallelbaselines
         Parallelize model calculation over baselines, instead of parallelizing over directions (default = ``False``).
 
     stepsize

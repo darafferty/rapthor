@@ -1,5 +1,12 @@
 .. _rapthor:
 
+Hardware requirements
+---------------------
+The minimum recommended hardware is a 20-core machine with 192 GB of
+memory and 1 TB of disk space. Rapthor can also take advantage of multiple
+nodes of a compute cluster using slurm. In this mode, each node should have
+approximately 192 GB of memory, with a shared filesystem with 1 TB of disk space.
+
 Starting a Rapthor run
 ----------------------
 
