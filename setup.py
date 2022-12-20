@@ -38,7 +38,7 @@ setup(
                  'Intended Audience :: Science/Research',
                  'Operating System :: POSIX :: Linux',
                  'Topic :: Scientific/Engineering :: Astronomy'],
-    install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely',
+    install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely<2',
                       'toil[cwl]!=5.6', 'reproject', 'python-dateutil',
                       'Rtree', 'loess', 'lsmtool', 'losoto', 'bdsf',
                       'python-casacore'],
