@@ -125,7 +125,8 @@ requirements:
 
       # Install rapthor
       rapthor_version=`jq -r .virtualenv.rapthor.version "$(inputs.json.path)"`
-      pip install git+https://git.astron.nl/RD/rapthor.git@\${rapthor_version}
+      pip install --no-cache-dir \
+        git+https://git.astron.nl/RD/rapthor.git@\${rapthor_version}
 
       # Download and install casacore data files, and make them findable
       data_dir="\${VIRTUAL_ENV}/share/casacore/data"
