@@ -42,8 +42,18 @@ The available options are described below under their respective sections.
 	Processing Linc outputs requires concatenating the measurement sets,
 	see :doc:`preparation`.
 
+    download_initial_skymodel
+        Download the initial skymodel automatically instead of using a user-provided one (default is `True`).
+
+    download_initial_skymodel_radius
+        The radius in degrees out to which a skymodel should be downloaded (default is 5.0).
+
+    download_initial_skymodel_server
+        Place to download the initial skymodel from (default is TGSS).
+        This can either be `TGSS` to use the `TFIR GMRT Sky Survey`, or `GSM` to use the `Global Sky Model`.
+
     input_skymodel
-        Full path to the input sky model file, with true-sky fluxes (required).
+        Full path to the input sky model file, with true-sky fluxes (required if automatic download is disabled).
         If you also have a sky model with apparent flux densities, specify it
         with the :term:`apparent_skymodel` option.
 
