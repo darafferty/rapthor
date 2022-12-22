@@ -13,10 +13,22 @@ inputs:
 - id: surls
   doc: List of SURLs to the input data
   type: string[]
-- id: config
+- id: settings
+  doc: File containing the settings for the Rapthor pipeline in JSON format
   type: File
 - id: skymodel
-  type: File
+  type: File?
+  doc: Optional input sky model
+- id: apparent_skymodel
+  type: File?
+  doc: Optional apparent sky model
+- id: strategy
+  type:
+  - File?
+  - string?
+  doc: |
+    Optional strategy; either a name (e.g., "selfcal"), or a path to a python
+    strategy file (e.g., "/path/to/my_fancy_strategy.py")
 
 outputs:
 - id: images
@@ -82,12 +94,16 @@ steps:
     Run the Rapthor pipeline in a virtual environment that is created on
     the fly
   in:
-    - id: json
-      source: config
+    - id: settings
+      source: settings
     - id: ms
       source: concat_ms/msout
     - id: skymodel
       source: skymodel
+    - id: apparent_sky
+      source: apparent_skymodel
+    - id: strategy
+      source: strategy
   out:
     - id: images
     - id: logs

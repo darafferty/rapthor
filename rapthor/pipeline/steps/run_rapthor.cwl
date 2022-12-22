@@ -15,9 +15,9 @@ doc: |
 # Input should be a JSON file with the correct pipeline settings. The contents of
 # this file will be converted to a valid Rapthor parset file.
 inputs:
-- id: json
+- id: settings
   type: File
-  doc: File containing the configuration for the Rapthor pipeline in JSON format
+  doc: File containing the settings for the Rapthor pipeline in JSON format
 - id: ms
   type: Directory
   doc: Input Measurement Set
@@ -115,16 +115,16 @@ requirements:
       '
 
       # Read input JSON file, update paths, and write to INI (parset) file
-      jq -c "\${filter}" "$(inputs.json.path)" | \
+      jq -c "\${filter}" "$(inputs.settings.path)" | \
         jq -rf json2ini.jq > rapthor.parset
 
       # Create virtual environment and activate it.
-      python_version=`jq -r .virtualenv.python.version "$(inputs.json.path)"`
+      python_version=`jq -r .virtualenv.python.version "$(inputs.settings.path)"`
       virtualenv --python="python\${python_version}" venv
       . venv/bin/activate
 
       # Install rapthor
-      rapthor_version=`jq -r .virtualenv.rapthor.version "$(inputs.json.path)"`
+      rapthor_version=`jq -r .virtualenv.rapthor.version "$(inputs.settings.path)"`
       pip install --no-cache-dir \
         git+https://git.astron.nl/RD/rapthor.git@\${rapthor_version}
 

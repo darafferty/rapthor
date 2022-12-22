@@ -1,14 +1,10 @@
 {
-    "surls": [
-        "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_121MHz_uv_pre-cal.ms.tar",
-        "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_123MHz_uv_pre-cal.ms.tar"
-    ],
-    "config": {
-        "class": "File",
-        "path": "../steps/rapthor.parset.json"
-    },
-    "skymodel": {
-        "class": "File",
-        "path": "/project/rapthor/Data/rapthor/HBA_short/true_sky.txt"
-    }
+  "surls": [
+    "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_121MHz_uv_pre-cal.ms.tar",
+    "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_123MHz_uv_pre-cal.ms.tar"
+  ],
+  "settings": {
+    "class": "File",
+    "path": "L667526.config.json"
+  }
 }
