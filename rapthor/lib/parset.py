@@ -56,7 +56,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     try:
         os.chdir(parset_dict['dir_working'])
         for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
-                       'solutions']:
+                       'solutions', 'plots']:
             subdir_path = os.path.join(parset_dict['dir_working'], subdir)
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
@@ -77,17 +77,25 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         ms_files += glob.glob(os.path.join(search_str))
     parset_dict['mss'] = sorted(ms_files)
     if len(parset_dict['mss']) == 0:
-        log.error('No input MS files were not found!')
+        log.error('No input MS files were found!')
         sys.exit(1)
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
     # Make sure the initial skymodel is present
     if 'input_skymodel' not in parset_dict:
-        log.error('No input sky model file given. Exiting...')
-        sys.exit(1)
+        if parset_dict['download_initial_skymodel']:
+            log.info('No input sky model file given and download requested. Will automatically download skymodel.')
+            parset_dict.update({'input_skymodel':os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
+        else:
+            log.error('No input sky model file given and no download requested. Exiting...')
+            raise RuntimeError('No input sky model file given and no download requested.')
+    elif parset_dict['download_initial_skymodel']:
+        # If download is requested, ignore the given skymodel.
+        log.info('Skymodel download requested, ignoring given skymodel and downloading one automatically.')
+        parset_dict['input_skymodel'] = os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')
     elif not os.path.exists(parset_dict['input_skymodel']):
         log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
-        sys.exit(1)
+        raise FileNotFoundError('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
 
     # Check for invalid sections
     given_sections = list(parset._sections.keys())
@@ -156,6 +164,20 @@ def get_global_options(parset):
     if 'apparent_skymodel' not in parset_dict:
         parset_dict['apparent_skymodel'] = None
 
+    # Auto-download a sky model (default = True)?
+    if 'download_initial_skymodel' not in parset_dict:
+        parset_dict['download_initial_skymodel'] = True
+    else:
+        parset_dict['download_initial_skymodel'] = parset.getboolean('global', 'download_initial_skymodel')
+
+    if 'download_initial_skymodel_radius' not in parset_dict:
+        parset_dict['download_initial_skymodel_radius'] = 5.0
+    else:
+        parset_dict['download_initial_skymodel_radius'] = parset.getfloat('global', 'download_initial_skymodel_radius')
+
+    if 'download_initial_skymodel_server' not in parset_dict:
+        parset_dict['download_initial_skymodel_server'] = 'TGSS'
+
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
     if 'input_h5parm' not in parset_dict:
@@ -206,7 +228,8 @@ def get_global_options(parset):
     given_options = parset.options('global')
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
-                       'flag_expr', 'input_skymodel', 'apparent_skymodel',
+                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'download_initial_skymodel_server',
+                       'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
                        'final_data_fraction']
     for option in given_options:
@@ -359,20 +382,19 @@ def get_calibration_options(parset):
     else:
         parset_dict['parallelbaselines'] = False
 
-    if parset_dict['solveralgorithm'] == 'lbfgs':
-        if 'solverlbfgs_dof' in parset_dict:
-           parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
-        else:
-           parset_dict['solverlbfgs_dof'] = 200.0
-        if 'solverlbfgs_iter' in parset_dict:
-           parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
-        else:
-           parset_dict['solverlbfgs_iter'] = 4
-        if 'solverlbfgs_minibatches' in parset_dict:
-           parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
-        else:
-           parset_dict['solverlbfgs_minibatches'] = 1
-
+    # LBFGS solver parameters
+    if 'solverlbfgs_dof' in parset_dict:
+       parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
+    else:
+       parset_dict['solverlbfgs_dof'] = 200.0
+    if 'solverlbfgs_iter' in parset_dict:
+       parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
+    else:
+       parset_dict['solverlbfgs_iter'] = 4
+    if 'solverlbfgs_minibatches' in parset_dict:
+       parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
+    else:
+       parset_dict['solverlbfgs_minibatches'] = 1
 
     # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:

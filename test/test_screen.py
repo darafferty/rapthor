@@ -6,7 +6,7 @@ from rapthor.lib.screen import KLScreen
 class TestScreen(unittest.TestCase):
     @classmethod
     def downloadms(self, filename):
-        url = 'https://www.astron.nl/citt/ci_data/rapthor/' + filename
+        url = 'https://support.astron.nl/software/ci_data/rapthor/' + filename
         r = requests.get(url)
         f = open('resources/' + filename, 'wb')
         f.write(r.content)
@@ -47,7 +47,4 @@ def suite():
     return suite
 
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    runner.run(suite())
-
-
+    unittest.main()

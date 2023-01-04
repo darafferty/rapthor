@@ -2,7 +2,10 @@
 Module that holds the Image class
 """
 import os
+import json
 import logging
+import shutil
+from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
 
@@ -59,7 +62,6 @@ class Image(Operation):
         ntimes = []
         image_freqstep = []
         image_timestep = []
-        multiscale_scales_pixel = []
         dir_local = []
         phasecenter = []
         image_root = []
@@ -115,7 +117,6 @@ class Image(Operation):
                 dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
-            multiscale_scales_pixel.append("'{}'".format(sector.multiscale_scales_pixel))
             central_patch_name.append(sector.central_patch)
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
@@ -158,9 +159,6 @@ class Image(Operation):
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
 
-            if self.field.do_multiscale_clean:
-                self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
-
             if self.field.use_mpi:
                 # Set number of nodes to allocate to each imaging subpipeline. We subtract
                 # one node because Toil must use one node for its job, which in turn calls
@@ -172,7 +170,6 @@ class Image(Operation):
                 self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            self.input_parms.update({'multiscale_scales_pixel': multiscale_scales_pixel})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
@@ -207,9 +204,11 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save output FITS image and model for each sector
+        # Copy the output FITS image, the clean mask, sky models, , and ds9 facet
+        # region file for each sector. Also read the image diagnostics (rms noise,
+        # etc.) derived by PyBDSF and print them to the log.
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
-        # pols, save them all
+        # pols, copy them all
         for sector in self.field.imaging_sectors:
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
@@ -230,17 +229,33 @@ class Image(Operation):
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
             sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
 
-        # Symlink to datasets and remove old ones
-#         dst_dir = os.path.join(self.parset['dir_working'], 'datasets', self.direction.name)
-#         misc.create_directory(dst_dir)
-#         ms_map = DataMap.load(os.path.join(self.pipeline_mapfile_dir,
-#                                            'prepare_imaging_data.mapfile'))
-#         for ms in ms_map:
-#             dst = os.path.join(dst_dir, os.path.basename(ms.file))
-#             os.system('ln -fs {0} {1}'.format(ms.file, dst))
-#         if self.index > 1:
-#             prev_iter_mapfile_dir = self.pipeline_mapfile_dir.replace('image_{}'.format(self.index),
-#                                                                       'image_{}'.format(self.index-1))
-#             self.cleanup_mapfiles = [os.path.join(prev_iter_mapfile_dir,
-#                                      'prepare_imaging_data.mapfile')]
-#         self.cleanup()
+            # The ds9 region file, if made
+            if self.field.dde_method == 'facets':
+                dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
+                misc.create_directory(dst_dir)
+                region_filename = '{}_facets_ds9.reg'.format(sector.name)
+                src_filename = os.path.join(self.pipeline_working_dir, region_filename)
+                dst_filename = os.path.join(dst_dir, region_filename)
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(src_filename, dst_filename)
+
+            # Read in the image diagnostics and log a summary of them
+            diagnostics_file = image_root + '.image_diagnostics.json'
+            with open(diagnostics_file, 'r') as f:
+                diagnostics_dict = json.load(f)
+            sector.diagnostics.append(diagnostics_dict)
+            theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
+            min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
+            mean_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['mean_rms']*1e6)
+            dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+            freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
+            beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+                                                                  diagnostics_dict['beam_fwhm'][1]*3600,
+                                                                  diagnostics_dict['beam_fwhm'][2])
+            self.log.info('Diagnostics for {}:'.format(sector.name))
+            self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
+            self.log.info('    Mean RMS noise = {}'.format(mean_rms))
+            self.log.info('    Dynamic range = {}'.format(dynr))
+            self.log.info('    Reference frequency = {}'.format(freq))
+            self.log.info('    Beam = {}'.format(beam))

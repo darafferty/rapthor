@@ -59,6 +59,7 @@ class Sector(object):
         self.is_bright_source = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
+        self.diagnostics = []  # list to hold dicts of image diagnostics
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -183,8 +184,7 @@ class Sector(object):
         if self.multiscale is None:
             # TODO: figure out good way to determine whether multiscale should be used
             # and the scales, maybe using the presence of Gaussians on larger wavelet
-            # scales? For now, force it to off, as it takes a long time and so should
-            # only be used when necessary
+            # scales? For now, force it to off.
             self.multiscale = False
 
 #             largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
@@ -195,21 +195,8 @@ class Sector(object):
 #             else:
 #                 self.multiscale = False
         if self.multiscale:
-            self.multiscale_scales_pixel = self.field.parset['imaging_specific']['multiscale_scales_pixel']
-#             if self.multiscale_scales_pixel is None:
-#                 largest_scale = np.max(self.source_sizes) / self.cellsize_deg / 3.0
-#                 if largest_scale < 3:
-#                     self.multiscale_scales_pixel = [0]
-#                 elif largest_scale < 5:
-#                     self.multiscale_scales_pixel = [0, 3]
-#                 elif largest_scale < 15:
-#                     self.multiscale_scales_pixel = [0, 6, 12]
-#                 else:
-#                     self.multiscale_scales_pixel = None  # let WSClean decide
             self.wsclean_niter = int(self.wsclean_niter/1.5)  # fewer iterations are needed
             self.log.debug("Will do multiscale cleaning.")
-        else:
-            self.multiscale_scales_pixel = 0
 
         # Set the observation-specific parameters
         max_peak_smearing = self.field.parset['imaging_specific']['max_peak_smearing']

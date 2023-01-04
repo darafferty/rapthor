@@ -3,13 +3,10 @@
 Script to concatenate the MS files from Linc for input to Rapthor
 """
 import argparse
-from argparse import RawTextHelpFormatter
 import glob
 import os
 import sys
-import subprocess
-import casacore.tables as pt
-import numpy as np
+from rapthor.scripts.concat_ms import concat_ms
 
 
 def main(input_path, output_file):
@@ -24,63 +21,20 @@ def main(input_path, output_file):
         Filename of output file
     """
     msfiles = []
-    for pattern in ['*.ms', '*.MS']:
+    for pattern in ["*.ms", "*.MS"]:
         msfiles.extend(glob.glob(os.path.join(input_path, pattern)))
-
-    # Order the files by frequency, filling any gaps with dummy files
-    first = True
-    nchans = 0
-    freqs = []
-    for ms in msfiles:
-        # Get the frequency info
-        sw = pt.table(ms+'::SPECTRAL_WINDOW', ack=False)
-        freq = sw.col('REF_FREQUENCY')[0]
-        if first:
-            file_bandwidth = sw.col('TOTAL_BANDWIDTH')[0]
-            nchans = sw.col('CHAN_WIDTH')[0].shape[0]
-            chwidth = sw.col('CHAN_WIDTH')[0][0]
-            first = False
-        else:
-            assert file_bandwidth == sw.col('TOTAL_BANDWIDTH')[0]
-            assert nchans == sw.col('CHAN_WIDTH')[0].shape[0]
-            assert chwidth == sw.col('CHAN_WIDTH')[0][0]
-        sw.close()
-        freqs.append(freq)
-    freqlist = np.array(freqs)
-    mslist = np.array(msfiles)
-    sorted_ind = np.argsort(freqlist)
-    freqlist = freqlist[sorted_ind]
-    mslist = mslist[sorted_ind]
-    freq_width = np.min(freqlist[1:] - freqlist[:-1])
-    dp3_mslist = []
-    dp3_freqlist = np.arange(np.min(freqlist), np.max(freqlist)+freq_width, freq_width)
-    j = -1
-    for freq, ms in zip(freqlist, mslist):
-        while j < len(dp3_freqlist)-1:
-            j += 1
-            if np.isclose(freq, dp3_freqlist[j]):
-                # Frequency of MS file matches output frequency
-                # Add the MS file to the list; break to move to the next MS file
-                dp3_mslist.append(ms)
-                break
-            else:
-                # Gap in frequency detected
-                # Add a dummy MS to the list; stay on the current MS file
-                dp3_mslist.append('dummy.ms')
-
-    # Call DP3
-    cmd = ['DP3', 'msin=[{}]'.format(','.join(dp3_mslist)), 'msout={}'.format(output_file),
-           'steps=[]', 'msout.overwrite=True', 'msin.orderms=False', 'msin.missingdata=True',
-           'msout.writefullresflag=False', 'msout.storagemanager=Dysco']
-    result = subprocess.call(cmd)
-    sys.exit(result)
+    return concat_ms(msfiles, output_file)
 
 
 if __name__ == "__main__":
     descriptiontext = "Concatenate Linc MS files.\n"
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_path', help="Full path to the directory with the Linc MS files")
-    parser.add_argument('output_file', help="Output filename")
+    parser = argparse.ArgumentParser(
+        description=descriptiontext, formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        "input_path", help="Full path to the directory with the Linc MS files"
+    )
+    parser.add_argument("output_file", help="Output filename")
 
     args = parser.parse_args()
-    main(args.input_path, args.output_file)
+    sys.exit(main(args.input_path, args.output_file))

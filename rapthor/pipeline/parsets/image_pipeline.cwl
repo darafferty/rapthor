@@ -285,14 +285,6 @@ inputs:
       The WSClean maximum uv distance in lambda (length = n_sectors).
     type: float[]
 
-{% if do_multiscale_clean %}
-  - id: multiscale_scales_pixel
-    label: Multiscale scales
-    doc: |
-      The WSClean multiscale scales in pixels (length = n_sectors).
-    type: string[]
-{% endif %}
-
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -346,6 +338,10 @@ outputs:
       items:
         type: array
         items: File
+  - id: sector_diagnostics
+    outputSource:
+      - image_sector/sector_diagnostics
+    type: File[]
   - id: sector_images
     outputSource:
       - image_sector/sector_images
@@ -354,6 +350,15 @@ outputs:
       items:
         type: array
         items: File
+{% if use_facets %}
+  - id: region_file
+    outputSource:
+      - image_sector/region_file
+    type:
+      type: array
+      items: File
+{% endif %}
+
 
 steps:
   - id: image_sector
@@ -447,10 +452,6 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
-{% if do_multiscale_clean %}
-      - id: multiscale_scales_pixel
-        source: multiscale_scales_pixel
-{% endif %}
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem
@@ -476,9 +477,6 @@ steps:
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
-{% if do_multiscale_clean %}
-              multiscale_scales_pixel,
-{% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, taper_arcsec, wsclean_mem,
@@ -497,9 +495,6 @@ steps:
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
-{% if do_multiscale_clean %}
-              multiscale_scales_pixel,
-{% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, taper_arcsec, wsclean_mem,
@@ -512,3 +507,7 @@ steps:
     out:
       - id: filtered_skymodels
       - id: sector_images
+      - id: sector_diagnostics
+{% if use_facets %}
+      - id: region_file
+{% endif %}

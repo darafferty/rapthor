@@ -194,15 +194,15 @@ def find_imagenoise(imagename):
     return rms, numpy.abs(numpy.max(image)/rms), minmax
 
 
-def main(im1, im2, count=-1, rapthor=1.0125):
+def main(im1, im2, count=-1, factor=1.0125):
     """
     Compare the dynamic range and min/max of two images and check whether:
 
-        dynamic_range1 / rapthor > dynamic_range2
+        dynamic_range1 / factor > dynamic_range2
 
     or
 
-        abs(min1/max1) * rapthor < abs(min2/max2)
+        abs(min1/max1) * factor < abs(min2/max2)
 
     Typically, im1 is the latest image and im2 the previous one.
 
@@ -215,17 +215,17 @@ def main(im1, im2, count=-1, rapthor=1.0125):
     count : int, optional
         Loop index. If nonzero, the dynamic range check is skipped for count = 0
         only and break is set to False
-    rapthor : float
-        Required improvement rapthor for success (i.e., break = True)
+    factor : float
+        Required improvement factor for success (i.e., break = True)
 
     Returns
     -------
     result : dict
-        Dict with break value (False if dynamic_range1 / rapthor > dynamic_range2;
+        Dict with break value (False if dynamic_range1 / factor > dynamic_range2;
         True otherwise)
 
     """
-    rapthor = float(rapthor)
+    factor = float(factor)
     count = int(count)
 
     rms1, dynamic_range1, minmax1 =  find_imagenoise(im1)
@@ -242,7 +242,7 @@ def main(im1, im2, count=-1, rapthor=1.0125):
     else:
         # Check whether dynamic range is increasing or minmax is decreasing. If
         # so, continue (return False)
-        if (dynamic_range1 / rapthor > dynamic_range2) or (minmax1 * rapthor < minmax2):
+        if (dynamic_range1 / factor > dynamic_range2) or (minmax1 * factor < minmax2):
             return {'break': False}
         else:
             return {'break': True}
@@ -254,7 +254,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('im1', help='name of image #1')
     parser.add_argument('im2', help='name of image #2')
-    parser.add_argument('rapthor', help='required improvement rapthor for success')
+    parser.add_argument('factor', help='required improvement factor for success')
     args = parser.parse_args()
 
-    main(args.im1, args.im2, rapthor=args.rapthor)
+    main(args.im1, args.im2, factor=args.factor)

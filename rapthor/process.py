@@ -44,6 +44,7 @@ def run(parset_file, logging_level='info'):
 
     # Run the strategy
     for index, step in enumerate(strategy_steps):
+
         # Update the field object for the current step
         field.update(step, index+1)
 
@@ -74,7 +75,8 @@ def run(parset_file, logging_level='info'):
                 # Stop the cycle
                 if has_converged:
                     log.info("Selfcal has converged (ratio of current image noise "
-                             "to previous value is > {})".format(field.convergence_ratio))
+                             "(dynanic range) to previous value is > {0} "
+                             "(< 1 / {0}))".format(field.convergence_ratio))
                 if has_diverged:
                     log.warning("Selfcal has diverged (ratio of current image noise "
                                 "to previous value is > {})".format(field.divergence_ratio))

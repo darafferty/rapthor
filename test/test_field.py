@@ -7,7 +7,7 @@ from rapthor.lib.parset import parset_read
 class TestField(unittest.TestCase):
     @classmethod
     def downloadms(self, filename):
-        url = 'https://www.astron.nl/citt/ci_data/rapthor/tDDECal.in_MS.tgz'
+        url = 'https://support.astron.nl/software/ci_data/rapthor/tDDECal.in_MS.tgz'
         r = requests.get(url)
         f = open('downloaded.tgz', 'wb')
         f.write(r.content)
@@ -104,7 +104,4 @@ def suite():
     return suite
 
 if __name__ == '__main__':
-    runner = unittest.TextTestRunner()
-    runner.run(suite())
-
-
+    unittest.main()

@@ -250,14 +250,6 @@ inputs:
       The WSClean maximum uv distance in lambda (length = 1).
     type: float
 
-{% if do_multiscale_clean %}
-  - id: multiscale_scales_pixel
-    label: Multiscale scales
-    doc: |
-      The WSClean multiscale scales in pixels (length = 1).
-    type: string
-
-{% endif %}
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -307,6 +299,10 @@ outputs:
     outputSource:
       - filter/skymodels
     type: File[]
+  - id: sector_diagnostics
+    outputSource:
+      - filter/diagnostics
+    type: File
   - id: sector_images
     outputSource:
 {% if peel_bright_sources %}
@@ -319,6 +315,12 @@ outputs:
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
+{% if use_facets %}
+  - id: region_file
+    outputSource:
+      - make_region_file/region_file
+    type: File
+{% endif %}
 
 steps:
   - id: prepare_imaging_data
@@ -534,10 +536,6 @@ steps:
         source: max_uv_lambda
       - id: cellsize_deg
         source: cellsize_deg
-{% if do_multiscale_clean %}
-      - id: multiscale_scales_pixel
-        source: multiscale_scales_pixel
-{% endif %}
       - id: channels_out
         source: channels_out
       - id: deconvolution_channels
@@ -644,3 +642,4 @@ steps:
         source: prepare_imaging_data/msimg
     out:
       - id: skymodels
+      - id: diagnostics

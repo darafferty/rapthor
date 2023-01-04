@@ -9,7 +9,7 @@ Rapthor produces the following output inside the working directory:
     Directory containing the log files.
 
 ``images/``
-    Directory containing the images.
+    Directory containing the FITS images.
 
 ``pipelines/``
     Directory containing intermediate files of each operation's pipeline.
@@ -17,11 +17,11 @@ Rapthor produces the following output inside the working directory:
 ``regions/``
     Directory containing ds9 region files.
 
-``scratch/``
-    Directory containing temporary files.
-
 ``skymodels/``
     Directory containing sky model files.
 
 ``solutions/``
-    Directory containing the calibration solutions.
+    Directory containing the calibration solution h5parm files.
+
+``plots/``
+    Directory containing the PNG plots of the calibration solutions and images.

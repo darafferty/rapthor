@@ -272,11 +272,11 @@ def make_ds9_region_file(center_coords, facet_polygons, outfile, names=None):
         Decs = vertices.T[1]
         for ra, dec in zip(RAs, Decs):
             radec_list.append('{0}, {1}'.format(ra, dec))
+        lines.append('polygon({0})\n'.format(', '.join(radec_list)))
         if name is None:
-            lines.append('polygon({0})\n'.format(', '.join(radec_list)))
+            lines.append('point({0}, {1})\n'.format(center_coord[0], center_coord[1]))
         else:
-            lines.append('polygon({0}) # text={1}\n'.format(', '.join(radec_list), name))
-        lines.append('point({0}, {1})\n'.format(center_coord[0], center_coord[1]))
+            lines.append('point({0}, {1}) # text={2}\n'.format(center_coord[0], center_coord[1], name))
 
     with open(outfile, 'w') as f:
         f.writelines(lines)

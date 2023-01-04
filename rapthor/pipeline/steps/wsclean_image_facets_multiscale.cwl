@@ -22,6 +22,10 @@ arguments:
     prefix: -temp-dir
   - valueFrom: '4'
     prefix: -parallel-gridding
+  - valueFrom: '2048'
+    prefix: -parallel-deconvolution
+  - valueFrom: '6'
+    prefix: -deconvolution-threads
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
@@ -87,10 +91,6 @@ inputs:
     type: float
     inputBinding:
       prefix: -scale
-  - id: multiscale_scales_pixel
-    type: string
-    inputBinding:
-      prefix: -multiscale-scales
   - id: channels_out
     type: int
     inputBinding:
