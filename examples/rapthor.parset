@@ -10,11 +10,18 @@ dir_working = /data/rapthor
 # or a list can be given
 input_ms = /data/ms/*.ms
 
-# Full path to the input sky model file, with true-sky fluxes (required). If you also
+# Full path to the input sky model file, with true-sky fluxes (required when not automatically downloading). If you also
 # have a sky model with apparent flux densities, specify it with the apparent_skymodel
 # option (note that the source names must be identical in both sky models)
 # apparent_skymodel = /data/apparent_skymodel.txt
 input_skymodel = /data/skymodel.txt
+# Automatically download a target skymodel. This will ignore input_skymodel when set.
+download_initial_skymodel = True
+# Radius out to which a skymodel should be downloaded (default is 5 degrees).
+download_initial_skymodel_radius = 5.0
+# Service from which a skymodel should be downloaded (default is TGSS).
+download_initial_skymodel_server = TGSS
+
 
 # Regroup input skymodel as needed to meet target flux (default = True). If False, the existing
 # patches are used for the calibration
@@ -26,12 +33,13 @@ input_skymodel = /data/skymodel.txt
 # - user-supplied file: full path to Python file defining custom strategy
 # strategy = selfcal
 
-# Fraction of data to use (default = 1.0). If less than one, the input data are divided
-# by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
-# fraction, spaced out evenly over the full time range. A final fraction can also be
-# specified (default = selfcal_data_fraction) such that a final processing pass (i.e., after
-# selfcal finishes) is done with a different fraction
-# selfcal_data_fraction = 1.0
+# Fraction of data to process (default = 0.2 for self calibration and 1.0 for the final pass).
+# If less than one, the input data are divided by time into chunks (of no less
+# than slow_timestep_sec below) that sum to the requested fraction, spaced out
+# evenly over the full time range. A final fraction can also be specified
+# (default = selfcal_data_fraction) such that a final processing pass (i.e.,
+# after selfcal finishes) is done with a different fraction
+# selfcal_data_fraction = 0.2
 # final_data_fraction = 1.0
 
 # Flagging ranges (default = no flagging). A range of times, baselines, and

@@ -44,6 +44,7 @@ def run(parset_file, logging_level='info'):
 
     # Run the strategy
     for index, step in enumerate(strategy_steps):
+
         # Update the field object for the current step
         field.update(step, index+1)
 
