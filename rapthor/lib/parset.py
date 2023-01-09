@@ -83,11 +83,19 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
 
     # Make sure the initial skymodel is present
     if 'input_skymodel' not in parset_dict:
-        log.error('No input sky model file given. Exiting...')
-        sys.exit(1)
+        if parset_dict['download_initial_skymodel']:
+            log.info('No input sky model file given and download requested. Will automatically download skymodel.')
+            parset_dict.update({'input_skymodel':os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
+        else:
+            log.error('No input sky model file given and no download requested. Exiting...')
+            raise RuntimeError('No input sky model file given and no download requested.')
+    elif parset_dict['download_initial_skymodel']:
+        # If download is requested, ignore the given skymodel.
+        log.info('Skymodel download requested, ignoring given skymodel and downloading one automatically.')
+        parset_dict['input_skymodel'] = os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')
     elif not os.path.exists(parset_dict['input_skymodel']):
         log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
-        sys.exit(1)
+        raise FileNotFoundError('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
 
     # Check for invalid sections
     given_sections = list(parset._sections.keys())
@@ -120,13 +128,13 @@ def get_global_options(parset):
     parset_dict = parset._sections['global'].copy()
     parset_dict.update({'calibration_specific': {}, 'imaging_specific': {}, 'cluster_specific': {}})
 
-    # Fraction of data to use (default = 1.0). If less than one, the input data are divided
+    # Fraction of data to use (default = 0.2). If less than one, the input data are divided
     # by time into chunks (of no less than slow_timestep_sec below) that sum to the requested
     # fraction, spaced out evenly over the full time range
     if 'selfcal_data_fraction' in parset_dict:
         parset_dict['selfcal_data_fraction'] = parset.getfloat('global', 'selfcal_data_fraction')
     else:
-        parset_dict['selfcal_data_fraction'] = 1.0
+        parset_dict['selfcal_data_fraction'] = 0.2
     if parset_dict['selfcal_data_fraction'] <= 0.0:
         log.error('The selfcal_data_fraction parameter is <= 0. It must be > 0 and <= 1')
         sys.exit(1)
@@ -155,6 +163,20 @@ def get_global_options(parset):
     # Apparent-flux input sky model (default = None)
     if 'apparent_skymodel' not in parset_dict:
         parset_dict['apparent_skymodel'] = None
+
+    # Auto-download a sky model (default = True)?
+    if 'download_initial_skymodel' not in parset_dict:
+        parset_dict['download_initial_skymodel'] = True
+    else:
+        parset_dict['download_initial_skymodel'] = parset.getboolean('global', 'download_initial_skymodel')
+
+    if 'download_initial_skymodel_radius' not in parset_dict:
+        parset_dict['download_initial_skymodel_radius'] = 5.0
+    else:
+        parset_dict['download_initial_skymodel_radius'] = parset.getfloat('global', 'download_initial_skymodel_radius')
+
+    if 'download_initial_skymodel_server' not in parset_dict:
+        parset_dict['download_initial_skymodel_server'] = 'TGSS'
 
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
@@ -206,7 +228,8 @@ def get_global_options(parset):
     given_options = parset.options('global')
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
-                       'flag_expr', 'input_skymodel', 'apparent_skymodel',
+                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'download_initial_skymodel_server',
+                       'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
                        'final_data_fraction']
     for option in given_options:

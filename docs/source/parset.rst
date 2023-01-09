@@ -36,14 +36,23 @@ The available options are described below under their respective sections.
         Wildcards can be used (e.g., ``input_ms = /path/to/data/*.ms``). Note
         that Rapthor works on a copy of these files and does not modify the
         originals in any way. If multiple measurement sets are provided, they
-	    should be split in time. This is (currently) inconsistent with how
-	    `Linc <https://linc.readthedocs.io/>`_
-	    outputs the measurement sets, which are split in frequency.
-	    Processing Linc outputs requires concatenating the measurement sets,
-	    see :doc:`preparation`.
+        should be split in time. This is (currently) inconsistent with how `LINC
+        <https://linc.readthedocs.io/>`_ outputs the measurement sets, which are
+        split in frequency. Processing LINC outputs requires concatenating the
+        measurement sets, see :doc:`preparation`.
+
+    download_initial_skymodel
+        Download the initial skymodel automatically instead of using a user-provided one (default is `True`).
+
+    download_initial_skymodel_radius
+        The radius in degrees out to which a skymodel should be downloaded (default is 5.0).
+
+    download_initial_skymodel_server
+        Place to download the initial skymodel from (default is TGSS).
+        This can either be `TGSS` to use the `TFIR GMRT Sky Survey`, or `GSM` to use the `Global Sky Model`.
 
     input_skymodel
-        Full path to the input sky model file, with true-sky fluxes (required).
+        Full path to the input sky model file, with true-sky fluxes (required if automatic download is disabled).
         If you also have a sky model with apparent flux densities, specify it
         with the :term:`apparent_skymodel` option.
 
@@ -65,9 +74,10 @@ The available options are described below under their respective sections.
         strategy file.
 
     selfcal_data_fraction
-        Fraction of data to use (default = 1.0). If less than one, the input
+        Fraction of data to use (default = 0.2). If less than one, the input
         data are divided by time into chunks that sum to the requested fraction,
-        spaced out evenly over the full time range.
+        spaced out evenly over the full time range. Using a low value (0.2 or so)
+        is strongly recommended for typical 8-hour, full-bandwidth observations.
 
     final_data_fraction
         A final data fraction can be specified (default = ``selfcal_data_fraction``)
@@ -176,13 +186,13 @@ The available options are described below under their respective sections.
        Use IDG for predict during calibration (default = ``False``)?
 
     solverlbfgs_dof
-       Degrees of freedom for LBFGS solver (``solveralgorithm = lbfgs``), (default 200.0).
+       Degrees of freedom for LBFGS solver (only used when solveralgorithm = "lbfgs"; default 200.0).
 
     solverlbfgs_minibatches
-       Number of minibatches for LBFGS solver (``solveralgorithm = lbfgs``), (default 1).
+       Number of minibatches for LBFGS solver (only used when solveralgorithm = "lbfgs"; default 1).
 
     solverlbfgs_iter
-       Number of iterations per minibat in LBFGS solver (``solveralgorithm = lbfgs``), (default 4).
+       Number of iterations per minibat in LBFGS solver (only used when solveralgorithm = "lbfgs"; default 4).
 
 .. _parset_imaging_options:
 
@@ -221,7 +231,7 @@ The available options are described below under their respective sections.
         "kl" (Karhunen-Lo`eve screens).
 
     idg_mode
-        IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``).
+        IDG (image domain gridder) mode to use in WSClean (default = "hybrid").
         The mode can be "cpu" or "hybrid"".
 
     mem_fraction
@@ -294,21 +304,22 @@ The available options are described below under their respective sections.
 .. glossary::
 
     batch_system
-        Cluster batch system (default = ``single_machine``). Use ``batch_system =
-        slurm`` to use a SLURM-based cluster.
+        Cluster batch system (default = "single_machine"). Use "single_machine" when
+        running on a single machine and "slurm" to use multiple nodes of a SLURM-based
+        cluster.
 
     max_nodes
-        For ``batch_system = slurm``, the maximum number of nodes of the cluster to
+        When batch_system = "slurm", the maximum number of nodes of the cluster to
         use at once (default = 12).
 
     cpus_per_task
-        For ``batch_system = slurm``, the number of processors per task to
+        When batch_system = "slurm", the number of processors per task to
         request (default = 0 = all). By setting this value to the number of processors
         per node, one can ensure that each task gets the entire node to itself,
         which is the recommended way of running Rapthor.
 
     mem_per_node_gb
-        For ``batch_system = slurm``, the amount of memory per node in GB to request
+        When batch_system = "slurm", the amount of memory per node in GB to request
         (default = 0 = all).
 
     max_cores
