@@ -85,7 +85,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if 'input_skymodel' not in parset_dict:
         if parset_dict['download_initial_skymodel']:
             log.info('No input sky model file given and download requested. Will automatically download skymodel.')
-            parset_dict.update({'input_skymodel':os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
+            parset_dict.update({'input_skymodel': os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
         else:
             log.error('No input sky model file given and no download requested. Exiting...')
             raise RuntimeError('No input sky model file given and no download requested.')
@@ -384,17 +384,17 @@ def get_calibration_options(parset):
 
     # LBFGS solver parameters
     if 'solverlbfgs_dof' in parset_dict:
-       parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
+        parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
     else:
-       parset_dict['solverlbfgs_dof'] = 200.0
+        parset_dict['solverlbfgs_dof'] = 200.0
     if 'solverlbfgs_iter' in parset_dict:
-       parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
+        parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
     else:
-       parset_dict['solverlbfgs_iter'] = 4
+        parset_dict['solverlbfgs_iter'] = 4
     if 'solverlbfgs_minibatches' in parset_dict:
-       parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
+        parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
     else:
-       parset_dict['solverlbfgs_minibatches'] = 1
+        parset_dict['solverlbfgs_minibatches'] = 1
 
     # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:
@@ -529,7 +529,7 @@ def get_imaging_options(parset):
     if len(set(len_list)) > 1:
         log.error('The options sector_center_ra_list, sector_center_dec_list, '
                   'sector_width_ra_deg_list, and sector_width_dec_deg_list '
-                  'must all have the same number of entires')
+                  'must all have the same number of entries')
         sys.exit(1)
 
     # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can
@@ -708,13 +708,13 @@ def get_cluster_options(parset):
     else:
         parset_dict['deconvolution_threads'] = 0
     if parset_dict['deconvolution_threads'] == 0:
-        parset_dict['deconvolution_threads'] = int(parset_dict['max_threads'] * 2 / 5)
+        parset_dict['deconvolution_threads'] = max(1, int(parset_dict['max_threads'] * 2 / 5))
     if 'parallel_gridding_threads' in parset_dict:
         parset_dict['parallel_gridding_threads'] = parset.getint('cluster', 'parallel_gridding_threads')
     else:
         parset_dict['parallel_gridding_threads'] = 0
     if parset_dict['parallel_gridding_threads'] == 0:
-        parset_dict['parallel_gridding_threads'] = int(parset_dict['max_threads'] * 2 / 5)
+        parset_dict['parallel_gridding_threads'] = max(1, int(parset_dict['max_threads'] * 2 / 5))
 
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes
@@ -738,7 +738,7 @@ def get_cluster_options(parset):
     if 'cwl_runner' not in parset_dict:
         parset_dict['cwl_runner'] = 'toil'
     cwl_runner = parset_dict['cwl_runner']
-    supported_cwl_runners = ('cwltool', 'toil') #, 'toil-cwl-runner')
+    supported_cwl_runners = ('cwltool', 'toil')
     if cwl_runner not in supported_cwl_runners:
         log.critical("CWL runner '%s' is not supported; select one of: %s",
                      cwl_runner, ', '.join(supported_cwl_runners))

@@ -220,7 +220,7 @@ The available options are described below under their respective sections.
         Use multiscale cleaning (default = ``True``)?
 
     dde_method
-        UMethod to use to correct for direction-dependent effects during imaging: "none",
+        Method to use to correct for direction-dependent effects during imaging: "none",
         "facets", or "screens" (default = ``facets``). If "none", the solutions closest to the image centers
         will be used. If "facets", Voronoi faceting is used. If "screens", smooth 2-D
         screens are used.
@@ -232,7 +232,7 @@ The available options are described below under their respective sections.
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = "hybrid").
-        The mode can be "cpu" or "hybrid"".
+        The mode can be "cpu" or "hybrid".
 
     mem_fraction
         Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9).
@@ -251,7 +251,10 @@ The available options are described below under their respective sections.
             it is on a shared filesystem.
 
     reweight
-        Reweight the visibility data before imaging (default = ``False``).
+        Reweight the visibility data before imaging (default = ``False``). If
+        ``True``, data with high residuals (compared to the predicted model
+        visibilities) are down-weighted. This feature is experimental and
+        should be used with caution.
 
     grid_width_ra_deg
         Size of area to image when using a grid (default = mean FWHM of the

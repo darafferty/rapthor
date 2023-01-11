@@ -36,8 +36,6 @@ arguments:
   - -join-channels
   - -use-idg
   - -log-time
-  - valueFrom: 'gaussian'
-    prefix: -multiscale-shape
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
   - valueFrom: 'I'

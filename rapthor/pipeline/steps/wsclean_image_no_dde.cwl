@@ -18,8 +18,6 @@ arguments:
   - -grid-with-beam
   - -use-differential-lofar-beam
   - -log-time
-  - valueFrom: 'gaussian'
-    prefix: -multiscale-shape
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
   - valueFrom: 'I'

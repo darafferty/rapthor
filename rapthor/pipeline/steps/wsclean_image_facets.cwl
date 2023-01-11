@@ -16,8 +16,6 @@ arguments:
   - -join-channels
   - -apply-facet-beam
   - -log-time
-  - valueFrom: 'gaussian'
-    prefix: -multiscale-shape
   - valueFrom: 'wgridder'
     prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
