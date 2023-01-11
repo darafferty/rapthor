@@ -60,7 +60,7 @@ outputs:
   outputSource:
     - run_rapthor/solutions
 
-steps: 
+steps:
 # fetch MS files
 - id: fetch_data
   label: Fetch MS files
@@ -80,7 +80,7 @@ steps:
   label: Concatenate MS files
   doc: |
     Concatenate input MS files into a single MS that Rapthor can process
-  in: 
+  in:
     - id: msin
       source: fetch_data/uncompressed
   out:
