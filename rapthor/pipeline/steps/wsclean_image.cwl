@@ -11,7 +11,6 @@ requirements:
     listing:
       - entry: $(inputs.msin)
         writable: true
-    listing:
       - entryname: aterm_plus_beam.cfg
         # Note: WSClean requires that the aterm image filenames be input as part of an
         # aterm config file (and not directly on the command line). Therefore, a config
