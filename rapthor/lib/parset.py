@@ -547,7 +547,7 @@ def get_imaging_options(parset):
     # "tessellated" (simple, smoothed tessellated screens) or "kl" (Karhunen-Lo`eve
     # screens) (default = kl)
     if 'dde_method' not in parset_dict:
-        parset_dict['dde_method'] = 'screens'
+        parset_dict['dde_method'] = 'facets'
     if parset_dict['dde_method'] not in ['none', 'screens', 'facets']:
         log.error('The option dde_method must be one of "none", "screens", or "facets"')
         sys.exit(1)
@@ -573,7 +573,7 @@ def get_imaging_options(parset):
     if 'reweight' in parset_dict:
         parset_dict['reweight'] = parset.getboolean('imaging', 'reweight')
     else:
-        parset_dict['reweight'] = True
+        parset_dict['reweight'] = False
 
     # Max desired peak flux density reduction at center of the facet edges due to
     # bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 =
