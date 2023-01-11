@@ -6,7 +6,11 @@ doc: |
   This tool restores a source list to an image using WSClean.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: true
 
 inputs:
   - id: numthreads
@@ -54,3 +58,5 @@ outputs:
 hints:
   - class: DockerRequirement
     dockerPull: 'astronrd/rapthor'
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true

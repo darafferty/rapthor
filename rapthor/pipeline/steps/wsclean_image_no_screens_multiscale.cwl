@@ -8,7 +8,11 @@ doc: |
   of the inputs and outputs.
 
 requirements:
-  InlineJavascriptRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: true
 
 arguments:
   - -no-update-model-required
@@ -141,3 +145,5 @@ outputs:
 hints:
   - class: DockerRequirement
     dockerPull: 'astronrd/rapthor'
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true

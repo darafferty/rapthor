@@ -8,8 +8,12 @@ doc: |
   wsclean_image.cwl for a detailed description of the inputs and outputs.
 
 requirements:
-  InlineJavascriptRequirement: {}
-  ShellCommandRequirement: {}
+  - class: InlineJavascriptRequirement
+  - class: ShellCommandRequirement
+  - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: true  
 
 inputs:
   - id: msin
@@ -141,3 +145,5 @@ outputs:
 hints:
   - class: DockerRequirement
     dockerPull: 'astronrd/rapthor'
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true

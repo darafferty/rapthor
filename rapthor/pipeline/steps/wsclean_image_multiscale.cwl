@@ -8,7 +8,11 @@ doc: |
   of the inputs and outputs.
 
 requirements:
+  - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
+    listing:
+      - entry: $(inputs.msin)
+        writable: true
     listing:
       - entryname: aterm_plus_beam.cfg
         # Note: WSClean requires that the aterm image filenames be input as part of an
@@ -22,7 +26,6 @@ requirements:
           beam.update_interval = 120
           beam.usechannelfreq = true
         writable: false
-  - class: InlineJavascriptRequirement
 
 arguments:
   - -no-update-model-required
@@ -175,3 +178,5 @@ outputs:
 hints:
   - class: DockerRequirement
     dockerPull: 'astronrd/rapthor'
+  - class: InplaceUpdateRequirement
+    inplaceUpdate: true
