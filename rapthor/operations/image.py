@@ -204,7 +204,7 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Copy the output FITS image, the clean mask, sky models, , and ds9 facet
+        # Copy the output FITS image, the clean mask, sky models, and ds9 facet
         # region file for each sector. Also read the image diagnostics (rms noise,
         # etc.) derived by PyBDSF and print them to the log.
         # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
@@ -287,3 +287,12 @@ class Image(Operation):
             except KeyError:
                 self.log.warn('One or more of the expected image diagnostics unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
+                req_keys = ['theoretical_rms', 'min_rms', 'mean_rms', 'dynamic_range_global',
+                            'freq', 'beam_fwhm', 'unflagged_data_fraction', 'meanClippedRatio',
+                            'stdClippedRatio', 'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
+                            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
+                missing_keys = []
+                for key in req_keys:
+                    if key not in diagnostics_dict:
+                        missing_keys.append(key)
+                self.log.debug('Keys missing from the diagnostics dict: {}.'.format(', '.join(missing_keys)))
