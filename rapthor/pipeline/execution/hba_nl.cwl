@@ -72,7 +72,7 @@ steps:
     source: surls
   out:
   - id: uncompressed
-  run: ../steps/fetch_data.cwl
+  run: fetch_data.cwl
   scatter: surl_link
 
 # concat MS files into one
@@ -85,7 +85,7 @@ steps:
       source: fetch_data/uncompressed
   out:
     - id: msout
-  run: ../steps/concat_ms.cwl
+  run: concat_ms.cwl
 
 # run Rapthor pipeline
 - id: run_rapthor
@@ -112,4 +112,4 @@ steps:
     - id: regions
     - id: skymodels
     - id: solutions
-  run: ../steps/run_rapthor.cwl
+  run: run_rapthor.cwl

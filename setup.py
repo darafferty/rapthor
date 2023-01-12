@@ -60,8 +60,7 @@ setup(
              'rapthor/scripts/split_h5parms.py',
              'rapthor/scripts/mpi_runner.sh'],
     packages=['rapthor', 'rapthor.operations', 'rapthor.lib'],
-    package_data={'rapthor': ['pipeline/parsets/*',
-                              'pipeline/steps/*',
+    package_data={'rapthor': ['pipeline/*',
                               'scripts/*',
                               'skymodels/*']},
     cmdclass={'test': PyTest})
