@@ -20,7 +20,11 @@ inputs:
   doc: File containing the configuration for the Rapthor pipeline in JSON format
 - id: ms
   type: Directory
-  doc: Input Measurement Set
+  doc: |
+    Input Measurement Set
+    In principle, Rapthor can handle multiple input Measurement Sets with data
+    from different epochs containing the same frequency bands (e.g., from
+    multiple nights of observations). This CWL step does _not_ support this.
 - id: skymodel
   type: File?
   doc: Optional input sky model
