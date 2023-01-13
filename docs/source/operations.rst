@@ -11,7 +11,7 @@ Most of the processing performed by Rapthor is done in "operations," which are s
 Calibrate
 ---------
 
-This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are three main parts: a phase-only solve (diagonal Jones matrix) on short timescales (the "fast phase solve"), a slow phase-only (diagonal) solve, an amplitude-only (diagonal) solve on long time scales (the "slow-gain" solve), and processing of the resulting solutions, including smoothing and the generation of a-term images.
+This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are three main parts: a phase-only solve (diagonal Jones matrix) on short timescales (the "fast phase solve"), a slow phase-only (diagonal) solve, an amplitude-only (diagonal) solve on long time scales (the "slow-gain" solve), and processing of the resulting solutions, including smoothing and the generation of a-term images. This calibration strategy is based on the LBA strategy of the LiLF pipeline (https://github.com/revoltek/LiLF), with the idea that the same strategy can be used for both HBA and LBA (similar to the way the calibrator pipeline works in LINC). However, the strategy may evolve in the future depending on the results of the commissioning.
 
 The fast and slow diagonal phase-only solve steps use different calibration parameters, such as different antenna constraints.
 
