@@ -7,5 +7,5 @@ cwltool \
   --preserve-environment X509_USER_PROXY \
   --singularity \
   --tmpdir-prefix /project/rapthor/Share/rapthor/scratch/ \
-  hba_nl.cwl \
+  ../../hba_nl.cwl \
   hba_nl.json
