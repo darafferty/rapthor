@@ -1,0 +1,26 @@
+{
+  "config": {
+    "global": {
+      "regroup_input_skymodel": "False",
+      "selfcal_data_fraction": "0.01"
+    },
+    "calibration": {
+    },
+    "imaging": {
+        "dde_method": "facets"
+    },
+    "cluster": {
+      "use_container": "True",
+      "container_type": "singularity"
+    }
+  },
+  "virtualenv": {
+    "python": {
+      "version": "3.9"
+    },
+    "rapthor": {
+      "version": "RAP-68_Toplevel-CWL-Workflow",
+      "requirements": []
+    }
+  }
+}
