@@ -1,7 +1,6 @@
 astropy
 bdsf
 jinja2
-loess
 losoto
 lsmtool
 numpy

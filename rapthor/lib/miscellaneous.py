@@ -12,6 +12,7 @@ from astropy.io import fits as pyfits
 from PIL import Image, ImageDraw
 import multiprocessing
 from math import modf, floor, ceil
+from losoto.h5parm import h5parm
 
 
 def normalize_ra(num):
@@ -517,6 +518,36 @@ def remove_soltabs(solset, soltabnames):
             soltab.delete()
         except Exception:
             print('Error: soltab "{}" could not be removed'.format(soltabname))
+
+
+def get_flagged_solution_fraction(h5file, solsetname='sol000'):
+    """
+    Get flagged fraction for solutions in given H5parm
+
+    Parameters
+    ----------
+    h5file : str
+        Filename of input h5parm file
+    solsetname : str, optional
+        The solution set name to use. The flagged fraction is calculated over
+        all solution tables in the given solution set
+
+    Returns
+    -------
+    flagged_fraction : float
+        Flagged fraction
+    """
+    h5parm_obj = h5parm(h5file)
+    solset = h5parm_obj.getSolset(solsetname)
+    num_flagged = 0
+    num_all = 0
+    for soltab in solset.getSoltabs():
+        num_flagged += np.count_nonzero(np.logical_or(np.isnan(soltab.val),
+                                                      soltab.weight == 0.0))
+        num_all += soltab.val.size
+    h5parm_obj.close()
+
+    return num_flagged / num_all
 
 
 class multiprocManager(object):

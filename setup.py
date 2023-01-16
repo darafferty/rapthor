@@ -40,7 +40,7 @@ setup(
                  'Topic :: Scientific/Engineering :: Astronomy'],
     install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely',
                       'toil[cwl]!=5.6', 'reproject', 'python-dateutil',
-                      'Rtree', 'loess', 'lsmtool', 'losoto', 'bdsf',
+                      'Rtree', 'lsmtool', 'losoto', 'bdsf',
                       'python-casacore'],
     scripts=['bin/rapthor',
              'bin/plotrapthor',
