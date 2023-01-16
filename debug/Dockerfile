@@ -23,7 +23,7 @@ WORKDIR /home/rapthor
 
 RUN python3 -m venv venv && \
     . venv/bin/activate && \
-    pip install git+https://git.astron.nl/RD/rapthor.git
+    pip install git+https://git.astron.nl/RD/rapthor.git@RAP-290_segfault-in-scan_ms
 
 COPY entry.sh .
 ENTRYPOINT /home/rapthor/entry.sh
