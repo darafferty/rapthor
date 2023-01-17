@@ -41,7 +41,8 @@ def func(x, m, c):
 
 def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0):
     """
-    Normalize amplitudes so that mean is equal to unity, per direction
+    Normalize amplitudes so that the mean of the XX and YY median amplitudes
+    is equal to unity, per direction
 
     Parameters
     ----------
@@ -55,6 +56,7 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     ref_id : int, optional
         Index of reference station, needed if remove_core_gradient is True
     """
+    # Make a copy of the input data to fill with normalized values
     parms = soltab.val[:]
     weights = soltab.weight[:]
     initial_flagged_indx = np.logical_or(np.isnan(parms), weights == 0.0)
@@ -107,8 +109,8 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
                     else:
                         parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
 
-    # Normalize each direction separately to have a median of unity over all
-    # times, frequencies, and pols
+    # Normalize each direction separately so that the mean of the XX and YY median
+    # amplitudes is unity over all times, frequencies, and pols
     for dir in range(len(soltab.dir[:])):
         norm_factor = np.log10(get_median_amp(10**parms[:, :, :, dir, :], weights[:, :, :, dir, :]))
         parms[:, :, :, dir, :] -= norm_factor
@@ -135,13 +137,18 @@ def smooth_solutions(ampsoltab, phasesoltab=None):
         Input table with amplitude solutions. Solution axes are assumed to be in the
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
     phasesoltab : solution table, optional
-        Input table with phase solutions. Solution axes are assumed to be in the
-        standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+        Input table with phase solutions; if specified, the phase solutions will
+        also be smoothed. Solution axes are assumed to be in the standard DDECal
+        order of ['time', 'freq', 'ant', 'dir', 'pol']
     """
+    # Make a copy of the input data to fill with smoothed values
     amps = ampsoltab.val[:]
     if phasesoltab is not None:
         phases = phasesoltab.val[:]
+
     for direction in range(len(ampsoltab.dir[:])):
+        # Get the smoothing box size. A value of None indicates that smoothing is
+        # not needed for this direction
         size = get_smooth_box_size(ampsoltab, direction)
         if size is not None:
             # Process the amplitudes
@@ -172,6 +179,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None):
                 valsnew[weights == 0] = vals_bkp
                 phases[:, :, :, direction, :] = valsnew
 
+    # Save the smoothed solutions
     ampsoltab.setValues(amps)
     if phasesoltab is not None:
         phasesoltab.setValues(phases)
@@ -214,7 +222,7 @@ def get_smooth_box_size(ampsoltab, direction):
 
 def get_median_amp(amps, weights):
     """
-    Returns the mean of the XX and YY median amplitudes
+    Returns the mean of the (unflagged) XX and YY median amplitudes
 
     Parameters
     ----------
@@ -243,7 +251,7 @@ def get_median_amp(amps, weights):
 
 def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
     """
-    Flag high and low amplitudes
+    Flag high and low amplitudes per direction
 
     Parameters
     ----------
@@ -251,12 +259,12 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
         Input table with solutions. Solution axes are assumed to be in the
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
     lowampval : float, optional
-        The threshold value below which amplitudes are flagged. If None, the
-        threshold is calculated per direction as as
+        The threshold value below which amplitudes are flagged (must be >= 0.1).
+        If None, the threshold is calculated per direction as as
         lowampval = median_val * threshold_factor
     highampval : float, optional
-        The threshold value above which amplitudes are flagged. If None, the
-        threshold is calculated per direction as
+        The threshold value above which amplitudes are flagged (must be <= 10).
+        If None, the threshold is calculated per direction as
         highampval = median_val / threshold_factor
     threshold_factor : float, optional
         If lowampval and/or highampval is None, this factor is used to
