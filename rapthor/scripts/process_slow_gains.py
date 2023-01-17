@@ -93,6 +93,14 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
             for s in range(len(station_names)):
                 if 'CS' in station_names[s] and s != ref_id:
                     if not np.all(np.isnan(parms[:, :, s, dir, :])):
+                        nmean = np.nanmean(parms[:, :, s, dir, :])
+                        if not np.isfinite(nmean):
+                            print('WARNING: mean is NaN or inf, attempting again using only finite values.')
+                            x = np.where(np.isfinite(parms[:, :, s, dir, :]), parms[:, :, s, dir, :], np.nan)
+                            nmean = np.nanmean(x)
+                        # Still failed, this shouldn't happen, give up.
+                        if not np.isfinite(nmean):
+                            raise ValueError('Mean value for station {:s} is NaN or infinite!'.format(station_names[s]))
                         mean_vals.append(np.nanmean(parms[:, :, s, dir, :]))
                         dist_vals.append(dist[s])
                         stat_names.append(station_names[s])
@@ -119,6 +127,15 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     # times, frequencies, and pols
     for dir in range(len(soltab.dir[:])):
         norm_factor = np.nanmean(parms[:, :, :, dir, :][initial_unflagged_indx[:, :, :, dir, :]])
+        if not np.isfinite(norm_factor):
+            print('WARNING: mean is NaN or inf, attempting again using only finite values!')
+            parms_temp = parms[:, :, :, dir, :][initial_unflagged_indx[:, :, :, dir, :]]
+            x = np.where(np.isfinite(parms_temp), parms_temp, np.nan)
+            norm_factor = np.nanmean(x)
+        # Still failed, this shouldn't happen, give up.
+        if not np.isfinite(norm_factor):
+            raise ValueError('Normalisation factor for direction {:s} is NaN or infinite!'.format(soltab.dir[dir]))
+
         parms[:, :, :, dir, :] -= norm_factor
 
     # Convert back to non-log values and make sure flagged solutions are still flagged
