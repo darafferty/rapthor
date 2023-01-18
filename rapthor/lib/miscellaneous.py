@@ -40,8 +40,8 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     target_name : str
         Give the patch a certain name. Default is "Patch".
     """
-    SKY_SERVERS = {'TGSS':'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
+    SKY_SERVERS = {'TGSS': 'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
+                   'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
     if source.upper() not in SKY_SERVERS.keys():
         raise ValueError('Unsupported skymodel source specified! Please use TGSS or GSM.')
 
@@ -85,9 +85,8 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
     # Treat all sources as one group (direction)
     skymodel = lsmtool.load(skymodel_path)
-    skymodel.group('single', root = targetname)
+    skymodel.group('single', root=targetname)
     skymodel.write(clobber=True)
->>>>>>> master
 
 
 def normalize_ra(num):
