@@ -67,8 +67,9 @@ def average_polarizations(soltab):
     vals = soltab.val[:]
     weights = soltab.weight[:]
 
-    # Make sure flagged solutions have zero weight
+    # Make sure flagged solutions are NaN and have zero weight
     flagged_ind = np.logical_or(np.isnan(vals), weights == 0.0)
+    vals[flagged_ind] = np.nan
     weights[flagged_ind] = 0.0
 
     # Average the values over the polarization axis if desired. For the weights,
@@ -127,8 +128,15 @@ def interpolate_solutions(fast_soltab, slow_soltab, final_axes_shapes,
     if slow_weights is None:
         slow_weights = slow_soltab.weight[:]
 
-    # Make sure flagged solutions have zero weight
+    # Make sure flagged solutions have zero weight and fill them with 0 for
+    # phases and 1 for amplitudes to avoid NaNs
     flagged_ind2 = np.logical_or(np.isnan(slow_vals), slow_weights == 0.0)
+    if slow_soltab.getType() == 'phase':
+        slow_vals[flagged_ind2] = 0.0
+    elif slow_soltab.getType() == 'amplitude':
+        slow_vals[flagged_ind2] = 1.0
+    else:
+        slow_vals[flagged_ind2] = 0.0
     slow_weights[flagged_ind2] = 0.0
 
     # Interpolate the values and weights
@@ -531,10 +539,10 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         cal_weights = np.array(cal_weights)**2
 
         # Convert weights to float64 from float16 to avoid clipping in the
-        # intermediate steps, and set flagged (weight = 0) solutions to NaN
+        # intermediate steps, and set flagged (weight = 0) ones to NaN
         # so they are not included in the calculations
-        weights_ph = np.array(soltab_ph.weight, dtype=np.float)
-        weights_amp = np.array(soltab_amp.weight, dtype=np.float)
+        weights_ph = np.array(soltab_ph.weight, dtype=float)
+        weights_amp = np.array(soltab_amp.weight, dtype=float)
         weights_ph[weights_ph == 0.0] = np.nan
         weights_amp[weights_amp == 0.0] = np.nan
 

@@ -492,7 +492,7 @@ def get_reference_station(soltab, max_ind=None):
     weights = soltab.getValues(retAxesVals=False, weight=True)
     weights = np.sum(weights, axis=tuple([i for i, axis_name in
                                           enumerate(soltab.getAxesNames())
-                                          if axis_name != 'ant']), dtype=np.float)
+                                          if axis_name != 'ant']), dtype=float)
     ref_ind = np.where(weights[0:max_ind] == np.max(weights[0:max_ind]))[0][0]
 
     return ref_ind

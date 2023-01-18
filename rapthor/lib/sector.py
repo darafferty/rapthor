@@ -168,7 +168,7 @@ class Sector(object):
         for obs in self.observations:
             # Find total observation time in hours
             total_time_hr += (obs.endtime - obs.starttime) / 3600.0
-        scaling_factor = np.sqrt(np.float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
+        scaling_factor = np.sqrt(float(tot_bandwidth / 2e6) * total_time_hr / 16.0)
         min_dist_deg, max_dist_deg = self.get_distance_to_obs_center()
         sens_factor = np.e**(-4.0 * np.log(2.0) * min_dist_deg**2 / self.field.fwhm_deg**2)
         self.wsclean_niter = int(1e7)  # set to high value and just use nmiter to limit clean
