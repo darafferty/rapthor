@@ -806,11 +806,13 @@ steps:
       - id: mode
 {% if use_screens %}
         valueFrom: 'p1p2a2'
-{% else %}
-        valueFrom: 'p1p2a2_scalar'
-{% endif %}
       - id: reweight
         valueFrom: 'True'
+{% else %}
+        valueFrom: 'p1p2a2_scalar'
+      - id: reweight
+        valueFrom: 'False'
+{% endif %}
       - id: calibrator_names
         source: calibrator_patch_names
       - id: calibrator_fluxes

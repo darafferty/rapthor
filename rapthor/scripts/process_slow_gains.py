@@ -338,8 +338,8 @@ def transfer_flags(soltab1, soltab2):
 
 
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
-         phasesoltabname='phase000', ref_id=None, smooth=False, normalize=True,
-         flag=True, lowampval=None, highampval=None):
+         phasesoltabname='phase000', ref_id=None, smooth=False, normalize=False,
+         flag=False, lowampval=None, highampval=None):
     """
     Process gain solutions
 
