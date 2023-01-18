@@ -300,7 +300,7 @@ class Calibrate(Operation):
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
         flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
-        self.log.info('Fraction of solutions that are flagged = {0:.1f}'.format(flagged_frac))
+        self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
