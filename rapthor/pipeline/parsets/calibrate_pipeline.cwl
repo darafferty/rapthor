@@ -220,6 +220,12 @@ inputs:
       The screen type to use to derive the a-term images (length = 1).
     type: string
 
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
   - id: freqchunk_filename
@@ -395,7 +401,7 @@ steps:
   - id: solve_fast_phases
     label: Solve for fast phases
     doc: |
-      This step uses DDECal (in DPPP) to solve for phase corrections on short
+      This step uses DDECal (in DP3) to solve for phase corrections on short
       timescales (< 1 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for ionospheric effects.
 {% if use_scalarphase %}
@@ -457,7 +463,7 @@ steps:
       - id: antennaconstraint
         source: fast_antennaconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency]
     scatterMethod: dotproduct
     out:
@@ -498,7 +504,7 @@ steps:
   - id: solve_slow_gains1
     label: Solve for slow gains 1
     doc: |
-      This step uses DDECal (in DPPP) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
@@ -560,7 +566,7 @@ steps:
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -623,7 +629,7 @@ steps:
   - id: solve_slow_gains2
     label: Solve for slow gains 2
     doc: |
-      This step uses DDECal (in DPPP) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions and first slow-gain solutions are preapplied and stations
@@ -684,7 +690,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint2
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -873,7 +879,7 @@ steps:
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
       - id: ncpu
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
     out:
@@ -943,7 +949,7 @@ steps:
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
@@ -1019,7 +1025,7 @@ steps:
       - id: sector_bounds_mid_deg
         source: sector_bounds_mid_deg
       - id: ncpu
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [h5parm, outroot]
     scatterMethod: dotproduct
     out:

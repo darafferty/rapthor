@@ -152,6 +152,13 @@ inputs:
       The flag that sets reweighting of uv data (length = 1).
     type: boolean
 
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
+
 outputs:
   - id: subtract_models
     outputSource:
@@ -166,7 +173,7 @@ steps:
   - id: predict_model_data
     label: Predict the model uv data
     doc: |
-      This step uses DPPP to predict uv data (using the input sourcedb) from the
+      This step uses DP3 to predict uv data (using the input sky model) from the
       input MS files. It also corrupts the model data with the calibration
       solutions. For each sector, prediction is done for all observations.
 {% if do_slowgain_solve %}
@@ -200,7 +207,7 @@ steps:
       - id: directions
         source: sector_patches
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
     scatterMethod: dotproduct
     out:

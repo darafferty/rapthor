@@ -28,7 +28,6 @@ class Predict(Operation):
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
-                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'do_slowgain_solve': self.field.do_slowgain_solve}
 
     def set_input_parameters(self):
@@ -110,7 +109,8 @@ class Predict(Operation):
                             'peel_outliers': peel_outliers,
                             'nr_bright': nr_bright,
                             'peel_bright': peel_bright,
-                            'reweight': reweight}
+                            'reweight': reweight,
+                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
     def finalize(self):
         """
