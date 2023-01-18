@@ -3,7 +3,7 @@ class: Workflow
 label: Rapthor imaging subpipeline
 doc: |
   This subworkflow performs imaging with direction-dependent corrections. The
-  imaging data are generated (and averaged if possible) and WSClean+IDG is
+  imaging data are generated (and averaged if possible) and WSClean is
   used to perform the imaging. Masking and sky model filtering is then done
   using PyBDSF.
 
@@ -194,6 +194,12 @@ inputs:
       The names of the calibration solution tables (length = 1).
     type: string
 
+  - id: parallel_gridding_threads
+    label: Max number of gridding threads
+    doc: |
+      The maximum number of threads to use during parallel gridding (length = 1).
+    type: int
+
 {% else %}
 # start not use_facets
 
@@ -239,16 +245,22 @@ inputs:
     type: float
 
   - id: min_uv_lambda
-    label: Minimum us distance
+    label: Minimum uv distance
     doc: |
       The WSClean minimum uv distance in lambda (length = 1).
     type: float
 
   - id: max_uv_lambda
-    label: Maximum us distance
+    label: Maximum uv distance
     doc: |
       The WSClean maximum uv distance in lambda (length = 1).
     type: float
+
+  - id: do_multiscale
+    label: Activate multiscale
+    doc: |
+      Activate multiscale clean (length = 1).
+    type: boolean
 
   - id: taper_arcsec
     label: Taper value
@@ -294,6 +306,18 @@ inputs:
     type: File
 {% endif %}
 
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
+  - id: deconvolution_threads
+    label: Max number of deconvolution threads
+    doc: |
+      The maximum number of threads to use during deconvolution (length = 1).
+    type: int
+
 outputs:
   - id: filtered_skymodels
     outputSource:
@@ -326,7 +350,7 @@ steps:
   - id: prepare_imaging_data
     label: Prepare imaging data
     doc: |
-      This step uses DPPP to prepare the input data for imaging. This involves
+      This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
       calibration solutions at the center.
 {% if use_screens or use_facets %}
@@ -368,7 +392,7 @@ steps:
       - id: beamdir
         source: phasecenter
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
 {% if use_screens or use_facets %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
@@ -434,60 +458,25 @@ steps:
     label: Make an image
     doc: |
       This step makes an image using WSClean. Direction-dependent effects
-      can be corrected for using a-term images.
+      can be corrected for using a-term images or facet-based corrections.
 {% if use_screens %}
 # start use_screens
+
 {% if use_mpi %}
-# start use_mpi
-{% if do_multiscale_clean %}
-# start do_multiscale_clean
-
-{% if toil_version < 5 %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale_toil4.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_screens.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_multiscale.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_screens.cwl
 {% endif %}
-{% else %}
-# start not do_multiscale_clean
-
-{% if toil_version < 5 %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_toil4.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image.cwl
-{% endif %}
-{% endif %}
-# end do_multiscale_clean / not do_multiscale_clean
-
-{% else %}
-# start not use_mpi
-
-{% if do_multiscale_clean %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_multiscale.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image.cwl
-{% endif %}
-{% endif %}
-# end use_mpi / not use_mpi
 
 {% else %}
 # start not use_screens
 
 {% if use_facets %}
-# start use_facets
-{% if do_multiscale_clean %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets_multiscale.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets.cwl
-{% endif %}
 {% else %}
-# start not use_facets
-{% if do_multiscale_clean %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens_multiscale.cwl
-{% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_screens.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_dde.cwl
 {% endif %}
-{% endif %}
-# end use_facets / not use_facets
+
 {% endif %}
 # end use_screens / not use_screens
 
@@ -521,6 +510,8 @@ steps:
         source: soltabs
       - id: region_file
         source: make_region_file/region_file
+      - id: num_gridding_threads
+        source: parallel_gridding_threads
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize
@@ -534,6 +525,8 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
+      - id: multiscale
+        source: do_multiscale
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
@@ -549,9 +542,9 @@ steps:
       - id: idg_mode
         source: idg_mode
       - id: num_threads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
       - id: num_deconvolution_threads
-        valueFrom: '{{ deconvolution_threads }}'
+        source: deconvolution_threads
     out:
       - id: image_nonpb_name
       - id: image_pb_name
@@ -581,7 +574,7 @@ steps:
         source: image/image_pb_name
         valueFrom: $(self.basename)
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     out:
       - id: restored_image
 
@@ -606,7 +599,7 @@ steps:
         source: image/image_nonpb_name
         valueFrom: $(self.basename)
       - id: numthreads
-        valueFrom: '{{ max_threads }}'
+        source: max_threads
     out:
       - id: restored_image
 {% endif %}
@@ -616,7 +609,8 @@ steps:
     label: Filter sources
     doc: |
       This step uses PyBDSF to filter artifacts from the sky model and make
-      a clean mask for the next iteration.
+      a clean mask for the next iteration, as well as derive various image
+      diagnostics.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
 {% if peel_bright_sources %}

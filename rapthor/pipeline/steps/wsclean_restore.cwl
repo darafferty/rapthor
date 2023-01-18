@@ -13,7 +13,7 @@ inputs:
     label: Number of threads
     doc: |
       The number of threads to use.
-    type: string
+    type: int
     inputBinding:
       prefix: -j
       position: 1

@@ -43,9 +43,6 @@ class Image(Operation):
                              'use_facets': use_facets,
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
-                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
-                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads'],
-                             'do_multiscale_clean': self.field.do_multiscale_clean,
                              'use_mpi': self.field.use_mpi,
                              'toil_version': self.toil_major_version}
 
@@ -75,15 +72,8 @@ class Image(Operation):
             # Generally, this should work fine, since we do not expect large changes in
             # the size of the sector from iteration to iteration (small changes are OK,
             # given the padding we use during imaging)
-            if self.field.do_multiscale_clean:
-                sector_do_multiscale_list = self.field.parset['imaging_specific']['sector_do_multiscale_list']
-                if len(sector_do_multiscale_list) == nsectors:
-                    do_multiscale = sector_do_multiscale_list[i]
-                else:
-                    do_multiscale = None
-            else:
-                do_multiscale = False
-            sector.set_imaging_parameters(do_multiscale=do_multiscale, recalculate_imsize=False)
+            sector.set_imaging_parameters(do_multiscale=self.field.do_multiscale_clean,
+                                          recalculate_imsize=False)
 
             # Set input MS filenames
             if self.field.do_predict:
@@ -149,7 +139,10 @@ class Image(Operation):
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
                             'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors]}
+                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
+                            'do_multiscale': [sector.multiscale for sector in self.field.imaging_sectors],
+                            'max_threads': self.field.parset['cluster_specific']['max_threads'],
+                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
         if self.field.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
@@ -197,6 +190,8 @@ class Image(Operation):
                     self.input_parms.update({'soltabs': 'amplitude000,phase000'})
                 else:
                     self.input_parms.update({'soltabs': 'phase000'})
+                self.input_parms.update({'parallel_gridding_threads':
+                                         self.field.parset['cluster_specific']['parallel_gridding_threads']})
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
 

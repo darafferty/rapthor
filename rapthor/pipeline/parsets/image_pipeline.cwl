@@ -3,7 +3,7 @@ class: Workflow
 label: Rapthor imaging pipeline
 doc: |
   This workflow performs imaging with direction-dependent corrections. The
-  imaging data are generated (and averaged if possible) and WSClean+IDG is
+  imaging data are generated (and averaged if possible) and WSClean is
   used to perform the imaging. Masking and sky model filtering is then done
   using PyBDSF.
 
@@ -229,6 +229,12 @@ inputs:
       The name of the calibration solution table (length = 1).
     type: string
 
+  - id: parallel_gridding_threads
+    label: Max number of gridding threads
+    doc: |
+      The maximum number of threads to use during parallel gridding (length = 1).
+    type: int
+
 {% else %}
 # start not use_facets
 
@@ -274,16 +280,22 @@ inputs:
     type: float[]
 
   - id: min_uv_lambda
-    label: Minimum us distance
+    label: Minimum uv distance
     doc: |
       The WSClean minimum uv distance in lambda (length = n_sectors).
     type: float[]
 
   - id: max_uv_lambda
-    label: Maximum us distance
+    label: Maximum uv distance
     doc: |
       The WSClean maximum uv distance in lambda (length = n_sectors).
     type: float[]
+
+  - id: do_multiscale
+    label: Activate multiscale
+    doc: |
+      Activate multiscale clean (length = n_sectors).
+    type: boolean[]
 
   - id: taper_arcsec
     label: Taper value
@@ -328,6 +340,19 @@ inputs:
       The primary-beam-corrected bright-source sky model (length = 1).
     type: File
 {% endif %}
+
+  - id: max_threads
+    label: Max number of threads
+    doc: |
+      The maximum number of threads to use for a job (length = 1).
+    type: int
+
+  - id: deconvolution_threads
+    label: Max number of deconvolution threads
+    doc: |
+      The maximum number of threads to use during deconvolution (length = 1).
+    type: int
+
 
 outputs:
   - id: filtered_skymodels
@@ -452,6 +477,8 @@ steps:
         source: min_uv_lambda
       - id: max_uv_lambda
         source: max_uv_lambda
+      - id: do_multiscale
+        source: do_multiscale
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem
@@ -464,6 +491,14 @@ steps:
         source: threshisl
       - id: threshpix
         source: threshpix
+      - id: max_threads
+        source: max_threads
+      - id: deconvolution_threads
+        source: deconvolution_threads
+{% if use_facets %}
+      - id: parallel_gridding_threads
+        source: parallel_gridding_threads
+{% endif %}
 {% if peel_bright_sources %}
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
@@ -479,7 +514,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, taper_arcsec, wsclean_mem,
+              max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix]
 {% else %}
 # start not use_screens
@@ -497,7 +532,7 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, taper_arcsec, wsclean_mem,
+              max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix]
 {% endif %}
 # end use_screens / not use_screens

@@ -117,7 +117,7 @@ The available options are described below under their respective sections.
 
     llssolver
         The linear least-squares solver to use (one of "qr", "svd", or "lsmr";
-        default = "qr")
+        default = ``qr``)
 
     maxiter
         Maximum number of iterations to perform during calibration (default = 50).
@@ -127,7 +127,8 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of "directionsolve", "directioniterative",
-        "lbfgs", or "hybrid"; default = "hybrid")? When using "lbfgs", the "stepsize" should be set to a small value like 0.001.
+        "lbfgs", or "hybrid"; default = ``hybrid``)? When using "lbfgs", the :term:`stepsize`
+        should be set to a small value like 0.001.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default =
@@ -140,7 +141,8 @@ The available options are described below under their respective sections.
         Parallelize model calculation over baselines, instead of parallelizing over directions (default = ``False``).
 
     stepsize
-        Size of steps used during calibration (default = 0.02).
+        Size of steps used during calibration (default = 0.02). When using
+        ``solveralgorithm = lbfgs``, the stepsize should be set to a small value like 0.001.
 
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
@@ -214,24 +216,23 @@ The available options are described below under their respective sections.
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).
 
-    multiscale_scales_pixel
-        Scale sizes in pixels to use during multiscale clean (default = ``[0, 5, 10, 15]``).
+    do_multiscale_clean
+        Use multiscale cleaning (default = ``True``)?
 
-    do_multiscale
-        Use multiscale cleaning (default = auto)?
-
-    use_screens
-        Use screens during imaging (default = ``True``)? If ``False``, the
-        solutions closest to the image centers will be used.
+    dde_method
+        Method to use to correct for direction-dependent effects during imaging: "none",
+        "facets", or "screens" (default = ``facets``). If "none", the solutions closest to the image centers
+        will be used. If "facets", Voronoi faceting is used. If "screens", smooth 2-D
+        screens are used.
 
     screen_type
-        Type of screen to use (default = "tessellated"), if use_screens = ``True``:
+        Type of screen to use (default = ``tessellated``), if ``dde_method = screens``:
         "tessellated" (simple, smoothed Voronoi tessellated screens) or
         "kl" (Karhunen-Lo`eve screens).
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = "hybrid").
-        The mode can be "cpu" or "hybrid"".
+        The mode can be "cpu" or "hybrid".
 
     mem_fraction
         Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9).
@@ -240,7 +241,8 @@ The available options are described below under their respective sections.
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each
         WSClean job (i.e., max_nodes / num_images >= 2), then distributed
-        imaging will be used (only available if batch_system = slurm).
+        imaging will be used (only available if ``batch_system = slurm`` and
+        ``dde_method = screens``).
 
         .. note::
 
@@ -249,7 +251,10 @@ The available options are described below under their respective sections.
             it is on a shared filesystem.
 
     reweight
-        Reweight the visibility data before imaging (default = ``True``).
+        Reweight the visibility data before imaging (default = ``False``). If
+        ``True``, data with high residuals (compared to the predicted model
+        visibilities) are down-weighted. This feature is experimental and
+        should be used with caution.
 
     grid_width_ra_deg
         Size of area to image when using a grid (default = mean FWHM of the
@@ -286,11 +291,6 @@ The available options are described below under their respective sections.
 
     sector_width_dec_deg_list
         List of image  widths, in degrees (default = ``[]``).
-
-    sector_do_multiscale_list
-        List of multiscale flags, one per sector (default = ``[]``). ``None``
-        indicates that multiscale clean should be activated automatically if a
-        large source is detected in the sector.
 
     max_peak_smearing
         Max desired peak flux density reduction at center of the image edges due
@@ -334,7 +334,12 @@ The available options are described below under their respective sections.
         all).
 
     deconvolution_threads
-        Number of threads to use by WSClean during deconvolution (default = 0 = all).
+        Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
+        of ``max_threads``).
+
+    parallel_gridding_threads
+        Number of threads to use by WSClean during parallel gridding (default = 0 = 2/5
+        of ``max_threads``).
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default =

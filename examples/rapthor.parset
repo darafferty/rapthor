@@ -82,19 +82,18 @@ download_initial_skymodel_server = TGSS
 # slow_smoothnessconstraint_joint = 3e6
 # slow_smoothnessconstraint_separate = 3e6
 
-# Do extra solve for debugging purposes
-# debug = False
-
 
 [imaging]
 # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
-# robust parameter (default = -0.5) and minimum uv distance in lambda (default = 80)
+# robust parameter (default = -0.5), min and max uv distance in lambda (default = 80, none),
+# taper in arcsec (default = none), and whether multiscale clean should be used (default =
+# True)
 # cellsize_arcsec = 1.25
 # robust = -0.5
 # min_uv_lambda = 80.0
 # max_uv_lambda = 0.0
 # taper_arcsec = 0.0
-# multiscale_scales_pixel = [0, 5, 10, 15]
+# do_multiscale_clean = True
 
 # Method to use to correct for direction-dependent effects during imaging: "none",
 # "facets", or "screens". If "none", the solutions closest to the image centers
@@ -135,27 +134,24 @@ download_initial_skymodel_server = TGSS
 # grid_nsectors_ra = 3
 
 # Instead of a grid, imaging sectors can be defined individually by specifying
-# their centers and widths. Multiscale clean can also be set (with None indicating that
-# multiscale clean should be activated automatically if a large source is detected in the
-# sector). If sectors are specified in this way, they will be
+# their centers and widths. If sectors are specified in this way, they will be
 # used instead of the sector grid. Note that the sectors should not overlap
 # sector_center_ra_list = [14h41m01.884, 14h13m23.234]
 # sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
 # sector_width_ra_deg_list = [0.532, 0.127]
 # sector_width_dec_deg_list = [0.532, 0.127]
-# sector_do_multiscale_list = [None, True]
 
 # Max desired peak flux density reduction at center of the image edges due to
 # bandwidth smearing (at the mean frequency) and time smearing (default = 0.15 =
-# 15% reduction in peak flux). Higher values result in shorter run times but
+# 15% reduction in peak flux). Higher values can result in shorter run times but
 # more smearing away from the sector centers
 # max_peak_smearing = 0.15
 
 
 [cluster]
-# Cluster batch system (default = singleMachine). Use batch_system = slurm to
+# Cluster batch system (default = single_machine). Use batch_system = slurm to
 # use a SLURM-based cluster
-# batch_system = singleMachine
+# batch_system = single_machine
 
 # For batch_system = slurm, the maximum number of nodes of the cluster to use at
 # once can be specified with the max_nodes option (default = 12), the number of
@@ -168,16 +164,15 @@ download_initial_skymodel_server = TGSS
 # cpus_per_task = 0
 # mem_per_node_gb = 0
 
-# TODO: Slurm partition names?
-# cpu_partition = batch
-# gpu_partition = batch
-
 # Maximum number of cores and threads per task to use on each node (default = 0 = all)
 # max_cores = 0
 # max_threads = 0
 
-# Number of threads to use by WSClean during deconvolution (default = 0 = all)
+# Number of threads to use by WSClean during deconvolution and parallel gridding
+# (default = 0 = 2/5 of max_threads). Higher values will speed up imaging at the
+# expense of higher memory usage
 # deconvolution_threads = 0
+# parallel_gridding_threads = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a
