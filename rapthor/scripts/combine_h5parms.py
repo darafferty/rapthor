@@ -152,7 +152,7 @@ def interpolate_solutions(fast_soltab, slow_soltab, final_axes_shapes,
         vals_time_intep = expand_array(slow_vals, axes_shapes_time_interp, time_ind)
         weights_time_intep = expand_array(slow_weights, axes_shapes_time_interp, time_ind)
     if len(slow_soltab.freq) > 1:
-        f = si.interp1d(slow_soltab.freq, vals_time_intep, axis=freq_ind, kind='linear', fill_value='extrapolate')
+        f = si.interp1d(slow_soltab.freq, vals_time_intep, axis=freq_ind, kind='nearest', fill_value='extrapolate')
         vals_interp = f(fast_soltab.freq)
         f = si.interp1d(slow_soltab.freq, weights_time_intep, axis=freq_ind, kind='nearest', fill_value='extrapolate')
         weights_interp = f(fast_soltab.freq)

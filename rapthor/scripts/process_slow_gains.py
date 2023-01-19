@@ -123,7 +123,7 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     soltab.setValues(weights, weight=True)
 
 
-def smooth_solutions(ampsoltab, phasesoltab=None):
+def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
     """
     Smooth solutions per direction
 
@@ -140,11 +140,16 @@ def smooth_solutions(ampsoltab, phasesoltab=None):
         Input table with phase solutions; if specified, the phase solutions will
         also be smoothed. Solution axes are assumed to be in the standard DDECal
         order of ['time', 'freq', 'ant', 'dir', 'pol']
+    ref_id : int, optional
+        Index of reference station for phases
     """
     # Make a copy of the input data to fill with smoothed values
     amps = ampsoltab.val[:]
     if phasesoltab is not None:
         phases = phasesoltab.val[:]
+        nstat = phases.shape[2]
+        for stat in range(nstat):
+            phases[:, :, stat, :, :] = phases[:, :, stat, :, :] - phases[:, :, ref_id, :, :]
 
     for direction in range(len(ampsoltab.dir[:])):
         # Get the smoothing box size. A value of None indicates that smoothing is
@@ -152,7 +157,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None):
         size = get_smooth_box_size(ampsoltab, direction)
         if size is not None:
             # Process the amplitudes
-            vals = ampsoltab.val[:, :, :, direction, :]
+            vals = amps[:, :, :, direction, :]
             vals = np.log10(vals)
             weights = ampsoltab.weight[:, :, :, direction, :]
             vals_bkp = vals[weights == 0]
@@ -164,7 +169,7 @@ def smooth_solutions(ampsoltab, phasesoltab=None):
 
             # Process the phases
             if phasesoltab is not None:
-                vals = phasesoltab.val[:, :, :, direction, :]
+                vals = phases[:, :, :, direction, :]
                 weights = phasesoltab.weight[:, :, :, direction, :]
                 vals_bkp = vals[weights == 0]
                 vals = np.exp(1j*vals)
@@ -354,8 +359,8 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     phasesoltabname : str, optional
         Name of phase soltab
     ref_id : int, optional
-        Index of reference station. If None, a reference station is chosen
-        automatically
+        Index of reference station for the phases. If None, a reference station
+        is chosen automatically
     smooth : bool, optional
         Smooth amp solutions
     normalize : bool, optional
@@ -374,16 +379,16 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     solset = H.getSolset(solsetname)
     ampsoltab = solset.getSoltab(ampsoltabname)
     phasesoltab = solset.getSoltab(phasesoltabname)
+    if ref_id is None:
+        ref_id = misc.get_reference_station(phasesoltab, 10)
 
     # Process the solutions
     if flag:
         flag_amps(ampsoltab, lowampval=lowampval, highampval=highampval)
         transfer_flags(ampsoltab, phasesoltab)
     if smooth:
-        smooth_solutions(ampsoltab, phasesoltab=phasesoltab)
+        smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        if ref_id is None:
-            ref_id = misc.get_reference_station(phasesoltab, 10)
         normalize_direction(ampsoltab, remove_core_gradient=True, solset=solset, ref_id=ref_id)
     H.close()
 
