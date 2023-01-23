@@ -47,13 +47,13 @@ def main(input_image_list, template_image, output_image, skip=False):
             for sector_image in input_image_list:
                 r = pyfits.open(sector_image)[0].section[xs, ys]
                 w = np.ones_like(r)
-                w[np.isnan(r)] = 0
-                r[np.isnan(r)] = 0
+                w[~np.isfinite(r)] = 0
+                r[~np.isfinite(r)] = 0
                 isum[xs, ys] += r
                 wsum += w
             isum[xs, ys] /= wsum
     del wsum, r, w
-    isum[np.isnan(isum)] = np.nan
+    isum[~np.isfinite(isum)] = np.nan
     hdu = pyfits.PrimaryHDU(header=regrid_hdr, data=isum)
     hdu.writeto(output_image, overwrite=True)
 

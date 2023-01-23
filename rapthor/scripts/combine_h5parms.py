@@ -68,7 +68,7 @@ def average_polarizations(soltab):
     weights = soltab.weight[:]
 
     # Make sure flagged solutions are NaN and have zero weight
-    flagged_ind = np.logical_or(np.isnan(vals), weights == 0.0)
+    flagged_ind = np.logical_or(~np.isfinite(vals), weights == 0.0)
     vals[flagged_ind] = np.nan
     weights[flagged_ind] = 0.0
 
@@ -130,7 +130,7 @@ def interpolate_solutions(fast_soltab, slow_soltab, final_axes_shapes,
 
     # Make sure flagged solutions have zero weight and fill them with 0 for
     # phases and 1 for amplitudes to avoid NaNs
-    flagged_ind2 = np.logical_or(np.isnan(slow_vals), slow_weights == 0.0)
+    flagged_ind2 = np.logical_or(~np.isfinite(slow_vals), slow_weights == 0.0)
     if slow_soltab.getType() == 'phase':
         slow_vals[flagged_ind2] = 0.0
     elif slow_soltab.getType() == 'amplitude':
@@ -564,8 +564,8 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
                 weights_amp[:, :, :, d, :] *= norm_factor
         weights_ph *= global_median_ph / np.nanmedian(weights_ph)
         weights_amp *= global_median_amp / np.nanmedian(weights_amp)
-        weights_ph[np.isnan(weights_ph)] = 0.0
-        weights_amp[np.isnan(weights_amp)] = 0.0
+        weights_ph[~np.isfinite(weights_ph)] = 0.0
+        weights_amp[~np.isfinite(weights_amp)] = 0.0
 
         # Clip to fit in float16 (required by LoSoTo)
         float16max = 65504.0

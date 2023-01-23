@@ -272,7 +272,7 @@ class Screen(object):
                     else:
                         # Real elements
                         nanval = 1.0
-                    data[t, :, :, p, :, :][np.isnan(data[t, :, :, p, :, :])] = nanval
+                    data[t, :, :, p, :, :][~np.isfinite(data[t, :, :, p, :, :])] = nanval
 
             # Write FITS file
             hdu[0].data = data

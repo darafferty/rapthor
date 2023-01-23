@@ -59,7 +59,7 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     # Make a copy of the input data to fill with normalized values
     parms = soltab.val[:]
     weights = soltab.weight[:]
-    initial_flagged_indx = np.logical_or(np.isnan(parms), weights == 0.0)
+    initial_flagged_indx = np.logical_or(~np.isfinite(parms), weights == 0.0)
     parms[initial_flagged_indx] = np.nan
 
     # Work in log space, as required for amplitudes
@@ -86,7 +86,7 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
             stat_names = []
             for s in range(len(station_names)):
                 if 'CS' in station_names[s] and s != ref_id:
-                    if not np.all(np.isnan(parms[:, :, s, dir, :])):
+                    if not np.all(~np.isfinite(parms[:, :, s, dir, :])):
                         mean_vals.append(np.nanmean(parms[:, :, s, dir, :]))
                         dist_vals.append(dist[s])
                         stat_names.append(station_names[s])
@@ -208,7 +208,7 @@ def get_smooth_box_size(ampsoltab, direction):
     box_size : int
         Box size for smoothing
     """
-    unflagged_indx = np.logical_and(~np.isnan(ampsoltab.val[:, :, :, direction, :]),
+    unflagged_indx = np.logical_and(np.isfinite(ampsoltab.val[:, :, :, direction, :]),
                                     ampsoltab.weight[:, :, :, direction, :] != 0.0)
     noise = sigma_clipped_stats(np.log10(ampsoltab.val[:, :, :, direction, :][unflagged_indx]))[2]
     if noise >= 0.1:
@@ -246,8 +246,8 @@ def get_median_amp(amps, weights):
     weights_xx = weights[..., 0]
     weights_yy = weights[..., -1]
 
-    idx_xx = np.logical_and(~np.isnan(amps_xx), weights_xx != 0.0)
-    idx_yy = np.logical_and(~np.isnan(amps_yy), weights_yy != 0.0)
+    idx_xx = np.logical_and(np.isfinite(amps_xx), weights_xx != 0.0)
+    idx_yy = np.logical_and(np.isfinite(amps_yy), weights_yy != 0.0)
     medamp = 0.5 * (10**(sigma_clipped_stats(np.log10(amps_xx[idx_xx]))[1]) +
                     10**(sigma_clipped_stats(np.log10(amps_yy[idx_yy]))[1]))
 
@@ -302,7 +302,7 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
             high = low * 2.0
 
         # Flag, setting flagged values to NaN and weights to 0
-        initial_flagged_indx = np.logical_or(np.isnan(amps_dir), weights_dir == 0.0)
+        initial_flagged_indx = np.logical_or(~np.isfinite(amps_dir), weights_dir == 0.0)
         amps_dir[initial_flagged_indx] = medamp
         new_flag_indx = np.logical_or(amps_dir < low, amps_dir > high)
         amps_dir[initial_flagged_indx] = np.nan
@@ -331,7 +331,7 @@ def transfer_flags(soltab1, soltab2):
     soltab2 : solution table
         Table 2 to which flags are transferred
     """
-    flagged_indx = np.logical_or(np.isnan(soltab1.val), soltab1.weight == 0.0)
+    flagged_indx = np.logical_or(~np.isfinite(soltab1.val), soltab1.weight == 0.0)
     vals2 = soltab2.val[:]
     weights2 = soltab2.weight[:]
     vals2[flagged_indx] = np.nan

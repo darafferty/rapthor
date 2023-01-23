@@ -616,7 +616,7 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
     num_flagged = 0
     num_all = 0
     for soltab in solset.getSoltabs():
-        num_flagged += np.count_nonzero(np.logical_or(np.isnan(soltab.val),
+        num_flagged += np.count_nonzero(np.logical_or(~np.isfinite(soltab.val),
                                                       soltab.weight == 0.0))
         num_all += soltab.val.size
     h5parm_obj.close()
