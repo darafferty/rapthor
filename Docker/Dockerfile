@@ -57,6 +57,8 @@ RUN cmake \
 RUN ninja -C /src/idg/build install
 
 # Install EveryBeam
+# Do not compile python bindings, they will interfere with the ones in the 
+# binary wheel on PyPI.
 RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
