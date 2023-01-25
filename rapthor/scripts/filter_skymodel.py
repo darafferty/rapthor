@@ -131,9 +131,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
          input_bright_skymodel_pb=None, threshisl=5.0, threshpix=7.5,
          rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_rmsbox=True,
          use_adaptive_threshold=False, adaptive_thresh=75.0,
-         comparison_skymodel=None):
+         comparison_skymodel=None, filter_by_mask=True):
     """
-    Filter the input sky model so that they lie in islands in the image
+    Filter the input sky model
 
     Note: If no islands of emission are detected in the input image, a
     blank sky model is made. If any islands are detected in the input image,
@@ -179,6 +179,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
     comparison_skymodel : str, optional
         The filename of the sky model to use for flux scale and astrometry
         comparisons
+    filter_by_mask : bool, optional
+        If True, filter the input sky model by the PyBDSF-derived mask,
+        removing sources that lie in unmasked regions
     """
     if rmsbox is not None and isinstance(rmsbox, str):
         rmsbox = eval(rmsbox)
@@ -233,7 +236,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
 
-    # Colletc some diagnostic numbers for later reporting. Note: we ensure all
+    # Collect some diagnostic numbers for later reporting. Note: we ensure all
     # numbers are float, as, e.g., np.float32 is not supported by json.dump()
     theoretical_rms, unflagged_fraction = calc_theoretical_noise(beamMS)  # Jy/beam
     min_rms = float(np.min(img.rms_arr))  # Jy/beam
@@ -319,15 +322,19 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             except astropy.io.ascii.InconsistentTableError:
                 pass
         if not emptysky:
-            s_in.select('{} == True'.format(maskfile))  # keep only those in PyBDSF masked regions
-            if len(s_in) == 0:
-                emptysky = True
-            else:
-                # Write out apparent and true-sky models
+            # Keep only those sources with positive flux densities
+            s_in.select('I > 0.0')
+            if s_in and filter_by_mask:
+                # Keep only those sources in PyBDSF masked regions
+                s_in.select('{} == True'.format(maskfile))
+            if s_in:
+                # Write out apparent- and true-sky models
                 del(img)  # helps reduce memory usage
                 s_in.group(maskfile)  # group the sky model by mask islands
                 s_in.write(output_root+'.true_sky.txt', clobber=True)
                 s_in.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
+            else:
+                emptysky = True
     else:
         emptysky = True
 
@@ -351,15 +358,17 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         # that are composed entirely of type "POINT", as the comparison method in
         # LSMTool works reliably only for this type
         if s_comp is not None:
+            # Group using FWHM of 40 arcsec, the approximate TGSS resolution
             s_comp.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
-            for sm in [s_in, s_comp]:
-                source_type = sm.getColValues('Type')
-                patch_names = sm.getColValues('Patch')
-                non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
-                ind = []
-                for patch_name in non_point_patch_names:
-                    ind.extend(sm.getRowIndex(patch_name))
-                sm.remove(np.array(ind))
+
+            # Keep POINT-only sources
+            source_type = s_comp.getColValues('Type')
+            patch_names = s_comp.getColValues('Patch')
+            non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
+            ind = []
+            for patch_name in non_point_patch_names:
+                ind.extend(s_comp.getRowIndex(patch_name))
+            s_comp.remove(np.array(ind))
 
             # Check if there is a sufficient number of sources to do the comparison with.
             # If there is, do it and append the resulting diagnostics dict to the
@@ -368,7 +377,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             # Note: the various ratios are all calculated as (s / s_comp) and the differences
             # as (s - s_comp). If there are no successful matches, the compare() method
             # returns None
-            if (s_in and s_comp and len(s_in.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
+            if (s_comp and len(s_in.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
                 flux_astrometry_diagnostics = s_in.compare(s_comp, radius='5 arcsec',
                                                            excludeMultiple=True, make_plots=False)
                 if flux_astrometry_diagnostics is not None:
