@@ -89,7 +89,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         else:
             log.error('No input sky model file given and no download requested. Exiting...')
             raise RuntimeError('No input sky model file given and no download requested.')
-    elif parset_dict['download_initial_skymodel']:
+    elif ('input_skymodel' in parset_dict) and parset_dict['download_initial_skymodel']:
         # If download is requested, ignore the given skymodel.
         log.info('Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user.')
         parset_dict['download_initial_skymodel'] = False
