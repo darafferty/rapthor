@@ -178,6 +178,11 @@ def get_global_options(parset):
     if 'download_initial_skymodel_server' not in parset_dict:
         parset_dict['download_initial_skymodel_server'] = 'TGSS'
 
+    if 'overwrite_skymodel' in parset_dict:
+        parset_dict['overwrite_skymodel'] = parset.getboolean('global', 'overwrite_skymodel')
+    else:
+        parset_dict['overwrite_skymodel'] = False
+
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
     if 'input_h5parm' not in parset_dict:
@@ -228,7 +233,7 @@ def get_global_options(parset):
     given_options = parset.options('global')
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
-                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'download_initial_skymodel_server',
+                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'download_initial_skymodel_server', 'overwrite_skymodel'
                        'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
                        'final_data_fraction']
