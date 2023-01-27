@@ -423,10 +423,10 @@ if __name__ == '__main__':
     parser.add_argument('--threshisl', help='Island threshold', type=float, default=3.0)
     parser.add_argument('--threshpix', help='Peak pixel threshold', type=float, default=5.0)
     parser.add_argument('--rmsbox', help='Rms box width and step (e.g., "(60, 20)")',
-                        type=str, default='(60, 20)')
+                        type=str, default='(150, 50)')
     parser.add_argument('--rmsbox_bright', help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
-                        type=str, default='(60, 20)')
-    parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='False')
+                        type=str, default='(35, 7)')
+    parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='True')
     parser.add_argument('--beamMS', help='MS filename to use for beam attenuation', type=str, default=None)
 
     args = parser.parse_args()
