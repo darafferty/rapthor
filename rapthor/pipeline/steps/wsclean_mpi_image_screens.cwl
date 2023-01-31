@@ -7,8 +7,8 @@ baseCommand: wsclean-mp
 label: Make an image
 doc: |
   This tool makes an image using WSClean with a-term corrections, distributed
-  over multiple nodes with MPI. See wsclean_image.cwl for a detailed description
-  of the inputs and outputs.
+  over multiple nodes with MPI. See wsclean_image_screens.cwl for a detailed
+  description of the inputs and outputs.
 
 requirements:
   - class: InitialWorkDirRequirement
@@ -112,6 +112,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -maxuv-l
+  - id: multiscale
+    type: boolean
+    inputBinding:
+      prefix: -multiscale
   - id: cellsize_deg
     type: float
     inputBinding:
@@ -141,11 +145,11 @@ inputs:
     inputBinding:
       prefix: -idg-mode
   - id: num_threads
-    type: string
+    type: int
     inputBinding:
       prefix: -j
   - id: num_deconvolution_threads
-    type: string
+    type: int
     inputBinding:
       prefix: -deconvolution-threads
   - id: nnodes

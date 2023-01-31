@@ -11,9 +11,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y \
         bison \
         build-essential \
-        casacore-data \
         casacore-dev \
-        casacore-tools \
         cmake \
         flex \
         gfortran \
@@ -59,10 +57,12 @@ RUN cmake \
 RUN ninja -C /src/idg/build install
 
 # Install EveryBeam
+# Do not compile python bindings, they will interfere with the ones in the 
+# binary wheel on PyPI.
 RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_WITH_PYTHON=ON \
+    -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -H/src/EveryBeam \
@@ -154,7 +154,8 @@ COPY --from=builder /usr/local /usr/local
 # Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
         casacore-tools \
         libarmadillo9 \
         libatkmm-1.6-1v5 \
@@ -191,17 +192,15 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 RUN rm -rf /var/lib/apt/lists/*
 
-# Install WSRT Measures (extra casacore data). We purposely do this in the
-# `runner` stage and not in the `builder` stage, because otherwise the
-# previous `apt-get install` would clobber the files we had installed in
-# in the `builder` stage (as `casacore-data` is installed as a dependency).
+# Install the casacore measures data. We purposely do not install these from
+# the Ubuntu repository, but download the latest version directly from the
+# ASTRON ftp site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
 # leap seconds appear, ignore them or regenerate the docker image.
-RUN wget -q -O /WSRT_Measures.ztar \
-        ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar && \
-    cd /var/lib/casacore/data && \
-    tar xfz /WSRT_Measures.ztar && \
-    rm /WSRT_Measures.ztar
+RUN mkdir -p /usr/share/casacore/data && \
+    ln -s /usr/share/casacore /var/lib/casacore && \
+    wget -qO - ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar | \
+        tar -C /usr/share/casacore/data -xzf -
 
 # Try to run the compiled tools to make sure they run without
 # a problem (e.g. no missing libraries).
@@ -213,4 +212,3 @@ RUN aoflagger --version && \
 COPY . /tmp/rapthor
 RUN python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
 RUN rm -rf /tmp/*
-

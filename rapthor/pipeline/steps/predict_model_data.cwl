@@ -115,7 +115,7 @@ inputs:
     label: Number of threads
     doc: |
       The number of threads for DPPP.
-    type: string
+    type: int
     inputBinding:
       prefix: numthreads=
       separate: False

@@ -85,7 +85,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if 'input_skymodel' not in parset_dict:
         if parset_dict['download_initial_skymodel']:
             log.info('No input sky model file given and download requested. Will automatically download skymodel.')
-            parset_dict.update({'input_skymodel':os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
+            parset_dict.update({'input_skymodel': os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
         else:
             log.error('No input sky model file given and no download requested. Exiting...')
             raise RuntimeError('No input sky model file given and no download requested.')
@@ -384,17 +384,17 @@ def get_calibration_options(parset):
 
     # LBFGS solver parameters
     if 'solverlbfgs_dof' in parset_dict:
-       parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
+        parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
     else:
-       parset_dict['solverlbfgs_dof'] = 200.0
+        parset_dict['solverlbfgs_dof'] = 200.0
     if 'solverlbfgs_iter' in parset_dict:
-       parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
+        parset_dict['solverlbfgs_iter'] = parset.getint('calibration', 'solverlbfgs_iter')
     else:
-       parset_dict['solverlbfgs_iter'] = 4
+        parset_dict['solverlbfgs_iter'] = 4
     if 'solverlbfgs_minibatches' in parset_dict:
-       parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
+        parset_dict['solverlbfgs_minibatches'] = parset.getint('calibration', 'solverlbfgs_minibatches')
     else:
-       parset_dict['solverlbfgs_minibatches'] = 1
+        parset_dict['solverlbfgs_minibatches'] = 1
 
     # Do a extra "debug" step during calibration (default = False)?
     if 'debug' in parset_dict:
@@ -524,40 +524,12 @@ def get_imaging_options(parset):
         len_list.append(len(val_list))
     else:
         parset_dict['sector_width_dec_deg_list'] = []
-    if 'sector_do_multiscale_list' in parset_dict:
-        val_list = parset_dict['sector_do_multiscale_list'].strip('[]').split(',')
-        if val_list[0] == '':
-            val_list = []
-        bool_list = []
-        for v in val_list:
-            if v.lower().strip() == 'true':
-                b = True
-            elif v.lower().strip() == 'false':
-                b = False
-            elif v.lower().strip() == 'none':
-                b = None
-            else:
-                log.error('The entry "{}" in sector_do_multiscale_list is invalid. It must '
-                          'be one of True, False, or None'.format(v))
-                sys.exit(1)
-            bool_list.append(b)
-        parset_dict['sector_do_multiscale_list'] = bool_list
-        len_list.append(len(bool_list))
-    else:
-        parset_dict['sector_do_multiscale_list'] = []
-    if (len(parset_dict['sector_do_multiscale_list']) == 0 or
-            (True not in parset_dict['sector_do_multiscale_list'] and
-             None not in parset_dict['sector_do_multiscale_list'])):
-        parset_dict['do_multiscale_clean'] = False
-    else:
-        parset_dict['do_multiscale_clean'] = True
 
     # Check that all the above options have the same number of entries
     if len(set(len_list)) > 1:
         log.error('The options sector_center_ra_list, sector_center_dec_list, '
-                  'sector_width_ra_deg_list, sector_width_dec_deg_list, and '
-                  'sector_do_multiscale_list (if specified) must all have the same number of '
-                  'entires')
+                  'sector_width_ra_deg_list, and sector_width_dec_deg_list '
+                  'must all have the same number of entries')
         sys.exit(1)
 
     # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can
@@ -613,24 +585,10 @@ def get_imaging_options(parset):
     else:
         parset_dict['max_peak_smearing'] = 0.15
 
-    # List of scales in pixels to use when multiscale clean is activated (default =
-    # auto). Note that multiscale clean is activated for a direction only when the
-    # calibrator or a source in the facet is determined to be larger than 4 arcmin,
-    # the facet contains the target (specified below with target_ra and target_dec),
-    # or mscale_selfcal_do / mscale_facet_do is set for the direction in the
-    # directions file
-    if 'multiscale_scales_pixel' in parset_dict:
-        val_list = parset_dict['multiscale_scales_pixel'].strip('[]').split(',')
-        str_list = ','.join([v.strip() for v in val_list])
-        parset_dict['multiscale_scales_pixel'] = str_list
-    else:
-        parset_dict['multiscale_scales_pixel'] = None
-
-    # Selfcal imaging parameters: pixel size in arcsec (default = 1.25), Briggs
-    # robust parameter (default = -0.5) and minimum uv distance in lambda
-    # (default = 80). These settings apply both to selfcal images and to the
-    # full facet image used to make the improved facet model that is subtracted
-    # from the data
+    # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
+    # robust parameter (default = -0.5), min and max uv distance in lambda (default = 80, none),
+    # taper in arcsec (default = none), and whether multiscale clean should be used (default =
+    # True)
     if 'cellsize_arcsec' in parset_dict:
         parset_dict['cellsize_arcsec'] = parset.getfloat('imaging', 'cellsize_arcsec')
     else:
@@ -651,15 +609,19 @@ def get_imaging_options(parset):
         parset_dict['taper_arcsec'] = parset.getfloat('imaging', 'taper_arcsec')
     else:
         parset_dict['taper_arcsec'] = 0.0
+    if 'do_multiscale_clean' in parset_dict:
+        parset_dict['do_multiscale_clean'] = parset.getboolean('imaging', 'do_multiscale_clean')
+    else:
+        parset_dict['do_multiscale_clean'] = True
 
     # Check for invalid options
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
-                       'multiscale_scales_pixel', 'grid_center_ra', 'grid_center_dec',
+                       'grid_center_ra', 'grid_center_dec',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
                        'min_uv_lambda', 'max_uv_lambda', 'mem_fraction', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
-                       'idg_mode', 'sector_do_multiscale_list', 'use_mpi',
+                       'idg_mode', 'do_multiscale_clean', 'use_mpi',
                        'dde_method', 'skip_corner_sectors']
     for option in given_options:
         if option not in allowed_options:
@@ -738,13 +700,21 @@ def get_cluster_options(parset):
     if parset_dict['max_threads'] == 0:
         parset_dict['max_threads'] = multiprocessing.cpu_count()
 
-    # Number of threads to use by WSClean during deconvolution (default = 0 = all)
+    # Number of threads to use by WSClean during deconvolution and parallel gridding
+    # (default = 0 = 2/5 of max_threads). Higher values will speed up imaging at the
+    # expense of higher memory usage
     if 'deconvolution_threads' in parset_dict:
         parset_dict['deconvolution_threads'] = parset.getint('cluster', 'deconvolution_threads')
     else:
         parset_dict['deconvolution_threads'] = 0
     if parset_dict['deconvolution_threads'] == 0:
-        parset_dict['deconvolution_threads'] = multiprocessing.cpu_count()
+        parset_dict['deconvolution_threads'] = max(1, int(parset_dict['max_threads'] * 2 / 5))
+    if 'parallel_gridding_threads' in parset_dict:
+        parset_dict['parallel_gridding_threads'] = parset.getint('cluster', 'parallel_gridding_threads')
+    else:
+        parset_dict['parallel_gridding_threads'] = 0
+    if parset_dict['parallel_gridding_threads'] == 0:
+        parset_dict['parallel_gridding_threads'] = max(1, int(parset_dict['max_threads'] * 2 / 5))
 
     # Full path to a local disk on the nodes for I/O-intensive processing. The path
     # must be the same for all nodes
@@ -768,7 +738,7 @@ def get_cluster_options(parset):
     if 'cwl_runner' not in parset_dict:
         parset_dict['cwl_runner'] = 'toil'
     cwl_runner = parset_dict['cwl_runner']
-    supported_cwl_runners = ('cwltool', 'toil') #, 'toil-cwl-runner')
+    supported_cwl_runners = ('cwltool', 'toil')
     if cwl_runner not in supported_cwl_runners:
         log.critical("CWL runner '%s' is not supported; select one of: %s",
                      cwl_runner, ', '.join(supported_cwl_runners))

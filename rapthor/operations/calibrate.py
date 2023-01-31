@@ -34,7 +34,6 @@ class Calibrate(Operation):
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'max_cores': max_cores,
-                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                              'debug': self.field.debug}
 
     def set_input_parameters(self):
@@ -196,7 +195,8 @@ class Calibrate(Operation):
                             'combined_h5parms2': combined_h5parms2,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
-                            'solverlbfgs_minibatches': solverlbfgs_minibatches}
+                            'solverlbfgs_minibatches': solverlbfgs_minibatches,
+                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
 
         if self.field.debug:
             output_slow_h5parm_debug = ['slow_gain_{}_debug.h5parm'.format(i)
