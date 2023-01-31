@@ -536,6 +536,9 @@ steps:
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
 
+{% if do_joint_solve %}
+# start do_joint_solve (solve_slow_gains1)
+
   - id: solve_slow_gains1
     label: Solve for slow gains 1
     doc: |
@@ -661,6 +664,8 @@ steps:
     out:
       - id: combinedh5parm
 
+{% endif %}
+
   - id: solve_slow_gains2
     label: Solve for slow gains 2
     doc: |
@@ -689,7 +694,11 @@ steps:
       - id: nchan
         source: nchan2
       - id: combined_h5parm
+{% if do_joint_solve %}
         source: combine_fast_and_slow_h5parms1/combinedh5parm
+{% else %}
+        source: combine_fast_phases/outh5parm
+{% endif %}
       - id: h5parm
         source: output_slow_h5parm2
       - id: solint
@@ -760,6 +769,8 @@ steps:
     out:
       - id: outh5parm
 
+{% if do_joint_solve %}
+
   - id: combine_slow1_and_slow2_h5parms
     label: Combine slow-gain solutions
     doc: |
@@ -786,6 +797,8 @@ steps:
     out:
       - id: combinedh5parm
 
+{% endif %}
+
   - id: normalize_slow_amplitudes
     label: Normalize slow-gain amplitudes
     doc: |
@@ -794,7 +807,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
+{% if do_joint_solve %}
         source: combine_slow1_and_slow2_h5parms/combinedh5parm
+{% else %}
+        source: process_slow_gains2/outh5parm
+{% endif %}
       - id: flag
         valueFrom: 'True'
       - id: smooth

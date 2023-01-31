@@ -29,9 +29,14 @@ class Calibrate(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
+        if self.field.parset['calibration_specific']['slow_timestep_joint_sec'] > 0:
+            do_joint_solve = True
+        else:
+            do_joint_solve = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_screens': self.field.use_screens,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
+                             'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'max_cores': max_cores,
                              'debug': self.field.debug}
