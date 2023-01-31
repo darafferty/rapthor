@@ -86,6 +86,10 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         if parset_dict['download_initial_skymodel']:
             log.info('No input sky model file given and download requested. Will automatically download skymodel.')
             parset_dict.update({'input_skymodel': os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
+            if 'apparent_skymodel' in parset_dict:
+                log.info('Ignoring apparent_skymodel, because skymodel ls
+                cp download has been requested.')
+                parset_dict['apparent_skymodel'] = None
         else:
             log.error('No input sky model file given and no download requested. Exiting...')
             raise RuntimeError('No input sky model file given and no download requested.')
