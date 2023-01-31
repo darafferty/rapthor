@@ -325,6 +325,10 @@ def get_calibration_options(parset):
         parset_dict['slow_timestep_separate_sec'] = parset.getfloat('calibration', 'slow_timestep_separate_sec')
     else:
         parset_dict['slow_timestep_separate_sec'] = 1200.0
+    if parset_dict['slow_timestep_separate_sec'] < parset_dict['slow_timestep_joint_sec']:
+        log.warning('The slow_timestep_separate_sec cannot be less than the slow_timestep_joint_sec.'
+                    'Setting slow_timestep_separate_sec = slow_timestep_joint_sec')
+        parset_dict['slow_timestep_separate_sec'] = parset_dict['slow_timestep_joint_sec']
     if 'slow_freqstep_hz' in parset_dict:
         parset_dict['slow_freqstep_hz'] = parset.getfloat('calibration', 'slow_freqstep_hz')
     else:

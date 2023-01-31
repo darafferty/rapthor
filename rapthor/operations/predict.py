@@ -78,7 +78,7 @@ class Predict(Operation):
             obs_starttime.append(obs.convert_mjd(obs.starttime))
             obs_infix.append(obs.infix)
             obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
-            obs_solint_hz.append(obs.parameters['solint_slow_freqstep'][0] * obs.channelwidth)
+            obs_solint_hz.append(obs.parameters['solint_slow_timestep_separate'][0] * obs.channelwidth)
 
         # Set other parameters
         nr_outliers = len(self.field.outlier_sectors)
