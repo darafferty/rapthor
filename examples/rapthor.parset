@@ -66,18 +66,19 @@ download_initial_skymodel_server = TGSS
 # onebeamperpatch = False
 # stepsize = 0.02
 # tolerance = 5e-3
-# solve_min_uv_lambda = 80.0
+# solve_min_uv_lambda = 350.0
 # parallelbaselines=False
 
 # Fast solve parameters (defaults shown):
 # fast_timestep_sec = 8.0
 # fast_freqstep_hz = 1e6
-# fast_smoothnessconstraint = 6e6
+# fast_smoothnessconstraint = 3e6
 # fast_smoothnessreffrequency = midpoint of frequency coverage
 # fast_smoothnessrefdistance = 0
 
 # Slow solve parameters (defaults shown):
-# slow_timestep_sec = 600.0
+# slow_timestep_joint_sec = 600.0
+# slow_timestep_separate_sec = 1200.0
 # slow_freqstep_hz = 1e6
 # slow_smoothnessconstraint_joint = 3e6
 # slow_smoothnessconstraint_separate = 3e6
@@ -90,7 +91,7 @@ download_initial_skymodel_server = TGSS
 # True)
 # cellsize_arcsec = 1.25
 # robust = -0.5
-# min_uv_lambda = 80.0
+# min_uv_lambda = 0.0
 # max_uv_lambda = 0.0
 # taper_arcsec = 0.0
 # do_multiscale_clean = True

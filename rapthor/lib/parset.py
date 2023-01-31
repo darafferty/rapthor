@@ -293,11 +293,11 @@ def get_calibration_options(parset):
     else:
         parset_dict['max_selfcal_loops'] = 10
 
-    # Minimum uv distance in lambda for calibration (default = 80)
+    # Minimum uv distance in lambda for calibration (default = 350)
     if 'solve_min_uv_lambda' in parset_dict:
         parset_dict['solve_min_uv_lambda'] = parset.getfloat('calibration', 'solve_min_uv_lambda')
     else:
-        parset_dict['solve_min_uv_lambda'] = 80.0
+        parset_dict['solve_min_uv_lambda'] = 350.0
 
     # Calculate the beam correction once per calibration patch (default = False)? If
     # False, the beam correction is calculated separately for each source in the patch.
@@ -317,10 +317,14 @@ def get_calibration_options(parset):
         parset_dict['fast_freqstep_hz'] = parset.getfloat('calibration', 'fast_freqstep_hz')
     else:
         parset_dict['fast_freqstep_hz'] = 1e6
-    if 'slow_timestep_sec' in parset_dict:
-        parset_dict['slow_timestep_sec'] = parset.getfloat('calibration', 'slow_timestep_sec')
+    if 'slow_timestep_joint_sec' in parset_dict:
+        parset_dict['slow_timestep_joint_sec'] = parset.getfloat('calibration', 'slow_timestep_joint_sec')
     else:
-        parset_dict['slow_timestep_sec'] = 600.0
+        parset_dict['slow_timestep_joint_sec'] = 600.0
+    if 'slow_timestep_separate_sec' in parset_dict:
+        parset_dict['slow_timestep_separate_sec'] = parset.getfloat('calibration', 'slow_timestep_separate_sec')
+    else:
+        parset_dict['slow_timestep_separate_sec'] = 1200.0
     if 'slow_freqstep_hz' in parset_dict:
         parset_dict['slow_freqstep_hz'] = parset.getfloat('calibration', 'slow_freqstep_hz')
     else:
@@ -330,7 +334,7 @@ def get_calibration_options(parset):
     if 'fast_smoothnessconstraint' in parset_dict:
         parset_dict['fast_smoothnessconstraint'] = parset.getfloat('calibration', 'fast_smoothnessconstraint')
     else:
-        parset_dict['fast_smoothnessconstraint'] = 6e6
+        parset_dict['fast_smoothnessconstraint'] = 3e6
     if 'fast_smoothnessreffrequency' in parset_dict:
         parset_dict['fast_smoothnessreffrequency'] = parset.getfloat('calibration', 'fast_smoothnessreffrequency')
     else:
@@ -404,14 +408,19 @@ def get_calibration_options(parset):
 
     # Check for invalid options
     allowed_options = ['max_selfcal_loops', 'solve_min_uv_lambda', 'fast_timestep_sec',
-                       'fast_freqstep_hz', 'slow_timestep_sec', 'onebeamperpatch',
+                       'fast_freqstep_hz', 'slow_timestep_joint_sec',
+                       'slow_timestep_separate_sec', 'onebeamperpatch',
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
-                       'stepsize', 'tolerance', 'patch_target_number', 'llssolver',
-                       'patch_target_flux_jy', 'fast_smoothnessconstraint',
-                       'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
-                       'slow_smoothnessconstraint_joint', 'slow_smoothnessconstraint_separate',
-                       'use_idg_predict', 'debug', 'parallelbaselines',
-                       'solveralgorithm', 'solverlbfgs_dof', 'solverlbfgs_iter', 'solverlbfgs_minibatches']
+                       'stepsize', 'tolerance', 'patch_target_number',
+                       'llssolver', 'patch_target_flux_jy',
+                       'fast_smoothnessconstraint',
+                       'fast_smoothnessreffrequency',
+                       'fast_smoothnessrefdistance',
+                       'slow_smoothnessconstraint_joint',
+                       'slow_smoothnessconstraint_separate', 'use_idg_predict',
+                       'debug', 'parallelbaselines', 'solveralgorithm',
+                       'solverlbfgs_dof', 'solverlbfgs_iter',
+                       'solverlbfgs_minibatches']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '
@@ -586,7 +595,7 @@ def get_imaging_options(parset):
         parset_dict['max_peak_smearing'] = 0.15
 
     # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
-    # robust parameter (default = -0.5), min and max uv distance in lambda (default = 80, none),
+    # robust parameter (default = -0.5), min and max uv distance in lambda (default = 0, none),
     # taper in arcsec (default = none), and whether multiscale clean should be used (default =
     # True)
     if 'cellsize_arcsec' in parset_dict:
@@ -600,7 +609,7 @@ def get_imaging_options(parset):
     if 'min_uv_lambda' in parset_dict:
         parset_dict['min_uv_lambda'] = parset.getfloat('imaging', 'min_uv_lambda')
     else:
-        parset_dict['min_uv_lambda'] = 80.0
+        parset_dict['min_uv_lambda'] = 0.0
     if 'max_uv_lambda' in parset_dict:
         parset_dict['max_uv_lambda'] = parset.getfloat('imaging', 'max_uv_lambda')
     else:

@@ -52,25 +52,30 @@ class Calibrate(Operation):
         # calibration)
         starttime = self.field.get_obs_parameters('starttime')
         ntimes = self.field.get_obs_parameters('ntimes')
-        slow_starttime = self.field.get_obs_parameters('slow_starttime')
-        slow_ntimes = self.field.get_obs_parameters('slow_ntimes')
+        slow_starttime1 = self.field.get_obs_parameters('slow_starttime_joint')
+        slow_ntimes1 = self.field.get_obs_parameters('slow_ntimes_joint')
+        slow_starttime2 = self.field.get_obs_parameters('slow_starttime_separate')
+        slow_ntimes2 = self.field.get_obs_parameters('slow_ntimes_separate')
 
         # Get the filenames of the input files for each frequency chunk
-        freqchunk_filename = self.field.get_obs_parameters('freqchunk_filename')
+        freqchunk_filename1 = self.field.get_obs_parameters('freqchunk_filename_joint')
+        freqchunk_filename2 = self.field.get_obs_parameters('freqchunk_filename_separate')
 
         # Get the start channel and number of channels for the frequency chunks
-        startchan = self.field.get_obs_parameters('startchan')
-        nchan = self.field.get_obs_parameters('nchan')
+        startchan1 = self.field.get_obs_parameters('startchan_joint')
+        nchan1 = self.field.get_obs_parameters('nchan_joint')
+        startchan2 = self.field.get_obs_parameters('startchan_separate')
+        nchan2 = self.field.get_obs_parameters('nchan_separate')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
-        solint_slow_timestep = self.field.get_obs_parameters('solint_slow_timestep')
+        solint_slow_timestep1 = self.field.get_obs_parameters('solint_slow_timestep_joint')
+        solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep_separate')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
-        solint_slow_freqstep = self.field.get_obs_parameters('solint_slow_freqstep')
-        solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep2')
-        solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep2')
+        solint_slow_freqstep1 = self.field.get_obs_parameters('solint_slow_freqstep_joint')
+        solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep_separate')
 
-        # Define various output filenames for the solution tables. We save some to
+        # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
         output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
@@ -146,17 +151,22 @@ class Calibrate(Operation):
         screen_type = self.field.screen_type
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
-                            'freqchunk_filename': CWLDir(freqchunk_filename).to_json(),
+                            'freqchunk_filename1': CWLDir(freqchunk_filename1).to_json(),
+                            'freqchunk_filename2': CWLDir(freqchunk_filename2).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
-                            'slow_starttime': slow_starttime,
-                            'slow_ntimes': slow_ntimes,
-                            'startchan': startchan,
-                            'nchan': nchan,
+                            'slow_starttime1': slow_starttime1,
+                            'slow_starttime2': slow_starttime2,
+                            'slow_ntimes1': slow_ntimes1,
+                            'slow_ntimes2': slow_ntimes2,
+                            'startchan1': startchan1,
+                            'startchan2': startchan2,
+                            'nchan1': nchan1,
+                            'nchan2': nchan2,
                             'solint_fast_timestep': solint_fast_timestep,
-                            'solint_slow_timestep': solint_slow_timestep,
+                            'solint_slow_timestep1': solint_slow_timestep1,
                             'solint_fast_freqstep': solint_fast_freqstep,
-                            'solint_slow_freqstep': solint_slow_freqstep,
+                            'solint_slow_freqstep1': solint_slow_freqstep1,
                             'calibrator_patch_names': calibrator_patch_names,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,

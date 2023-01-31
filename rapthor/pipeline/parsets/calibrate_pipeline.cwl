@@ -228,42 +228,77 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
-  - id: freqchunk_filename
+  - id: freqchunk_filename1
     label: Filename of input MS (frequency)
     doc: |
       The filenames of input MS files for which calibration will be done (length =
       n_obs * n_freq_chunks).
     type: Directory[]
 
-  - id: slow_starttime
+  - id: freqchunk_filename2
+    label: Filename of input MS (frequency)
+    doc: |
+      The filenames of input MS files for which calibration will be done (length =
+      n_obs * n_freq_chunks).
+    type: Directory[]
+
+  - id: slow_starttime1
     label: Start time of each chunk
     doc: |
       The start time (in casacore MVTime) for each time chunk used in the slow-gain
       calibration (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: slow_ntimes
+  - id: slow_starttime2
+    label: Start time of each chunk
+    doc: |
+      The start time (in casacore MVTime) for each time chunk used in the slow-gain
+      calibration (length = n_obs * n_freq_chunks).
+    type: string[]
+
+  - id: slow_ntimes1
     label: Number of times of each chunk
     doc: |
       The number of timeslots for each time chunk used in the slow-gain calibration
       (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: startchan
+  - id: slow_ntimes2
+    label: Number of times of each chunk
+    doc: |
+      The number of timeslots for each time chunk used in the slow-gain calibration
+      (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: startchan1
     label: Start channel of each chunk
     doc: |
       The start channel for each frequency chunk used in the slow-gain
       calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: nchan
+  - id: startchan2
+    label: Start channel of each chunk
+    doc: |
+      The start channel for each frequency chunk used in the slow-gain
+      calibration (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: nchan1
     label: Number of channels of each chunk
     doc: |
       The number of channels for each frequency chunk used in the slow-gain calibration
       (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_timestep
+  - id: nchan2
+    label: Number of channels of each chunk
+    doc: |
+      The number of channels for each frequency chunk used in the slow-gain calibration
+      (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: solint_slow_timestep1
     label: Slow 1 solution interval in time
     doc: |
       The solution interval in number of timeslots for the first slow-gain solve (length =
@@ -277,7 +312,7 @@ inputs:
       n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_freqstep
+  - id: solint_slow_freqstep1
     label: Slow 1 solution interval in frequency
     doc: |
       The solution interval in number of frequency channels for the first slow-gain solve
@@ -309,7 +344,7 @@ inputs:
       The antenna constraint for the first slow-gain solve (length = 1).
     type: string
 
-  - id: output_slow_h5parm
+  - id: output_slow_h5parm1
     label: Slow 1 output solution table
     doc: |
       The filename of the output h5parm solution table for the first slow-gain solve (length
@@ -518,23 +553,23 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename
+        source: freqchunk_filename1
       - id: starttime
-        source: slow_starttime
+        source: slow_starttime1
       - id: ntimes
-        source: slow_ntimes
+        source: slow_ntimes1
       - id: startchan
-        source: startchan
+        source: startchan1
       - id: nchan
-        source: nchan
+        source: nchan1
       - id: fast_h5parm
         source: combine_fast_phases/outh5parm
       - id: h5parm
-        source: output_slow_h5parm
+        source: output_slow_h5parm1
       - id: solint
-        source: solint_slow_timestep
+        source: solint_slow_timestep1
       - id: solve_nchan
-        source: solint_slow_freqstep
+        source: solint_slow_freqstep1
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver
@@ -644,15 +679,15 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename
+        source: freqchunk_filename2
       - id: starttime
-        source: slow_starttime
+        source: slow_starttime2
       - id: ntimes
-        source: slow_ntimes
+        source: slow_ntimes2
       - id: startchan
-        source: startchan
+        source: startchan2
       - id: nchan
-        source: nchan
+        source: nchan2
       - id: combined_h5parm
         source: combine_fast_and_slow_h5parms1/combinedh5parm
       - id: h5parm

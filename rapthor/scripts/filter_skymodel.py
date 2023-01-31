@@ -374,9 +374,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             # If there is, do it and append the resulting diagnostics dict to the
             # existing one
             #
-            # Note: the various ratios are all calculated as (s / s_comp) and the differences
-            # as (s - s_comp). If there are no successful matches, the compare() method
-            # returns None
+            # Note: the various ratios are all calculated as (s_in / s_comp) and the
+            # differences as (s_in - s_comp). If there are no successful matches,
+            # the compare() method returns None
             if (s_comp and len(s_in.getPatchNames()) >= 10 and len(s_comp.getPatchNames()) >= 10):
                 flux_astrometry_diagnostics = s_in.compare(s_comp, radius='5 arcsec',
                                                            excludeMultiple=True, make_plots=False)
