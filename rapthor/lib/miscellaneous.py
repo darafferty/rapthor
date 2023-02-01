@@ -620,6 +620,9 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
                                                       soltab.weight == 0.0))
         num_all += soltab.val.size
     h5parm_obj.close()
+    if num_all == 0:
+        raise ValueError('Cannot calculate flagged fraction: no solutions found in '
+                         'solset {0} of h5parm file {1}'.format(solsetname, h5file))
 
     return num_flagged / num_all
 
