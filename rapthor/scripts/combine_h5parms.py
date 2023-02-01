@@ -220,10 +220,7 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     sso : solset
         Updated output solution set
     """
-    # First, copy phases from 1
-    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
-
-    # Next, make the axes and their values for the output amplitude soltab.
+    # Next, make the axes and their values for the output soltabs.
     # The ss2 solset has the faster time axis (frequency axis is identical),
     # so use it to derive the output axes shapes
     st1 = ss1.getSoltab('amplitude000')
@@ -244,6 +241,17 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
         st = sso.getSoltab('amplitude000')
         st.delete()
     sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=weights)
+
+    # Interpolate the slow phases in st1 to the fast grid.
+    # Note: the output axes and their values are the same as for the amplitude solutions
+    st1 = ss1.getSoltab('phase000')
+    st2 = ss2.getSoltab('phase000')
+    vals, weights = interpolate_solutions(st2, st1, axes_shapes)
+    if 'phase000' in sso.getSoltabNames():
+        st = sso.getSoltab('phase000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
                          axesVals=axes_vals, vals=vals, weights=weights)
 
     return sso
