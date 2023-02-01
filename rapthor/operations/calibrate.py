@@ -85,8 +85,8 @@ class Calibrate(Operation):
         output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
         self.combined_fast_h5parm = 'fast_phases.h5parm'
-        output_slow_h5parm = ['slow_gain_{}.h5parm'.format(i)
-                              for i in range(self.field.nfreqchunks1)]
+        output_slow_h5parm1 = ['slow_gain1_{}.h5parm'.format(i)
+                               for i in range(self.field.nfreqchunks1)]
         combined_slow_h5parm = 'slow_gains.h5parm'
         self.combined_h5parms = 'combined_solutions.h5'
         output_slow_h5parm2 = ['slow_gain2_{}.h5parm'.format(i)
@@ -176,7 +176,7 @@ class Calibrate(Operation):
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,
                             'combined_fast_h5parm': self.combined_fast_h5parm,
-                            'output_slow_h5parm': output_slow_h5parm,
+                            'output_slow_h5parm1': output_slow_h5parm1,
                             'combined_slow_h5parm': combined_slow_h5parm,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
