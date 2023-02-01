@@ -28,7 +28,7 @@ test-integration-das:
     # Install WSclean (needs libgsl)
     - cd $CI_PROJECT_DIR
     - mkdir wsclean && cd wsclean
-    - git clone https://gitlab.com/aroffringa/wsclean.git src
+    - git clone --depth 1 --branch v3.2 https://gitlab.com/aroffringa/wsclean.git src
     - mkdir build && cd build
     - export OPENBLAS_NUM_THREADS=1
     - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT} -DCASACORE_ROOT_DIR=${CASACORE_ROOT} -DCMAKE_PREFIX_PATH="${CI_PROJECT_DIR};${EVERYBEAM_ROOT};${FFTW_ROOT}" -DCMAKE_INSTALL_PREFIX=.. ../src

@@ -25,4 +25,4 @@ module load py-matplotlib/3.5.1
 module load aoflagger/3.1.0
 module load casacore/3.4.0
 module load everybeam/0.4.0
-module load dp3/latest
+module load dp3/5.4
