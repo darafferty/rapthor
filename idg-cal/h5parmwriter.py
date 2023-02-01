@@ -68,8 +68,8 @@ class H5ParmWriter:
             coordinates
         """
 
-        assert len(names) == positions.shape[0]
-        assert positions.ndim == 2 and positions.shape[1] == 3
+        assert len(names) == len(positions)
+        assert len(positions[0]) == 3
 
         if isinstance(names, list):
             names = np.array(names)
@@ -83,7 +83,7 @@ class H5ParmWriter:
         antenna_type = np.dtype(
             {
                 "names": ["name", "position"],
-                "formats": [data_type_h5, (positions.dtype, (3,))],
+                "formats": [data_type_h5, (type(positions[0][0]), (3,))],
             }
         )
 
@@ -313,8 +313,9 @@ class H5ParmWriter:
             )
 
         if meta_data is not None:
-            if meta_data.dtype.type == np.str_:
-                meta_data = self.__convert_np_str_to_bytes(meta_data)
+            meta_data_array = np.array(meta_data)
+            if meta_data_array.dtype.type == np.str_:
+                meta_data = self.__convert_np_str_to_bytes(meta_data_array)
 
             if hdf_location + "/" + axis not in self.h5file:
                 # Create axis meta data set

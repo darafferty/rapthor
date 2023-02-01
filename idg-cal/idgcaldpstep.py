@@ -32,11 +32,11 @@ class IDGCalDPStep(dp3.Step):
 
     def get_required_fields(self):
         return (
-            dp3.Fields.DATA | 
-            dp3.Fields.FLAGS | 
-            dp3.Fields.WEIGHTS | 
+            dp3.Fields.DATA |
+            dp3.Fields.FLAGS |
+            dp3.Fields.WEIGHTS |
             dp3.Fields.UVW)
-                                    
+
     def get_provided_fields(self):
         return dp3.Fields()
 
@@ -50,7 +50,7 @@ class IDGCalDPStep(dp3.Step):
 
             # Send processed data to the next step
             for dpbuffer in self.dpbuffers:
-                self.process_next_step(dpbuffer)
+                self.get_next_step().process(dpbuffer)
 
             # Clear accumulated data
             self.dpbuffers = []
@@ -61,12 +61,12 @@ class IDGCalDPStep(dp3.Step):
             # TODO deal with incomplete solution interval
             # self.process_buffers()
             for dpbuffer in self.dpbuffers:
-                self.process_next_step(dpbuffer)
+                self.get_next_step().process(dpbuffer)
             self.dpbuffers = []
 
     def update_info(self, dpinfo):
         super().update_info(dpinfo)
-        self.info().set_need_vis_data()
+        self.info.set_need_vis_data()
         self.fetch_uvw = True
         self.fetch_weights = True
         self.ms_name = dpinfo.ms_name()
@@ -87,20 +87,20 @@ class IDGCalDPStep(dp3.Step):
         """
 
         ## BEGIN: read parset
-        self.proxytype = parset.getString(prefix + "proxytype", "CPU")
+        self.proxytype = parset.get_string(prefix + "proxytype", "CPU")
 
-        self.usebeammodel = parset.getBool(prefix + "usebeammodel", False)
-        self.beammode = parset.getString(prefix + "beammode", "default")
+        self.usebeammodel = parset.get_bool(prefix + "usebeammodel", False)
+        self.beammode = parset.get_string(prefix + "beammode", "default")
         self.beamnormalisationmode = eb.parse_beam_normalisation_mode(
-            parset.getString(prefix + "beamnormalisationmode", "full"))
+            parset.get_string(prefix + "beamnormalisationmode", "full"))
 
-        solint = parset.getInt(prefix + "solint", 0)
+        solint = parset.get_int(prefix + "solint", 0)
         if solint:
             self.ampl_interval = solint
             self.phase_interval = solint
         else:
-            self.ampl_interval = parset.getInt(prefix + "solintamplitude", 0)
-            self.phase_interval = parset.getInt(prefix + "solintphase", 0)
+            self.ampl_interval = parset.get_int(prefix + "solintamplitude", 0)
+            self.phase_interval = parset.get_int(prefix + "solintphase", 0)
 
         # solintamplitude should be divisible by solintphase, check and correct if that's not the case
         remainder = self.ampl_interval % self.phase_interval
@@ -110,36 +110,36 @@ class IDGCalDPStep(dp3.Step):
             )
             self.ampl_interval += remainder
 
-        self.imagename = parset.getString(prefix + "modelimage")
-        self.padding = parset.getFloat(prefix + "padding", 1.2)
-        self.nr_correlations = parset.getInt(prefix + "nrcorrelations", 4)
-        self.subgrid_size = parset.getInt(prefix + "subgridsize", 32)
+        self.imagename = parset.get_string(prefix + "modelimage")
+        self.padding = parset.get_float(prefix + "padding", 1.2)
+        self.nr_correlations = parset.get_int(prefix + "nrcorrelations", 4)
+        self.subgrid_size = parset.get_int(prefix + "subgridsize", 32)
 
-        self.taper_support = parset.getInt(prefix + "tapersupport", 7)
-        wterm_support = parset.getInt(prefix + "wtermsupport", 5)
-        aterm_support = parset.getInt(prefix + "atermsupport", 5)
+        self.taper_support = parset.get_int(prefix + "tapersupport", 7)
+        wterm_support = parset.get_int(prefix + "wtermsupport", 5)
+        aterm_support = parset.get_int(prefix + "atermsupport", 5)
         self.kernel_size = self.taper_support + wterm_support + aterm_support
 
         # get polynomial degrees for amplitude/phase
-        ampl_order = parset.getInt(prefix + "polynomialdegamplitude", 2)
-        phase_order = parset.getInt(prefix + "polynomialdegphase", 1)
+        ampl_order = parset.get_int(prefix + "polynomialdegamplitude", 2)
+        phase_order = parset.get_int(prefix + "polynomialdegphase", 1)
 
         # Solver related
         # Factor between 0 and 1 with which to update solution between iterations
-        self.solver_update_gain = parset.getFloat(prefix + "solverupdategain", 0.5)
+        self.solver_update_gain = parset.get_float(prefix + "solverupdategain", 0.5)
         # Tolerance pseudo inverse
-        self.pinv_tol = parset.getDouble(prefix + "tolerancepinv", 1e-9)
+        self.pinv_tol = parset.get_double(prefix + "tolerancepinv", 1e-9)
         # Maximum number of iterations
-        self.max_iter = parset.getInt(prefix + "maxiter", 1)
+        self.max_iter = parset.get_int(prefix + "maxiter", 1)
 
         # H5Parm output file related
-        self.h5parm_fname = parset.getString(prefix + "h5parm", "idgcal.h5")
-        self.h5parm_solsetname = parset.getString(
+        self.h5parm_fname = parset.get_string(prefix + "h5parm", "idgcal.h5")
+        self.h5parm_solsetname = parset.get_string(
             prefix + "h5parmsolset", "coefficients000"
         )
-        self.h5parm_overwrite = parset.getBool(prefix + "h5parmoverwrite", True)
+        self.h5parm_overwrite = parset.get_bool(prefix + "h5parmoverwrite", True)
 
-        self.w_step = parset.getFloat(prefix + "wstep", 400.0)
+        self.w_step = parset.get_float(prefix + "wstep", 400.0)
         ## END: read parset
 
         self.shift = np.array((0.0, 0.0), dtype=np.float32)
@@ -156,8 +156,8 @@ class IDGCalDPStep(dp3.Step):
             self.ampl_poly.nr_coeffs + self.phase_poly.nr_coeffs * self.nr_phase_updates
         )
 
-        self.nr_channels_per_block = parset.getInt(prefix + "nr_channels_per_block", 0)
-        self.apply_phase_constraint = parset.getBool(prefix + "apply_phase_constraint", False)
+        self.nr_channels_per_block = parset.get_int(prefix + "nr_channels_per_block", 0)
+        self.apply_phase_constraint = parset.get_bool(prefix + "apply_phase_constraint", False)
 
     def initialize(self):
         self.is_initialized = True
@@ -166,10 +166,10 @@ class IDGCalDPStep(dp3.Step):
         self.count_process_buffer_calls = 0
 
         # Extract the time info and cast into a time array
-        tstart = self.info().start_time()
+        tstart = self.info.start_time
         # Time array should match "amplitude time blocks"
-        nsteps = (self.info().ntime() // self.ampl_interval) * self.ampl_interval
-        dt = self.info().time_interval()
+        nsteps = (self.info.n_times // self.ampl_interval) * self.ampl_interval
+        dt = self.info.time_interval
         time_array = np.linspace(
             tstart, tstart + dt * nsteps, num=nsteps, endpoint=False
         )
@@ -181,10 +181,10 @@ class IDGCalDPStep(dp3.Step):
             time_array[:: self.phase_interval] + (self.phase_interval - 1) * dt / 2.0
         )
 
-        self.nr_stations = self.info().nantenna()
+        self.nr_stations = self.info.n_antenna
         self.nr_baselines = (self.nr_stations * (self.nr_stations - 1)) // 2
         self.frequencies = np.array(
-            self.info().get_channel_frequencies(), dtype=np.float32
+            self.info.channel_frequencies, dtype=np.float32
         )
         self.nr_channels = len(self.frequencies)
 
@@ -198,8 +198,8 @@ class IDGCalDPStep(dp3.Step):
 
         self.baselines = np.zeros(shape=(self.nr_baselines,2 ), dtype=np.int32)
 
-        station1 = np.array(self.info().get_antenna1())
-        station2 = np.array(self.info().get_antenna2())
+        station1 = np.array(self.info.first_antenna_indices)
+        station2 = np.array(self.info.second_antenna_indices)
         self.auto_corr_mask = station1 != station2
         self.baselines[:,0] = station1[self.auto_corr_mask]
         self.baselines[:,1] = station2[self.auto_corr_mask]
@@ -221,7 +221,7 @@ class IDGCalDPStep(dp3.Step):
             zip(
                 axes_labels,
                 (
-                    self.nr_channel_blocks, 
+                    self.nr_channel_blocks,
                     self.nr_stations,
                     self.time_array_phase.size,
                     self.phase_poly.nr_coeffs,
@@ -238,7 +238,7 @@ class IDGCalDPStep(dp3.Step):
 
         # Add antenna/station info
         self.h5writer.add_antennas(
-            self.info().antenna_names(), self.info().antenna_positions()
+            self.info.antenna_names, self.info.antenna_positions
         )
 
         if self.proxytype.lower() == "gpu":
@@ -267,7 +267,7 @@ class IDGCalDPStep(dp3.Step):
             self.h5writer,
             "amplitude",
             axes_data_amplitude,
-            self.info().antenna_names(),
+            self.info.antenna_names,
             self.time_array_ampl,
             self.freq_array,
             self.image_size,
@@ -277,7 +277,7 @@ class IDGCalDPStep(dp3.Step):
             self.h5writer,
             "phase",
             axes_data_phase,
-            self.info().antenna_names(),
+            self.info.antenna_names,
             self.time_array_phase,
             self.freq_array,
             self.image_size,
@@ -778,7 +778,7 @@ def apply_beam(beam, aterms):
 
     Returns
     -------
-    Array of the same shape as aterms, matrix multiplied by beam.    
+    Array of the same shape as aterms, matrix multiplied by beam.
     """
     if beam is not None:
         # reshape last axis (4,) to two axes (2,2)
