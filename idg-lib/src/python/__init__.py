@@ -12,7 +12,7 @@ accelerator hardware.
 The IDG library was born out of a project comparing the performance of implementations of gridding/degridding algorithms
 on various accelerator architectures, like for example Graphical Processing Units (GPUs).
 
-Currently there are four submodules for different types of proxies: :py:mod:`CPU`, :py:mod:`CUDA`, :py:mod:`OpenCL` and :py:mod:`HybridCUDA`.
+Currently there are four submodules for different types of proxies: :py:mod:`CPU`, :py:mod:`CUDA` and :py:mod:`HybridCUDA`.
 Each submodule contains one or more subclasses of the Proxy class.
 
 The two most commonly used proxies are CPU.Optimized and HybridCUDA.GenericOptimized, 
@@ -53,7 +53,7 @@ def handle_error(library, e):
     else:
         print("Error importing %s: %s" % (library, e.args))
 
-for proxy_module in ["CPU", "CUDA", "OpenCL", "HybridCUDA"]:
+for proxy_module in ["CPU", "CUDA", "HybridCUDA"]:
     try:
         globals()[proxy_module] = importlib.import_module("." + proxy_module, __name__)
     except ModuleNotFoundError as e:

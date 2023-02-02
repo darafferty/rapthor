@@ -16,8 +16,6 @@ from common import main
         "idg.CPU.Optimized",
         "idg.HybridCUDA.GenericOptimized",
         "idg.CUDA.Generic",
-        # OpenCL test is skipped
-        "idg.OpenCL.Generic",
     ],
 )
 def test_proxies(proxy):

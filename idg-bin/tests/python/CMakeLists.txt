@@ -3,8 +3,7 @@
 
 install(
   FILES common.py test-cpu-optimized.py test-cuda-generic.py
-        test-hybrid-cuda-generic-optimized.py test-opencl-generic.py
-        test-python-reference.py
+        test-hybrid-cuda-generic-optimized.py test-python-reference.py
   PERMISSIONS
     OWNER_READ
     OWNER_WRITE

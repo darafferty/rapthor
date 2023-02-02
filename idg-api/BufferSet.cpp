@@ -150,15 +150,6 @@ std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
     );
 #endif
   }
-  if (architecture == Type::OPENCL_GENERIC) {
-#if defined(BUILD_LIB_OPENCL)
-    proxy.reset(new proxy::opencl::Generic());
-#else
-    throw std::runtime_error(
-        "Can not create OPENCL_GENERIC proxy. idg-lib was built with "
-        "BUILD_LIB_OPENCL=OFF");
-#endif
-  }
 
   if (!proxy) throw std::invalid_argument("Unknown architecture type.");
 

@@ -4,7 +4,6 @@
 project(idg)
 
 set(IDG_CUDA_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/CUDA/common)
-set(IDG_OpenCL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/OpenCL/common)
 
 include_directories(external)
 
@@ -20,9 +19,6 @@ add_subdirectory(Hybrid)
 
 if(BUILD_LIB_CUDA)
   add_subdirectory(CUDA)
-endif()
-if(BUILD_LIB_OPENCL)
-  add_subdirectory(OpenCL)
 endif()
 if(BUILD_WITH_PYTHON)
   add_subdirectory(python)
@@ -182,32 +178,6 @@ if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
 endif()
 
-###################################################
-# build libidg-opencl, containing all common code #
-###################################################
-if(BUILD_LIB_OPENCL)
-
-  add_library(idg-opencl $<TARGET_OBJECTS:opencl-common>
-                         $<TARGET_OBJECTS:opencl-generic>)
-
-  set(LINK_LIBRARIES idg-common ${OPENCL_LIBRARIES} ${CLFFT_LIBRARIES})
-
-  target_link_libraries(idg-opencl ${LINK_LIBRARIES})
-
-  set_target_properties(idg-opencl PROPERTIES PUBLIC_HEADER idg-opencl.h
-                                              SOVERSION 0)
-
-  install(
-    TARGETS idg-opencl
-    COMPONENT gpu
-    EXPORT idg-targets
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib/static
-    PUBLIC_HEADER DESTINATION include)
-
-endif(BUILD_LIB_OPENCL)
-
 ################################################
 # build libidg, containing all common code     #
 ################################################
@@ -223,9 +193,6 @@ if(BUILD_LIB_CUDA)
 endif()
 if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
   set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-hybrid-cuda)
-endif()
-if(BUILD_LIB_OPENCL)
-  set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-opencl)
 endif()
 
 target_link_libraries(idg ${LINK_LIBRARIES})

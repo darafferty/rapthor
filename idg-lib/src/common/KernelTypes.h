@@ -24,19 +24,11 @@ typedef struct {
   int nr_aterms;
 } Metadata;
 
-#ifndef __OPENCL_VERSION__
 template <class T>
 struct UVW {
   T u;
   T v;
   T w;
 };
-#else
-typedef struct {
-  float u;
-  float v;
-  float w;
-} UVW;
-#endif
 
 #endif  // IDG_KERNELTYPES_H_

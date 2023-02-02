@@ -32,8 +32,5 @@ std::set<idg::api::Type> GetArchitectures() {
 #if defined(BUILD_LIB_CPU) && defined(BUILD_LIB_CUDA)
   architectures.insert(idg::api::Type::HYBRID_CUDA_CPU_OPTIMIZED);
 #endif
-#if defined(BUILD_LIB_OPENCL)
-  architectures.insert(idg::api::Type::OPENCL_GENERIC);
-#endif
   return architectures;
 }
