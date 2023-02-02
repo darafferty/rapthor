@@ -10,7 +10,7 @@ selfcal_data_fraction = 0.2
 [calibration]
 fast_timestep_sec = 32
 fast_freqstep_hz = 1e6
-slow_timestep_sec = 600
+slow_timestep_separate_sec = 600
 slow_freqstep_hz = 1e6
 fast_smoothnessconstraint = 6.0e6
 slow_smoothnessconstraint = 4.0e6

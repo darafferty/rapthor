@@ -41,19 +41,19 @@ for i in range(max_selfcal_loops):
 
     if i == 0:
         strategy_steps[i]['target_flux'] = 1.0
-        strategy_steps[i]['max_nmiter'] = 10
+        strategy_steps[i]['max_nmiter'] = 8
     elif i == 1:
         strategy_steps[i]['target_flux'] = 0.8
-        strategy_steps[i]['max_nmiter'] = 12
+        strategy_steps[i]['max_nmiter'] = 10
     elif i == 2:
         strategy_steps[i]['target_flux'] = 0.6
-        strategy_steps[i]['max_nmiter'] = 14
+        strategy_steps[i]['max_nmiter'] = 12
     elif i == 3:
         strategy_steps[i]['target_flux'] = 0.5
-        strategy_steps[i]['max_nmiter'] = 16
+        strategy_steps[i]['max_nmiter'] = 14
     else:
         strategy_steps[i]['target_flux'] = 0.45
-        strategy_steps[i]['max_nmiter'] = 16
+        strategy_steps[i]['max_nmiter'] = 14
     strategy_steps[i]['regroup_model'] = True
 
     if i < min_selfcal_loops or i == max_selfcal_loops - 1:

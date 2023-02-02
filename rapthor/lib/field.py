@@ -205,7 +205,7 @@ class Field(object):
         if data_fraction < 1.0:
             self.observations = []
             for obs in self.full_observations:
-                mintime = self.parset['calibration_specific']['slow_timestep_sec']
+                mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
                 tottime = obs.endtime - obs.starttime
                 if data_fraction < min(1.0, mintime/tottime):
                     obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
@@ -248,7 +248,7 @@ class Field(object):
             # Note: Due to a limitation in Dysco, we make sure to have at least
             # 2 time slots per observation, otherwise the output MS cannot be
             # written with compression
-            mintime = self.parset['calibration_specific']['slow_timestep_sec']
+            mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
             prev_observations = self.observations[:]
             self.observations = []
             for obs in prev_observations:
