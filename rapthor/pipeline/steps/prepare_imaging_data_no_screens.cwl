@@ -9,14 +9,8 @@ doc: |
   inputs and outputs
 
 requirements:
-  - class: InlineJavascriptRequirement
-  - class: InitialWorkDirRequirement
-    listing:
-      - entry: $(inputs.msin)
-        writable: true
-  - class: InplaceUpdateRequirement
-    inplaceUpdate: true
-  - class: ShellCommandRequirement
+  InlineJavascriptRequirement: {}
+  ShellCommandRequirement: {}
 
 arguments:
   - msin.datacolumn=DATA
