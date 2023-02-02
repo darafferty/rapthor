@@ -545,6 +545,9 @@ int main(int argc, char* argv[]) {
                                    d_padded_tile_ids, d_tile_coordinates,
                                    d_padded_tiles, u_grid);
 
+  // Wait for the computation on the GPU to finish
+  stream.synchronize();
+
   // Run adder_wtiles_to_grid on host
   idg::Array3D<std::complex<float>> grid(nr_polarizations, grid_size,
                                          grid_size);
