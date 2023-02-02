@@ -13,9 +13,6 @@ endif()
 if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
   list(APPEND _py_files HybridCUDA.py)
 endif()
-if(BUILD_LIB_OPENCL)
-  list(APPEND _py_files OpenCL.py)
-endif()
 
 # Install Python modules.
 install(

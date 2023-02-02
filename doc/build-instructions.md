@@ -15,7 +15,6 @@ make install
 * BUILD_STATIC_LIBS: build static libraries, instead of shared ones
 * BUILD_LIB_CPU: build library 'libidg-cpu' for usage on CPU's
 * BUILD_LIB_CUDA: build library 'libidg-cuda' for usage on Nvidia GPU's
-* BUILD_LIB_OPENCL: build library 'libidg-opencl' for usage of OpenCL
 * BUILD_WITH_PYTHON: build Python module 'idg' to use IDG from Python
 ```
 All other build options are for development purposes only, and should be

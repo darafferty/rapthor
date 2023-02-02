@@ -10,7 +10,6 @@ list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
 # options
 option(BUILD_LIB_CPU "Build CPU libraries" ON)
 option(BUILD_LIB_CUDA "Build CUDA libraries" OFF)
-#option (BUILD_LIB_OPENCL "Build OpenCL libraries" OFF)
 option(USE_DUMMY_VISIBILITIES "Run C++ examples using dummy visibilities" ON)
 
 # Compiler settings:

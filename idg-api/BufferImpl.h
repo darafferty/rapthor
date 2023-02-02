@@ -24,9 +24,6 @@
 #if defined(BUILD_LIB_CUDA) && defined(BUILD_LIB_CPU)
 #include "idg-hybrid-cuda.h"
 #endif
-#if defined(BUILD_LIB_OPENCL)
-#include "idg-opencl.h"
-#endif
 #include "Datatypes.h"
 
 #include "Buffer.h"
