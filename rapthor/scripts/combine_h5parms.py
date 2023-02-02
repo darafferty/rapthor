@@ -220,6 +220,9 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     sso : solset
         Updated output solution set
     """
+    # First, copy metadata from solset #1 to the output solset
+    ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
+
     # Next, make the axes and their values for the output soltabs.
     # The ss2 solset has the faster time axis (frequency axis is identical),
     # so use it to derive the output axes shapes
