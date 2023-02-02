@@ -675,7 +675,11 @@ steps:
       phase solutions and first slow-gain solutions are preapplied and stations
       are unconstrainted (so different stations are free to have different
       solutions).
+{% if do_joint_solve %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
+{% else %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2_no_joint.cwl
+{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
