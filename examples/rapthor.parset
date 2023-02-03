@@ -77,8 +77,8 @@ download_initial_skymodel_server = TGSS
 # fast_smoothnessrefdistance = 0
 
 # Slow solve parameters (defaults shown):
-# slow_timestep_joint_sec = 600.0
-# slow_timestep_separate_sec = 1200.0
+# slow_timestep_joint_sec = 0.0
+# slow_timestep_separate_sec = 600.0
 # slow_freqstep_hz = 1e6
 # slow_smoothnessconstraint_joint = 3e6
 # slow_smoothnessconstraint_separate = 3e6
