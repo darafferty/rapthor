@@ -33,30 +33,31 @@ def set_strategy(field):
         #     - imaging of sectors
         #     - regrouping of resulting sky model to meet flux criteria
         #     - calibration on regrouped sources (calibration groups may differ from sectors)
-        min_selfcal_loops = 2
-        max_selfcal_loops = 5
+        min_selfcal_loops = 4
+        max_selfcal_loops = 8
         for i in range(max_selfcal_loops):
             strategy_steps.append({})
 
             strategy_steps[i]['do_calibrate'] = True
             if i == 0:
                 strategy_steps[i]['do_slowgain_solve'] = False
-            else:
-                strategy_steps[i]['do_slowgain_solve'] = True
-
-            if i == 0:
                 strategy_steps[i]['peel_outliers'] = True
                 strategy_steps[i]['peel_bright_sources'] = False
+            elif i == 1:
+                strategy_steps[i]['do_slowgain_solve'] = False
+                strategy_steps[i]['peel_outliers'] = False
+                strategy_steps[i]['peel_bright_sources'] = False
             else:
+                strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
                 strategy_steps[i]['peel_bright_sources'] = True
 
             strategy_steps[i]['do_image'] = True
-            if i == 0:
+            if i < 2:
                 strategy_steps[i]['auto_mask'] = 5.0
                 strategy_steps[i]['threshisl'] = 4.0
                 strategy_steps[i]['threshpix'] = 5.0
-            elif i == 1:
+            elif i == 2:
                 strategy_steps[i]['auto_mask'] = 4.0
                 strategy_steps[i]['threshisl'] = 3.0
                 strategy_steps[i]['threshpix'] = 5.0
@@ -66,23 +67,23 @@ def set_strategy(field):
                 strategy_steps[i]['threshpix'] = 5.0
 
             if i == 0:
-                strategy_steps[i]['target_flux'] = 1.0
+                strategy_steps[i]['target_flux'] = 1.5
                 strategy_steps[i]['max_nmiter'] = 8
             elif i == 1:
+                strategy_steps[i]['target_flux'] = 1.0
+                strategy_steps[i]['max_nmiter'] = 9
+            elif i == 2:
                 strategy_steps[i]['target_flux'] = 0.8
                 strategy_steps[i]['max_nmiter'] = 10
-            elif i == 2:
-                strategy_steps[i]['target_flux'] = 0.6
-                strategy_steps[i]['max_nmiter'] = 12
             elif i == 3:
-                strategy_steps[i]['target_flux'] = 0.5
-                strategy_steps[i]['max_nmiter'] = 14
+                strategy_steps[i]['target_flux'] = 0.6
+                strategy_steps[i]['max_nmiter'] = 11
             else:
-                strategy_steps[i]['target_flux'] = 0.45
-                strategy_steps[i]['max_nmiter'] = 14
+                strategy_steps[i]['target_flux'] = 0.5
+                strategy_steps[i]['max_nmiter'] = 12
             strategy_steps[i]['regroup_model'] = True
 
-            if i < min_selfcal_loops or i == max_selfcal_loops - 1:
+            if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_check'] = False
             else:
                 strategy_steps[i]['do_check'] = True
