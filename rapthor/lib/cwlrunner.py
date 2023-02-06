@@ -86,9 +86,10 @@ class CWLRunner:
             self.args.extend(['--no-container'])
             self.args.extend(['--preserve-entire-environment'])
         if self.operation.scratch_dir is not None:
+            # Note: --tmp-outdir-prefix is not set here, as its value depends on
+            # runner/mode used
             prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
             self.args.extend(['--tmpdir-prefix', prefix])
-            self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.field.use_mpi:
             self._create_mpi_config_file()
             self.args.extend(['--mpi-config-file', self.operation.mpi_config_file])
@@ -153,7 +154,6 @@ class ToilRunner(CWLRunner):
         """
         super().setup()
         self.args.extend(['--batchSystem', self.operation.batch_system])
-        self.args.extend(['--bypass-file-store'])
         if self.operation.batch_system == 'slurm':
             self.args.extend(['--disableCaching'])
             self.args.extend(['--defaultCores', str(self.operation.cpus_per_task)])
@@ -171,6 +171,16 @@ class ToilRunner(CWLRunner):
             # Note: add a trailing directory separator, required by Toil v5.3+, using
             #       os.path.join()
             self.args.extend(['--workDir', os.path.join(self.operation.scratch_dir, '')])
+            if self.operation.batch_system == 'slurm':
+                # When the slurm batch system is used, the use of --bypass-file-store
+                # requires that --tmp-outdir-prefix points to a shared filesystem, so
+                # here we set it to the output directory
+                prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
+            else:
+                # For non-slurm batch systems, set --tmp-outdir-prefix to the scratch
+                # directory
+                prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
+            self.args.extend(['--tmp-outdir-prefix', prefix])
         self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])
         self.args.extend(['--stats'])
@@ -205,6 +215,9 @@ class CWLToolRunner(CWLRunner):
         self.args.extend(['--disable-color'])
         self.args.extend(['--parallel'])
         self.args.extend(['--timestamps'])
+        if self.operation.scratch_dir is not None:
+            prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
+            self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.debug_workflow:
             self.args.extend(["--debug"])
 
