@@ -495,8 +495,8 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         # Convert weights to float64 from float16 to avoid clipping in the
         # intermediate steps, and set flagged (weight = 0) solutions to NaN
         # so they are not included in the calculations
-        weights_ph = np.array(soltab_ph.weight, dtype=np.float)
-        weights_amp = np.array(soltab_amp.weight, dtype=np.float)
+        weights_ph = np.array(soltab_ph.weight, dtype=float)
+        weights_amp = np.array(soltab_amp.weight, dtype=float)
         weights_ph[weights_ph == 0.0] = np.nan
         weights_amp[weights_amp == 0.0] = np.nan
 

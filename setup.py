@@ -38,11 +38,10 @@ setup(
                  'Intended Audience :: Science/Research',
                  'Operating System :: POSIX :: Linux',
                  'Topic :: Scientific/Engineering :: Astronomy'],
-    # numpy<1.24 because of https://support.astron.nl/jira/browse/RAP-286
     # shapely<1.8.1 because of https://support.astron.nl/jira/browse/RAP-285, and
     #                          https://support.astron.nl/jira/browse/RAP-290
     # toil[cwl]!=5.6 because of https://github.com/DataBiosphere/toil/issues/4101
-    install_requires=['numpy<1.24', 'scipy', 'astropy', 'jinja2', 'shapely<1.8.1',
+    install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely<1.8.1',
                       'toil[cwl]!=5.6', 'reproject', 'python-dateutil',
                       'Rtree', 'loess', 'lsmtool', 'losoto', 'bdsf',
                       'python-casacore'],
