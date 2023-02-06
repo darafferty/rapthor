@@ -15,11 +15,12 @@ from astropy.io import fits as pyfits
 from PIL import Image, ImageDraw
 import multiprocessing
 from math import modf, floor, ceil
+from losoto.h5parm import h5parm
 import lsmtool
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS', targetname='Patch'):
-    """ 
+    """
     Download the skymodel for the target field
 
     Parameters
@@ -39,11 +40,11 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     target_name : str
         Give the patch a certain name. Default is "Patch".
     """
-    SKY_SERVERS = {'TGSS':'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
+    SKY_SERVERS = {'TGSS': 'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
+                   'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
     if source.upper() not in SKY_SERVERS.keys():
         raise ValueError('Unsupported skymodel source specified! Please use TGSS or GSM.')
-    
+
     logger = logging.getLogger('rapthor:skymodel')
 
     file_exists = os.path.isfile(skymodel_path)
@@ -84,7 +85,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
     # Treat all sources as one group (direction)
     skymodel = lsmtool.load(skymodel_path)
-    skymodel.group('single', root = targetname)
+    skymodel.group('single', root=targetname)
     skymodel.write(clobber=True)
 
 
@@ -565,7 +566,7 @@ def get_reference_station(soltab, max_ind=None):
     weights = soltab.getValues(retAxesVals=False, weight=True)
     weights = np.sum(weights, axis=tuple([i for i, axis_name in
                                           enumerate(soltab.getAxesNames())
-                                          if axis_name != 'ant']), dtype=np.float)
+                                          if axis_name != 'ant']), dtype=float)
     ref_ind = np.where(weights[0:max_ind] == np.max(weights[0:max_ind]))[0][0]
 
     return ref_ind
@@ -591,6 +592,39 @@ def remove_soltabs(solset, soltabnames):
             soltab.delete()
         except Exception:
             print('Error: soltab "{}" could not be removed'.format(soltabname))
+
+
+def get_flagged_solution_fraction(h5file, solsetname='sol000'):
+    """
+    Get flagged fraction for solutions in given H5parm
+
+    Parameters
+    ----------
+    h5file : str
+        Filename of input h5parm file
+    solsetname : str, optional
+        The solution set name to use. The flagged fraction is calculated over
+        all solution tables in the given solution set
+
+    Returns
+    -------
+    flagged_fraction : float
+        Flagged fraction
+    """
+    h5parm_obj = h5parm(h5file)
+    solset = h5parm_obj.getSolset(solsetname)
+    num_flagged = 0
+    num_all = 0
+    for soltab in solset.getSoltabs():
+        num_flagged += np.count_nonzero(np.logical_or(~np.isfinite(soltab.val),
+                                                      soltab.weight == 0.0))
+        num_all += soltab.val.size
+    h5parm_obj.close()
+    if num_all == 0:
+        raise ValueError('Cannot calculate flagged fraction: no solutions found in '
+                         'solset {0} of h5parm file {1}'.format(solsetname, h5file))
+
+    return num_flagged / num_all
 
 
 class multiprocManager(object):

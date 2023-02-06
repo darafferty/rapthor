@@ -43,7 +43,7 @@ setup(
     # toil[cwl]!=5.6 because of https://github.com/DataBiosphere/toil/issues/4101
     install_requires=['numpy', 'scipy', 'astropy', 'jinja2', 'shapely<1.8.1',
                       'toil[cwl]!=5.6', 'reproject', 'python-dateutil',
-                      'Rtree', 'loess', 'lsmtool', 'losoto', 'bdsf',
+                      'Rtree', 'lsmtool', 'losoto', 'bdsf',
                       'python-casacore'],
     scripts=['bin/rapthor',
              'bin/plotrapthor',

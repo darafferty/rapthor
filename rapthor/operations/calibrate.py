@@ -287,7 +287,7 @@ class Calibrate(Operation):
             self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
                                                 for af in self.field.aterm_image_filenames]
 
-        # Copy the solutions (h5parm files)
+        # Copy the solutions (h5parm files) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
@@ -299,6 +299,8 @@ class Calibrate(Operation):
         else:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
+        self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
         # Copy the plots (PNG files)
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))

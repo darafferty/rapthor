@@ -571,7 +571,7 @@ class CovWeights:
                         )
 
         # get rid of NaNs and low values
-        CoeffArray[np.isnan(CoeffArray)] = np.inf
+        CoeffArray[~np.isfinite(CoeffArray)] = np.inf
         for i in range(nAnt):
             tempars = CoeffArray[:, :, i]
             thres = 0.25 * np.median(tempars[np.where(np.isfinite(tempars))])
@@ -631,7 +631,7 @@ class CovWeights:
         w = w.reshape(nt*nbl, nchan, npol)
         w[np.isinf(w)] = np.nan
         w = w / np.nanmean(w)
-        w[np.isnan(w)] = 0
+        w[~np.isfinite(w)] = 0
 
         return w
 

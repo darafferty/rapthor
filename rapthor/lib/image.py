@@ -163,7 +163,7 @@ class FITSImage(object):
         if sampling < 1:
             sampling = 1
         data = self.img_data[::sampling]  # sample array
-        data = data[ ~np.isnan(data) ]  # remove nans
+        data = data[ np.isfinite(data) ]
         oldrms = 1.
         for i in range(niter):
             rms = np.nanstd(data)
