@@ -93,9 +93,13 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
             log.error('No input sky model file given and no download requested. Exiting...')
             raise RuntimeError('No input sky model file given and no download requested.')
     elif ('input_skymodel' in parset_dict) and parset_dict['download_initial_skymodel']:
-        # If download is requested, ignore the given skymodel.
-        log.info('Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user.')
-        parset_dict['download_initial_skymodel'] = False
+        if not parset_dict['download_overwrite_skymodel']:
+            # If download is requested, ignore the given skymodel.
+            log.info('Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user.')
+            parset_dict['download_initial_skymodel'] = False
+        else:
+            log.info('User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one.')
+            parset_dict['download_initial_skymodel'] = True
     elif not os.path.exists(parset_dict['input_skymodel']):
         log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
         raise FileNotFoundError('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
@@ -181,10 +185,10 @@ def get_global_options(parset):
     if 'download_initial_skymodel_server' not in parset_dict:
         parset_dict['download_initial_skymodel_server'] = 'TGSS'
 
-    if 'overwrite_skymodel' in parset_dict:
-        parset_dict['overwrite_skymodel'] = parset.getboolean('global', 'overwrite_skymodel')
+    if 'download_overwrite_skymodel' in parset_dict:
+        parset_dict['download_overwrite_skymodel'] = parset.getboolean('global', 'download_overwrite_skymodel')
     else:
-        parset_dict['overwrite_skymodel'] = False
+        parset_dict['download_overwrite_skymodel'] = False
 
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
