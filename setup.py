@@ -42,9 +42,10 @@ setup(
     # shapely<1.8.1 because of https://support.astron.nl/jira/browse/RAP-285, and
     #                          https://support.astron.nl/jira/browse/RAP-290
     # toil[cwl]!=5.6 because of https://github.com/DataBiosphere/toil/issues/4101
+    # toil[cwl]<5.8 because of https://gitter.im/bd2k-genomics-toil/Lobby?at=63d7f912ec2bfc62867d36e6
     # toil[cwl]<5.9 because of https://support.astron.nl/jira/browse/RAP-309
     install_requires=['numpy<1.24', 'scipy', 'astropy', 'jinja2', 'shapely<1.8.1',
-                      'toil[cwl]!=5.6,<5.9', 'reproject', 'python-dateutil',
+                      'toil[cwl]!=5.6,<5.8', 'reproject', 'python-dateutil',
                       'Rtree', 'lsmtool', 'losoto', 'bdsf',
                       'python-casacore'],
     scripts=['bin/rapthor',
