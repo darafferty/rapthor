@@ -481,22 +481,22 @@ class Field(object):
                 target_flux_for_number = fluxes[-target_number] - 0.001
                 if target_flux is None:
                     target_flux = target_flux_for_number
-                    self.log.info('Using a target flux density of {0} Jy for grouping'
+                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
                                   'to meet the specified target number of '
-                                  'directions ({1})'.format(target_flux, target_number))
+                                  'directions ({1:.2f})'.format(target_flux, target_number))
                 else:
-                    if target_flux_for_number > target_flux:
+                    if target_flux_for_number > target_flux and target_number < len(fluxes):
                         # Only use the new target flux if the old value might result
                         # in more than target_number of calibrators
-                        self.log.info('Using a target flux density of {0} Jy for '
-                                      'grouping (raised from {1} Jy to ensure that '
+                        self.log.info('Using a target flux density of {0:.2f} Jy for '
+                                      'grouping (raised from {1:.2f} Jy to ensure that '
                                       'the target number of {2} directions is not '
                                       'exceeded'.format(target_flux_for_number, target_flux, target_number))
                         target_flux = target_flux_for_number
                     else:
-                        self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
             else:
-                self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+                self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
 
             # Tesselate the model using the target flux
             source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
