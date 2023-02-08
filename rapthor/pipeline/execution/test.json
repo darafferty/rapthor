@@ -1,0 +1,23 @@
+{
+    "ms": {
+        "class": "Directory",
+        "path": "."
+    },
+    "global": {
+    "regroup_input_skymodel": "False",
+    "selfcal_data_fraction": "0.01",
+    "download_initial_skymodel": true,
+
+      "unsupportedarray" : ["a", "b"],
+      "unsupportedobject": {"a": 1, "b": 2}
+  },
+  "calibration": {
+   },
+    "imaging": {
+        "dde_method": "facets"
+  },
+    "cluster": {
+    "use_container": "True",
+    "container_type": "singularity"
+  }
+}

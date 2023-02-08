@@ -38,7 +38,8 @@ inputs:
   doc: |
     Optional strategy; either a name (e.g., "selfcal"), or a path to a python
     strategy file (e.g., "/path/to/my_fancy_strategy.py")
-
+- id: global
+  type: Any
 # Anything that the Rapthor pipeline will produce as outputs.
 outputs:
 - id: images
@@ -76,8 +77,45 @@ baseCommand:
 
 requirements:
 - class: InlineJavascriptRequirement
+  expressionLib:
+    - { $include: utils.js}
 - class: InitialWorkDirRequirement
   listing:
+  - entryname: rapthor.parset
+    entry: |
+      #
+      [global]
+      dir_working = $(runtime.outdir)
+      input_ms = $(inputs.ms.path)
+      $(inputs.skymodel? "input_skymodel=": "") $(inputs.skymodel.path)
+      #apparent_skymodel = /project/rapthor/Data/rapthor/HBA_short/apparent_sky.txt
+      download_initial_skymodel = False
+      regroup_input_skymodel = $(inputs.settings.config.global.regroup_input_skymodel)
+      selfcal_data_fraction = 0.01
+      strategy = $(inputs.strategy.path)
+      $(inputs.strategy? "input_strategy=": "") $(
+        typeof inputs.strategy === "string" ? inputs.strategy : inputs.strategy.path
+        )
+
+      ${
+        function objectToParsetString(obj) {
+          result = ""
+          for(var item 0in obj) {
+            var value = obj[item]
+            value = typeof value === 'string' ? value : typeof value === 'number' ? String(value) : value.path 
+            result += "\n" + item + "=" + value
+          }
+          return result
+        }
+        var somt = inputs.settings.global
+        var parset = ""
+        parset += "[global]\n" + objectToParsetString(inputs.global) 
+        parset += "\ndir_working = " + runtime.outdir
+        parset += "\ninput_ms =" + inputs.ms.path
+
+        return parset
+      }
+
   - entryname: json2ini.jq
     entry: |
       # Convert JSON to INI using `jq`
