@@ -502,7 +502,8 @@ class Field(object):
                         trial_fluxes.sort()
                         trial_target_flux_prev = trial_target_flux
                         trial_target_flux = trial_fluxes[-target_number]
-                target_flux_for_number -= 0.001  # ensure we are slightly below the target
+                    target_flux_for_number = trial_target_flux
+                target_flux_for_number -= 0.001  # ensure we're slightly below to meet the target number
 
                 if target_flux is None:
                     target_flux = target_flux_for_number
