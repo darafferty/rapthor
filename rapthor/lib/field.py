@@ -475,10 +475,35 @@ class Field(object):
                 # kept
                 fluxes = source_skymodel.getColValues('I', aggregate='sum',
                                                       applyBeam=applyBeam_group)
-                fluxes.sort()
-                if target_number > len(fluxes):
+                if target_number >= len(fluxes):
                     target_number = len(fluxes)
-                target_flux_for_number = fluxes[-target_number] - 0.001
+                    fluxes.sort()
+                    target_flux_for_number = fluxes[-1]
+                else:
+                    # Weight the fluxes by size to estimate the required target flux
+                    # The same weighting scheme is used by LSMTool when performing
+                    # the 'voronoi' grouping later
+                    sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
+                                                          applyBeam=applyBeam_group)
+                    sizes[sizes < 1.0] = 1.0
+                    if target_flux is not None:
+                        trial_target_flux = target_flux
+                    else:
+                        trial_target_flux = 0.3
+                    trial_target_flux_prev = 0.0
+                    while not misc.approx_equal(trial_target_flux, trial_target_flux_prev):
+                        trial_fluxes = fluxes[:]
+                        bright_ind = np.where(trial_fluxes >= trial_target_flux)
+                        medianSize = np.median(sizes[bright_ind])
+                        weights = medianSize / sizes
+                        weights[weights > 1.0] = 1.0
+                        weights[weights < 0.5] = 0.5
+                        trial_fluxes *= weights
+                        trial_fluxes.sort()
+                        trial_target_flux_prev = trial_target_flux
+                        trial_target_flux = trial_fluxes[-target_number]
+                target_flux_for_number -= 0.001  # ensure we are slightly below the target
+
                 if target_flux is None:
                     target_flux = target_flux_for_number
                     self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
