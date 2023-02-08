@@ -42,6 +42,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['target_flux'] = 0.5
         strategy_steps[i]['max_nmiter'] = 12
     strategy_steps[i]['regroup_model'] = True
+    strategy_steps[i]['max_directions'] = 30
 
     if i == 0 or i == max_selfcal_loops - 1:
         strategy_steps[i]['do_check'] = False

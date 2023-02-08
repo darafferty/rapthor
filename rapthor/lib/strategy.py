@@ -79,9 +79,10 @@ def set_strategy(field):
                 strategy_steps[i]['target_flux'] = 0.6
                 strategy_steps[i]['max_nmiter'] = 11
             else:
-                strategy_steps[i]['target_flux'] = 0.5
+                strategy_steps[i]['target_flux'] = 0.4
                 strategy_steps[i]['max_nmiter'] = 12
             strategy_steps[i]['regroup_model'] = True
+            strategy_steps[i]['max_directions'] = 30
 
             if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
                 strategy_steps[i]['do_check'] = False

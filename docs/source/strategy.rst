@@ -56,7 +56,10 @@ The following processing parameters my be set:
         Integer that sets the maximum number of major iterations done during imaging for this cycle
 
     target_flux
-        Float that sets the target flux density for DDE calibrators for this cycle.
+        Float (or ``None``) that sets the target flux density for DDE calibrators for this cycle. If ``None``, a value must be specified for ``max_directions``.
+
+    max_directions
+        Integer (or ``None``) that sets the maximum number of directions (DDE calibrators) used during calibration for this cycle. If ``None``, a value must be specified for ``target_flux``.
 
     regroup_model
         Boolean flag that determines whether the sky model should be regrouped for this cycle.

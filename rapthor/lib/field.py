@@ -42,8 +42,6 @@ class Field(object):
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
         self.input_h5parm = self.parset['input_h5parm']
-        self.target_flux = self.parset['calibration_specific']['patch_target_flux_jy']
-        self.target_number = self.parset['calibration_specific']['patch_target_number']
         self.solve_min_uv_lambda = self.parset['calibration_specific']['solve_min_uv_lambda']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
@@ -447,30 +445,60 @@ class Field(object):
         source_skymodel.write(skymodel_true_sky_file, clobber=True)
         # debug
 
-        # Determine the flux cut to use to select the bright sources (calibrators)
-        if target_flux is None:
-            target_flux = self.target_flux
-        if target_number is None:
-            target_number = self.target_number
-        if target_number is not None:
-            # Set target_flux so that the target_number-brightest calibrators are
-            # kept
-            fluxes = source_skymodel.getColValues('I', aggregate='sum',
-                                                  applyBeam=applyBeam_group)
-            fluxes.sort()
-            if target_number > len(fluxes):
-                target_number = len(fluxes)
-            target_flux = fluxes[-target_number] - 0.001
-
         # Save the model of the bright sources only, for later subtraction before
         # imaging if needed. Note that the bright-source model (like the other predict
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
         # patches to the true-sky version later
         bright_source_skymodel_apparent_sky = source_skymodel.copy()
+
+        # Regroup by tessellating with the bright sources as the tessellation
+        # centers
         if regroup:
-            # Regroup by tessellating with the bright sources as the tessellation
-            # centers
-            self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+            # Do some checks
+            if target_flux is None and target_number is None:
+                self.log.critical('Either the target flux density or the target number. '
+                                  'of directions must be specified when regrouping the'
+                                  'skymodel. Exiting...')
+                sys.exit(1)
+            if target_flux is not None and target_flux <= 0.0:
+                self.log.critical('The target flux density cannot be less than or equal '
+                                  'to 0. Exiting...')
+                sys.exit(1)
+            if target_number is not None and target_number < 1:
+                self.log.critical('The target number of directions cannot be less than 1. '
+                                  'Exiting...')
+                sys.exit(1)
+
+            # Determine the flux cut to use to select the bright sources (calibrators)
+            if target_number is not None:
+                # Set target_flux so that the target_number-brightest calibrators are
+                # kept
+                fluxes = source_skymodel.getColValues('I', aggregate='sum',
+                                                      applyBeam=applyBeam_group)
+                fluxes.sort()
+                if target_number > len(fluxes):
+                    target_number = len(fluxes)
+                target_flux_for_number = fluxes[-target_number] - 0.001
+                if target_flux is None:
+                    target_flux = target_flux_for_number
+                    self.log.info('Using a target flux density of {0} Jy for grouping'
+                                  'to meet the specified target number of '
+                                  'directions ({1})'.format(target_flux, target_number))
+                else:
+                    if target_flux_for_number > target_flux:
+                        # Only use the new target flux if the old value might result
+                        # in more than target_number of calibrators
+                        self.log.info('Using a target flux density of {0} Jy for '
+                                      'grouping (raised from {1} Jy to ensure that '
+                                      'the target number of {2} directions is not '
+                                      'exceeded'.format(target_flux_for_number, target_flux, target_number))
+                        target_flux = target_flux_for_number
+                    else:
+                        self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+            else:
+                self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+
+            # Tesselate the model using the target flux
             source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
                                   weightBySize=True)
             tesselation_patches = source_skymodel.getPatchNames()
@@ -1219,6 +1247,7 @@ class Field(object):
             sector.__dict__.update(step_dict)
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=step_dict['target_flux'],
+                              target_number=step_dict['max_directions'],
                               final=final)
 
         # Check whether outliers and bright sources need to be peeled
