@@ -456,9 +456,9 @@ class Field(object):
         if regroup:
             # Do some checks
             if target_flux is None and target_number is None:
-                self.log.critical('Either the target flux density or the target number. '
-                                  'of directions must be specified when regrouping the'
-                                  'skymodel. Exiting...')
+                self.log.critical('Either the target flux density or the target number '
+                                  'of directions must be specified when regrouping the '
+                                  'sky model. Exiting...')
                 sys.exit(1)
             if target_flux is not None and target_flux <= 0.0:
                 self.log.critical('The target flux density cannot be less than or equal '
@@ -592,8 +592,8 @@ class Field(object):
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
-    def update_skymodels(self, index, regroup, target_flux=None,
-                         target_number=None, final=False):
+    def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
+                         final=False):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -622,6 +622,7 @@ class Field(object):
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
+                                target_flux=target_flux, target_number=target_number,
                                 find_sources=True, index=index)
         else:
             # Use the sector sky models from the previous iteration to update the master
