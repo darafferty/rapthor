@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import os
+import re
 import subprocess
 import sys
 
@@ -64,10 +65,14 @@ with open('rapthor_timing.txt', 'w') as outfile:
 # Within a cycle each operation is summed if it occurs multiple times (caused by e.g. a restart).
 operations = {}
 with open('rapthor_timing.txt', 'r') as f:
+    # Regex to get rid of the ANSI colour codes that may be present from logging.
+    # https://stackoverflow.com/questions/14693701/how-can-i-remove-the-ansi-escape-sequences-from-a-string-in-python
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
     for line in f.readlines():
         split1 = line.split('-')
         operation = split1[4].strip().split(':')[1]
         timestr = split1[-1].split('operation:')[-1].strip()
+        timestr = ansi_escape.sub('', timestr)
         if 'day' in timestr:
             day = timestr.split(',')[0]
             dayhours = int(day.split(' ')[0]) * 24
