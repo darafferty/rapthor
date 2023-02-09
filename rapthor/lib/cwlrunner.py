@@ -154,6 +154,7 @@ class ToilRunner(CWLRunner):
         """
         super().setup()
         self.args.extend(['--batchSystem', self.operation.batch_system])
+        self.args.extend(['--bypass-file-store'])
         if self.operation.batch_system == 'slurm':
             self.args.extend(['--disableCaching'])
             self.args.extend(['--defaultCores', str(self.operation.cpus_per_task)])
