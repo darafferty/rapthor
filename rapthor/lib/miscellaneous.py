@@ -50,6 +50,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     file_exists = os.path.isfile(skymodel_path)
     if file_exists and not overwrite:
         logger.warning('Skymodel "%s" exists and overwrite is set to False! Not downloading skymodel. If this is a restart this may be intentional.' % skymodel_path)
+        return
 
     if (not file_exists) and os.path.exists(skymodel_path):
         logger.error('Path "%s" exists but is not a file!' % skymodel_path)
