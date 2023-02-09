@@ -517,7 +517,7 @@ class Field(object):
                         self.log.info('Using a target flux density of {0:.2f} Jy for '
                                       'grouping (raised from {1:.2f} Jy to ensure that '
                                       'the target number of {2} directions is not '
-                                      'exceeded'.format(target_flux_for_number, target_flux, target_number))
+                                      'exceeded)'.format(target_flux_for_number, target_flux, target_number))
                         target_flux = target_flux_for_number
                     else:
                         self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))

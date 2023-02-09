@@ -41,22 +41,22 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['threshpix'] = 5.0
 
     if i == 0:
-        strategy_steps[i]['target_flux'] = 1.5
-        strategy_steps[i]['max_nmiter'] = 8
-    elif i == 1:
         strategy_steps[i]['target_flux'] = 1.0
+        strategy_steps[i]['max_nmiter'] = 8
+        strategy_steps[i]['max_directions'] = 10
+    elif i == 1:
+        strategy_steps[i]['target_flux'] = 0.7
         strategy_steps[i]['max_nmiter'] = 9
+        strategy_steps[i]['max_directions'] = 10
     elif i == 2:
-        strategy_steps[i]['target_flux'] = 0.8
+        strategy_steps[i]['target_flux'] = 0.5
         strategy_steps[i]['max_nmiter'] = 10
-    elif i == 3:
-        strategy_steps[i]['target_flux'] = 0.6
-        strategy_steps[i]['max_nmiter'] = 11
+        strategy_steps[i]['max_directions'] = 20
     else:
         strategy_steps[i]['target_flux'] = 0.4
         strategy_steps[i]['max_nmiter'] = 12
+        strategy_steps[i]['max_directions'] = 30
     strategy_steps[i]['regroup_model'] = True
-    strategy_steps[i]['max_directions'] = 30
 
     if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
         strategy_steps[i]['do_check'] = False
