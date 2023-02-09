@@ -97,8 +97,11 @@ for cycle in cycledict.keys():
     h = sns.histplot(df, x='Cycle', hue='Operation', weights='Duration', multiple='dodge', discrete=True)
 # There are 4 operations currently: calibrate, predict, image and mosaic.
 for i in range(4):
-    labels = ['{:.2f}'.format(t) if t else '' for t in h.containers[i].datavalues]
-    h.bar_label(h.containers[i], labels=labels, fontsize=8)
+    try:
+        labels = ['{:.2f}'.format(t) if t else '' for t in h.containers[i].datavalues]
+        h.bar_label(h.containers[i], labels=labels, fontsize=8)
+    except AttributeError:
+        print('Failed to set bar labels. Try updating matplotlib to 3.4 or newer.')
 h.set(xlabel='Self calibration cycle', ylabel='Duration [h]')
 h.figure.savefig('rapthor_timing.svg', bbox_inches='tight', dpi=300)
 h.figure.savefig('rapthor_timing.png', bbox_inches='tight', dpi=300)
