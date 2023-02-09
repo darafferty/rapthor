@@ -642,9 +642,11 @@ class Field(object):
             if self.parset['download_initial_skymodel']:
                 # First time run, so get an initial sky model.
                 # Assumes we only have a single pointing centre among all MSes.
-                # If download is requested, the skymodel given in the parset is ignored and overwritten with the path to the downloaded file.
-                ms_filenames = sorted(list(glob.glob(self.parset['input_ms'])))
-                misc.download_skymodel(self.ra, self.dec, skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt'), radius=self.parset['download_initial_skymodel_radius'], source=self.parset['download_initial_skymodel_server'])
+                # If download is requested and no skymodel given in the parset we download one.
+                if self.parset['download_overwrite_skymodel']:
+                    misc.download_skymodel(self.ra, self.dec, skymodel_path=os.path.join(self.working_dir, self.parset['input_skymodel']), radius=self.parset['download_initial_skymodel_radius'], source=self.parset['download_initial_skymodel_server'], overwrite=self.parset['download_overwrite_skymodel'])
+                else:
+                    misc.download_skymodel(self.ra, self.dec, skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt'), radius=self.parset['download_initial_skymodel_radius'], source=self.parset['download_initial_skymodel_server'], overwrite=self.parset['download_overwrite_skymodel'])
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],

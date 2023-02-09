@@ -86,13 +86,20 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         if parset_dict['download_initial_skymodel']:
             log.info('No input sky model file given and download requested. Will automatically download skymodel.')
             parset_dict.update({'input_skymodel': os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
+            if 'apparent_skymodel' in parset_dict:
+                log.info('Ignoring apparent_skymodel, because skymodel download has been requested.')
+                parset_dict['apparent_skymodel'] = None
         else:
             log.error('No input sky model file given and no download requested. Exiting...')
             raise RuntimeError('No input sky model file given and no download requested.')
-    elif parset_dict['download_initial_skymodel']:
-        # If download is requested, ignore the given skymodel.
-        log.info('Skymodel download requested, ignoring given skymodel and downloading one automatically.')
-        parset_dict['input_skymodel'] = os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')
+    elif ('input_skymodel' in parset_dict) and parset_dict['download_initial_skymodel']:
+        if not parset_dict['download_overwrite_skymodel']:
+            # If download is requested, ignore the given skymodel.
+            log.info('Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user.')
+            parset_dict['download_initial_skymodel'] = False
+        else:
+            log.info('User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one.')
+            parset_dict['download_initial_skymodel'] = True
     elif not os.path.exists(parset_dict['input_skymodel']):
         log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
         raise FileNotFoundError('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
@@ -178,6 +185,11 @@ def get_global_options(parset):
     if 'download_initial_skymodel_server' not in parset_dict:
         parset_dict['download_initial_skymodel_server'] = 'TGSS'
 
+    if 'download_overwrite_skymodel' in parset_dict:
+        parset_dict['download_overwrite_skymodel'] = parset.getboolean('global', 'download_overwrite_skymodel')
+    else:
+        parset_dict['download_overwrite_skymodel'] = False
+
     # Filename of h5parm file containing solutions for the patches in the
     # input sky model
     if 'input_h5parm' not in parset_dict:
@@ -228,7 +240,7 @@ def get_global_options(parset):
     given_options = parset.options('global')
     allowed_options = ['dir_working', 'input_ms', 'strategy',
                        'use_compression', 'flag_abstime', 'flag_baseline', 'flag_freqrange',
-                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'download_initial_skymodel_server',
+                       'flag_expr', 'download_initial_skymodel', 'download_initial_skymodel_radius', 'download_initial_skymodel_server', 'download_overwrite_skymodel',
                        'input_skymodel', 'apparent_skymodel',
                        'regroup_input_skymodel', 'input_h5parm', 'selfcal_data_fraction',
                        'final_data_fraction']
