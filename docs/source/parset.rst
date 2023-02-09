@@ -52,7 +52,7 @@ The available options are described below under their respective sections.
         This can either be `TGSS` to use the `TFIR GMRT Sky Survey`, or `GSM` to use the `Global Sky Model`.
 
     download_overwrite_skymodel
-        Overwrite any existing skymodel with a downloaded one.
+        Overwrite any existing skymodel with a downloaded one (default is False).
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required if automatic download is disabled).
