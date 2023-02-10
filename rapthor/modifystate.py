@@ -44,7 +44,7 @@ def run(parset_file):
 
     # Read parset
     log.info('Reading parset and checking state...')
-    parset = parset_read(parset_file, use_log_file=False) #, skip_cluster=True)
+    parset = parset_read(parset_file, use_log_file=False)
     if parset['cluster_specific']['cwl_runner'] != 'toil':
         log.error("Modifying state is only supported when using Toil as CWL runner")
         sys.exit(1)
@@ -80,7 +80,7 @@ def run(parset_file):
                 print('    {0}) {1}'.format(i, p))
         try:
             while(True):
-                p_number_raw = input('Enter number of pipeline to reset or press "q" to quit: ')
+                p_number_raw = input('Enter number of pipeline to reset or "q" to quit: ')
                 try:
                     if p_number_raw.lower() == "q":
                         sys.exit(0)
@@ -110,11 +110,18 @@ def run(parset_file):
         if answer.lower() == "y" or answer.lower() == "yes":
             print('Reseting state...')
             for pipeline in pipelines[int(p_number_raw)-1:]:
-                jobstore = os.path.join(parset['dir_working'], 'pipelines', pipeline, 'jobstore')
-                shutil.rmtree(jobstore, ignore_errors=True)
+                # Remove the pipeline working directory to ensure files from previous
+                # runs are not kept and used in subsequent ones (e.g., Toil does not
+                # seem to always overwrite existing files from previous runs). This
+                # also removes Toil's jobstore when present (where the state is tracked)
+                workdir = os.path.join(parset['dir_working'], 'pipelines', pipeline)
+                shutil.rmtree(workdir, ignore_errors=True)
 
-                # Remove associated sky models as well
-                skymodel = os.path.join(parset['dir_working'], 'skymodels', pipeline)
-                shutil.rmtree(skymodel, ignore_errors=True)
+                # Remove other associated files as well
+                output_directories = ['skymodels', 'solutions', 'logs', 'plots', 'regions',
+                                      'images']
+                for dirname in output_directories:
+                    outpath = os.path.join(parset['dir_working'], dirname, pipeline)
+                    shutil.rmtree(outpath, ignore_errors=True)
 
             print('Reset complete.')
