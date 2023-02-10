@@ -10,22 +10,22 @@ dir_working = /data/rapthor
 # or a list can be given
 input_ms = /data/ms/*.ms
 
-# Full path to the input sky model file, with true-sky fluxes (required when not
-# automatically downloading). If you also have a sky model with apparent flux densities,
-# specify it with the apparent_skymodel option (note that the source names must be
-# identical in both sky models)
-# apparent_skymodel = /data/apparent_skymodel.txt
-# input_skymodel = /data/skymodel.txt
-
-# Automatically download a target sky model. This will have no effect if input_sky model
-# is specified. The radius out to which a sky model should be downloaded (default is 5
-# degrees) and the service from which a sky model should be downloaded (default is TGSS)
-# can be specified, as can the option to overwrite an existing sky model with the
-# downloaded one.
+# Automatically download a target sky model (default = True). This will have no effect if
+# input_sky model is specified. The radius out to which a sky model should be downloaded
+# (default is 5 degrees) and the service from which a sky model should be downloaded
+# (default is TGSS) can be specified, as can the option to overwrite an existing sky model
+# with the downloaded one.
 # download_initial_skymodel = True
 # download_initial_skymodel_radius = 5.0
 # download_initial_skymodel_server = TGSS
 # download_overwrite_skymodel = False
+
+# Full path to the input sky model file, with true-sky fluxes (required when not
+# automatically downloading). If you also have a sky model with apparent flux densities,
+# specify it with the apparent_skymodel option (note that the source names must be
+# identical in both sky models)
+# input_skymodel = /data/skymodel.txt
+# apparent_skymodel = /data/apparent_skymodel.txt
 
 # Regroup the input or downloaded sky model as needed to meet target flux (default =
 # True). If False, the existing patches are used for the calibration

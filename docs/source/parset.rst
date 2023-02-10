@@ -61,7 +61,7 @@ The available options are described below under their respective sections.
         download is disabled). If you also have a sky model with apparent flux densities,
         specify it with the :term:`apparent_skymodel` option.
 
-	    See :doc:`preparation` for more info on preparing the sky model.
+	See :doc:`preparation` for more info on preparing the sky model.
 
     apparent_skymodel
         Full path to the input sky model file, with apparent-sky fluxes
