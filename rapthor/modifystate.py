@@ -113,13 +113,10 @@ def run(parset_file):
                 # Remove the pipeline working directory to ensure files from previous
                 # runs are not kept and used in subsequent ones (e.g., Toil does not
                 # seem to always overwrite existing files from previous runs). This
-                # also removes Toil's jobstore when present (where the state is tracked)
-                workdir = os.path.join(parset['dir_working'], 'pipelines', pipeline)
-                shutil.rmtree(workdir, ignore_errors=True)
-
-                # Remove other associated files as well
-                output_directories = ['skymodels', 'solutions', 'logs', 'plots', 'regions',
-                                      'images']
+                # also removes Toil's jobstore when present (where the state is tracked).
+                # Other associated files are removed as well
+                output_directories = ['pipelines', 'skymodels', 'solutions', 'logs',
+                                      'plots', 'regions', 'images']
                 for dirname in output_directories:
                     outpath = os.path.join(parset['dir_working'], dirname, pipeline)
                     shutil.rmtree(outpath, ignore_errors=True)

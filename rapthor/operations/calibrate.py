@@ -38,8 +38,7 @@ class Calibrate(Operation):
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
-                             'max_cores': max_cores,
-                             'debug': self.field.debug}
+                             'max_cores': max_cores}
 
     def set_input_parameters(self):
         """
@@ -57,44 +56,44 @@ class Calibrate(Operation):
         # calibration)
         starttime = self.field.get_obs_parameters('starttime')
         ntimes = self.field.get_obs_parameters('ntimes')
-        slow_starttime1 = self.field.get_obs_parameters('slow_starttime_joint')
-        slow_ntimes1 = self.field.get_obs_parameters('slow_ntimes_joint')
-        slow_starttime2 = self.field.get_obs_parameters('slow_starttime_separate')
-        slow_ntimes2 = self.field.get_obs_parameters('slow_ntimes_separate')
+        slow_starttime_joint = self.field.get_obs_parameters('slow_starttime_joint')
+        slow_ntimes_joint = self.field.get_obs_parameters('slow_ntimes_joint')
+        slow_starttime_separate = self.field.get_obs_parameters('slow_starttime_separate')
+        slow_ntimes_separate = self.field.get_obs_parameters('slow_ntimes_separate')
 
         # Get the filenames of the input files for each frequency chunk
-        freqchunk_filename1 = self.field.get_obs_parameters('freqchunk_filename_joint')
-        freqchunk_filename2 = self.field.get_obs_parameters('freqchunk_filename_separate')
+        freqchunk_filename_joint = self.field.get_obs_parameters('freqchunk_filename_joint')
+        freqchunk_filename_separate = self.field.get_obs_parameters('freqchunk_filename_separate')
 
         # Get the start channel and number of channels for the frequency chunks
-        startchan1 = self.field.get_obs_parameters('startchan_joint')
-        nchan1 = self.field.get_obs_parameters('nchan_joint')
-        startchan2 = self.field.get_obs_parameters('startchan_separate')
-        nchan2 = self.field.get_obs_parameters('nchan_separate')
+        startchan_joint = self.field.get_obs_parameters('startchan_joint')
+        nchan_joint = self.field.get_obs_parameters('nchan_joint')
+        startchan_separate = self.field.get_obs_parameters('startchan_separate')
+        nchan_separate = self.field.get_obs_parameters('nchan_separate')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
-        solint_slow_timestep1 = self.field.get_obs_parameters('solint_slow_timestep_joint')
-        solint_slow_timestep2 = self.field.get_obs_parameters('solint_slow_timestep_separate')
+        solint_slow_timestep_joint = self.field.get_obs_parameters('solint_slow_timestep_joint')
+        solint_slow_timestep_separate = self.field.get_obs_parameters('solint_slow_timestep_separate')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
-        solint_slow_freqstep1 = self.field.get_obs_parameters('solint_slow_freqstep_joint')
-        solint_slow_freqstep2 = self.field.get_obs_parameters('solint_slow_freqstep_separate')
+        solint_slow_freqstep_joint = self.field.get_obs_parameters('solint_slow_freqstep_joint')
+        solint_slow_freqstep_separate = self.field.get_obs_parameters('solint_slow_freqstep_separate')
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
         output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
                               for i in range(self.field.ntimechunks)]
         self.combined_fast_h5parm = 'fast_phases.h5parm'
-        output_slow_h5parm1 = ['slow_gain1_{}.h5parm'.format(i)
-                               for i in range(self.field.nfreqchunks1)]
+        output_slow_h5parm_joint = ['slow_gain_joint_{}.h5parm'.format(i)
+                                    for i in range(self.field.nfreqchunks_joint)]
         combined_slow_h5parm = 'slow_gains.h5parm'
         self.combined_h5parms = 'combined_solutions.h5'
-        output_slow_h5parm2 = ['slow_gain2_{}.h5parm'.format(i)
-                               for i in range(self.field.nfreqchunks2)]
-        combined_slow_h5parm1 = 'slow_gains1.h5parm'
-        combined_slow_h5parm2 = 'slow_gains2.h5parm'
-        combined_h5parms1 = 'combined_solutions1.h5'
-        combined_h5parms2 = 'combined_solutions2.h5'
+        output_slow_h5parm_separate = ['slow_gain_separate_{}.h5parm'.format(i)
+                                       for i in range(self.field.nfreqchunks_separate)]
+        combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
+        combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
+        combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
+        combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
 
         # Define the input sky model
         calibration_skymodel_file = self.field.calibration_skymodel_file
@@ -107,8 +106,8 @@ class Calibrate(Operation):
         fast_smoothnessconstraint = self.field.fast_smoothnessconstraint
         fast_smoothnessreffrequency = self.field.get_obs_parameters('fast_smoothnessreffrequency')
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
-        slow_smoothnessconstraint1 = self.field.slow_smoothnessconstraint_joint
-        slow_smoothnessconstraint2 = self.field.slow_smoothnessconstraint_separate
+        slow_smoothnessconstraint_joint = self.field.slow_smoothnessconstraint_joint
+        slow_smoothnessconstraint_separate = self.field.slow_smoothnessconstraint_separate
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
@@ -156,33 +155,36 @@ class Calibrate(Operation):
         screen_type = self.field.screen_type
 
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
-                            'freqchunk_filename1': CWLDir(freqchunk_filename1).to_json(),
-                            'freqchunk_filename2': CWLDir(freqchunk_filename2).to_json(),
+                            'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
+                            'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
-                            'slow_starttime1': slow_starttime1,
-                            'slow_starttime2': slow_starttime2,
-                            'slow_ntimes1': slow_ntimes1,
-                            'slow_ntimes2': slow_ntimes2,
-                            'startchan1': startchan1,
-                            'startchan2': startchan2,
-                            'nchan1': nchan1,
-                            'nchan2': nchan2,
+                            'slow_starttime_joint': slow_starttime_joint,
+                            'slow_starttime_separate': slow_starttime_separate,
+                            'slow_ntimes_joint': slow_ntimes_joint,
+                            'slow_ntimes_separate': slow_ntimes_separate,
+                            'startchan_joint': startchan_joint,
+                            'startchan_separate': startchan_separate,
+                            'nchan_joint': nchan_joint,
+                            'nchan_separate': nchan_separate,
                             'solint_fast_timestep': solint_fast_timestep,
-                            'solint_slow_timestep1': solint_slow_timestep1,
+                            'solint_slow_timestep_joint': solint_slow_timestep_joint,
+                            'solint_slow_timestep_separate': solint_slow_timestep_separate,
                             'solint_fast_freqstep': solint_fast_freqstep,
-                            'solint_slow_freqstep1': solint_slow_freqstep1,
+                            'solint_slow_freqstep_joint': solint_slow_freqstep_joint,
+                            'solint_slow_freqstep_separate': solint_slow_freqstep_separate,
                             'calibrator_patch_names': calibrator_patch_names,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,
                             'combined_fast_h5parm': self.combined_fast_h5parm,
-                            'output_slow_h5parm1': output_slow_h5parm1,
-                            'combined_slow_h5parm': combined_slow_h5parm,
+                            'output_slow_h5parm_joint': output_slow_h5parm_joint,
+                            'output_slow_h5parm_separate': output_slow_h5parm_separate,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
-                            'slow_smoothnessconstraint1': slow_smoothnessconstraint1,
+                            'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
+                            'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
                             'llssolver': llssolver,
                             'maxiter': maxiter,
                             'propagatesolutions': propagatesolutions,
@@ -200,25 +202,14 @@ class Calibrate(Operation):
                             'combined_h5parms': self.combined_h5parms,
                             'fast_antennaconstraint': fast_antennaconstraint,
                             'slow_antennaconstraint': slow_antennaconstraint,
-                            'solint_slow_timestep2': solint_slow_timestep2,
-                            'solint_slow_freqstep2': solint_slow_freqstep2,
-                            'slow_smoothnessconstraint2': slow_smoothnessconstraint2,
-                            'output_slow_h5parm2': output_slow_h5parm2,
-                            'combined_slow_h5parm1': combined_slow_h5parm1,
-                            'combined_slow_h5parm2': combined_slow_h5parm2,
-                            'combined_h5parms1': combined_h5parms1,
-                            'combined_h5parms2': combined_h5parms2,
+                            'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
+                            'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
+                            'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
+                            'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
-
-        if self.field.debug:
-            output_slow_h5parm_debug = ['slow_gain_{}_debug.h5parm'.format(i)
-                                        for i in range(self.field.nfreqchunks)]
-            combined_slow_h5parm_debug = 'slow_gains_debug.h5parm'
-            self.input_parms.update({'output_slow_h5parm_debug': output_slow_h5parm_debug,
-                                     'combined_slow_h5parm_debug': combined_slow_h5parm_debug})
 
     def get_baselines_core(self):
         """

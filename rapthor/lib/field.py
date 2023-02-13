@@ -65,7 +65,6 @@ class Field(object):
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.reweight = self.parset['imaging_specific']['reweight']
-        self.debug = self.parset['calibration_specific']['debug']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
@@ -112,9 +111,8 @@ class Field(object):
         self.antenna = obs0.antenna
         for obs in self.full_observations:
             if self.antenna != obs.antenna:
-                self.log.critical('Antenna type for MS {0} differs from the one for MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Antenna type for MS {0} differs from the one for MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same frequency axis
         # NOTE: this may not be necessary and is disabled for now
@@ -125,34 +123,30 @@ class Field(object):
                         obs0.startfreq != obs.startfreq or
                         obs0.endfreq != obs.endfreq or
                         obs0.channelwidth != obs.channelwidth):
-                    self.log.critical('Frequency axis for MS {0} differs from the one for MS {1}! '
-                                      'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                    sys.exit(1)
+                    raise ValueError('Frequency axis for MS {0} differs from the one for MS '
+                                     '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same pointing
         self.ra = obs0.ra
         self.dec = obs0.dec
         for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
-                self.log.critical('Pointing for MS {0} differs from the one for MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Pointing for MS {0} differs from the one for MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
         for obs in self.full_observations:
             if self.diam != obs.diam:
-                self.log.critical('Station diameter for MS {0} differs from the one for MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Station diameter for MS {0} differs from the one for MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
         for obs in self.full_observations:
             if self.stations != obs.stations:
-                self.log.critical('Stations in MS {0} differ from those in MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Stations in MS {0} differ from those in MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
@@ -280,16 +274,16 @@ class Field(object):
         Sets parameters for all observations from current parset and sky model
         """
         ntimechunks = 0
-        nfreqchunks1 = 0
-        nfreqchunks2 = 0
+        nfreqchunks_joint = 0
+        nfreqchunks_separate = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
             ntimechunks += obs.ntimechunks
-            nfreqchunks1 += obs.nfreqchunks_joint
-            nfreqchunks2 += obs.nfreqchunks_separate
+            nfreqchunks_joint += obs.nfreqchunks_joint
+            nfreqchunks_separate += obs.nfreqchunks_separate
         self.ntimechunks = ntimechunks
-        self.nfreqchunks1 = nfreqchunks1
-        self.nfreqchunks2 = nfreqchunks2
+        self.nfreqchunks_joint = nfreqchunks_joint
+        self.nfreqchunks_separate = nfreqchunks_separate
 
     def get_obs_parameters(self, parameter):
         """
@@ -452,22 +446,18 @@ class Field(object):
         bright_source_skymodel_apparent_sky = source_skymodel.copy()
 
         # Regroup by tessellating with the bright sources as the tessellation
-        # centers
+        # centers if regroup is True
         if regroup:
             # Do some checks
             if target_flux is None and target_number is None:
-                self.log.critical('Either the target flux density or the target number '
-                                  'of directions must be specified when regrouping the '
-                                  'sky model. Exiting...')
-                sys.exit(1)
+                raise ValueError('Either the target flux density or the target number '
+                                 'of directions must be specified when regrouping the '
+                                 'sky model.')
             if target_flux is not None and target_flux <= 0.0:
-                self.log.critical('The target flux density cannot be less than or equal '
-                                  'to 0. Exiting...')
-                sys.exit(1)
+                raise ValueError('The target flux density cannot be less than or equal '
+                                 'to 0.')
             if target_number is not None and target_number < 1:
-                self.log.critical('The target number of directions cannot be less than 1. '
-                                  'Exiting...')
-                sys.exit(1)
+                raise ValueError('The target number of directions cannot be less than 1.')
 
             # Determine the flux cut to use to select the bright sources (calibrators)
             if target_number is not None:
@@ -807,9 +797,8 @@ class Field(object):
                 to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
         else:
             # Skymodels don't match, raise error
-            self.log.critical('Cannot transfer patches since from_skymodel does not contain '
-                              'all the sources in to_skymodel! Exiting!')
-            sys.exit(1)
+            raise ValueError('Cannot transfer patches since from_skymodel does not contain '
+                             'all the sources in to_skymodel')
 
         if patch_dict is not None:
             to_skymodel.setPatchPositions(patchDict=patch_dict)

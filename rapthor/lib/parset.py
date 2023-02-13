@@ -416,12 +416,6 @@ def get_calibration_options(parset):
     else:
         parset_dict['solverlbfgs_minibatches'] = 1
 
-    # Do a extra "debug" step during calibration (default = False)?
-    if 'debug' in parset_dict:
-        parset_dict['debug'] = parset.getboolean('calibration', 'debug')
-    else:
-        parset_dict['debug'] = False
-
     # Check for invalid options
     allowed_options = ['max_selfcal_loops', 'solve_min_uv_lambda', 'fast_timestep_sec',
                        'fast_freqstep_hz', 'slow_timestep_joint_sec',
@@ -434,7 +428,7 @@ def get_calibration_options(parset):
                        'fast_smoothnessrefdistance',
                        'slow_smoothnessconstraint_joint',
                        'slow_smoothnessconstraint_separate', 'use_idg_predict',
-                       'debug', 'parallelbaselines', 'solveralgorithm',
+                       'parallelbaselines', 'solveralgorithm',
                        'solverlbfgs_dof', 'solverlbfgs_iter',
                        'solverlbfgs_minibatches']
     for option in given_options:

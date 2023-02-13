@@ -69,9 +69,8 @@ class Observation(object):
         else:
             valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
             if len(valid_times) == 0:
-                self.log.critical('Start time of {0} is greater than the last time in the MS! '
-                                  'Exiting!'.format(self.starttime))
-                sys.exit(1)
+                raise ValueError('Start time of {0} is greater than the last time in the '
+                                 'MS'.format(self.starttime))
             self.starttime = tab.getcol('TIME')[valid_times[0]]
 
         # DPPP takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
@@ -87,9 +86,8 @@ class Observation(object):
         else:
             valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
             if len(valid_times) == 0:
-                self.log.critical('End time of {0} is less than the first time in the MS! '
-                                  'Exiting!'.format(self.endtime))
-                sys.exit(1)
+                raise ValueError('End time of {0} is less than the first time in the '
+                                 'MS'.format(self.endtime))
             self.endtime = tab.getcol('TIME')[valid_times[-1]]
         if self.endtime < np.max(tab.getcol('TIME')):
             self.goesto_endofms = False
@@ -362,11 +360,10 @@ class Observation(object):
         # in Dysco, we make sure to have at least 2 time slots after averaging,
         # otherwise the output MS cannot be written with compression
         if self.numsamples == 1:
-            self.log.critical('Only one time slot is availble for imaging, but at least '
-                              'two are required. Please increase the fraction of data '
-                              'processed with the selfcal_data_fraction parameter or supply a '
-                              'measurement set with more time slots.')
-            sys.exit(1)
+            raise RuntimeError('Only one time slot is availble for imaging, but at least '
+                               'two are required. Please increase the fraction of data '
+                               'processed with the selfcal_data_fraction parameter or supply a '
+                               'measurement set with more time slots.')
         max_timewidth_sec = min(120, int(self.numsamples / 2) * timestep_sec)
         delta_theta_deg = max(width_ra, width_dec) / 2.0
         resolution_deg = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam
