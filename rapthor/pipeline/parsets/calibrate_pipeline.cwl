@@ -647,7 +647,7 @@ steps:
       - id: inh5parm2
         source: process_slow_gains_joint/outh5parm
       - id: outh5parm
-        source: combined_h5parms_joint
+        source: combined_h5parms_fast_slow_joint
       - id: mode
         valueFrom: 'p1a2'
       - id: reweight
@@ -808,7 +808,7 @@ steps:
     in:
       - id: slowh5parm
 {% if do_joint_solve %}
-        source: combine_joint_and_separate_slow_h5parms/combined_h5parms_slow_joint_separate
+        source: combine_joint_and_separate_slow_h5parms/combinedh5parm
 {% else %}
         source: process_slow_gains_separate/outh5parm
 {% endif %}
