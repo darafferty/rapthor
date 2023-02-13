@@ -379,11 +379,13 @@ class Sector(object):
         ImageDraw.Draw(mask).polygon(verts, outline=1, fill=0)
         border_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
         points = [Point(xs, ys) for xs, ys in zip(x[border_ind], y[border_ind])]
-        for i, p in enumerate(points):
-            p.index = border_ind[0][i]
-        outside_points = [v for v in points if not prepared_polygon.contains(v)]
-        for outside_point in outside_points:
-            inside[outside_point.index] = False
+        indexes = []
+        for i in range(len(points)):
+            indexes.append(border_ind[0][i])
+        i_points = zip(indexes, points)
+        i_outside_points = [(i, p) for (i, p) in i_points if not prepared_polygon.contains(p)]
+        for idx, _ in i_outside_points:
+            inside[idx] = False
         skymodel.select(inside)
         return skymodel
 
