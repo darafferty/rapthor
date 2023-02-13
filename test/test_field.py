@@ -81,7 +81,7 @@ class TestField(unittest.TestCase):
 
     def test_find_intersecting_sources(self):
         iss = self.field.find_intersecting_sources()
-        self.assertEqual(iss[0].area, 18.37996802132365)
+        self.assertAlmostEqual(iss[0].area, 18.37996802132365)
 
     def test_check_selfcal_progress(self):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False))
