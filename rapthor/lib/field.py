@@ -492,7 +492,7 @@ class Field(object):
                         trial_target_flux = 0.3
                     trial_target_flux_prev = 0.0
                     while not misc.approx_equal(trial_target_flux, trial_target_flux_prev, tol=1e-3):
-                        trial_fluxes = fluxes[:]
+                        trial_fluxes = fluxes.copy()
                         bright_ind = np.where(trial_fluxes >= trial_target_flux)
                         medianSize = np.median(sizes[bright_ind])
                         weights = medianSize / sizes
