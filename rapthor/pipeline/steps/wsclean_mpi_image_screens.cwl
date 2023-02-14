@@ -42,6 +42,8 @@ arguments:
     prefix: -pol
   - valueFrom: '0.85'
     prefix: -mgain
+  - valueFrom: '0.8'
+    prefix: -multiscale-scale-bias
   - valueFrom: '3'
     prefix: -fit-spectral-pol
   - valueFrom: '2048'

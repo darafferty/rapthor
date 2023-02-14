@@ -24,6 +24,8 @@ arguments:
     prefix: -pol
   - valueFrom: '0.85'
     prefix: -mgain
+  - valueFrom: '0.8'
+    prefix: -multiscale-scale-bias
   - valueFrom: '4'
     prefix: -deconvolution-channels
   - valueFrom: '3'

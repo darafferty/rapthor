@@ -69,9 +69,8 @@ class Observation(object):
         else:
             valid_times = np.where(tab.getcol('TIME') >= self.starttime)[0]
             if len(valid_times) == 0:
-                self.log.critical('Start time of {0} is greater than the last time in the MS! '
-                                  'Exiting!'.format(self.starttime))
-                sys.exit(1)
+                raise ValueError('Start time of {0} is greater than the last time in the '
+                                 'MS'.format(self.starttime))
             self.starttime = tab.getcol('TIME')[valid_times[0]]
 
         # DPPP takes ceil(startTimeParset - startTimeMS), so ensure that our start time is
@@ -87,9 +86,8 @@ class Observation(object):
         else:
             valid_times = np.where(tab.getcol('TIME') <= self.endtime)[0]
             if len(valid_times) == 0:
-                self.log.critical('End time of {0} is less than the first time in the MS! '
-                                  'Exiting!'.format(self.endtime))
-                sys.exit(1)
+                raise ValueError('End time of {0} is less than the first time in the '
+                                 'MS'.format(self.endtime))
             self.endtime = tab.getcol('TIME')[valid_times[-1]]
         if self.endtime < np.max(tab.getcol('TIME')):
             self.goesto_endofms = False
@@ -148,7 +146,8 @@ class Observation(object):
         # Get the target solution intervals
         target_fast_timestep = parset['calibration_specific']['fast_timestep_sec']
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
-        target_slow_timestep = parset['calibration_specific']['slow_timestep_sec']
+        target_slow_timestep_joint = parset['calibration_specific']['slow_timestep_joint_sec']
+        target_slow_timestep_separate = parset['calibration_specific']['slow_timestep_separate_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
 
         # Find solution intervals for fast-phase solve
@@ -194,17 +193,22 @@ class Observation(object):
         else:
             self.parameters['ntimes'][-1] += int(self.numsamples - (samplesperchunk * self.ntimechunks))
 
+        # Set the fast solve solution intervals
+        self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
+        self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
+
         # Find solution intervals for slow-gain solve
-        solint_slow_timestep = max(1, int(round(target_slow_timestep / timepersample)))
+        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / timepersample)))
+        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / timepersample)))
         solint_slow_freqstep = max(1, self.get_nearest_frequstep(target_slow_freqstep / channelwidth))
 
-        # Adjust the solution interval if needed to fit the slow solve into the
+        # Adjust the solution intervals if needed to fit the slow solves into the
         # available memory and determine how many calibration chunks to make (to allow
         # parallel jobs)
         samplesperchunk, solint_slow_timestep = get_slow_solve_intervals(parset['cluster_specific'],
                                                                          self.numchannels, nobs,
                                                                          solint_slow_freqstep,
-                                                                         solint_slow_timestep,
+                                                                         target_slow_timestep_joint,
                                                                          self.antenna, ndir)
         chunksize = samplesperchunk * channelwidth
         mystartfreq = self.startfreq
@@ -214,28 +218,51 @@ class Observation(object):
             nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
         else:
             nchunks = 1
-        self.nfreqchunks = nchunks
-        if self.nfreqchunks > 1:
+        self.nfreqchunks_joint = nchunks
+        if self.nfreqchunks_joint > 1:
             infix = 's'
         else:
             infix = ''
-        self.log.debug('Using {0} frequency chunk{1} for slow-gain '
-                       'calibration'.format(self.nfreqchunks, infix))
-        self.parameters['freqchunk_filename'] = [self.ms_filename] * self.nfreqchunks
-        self.parameters['startchan'] = [samplesperchunk * i for i in range(nchunks)]
-        self.parameters['nchan'] = [samplesperchunk] * nchunks
-        self.parameters['nchan'][-1] = 0  # set last entry to extend until end
-        self.parameters['slow_starttime'] = [self.convert_mjd(self.starttime)] * nchunks
-        self.parameters['slow_ntimes'] = [self.numsamples] * nchunks
+        self.log.debug('Using {0} frequency chunk{1} for the joint slow-gain '
+                       'calibration'.format(self.nfreqchunks_joint, infix))
+        self.parameters['freqchunk_filename_joint'] = [self.ms_filename] * self.nfreqchunks_joint
+        self.parameters['startchan_joint'] = [samplesperchunk * i for i in range(nchunks)]
+        self.parameters['nchan_joint'] = [samplesperchunk] * nchunks
+        self.parameters['nchan_joint'][-1] = 0  # set last entry to extend until end
+        self.parameters['slow_starttime_joint'] = [self.convert_mjd(self.starttime)] * nchunks
+        self.parameters['slow_ntimes_joint'] = [self.numsamples] * nchunks
+        self.parameters['solint_slow_timestep_joint'] = [solint_slow_timestep] * self.nfreqchunks_joint
+        self.parameters['solint_slow_freqstep_joint'] = [solint_slow_freqstep] * self.nfreqchunks_joint
 
-        # Set solution intervals (same for every calibration chunk). For the second
-        # slow solve, just use the same values as the first solve for now
-        self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
-        self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
-        self.parameters['solint_slow_timestep'] = [solint_slow_timestep] * self.nfreqchunks
-        self.parameters['solint_slow_freqstep'] = [solint_slow_freqstep] * self.nfreqchunks
-        self.parameters['solint_slow_timestep2'] = [solint_slow_timestep] * self.nfreqchunks
-        self.parameters['solint_slow_freqstep2'] = [solint_slow_freqstep] * self.nfreqchunks
+        # Do the same for the separate slow solve
+        samplesperchunk, solint_slow_timestep = get_slow_solve_intervals(parset['cluster_specific'],
+                                                                         self.numchannels, nobs,
+                                                                         solint_slow_freqstep,
+                                                                         target_slow_timestep_separate,
+                                                                         self.antenna, ndir)
+        chunksize = samplesperchunk * channelwidth
+        mystartfreq = self.startfreq
+        myendfreq = self.endfreq
+        if (myendfreq-mystartfreq) > chunksize:
+            # Divide up the bandwidth into chunks of chunksize or smaller
+            nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
+        else:
+            nchunks = 1
+        self.nfreqchunks_separate = nchunks
+        if self.nfreqchunks_separate > 1:
+            infix = 's'
+        else:
+            infix = ''
+        self.log.debug('Using {0} frequency chunk{1} for the separate slow-gain '
+                       'calibration'.format(self.nfreqchunks_separate, infix))
+        self.parameters['freqchunk_filename_separate'] = [self.ms_filename] * self.nfreqchunks_separate
+        self.parameters['startchan_separate'] = [samplesperchunk * i for i in range(nchunks)]
+        self.parameters['nchan_separate'] = [samplesperchunk] * nchunks
+        self.parameters['nchan_separate'][-1] = 0  # set last entry to extend until end
+        self.parameters['slow_starttime_separate'] = [self.convert_mjd(self.starttime)] * nchunks
+        self.parameters['slow_ntimes_separate'] = [self.numsamples] * nchunks
+        self.parameters['solint_slow_timestep_separate'] = [solint_slow_timestep] * self.nfreqchunks_separate
+        self.parameters['solint_slow_freqstep_separate'] = [solint_slow_freqstep] * self.nfreqchunks_separate
 
         # Set the number of segments to split the h5parm files into for screen fitting.
         # Try to split so that each file gets at least two solutions
@@ -333,11 +360,10 @@ class Observation(object):
         # in Dysco, we make sure to have at least 2 time slots after averaging,
         # otherwise the output MS cannot be written with compression
         if self.numsamples == 1:
-            self.log.critical('Only one time slot is availble for imaging, but at least '
-                              'two are required. Please increase the fraction of data '
-                              'processed with the selfcal_data_fraction parameter or supply a '
-                              'measurement set with more time slots.')
-            sys.exit(1)
+            raise RuntimeError('Only one time slot is availble for imaging, but at least '
+                               'two are required. Please increase the fraction of data '
+                               'processed with the selfcal_data_fraction parameter or supply a '
+                               'measurement set with more time slots.')
         max_timewidth_sec = min(120, int(self.numsamples / 2) * timestep_sec)
         delta_theta_deg = max(width_ra, width_dec) / 2.0
         resolution_deg = 3.0 * cellsize_arcsec / 3600.0  # assume normal sampling of restoring beam

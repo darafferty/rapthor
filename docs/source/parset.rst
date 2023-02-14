@@ -14,7 +14,6 @@ optimal parset):
     [global]
     dir_working = /path/to/rapthor/working/dir
     input_ms = /path/to/input/dir/input.ms
-    input_skymodel = /path/to/input/dir/input.sky
 
 
 The available options are described below under their respective sections.
@@ -42,22 +41,25 @@ The available options are described below under their respective sections.
         measurement sets, see :doc:`preparation`.
 
     download_initial_skymodel
-        Download the initial skymodel automatically instead of using a user-provided one (default is `True`).
+        Download the initial sky model automatically instead of using a user-provided one
+        (default is ``True``). This option is ignored if a file is specified with the
+        :term:`input_skymodel` option.
 
     download_initial_skymodel_radius
-        The radius in degrees out to which a skymodel should be downloaded (default is 5.0).
+        The radius in degrees out to which a sky model should be downloaded (default is 5.0).
 
     download_initial_skymodel_server
-        Place to download the initial skymodel from (default is TGSS).
-        This can either be `TGSS` to use the `TFIR GMRT Sky Survey`, or `GSM` to use the `Global Sky Model`.
+        Place to download the initial sky model from (default is ``TGSS``). This can either
+        be ``TGSS`` to use the TFIR GMRT Sky Survey or ``GSM`` to use the Global Sky
+        Model.
 
     download_overwrite_skymodel
-        Overwrite any existing skymodel with a downloaded one (default is False).
+        Overwrite any existing sky model with a downloaded one (default is ``False``).
 
     input_skymodel
-        Full path to the input sky model file, with true-sky fluxes (required if automatic download is disabled).
-        If you also have a sky model with apparent flux densities, specify it
-        with the :term:`apparent_skymodel` option.
+        Full path to the input sky model file, with true-sky fluxes (required if automatic
+        download is disabled). If you also have a sky model with apparent flux densities,
+        specify it with the :term:`apparent_skymodel` option.
 
 	See :doc:`preparation` for more info on preparing the sky model.
 
@@ -123,7 +125,7 @@ The available options are described below under their respective sections.
         default = ``qr``)
 
     maxiter
-        Maximum number of iterations to perform during calibration (default = 50).
+        Maximum number of iterations to perform during calibration (default = 150).
 
     propagatesolutions
         Propagate solutions to next time slot as initial guess (default = ``True``)?
@@ -151,7 +153,7 @@ The available options are described below under their respective sections.
         Tolerance used to check convergence during calibration (default = 1e-3).
 
     solve_min_uv_lambda
-        Minimum uv distance in lambda used during calibration (default = 80).
+        Minimum uv distance in lambda used during calibration (default = 350).
 
     fast_timestep_sec
         Time step used during fast phase calibration, in seconds (default = 8).
@@ -161,7 +163,7 @@ The available options are described below under their respective sections.
 
     fast_smoothnessconstraint
         Smoothness constraint bandwidth used during fast phase calibration, in
-        Hz (default = 6e6).
+        Hz (default = 3e6).
 
     fast_smoothnessreffrequency
         Smoothness constraint reference frequency used during fast phase calibration, in
@@ -171,8 +173,14 @@ The available options are described below under their respective sections.
         Smoothness constraint reference distance used during fast phase calibration, in
         m (default = 0).
 
-    slow_timestep_sec
-        Time step used during slow amplitude calibration, in seconds (default = 600).
+    slow_timestep_joint_sec
+        Time step used during the first slow gain calibration, where a joint
+        solution is found for all stations, in seconds (default = 0). Set to 0
+        to disable this part of the slow-gain calibration.
+
+    slow_timestep_separate_sec
+        Time step used during the second slow gain calibration, where separate
+        solutions are found for each station, in seconds (default = 600).
 
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
@@ -205,16 +213,16 @@ The available options are described below under their respective sections.
 .. glossary::
 
     cellsize_arcsec
-        Pixel size in arcsec (default = 1.5).
+        Pixel size in arcsec (default = 1.25).
 
     robust
         Briggs robust parameter (default = -0.5).
 
     min_uv_lambda
-        Minimum uv distance in lambda to use in imaging (default = 80).
+        Minimum uv distance in lambda to use in imaging (default = 0).
 
     max_uv_lambda
-        Maximum uv distance in lambda to use in imaging (default = 80).
+        Maximum uv distance in lambda to use in imaging (default = 0).
 
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).

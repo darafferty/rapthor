@@ -203,6 +203,9 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     Take phases and amplitudes from 1 and amplitudes from 2 (amplitudes 1 and 2
     are multiplied to create combined values)
 
+    Note: solset ss1 is assumed to have the coarser time grid. The frequency grid
+    of the two solsets is assumed to be the same.
+
     Parameters
     ----------
     ss1 : solset
@@ -217,14 +220,42 @@ def combine_phase1_amp1_amp2(ss1, ss2, sso):
     sso : solset
         Updated output solution set
     """
-    # First, copy phases and amplitudes from 1
+    # First, copy metadata from solset #1 to the output solset
     ss1.obj._f_copy_children(sso.obj, recursive=True, overwrite=True)
 
-    # Then read amplitudes from 1 and 2, multiply them together, and store
+    # Next, make the axes and their values for the output soltabs.
+    # The ss2 solset has the faster time axis (frequency axis is identical),
+    # so use it to derive the output axes shapes
     st1 = ss1.getSoltab('amplitude000')
     st2 = ss2.getSoltab('amplitude000')
-    sto = sso.getSoltab('amplitude000')
-    sto.setValues(st1.val*st2.val)
+    axes_names = st2.getAxesNames()
+    axes_vals = []
+    for axis in axes_names:
+        axis_vals = st2.getAxisValues(axis)
+        axes_vals.append(axis_vals)
+    axes_shapes = [len(axis) for axis in axes_vals]
+
+    # Interpolate the slow amplitudes in st1 to the fast grid and multiply them
+    # with the fast ones
+    vals, weights = interpolate_solutions(st2, st1, axes_shapes)
+    vals *= st2.val
+    weights *= st2.weight
+    if 'amplitude000' in sso.getSoltabNames():
+        st = sso.getSoltab('amplitude000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='amplitude', soltabName='amplitude000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=weights)
+
+    # Interpolate the slow phases in st1 to the fast grid.
+    # Note: the output axes and their values are the same as for the amplitude solutions
+    st1 = ss1.getSoltab('phase000')
+    st2 = ss2.getSoltab('phase000')
+    vals, weights = interpolate_solutions(st2, st1, axes_shapes)
+    if 'phase000' in sso.getSoltabNames():
+        st = sso.getSoltab('phase000')
+        st.delete()
+    sto = sso.makeSoltab(soltype='phase', soltabName='phase000', axesNames=axes_names,
+                         axesVals=axes_vals, vals=vals, weights=weights)
 
     return sso
 

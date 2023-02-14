@@ -5,7 +5,7 @@ doc: |
   This workflow performs direction-dependent calibration. In general,
   calibration is done in three steps: (1) a fast phase-only calibration (with
   core stations constrianed to have the same solutions) to correct for
-  ionospheric effects, (2) a slow amplitude calibration (with all stations
+  ionospheric effects, (2) a joint slow amplitude calibration (with all stations
   constrained to have the same solutions) to correct for beam errors, and (3) a
   further unconstrained slow gain calibration to correct for station-to-station
   differences. Steps (2) and (3) are skipped if the calibration is phase-only.
@@ -228,113 +228,150 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
-  - id: freqchunk_filename
-    label: Filename of input MS (frequency)
+  - id: freqchunk_filename_joint
+    label: Filename of input MS for joint solve (frequency)
     doc: |
-      The filenames of input MS files for which calibration will be done (length =
-      n_obs * n_freq_chunks).
+      The filenames of input MS files for which the first (joint) slow-gain calibration
+      will be done (length = n_obs * n_freq_chunks).
     type: Directory[]
 
-  - id: slow_starttime
-    label: Start time of each chunk
+  - id: freqchunk_filename_separate
+    label: Filename of input MS for separate solve (frequency)
     doc: |
-      The start time (in casacore MVTime) for each time chunk used in the slow-gain
-      calibration (length = n_obs * n_freq_chunks).
+      The filenames of input MS files for which the second (separate) slow-gain
+      calibration will be done (length = n_obs * n_freq_chunks).
+    type: Directory[]
+
+  - id: slow_starttime_joint
+    label: Start time of each chunk for joint solve
+    doc: |
+      The start time (in casacore MVTime) for each time chunk used in the first (joint)
+      slow-gain calibration (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: slow_ntimes
-    label: Number of times of each chunk
+  - id: slow_starttime_separate
+    label: Start time of each chunk for separate solve
     doc: |
-      The number of timeslots for each time chunk used in the slow-gain calibration
-      (length = n_obs * n_freq_chunks).
-    type: int[]
+      The start time (in casacore MVTime) for each time chunk used in the second
+      (separate) slow-gain calibration (length = n_obs * n_freq_chunks).
+    type: string[]
 
-  - id: startchan
-    label: Start channel of each chunk
+  - id: slow_ntimes_joint
+    label: Number of times of each chunk for joint solve
     doc: |
-      The start channel for each frequency chunk used in the slow-gain
+      The number of timeslots for each time chunk used in the first (joint) slow-gain
       calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: nchan
-    label: Number of channels of each chunk
+  - id: slow_ntimes_separate
+    label: Number of times of each chunk for separate solve
     doc: |
-      The number of channels for each frequency chunk used in the slow-gain calibration
-      (length = n_obs * n_freq_chunks).
+      The number of timeslots for each time chunk used in the second (separate) slow-
+      gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_timestep
-    label: Slow 1 solution interval in time
+  - id: startchan_joint
+    label: Start channel of each chunk for joint solve
     doc: |
-      The solution interval in number of timeslots for the first slow-gain solve (length =
-      n_obs * n_freq_chunks).
+      The start channel for each frequency chunk used in the first (joint) slow-gain
+      calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_timestep2
-    label: Slow 2 solution interval in time
+  - id: startchan_separate
+    label: Start channel of each chunk for separate solve
     doc: |
-      The solution interval in number of timeslots for the second slow-gain solve (length =
-      n_obs * n_freq_chunks).
+      The start channel for each frequency chunk used in the second (separate) slow-gain
+      calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_freqstep
-    label: Slow 1 solution interval in frequency
+  - id: nchan_joint
+    label: Number of channels of each chunk for joint solve
     doc: |
-      The solution interval in number of frequency channels for the first slow-gain solve
-      (length = n_obs * n_freq_chunks).
+      The number of channels for each frequency chunk used in the first (joint) slow-
+      gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: solint_slow_freqstep2
-    label: Slow 2 solution interval in frequency
+  - id: nchan_separate
+    label: Number of channels of each chunk for separate solve
     doc: |
-      The solution interval in number of frequency channels for the second slow-gain solve
-      (length = n_obs * n_freq_chunks).
+      The number of channels for each frequency chunk used in the second (separate)
+      slow-gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-  - id: slow_smoothnessconstraint1
-    label: Slow 1 smoothnessconstraint
+  - id: solint_slow_timestep_joint
+    label: Joint slow solution interval in time
     doc: |
-      The smoothnessconstraint kernel size in Hz for the first slow-gain solve (length = 1).
+      The solution interval in number of timeslots for the first (joint) slow-gain
+      solve (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: solint_slow_timestep_separate
+    label: Separate slow solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the second (separate) slow-gain
+      solve (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: solint_slow_freqstep_joint
+    label: Joint slow solution interval in frequency
+    doc: |
+      The solution interval in number of frequency channels for the first (joint) slow-
+      gain solve (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: solint_slow_freqstep_separate
+    label: Separate slow solution interval in frequency
+    doc: |
+      The solution interval in number of frequency channels for the second (separate)
+      slow-gain solve (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: slow_smoothnessconstraint_joint
+    label: Joint slow smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the first (joint) slow-gain solve
+      (length = 1).
     type: float
 
-  - id: slow_smoothnessconstraint2
-    label: Slow 2 smoothnessconstraint
+  - id: slow_smoothnessconstraint_separate
+    label: Separate slow smoothnessconstraint
     doc: |
-      The smoothnessconstraint kernel size in Hz for the second slow-gain solve (length = 1).
+      The smoothnessconstraint kernel size in Hz for the second (separate) slow-gain
+      solve (length = 1).
     type: float
 
   - id: slow_antennaconstraint
     label: Slow antenna constraint
     doc: |
-      The antenna constraint for the first slow-gain solve (length = 1).
+      The antenna constraint for the first (joint) slow-gain solve (length = 1).
     type: string
 
-  - id: output_slow_h5parm
-    label: Slow 1 output solution table
+  - id: output_slow_h5parm_joint
+    label: Joint slow solve output solution table
     doc: |
-      The filename of the output h5parm solution table for the first slow-gain solve (length
-      = n_obs * n_freq_chunks).
+      The filename of the output h5parm solution table for the first (joint) slow-gain
+      solve (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: output_slow_h5parm2
-    label: Slow 2 output solution table
+  - id: output_slow_h5parm_separate
+    label: Separate slow solve output solution table
     doc: |
-      The filename of the output h5parm solution table for the second slow-gain solve (length
-      = n_obs * n_freq_chunks).
+      The filename of the output h5parm solution table for the second (separate) slow-
+      gain solve (length = n_obs * n_freq_chunks).
     type: string[]
 
-  - id: combined_slow_h5parm1
-    label: Combined slow 1 output solution table
+  - id: combined_slow_h5parm_joint
+    label: Combined joint slow output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the first slow-gain solve
-      (length = 1).
+      The filename of the output combined h5parm solution table for the first (joint)
+      slow-gain solve (length = 1).
     type: string
 
-  - id: combined_slow_h5parm2
-    label: Combined slow 2 output solution table
+  - id: combined_slow_h5parm_separate
+    label: Combined separate slow output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the second slow-gain solve
-      (length = 1).
+      The filename of the output combined h5parm solution table for the second (separate)
+      slow-gain solve (length = 1).
     type: string
 
   - id: combined_h5parms
@@ -344,27 +381,19 @@ inputs:
       (length = 1).
     type: string
 
-  - id: combined_h5parms1
+  - id: combined_h5parms_fast_slow_joint
     label: Combined output solution table
     doc: |
       The filename of the output combined h5parm solution table for the fast-phase +
-      first slow-gain solve (length = 1).
+      first (joint) slow-gain solve (length = 1).
     type: string
 
-  - id: combined_h5parms2
+  - id: combined_h5parms_slow_joint_separate
     label: Combined output solution table
     doc: |
-      The filename of the output combined h5parm solution table for the first and
-      second slow-gain solves (length = 1).
+      The filename of the output combined h5parm solution table for the first (joint) and
+      second (separate) slow-gain solves (length = 1).
     type: string
-
-{% if debug %}
-  - id: output_slow_h5parm_debug
-    type: string[]
-
-  - id: combined_slow_h5parm_debug
-    type: string
-{% endif %}
 
 {% endif %}
 # end do_slowgain_solve
@@ -501,15 +530,18 @@ steps:
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
 
-  - id: solve_slow_gains1
-    label: Solve for slow gains 1
+{% if do_joint_solve %}
+# start do_joint_solve (solve_slow_gains_joint)
+
+  - id: solve_slow_gains_joint
+    label: Joint solve for slow gains
     doc: |
       This step uses DDECal (in DP3) to solve for gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
-      have the same solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain1.cwl
+      have the same (joint) solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_joint.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -518,23 +550,23 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename
+        source: freqchunk_filename_joint
       - id: starttime
-        source: slow_starttime
+        source: slow_starttime_joint
       - id: ntimes
-        source: slow_ntimes
+        source: slow_ntimes_joint
       - id: startchan
-        source: startchan
+        source: startchan_joint
       - id: nchan
-        source: nchan
+        source: nchan_joint
       - id: fast_h5parm
         source: combine_fast_phases/outh5parm
       - id: h5parm
-        source: output_slow_h5parm
+        source: output_slow_h5parm_joint
       - id: solint
-        source: solint_slow_timestep
+        source: solint_slow_timestep_joint
       - id: solve_nchan
-        source: solint_slow_freqstep
+        source: solint_slow_freqstep_joint
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver
@@ -562,7 +594,7 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint
-        source: slow_smoothnessconstraint1
+        source: slow_smoothnessconstraint_joint
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
@@ -572,28 +604,29 @@ steps:
     out:
       - id: slow_gains_h5parm
 
-  - id: combine_slow_gains1
-    label: Combine slow-gain solutions 1
+  - id: combine_slow_gains_joint
+    label: Combine joint slow-gain solutions
     doc: |
-      This step combines all the gain solutions from the solve_slow_gains1 step
+      This step combines all the gain solutions from the solve_slow_gains_joint step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains1/slow_gains_h5parm
+        source: solve_slow_gains_joint/slow_gains_h5parm
       - id: outputh5parm
-        source: combined_slow_h5parm1
+        source: combined_slow_h5parm_joint
     out:
       - id: outh5parm
 
-  - id: process_slow_gains1
-    label: Process slow-gain solutions 1
+  - id: process_slow_gains_joint
+    label: Process joint slow-gain solutions
     doc: |
-      This step processes the gain solutions, flagging, smoothing and renormalizing them.
+      This step processes the joint slow-gain solutions, flagging, smoothing and
+      renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
-        source: combine_slow_gains1/outh5parm
+        source: combine_slow_gains_joint/outh5parm
       - id: flag
         valueFrom: 'True'
       - id: smooth
@@ -601,20 +634,20 @@ steps:
     out:
       - id: outh5parm
 
-  - id: combine_fast_and_slow_h5parms1
-    label: Combine fast-phase and slow-gain solutions 1
+  - id: combine_fast_and_joint_slow_h5parms
+    label: Combine fast-phase and joint slow-gain solutions
     doc: |
       This step combines the fast-phase solutions from the solve_fast_phases step
-      and the slow-gain solutions from the solve_slow_gains1 into a single solution
-      table (h5parm file).
+      and the slow-gain solutions from the solve_slow_gains_joint into a single
+      solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
         source: combine_fast_phases/outh5parm
       - id: inh5parm2
-        source: process_slow_gains1/outh5parm
+        source: process_slow_gains_joint/outh5parm
       - id: outh5parm
-        source: combined_h5parms1
+        source: combined_h5parms_fast_slow_joint
       - id: mode
         valueFrom: 'p1a2'
       - id: reweight
@@ -626,16 +659,22 @@ steps:
     out:
       - id: combinedh5parm
 
-  - id: solve_slow_gains2
-    label: Solve for slow gains 2
+{% endif %}
+
+  - id: solve_slow_gains_separate
+    label: Separate solve for slow gains
     doc: |
       This step uses DDECal (in DP3) to solve for gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
-      phase solutions and first slow-gain solutions are preapplied and stations
-      are unconstrainted (so different stations are free to have different
-      solutions).
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain2.cwl
+      phase solutions and first (joint) slow-gain solutions are preapplied
+      and stations are solve for separately (so different stations are free
+      to have different solutions).
+{% if do_joint_solve %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_separate.cwl
+{% else %}
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_separate_no_joint.cwl
+{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -644,23 +683,27 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: freqchunk_filename
+        source: freqchunk_filename_separate
       - id: starttime
-        source: slow_starttime
+        source: slow_starttime_separate
       - id: ntimes
-        source: slow_ntimes
+        source: slow_ntimes_separate
       - id: startchan
-        source: startchan
+        source: startchan_separate
       - id: nchan
-        source: nchan
+        source: nchan_separate
       - id: combined_h5parm
-        source: combine_fast_and_slow_h5parms1/combinedh5parm
+{% if do_joint_solve %}
+        source: combine_fast_and_joint_slow_h5parms/combinedh5parm
+{% else %}
+        source: combine_fast_phases/outh5parm
+{% endif %}
       - id: h5parm
-        source: output_slow_h5parm2
+        source: output_slow_h5parm_separate
       - id: solint
-        source: solint_slow_timestep2
+        source: solint_slow_timestep_separate
       - id: solve_nchan
-        source: solint_slow_freqstep2
+        source: solint_slow_freqstep_separate
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver
@@ -688,7 +731,7 @@ steps:
       - id: uvlambdamin
         source: uvlambdamin
       - id: smoothnessconstraint
-        source: slow_smoothnessconstraint2
+        source: slow_smoothnessconstraint_separate
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
@@ -696,28 +739,29 @@ steps:
     out:
       - id: slow_gains_h5parm
 
-  - id: combine_slow_gains2
-    label: Combine slow-gain solutions 2
+  - id: combine_slow_gains_separate
+    label: Combine separate slow-gain solutions
     doc: |
-      This step combines all the gain solutions from the solve_slow_gains2 step
+      This step combines all the gain solutions from the solve_slow_gains_separate step
       into a single solution table (h5parm file).
     run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
     in:
       - id: inh5parms
-        source: solve_slow_gains2/slow_gains_h5parm
+        source: solve_slow_gains_separate/slow_gains_h5parm
       - id: outputh5parm
-        source: combined_slow_h5parm2
+        source: combined_slow_h5parm_separate
     out:
       - id: outh5parm
 
-  - id: process_slow_gains2
-    label: Process slow-gain solutions 2
+  - id: process_slow_gains_separate
+    label: Process separate slow-gain solutions
     doc: |
-      This step processes the gain solutions, flagging, smoothing and renormalizing them.
+      This step processes the gain solutions from the separate solve, flagging,
+      smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
-        source: combine_slow_gains2/outh5parm
+        source: combine_slow_gains_separate/outh5parm
       - id: flag
         valueFrom: 'True'
       - id: smooth
@@ -725,21 +769,23 @@ steps:
     out:
       - id: outh5parm
 
-  - id: combine_slow1_and_slow2_h5parms
+{% if do_joint_solve %}
+
+  - id: combine_joint_and_separate_slow_h5parms
     label: Combine slow-gain solutions
     doc: |
-      This step combines the gain solutions from the solve_slow_gains1 and
-      solve_slow_gains2 steps into a single solution table (h5parm file).
-      The phases and amplitudes from solve_slow_gains2 and the amplitudes from
-      solve_slow_gains1 are used.
+      This step combines the gain solutions from the solve_slow_gains_joint and
+      solve_slow_gains_separate steps into a single solution table (h5parm file).
+      The phases and amplitudes from solve_slow_gains_separate and the amplitudes from
+      solve_slow_gains_joint are used.
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: process_slow_gains2/outh5parm
+        source: process_slow_gains_separate/outh5parm
       - id: inh5parm2
-        source: combine_slow_gains1/outh5parm
+        source: combine_slow_gains_joint/outh5parm
       - id: outh5parm
-        source: combined_h5parms2
+        source: combined_h5parms_slow_joint_separate
       - id: mode
         valueFrom: 'p1a1a2'
       - id: reweight
@@ -751,15 +797,21 @@ steps:
     out:
       - id: combinedh5parm
 
+{% endif %}
+
   - id: normalize_slow_amplitudes
     label: Normalize slow-gain amplitudes
     doc: |
       This step processes the combined amplitude solutions from
-      combine_slow1_and_slow2_h5parms, flagging and renormalizing them.
+      combine_joint_and_separate_slow_h5parms, flagging and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
     in:
       - id: slowh5parm
-        source: combine_slow1_and_slow2_h5parms/combinedh5parm
+{% if do_joint_solve %}
+        source: combine_joint_and_separate_slow_h5parms/combinedh5parm
+{% else %}
+        source: process_slow_gains_separate/outh5parm
+{% endif %}
       - id: flag
         valueFrom: 'True'
       - id: smooth
@@ -793,7 +845,7 @@ steps:
     out:
       - id: plots
 
-  - id: combine_fast_and_slow_h5parms2
+  - id: combine_fast_and_full_slow_h5parms
     label: Combine fast-phase and slow-gain solutions
     doc: |
       This step combines the phase solutions from the solve_fast_phases and
@@ -835,7 +887,7 @@ steps:
       - id: skymodel
         source: calibration_skymodel_file
       - id: h5parm
-        source: combine_fast_and_slow_h5parms2/combinedh5parm
+        source: combine_fast_and_full_slow_h5parms/combinedh5parm
     out:
       - id: adjustedh5parm
 
@@ -887,87 +939,6 @@ steps:
 
 {% endif %}
 # end use_screens
-
-{% if debug %}
-# start debug
-# Solve for slow gains again, applying the first ones
-
-  - id: solve_slow_gains_debug
-    label: solve_slow_gains_debug
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_debug.cwl
-{% if max_cores is not none %}
-    hints:
-      ResourceRequirement:
-        coresMin: {{ max_cores }}
-        coresMax: {{ max_cores }}
-{% endif %}
-    in:
-      - id: msin
-        source: freqchunk_filename
-      - id: starttime
-        source: slow_starttime
-      - id: ntimes
-        source: slow_ntimes
-      - id: startchan
-        source: startchan
-      - id: nchan
-        source: nchan
-      - id: combined_h5parm
-        source: combine_fast_and_slow_h5parms2/combinedh5parm
-      - id: h5parm
-        source: output_slow_h5parm_debug
-      - id: solint
-        source: solint_slow_timestep
-      - id: solve_nchan
-        source: solint_slow_freqstep
-      - id: sourcedb
-        source: calibration_skymodel_file
-      - id: llssolver
-        source: llssolver
-      - id: maxiter
-        source: maxiter
-      - id: propagatesolutions
-        source: propagatesolutions
-      - id: solveralgorithm
-        source: solveralgorithm
-      - id: solverlbfgs_dof
-        source: solverlbfgs_dof
-      - id: solverlbfgs_iter
-        source: solverlbfgs_iter
-      - id: solverlbfgs_minibatches
-        source: solverlbfgs_minibatches
-      - id: onebeamperpatch
-        source: onebeamperpatch
-      - id: parallelbaselines
-        source: parallelbaselines
-      - id: stepsize
-        source: stepsize
-      - id: tolerance
-        source: tolerance
-      - id: uvlambdamin
-        source: uvlambdamin
-      - id: smoothnessconstraint
-        source: slow_smoothnessconstraint
-      - id: numthreads
-        source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
-    scatterMethod: dotproduct
-    out:
-      - id: slow_gains_h5parm
-
-  - id: combine_slow_gains_debug
-    label: combine_slow_gains_debug
-    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
-    in:
-      - id: inh5parms
-        source: solve_slow_gains_debug/slow_gains_h5parm
-      - id: outputh5parm
-        source: combined_slow_h5parm_debug
-    out:
-      - id: outh5parm
-
-{% endif %}
-# end debug
 
 {% else %}
 # start not do_slowgain_solve

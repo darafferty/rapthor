@@ -18,8 +18,8 @@
 # -- Project information -----------------------------------------------------
 
 project = 'Rapthor'
-copyright = '2021, David Rafferty'
-author = 'David Rafferty'
+copyright = '2023, Team Rapthor'
+author = 'Team Rapthor'
 
 
 # -- General configuration ---------------------------------------------------
@@ -56,4 +56,4 @@ html_theme = 'alabaster'
 # Suppress sphinx warning: "autosummary: stub file not found for the methods
 # of the class. check your autosummary_generate settings", which seems to be
 # triggered by numpydoc (ref: https://stackoverflow.com/a/66139873/16350552).
-numpydoc_show_class_members = False 
+numpydoc_show_class_members = False

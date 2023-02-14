@@ -42,8 +42,6 @@ class Field(object):
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
         self.input_h5parm = self.parset['input_h5parm']
-        self.target_flux = self.parset['calibration_specific']['patch_target_flux_jy']
-        self.target_number = self.parset['calibration_specific']['patch_target_number']
         self.solve_min_uv_lambda = self.parset['calibration_specific']['solve_min_uv_lambda']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
@@ -67,7 +65,6 @@ class Field(object):
         self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.reweight = self.parset['imaging_specific']['reweight']
-        self.debug = self.parset['calibration_specific']['debug']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
@@ -114,9 +111,8 @@ class Field(object):
         self.antenna = obs0.antenna
         for obs in self.full_observations:
             if self.antenna != obs.antenna:
-                self.log.critical('Antenna type for MS {0} differs from the one for MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Antenna type for MS {0} differs from the one for MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same frequency axis
         # NOTE: this may not be necessary and is disabled for now
@@ -127,34 +123,30 @@ class Field(object):
                         obs0.startfreq != obs.startfreq or
                         obs0.endfreq != obs.endfreq or
                         obs0.channelwidth != obs.channelwidth):
-                    self.log.critical('Frequency axis for MS {0} differs from the one for MS {1}! '
-                                      'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                    sys.exit(1)
+                    raise ValueError('Frequency axis for MS {0} differs from the one for MS '
+                                     '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same pointing
         self.ra = obs0.ra
         self.dec = obs0.dec
         for obs in self.full_observations:
             if self.ra != obs.ra or self.dec != obs.dec:
-                self.log.critical('Pointing for MS {0} differs from the one for MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Pointing for MS {0} differs from the one for MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same station diameter
         self.diam = obs0.diam
         for obs in self.full_observations:
             if self.diam != obs.diam:
-                self.log.critical('Station diameter for MS {0} differs from the one for MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Station diameter for MS {0} differs from the one for MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check that all observations have the same stations
         self.stations = obs0.stations
         for obs in self.full_observations:
             if self.stations != obs.stations:
-                self.log.critical('Stations in MS {0} differ from those in MS {1}! '
-                                  'Exiting!'.format(self.obs.ms_filename, self.obs0.ms_filename))
-                sys.exit(1)
+                raise ValueError('Stations in MS {0} differ from those in MS '
+                                 '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Find mean elevation and FOV over all observations
         el_rad_list = []
@@ -205,7 +197,7 @@ class Field(object):
         if data_fraction < 1.0:
             self.observations = []
             for obs in self.full_observations:
-                mintime = self.parset['calibration_specific']['slow_timestep_sec']
+                mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
                 tottime = obs.endtime - obs.starttime
                 if data_fraction < min(1.0, mintime/tottime):
                     obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
@@ -248,7 +240,7 @@ class Field(object):
             # Note: Due to a limitation in Dysco, we make sure to have at least
             # 2 time slots per observation, otherwise the output MS cannot be
             # written with compression
-            mintime = self.parset['calibration_specific']['slow_timestep_sec']
+            mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
             prev_observations = self.observations[:]
             self.observations = []
             for obs in prev_observations:
@@ -282,13 +274,16 @@ class Field(object):
         Sets parameters for all observations from current parset and sky model
         """
         ntimechunks = 0
-        nfreqchunks = 0
+        nfreqchunks_joint = 0
+        nfreqchunks_separate = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
             ntimechunks += obs.ntimechunks
-            nfreqchunks += obs.nfreqchunks
+            nfreqchunks_joint += obs.nfreqchunks_joint
+            nfreqchunks_separate += obs.nfreqchunks_separate
         self.ntimechunks = ntimechunks
-        self.nfreqchunks = nfreqchunks
+        self.nfreqchunks_joint = nfreqchunks_joint
+        self.nfreqchunks_separate = nfreqchunks_separate
 
     def get_obs_parameters(self, parameter):
         """
@@ -444,30 +439,82 @@ class Field(object):
         source_skymodel.write(skymodel_true_sky_file, clobber=True)
         # debug
 
-        # Determine the flux cut to use to select the bright sources (calibrators)
-        if target_flux is None:
-            target_flux = self.target_flux
-        if target_number is None:
-            target_number = self.target_number
-        if target_number is not None:
-            # Set target_flux so that the target_number-brightest calibrators are
-            # kept
-            fluxes = source_skymodel.getColValues('I', aggregate='sum',
-                                                  applyBeam=applyBeam_group)
-            fluxes.sort()
-            if target_number > len(fluxes):
-                target_number = len(fluxes)
-            target_flux = fluxes[-target_number] - 0.001
-
         # Save the model of the bright sources only, for later subtraction before
         # imaging if needed. Note that the bright-source model (like the other predict
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
         # patches to the true-sky version later
         bright_source_skymodel_apparent_sky = source_skymodel.copy()
+
+        # Regroup by tessellating with the bright sources as the tessellation
+        # centers if regroup is True
         if regroup:
-            # Regroup by tessellating with the bright sources as the tessellation
-            # centers
-            self.log.info('Using a target flux density of {} Jy for grouping'.format(target_flux))
+            # Do some checks
+            if target_flux is None and target_number is None:
+                raise ValueError('Either the target flux density or the target number '
+                                 'of directions must be specified when regrouping the '
+                                 'sky model.')
+            if target_flux is not None and target_flux <= 0.0:
+                raise ValueError('The target flux density cannot be less than or equal '
+                                 'to 0.')
+            if target_number is not None and target_number < 1:
+                raise ValueError('The target number of directions cannot be less than 1.')
+
+            # Determine the flux cut to use to select the bright sources (calibrators)
+            if target_number is not None:
+                # Set target_flux so that the target_number-brightest calibrators are
+                # kept
+                fluxes = source_skymodel.getColValues('I', aggregate='sum',
+                                                      applyBeam=applyBeam_group)
+                if target_number >= len(fluxes):
+                    target_number = len(fluxes)
+                    fluxes.sort()
+                    target_flux_for_number = fluxes[-1]
+                else:
+                    # Weight the fluxes by size to estimate the required target flux
+                    # The same weighting scheme is used by LSMTool when performing
+                    # the 'voronoi' grouping later
+                    sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
+                                                          applyBeam=applyBeam_group)
+                    sizes[sizes < 1.0] = 1.0
+                    if target_flux is not None:
+                        trial_target_flux = target_flux
+                    else:
+                        trial_target_flux = 0.3
+                    trial_target_flux_prev = 0.0
+                    while not misc.approx_equal(trial_target_flux, trial_target_flux_prev, tol=1e-3):
+                        trial_fluxes = fluxes.copy()
+                        bright_ind = np.where(trial_fluxes >= trial_target_flux)
+                        medianSize = np.median(sizes[bright_ind])
+                        weights = medianSize / sizes
+                        weights[weights > 1.0] = 1.0
+                        weights[weights < 0.5] = 0.5
+                        trial_fluxes *= weights
+                        trial_fluxes.sort()
+                        trial_target_flux_prev = trial_target_flux
+                        trial_target_flux = trial_fluxes[-target_number]
+                    target_flux_for_number = trial_target_flux
+                target_flux_for_number -= 0.001  # to make sure we meet the target number
+
+                if target_flux is None:
+                    target_flux = target_flux_for_number
+                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
+                                  'to meet the specified target number of '
+                                  'directions ({1:.2f})'.format(target_flux, target_number))
+                else:
+                    if target_flux_for_number > target_flux and target_number < len(fluxes):
+                        # Only use the new target flux if the old value might result
+                        # in more than target_number of calibrators
+                        self.log.info('Using a target flux density of {0:.2f} Jy for '
+                                      'grouping (raised from {1:.2f} Jy to ensure that '
+                                      'the target number of {2} directions is not '
+                                      'exceeded)'.format(target_flux_for_number, target_flux, target_number))
+                        target_flux = target_flux_for_number
+                    else:
+                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+            else:
+                self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+
+            # Tesselate the model using the target flux
             source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
                                   weightBySize=True)
             tesselation_patches = source_skymodel.getPatchNames()
@@ -561,8 +608,8 @@ class Field(object):
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
 
-    def update_skymodels(self, index, regroup, target_flux=None,
-                         target_number=None, final=False):
+    def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
+                         final=False):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -593,6 +640,7 @@ class Field(object):
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
+                                target_flux=target_flux, target_number=target_number,
                                 find_sources=True, index=index)
         else:
             # Use the sector sky models from the previous iteration to update the master
@@ -749,9 +797,8 @@ class Field(object):
                 to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
         else:
             # Skymodels don't match, raise error
-            self.log.critical('Cannot transfer patches since from_skymodel does not contain '
-                              'all the sources in to_skymodel! Exiting!')
-            sys.exit(1)
+            raise ValueError('Cannot transfer patches since from_skymodel does not contain '
+                             'all the sources in to_skymodel')
 
         if patch_dict is not None:
             to_skymodel.setPatchPositions(patchDict=patch_dict)
@@ -1218,6 +1265,7 @@ class Field(object):
             sector.__dict__.update(step_dict)
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=step_dict['target_flux'],
+                              target_number=step_dict['max_directions'],
                               final=final)
 
         # Check whether outliers and bright sources need to be peeled

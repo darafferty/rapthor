@@ -10,24 +10,25 @@ dir_working = /data/rapthor
 # or a list can be given
 input_ms = /data/ms/*.ms
 
-# Full path to the input sky model file, with true-sky fluxes (required when not automatically downloading). If you also
-# have a sky model with apparent flux densities, specify it with the apparent_skymodel
-# option (note that the source names must be identical in both sky models)
+# Automatically download a target sky model (default = True). This will have no effect if
+# input_sky model is specified. The radius out to which a sky model should be downloaded
+# (default is 5 degrees) and the service from which a sky model should be downloaded
+# (default is TGSS) can be specified, as can the option to overwrite an existing sky model
+# with the downloaded one.
+# download_initial_skymodel = True
+# download_initial_skymodel_radius = 5.0
+# download_initial_skymodel_server = TGSS
+# download_overwrite_skymodel = False
+
+# Full path to the input sky model file, with true-sky fluxes (required when not
+# automatically downloading). If you also have a sky model with apparent flux densities,
+# specify it with the apparent_skymodel option (note that the source names must be
+# identical in both sky models)
+# input_skymodel = /data/skymodel.txt
 # apparent_skymodel = /data/apparent_skymodel.txt
-# If input_skymodel is given, automatic downloading is disabled.
-input_skymodel = /data/skymodel.txt
-# Automatically download a target skymodel. This will have no effect if input_skymodel is specified.
-download_initial_skymodel = True
-# Radius out to which a skymodel should be downloaded (default is 5 degrees).
-download_initial_skymodel_radius = 5.0
-# Service from which a skymodel should be downloaded (default is TGSS).
-download_initial_skymodel_server = TGSS
-# Overwrite an existing skymodel.
-download_overwrite_skymodel = False
 
-
-# Regroup input skymodel as needed to meet target flux (default = True). If False, the existing
-# patches are used for the calibration
+# Regroup the input or downloaded sky model as needed to meet target flux (default =
+# True). If False, the existing patches are used for the calibration
 # regroup_input_skymodel = True
 
 # Processing strategy to use (default = selfcal):
@@ -38,7 +39,7 @@ download_overwrite_skymodel = False
 
 # Fraction of data to process (default = 0.2 for self calibration and 1.0 for the final pass).
 # If less than one, the input data are divided by time into chunks (of no less
-# than slow_timestep_sec below) that sum to the requested fraction, spaced out
+# than slow_timestep_separate_sec below) that sum to the requested fraction, spaced out
 # evenly over the full time range. A final fraction can also be specified
 # (default = selfcal_data_fraction) such that a final processing pass (i.e.,
 # after selfcal finishes) is done with a different fraction
@@ -69,18 +70,19 @@ download_overwrite_skymodel = False
 # onebeamperpatch = False
 # stepsize = 0.02
 # tolerance = 5e-3
-# solve_min_uv_lambda = 80.0
+# solve_min_uv_lambda = 350.0
 # parallelbaselines=False
 
 # Fast solve parameters (defaults shown):
 # fast_timestep_sec = 8.0
 # fast_freqstep_hz = 1e6
-# fast_smoothnessconstraint = 6e6
+# fast_smoothnessconstraint = 3e6
 # fast_smoothnessreffrequency = midpoint of frequency coverage
 # fast_smoothnessrefdistance = 0
 
 # Slow solve parameters (defaults shown):
-# slow_timestep_sec = 600.0
+# slow_timestep_joint_sec = 0.0
+# slow_timestep_separate_sec = 600.0
 # slow_freqstep_hz = 1e6
 # slow_smoothnessconstraint_joint = 3e6
 # slow_smoothnessconstraint_separate = 3e6
@@ -93,18 +95,18 @@ download_overwrite_skymodel = False
 # True)
 # cellsize_arcsec = 1.25
 # robust = -0.5
-# min_uv_lambda = 80.0
+# min_uv_lambda = 0.0
 # max_uv_lambda = 0.0
 # taper_arcsec = 0.0
 # do_multiscale_clean = True
 
-# Method to use to correct for direction-dependent effects during imaging: "none",
-# "facets", or "screens". If "none", the solutions closest to the image centers
-# will be used. If "facets", Voronoi faceting is used. If "screens", smooth 2-D
-# screens are used; the type of screen to use can be specified with screen_type:
-# "tessellated" (simple, smoothed tessellated screens) or "kl" (Karhunen-Lo`eve
-# screens) (default = kl)
-# dde_method = screens
+# Method to use to correct for direction-dependent effects during imaging:
+# "none", "facets", or "screens" (default = facets). If "none", the solutions
+# closest to the image centers will be used. If "facets", Voronoi faceting is
+# used. If "screens", smooth 2-D screens are used; the type of screen to use can
+# be specified with screen_type: "tessellated" (simple, smoothed tessellated
+# screens) or "kl" (Karhunen-Lo`eve screens) (default = kl)
+# dde_method = facets
 # screen_type = kl
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can be
@@ -121,8 +123,8 @@ download_overwrite_skymodel = False
 # not be set unless it is on a shared filesystem
 # use_mpi = False
 
-# Reweight the visibility data before imaging (default = True)
-# reweight = True
+# Reweight the visibility data before imaging (default = False)
+# reweight = False
 
 # Size of area to image when using a grid (default = mean FWHM of the primary beam)
 # Number of sectors along RA to use in imaging grid (default = 0). The number of sectors in
