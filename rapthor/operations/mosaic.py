@@ -86,3 +86,5 @@ class Mosaic(Operation):
 
         # TODO: clean up template+regridded images
 
+        # Finally call finalize() in the parent class
+        super().finalize()

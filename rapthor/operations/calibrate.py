@@ -317,3 +317,6 @@ class Calibrate(Operation):
             if os.path.exists(dst_filename):
                 os.remove(dst_filename)
             shutil.copy(plot_filename, dst_filename)
+
+        # Finally call finalize() in the parent class
+        super().finalize()

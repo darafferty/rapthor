@@ -104,6 +104,9 @@ class Operation(object):
         # Toil's jobstore path
         self.jobstore = os.path.join(self.pipeline_working_dir, 'jobstore')
 
+        # File indicating whether a step was completely done.
+        self.done_file = os.path.join(self.pipeline_working_dir, '.done')
+
         # Get the batch system to use
         self.batch_system = self.parset['cluster_specific']['batch_system']
 
@@ -184,25 +187,37 @@ class Operation(object):
 
     def finalize(self):
         """
-        Finalize this operation
+        Finalize this operation.
 
-        This should be defined in the subclasses as needed
+        Create a "done" file to indicate that this operations is done.
+        Specializations should be defined in the subclasses as needed.
         """
-        pass
+        open(self.done_file, "w").close()
+
+    def is_done(self):
+        """
+        Check if this operation is done, by checking if a "done" file exists.
+        """
+        return os.path.isfile(self.done_file)
 
     def run(self):
         """
         Runs the operation
         """
-        # Set up pipeline and call Toil
+        # Check if current operation has already run.
+        if self.is_done():
+            self.log.info('Operation {0} has already run. Skipping.'.format(self.name))
+            return
+
+        # Set up pipeline and call CWL runner
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
         with Timer(self.log):
             with create_cwl_runner(self.cwl_runner, self) as runner:
-                self.success = runner.run()
+                success = runner.run()
 
         # Finalize
-        if self.success:
+        if success:
             self.log.info('--> Operation {0} completed'.format(self.name))
             self.finalize()
         else:
