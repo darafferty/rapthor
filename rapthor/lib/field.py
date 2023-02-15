@@ -467,8 +467,7 @@ class Field(object):
                                                       applyBeam=applyBeam_group)
                 if target_number >= len(fluxes):
                     target_number = len(fluxes)
-                    fluxes.sort()
-                    target_flux_for_number = fluxes[-1]
+                    target_flux_for_number = np.min(fluxes)
                 else:
                     # Weight the fluxes by size to estimate the required target flux
                     # The same weighting scheme is used by LSMTool when performing
@@ -480,8 +479,11 @@ class Field(object):
                         trial_target_flux = target_flux
                     else:
                         trial_target_flux = 0.3
-                    trial_target_flux_prev = 0.0
-                    while not misc.approx_equal(trial_target_flux, trial_target_flux_prev, tol=1e-3):
+                    trial_number = 0
+                    i = 0
+                    max_iter = 100
+                    while trial_number != target_number and i < max_iter:
+                        i += 1
                         trial_fluxes = fluxes.copy()
                         bright_ind = np.where(trial_fluxes >= trial_target_flux)
                         medianSize = np.median(sizes[bright_ind])
@@ -490,10 +492,16 @@ class Field(object):
                         weights[weights < 0.5] = 0.5
                         trial_fluxes *= weights
                         trial_fluxes.sort()
-                        trial_target_flux_prev = trial_target_flux
-                        trial_target_flux = trial_fluxes[-target_number]
+                        trial_number = len(trial_fluxes[trial_fluxes >= trial_target_flux])
+                        if trial_number < target_number:
+                            # Reduce the trial target flux to next fainter source
+                            trial_target_flux = trial_fluxes[-(trial_number+1)]
+                        elif trial_number > target_number:
+                            # Increase the trial flux to next brighter source
+                            trial_target_flux = trial_fluxes[-(trial_number-1)]
+                        else:
+                            pass
                     target_flux_for_number = trial_target_flux
-                target_flux_for_number -= 0.001  # to make sure we meet the target number
 
                 if target_flux is None:
                     target_flux = target_flux_for_number
