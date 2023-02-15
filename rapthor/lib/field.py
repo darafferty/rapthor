@@ -480,10 +480,9 @@ class Field(object):
                     else:
                         trial_target_flux = 0.3
                     trial_number = 0
-                    i = 0
-                    max_iter = 100
-                    while trial_number != target_number and i < max_iter:
-                        i += 1
+                    for _ in range(100):
+                        if trial_number == target_number:
+                            break
                         trial_fluxes = fluxes.copy()
                         bright_ind = np.where(trial_fluxes >= trial_target_flux)
                         medianSize = np.median(sizes[bright_ind])
@@ -499,8 +498,6 @@ class Field(object):
                         elif trial_number > target_number:
                             # Increase the trial flux to next brighter source
                             trial_target_flux = trial_fluxes[-(trial_number-1)]
-                        else:
-                            pass
                     target_flux_for_number = trial_target_flux
 
                 if target_flux is None:
