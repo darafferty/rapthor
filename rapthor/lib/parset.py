@@ -556,7 +556,7 @@ def get_imaging_options(parset):
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'cpu'
     if parset_dict['idg_mode'] not in ['cpu', 'gpu', 'hybrid']:
-        log.error('The option dde_method must be one of "cpu", "gpu", or "hybrid"')
+        log.error('The option idg_mode must be one of "cpu", "gpu", or "hybrid"')
         sys.exit(1)
 
     # Method to use to apply direction-dependent effects during imaging: "none",

@@ -204,17 +204,19 @@ class Operation(object):
         """
         Runs the operation
         """
-        # Check if current operation has already run.
-        if self.is_done():
-            self.log.info('Operation {0} has already run. Skipping.'.format(self.name))
-            return
-
         # Set up pipeline and call CWL runner
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
-        with Timer(self.log):
-            with create_cwl_runner(self.cwl_runner, self) as runner:
-                success = runner.run()
+
+        # Check if current operation has already run.
+        success = self.is_done()
+        # if self.is_done():
+        #     self.log.info('Operation {0} has already run. Skipping.'.format(self.name))
+        #     return
+        if not success:
+            with Timer(self.log):
+                with create_cwl_runner(self.cwl_runner, self) as runner:
+                    success = runner.run()
 
         # Finalize
         if success:
