@@ -208,11 +208,8 @@ class Operation(object):
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
 
-        # Check if current operation has already run.
+        # Run current operation only if it hasn't run already.
         success = self.is_done()
-        # if self.is_done():
-        #     self.log.info('Operation {0} has already run. Skipping.'.format(self.name))
-        #     return
         if not success:
             with Timer(self.log):
                 with create_cwl_runner(self.cwl_runner, self) as runner:
