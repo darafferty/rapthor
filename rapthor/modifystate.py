@@ -12,23 +12,6 @@ import sys
 log = logging.getLogger('rapthor:state')
 
 
-# def check_operation(operation):
-#     """
-#     Returns list of started/completed pipeline names for given operation path
-
-#     Parameters
-#     ----------
-#     operation : str
-#         Path of operation output
-#     """
-#     pipelines = []
-#     jobstore = os.path.join(operation, 'jobstore')
-#     if os.path.exists(jobstore):
-#         pipelines.append(os.path.basename(operation))
-
-#     return pipelines
-
-
 def run(parset_file):
     """
     Modifies the state of one or more pipelines
@@ -45,9 +28,6 @@ def run(parset_file):
     # Read parset
     log.info('Reading parset and checking state...')
     parset = parset_read(parset_file, use_log_file=False)
-    # if parset['cluster_specific']['cwl_runner'] != 'toil':
-    #     log.error("Modifying state is only supported when using Toil as CWL runner")
-    #     sys.exit(1)
 
     # Initialize minimal field object
     field = Field(parset, mininmal=True)
