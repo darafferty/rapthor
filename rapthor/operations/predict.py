@@ -156,3 +156,6 @@ class Predict(Operation):
             for sector in self.field.sectors:
                 for obs in sector.observations:
                     obs.ms_imaging_filename = obs.ms_filename
+
+        # Finally call finalize() in the parent class
+        super().finalize()

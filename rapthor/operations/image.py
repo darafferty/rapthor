@@ -295,3 +295,6 @@ class Image(Operation):
                     if key not in diagnostics_dict:
                         missing_keys.append(key)
                 self.log.debug('Keys missing from the diagnostics dict: {}.'.format(', '.join(missing_keys)))
+
+        # Finally call finalize() in the parent class
+        super().finalize()
