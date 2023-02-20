@@ -170,7 +170,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     phaseonly = misc.string2bool(phaseonly)
     reweight = misc.string2bool(reweight)
     model_list = misc.string2list(msmod_list)
-    msin_orig = msin
 
     # Get the model data filenames, filtering any that do not have the right start time
     if starttime is not None:
@@ -197,6 +196,10 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         sys.exit(1)
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
 
+    # Define the template MS file. This file is copied to one or more files
+    # to be filled with new data
+    ms_template = model_list[0]
+
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)
     tarray = tin.getcol("TIME")
@@ -221,7 +224,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
         msout = '{0}{1}_field'.format(root_filename, infix)
-        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -231,7 +233,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -294,7 +296,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         tin = pt.table(msin, readonly=True, ack=False)
         root_filename = os.path.basename(msin)
         msout = '{0}{1}_field_no_bright'.format(root_filename, infix)
-        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -304,7 +305,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout = pt.table(msout, readonly=False, ack=False)
 
         # Define chunks based on available memory
@@ -363,8 +364,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         datamod_list = None
 
     if len(model_list) == 0:
-        # This means there is just a single sector and no reweighting is to be done
-        msout = os.path.basename(msin_orig) + '.sector_1'
+        # This means there is just a single sector and no reweighting is to be done,
+        # so use a copy of the template MS for the output MS
+        msout = os.path.basename(ms_template) + '.sector_1'
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
@@ -409,7 +411,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             # Break so we don't open output tables for the bright sources
             break
         msout = os.path.basename(msmod).rstrip('_modeldata')
-        mssrc = model_list[-1]
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
@@ -419,7 +420,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
             misc.delete_directory(msout)
-        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', mssrc, msout])
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
         tout_list.append(pt.table(msout, readonly=False, ack=False))
 
     # Process the data chunk by chunk
