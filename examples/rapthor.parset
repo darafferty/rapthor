@@ -186,7 +186,7 @@ input_ms = /data/ms/*.ms
 # not set, IO-intensive processing (e.g., WSClean) will use a default path in
 # dir_working instead. This parameter should not be set in the following
 # situations:
-#   - when batch_system = singleMachine and multiple imaging sectors are
+#   - when batch_system = single_machine and multiple imaging sectors are
 #     used (as each sector will overwrite files from the other sectors)
 #   - when use_mpi = True under the [imaging] section above and dir_local is
 #     not on a shared filesystem

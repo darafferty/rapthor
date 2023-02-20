@@ -28,7 +28,7 @@ class PyTest(Command):
 setup(
     name='rapthor',
     version=rapthor._version.__version__,
-    url='http://github.com/darafferty/rapthor/',
+    url='https://git.astron.nl/RD/rapthor',
     description=description,
     long_description=long_description,
     platforms='any',

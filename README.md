@@ -1,7 +1,7 @@
 Rapthor: LOFAR DDE Pipeline
 ===========================
 
-Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It uses DPPP and WSClean to derive and apply the corrections as smooth 2-D screens. It uses [CWL](https://www.commonwl.org) for the pipeline language and [Toil](http://toil.ucsc-cgl.org) to run the pipelines.
+Rapthor is an experimental pipeline for correcting direction-dependent effects in LOFAR data. It uses DPPP and WSClean to derive and apply the corrections in facets or as smooth 2-D screens. It uses [CWL](https://www.commonwl.org) for the pipeline language and [Toil](http://toil.ucsc-cgl.org) to run the pipelines.
 
 ## Documentation
 
@@ -18,9 +18,9 @@ To install rapthor, follow the instructions below.
 
 Rapthor requires the following packages (beyond those installed automatically with rapthor):
 
-* [WSClean](http://sourceforge.net/p/wsclean/wiki/Home) (version 2.9 or later; building with [IDG](https://gitlab.com/astron-idg/idg)  and the [LOFAR Beam Library](https://github.com/lofar-astron/LOFARBeam) is required)
-* [DP3](https://github.com/lofar-astron/DP3) (version v4.1 or later; building with [Dysco](https://github.com/aroffringa/dysco) and the [LOFAR Beam Library](https://github.com/lofar-astron/LOFARBeam) is required)
-* [LSMTool](https://github.com/darafferty/LSMTool) (version 1.4.2 or later)
+* [WSClean](https://gitlab.com/aroffringa/wsclean) (version 2.9 or later; building with [IDG](https://gitlab.com/astron-idg/idg)  and [EveryBeam](https://git.astron.nl/RD/EveryBeam) is required)
+* [DP3](https://git.astron.nl/RD/DP3) (version v4.1 or later; building with [Dysco](https://github.com/aroffringa/dysco) and [EveryBeam](https://git.astron.nl/RD/EveryBeam) is required)
+* [LSMTool](https://git.astron.nl/RD/LSMTool) (version 1.4.2 or later)
 * [LoSoTo](https://github.com/revoltek/losoto) (version 2.0 or later)
 * [PyBDSF](https://github.com/lofar-astron/PyBDSF) (version 1.9.2 or later)
 
