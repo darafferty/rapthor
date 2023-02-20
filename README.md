@@ -18,7 +18,7 @@ To install rapthor, follow the instructions below.
 
 Rapthor requires the following packages (beyond those installed automatically with rapthor):
 
-* [WSClean](https://gitlab.com/aroffringa/wsclean) (version 2.9 or later; building with [IDG](https://gitlab.com/astron-idg/idg)  and [EveryBeam](https://git.astron.nl/RD/EveryBeam) is required)
+* [WSClean](https://gitlab.com/aroffringa/wsclean) (version 2.9 or later; building with [IDG](https://gitlab.com/astron-idg/idg) and [EveryBeam](https://git.astron.nl/RD/EveryBeam) is required)
 * [DP3](https://git.astron.nl/RD/DP3) (version v4.1 or later; building with [Dysco](https://github.com/aroffringa/dysco) and [EveryBeam](https://git.astron.nl/RD/EveryBeam) is required)
 * [LSMTool](https://git.astron.nl/RD/LSMTool) (version 1.4.2 or later)
 * [LoSoTo](https://github.com/revoltek/losoto) (version 2.0 or later)
