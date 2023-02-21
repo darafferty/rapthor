@@ -365,7 +365,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
     if len(model_list) == 0:
         # This means there is just a single sector and no reweighting is to be done,
-        # so use a copy of the template MS for the output MS
+        # so use the template MS filename as a basis for the output MS filename
         msout = os.path.splitext(os.path.basename(ms_template))[0] + '.sector_1'
         if os.path.exists(msout):
             # File may exist from a previous iteration; delete it if so
