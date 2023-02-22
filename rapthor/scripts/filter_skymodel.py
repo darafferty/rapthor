@@ -131,7 +131,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
          input_bright_skymodel_pb=None, threshisl=5.0, threshpix=7.5,
          rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_rmsbox=True,
          use_adaptive_threshold=False, adaptive_thresh=75.0,
-         comparison_skymodel=None, filter_by_mask=True):
+         comparison_skymodel=None, filter_by_mask=True, remove_negative=False):
     """
     Filter the input sky model
 
@@ -182,6 +182,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
     filter_by_mask : bool, optional
         If True, filter the input sky model by the PyBDSF-derived mask,
         removing sources that lie in unmasked regions
+    remove_negative : bool, optional
+        If True, remove negative sky model components
     """
     if rmsbox is not None and isinstance(rmsbox, str):
         rmsbox = eval(rmsbox)
@@ -323,7 +325,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                 pass
         if not emptysky:
             # Keep only those sources with positive flux densities
-            s_in.select('I > 0.0')
+            if remove_negative:
+                s_in.select('I > 0.0')
             if s_in and filter_by_mask:
                 # Keep only those sources in PyBDSF masked regions
                 s_in.select('{} == True'.format(maskfile))
@@ -419,7 +422,8 @@ if __name__ == '__main__':
     parser.add_argument('input_skymodel_pb', help='Filename of input sky model')
     parser.add_argument('output_skymodel', help='Filename of output sky model')
     parser.add_argument('vertices_file', help='Filename of vertices file')
-    parser.add_argument('--input_bright_skymodel_pb', help='Filename of input bright-source sky model', type=str, default=None)
+    parser.add_argument('--input_bright_skymodel_pb', help='Filename of input bright-source sky model',
+                        type=str, default=None)
     parser.add_argument('--threshisl', help='Island threshold', type=float, default=3.0)
     parser.add_argument('--threshpix', help='Peak pixel threshold', type=float, default=5.0)
     parser.add_argument('--rmsbox', help='Rms box width and step (e.g., "(60, 20)")',
