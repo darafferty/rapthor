@@ -72,9 +72,11 @@ class Field(object):
 
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
+        self.lofar_to_true_flux_ratio = 1.0
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
+        self.do_slowgain_solve = False
         self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
@@ -1265,11 +1267,26 @@ class Field(object):
             self.imaged_sources_only = False
 
         # Update field and sector dicts with the parameters for this iteration
+        do_slowgain_solve_prev = self.do_slowgain_solve
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
+
+        # Update the sky models. We adjust the target flux used for calibrator
+        # selection by the ratio of LOFAR_flux / true_flux (determined during the
+        # previous selfcal cycle; for the first cycle, this ratio is set to 1.0).
+        # We only do this adjustment if the previous cycle used phase-only
+        # calibration, to avoid tracking changes to the flux scale that may be
+        # due to problems with the amplitude calibration
+        target_flux = step_dict['target_flux']
+        if not do_slowgain_solve_prev and self.lofar_to_true_flux_ratio != 1.0:
+            target_flux *= self.lofar_to_true_flux_ratio
+            self.log.info('Adjusting the target flux for calibrator selection '
+                          'from {0} Jy to {1} Jy to account for the offset found '
+                          'in the global flux scale'.format(step_dict['target_flux'],
+                                                            target_flux))
         self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=step_dict['target_flux'],
+                              target_flux=target_flux,
                               target_number=step_dict['max_directions'],
                               final=final)
 
