@@ -48,6 +48,9 @@ The following processing parameters must be set for each cycle:
     do_image
         Boolean flag that determines whether the imaging step should be done for this cycle.
 
+    do_multiscale_clean
+        Boolean flag that determines whether multiscale clean should be used for this cycle.
+
     auto_mask
         Float that sets WSClean's automask value for this cycle.
 

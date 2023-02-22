@@ -606,8 +606,7 @@ def get_imaging_options(parset):
 
     # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
     # robust parameter (default = -0.5), min and max uv distance in lambda (default = 0, none),
-    # taper in arcsec (default = none), and whether multiscale clean should be used (default =
-    # True)
+    # taper in arcsec (default = none)
     if 'cellsize_arcsec' in parset_dict:
         parset_dict['cellsize_arcsec'] = parset.getfloat('imaging', 'cellsize_arcsec')
     else:
@@ -628,10 +627,6 @@ def get_imaging_options(parset):
         parset_dict['taper_arcsec'] = parset.getfloat('imaging', 'taper_arcsec')
     else:
         parset_dict['taper_arcsec'] = 0.0
-    if 'do_multiscale_clean' in parset_dict:
-        parset_dict['do_multiscale_clean'] = parset.getboolean('imaging', 'do_multiscale_clean')
-    else:
-        parset_dict['do_multiscale_clean'] = True
 
     # Check for invalid options
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
@@ -640,8 +635,7 @@ def get_imaging_options(parset):
                        'min_uv_lambda', 'max_uv_lambda', 'mem_fraction', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
-                       'idg_mode', 'do_multiscale_clean', 'use_mpi',
-                       'dde_method', 'skip_corner_sectors']
+                       'idg_mode', 'use_mpi', 'dde_method', 'skip_corner_sectors']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [imaging] section of the '

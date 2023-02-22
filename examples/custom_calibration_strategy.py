@@ -25,6 +25,7 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['peel_bright_sources'] = True
 
     strategy_steps[i]['do_image'] = True
+    strategy_steps[i]['do_multiscale_clean'] = True
     strategy_steps[i]['auto_mask'] = 3.0
     strategy_steps[i]['threshisl'] = 4.0
     strategy_steps[i]['threshpix'] = 5.0

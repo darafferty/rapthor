@@ -91,14 +91,12 @@ input_ms = /data/ms/*.ms
 [imaging]
 # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
 # robust parameter (default = -0.5), min and max uv distance in lambda (default = 80, none),
-# taper in arcsec (default = none), and whether multiscale clean should be used (default =
-# True)
+# taper in arcsec (default = none)
 # cellsize_arcsec = 1.25
 # robust = -0.5
 # min_uv_lambda = 0.0
 # max_uv_lambda = 0.0
 # taper_arcsec = 0.0
-# do_multiscale_clean = True
 
 # Method to use to correct for direction-dependent effects during imaging:
 # "none", "facets", or "screens" (default = facets). If "none", the solutions

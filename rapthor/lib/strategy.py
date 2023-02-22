@@ -54,14 +54,17 @@ def set_strategy(field):
 
             strategy_steps[i]['do_image'] = True
             if i < 2:
+                strategy_steps[i]['do_multiscale_clean'] = False
                 strategy_steps[i]['auto_mask'] = 5.0
                 strategy_steps[i]['threshisl'] = 4.0
                 strategy_steps[i]['threshpix'] = 5.0
             elif i == 2:
+                strategy_steps[i]['do_multiscale_clean'] = True
                 strategy_steps[i]['auto_mask'] = 4.0
                 strategy_steps[i]['threshisl'] = 3.0
                 strategy_steps[i]['threshpix'] = 5.0
             else:
+                strategy_steps[i]['do_multiscale_clean'] = True
                 strategy_steps[i]['auto_mask'] = 3.0
                 strategy_steps[i]['threshisl'] = 3.0
                 strategy_steps[i]['threshpix'] = 5.0
