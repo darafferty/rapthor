@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: 
+baseCommand:
   - bash
   - script.sh
 
@@ -12,39 +12,44 @@ inputs:
     In principle, Rapthor can handle multiple input Measurement Sets with data
     from different epochs containing the same frequency bands (e.g., from
     multiple nights of observations). This CWL step does _not_ support this.
-- id: global
-  default: |
-    $(
-      {
-        'unsupportedarray' : ['a', 'b'],
-        'unsupportedobject': {'a': 1, 'b': 2}
-      }
-    )
-  type: 
-    type: record
-    fields:
-      - name: input_skymodel
-        type: File?
-        doc: |
-          Full path to the input sky model file, with true-sky fluxes (required when not automatically downloading). If you also have a sky model with apparent flux densities, specify it with the apparent_skymodel option (note that the source names must be identical in both sky models)
-      - name: apparent_skymodel
-        type: File?
-      - name: download_initial_skymodel
-        type: boolean?
-#        default: true
-        doc: Automatically download a target skymodel. This will ignore input_skymodel when set.
-      - name: download_initial_skymodel_radius
-        type: float?
-#        default: 5.0
-        doc: Radius out to which a skymodel should be downloaded (default is 5 degrees).
-      - name: download_initial_skymodel_server
-        type: string?
-#        default: "TGSS"
-        doc: Service from which a skymodel should be downloaded (default is TGSS).
-      - name: unsupportedarray
-        type: string[]?
-      - name: unsupportedobject
-        type: Any?
+# - id: global
+#   type:
+#     type: record
+#     fields:
+#       - name: input_ms
+#         type: Directory
+  # default: |
+  #   $(
+  #     {
+  #       'unsupportedarray' : ['a', 'b'],
+  #       'unsupportedobject': {'a': 1, 'b': 2}
+  #     }
+  #   )
+#   type:
+#     type: record
+#     fields:
+#       - name: input_skymodel
+#         type: File?
+#         doc: |
+#           Full path to the input sky model file, with true-sky fluxes (required when not automatically downloading). If you also have a sky model with apparent flux densities, specify it with the apparent_skymodel option (note that the source names must be identical in both sky models)
+#       - name: apparent_skymodel
+#         type: File?
+#       - name: download_initial_skymodel
+#         type: boolean?
+# #        default: true
+#         doc: Automatically download a target skymodel. This will ignore input_skymodel when set.
+#       - name: download_initial_skymodel_radius
+#         type: float?
+# #        default: 5.0
+#         doc: Radius out to which a skymodel should be downloaded (default is 5 degrees).
+#       - name: download_initial_skymodel_server
+#         type: string?
+# #        default: "TGSS"
+#         doc: Service from which a skymodel should be downloaded (default is TGSS).
+#       - name: unsupportedarray
+#         type: string[]?
+#       - name: unsupportedobject
+#         type: Any?
 
 
 # Regroup input skymodel as needed to meet target flux (default = True). If False, the existing
@@ -64,7 +69,9 @@ inputs:
 # (default = selfcal_data_fraction) such that a final processing pass (i.e.,
 # after selfcal finishes) is done with a different fraction
 # selfcal_data_fraction = 0.2
-# final_data_fraction = 1.0 
+# final_data_fraction = 1.0
+- id: global
+  type: Any
 - id: calibration
   type: Any
 - id: imaging
@@ -80,7 +87,7 @@ outputs:
 - id: logs
   type: File[]
   outputBinding:
-    glob: 
+    glob:
     - logs/*.*
     - logs/*/*/*.log
 - id: parset
@@ -124,7 +131,7 @@ requirements:
     entry: |
         ${
             inputs.global.input_ms = inputs.ms.path
-            var result = "";    
+            var result = "";
             ["global", "calibration", "imaging", "cluster"].forEach(element => {
                 result += '\n' + objectToParsetString(inputs[element], element)
             })
@@ -134,6 +141,6 @@ requirements:
 # expression: |
 #     ${
 #         return {
-            
+
 #         }
 #     }
