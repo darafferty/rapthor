@@ -271,7 +271,7 @@ class Image(Operation):
                     # 10% for the flux ratio and 0.5" for the astrometry, as these
                     # are the realistic minimum uncertainties in these values
                     ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio'])
-                    self.field.lofar_to_true_flux_ratio = ratio
+                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio']
                     stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
                     self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
