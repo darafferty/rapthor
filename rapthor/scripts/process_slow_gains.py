@@ -112,8 +112,9 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     # Normalize each direction separately so that the mean of the XX and YY median
     # amplitudes is unity over all times, frequencies, and pols
     for dir in range(len(soltab.dir[:])):
-        norm_factor = np.log10(get_median_amp(10**parms[:, :, :, dir, :], weights[:, :, :, dir, :]))
-        parms[:, :, :, dir, :] -= norm_factor
+        for s in range(len(station_names)):
+            norm_factor = np.log10(get_median_amp(10**parms[:, :, s, dir, :], weights[:, :, s, dir, :]))
+            parms[:, :, s, dir, :] -= norm_factor
 
     # Convert back to non-log values and make sure flagged solutions are still flagged
     parms = 10**parms
@@ -389,7 +390,7 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     if smooth:
         smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        normalize_direction(ampsoltab, remove_core_gradient=True, solset=solset, ref_id=ref_id)
+        normalize_direction(ampsoltab, remove_core_gradient=False, solset=solset, ref_id=ref_id)
     H.close()
 
 
