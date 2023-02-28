@@ -61,6 +61,9 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     weights = soltab.weight[:]
     initial_flagged_indx = np.logical_or(~np.isfinite(parms), weights == 0.0)
     parms[initial_flagged_indx] = np.nan
+    station_names = soltab.ant[:]
+    if type(station_names) is not list:
+        station_names = station_names.tolist()
 
     # Work in log space, as required for amplitudes
     parms = np.log10(parms)
@@ -68,9 +71,6 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     # Find and remove any gradient for each direction separately
     if remove_core_gradient:
         dist = []
-        station_names = soltab.ant[:]
-        if type(station_names) is not list:
-            station_names = station_names.tolist()
         station_dict = solset.getAnt()
         station_positions = []
         for station in station_names:
@@ -112,9 +112,19 @@ def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0
     # Normalize each direction separately so that the mean of the XX and YY median
     # amplitudes is unity over all times, frequencies, and pols
     for dir in range(len(soltab.dir[:])):
+        core_station_ind = np.array([s for s in range(len(station_names)) if 'CS' in station_names[s]])
+        norm_factor_core = np.log10(get_median_amp(10**parms[:, :, core_station_ind, dir, :],
+                                                   weights[:, :, core_station_ind, dir, :]))
+
         for s in range(len(station_names)):
             norm_factor = np.log10(get_median_amp(10**parms[:, :, s, dir, :], weights[:, :, s, dir, :]))
-            parms[:, :, s, dir, :] -= norm_factor
+
+            # Allow variations of up to ~5% of unity
+            norm_delta = min(0.02, abs(norm_factor - norm_factor_core))
+            if norm_factor < norm_factor_core:
+                parms[:, :, s, dir, :] -= norm_factor + norm_delta
+            else:
+                parms[:, :, s, dir, :] -= norm_factor - norm_delta
 
     # Convert back to non-log values and make sure flagged solutions are still flagged
     parms = 10**parms
