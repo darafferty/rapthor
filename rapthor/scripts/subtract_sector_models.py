@@ -194,7 +194,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
     for model_ms in model_list:
         chan_freqs_model = pt.table(model_ms+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-        if chan_freqs_model != chan_freqs:
+        if np.allclose(chan_freqs_model, chan_freqs):
             i = model_list.index(model_ms)
             model_list.pop(i)
     nsectors = len(model_list)
