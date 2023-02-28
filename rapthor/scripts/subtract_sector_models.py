@@ -190,6 +190,13 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         if len(set(nrows_list)) > 1:
             print('subtract_sector_models: Model data files have differing number of rows...')
             sys.exit(1)
+    # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
+    chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+    for model_ms in model_list:
+        chan_freqs_model = pt.table(model_ms+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
+        if chan_freqs_model != chan_freqs:
+            i = model_list.index(model_ms)
+            model_list.pop(i)
     nsectors = len(model_list)
     if nsectors == 0:
         print('subtract_sector_models: No model data found. Exiting...')
