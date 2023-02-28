@@ -192,7 +192,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             sys.exit(1)
     # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
     chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-    for model_ms in model_list:
+    for model_ms in model_list[:]:
         chan_freqs_model = pt.table(model_ms+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
         if np.allclose(chan_freqs_model, chan_freqs):
             i = model_list.index(model_ms)
