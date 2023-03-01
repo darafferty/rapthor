@@ -1282,7 +1282,7 @@ class Field(object):
         if not do_slowgain_solve_prev and self.lofar_to_true_flux_ratio != 1.0:
             target_flux *= self.lofar_to_true_flux_ratio
             self.log.info('Adjusting the target flux for calibrator selection '
-                          'from {0} Jy to {1} Jy to account for the offset found '
+                          'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
                           'in the global flux scale'.format(step_dict['target_flux'],
                                                             target_flux))
         self.update_skymodels(index, step_dict['regroup_model'],
