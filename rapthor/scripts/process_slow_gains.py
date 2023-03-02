@@ -7,7 +7,6 @@ from argparse import RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from scipy.optimize import curve_fit
 from astropy.stats import sigma_clipped_stats
 from scipy.ndimage import generic_filter
 import sys
@@ -35,92 +34,30 @@ def get_ant_dist(ant_xyz, ref_xyz):
     return np.sqrt((ref_xyz[0] - ant_xyz[0])**2 + (ref_xyz[1] - ant_xyz[1])**2 + (ref_xyz[2] - ant_xyz[2])**2)
 
 
-def func(x, m, c):
-    return m * x + c
-
-
-def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0):
+def normalize_direction(soltab):
     """
     Normalize amplitudes so that the mean of the XX and YY median amplitudes
-    is equal to unity, per direction
+    for each station is equal to unity, per direction
 
     Parameters
     ----------
     soltab : solution table
-        Input table with solutions. Solution axes are assumed to be in the
+        Input table with amplitude solutions. Solution axes are assumed to be in the
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
-    remove_core_gradient : bool, optional
-        If True, remove any gradient with distance from the core stations
-    solset : solution set, optional
-        Input set, needed if remove_core_gradient is True
-    ref_id : int, optional
-        Index of reference station, needed if remove_core_gradient is True
     """
     # Make a copy of the input data to fill with normalized values
     parms = soltab.val[:]
     weights = soltab.weight[:]
-    initial_flagged_indx = np.logical_or(~np.isfinite(parms), weights == 0.0)
-    parms[initial_flagged_indx] = np.nan
-
-    # Work in log space, as required for amplitudes
-    parms = np.log10(parms)
-
-    # Find and remove any gradient for each direction separately
-    if remove_core_gradient:
-        dist = []
-        station_names = soltab.ant[:]
-        if type(station_names) is not list:
-            station_names = station_names.tolist()
-        station_dict = solset.getAnt()
-        station_positions = []
-        for station in station_names:
-            station_positions.append(station_dict[station])
-        for s in range(len(station_names)):
-            if s == ref_id:
-                dist.append(1.0)
-            else:
-                dist.append(get_ant_dist(station_positions[s], station_positions[ref_id]))
-        for dir in range(len(soltab.dir[:])):
-            dist_vals = []
-            mean_vals = []
-            stat_names = []
-            for s in range(len(station_names)):
-                if 'CS' in station_names[s] and s != ref_id:
-                    if not np.all(~np.isfinite(parms[:, :, s, dir, :])):
-                        mean_vals.append(np.nanmean(parms[:, :, s, dir, :]))
-                        dist_vals.append(dist[s])
-                        stat_names.append(station_names[s])
-
-            # Find best-fit gradient for core only
-            x = np.log10(np.array(dist_vals))
-            y = np.array(mean_vals)
-            w = np.ones_like(y)
-            popt, pcov = curve_fit(func, x, y, sigma=w, p0=[0.0, 1.0])
-
-            # Divide out the gradient, assuming the values at the largest distances
-            # are more likely correct (and so should be around 1.0, after normalization)
-            for s in range(len(station_names)):
-                if 'CS' in station_names[s]:
-                    if s == ref_id:
-                        # For the reference station, take as the distance that of a
-                        # neighboring station, to avoid large extrapolations to zero
-                        # distance
-                        parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s+1]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
-                    else:
-                        parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
 
     # Normalize each direction separately so that the mean of the XX and YY median
-    # amplitudes is unity over all times, frequencies, and pols
+    # amplitudes is unity for each station over all times, frequencies, and pols
     for dir in range(len(soltab.dir[:])):
-        norm_factor = np.log10(get_median_amp(10**parms[:, :, :, dir, :], weights[:, :, :, dir, :]))
-        parms[:, :, :, dir, :] -= norm_factor
+        for s in range(len(soltab.ant[:])):
+            norm_factor = get_median_amp(parms[:, :, s, dir, :], weights[:, :, s, dir, :])
+            parms[:, :, s, dir, :] /= norm_factor
 
-    # Convert back to non-log values and make sure flagged solutions are still flagged
-    parms = 10**parms
-    parms[initial_flagged_indx] = np.nan
-    weights[initial_flagged_indx] = 0.0
+    # Save the normalized values
     soltab.setValues(parms)
-    soltab.setValues(weights, weight=True)
 
 
 def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
@@ -389,7 +326,7 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     if smooth:
         smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        normalize_direction(ampsoltab, remove_core_gradient=True, solset=solset, ref_id=ref_id)
+        normalize_direction(ampsoltab)
     H.close()
 
 
