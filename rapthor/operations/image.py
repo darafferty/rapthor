@@ -259,7 +259,7 @@ class Image(Operation):
                 self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
                 self.log.info('    Median RMS noise = {}'.format(median_rms))
                 self.log.info('    Dynamic range = {}'.format(dynr))
-                self.log.info('    Number of sources (from PyBDSF) = {}'.format(nsources))
+                self.log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
                 self.log.info('    Reference frequency = {}'.format(freq))
                 self.log.info('    Beam = {}'.format(beam))
                 self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
