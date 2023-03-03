@@ -207,6 +207,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
+    # We should now be left with only one model for the relevant time chunk (assuming no multi-epoch data for now).
     ms_template = model_list[0]
 
     # If starttime is given, figure out startrow and nrows for input MS file
