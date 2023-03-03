@@ -34,7 +34,7 @@ def get_ant_dist(ant_xyz, ref_xyz):
     return np.sqrt((ref_xyz[0] - ant_xyz[0])**2 + (ref_xyz[1] - ant_xyz[1])**2 + (ref_xyz[2] - ant_xyz[2])**2)
 
 
-def normalize_direction(soltab):
+def normalize_direction(soltab, max_station_delta_core=0.0, max_station_delta_remote=0.0):
     """
     Normalize amplitudes so that the mean of the XX and YY median amplitudes
     for each station is equal to unity, per direction
@@ -44,17 +44,43 @@ def normalize_direction(soltab):
     soltab : solution table
         Input table with amplitude solutions. Solution axes are assumed to be in the
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
+    max_station_delta_core : float, optional
+        The maximum allowed fractional difference between core station normalizations
+        (must be >= 0). This parameter limits the variations between station
+        normalizations derived by calibration (that may be in error due to, e.g.,
+        an incomplete model)
+    max_station_delta_core : float, optional
+        The maximum allowed fractional difference between remote station normalizations
+        (must be >= 0)
     """
+    if max_station_delta_core < 0.0:
+        max_station_delta_core = 0.0
+    if max_station_delta_remote < 0.0:
+        max_station_delta_remote = 0.0
+
     # Make a copy of the input data to fill with normalized values
     parms = soltab.val[:]
     weights = soltab.weight[:]
+    core_station_ind = np.array([s for s in range(len(soltab.ant[:]))
+                                 if 'CS' in soltab.ant[s]])
 
     # Normalize each direction separately so that the mean of the XX and YY median
-    # amplitudes is unity for each station over all times, frequencies, and pols
+    # amplitudes is unity (within max_station_delta) for each station over all times,
+    # frequencies, and pols
     for dir in range(len(soltab.dir[:])):
+        median_core = get_median_amp(parms[:, :, core_station_ind, dir, :],
+                                     weights[:, :, core_station_ind, dir, :])
         for s in range(len(soltab.ant[:])):
-            norm_factor = get_median_amp(parms[:, :, s, dir, :], weights[:, :, s, dir, :])
-            parms[:, :, s, dir, :] /= norm_factor
+            if 'CS' in soltab.ant[s]:
+                max_station_delta = max_station_delta_core
+            else:
+                max_station_delta = max_station_delta_remote
+            median_station = get_median_amp(parms[:, :, s, dir, :], weights[:, :, s, dir, :])
+            norm_delta = min(max_station_delta, abs(1 - median_station/median_core))
+            if median_station < median_core:
+                parms[:, :, s, dir, :] /= median_station * (1 + norm_delta)
+            else:
+                parms[:, :, s, dir, :] /= median_station * (1 - norm_delta)
 
     # Save the normalized values
     soltab.setValues(parms)
@@ -281,7 +307,7 @@ def transfer_flags(soltab1, soltab2):
 
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
          phasesoltabname='phase000', ref_id=None, smooth=False, normalize=False,
-         flag=False, lowampval=None, highampval=None):
+         flag=False, lowampval=None, highampval=None, max_norm_delta=0.0):
     """
     Process gain solutions
 
@@ -310,6 +336,9 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     highampval : float, optional
         The threshold value above which amplitudes are flagged. If None, the
         threshold is set to 2 times the median
+    max_norm_delta : float, optional
+        The maximum allowed fractional difference between core and remote station
+        normalizations.
     """
     # Read in solutions
     H = h5parm(h5parmfile, readonly=False)
@@ -326,7 +355,7 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     if smooth:
         smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        normalize_direction(ampsoltab)
+        normalize_direction(ampsoltab, max_station_delta_remote=max_norm_delta)
     H.close()
 
 
@@ -344,8 +373,10 @@ if __name__ == '__main__':
     parser.add_argument('--flag', help='Flag amplitude solutions', type=bool, default=False)
     parser.add_argument('--lowampval', help='Low threshold for amplitude flagging', type=float, default=None)
     parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
+    parser.add_argument('--max_norm_delta', help='Max fractional difference allowed '
+                        'between core and remote station normalizations', type=float, default=0.0)
     args = parser.parse_args()
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
          phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
          normalize=args.normalize, flag=args.flag, lowampval=args.lowampval,
-         highampval=args.highampval)
+         highampval=args.highampval, max_norm_delta=args.max_norm_delta)
