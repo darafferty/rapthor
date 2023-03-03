@@ -194,7 +194,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
     for model_ms in model_list[:]:
         chan_freqs_model = pt.table(model_ms+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
-        if np.allclose(chan_freqs_model, chan_freqs):
+        if not np.allclose(chan_freqs_model, chan_freqs):
             i = model_list.index(model_ms)
             model_list.pop(i)
     nsectors = len(model_list)
@@ -202,6 +202,8 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         print('subtract_sector_models: No model data found. Exiting...')
         sys.exit(1)
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
+    for m in model_list:
+        print(m)
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
