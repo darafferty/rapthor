@@ -62,7 +62,6 @@ class Field(object):
             self.use_screens = False
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
-        self.use_idg_predict = self.parset['calibration_specific']['use_idg_predict']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']

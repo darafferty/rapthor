@@ -281,35 +281,11 @@ def get_calibration_options(parset):
     else:
         parset_dict['use_included_skymodels'] = False
 
-    # Target flux density in Jy for grouping
-    if 'patch_target_flux_jy' in parset_dict:
-        parset_dict['patch_target_flux_jy'] = parset.getfloat('calibration', 'patch_target_flux_jy')
-    else:
-        parset_dict['patch_target_flux_jy'] = 2.5
-
-    # Target number of patches for grouping
-    if 'patch_target_number' in parset_dict:
-        parset_dict['patch_target_number'] = parset.getint('calibration', 'patch_target_number')
-        if parset_dict['patch_target_number'] < 1:
-            parset_dict['patch_target_number'] = 1
-    else:
-        parset_dict['patch_target_number'] = None
-
-    # Maximum number of cycles of the last step of selfcal to perform (default =
-    # 10). The last step is looped until the number of cycles reaches this value or
-    # until the improvement in dynamic range over the previous image is less than
-    # 1.25%. A separate setting can also be used for the target facet only (allowing
-    # one to reduce the number for non-target facets)
-    if 'max_selfcal_loops' in parset_dict:
-        parset_dict['max_selfcal_loops'] = parset.getint('calibration', 'max_selfcal_loops')
-    else:
-        parset_dict['max_selfcal_loops'] = 10
-
     # Minimum uv distance in lambda for calibration (default = 350)
     if 'solve_min_uv_lambda' in parset_dict:
         parset_dict['solve_min_uv_lambda'] = parset.getfloat('calibration', 'solve_min_uv_lambda')
     else:
-        parset_dict['solve_min_uv_lambda'] = 350.0
+        parset_dict['solve_min_uv_lambda'] = 2000.0
 
     # Calculate the beam correction once per calibration patch (default = False)? If
     # False, the beam correction is calculated separately for each source in the patch.
@@ -390,12 +366,6 @@ def get_calibration_options(parset):
     else:
         parset_dict['tolerance'] = 5e-3
 
-    # Use the IDG for predict during calibration (default = False)?
-    if 'use_idg_predict' in parset_dict:
-        parset_dict['use_idg_predict'] = parset.getboolean('calibration', 'use_idg_predict')
-    else:
-        parset_dict['use_idg_predict'] = False
-
     # Parallel predict over baselines
     if 'parallelbaselines' in parset_dict:
         parset_dict['parallelbaselines'] = parset.getboolean('calibration', 'parallelbaselines')
@@ -417,19 +387,15 @@ def get_calibration_options(parset):
         parset_dict['solverlbfgs_minibatches'] = 1
 
     # Check for invalid options
-    allowed_options = ['max_selfcal_loops', 'solve_min_uv_lambda', 'fast_timestep_sec',
+    allowed_options = ['solve_min_uv_lambda', 'fast_timestep_sec',
                        'fast_freqstep_hz', 'slow_timestep_joint_sec',
                        'slow_timestep_separate_sec', 'onebeamperpatch',
-                       'slow_freqstep_hz', 'propagatesolutions', 'maxiter',
-                       'stepsize', 'tolerance', 'patch_target_number',
-                       'llssolver', 'patch_target_flux_jy',
-                       'fast_smoothnessconstraint',
-                       'fast_smoothnessreffrequency',
-                       'fast_smoothnessrefdistance',
+                       'slow_freqstep_hz', 'propagatesolutions', 'maxiter', 'stepsize',
+                       'tolerance', 'llssolver', 'fast_smoothnessconstraint',
+                       'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
                        'slow_smoothnessconstraint_joint',
-                       'slow_smoothnessconstraint_separate', 'use_idg_predict',
-                       'parallelbaselines', 'solveralgorithm',
-                       'solverlbfgs_dof', 'solverlbfgs_iter',
+                       'slow_smoothnessconstraint_separate', 'parallelbaselines',
+                       'solveralgorithm', 'solverlbfgs_dof', 'solverlbfgs_iter',
                        'solverlbfgs_minibatches']
     for option in given_options:
         if option not in allowed_options:

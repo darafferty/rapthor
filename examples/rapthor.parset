@@ -70,7 +70,7 @@ input_ms = /data/ms/*.ms
 # onebeamperpatch = False
 # stepsize = 0.02
 # tolerance = 5e-3
-# solve_min_uv_lambda = 350.0
+# solve_min_uv_lambda = 2000.0
 # parallelbaselines=False
 
 # Fast solve parameters (defaults shown):
