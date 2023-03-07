@@ -18,6 +18,11 @@ for i in range(max_selfcal_loops):
     # outside of imaged regions -- are peeled in the first cycle).
     # Starting with the third cycle, slow-gain calibration is also
     # done, and bright sources are peeled (for the imagining only).
+    # Lastly, the maximum allowed difference from unity in the
+    # normalized amplitude solutions (per station) is set to 0 for the
+    # initial cycles (when the model is likely poor/incomplete) and to
+    # 0.05 for later cycles (when the model is fairly good), to allow
+    # for small adjustments to the station calibration (done in LINC).
     strategy_steps[i]['do_calibrate'] = True
     if i == 0:
         strategy_steps[i]['do_slowgain_solve'] = False
@@ -31,6 +36,10 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
         strategy_steps[i]['peel_bright_sources'] = True
+    if i < min_selfcal_loops - 1:
+        strategy_steps[i]['max_normalization_delta'] = 0.0
+    else:
+        strategy_steps[i]['max_normalization_delta'] = 0.05
 
     # Here we set the imaging strategy, lowering the masking
     # thresholds as selfcal proceeds to ensure all emission is

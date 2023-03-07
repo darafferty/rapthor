@@ -40,6 +40,15 @@ inputs:
     inputBinding:
       prefix: --flag=
       separate: false
+  - id: max_station_delta
+    label: Max station delta
+    doc: |
+      The maximum allowed difference of the median of the amplitudes from unity (per
+      station).
+    type: float
+    inputBinding:
+      prefix: --max_station_delta=
+      separate: false
 
 outputs:
   - id: outh5parm

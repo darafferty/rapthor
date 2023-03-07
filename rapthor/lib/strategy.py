@@ -51,6 +51,10 @@ def set_strategy(field):
                 strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
                 strategy_steps[i]['peel_bright_sources'] = True
+            if i < min_selfcal_loops - 1:
+                strategy_steps[i]['max_normalization_delta'] = 0.0
+            else:
+                strategy_steps[i]['max_normalization_delta'] = 0.05
 
             strategy_steps[i]['do_image'] = True
             if i < 2:

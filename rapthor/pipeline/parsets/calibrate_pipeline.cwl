@@ -346,6 +346,13 @@ inputs:
       The antenna constraint for the first (joint) slow-gain solve (length = 1).
     type: string
 
+  - id: max_normalization_delta
+    label: Maximum normalization delta
+    doc: |
+      The maximum allowed difference in the median of the amplitudes from unity, per
+      station (length = 1).
+    type: float
+
   - id: output_slow_h5parm_joint
     label: Joint slow solve output solution table
     doc: |
@@ -631,6 +638,8 @@ steps:
         valueFrom: 'True'
       - id: smooth
         valueFrom: 'True'
+      - id: max_station_delta
+        valueFrom: 0.0
     out:
       - id: outh5parm
 
@@ -766,6 +775,8 @@ steps:
         valueFrom: 'True'
       - id: smooth
         valueFrom: 'True'
+      - id: max_station_delta
+        source: max_normalization_delta
     out:
       - id: outh5parm
 
@@ -816,6 +827,8 @@ steps:
         valueFrom: 'True'
       - id: smooth
         valueFrom: 'False'
+      - id: max_station_delta
+        source: max_normalization_delta
     out:
       - id: outh5parm
 

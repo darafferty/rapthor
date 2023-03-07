@@ -45,10 +45,8 @@ def normalize_direction(soltab, max_station_delta=0.0):
         Input table with amplitude solutions. Solution axes are assumed to be in the
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
     max_station_delta : float, optional
-        The maximum allowed fractional difference between station normalizations
-        (must be >= 0). This parameter limits the variations between station
-        normalizations derived by calibration (that may be in error due to, e.g.,
-        an incomplete model)
+        The maximum allowed difference from unity of the median of the amplitudes, per
+        station (must be >= 0)
     """
     if max_station_delta < 0.0:
         max_station_delta = 0.0
@@ -360,8 +358,8 @@ if __name__ == '__main__':
     parser.add_argument('--flag', help='Flag amplitude solutions', type=bool, default=False)
     parser.add_argument('--lowampval', help='Low threshold for amplitude flagging', type=float, default=None)
     parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
-    parser.add_argument('--max_station_delta', help='Max fractional difference allowed '
-                        'between station normalizations', type=float, default=0.0)
+    parser.add_argument('--max_station_delta', help='Max difference of median from unity allowed '
+                        'for station normalizations', type=float, default=0.0)
     args = parser.parse_args()
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
          phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
