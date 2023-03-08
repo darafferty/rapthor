@@ -11,30 +11,26 @@ Most of the processing performed by Rapthor is done in "operations," which are s
 Calibrate
 ---------
 
-This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are three main parts: a phase-only solve (diagonal Jones matrix) on short timescales (the "fast phase solve"), a slow phase-only (diagonal) solve, an amplitude-only (diagonal) solve on long time scales (the "slow-gain" solve), and processing of the resulting solutions, including smoothing and the generation of a-term images. This calibration strategy is based on the LBA strategy of the LiLF pipeline (https://github.com/revoltek/LiLF), with the idea that the same strategy can be used for both HBA and LBA (similar to the way the calibrator pipeline works in LINC). However, the strategy may evolve in the future depending on the results of the commissioning.
+This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are two main parts: a phase-only (scalar) solve on short timescales (the "fast-phase" solve, which corrects for ionospheric errors) and a phase and amplitude (diagonal) solve on long time scales (the "slow-gain" solve, which corrects for beam errors). The slow-gain solve is divided into two parts: an optional amplitude-only solve that constrains all stations to have the same solutions and a phase plus amplitude solve (without the station constraint and usually with a longer solution interval). This calibration strategy is based on the LBA strategy of the `LiLF pipeline <https://linc.readthedocs.io/>`_, with the idea that the same strategy can be used for both HBA and LBA (similar to the way the calibrator pipeline works in LINC). Lastly, processing of the resulting solutions is done, including smoothing, renormalization, and the generation of a-term images (if 2-D screens are used).
 
-The fast and slow diagonal phase-only solve steps use different calibration parameters, such as different antenna constraints.
-
-For calibration, Rapthor designates calibrators (bright, compact sources or groups of sources) and then tessellates the full sky model, using those calibrators as the facet/patch centers. This ensures that each facet/patch has a bright source in it, as that seems to be fairly important to get good solutions. Despite the designation of calibrators for the tesselation, all sources are still used in the calibration (not just the bright sources).
-
-To model the sources, the clean components are grouped by PyBDSF using the sources that it found in the image. Then the mean shift algorithm is used to identify compact groups of sources (e.g., two nearby bright sources are better used together as a single “calibrator,” rather than as two separate ones) that are then used as the basis for tessellation.
+For calibration, Rapthor searches for bright, compact sources (or groups of sources) throughout the field to use as calibrator sources. A target (apparent) flux density is used to ensure that the calibrators are sufficiently bright (set by :term:`target_flux` in the processing strategy). Rapthor then tessellates the full sky model, using the calibrators as the facet centers. This method ensures that each facet has a bright calibrator source in it. Despite this designation of calibrators for the tesselation, all sources are used in the calibration (not just the bright sources).
 
 When multiple nodes are available, this task is distributed.
 
-Primary products (in ``solutions/calibrate_X``, where ``X`` is the cycle number):
-    * ``field-solutions.h5`` - the calibration solution table containing both fast- and slow-solve solutions.
-
+Primary products:
+    * ``field-solutions.h5``, stored in ``solutions/calibrate_X``, where ``X`` is the cycle number - the calibration solution table containing both fast-phase and slow-gain solutions.
+    * ``*.png`` files, stored in ``plots/calibrate_X``, where ``X`` is the cycle number - plots of the calibration solutions.
 
 .. _predict:
 
 Predict
 -------
 
-This operation predicts visibilities for subtraction. Sources that lie outside of imaged regions are subtracted, as are bright sources inside imaged regions (if desired).
+This operation predicts visibilities for subtraction. Sources that lie outside of imaged regions are subtracted, as are bright sources inside imaged regions (if desired). This operation will not be run if no prediction or subtraction needs to be done.
 
 When multiple nodes are available, this task is distributed.
 
-Primary products (in ``scratch/``):
+Primary products (in ``pipelines/predict_X``, where ``X`` is the cycle number):
     * Temporary measurement sets used for the subsequent image operation.
 
 
@@ -44,6 +40,18 @@ Image (+ mosaic)
 ----------------
 
 This operation images the data. If multiple imaging sectors are used, a mosaic operation is also run to mosaic the sector images together into a single image.
+
+Diagnostics for each image are written to the log. They include the following:
+
+    * The minimum and theoretical RMS noise. The minimum noise is derived from 2-D RMS maps generated by PyBDSF. The theoretical noise is calculated following `SKA Memo 113 <http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf>`_ and the `LOFAR Image Noise Calculator <https://support.astron.nl/ImageNoiseCalculator/sens.php>`_. The calculation takes into account the amount of flagged data but does not include the effects of elevation.
+    * The median RMS noise. The median noise is derived from 2-D RMS maps generated by PyBDSF. This median noise, along with the dynamic range (see below) is used to determine whether selfcal has converged (using the :term:`convergence_ratio` and :term:`divergence_ratio` defined by the processing strategy).
+    * The dynamic range, calculated as the maximum value in the image divided by the minimum RMS noise. This quantity gives an estimate of how well focused the brightest source in the image is and is used, along with the median noise (see above) to determine whether selfcal has converged (see ).
+    * The number of sources found by PyBDSF.
+    * The reference (central) frequency of the image.
+    * The restoring beam size and position angle.
+    * The fraction of unflagged data.
+    * An estimate of the LOFAR-to-TGSS flux ratio. This ratio gives an indication of the accuracy of the overall flux scale of the image.
+    * Estimates of the LOFAR-to-TGSS RA and Dec offsets. These offsets give an indication of the accuracy of the astrometry.
 
 When multiple nodes are available, it is possible to distribute the imaging over multiple nodes. This is done by running wsclean-mp instead of wsclean. Currently, Toil does not fully support openmpi. To remedy this, a wrapping script around wsclean-mp is used on the 'master' node. Because of this, imaging can only use the worker nodes, and the master node is idle.
 

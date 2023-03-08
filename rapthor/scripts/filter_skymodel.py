@@ -244,6 +244,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
     min_rms = float(np.min(img.rms_arr))  # Jy/beam
     max_rms = float(np.max(img.rms_arr))  # Jy/beam
     mean_rms = float(np.mean(img.rms_arr))  # Jy/beam
+    median_rms = float(np.median(img.rms_arr))  # Jy/beam
+    nsources = img.nsrc
     dynamic_range_global = float(np.max(img.ch0_arr) / min_rms)
     dynamic_range_local = float(np.max(img.ch0_arr / img.rms_arr))
     beam_fwhm = [float(img.beam[0]), float(img.beam[1]), float(img.beam[2])]  # (maj, min, pa), all in deg
@@ -253,8 +255,10 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                   'min_rms': min_rms,
                   'max_rms': max_rms,
                   'mean_rms': mean_rms,
+                  'median_rms': median_rms,
                   'dynamic_range_global': dynamic_range_global,
                   'dynamic_range_local': dynamic_range_local,
+                  'nsources': nsources,
                   'freq': freq,
                   'beam_fwhm': beam_fwhm}
 
