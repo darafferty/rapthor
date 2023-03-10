@@ -8,6 +8,8 @@ from losoto.h5parm import h5parm
 import numpy as np
 from rapthor.lib import miscellaneous as misc
 from astropy.stats import sigma_clipped_stats
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 from scipy.ndimage import generic_filter
 import sys
 
@@ -34,7 +36,30 @@ def get_ant_dist(ant_xyz, ref_xyz):
     return np.sqrt((ref_xyz[0] - ant_xyz[0])**2 + (ref_xyz[1] - ant_xyz[1])**2 + (ref_xyz[2] - ant_xyz[2])**2)
 
 
-def normalize_direction(soltab, max_station_delta=0.0):
+def get_angular_distance(ra_dec1, ra_dec2):
+    """
+    Return the distance in degrees between the given coordinates
+
+    Parameters
+    ----------
+    ra_dec1 : tuple of floats
+        The coordinates of direction 1 as (RA, Dec) in degrees
+    ra_dec2 : tuple of floats
+        The coordinates of direction 2 as (RA, Dec) in degrees
+
+    Returns
+    -------
+    dist : float, float
+        Distance in degrees
+    """
+    coord1 = SkyCoord(ra_dec1[0], ra_dec1[1], unit=(u.degree, u.degree), frame='fk5')
+    coord2 = SkyCoord(ra_dec2[0], ra_dec2[1], unit=(u.degree, u.degree), frame='fk5')
+
+    return coord1.separation(coord2).value
+
+
+def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=True,
+                        phase_center=None):
     """
     Normalize amplitudes so that the mean of the XX and YY median amplitudes
     for each station is equal to unity, per direction
@@ -47,6 +72,13 @@ def normalize_direction(soltab, max_station_delta=0.0):
     max_station_delta : float, optional
         The maximum allowed difference from unity of the median of the amplitudes, per
         station (must be >= 0)
+    scale_delta_with_dist : bool, optional
+        If True, max_station_delta is scaled (linearly) with the distance from the
+        patch direction to the phase center, allowing larger deltas for more
+        distant sources
+    phase_center : tuple of floats, optional
+        The phase center of the observation as (RA, Dec) in degrees. Required when
+        scale_delta_with_dist = True
     """
     if max_station_delta < 0.0:
         max_station_delta = 0.0
@@ -55,13 +87,29 @@ def normalize_direction(soltab, max_station_delta=0.0):
     parms = soltab.val[:]
     weights = soltab.weight[:]
 
+    # Find the distance to each direction from the phase center
+    if scale_delta_with_dist:
+        if phase_center is None:
+            raise ValueError("The phase_center must be specified if scale_delta_with_dist = True")
+
+        source_dict = soltab.getSolset().getSou()
+        dist = []
+        for dir in soltab.dir[:]:
+            ra_dec = (source_dict[dir][0]*180/np.pi, source_dict[dir][1]*180/np.pi)  # degrees
+            dist.append(get_angular_distance(ra_dec, phase_center))
+        max_dist = max(dist)
+
     # Normalize each direction separately so that the mean of the XX and YY median
     # amplitudes is unity (within max_station_delta) for each station over all times,
     # frequencies, and pols
     for dir in range(len(soltab.dir[:])):
+        if scale_delta_with_dist:
+            max_delta = max_station_delta * dist[dir] / max_dist
+        else:
+            max_delta = max_station_delta
         for s in range(len(soltab.ant[:])):
             median_station = get_median_amp(parms[:, :, s, dir, :], weights[:, :, s, dir, :])
-            norm_delta = min(max_station_delta, abs(1 - median_station))
+            norm_delta = min(max_delta, abs(1 - median_station))
             if median_station < 1.0:
                 parms[:, :, s, dir, :] /= median_station * (1 + norm_delta)
             else:
@@ -292,7 +340,8 @@ def transfer_flags(soltab1, soltab2):
 
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
          phasesoltabname='phase000', ref_id=None, smooth=False, normalize=False,
-         flag=False, lowampval=None, highampval=None, max_station_delta=0.0):
+         flag=False, lowampval=None, highampval=None, max_station_delta=0.0,
+         scale_delta_with_dist=False, phase_center=None):
     """
     Process gain solutions
 
@@ -324,6 +373,13 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     max_station_delta : float, optional
         The maximum allowed fractional difference between core and remote station
         normalizations.
+    scale_delta_with_dist : bool, optional
+        If True, max_station_delta is scaled (linearly) with the distance from the
+        patch direction to the phase center, allowing larger deltas for more
+        distant sources
+    phase_center : tuple of floats, optional
+        The phase center of the observation as (RA, Dec) in degrees. Required when
+        scale_delta_with_dist = True
     """
     # Read in solutions
     H = h5parm(h5parmfile, readonly=False)
@@ -340,7 +396,9 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     if smooth:
         smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        normalize_direction(ampsoltab, max_station_delta=max_station_delta)
+        normalize_direction(ampsoltab, max_station_delta=max_station_delta,
+                            scale_delta_with_dist=scale_delta_with_dist,
+                            phase_center=phase_center)
     H.close()
 
 
@@ -360,8 +418,12 @@ if __name__ == '__main__':
     parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
     parser.add_argument('--max_station_delta', help='Max difference of median from unity allowed '
                         'for station normalizations', type=float, default=0.0)
-    args = parser.parse_args()
+    parser.add_argument('--scale_delta_with_dist', help='Scale max difference with distance', type=bool, default=False)
+    parser.add_argument('--phase_center_ra', help='RA of phase center in degrees', type=float, default=0.0)
+    parser.add_argument('--phase_center_dec', help='Dec of phase center in degrees', type=float, default=0.0)
+    phase_center = (args.phase_center_ra, args.phase_center_dec)
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
          phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
          normalize=args.normalize, flag=args.flag, lowampval=args.lowampval,
-         highampval=args.highampval, max_station_delta=args.max_station_delta)
+         highampval=args.highampval, max_station_delta=args.max_station_delta,
+         scale_delta_with_dist=args.scale_delta_with_dist, phase_center=phase_center)

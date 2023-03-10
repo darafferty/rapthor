@@ -15,6 +15,7 @@ requirements:
 
 arguments:
   - '--normalize=True'
+  - '--scale_delta_with_dist=True'
 
 inputs:
   - id: slowh5parm
@@ -48,6 +49,22 @@ inputs:
     type: float
     inputBinding:
       prefix: --max_station_delta=
+      separate: false
+  - id: phase_center_ra
+    label: Phase center RA
+    doc: |
+      The RA in degrees of the phase center.
+    type: float
+    inputBinding:
+      prefix: --phase_center_ra=
+      separate: false
+  - id: phase_center_dec
+    label: Phase center Dec
+    doc: |
+      The Dec in degrees of the phase center.
+    type: float
+    inputBinding:
+      prefix: --phase_center_dec=
       separate: false
 
 outputs:

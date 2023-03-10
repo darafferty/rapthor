@@ -353,6 +353,18 @@ inputs:
       station (length = 1).
     type: float
 
+  - id: phase_center_ra
+    label: Phase center RA
+    doc: |
+      The RA in degrees of the phase center (length = 1).
+    type: float
+
+  - id: phase_center_dec
+    label: Phase center Dec
+    doc: |
+      The Dec in degrees of the phase center (length = 1).
+    type: float
+
   - id: output_slow_h5parm_joint
     label: Joint slow solve output solution table
     doc: |
@@ -640,6 +652,10 @@ steps:
         valueFrom: 'True'
       - id: max_station_delta
         valueFrom: 0.0
+      - id: phase_center_ra
+        valueFrom: phase_center_ra
+      - id: phase_center_dec
+        valueFrom: phase_center_dec
     out:
       - id: outh5parm
 
@@ -777,6 +793,10 @@ steps:
         valueFrom: 'True'
       - id: max_station_delta
         source: max_normalization_delta
+      - id: phase_center_ra
+        valueFrom: phase_center_ra
+      - id: phase_center_dec
+        valueFrom: phase_center_dec
     out:
       - id: outh5parm
 
@@ -829,6 +849,10 @@ steps:
         valueFrom: 'False'
       - id: max_station_delta
         source: max_normalization_delta
+      - id: phase_center_ra
+        valueFrom: phase_center_ra
+      - id: phase_center_dec
+        valueFrom: phase_center_dec
     out:
       - id: outh5parm
 
