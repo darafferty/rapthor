@@ -36,10 +36,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
         strategy_steps[i]['peel_bright_sources'] = True
-    if i < min_selfcal_loops - 1:
-        strategy_steps[i]['max_normalization_delta'] = 0.0
-    else:
-        strategy_steps[i]['max_normalization_delta'] = 0.05
+    strategy_steps[i]['max_normalization_delta'] = 0.0
 
     # Here we set the imaging strategy, lowering the masking
     # thresholds as selfcal proceeds to ensure all emission is
@@ -66,21 +63,21 @@ for i in range(max_selfcal_loops):
     # to ensure that the resource requirements and runtimes don't
     # grow unnecessarily large
     if i == 0:
-        strategy_steps[i]['target_flux'] = 1.0
+        strategy_steps[i]['target_flux'] = 0.6
         strategy_steps[i]['max_nmiter'] = 8
-        strategy_steps[i]['max_directions'] = 10
-    elif i == 1:
-        strategy_steps[i]['target_flux'] = 0.7
-        strategy_steps[i]['max_nmiter'] = 9
-        strategy_steps[i]['max_directions'] = 10
-    elif i == 2:
-        strategy_steps[i]['target_flux'] = 0.5
-        strategy_steps[i]['max_nmiter'] = 10
         strategy_steps[i]['max_directions'] = 20
-    else:
+    elif i == 1:
         strategy_steps[i]['target_flux'] = 0.4
-        strategy_steps[i]['max_nmiter'] = 12
+        strategy_steps[i]['max_nmiter'] = 9
         strategy_steps[i]['max_directions'] = 30
+    elif i == 2:
+        strategy_steps[i]['target_flux'] = 0.3
+        strategy_steps[i]['max_nmiter'] = 10
+        strategy_steps[i]['max_directions'] = 40
+    else:
+        strategy_steps[i]['target_flux'] = 0.25
+        strategy_steps[i]['max_nmiter'] = 12
+        strategy_steps[i]['max_directions'] = 50
     strategy_steps[i]['regroup_model'] = True
 
     # Here we specify that the convergence/divergence checks
