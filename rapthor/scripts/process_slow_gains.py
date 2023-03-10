@@ -421,6 +421,7 @@ if __name__ == '__main__':
     parser.add_argument('--scale_delta_with_dist', help='Scale max difference with distance', type=bool, default=False)
     parser.add_argument('--phase_center_ra', help='RA of phase center in degrees', type=float, default=0.0)
     parser.add_argument('--phase_center_dec', help='Dec of phase center in degrees', type=float, default=0.0)
+    args = parser.parse_args()
     phase_center = (args.phase_center_ra, args.phase_center_dec)
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
          phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
