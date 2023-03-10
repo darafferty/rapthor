@@ -15,7 +15,7 @@ function objectToParsetString(obj, section) {
             } else {
                 value = String(value)
             }
-            
+
             result += "\n" + item + "=" + value
         } catch(e) {
             console.error(item, value, e)

@@ -1,20 +1,31 @@
 {
-  "ms": {
+  "msin": {
     "class": "Directory",
     "path": "."
   },
-  "global": {
-    "regroup_input_skymodel": "False",
-    "selfcal_data_fraction": "0.01",
-    "download_initial_skymodel": true
+  "settings": {
+    "global": {
+      "regroup_input_skymodel": false,
+      "selfcal_data_fraction": 0.01,
+      "download_initial_skymodel": true
+    },
+    "calibration": {
+    },
+      "imaging": {
+          "dde_method": "facets"
+    },
+      "cluster": {
+      "use_container": true,
+      "container_type": "singularity"
+    }
   },
-  "calibration": {
-   },
-    "imaging": {
-        "dde_method": "facets"
-  },
-    "cluster": {
-    "use_container": "True",
-    "container_type": "singularity"
+  "virtualenv": {
+    "python": {
+      "version": "3.9"
+    },
+    "rapthor": {
+      "version": "atdb_integration_test",
+      "requirements": []
+    }
   }
 }

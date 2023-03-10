@@ -5,7 +5,7 @@ baseCommand:
   - script.sh
 
 inputs:
-- id: ms
+- id: msin
   type: Directory
   doc: |
     Input Measurement Set
@@ -70,14 +70,27 @@ inputs:
 # after selfcal finishes) is done with a different fraction
 # selfcal_data_fraction = 0.2
 # final_data_fraction = 1.0
-- id: global
-  type: Any
-- id: calibration
-  type: Any
-- id: imaging
-  type: Any
-- id: cluster
-  type: Any
+- id: settings
+  type:
+    type: record
+    fields:
+      - name: global
+        type: Any
+      - name: calibration
+        type: Any
+      - name: imaging
+        type: Any
+      - name: cluster
+        type: Any
+
+# - id: global
+#   type: Any
+# - id: calibration
+#   type: Any
+# - id: imaging
+#   type: Any
+# - id: cluster
+#   type: Any
 
 outputs:
 # - id: images
@@ -85,11 +98,12 @@ outputs:
 #   outputBinding:
 #     glob: images
 - id: logs
-  type: File[]
+  type: Directory
   outputBinding:
     glob:
-    - logs/*.*
-    - logs/*/*/*.log
+    - logs
+    # - logs/*.log
+    # - logs/*/*.log
 - id: parset
   type: File
   outputBinding:
@@ -130,17 +144,12 @@ requirements:
     writable: True
     entry: |
         ${
-            inputs.global.input_ms = inputs.ms.path
+            var settings = inputs.settings;
+            settings.global.dir_working = runtime.outdir;
+            settings.global.input_ms = inputs.msin.path;
             var result = "";
             ["global", "calibration", "imaging", "cluster"].forEach(element => {
-                result += '\n' + objectToParsetString(inputs[element], element)
-            })
+                result += objectToParsetString(settings[element], element) + "\n\n"
+            });
             return result;
         }
-
-# expression: |
-#     ${
-#         return {
-
-#         }
-#     }
