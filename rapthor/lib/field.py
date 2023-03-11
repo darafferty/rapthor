@@ -1213,9 +1213,9 @@ class Field(object):
         converged = []
         diverged = []
         for sector in self.imaging_sectors:
-            rmspre = sector.diagnostics[-2]['mean_rms']
-            rmspost = sector.diagnostics[-1]['mean_rms']
-            self.log.info('Ratio of current mean image noise to previous image '
+            rmspre = sector.diagnostics[-2]['median_rms']
+            rmspost = sector.diagnostics[-1]['median_rms']
+            self.log.info('Ratio of current median image noise to previous image '
                           'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
             dynrpre = sector.diagnostics[-2]['dynamic_range_global']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global']
