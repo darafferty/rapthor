@@ -653,9 +653,9 @@ steps:
       - id: max_station_delta
         valueFrom: 0.0
       - id: phase_center_ra
-        valueFrom: phase_center_ra
+        source: phase_center_ra
       - id: phase_center_dec
-        valueFrom: phase_center_dec
+        source: phase_center_dec
     out:
       - id: outh5parm
 
@@ -794,9 +794,9 @@ steps:
       - id: max_station_delta
         source: max_normalization_delta
       - id: phase_center_ra
-        valueFrom: phase_center_ra
+        source: phase_center_ra
       - id: phase_center_dec
-        valueFrom: phase_center_dec
+        source: phase_center_dec
     out:
       - id: outh5parm
 
@@ -850,9 +850,9 @@ steps:
       - id: max_station_delta
         source: max_normalization_delta
       - id: phase_center_ra
-        valueFrom: phase_center_ra
+        source: phase_center_ra
       - id: phase_center_dec
-        valueFrom: phase_center_dec
+        source: phase_center_dec
     out:
       - id: outh5parm
 
