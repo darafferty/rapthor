@@ -247,8 +247,9 @@ class Image(Operation):
             try:
                 theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
                 min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
-                mean_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['mean_rms']*1e6)
+                median_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms']*1e6)
                 dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+                nsources = '{0}'.format(diagnostics_dict['nsources'])
                 freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
                 beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
                                                                       diagnostics_dict['beam_fwhm'][1]*3600,
@@ -256,8 +257,9 @@ class Image(Operation):
                 unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
                 self.log.info('Diagnostics for {}:'.format(sector.name))
                 self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
-                self.log.info('    Mean RMS noise = {}'.format(mean_rms))
+                self.log.info('    Median RMS noise = {}'.format(median_rms))
                 self.log.info('    Dynamic range = {}'.format(dynr))
+                self.log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
                 self.log.info('    Reference frequency = {}'.format(freq))
                 self.log.info('    Beam = {}'.format(beam))
                 self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
