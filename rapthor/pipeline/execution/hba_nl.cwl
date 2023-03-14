@@ -14,62 +14,28 @@ inputs:
   doc: List of SURLs to the input data
   type: string[]
 - id: settings
-  doc: File containing the settings for the Rapthor pipeline in JSON format
+  doc: Pipeline settings, used to generate a parset file
   type:
     type: record
-    items: 
-      - id: global
+    fields:
+      - name: global
         type: Any
-      - id: calibration
+      - name: calibration
         type: Any
-      - id: imaging
+      - name: imaging
         type: Any
-      - id: cluster
+      - name: cluster
         type: Any
-        
-- id: skymodel
-  type: File?
-  doc: Optional input sky model
-- id: apparent_skymodel
-  type: File?
-  doc: Optional apparent sky model
-- id: strategy
-  type:
-  - File?
-  - string?
-  doc: |
-    Optional strategy; either a name (e.g., "selfcal"), or a path to a python
-    strategy file (e.g., "/path/to/my_fancy_strategy.py")
- 
+
 outputs:
-- id: images
-  type: Directory[]
-  outputSource:
-    - run_rapthor/images
-- id: logs
-  type: Directory[]
-  outputSource:
-    - run_rapthor/logs
 - id: parset
   type: File
   outputSource:
-    - run_rapthor/parset
-- id: plots
-  type: Directory[]
+    run_rapthor/parset
+- id: tarballs
+  type: File[]
   outputSource:
-    - run_rapthor/plots
-- id: regions
-  type: Directory[]
-  outputSource:
-    - run_rapthor/regions
-- id: skymodels
-  type: Directory[]
-  outputSource:
-    - run_rapthor/skymodels
-- id: solutions
-  type: Directory[]
-  outputSource:
-    - run_rapthor/solutions
+    tar_directory/tarball
 
 steps:
 # fetch MS files
@@ -105,17 +71,10 @@ steps:
     Run the Rapthor pipeline in a virtual environment that is created on
     the fly
   in:
-    - id: global
-      source: settings
-      valueFrom: $(settings.global)
-    - id: ms
+    - id: msin
       source: concat_ms/msout
-    - id: skymodel
-      source: skymodel
-    - id: apparent_sky
-      source: apparent_skymodel
-    - id: strategy
-      source: strategy
+    - id: settings
+      source: settings
   out:
     - id: images
     - id: logs
@@ -125,3 +84,23 @@ steps:
     - id: skymodels
     - id: solutions
   run: run_rapthor.cwl
+
+- id: tar_directory
+  label: Tar the pipeline results
+  doc: |
+    Create tar-balls for each of the output directories produced by Rapthor.
+  in:
+   - id: directory
+     linkMerge: merge_flattened
+     source:
+      - run_rapthor/images
+      - run_rapthor/logs
+      # - run_rapthor/parset
+      - run_rapthor/plots
+      - run_rapthor/regions
+      - run_rapthor/skymodels
+      - run_rapthor/solutions
+  out:
+  - id: tarball
+  run: tar_directory.cwl
+  scatter: directory
