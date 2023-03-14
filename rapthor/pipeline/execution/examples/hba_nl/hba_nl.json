@@ -4,29 +4,27 @@
     "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_123MHz_uv_pre-cal.ms.tar"
   ],
   "settings": {
-    "config": {
-      "global": {
-        "regroup_input_skymodel": "False",
-        "selfcal_data_fraction": "0.01"
-      },
-      "calibration": {
-      },
-      "imaging": {
-          "dde_method": "facets"
-      },
-      "cluster": {
-        "use_container": "True",
-        "container_type": "singularity"
-      }
+    "global": {
+      "regroup_input_skymodel": "False",
+      "selfcal_data_fraction": "0.01"
     },
-    "virtualenv": {
-      "python": {
-        "version": "3.9"
-      },
-      "rapthor": {
-        "version": "RAP-68_Toplevel-CWL-Workflow",
-        "requirements": []
-      }
+    "calibration": {
+    },
+    "imaging": {
+        "dde_method": "facets"
+    },
+    "cluster": {
+      "use_container": "True",
+      "container_type": "singularity"
+    }
+  },
+  "virtualenv": {
+    "python": {
+      "version": "3.9"
+    },
+    "rapthor": {
+      "version": "RAP-68_Toplevel-CWL-Workflow",
+      "requirements": []
     }
   }
 }
