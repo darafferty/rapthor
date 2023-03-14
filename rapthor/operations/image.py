@@ -292,10 +292,11 @@ class Image(Operation):
             except KeyError:
                 self.log.warn('One or more of the expected image diagnostics unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
-                req_keys = ['theoretical_rms', 'min_rms', 'mean_rms', 'dynamic_range_global',
-                            'freq', 'beam_fwhm', 'unflagged_data_fraction', 'meanClippedRatio',
-                            'stdClippedRatio', 'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
-                            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
+                req_keys = ['theoretical_rms', 'min_rms', 'median_rms', 'dynamic_range_global',
+                            'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
+                            'meanClippedRatio', 'stdClippedRatio', 'meanClippedRAOffsetDeg',
+                            'stdClippedRAOffsetDeg', 'meanClippedDecOffsetDeg',
+                            'stdClippedDecOffsetDeg']
                 missing_keys = []
                 for key in req_keys:
                     if key not in diagnostics_dict:
