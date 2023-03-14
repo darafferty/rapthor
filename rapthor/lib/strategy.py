@@ -3,7 +3,6 @@ Module that holds all strategy-related functions
 """
 import os
 import logging
-import sys
 import runpy
 
 log = logging.getLogger('rapthor:strategy')
@@ -116,13 +115,33 @@ def set_strategy(field):
             strategy_steps = runpy.run_path(field.parset['strategy'],
                                             init_globals={'field': field})['strategy_steps']
         except KeyError:
-            log.error('Strategy "{}" does not define strategy_steps. '
-                      'Exiting...'.format(field.parset['strategy']))
-            sys.exit(1)
+            raise ValueError('Strategy "{}" does not define '
+                             'strategy_steps.'.format(field.parset['strategy']))
 
     else:
-        log.error('Strategy "{}" not understood. Exiting...'.format(field.parset['strategy']))
-        sys.exit(1)
+        raise ValueError('Strategy "{}" not understood.'.format(field.parset['strategy']))
 
     log.info('Using "{}" processing strategy'.format(field.parset['strategy']))
+
+    # Check for missing parameters and print warning if any are missing
+    primary_parameters = ['do_calibrate', 'do_image', 'do_check']
+    secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'target_flux',
+                                             'max_directions', 'regroup_model'],
+                            'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
+                                         'peel_outliers', 'peel_bright_sources'],
+                            'do_check': ['convergence_ratio', 'divergence_ratio']}
+    for primary in primary_parameters:
+        for i in len(strategy_steps):
+            if primary not in strategy_steps[i]:
+                raise ValueError('Required parameter "{}" not defined in '
+                                 'strategy.'.format(primary))
+            if strategy_steps[i][primary]:
+                for secondary in secondary_parameters[primary]:
+                    if secondary not in strategy_steps[i]:
+                        if hasattr(field, secondary):
+                            log.warn('Parameter "{0}" not defined in strategy. Using '
+                                     'default value of {1}'.format(secondary, field.secondary))
+                        else:
+                            raise ValueError('Required parameter "{}" not defined in '
+                                             'strategy.'.format(secondary))
     return strategy_steps
