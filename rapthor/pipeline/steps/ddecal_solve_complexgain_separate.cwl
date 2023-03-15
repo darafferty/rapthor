@@ -160,4 +160,4 @@ outputs:
       glob: $(inputs.h5parm)
 hints:
   - class: DockerRequirement
-    dockerPull: 'astronrd/rapthor'
+    dockerPull: 'loose/rapthor'
