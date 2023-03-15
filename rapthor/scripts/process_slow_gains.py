@@ -114,6 +114,11 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Tru
                 parms[:, :, s, dir, :] /= median_station * (1 + norm_delta)
             else:
                 parms[:, :, s, dir, :] /= median_station * (1 - norm_delta)
+        if max_delta > 0:
+            # Do one final normalization to make sure the overall median for this direction
+            # is unity
+            median_dir = get_median_amp(parms[:, :, :, dir, :], weights[:, :, :, dir, :])
+            parms[:, :, :, dir, :] /= median_dir
 
     # Save the normalized values
     soltab.setValues(parms)
