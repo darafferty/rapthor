@@ -255,7 +255,7 @@ def get_median_amp(amps, weights):
     return medamp
 
 
-def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
+def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.8):
     """
     Flag high and low amplitudes per direction
 
@@ -284,34 +284,35 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
     weights = soltab.weight[:]
 
     for dir in range(len(soltab.dir[:])):
-        amps_dir = amps[:, :, :, dir, :]
-        weights_dir = weights[:, :, :, dir, :]
-        medamp = get_median_amp(amps_dir, weights_dir)
-        if lowampval is None:
-            low = medamp * threshold_factor
-        else:
-            low = lowampval
-        if highampval is None:
-            high = medamp / threshold_factor
-        else:
-            high = highampval
-        if low < 0.1:
-            low = 0.1
-        if high > 10.0:
-            high = 10.0
-        if low >= high:
-            high = low * 2.0
+        for s in range(len(soltab.ant[:])):
+            amps_dir = amps[:, :, s, dir, :]
+            weights_dir = weights[:, :, s, dir, :]
+            medamp = get_median_amp(amps_dir, weights_dir)
+            if lowampval is None:
+                low = medamp * threshold_factor
+            else:
+                low = lowampval
+            if highampval is None:
+                high = medamp / threshold_factor
+            else:
+                high = highampval
+            if low < 0.1:
+                low = 0.1
+            if high > 10.0:
+                high = 10.0
+            if low >= high:
+                high = low * 2.0
 
-        # Flag, setting flagged values to NaN and weights to 0
-        initial_flagged_indx = np.logical_or(~np.isfinite(amps_dir), weights_dir == 0.0)
-        amps_dir[initial_flagged_indx] = medamp
-        new_flag_indx = np.logical_or(amps_dir < low, amps_dir > high)
-        amps_dir[initial_flagged_indx] = np.nan
-        amps_dir[new_flag_indx] = np.nan
-        weights_dir[initial_flagged_indx] = 0.0
-        weights_dir[new_flag_indx] = 0.0
-        amps[:, :, :, dir, :] = amps_dir
-        weights[:, :, :, dir, :] = weights_dir
+            # Flag, setting flagged values to NaN and weights to 0
+            initial_flagged_indx = np.logical_or(~np.isfinite(amps_dir), weights_dir == 0.0)
+            amps_dir[initial_flagged_indx] = medamp
+            new_flag_indx = np.logical_or(amps_dir < low, amps_dir > high)
+            amps_dir[initial_flagged_indx] = np.nan
+            amps_dir[new_flag_indx] = np.nan
+            weights_dir[initial_flagged_indx] = 0.0
+            weights_dir[new_flag_indx] = 0.0
+            amps[:, :, s, dir, :] = amps_dir
+            weights[:, :, s, dir, :] = weights_dir
 
     # Save the new flags
     soltab.setValues(amps)
