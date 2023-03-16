@@ -737,7 +737,7 @@ def get_cluster_options(parset):
 
     # Check for invalid options
     allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
-                       'max_threads', 'deconvolution_threads', 'dir_local',
+                       'max_threads', 'deconvolution_threads', 'parallel_gridding_threads', 'dir_local',
                        'mem_per_node_gb', 'use_container', 'container_type',
                        'cwl_runner', 'debug_workflow']
     for option in given_options:

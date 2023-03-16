@@ -205,7 +205,7 @@ The available options are described below under their respective sections.
 .. _parset_imaging_options:
 
 ``[imaging]``
------------------
+-------------
 
 .. glossary::
 
@@ -310,7 +310,7 @@ The available options are described below under their respective sections.
 .. _parset_cluster_options:
 
 ``[cluster]``
------------------
+-------------
 
 .. glossary::
 
