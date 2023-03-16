@@ -131,17 +131,18 @@ def set_strategy(field):
                                          'peel_outliers', 'peel_bright_sources'],
                             'do_check': ['convergence_ratio', 'divergence_ratio']}
     for primary in primary_parameters:
-        for i in len(strategy_steps):
+        for i in range(len(strategy_steps)):
             if primary not in strategy_steps[i]:
-                raise ValueError('Required parameter "{}" not defined in '
+                raise ValueError('Required parameter "{}" not defined in the '
                                  'strategy.'.format(primary))
             if strategy_steps[i][primary]:
                 for secondary in secondary_parameters[primary]:
                     if secondary not in strategy_steps[i]:
                         if hasattr(field, secondary):
-                            log.warn('Parameter "{0}" not defined in strategy. Using '
-                                     'default value of {1}'.format(secondary, field.secondary))
+                            log.warn('Parameter "{0}" not defined in the strategy for '
+                                     'cycle {1}. Using the default value of '
+                                     '{2}'.format(secondary, i+1, getattr(field, secondary)))
                         else:
-                            raise ValueError('Required parameter "{}" not defined in '
-                                             'strategy.'.format(secondary))
+                            raise ValueError('Required parameter "{0}" not defined in the '
+                                             'strategy for cycle {1}.'.format(secondary, i+1))
     return strategy_steps
