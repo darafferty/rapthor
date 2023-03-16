@@ -86,7 +86,6 @@ class Calibrate(Operation):
         self.combined_fast_h5parm = 'fast_phases.h5parm'
         output_slow_h5parm_joint = ['slow_gain_joint_{}.h5parm'.format(i)
                                     for i in range(self.field.nfreqchunks_joint)]
-        combined_slow_h5parm = 'slow_gains.h5parm'
         self.combined_h5parms = 'combined_solutions.h5'
         output_slow_h5parm_separate = ['slow_gain_separate_{}.h5parm'.format(i)
                                        for i in range(self.field.nfreqchunks_separate)]
