@@ -72,9 +72,12 @@ class Field(object):
 
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
+        self.lofar_to_true_flux_ratio = 1.0
+        self.lofar_to_true_flux_std = 0.0
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
+        self.do_slowgain_solve = False
         self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None
@@ -1268,8 +1271,26 @@ class Field(object):
         self.__dict__.update(step_dict)
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
+
+        # Update the sky models. We adjust the target flux used for calibrator selection
+        # by the ratio of (LOFAR / true) fluxes determined in the image pipeline of the
+        # previous selfcal cycle. This adjustment is only done if the fractional change
+        # is significant (as measured by the standard deviation in the ratio)
+        target_flux = step_dict['target_flux']
+        if self.lofar_to_true_flux_ratio <= 0:
+            self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
+        if self.lofar_to_true_flux_ratio <= 1:
+            fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
+        else:
+            fractional_change = self.lofar_to_true_flux_ratio - 1
+        if fractional_change > self.lofar_to_true_flux_std:
+            target_flux *= self.lofar_to_true_flux_ratio
+            self.log.info('Adjusting the target flux for calibrator selection '
+                          'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
+                          'in the global flux scale'.format(step_dict['target_flux'],
+                                                            target_flux))
         self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=step_dict['target_flux'],
+                              target_flux=target_flux,
                               target_number=step_dict['max_directions'],
                               final=final)
 
