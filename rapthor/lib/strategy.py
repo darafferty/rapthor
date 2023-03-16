@@ -134,8 +134,8 @@ def set_strategy(field):
     for primary in primary_parameters:
         for i in range(len(strategy_steps)):
             if primary not in strategy_steps[i]:
-                raise ValueError('Required parameter "{}" not defined in the '
-                                 'strategy.'.format(primary))
+                raise ValueError('Required parameter "{0}" not defined in the '
+                                 'strategy for cycle {1}.'.format(primary, i+1))
             if strategy_steps[i][primary]:
                 for secondary in secondary_parameters[primary]:
                     if secondary not in strategy_steps[i]:
