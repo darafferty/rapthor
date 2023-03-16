@@ -123,7 +123,8 @@ def set_strategy(field):
 
     log.info('Using "{}" processing strategy'.format(field.parset['strategy']))
 
-    # Check for missing parameters and print warning if any are missing
+    # Check for required parameters. If any are missing, either print a warning if the
+    # parameter has a default defined or raise an error if not
     primary_parameters = ['do_calibrate', 'do_image', 'do_check']
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'target_flux',
                                              'max_directions', 'regroup_model'],
