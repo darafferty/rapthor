@@ -52,10 +52,16 @@ class Mosaic(Operation):
         self.image_names = ['I_image_file_true_sky', 'I_image_file_apparent_sky',
                             'I_model_file_true_sky', 'I_residual_file_apparent_sky']
         for image_name in self.image_names:
+            image_list = []
+            vertices_list = []
+            regridded_list = []
             for sector in self.field.imaging_sectors:
-                sector_image_filename.append(CWLFile(getattr(sector, image_name)).to_json())
-                sector_vertices_filename.append(CWLFile(sector.vertices_file).to_json())
-                regridded_image_filename.append(os.path.basename(getattr(sector, image_name)) + '.regridded')
+                image_list.append(getattr(sector, image_name))
+                vertices_list.append(sector.vertices_file)
+                regridded_list.append(os.path.basename(getattr(sector, image_name)) + '.regridded')
+            sector_image_filename.append(CWLFile(image_list).to_json())
+            sector_vertices_filename.append(CWLFile(vertices_list).to_json())
+            regridded_image_filename.append(CWLFile(regridded_list).to_json())
             template_image_filename.append(self.name + '_template.fits')
 
         self.mosaic_filename = []
@@ -65,7 +71,7 @@ class Mosaic(Operation):
                 for image_name in self.image_names:
                     self.mosaic_filename.append(getattr(self.field.imaging_sectors[0], image_name))
             else:
-                self.mosaic_filename.appned(None)
+                self.mosaic_filename.append(None)
         else:
             for image_name in self.image_names:
                 suffix = getattr(self.field.imaging_sectors[0], image_name).split('MFS')[-1]
