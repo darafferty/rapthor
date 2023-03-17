@@ -23,32 +23,48 @@ inputs:
   - id: sector_image_filename
     label: Filenames of images
     doc: |
-      The filenames of the sector FITS images (length = n_sectors).
-    type: File[]
+      The filenames of the sector FITS images (length = n_sectors * n_img_types).
+    type:
+      type: array
+      items:
+        type: array
+        items: File
 
   - id: sector_vertices_filename
     label: Filenames of vertices files
     doc: |
-      The filenames of the sector vertices files (length = n_sectors).
-    type: File[]
+      The filenames of the sector vertices files (length = n_sectors * n_img_types).
+    type:
+      type: array
+      items:
+        type: array
+        items: File
 
   - id: template_image_filename
     label: Filename of template image
     doc: |
-      The filename of the temporary mosaic template image (length = 1).
-    type: string
+      The filename of the temporary mosaic template image (length = n_img_types).
+    type:
+      type: array
+      items:
+        type: array
+        items: string
 
   - id: regridded_image_filename
     label: Filenames of images
     doc: |
-      The filenames of the regridded sector images (length = n_sectors).
-    type: string[]
+      The filenames of the regridded sector images (length = n_sectors * n_img_types).
+    type:
+      type: array
+      items:
+        type: array
+        items: string
 
   - id: mosaic_filename
     label: Filename of mosiac image
     doc: |
-      The filename of the final mosaic image (length = 1).
-    type: string
+      The filename of the final mosaic image (length = n_img_types).
+    type: string[]
 
   - id: skip_processing
     label: Flag to skip processing
@@ -59,65 +75,32 @@ inputs:
 outputs:
   - id: mosaic_image
     outputSource:
-      - make_mosaic/mosaic_image
-    type: File
+      - mosaic_by_type/mosaic_image
+    type: File[]
 
 steps:
-  - id: make_mosaic_template
-    label: Make mosaic template
+  - id: mosaic_by_type
+    label: Mosiac an image type
     doc: |
-      This step makes a temporary template FITS image that is used
-      in the regrid_image and make_mosaic steps.
-    run: {{ rapthor_pipeline_dir }}/steps/make_mosaic_template.cwl
+      This step is a subpipeline that performs the processing for each image
+      type.
+    run: {{ pipeline_working_dir }}/subpipeline_parset.cwl
     in:
-      - id: input_image_list
-        source: sector_image_filename
-      - id: vertices_file_list
-        source: sector_vertices_filename
-      - id: output_image
-        source: template_image_filename
-      - id: skip
-        source: skip_processing
-    out:
-      - id: template_image
-
-  - id: regrid_image
-    label: Regrid image
-    doc: |
-      This step regrids FITS images to the grid of the template FITS
-      image made in the make_mosaic_template step.
-    run: {{ rapthor_pipeline_dir }}/steps/regrid_image.cwl
-    in:
-      - id: input_image
-        source: sector_image_filename
-      - id: template_image
-        source: make_mosaic_template/template_image
-      - id: vertices_file
-        source: sector_vertices_filename
-      - id: output_image
-        source: regridded_image_filename
-      - id: skip
-        source: skip_processing
-    scatter: [input_image, vertices_file, output_image]
+    - id: sector_image_filename
+      source: sector_image_filename
+    - id: sector_vertices_filename
+      source: sector_vertices_filename
+    - id: template_image_filename
+      source: template_image_filename
+    - id: regridded_image_filename
+      source: regridded_image_filename
+    - id: mosaic_filename
+      source: mosaic_filename
+    - id: skip_processing
+      source: skip_processing
+    scatter: [sector_image_filename, sector_vertices_filename, template_image_filename,
+              regridded_image_filename, mosaic_filename]
     scatterMethod: dotproduct
-    out:
-      - id: regridded_image
-
-  - id: make_mosaic
-    label: Make mosaic
-    doc: |
-      This step makes the final mosaic FITS image from the regridded
-      sector images.
-    run: {{ rapthor_pipeline_dir }}/steps/make_mosaic.cwl
-    in:
-      - id: input_image_list
-        source: regrid_image/regridded_image
-      - id: template_image
-        source: make_mosaic_template/template_image
-      - id: output_image
-        source: mosaic_filename
-      - id: skip
-        source: skip_processing
     out:
       - id: mosaic_image
 
