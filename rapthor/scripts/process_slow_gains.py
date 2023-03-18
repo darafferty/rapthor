@@ -107,6 +107,14 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Tru
             max_delta = max_station_delta * dist[dir] / max_dist
         else:
             max_delta = max_station_delta
+
+        # First, renormalize all stations so that core stations have a median
+        # amplitude of unity
+        core_ind = np.array([s for s in soltab.ant[:] if 'CS' in s])
+        median_dir = get_median_amp(parms[:, :, core_ind, dir, :], weights[:, :, core_ind, dir, :])
+        parms[:, :, :, dir, :] /= median_dir
+
+        # Now renormalize station-by-station, allowing some delta from unity
         for s in range(len(soltab.ant[:])):
             median_station = get_median_amp(parms[:, :, s, dir, :], weights[:, :, s, dir, :])
             norm_delta = min(max_delta, abs(1 - median_station))
@@ -255,7 +263,7 @@ def get_median_amp(amps, weights):
     return medamp
 
 
-def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.8):
+def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.2):
     """
     Flag high and low amplitudes per direction
 
