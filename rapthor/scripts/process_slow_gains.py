@@ -110,7 +110,7 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Tru
 
         # First, renormalize all stations so that core stations have a median
         # amplitude of unity
-        core_ind = np.array([s for s in soltab.ant[:] if 'CS' in s])
+        core_ind = np.array([i for i, stat in enumerate(soltab.ant[:]) if 'CS' in stat])
         median_dir = get_median_amp(parms[:, :, core_ind, dir, :], weights[:, :, core_ind, dir, :])
         parms[:, :, :, dir, :] /= median_dir
 
