@@ -118,6 +118,7 @@ class Calibrate(Operation):
             fast_antennaconstraint = '[]'
         slow_antennaconstraint = '[[{}]]'.format(','.join(self.field.stations))
         max_normalization_delta = self.field.max_normalization_delta
+        scale_normalization_delta = self.field.scale_normalization_delta
 
         # Get various DDECal solver parameters
         llssolver = self.field.llssolver
@@ -186,6 +187,7 @@ class Calibrate(Operation):
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
                             'max_normalization_delta': max_normalization_delta,
+                            'scale_normalization_delta': scale_normalization_delta,
                             'phase_center_ra': self.field.ra,
                             'phase_center_dec': self.field.dec,
                             'llssolver': llssolver,

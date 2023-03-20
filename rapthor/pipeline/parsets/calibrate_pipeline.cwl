@@ -353,6 +353,14 @@ inputs:
       station (length = 1).
     type: float
 
+  - id: scale_normalization_delta
+    label: Scale normalization delta flag
+    doc: |
+      Flag that enables scaling (with distance from the phase center) of the
+      maximum allowed difference in the median of the amplitudes from unity, per
+      station (length = 1).
+    type: string
+
   - id: phase_center_ra
     label: Phase center RA
     doc: |
@@ -793,6 +801,8 @@ steps:
         valueFrom: 'True'
       - id: max_station_delta
         source: max_normalization_delta
+      - id: scale_station_delta
+        source: scale_normalization_delta
       - id: phase_center_ra
         source: phase_center_ra
       - id: phase_center_dec
@@ -849,6 +859,8 @@ steps:
         valueFrom: 'False'
       - id: max_station_delta
         source: max_normalization_delta
+      - id: scale_station_delta
+        source: scale_normalization_delta
       - id: phase_center_ra
         source: phase_center_ra
       - id: phase_center_dec

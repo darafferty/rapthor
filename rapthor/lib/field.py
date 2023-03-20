@@ -71,6 +71,8 @@ class Field(object):
 
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
+        self.max_normalization_delta = 1.0
+        self.scale_normalization_delta = False
         self.lofar_to_true_flux_ratio = 1.0
         self.lofar_to_true_flux_std = 0.0
         self.peel_outliers = False

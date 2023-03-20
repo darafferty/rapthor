@@ -50,7 +50,8 @@ def set_strategy(field):
                 strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
                 strategy_steps[i]['peel_bright_sources'] = True
-            strategy_steps[i]['max_normalization_delta'] = 0.0
+            strategy_steps[i]['max_normalization_delta'] = 1.0
+            strategy_steps[i]['scale_normalization_delta'] = False
 
             strategy_steps[i]['do_image'] = True
             if i < 2:
@@ -128,7 +129,9 @@ def set_strategy(field):
     # parameter has a default defined or raise an error if not
     primary_parameters = ['do_calibrate', 'do_image', 'do_check']
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'target_flux',
-                                             'max_directions', 'regroup_model'],
+                                             'max_directions', 'regroup_model',
+                                             'max_normalization_delta',
+                                             'scale_normalization_delta'],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
                                          'peel_outliers', 'peel_bright_sources'],
                             'do_check': ['convergence_ratio', 'divergence_ratio']}

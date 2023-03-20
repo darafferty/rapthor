@@ -50,6 +50,16 @@ inputs:
     inputBinding:
       prefix: --max_station_delta=
       separate: false
+  - id: scale_station_delta
+    label: Scale station delta flag
+    doc: |
+      Flag that enables scaling (with distance from the phase center) of the
+      maximum allowed difference in the median of the amplitudes from unity (per
+      station)
+    type: string
+    inputBinding:
+      prefix: --scale_delta_with_dist=
+      separate: false
   - id: phase_center_ra
     label: Phase center RA
     doc: |
