@@ -219,6 +219,22 @@ outputs:
     type: File
     outputBinding:
       glob: $(inputs.name)-MFS-image-pb.fits
+  - id: residual_name
+    label: Output residual image
+    doc: |
+      The filename of the output residual image. The value is constructed from
+      the input parameter "name"
+    type: File
+    outputBinding:
+      glob: $(inputs.name)-MFS-residual.fits
+  - id: model_name
+    label: Output model image
+    doc: |
+      The filename of the output model image. The value is constructed from the
+      input parameter "name"
+    type: File
+    outputBinding:
+      glob: $(inputs.name)-MFS-model.fits
   - id: skymodel_nonpb
     label: Output non-PB-corrected sky model
     doc: |
