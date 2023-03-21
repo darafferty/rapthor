@@ -208,7 +208,7 @@ class Image(Operation):
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
             sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
-            sector.I_model_file_true_sky = image_root + '-MFS-model-pb.fits'
+            sector.I_model_file_true_sky = image_root + '-MFS-model.fits'
             sector.I_residual_file_apparent_sky = image_root + '-MFS-residual.fits'
 
             # Check to see if a clean mask image was made (only made when at least one
