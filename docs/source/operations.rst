@@ -59,3 +59,5 @@ Subtracted sources are restored in the image pipeline (near the end, in a step n
 
 Primary products (in ``images/image_X``, where ``X`` is the cycle number):
     * ``field-MFS-I-image.fits`` - the Stokes I image
+    * ``field-MFS-residual.fits`` - the (Stokes I) residual image
+    * ``field-MFS-model.fits`` - the (Stokes I) model image
