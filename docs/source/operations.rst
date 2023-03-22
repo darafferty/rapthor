@@ -13,13 +13,17 @@ Calibrate
 
 This operation calibrates the data using the current sky model. The exact steps done during calibration depend on the strategy, but essentially there are two main parts: a phase-only (scalar) solve on short timescales (the "fast-phase" solve, which corrects for ionospheric errors) and a phase and amplitude (diagonal) solve on long time scales (the "slow-gain" solve, which corrects for beam errors). The slow-gain solve is divided into two parts: an optional amplitude-only solve that constrains all stations to have the same solutions and a phase plus amplitude solve (without the station constraint and usually with a longer solution interval). This calibration strategy is based on the LBA strategy of the `LiLF pipeline <https://linc.readthedocs.io/>`_, with the idea that the same strategy can be used for both HBA and LBA (similar to the way the calibrator pipeline works in LINC). Lastly, processing of the resulting solutions is done, including smoothing, renormalization, and the generation of a-term images (if 2-D screens are used).
 
-For calibration, Rapthor searches for bright, compact sources (or groups of sources) throughout the field to use as calibrator sources. A target (apparent) flux density is used to ensure that the calibrators are sufficiently bright (set by :term:`target_flux` in the processing strategy). Rapthor then tessellates the full sky model, using the calibrators as the facet centers. This method ensures that each facet has a bright calibrator source in it. Despite this designation of calibrators for the tesselation, all sources are used in the calibration (not just the bright sources).
+For calibration, Rapthor searches for bright, compact sources (or groups of sources) throughout the field to use as calibrator sources. A target (apparent) flux density is used to ensure that the calibrators are sufficiently bright (set by :term:`target_flux` in the processing strategy). Rapthor then tessellates the full sky model, using the calibrators as the facet centers. This method ensures that each calibration patch (or facet) has a bright calibrator source in it. Despite this designation of calibrators for the tesselation, all sources are used in the calibration (not just the bright sources).
 
 When multiple nodes are available, this task is distributed.
 
 Primary products:
-    * ``field-solutions.h5``, stored in ``solutions/calibrate_X``, where ``X`` is the cycle number - the calibration solution table containing both fast-phase and slow-gain solutions.
-    * ``*.png`` files, stored in ``plots/calibrate_X``, where ``X`` is the cycle number - plots of the calibration solutions.
+    * In ``skymodels/calibrate_X``, where ``X`` is the cycle number:
+        * ``calibration_skymodel.txt`` - the sky model used for calibration, grouped into calibration patches (one per facet/direction). If a sky model was supplied by the user, this model will be identical (but potentially with a different grouping of the sources). If the sky model results from the previous cycle of self calibration, this model will be the sum of models from the imaging sectors (see :ref:`image` for details).
+    * In ``solutions/calibrate_X``, where ``X`` is the cycle number:
+        * ``field-solutions.h5`` - the calibration solution table containing both fast-phase and slow-gain solutions.
+    * In ``plots/calibrate_X``, where ``X`` is the cycle number:
+        * ``*.png`` files - plots of the calibration solutions. Plots are typically made with one file per direction (calibration patch), per solution type (amplitude, phase, or scalar phase). For example, the file ``scalarphase_dir[Patch_127].png`` contains the scalar phase solutions (from the "fast-phase" solve) for patch 127. If the "slow-gain" solve was done, additional files should be present with the names ``phase_dir[Patch_127]_polXX.png`` and ``amplitude_dir[Patch_127]_polXX.png`` (and similarly for the YY polarization). If the optional amplitude-only slow-gain solve was done, the solutions are combined with the phase plus amplitude solve before plotting.
 
 .. _predict:
 
@@ -30,9 +34,13 @@ This operation predicts visibilities for subtraction. Sources that lie outside o
 
 When multiple nodes are available, this task is distributed.
 
-Primary products (in ``pipelines/predict_X``, where ``X`` is the cycle number):
-    * Temporary measurement sets used for the subsequent image operation.
-
+Primary products:
+    * In ``skymodels/predict_X``, where ``X`` is the cycle number:
+        * ``outlier_*_predict_skymodel.txt`` - sky models used for outlier subtraction
+        * ``bright_source_*_predict_skymodel.txt`` - sky models used for bright-source subtraction
+        * ``sector_*_predict_skymodel.txt`` - sky models used when multiple imaging sectors are used
+    * In ``pipelines/predict_X``, where ``X`` is the cycle number:
+        * Temporary measurement sets used for subsequent operations.
 
 .. _image:
 
@@ -45,19 +53,25 @@ Diagnostics for each image are written to the log. They include the following:
 
     * The minimum and theoretical RMS noise. The minimum noise is derived from 2-D RMS maps generated by PyBDSF. The theoretical noise is calculated following `SKA Memo 113 <http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf>`_ and the `LOFAR Image Noise Calculator <https://support.astron.nl/ImageNoiseCalculator/sens.php>`_. The calculation takes into account the amount of flagged data but does not include the effects of elevation.
     * The median RMS noise. The median noise is derived from 2-D RMS maps generated by PyBDSF. This median noise, along with the dynamic range (see below) is used to determine whether selfcal has converged (using the :term:`convergence_ratio` and :term:`divergence_ratio` defined by the processing strategy).
-    * The dynamic range, calculated as the maximum value in the image divided by the minimum RMS noise. This quantity gives an estimate of how well focused the brightest source in the image is and is used, along with the median noise (see above) to determine whether selfcal has converged (see ).
+    * The dynamic range, calculated as the maximum value in the image divided by the minimum RMS noise. This quantity gives an estimate of how well focused the brightest source in the image is and is used, along with the median noise (see above) to determine whether selfcal has converged.
     * The number of sources found by PyBDSF.
     * The reference (central) frequency of the image.
     * The restoring beam size and position angle.
     * The fraction of unflagged data.
-    * An estimate of the LOFAR-to-TGSS flux ratio. This ratio gives an indication of the accuracy of the overall flux scale of the image.
-    * Estimates of the LOFAR-to-TGSS RA and Dec offsets. These offsets give an indication of the accuracy of the astrometry.
+    * An estimate of the LOFAR-to-TGSS flux ratio (calculated as the mean of the measured LOFAR flux densities divided by the TGSS flux densities, after sigma clipping). This ratio gives an indication of the accuracy of the overall flux scale of the image.
+    * Estimates of the LOFAR-to-TGSS RA and Dec offsets (calculated as the mean of the LOFAR values minus the TGSS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
 
 When multiple nodes are available, it is possible to distribute the imaging over multiple nodes. This is done by running wsclean-mp instead of wsclean. Currently, Toil does not fully support openmpi. To remedy this, a wrapping script around wsclean-mp is used on the 'master' node. Because of this, imaging can only use the worker nodes, and the master node is idle.
 
 Subtracted sources are restored in the image pipeline (near the end, in a step named wsclean_restore).
 
-Primary products (in ``images/image_X``, where ``X`` is the cycle number):
-    * ``field-MFS-I-image.fits`` - the Stokes I image
-    * ``field-MFS-residual.fits`` - the (Stokes I) residual image
-    * ``field-MFS-model.fits`` - the (Stokes I) model image
+Primary products:
+    * In ``images/image_X``, where ``X`` is the cycle number:
+        * ``field-MFS-I-image.fits`` - the Stokes I image, uncorrected for the primary beam attenuation (i.e., the apparent-sky, "flat-noise" image)
+        * ``field-MFS-I-image-pb.fits`` - the Stokes I image, corrected for the primary beam attenuation (i.e., the true-sky image)
+        * ``field-MFS-residual.fits`` - the (Stokes I) residual image
+        * ``field-MFS-model.fits`` - the (Stokes I) model image
+    * In ``skymodels/image_X``, where ``X`` is the cycle number:
+        * ``bright_source_skymodel.txt`` - sky model used to restore bright sources after imaging (present only if bright sources were subtracted in the preceding predict operation).
+        * ``sector_Y.true_sky.txt``, where ``Y`` is the image sector number - the sky model (generated by WSClean) for the sector, with true-sky flux densities.
+        * ``sector_Y.apparent_sky.txt``, where ``Y`` is the image sector number - the sky model for the sector, with apparent-sky flux densities, generated from the true-sky one by attenuating it with the LOFAR primary beam.
