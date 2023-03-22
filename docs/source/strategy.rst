@@ -45,6 +45,12 @@ The following processing parameters must be set for each cycle:
     peel_bright_sources
         Boolean flag that determines whether the bright sources should be peeled for this cycle (for imaging only). The peeled bright sources are added back before subsequent selfcal cycles are performed (so they are included in the calibration, etc.).
 
+    max_normalization_delta
+        Float that sets the maximum allowed fractional delta from unity for the per-station normalization.
+
+    scale_normalization_delta
+        Boolean flag that determines whether the maximum allowed fractional normalization delta is constrained to vary linearly with distance from the phase center.
+
     do_image
         Boolean flag that determines whether the imaging step should be done for this cycle.
 
