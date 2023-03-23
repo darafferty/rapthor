@@ -21,47 +21,31 @@ inputs:
     label: Filenames of images
     doc: |
       The filenames of the sector FITS images (length = n_sectors).
-    type:
-      type: array
-      items:
-        type: array
-        items: File
+    type: File[]
 
   - id: sector_vertices_filename
     label: Filenames of vertices files
     doc: |
       The filenames of the sector vertices files (length = n_sectors).
-    type:
-      type: array
-      items:
-        type: array
-        items: File
+    type: File[]
 
   - id: template_image_filename
     label: Filename of template image
     doc: |
       The filename of the temporary mosaic template image (length = 1).
-    type:
-      type: array
-      items:
-        type: array
-        items: string
+    type: string
 
   - id: regridded_image_filename
     label: Filenames of images
     doc: |
       The filenames of the regridded sector images (length = n_sectors).
-    type:
-      type: array
-      items:
-        type: array
-        items: string
+    type: string[]
 
   - id: mosaic_filename
     label: Filename of mosiac image
     doc: |
       The filename of the final mosaic image (length = 1).
-    type: string[]
+    type: string
 
   - id: skip_processing
     label: Flag to skip processing

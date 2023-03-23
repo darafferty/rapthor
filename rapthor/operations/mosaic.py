@@ -36,6 +36,7 @@ class Mosaic(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'pipeline_working_dir': self.pipeline_working_dir,
                              'max_cores': max_cores,
                              'skip_processing': self.skip_processing,
                              'do_slowgain_solve': self.field.do_slowgain_solve}
