@@ -62,7 +62,7 @@ class Mosaic(Operation):
                 regridded_list.append(os.path.basename(getattr(sector, image_name)) + '.regridded')
             sector_image_filename.append(CWLFile(image_list).to_json())
             sector_vertices_filename.append(CWLFile(vertices_list).to_json())
-            regridded_image_filename.append(CWLFile(regridded_list).to_json())
+            regridded_image_filename.append(regridded_list)
             template_image_filename.append(self.name + '_template.fits')
 
         self.mosaic_filename = []

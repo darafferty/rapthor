@@ -9,8 +9,10 @@ doc: |
 # start not skip_processing
 
 requirements:
+  MultipleInputFeatureRequirement: {}
   ScatterFeatureRequirement: {}
   StepInputExpressionRequirement: {}
+  SubworkflowFeatureRequirement: {}
 
 {% if max_cores is not none %}
 hints:
@@ -45,10 +47,7 @@ inputs:
     doc: |
       The filename of the temporary mosaic template image (length = n_img_types).
     type:
-      type: array
-      items:
-        type: array
-        items: string
+      type: string[]
 
   - id: regridded_image_filename
     label: Filenames of images
