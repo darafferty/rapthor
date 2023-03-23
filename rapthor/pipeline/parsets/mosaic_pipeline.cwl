@@ -46,8 +46,7 @@ inputs:
     label: Filename of template image
     doc: |
       The filename of the temporary mosaic template image (length = n_img_types).
-    type:
-      type: string[]
+    type: string[]
 
   - id: regridded_image_filename
     label: Filenames of images
