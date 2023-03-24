@@ -6,6 +6,7 @@ doc: |
   This is the top-level workflow for the Rapthor HBA NL pipeline.
 
 requirements:
+- class: MultipleInputFeatureRequirement
 - class: ScatterFeatureRequirement
 - class: SubworkflowFeatureRequirement
 
@@ -26,6 +27,8 @@ inputs:
         type: Any
       - name: cluster
         type: Any
+- id: virtualenv
+  type: Any
 
 outputs:
 - id: parset
@@ -75,6 +78,8 @@ steps:
       source: concat_ms/msout
     - id: settings
       source: settings
+    - id: virtualenv
+      source: virtualenv
   out:
     - id: images
     - id: logs

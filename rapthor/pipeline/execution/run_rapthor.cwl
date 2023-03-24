@@ -33,6 +33,10 @@ inputs:
         type: Any
       - name: cluster
         type: Any
+- id: virtualenv
+  doc: Description of the virtual environment used to run Rapthor.
+  type: Any
+
 # Anything that the Rapthor pipeline will produce as outputs.
 outputs:
 - id: images

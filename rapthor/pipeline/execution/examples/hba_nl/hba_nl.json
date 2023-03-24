@@ -1,12 +1,15 @@
 {
   "surls": [
     "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_121MHz_uv_pre-cal.ms.tar",
-    "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_123MHz_uv_pre-cal.ms.tar"
+    "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_123MHz_uv_pre-cal.ms.tar",
+    "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_125MHz_uv_pre-cal.ms.tar",
+    "gsiftp://gridftp.grid.sara.nl/pnfs/grid.sara.nl/data/lofar/user/disk/rapthor/testing/L667526_127MHz_uv_pre-cal.ms.tar"
   ],
   "settings": {
     "global": {
-      "regroup_input_skymodel": "False",
-      "selfcal_data_fraction": "0.01"
+      "regroup_input_skymodel": "True",
+      "selfcal_data_fraction": "0.01",
+      "strategy": "/project/rapthor/Data/rapthor/L667526/custom_calibration_strategy.py"
     },
     "calibration": {
     },
@@ -23,7 +26,7 @@
       "version": "3.9"
     },
     "rapthor": {
-      "version": "RAP-68_Toplevel-CWL-Workflow",
+      "version": "atdb_integration_test",
       "requirements": []
     }
   }
