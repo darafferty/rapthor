@@ -4,6 +4,7 @@ Module that modifies the state of the pipelines
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
 from rapthor.lib.field import Field
+import filecmp
 import logging
 import os
 import shutil
@@ -96,10 +97,17 @@ def run(parset_file):
                 # seem to always overwrite existing files from previous runs). This
                 # also removes Toil's jobstore when present (where the state is tracked).
                 # Other associated files are removed as well
-                output_directories = ['pipelines', 'skymodels', 'solutions', 'logs',
-                                      'plots', 'regions', 'images']
-                for dirname in output_directories:
-                    outpath = os.path.join(parset['dir_working'], dirname, pipeline)
-                    shutil.rmtree(outpath, ignore_errors=True)
+                path = os.path.join(parset['dir_working'], 'pipelines', pipeline)
+                shutil.rmtree(path, ignore_errors=True)
+
+            # Now remove any sub-directories in the other output directories, that
+            # are _not_ present in the 'pipelines' directory.
+            for dirname in ('skymodels', 'solutions', 'logs', 'plots', 'regions', 'images'):
+                dcmp = filecmp.dircmp(
+                    os.path.join(parset['dir_working'], 'pipelines'), 
+                    os.path.join(parset['dir_working'], dirname)
+                )
+                for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):
+                    shutil.rmtree(path, ignore_errors=True)
 
             print('Reset complete.')
