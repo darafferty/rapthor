@@ -336,6 +336,8 @@ outputs:
       - image/image_nonpb_name
       - image/image_pb_name
 {% endif %}
+      - image/residual_name
+      - image/model_name
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
@@ -548,6 +550,8 @@ steps:
     out:
       - id: image_nonpb_name
       - id: image_pb_name
+      - id: residual_name
+      - id: model_name
       - id: skymodel_nonpb
       - id: skymodel_pb
 

@@ -169,6 +169,14 @@ outputs:
     type: File
     outputBinding:
       glob: $(inputs.name)-MFS-image-pb.fits
+  - id: residual_name
+    type: File
+    outputBinding:
+      glob: $(inputs.name)-MFS-residual.fits
+  - id: model_name
+    type: File
+    outputBinding:
+      glob: $(inputs.name)-MFS-model.fits
   - id: skymodel_nonpb
     type: File
     outputBinding:
