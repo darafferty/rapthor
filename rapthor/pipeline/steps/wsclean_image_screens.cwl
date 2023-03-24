@@ -238,4 +238,4 @@ outputs:
 
 hints:
   - class: DockerRequirement
-    dockerPull: 'loose/rapthor'
+    dockerPull: 'astronrd/rapthor'
