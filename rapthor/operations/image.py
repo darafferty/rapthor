@@ -208,7 +208,8 @@ class Image(Operation):
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
             sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
-            sector.I_model_file_true_sky = image_root + '-MFS-model-pb.fits'
+            sector.I_model_file_true_sky = image_root + '-MFS-model.fits'
+            sector.I_residual_file_apparent_sky = image_root + '-MFS-residual.fits'
 
             # Check to see if a clean mask image was made (only made when at least one
             # island is found in the Stokes I image). The filename is defined
@@ -227,6 +228,13 @@ class Image(Operation):
             # in the rapthor/scripts/filter_skymodel.py file)
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
             sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
+            dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
+            misc.create_directory(dst_dir)
+            for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(src_filename, dst_filename)
 
             # The ds9 region file, if made
             if self.field.dde_method == 'facets':
