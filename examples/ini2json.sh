@@ -1,4 +1,4 @@
-#!/bin/sh -ex
+#!/bin/sh -e
 #
 # Convert an INI-file to a JSON-file.
 
