@@ -35,7 +35,7 @@ for i in range(max_selfcal_loops):
     # Here we set the imaging strategy, lowering the masking
     # thresholds as selfcal proceeds to ensure all emission is
     # properly cleaned and artifacts, if any, are excluded from
-    # the resulting sky models.
+    # the resulting sky models
     strategy_steps[i]['do_image'] = True
     if i < 2:
         strategy_steps[i]['auto_mask'] = 5.0
