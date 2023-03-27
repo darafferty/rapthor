@@ -285,7 +285,7 @@ def get_calibration_options(parset):
     if 'solve_min_uv_lambda' in parset_dict:
         parset_dict['solve_min_uv_lambda'] = parset.getfloat('calibration', 'solve_min_uv_lambda')
     else:
-        parset_dict['solve_min_uv_lambda'] = 2000.0
+        parset_dict['solve_min_uv_lambda'] = 350.0
 
     # Calculate the beam correction once per calibration patch (default = False)? If
     # False, the beam correction is calculated separately for each source in the patch.
