@@ -100,7 +100,6 @@ steps:
      source:
       - run_rapthor/images
       - run_rapthor/logs
-      # - run_rapthor/parset
       - run_rapthor/plots
       - run_rapthor/regions
       - run_rapthor/skymodels
