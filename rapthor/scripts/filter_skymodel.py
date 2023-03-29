@@ -18,7 +18,6 @@ from rapthor.lib.observation import Observation
 from scipy.interpolate import interp1d
 import subprocess
 import sys
-import shutil
 import tempfile
 
 
@@ -310,7 +309,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         else:
             beam_ind = 0
         beam_ms = os.path.join(temp_ms_dir, os.path.basename(beamMS[beam_ind]))
-        shutil.copytree(beamMS[beam_ind], beam_ms)
+        subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', beamMS[beam_ind], beam_ms])
 
         # Load the sky model with the associated beam MS
         try:

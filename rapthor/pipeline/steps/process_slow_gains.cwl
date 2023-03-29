@@ -15,7 +15,6 @@ requirements:
 
 arguments:
   - '--normalize=True'
-  - '--scale_delta_with_dist=True'
 
 inputs:
   - id: slowh5parm

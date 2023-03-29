@@ -27,17 +27,15 @@ for i in range(max_selfcal_loops):
     if i == 0:
         strategy_steps[i]['do_slowgain_solve'] = False
         strategy_steps[i]['peel_outliers'] = True
-        strategy_steps[i]['peel_bright_sources'] = False
     elif i == 1:
         strategy_steps[i]['do_slowgain_solve'] = False
         strategy_steps[i]['peel_outliers'] = False
-        strategy_steps[i]['peel_bright_sources'] = False
     else:
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
-        strategy_steps[i]['peel_bright_sources'] = True
-    strategy_steps[i]['max_normalization_delta'] = 1.0
-    strategy_steps[i]['scale_normalization_delta'] = False
+    strategy_steps[i]['peel_bright_sources'] = False
+    strategy_steps[i]['max_normalization_delta'] = 0.3
+    strategy_steps[i]['scale_normalization_delta'] = True
 
     # Here we set the imaging strategy, lowering the masking
     # thresholds as selfcal proceeds to ensure all emission is

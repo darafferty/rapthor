@@ -28,10 +28,9 @@ def set_strategy(field):
         # Standard selfcal:
         #     - calibration on all sources
         #     - peeling of non-sector sources
-        #     - peeling of bright sources (after 2 cycles)
         #     - imaging of sectors
         #     - regrouping of resulting sky model to meet flux criteria
-        #     - calibration on regrouped sources (calibration groups may differ from sectors)
+        #     - calibration on regrouped sources (calibration groups may span multiple sectors)
         min_selfcal_loops = 4
         max_selfcal_loops = 8
         for i in range(max_selfcal_loops):
@@ -41,17 +40,15 @@ def set_strategy(field):
             if i == 0:
                 strategy_steps[i]['do_slowgain_solve'] = False
                 strategy_steps[i]['peel_outliers'] = True
-                strategy_steps[i]['peel_bright_sources'] = False
             elif i == 1:
                 strategy_steps[i]['do_slowgain_solve'] = False
                 strategy_steps[i]['peel_outliers'] = False
-                strategy_steps[i]['peel_bright_sources'] = False
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
-                strategy_steps[i]['peel_bright_sources'] = True
-            strategy_steps[i]['max_normalization_delta'] = 1.0
-            strategy_steps[i]['scale_normalization_delta'] = False
+            strategy_steps[i]['peel_bright_sources'] = False
+            strategy_steps[i]['max_normalization_delta'] = 0.3
+            strategy_steps[i]['scale_normalization_delta'] = True
 
             strategy_steps[i]['do_image'] = True
             if i < 2:
