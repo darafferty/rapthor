@@ -10,6 +10,8 @@ doc: |
   over multiple nodes with MPI. See wsclean_image_screens.cwl for a detailed
   description of the inputs and outputs.
 
+$namespaces:
+  cwltool: "http://commonwl.org/cwltool#"
 requirements:
   - class: InitialWorkDirRequirement
     listing:
