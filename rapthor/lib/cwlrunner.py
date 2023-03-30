@@ -132,20 +132,6 @@ class CWLRunner:
                 return True
             except subprocess.CalledProcessError as err:
                 logger.critical(str(err))
-                if not self.operation.debug_workflow:
-                    logger.info('Cleaning up temporary files...')
-                    # Clean up temporary imaging files.
-                    if 'image' in self.operation.name:
-                        # Toil respects $TMPDIR, so we check this first.
-                        if 'TMPDIR' in os.environ:
-                            tdir = os.environ['TMPDIR']
-                        elif self.operation.scratch_dir is not None:
-                            tdir = self.operation.scratch_dir
-                        else:
-                            # We're probably in /tmp?
-                            tdir = 
-                        subprocess.run(['find', tdir, '-name', '*field.sector*.tmp', '-exec', 'rm', '{}', ';'], stdout=stdout, stderr=stderr, check=True)
-                        subprocess.run(['find', tdir, '-name', 'sector*tmp.fits', '-exec', 'rm', '{}', ';'], stdout=stdout, stderr=stderr, check=True)
                 return False
 
 
