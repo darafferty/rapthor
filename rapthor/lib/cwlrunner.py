@@ -103,12 +103,17 @@ class CWLRunner:
         """
         if self.operation.field.use_mpi:
             self._delete_mpi_config_file()
-        # Use the logs to find the temporary directory we ran in.
-        for f in glob.glob(os.path.join(self.operation.log_dir, '*.txt')):
-            if f.endswith('workerlog.txt'):
-                tempdir = f.split('/')[-2]
-                if os.path.exists(tempdir):
-                    shutil.rmtree(tempdir)
+        if not self.operation.debug_workflow:
+            # Use the logs to find the temporary directory we ran in.
+            workerlogs = os.popen("grep 'Redirecting logging to' " + os.path.join(self.operation.log_dir, 'pipeline.log') + "  | awk '{print $NF}'").read()
+            leftover_tempdirs = []
+            for f in workerlogs.splitlines():
+                tempdir = '/'.join(f.split('/')[:-2])
+                if tempdir not in leftover_tempdirs:
+                    leftover_tempdirs.append(tempdir)
+            for t in leftover_tempdirs:
+                logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
+                shutil.rmtree(t)
 
 
     def run(self) -> bool:
@@ -209,19 +214,6 @@ class ToilRunner(CWLRunner):
         for key in self.toil_env_variables:
             del os.environ[key]
         super().teardown()
-
-        if not self.operation.debug_workflow:
-            # Use the logs to find the temporary directory we ran in.
-            workerlogs = os.popen("grep 'Redirecting logging to' " + os.path.join(self.operation.log_dir, 'pipeline.log') + "  | awk '{print $NF}'").read()
-            leftover_tempdirs = []
-            for f in workerlogs.splitlines():
-                tempdir = '/'.join(f.split('/')[:-2])
-                if tempdir not in leftover_tempdirs:
-                    leftover_tempdirs.append(tempdir)
-            for t in leftover_tempdirs:
-                logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
-                shutil.rmtree(t)
-
 
 
 class CWLToolRunner(CWLRunner):
