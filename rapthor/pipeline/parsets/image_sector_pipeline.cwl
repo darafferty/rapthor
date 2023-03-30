@@ -116,14 +116,6 @@ inputs:
       The filename of the region file (length = 1).
     type: File?
 
-{% if use_screens %}
-# start use_screens
-  - id: aterm_image_filenames
-    label: Filenames of a-terms
-    doc: |
-      The filenames of the a-term images (length = 1, with n_aterms subelements).
-    type: File[]
-
 {% if use_mpi %}
   - id: mpi_cpus_per_task
     label: Number of CPUs per task
@@ -136,8 +128,16 @@ inputs:
     doc: |
       The number of nodes for MPI jobs (length = 1).
     type: int
-
 {% endif %}
+
+{% if use_screens %}
+# start use_screens
+  - id: aterm_image_filenames
+    label: Filenames of a-terms
+    doc: |
+      The filenames of the a-term images (length = 1, with n_aterms subelements).
+    type: File[]
+
 {% else %}
 # start not use_screens
 
@@ -474,10 +474,25 @@ steps:
 # start not use_screens
 
 {% if use_facets %}
+# start use_facets
+
+{% if use_mpi %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_facets.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_facets.cwl
+{% endif %}
+
+{% else %}
+# start not use_facets and not use_screens (i.e., use no_dde)
+
+{% if use_mpi %}
+    run: {{ rapthor_pipeline_dir }}/steps/wsclean_mpi_image_no_dde.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/wsclean_image_no_dde.cwl
 {% endif %}
+
+{% endif %}
+# end use no_dde
 
 {% endif %}
 # end use_screens / not use_screens
@@ -495,15 +510,15 @@ steps:
         source: image_name
       - id: mask
         source: premask/maskimg
-{% if use_screens %}
-      - id: aterm_images
-        source: aterm_image_filenames
 {% if use_mpi %}
       - id: ntasks
         source: mpi_cpus_per_task
       - id: nnodes
         source: mpi_nnodes
 {% endif %}
+{% if use_screens %}
+      - id: aterm_images
+        source: aterm_image_filenames
 {% endif %}
 {% if use_facets %}
       - id: h5parm

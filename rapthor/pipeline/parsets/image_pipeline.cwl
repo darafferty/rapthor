@@ -149,14 +149,6 @@ inputs:
         - File
         - "null"
 
-{% if use_screens %}
-# start use_screens
-  - id: aterm_image_filenames
-    label: Filenames of a-terms
-    doc: |
-      The filenames of the a-term images (length = 1, with n_aterms subelements).
-    type: File[]
-
 {% if use_mpi %}
   - id: mpi_cpus_per_task
     label: Number of CPUs per task
@@ -169,6 +161,14 @@ inputs:
     doc: |
       The number of nodes for MPI jobs (length = n_sectors).
     type: int[]
+
+{% if use_screens %}
+# start use_screens
+  - id: aterm_image_filenames
+    label: Filenames of a-terms
+    doc: |
+      The filenames of the a-term images (length = 1, with n_aterms subelements).
+    type: File[]
 
 {% endif %}
 {% else %}
@@ -425,16 +425,16 @@ steps:
         source: vertices_file
       - id: region_file
         source: region_file
-{% if use_screens %}
-# start use_screens
-      - id: aterm_image_filenames
-        source: aterm_image_filenames
 {% if use_mpi %}
       - id: mpi_cpus_per_task
         source: mpi_cpus_per_task
       - id: mpi_nnodes
         source: mpi_nnodes
 {% endif %}
+{% if use_screens %}
+# start use_screens
+      - id: aterm_image_filenames
+        source: aterm_image_filenames
 {% else %}
 # start not use_screens
       - id: h5parm
@@ -522,13 +522,13 @@ steps:
               image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file,
+{% if use_mpi %}
+              mpi_cpus_per_task, mpi_nnodes,
+{% endif %}
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
               central_patch_name,
-{% endif %}
-{% if use_mpi %}
-              mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,

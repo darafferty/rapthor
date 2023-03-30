@@ -249,8 +249,7 @@ The available options are described below under their respective sections.
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each
         WSClean job (i.e., max_nodes / num_images >= 2), then distributed
-        imaging will be used (only available if ``batch_system = slurm`` and
-        ``dde_method = screens``).
+        imaging will be used (only available if ``batch_system = slurm``).
 
         .. note::
 

@@ -1,30 +1,13 @@
-#!/usr/bin/env cwl-runner
-cwlVersion: v1.1
+cwlVersion: v1.2
 class: CommandLineTool
-$namespaces:
-  cwltool: "http://commonwl.org/cwltool#"
 baseCommand: [wsclean-mp]
 label: Make an image
 doc: |
-  This tool makes an image using WSClean with a-term corrections, distributed
+  This tool makes an image using WSClean with facet-based corrections, distributed
   over multiple nodes with MPI. See wsclean_image_screens.cwl for a detailed
   description of the inputs and outputs.
 
 requirements:
-  - class: InitialWorkDirRequirement
-    listing:
-      - entryname: aterm_plus_beam.cfg
-        # Note: WSClean requires that the aterm image filenames be input as part of an
-        # aterm config file (and not directly on the command line). Therefore, a config
-        # file is made here that contains the filenames defined in the aterm_images
-        # input parameter. Also, the required beam parameters are set here
-        entry: |
-          aterms = [diagonal, beam]
-          diagonal.images = [$(inputs.aterm_images.map( (e,i) => (e.path) ).join(' '))]
-          beam.differential = true
-          beam.update_interval = 120
-          beam.usechannelfreq = true
-        writable: false
   - class: InlineJavascriptRequirement
   - class: cwltool:MPIRequirement
     processes: $(inputs.nnodes)
@@ -34,10 +17,14 @@ arguments:
   - -save-source-list
   - -local-rms
   - -join-channels
-  - -use-idg
+  - -apply-facet-beam
   - -log-time
+  - valueFrom: 'wgridder'
+    prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
+  - valueFrom: '2048'
+    prefix: -parallel-deconvolution
   - valueFrom: 'I'
     prefix: -pol
   - valueFrom: '0.85'
@@ -46,19 +33,14 @@ arguments:
     prefix: -multiscale-scale-bias
   - valueFrom: '3'
     prefix: -fit-spectral-pol
-  - valueFrom: '2048'
-    prefix: -parallel-deconvolution
   - valueFrom: '1.0'
     prefix: -auto-threshold
   - valueFrom: '50'
     prefix: -local-rms-window
   - valueFrom: 'rms-with-min'
     prefix: -local-rms-method
-  - valueFrom: '32'
-    prefix: -aterm-kernel-size
-  - valueFrom: 'aterm_plus_beam.cfg'
-    # Note: this file is generated on the fly in the requirements section above
-    prefix: -aterm-config
+  - valueFrom: '120'
+    prefix: -facet-beam-update
   - valueFrom: 'briggs'
     # Note: we have to set part of the 'weight' argument here and part below, as it has
     # three parts (e.g., '-weight briggs -0.5'), and WSClean will not parse the value
@@ -71,7 +53,7 @@ inputs:
   - id: msin
     type: Directory[]
     inputBinding:
-      position: 3
+      position: 5
   - id: name
     type: string
     inputBinding:
@@ -80,16 +62,6 @@ inputs:
     type: File
     inputBinding:
       prefix: -fits-mask
-  - id: aterm_images
-    label: Filenames of aterm files
-    doc: |
-      The filenames of the a-term image files. These filenames are not used directly in the
-      WSClean call (they are read by WSClean from the aterm config file, defined in the
-      requirements section above), hence the value is set to "null" (which results in
-      nothing being added to the command for this input).
-    type: File[]
-    inputBinding:
-      valueFrom: null
   - id: wsclean_imsize
     type: int[]
     inputBinding:
@@ -154,6 +126,35 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: num_gridding_threads
+    label: Number of gridding threads
+    doc: |
+      The number of threads to use during gridding.
+    type: int
+    inputBinding:
+      prefix: -parallel-gridding
+  - id: h5parm
+    label: h5parm filename
+    doc: |
+      The filename of the h5parm containing the solutions to apply to correct for DDEs.
+    type: File
+    inputBinding:
+      prefix: -apply-facet-solutions
+      position: 3
+  - id: soltabs
+    label: Solution tables
+    doc: |
+      The solution table names to apply to correct for DDEs.
+    type: string
+    inputBinding:
+      position: 4
+  - id: region_file
+    label: ds9 region file
+    doc: |
+      The ds9 region file that defines the facets.
+    type: File
+    inputBinding:
+      prefix: -facet-regions
   - id: nnodes
     label: Number of nodes
     doc: |

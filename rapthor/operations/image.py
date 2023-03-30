@@ -146,21 +146,20 @@ class Image(Operation):
 
         if self.field.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
+        if self.field.use_mpi:
+            # Set number of nodes to allocate to each imaging subpipeline. We subtract
+            # one node because Toil must use one node for its job, which in turn calls
+            # salloc to reserve the nodes for the MPI job
+            nnodes = self.parset['cluster_specific']['max_nodes']
+            nsubpipes = min(nsectors, nnodes)
+            nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
+            self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
+            self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         if self.field.use_screens:
             # The following parameters were set by the preceding calibrate operation, where
             # aterm image files were generated. They do not need to be set separately for
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
-
-            if self.field.use_mpi:
-                # Set number of nodes to allocate to each imaging subpipeline. We subtract
-                # one node because Toil must use one node for its job, which in turn calls
-                # salloc to reserve the nodes for the MPI job
-                nnodes = self.parset['cluster_specific']['max_nodes']
-                nsubpipes = min(nsectors, nnodes)
-                nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
-                self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
-                self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.field.dde_method == 'facets':
