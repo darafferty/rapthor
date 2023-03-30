@@ -161,6 +161,7 @@ inputs:
     doc: |
       The number of nodes for MPI jobs (length = n_sectors).
     type: int[]
+{% endif %}
 
 {% if use_screens %}
 # start use_screens
@@ -170,7 +171,6 @@ inputs:
       The filenames of the a-term images (length = 1, with n_aterms subelements).
     type: File[]
 
-{% endif %}
 {% else %}
 # start not use_screens
   - id: h5parm
