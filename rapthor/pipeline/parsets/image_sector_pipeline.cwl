@@ -527,8 +527,10 @@ steps:
         source: soltabs
       - id: region_file
         source: make_region_file/region_file
+{% if not use_mpi %}
       - id: num_gridding_threads
         source: parallel_gridding_threads
+{% endif %}
 {% endif %}
       - id: wsclean_imsize
         source: wsclean_imsize

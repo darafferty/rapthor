@@ -128,13 +128,6 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
-  - id: num_gridding_threads
-    label: Number of gridding threads
-    doc: |
-      The number of threads to use during gridding.
-    type: int
-    inputBinding:
-      prefix: -parallel-gridding
   - id: h5parm
     label: h5parm filename
     doc: |
