@@ -237,6 +237,7 @@ class CWLToolRunner(CWLRunner):
             self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.debug_workflow:
             self.args.extend(["--debug"])
+            self.args.extend(["--leave-tmpdir"])
 
 
 def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
