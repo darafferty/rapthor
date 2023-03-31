@@ -12,6 +12,7 @@ import casacore.tables as pt
 import astropy.io.ascii
 from astropy.io import fits as pyfits
 from astropy import wcs
+from astropy.utils import iers
 import os
 import json
 from rapthor.lib.observation import Observation
@@ -19,6 +20,10 @@ from scipy.interpolate import interp1d
 import subprocess
 import sys
 import tempfile
+
+# Turn off astropy's IERS downloads to fix problems in cases where compute
+# node does not have internet access
+iers.conf.auto_download = False
 
 
 def calc_theoretical_noise(mslist, w_factor=1.5):
