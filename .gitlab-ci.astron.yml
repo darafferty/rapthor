@@ -70,6 +70,7 @@ test-tuning-das:
     # https_proxy is set.
     - git clone https://github.com/KernelTuner/kernel_tuner.git
     - cd kernel_tuner
+    - git checkout 0.4.3
     - https_proxy= python3 -m pip install --user --upgrade .
     - cd ..
   script:
