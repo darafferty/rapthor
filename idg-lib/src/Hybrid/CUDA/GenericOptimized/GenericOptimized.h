@@ -50,7 +50,7 @@ class GenericOptimized : public cuda::CUDA {
       const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       Plan::Options options) override;
 
  private:
@@ -60,7 +60,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal, ImagingMode mode);
 
   /*
@@ -72,7 +72,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal) override;
 
   void run_gridding(
@@ -81,7 +81,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal);
 
   /*
@@ -93,7 +93,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal) override;
 
   void run_degridding(
@@ -102,7 +102,7 @@ class GenericOptimized : public cuda::CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal);
 
   /*
@@ -161,7 +161,7 @@ class GenericOptimized : public cuda::CUDA {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_visibilities;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_weights;
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_uvw;
-    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterms_indices;
+    std::vector<std::unique_ptr<cu::DeviceMemory>> d_aterm_indices;
   } m_calibrate_state;
 
   // Note:

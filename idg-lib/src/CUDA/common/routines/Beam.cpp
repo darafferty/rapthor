@@ -12,14 +12,14 @@ void CUDA::do_compute_avg_beam(
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets, const Array4D<float>& weights,
+    const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
     idg::Array4D<std::complex<float>>& average_beam) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
   const unsigned int nr_polarizations = 4;
-  const unsigned int nr_aterms = aterms_offsets.size() - 1;
+  const unsigned int nr_aterms = aterm_offsets.size() - 1;
   const unsigned int nr_baselines = baselines.get_x_dim();
   const unsigned int nr_timesteps = uvw.get_x_dim();
   const unsigned int subgrid_size = average_beam.get_w_dim();
@@ -34,7 +34,7 @@ void CUDA::do_compute_avg_beam(
   // Allocate device memory
   cu::DeviceMemory d_aterms(context, aterms.bytes());
   cu::DeviceMemory d_baselines(context, baselines.bytes());
-  cu::DeviceMemory d_aterms_offsets(context, aterms_offsets.bytes());
+  cu::DeviceMemory d_aterm_offsets(context, aterm_offsets.bytes());
   // The average beam is constructed in double-precision on the device.
   // After all baselines are processed (i.e. all contributions are added),
   // the data is copied to the host and there converted to single-precision.
@@ -102,8 +102,8 @@ void CUDA::do_compute_avg_beam(
   // Copy static data
   htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
   htodstream.memcpyHtoDAsync(d_baselines, baselines.data(), baselines.bytes());
-  htodstream.memcpyHtoDAsync(d_aterms_offsets, aterms_offsets.data(),
-                             aterms_offsets.bytes());
+  htodstream.memcpyHtoDAsync(d_aterm_offsets, aterm_offsets.data(),
+                             aterm_offsets.bytes());
 
   // Initialize average beam
   d_average_beam.zero(htodstream);
@@ -151,7 +151,7 @@ void CUDA::do_compute_avg_beam(
     device.launch_average_beam(job.current_nr_baselines, nr_antennas,
                                nr_timesteps, nr_channels, nr_aterms,
                                subgrid_size, d_uvw, d_baselines, d_aterms,
-                               d_aterms_offsets, d_weights, d_average_beam);
+                               d_aterm_offsets, d_weights, d_average_beam);
   }
 
   // Wait for execution to finish

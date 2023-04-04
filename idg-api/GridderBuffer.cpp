@@ -108,14 +108,14 @@ void GridderBufferImpl::compute_avg_beam() {
 
   Array4D<Matrix2x2<std::complex<float>>> aterms(
       m_aterms2.data(), nr_aterms, nr_antennas, subgrid_size, subgrid_size);
-  Array1D<unsigned int> aterms_offsets(m_aterm_offsets2.data(), nr_aterms + 1);
+  Array1D<unsigned int> aterm_offsets(m_aterm_offsets2.data(), nr_aterms + 1);
   idg::Array4D<std::complex<float>> average_beam(m_average_beam, subgrid_size,
                                                  subgrid_size, nr_correlations,
                                                  nr_correlations);
 
   proxy::Proxy& proxy = m_bufferset.get_proxy();
   proxy.compute_avg_beam(m_nrStations, get_frequencies_size(), m_bufferUVW2,
-                         m_bufferStationPairs2, aterms, aterms_offsets,
+                         m_bufferStationPairs2, aterms, aterm_offsets,
                          m_buffer_weights2, average_beam);
 
   m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Pause();

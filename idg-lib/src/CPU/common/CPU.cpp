@@ -46,7 +46,7 @@ std::unique_ptr<Plan> CPU::make_plan(
     const int kernel_size, const Array1D<float>& frequencies,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterms_offsets, Plan::Options options) {
+    const Array1D<unsigned int>& aterm_offsets, Plan::Options options) {
   if (supports_wtiling() && m_cache_state.w_step != 0.0 &&
       m_wtiles.get_wtile_buffer_size()) {
     options.w_step = m_cache_state.w_step;
@@ -54,10 +54,10 @@ std::unique_ptr<Plan> CPU::make_plan(
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
-                 baselines, aterms_offsets, m_wtiles, options));
+                 baselines, aterm_offsets, m_wtiles, options));
   } else {
     return Proxy::make_plan(kernel_size, frequencies, uvw, baselines,
-                            aterms_offsets, options);
+                            aterm_offsets, options);
   }
 }
 
@@ -154,7 +154,7 @@ void CPU::do_gridding(
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
+    const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
@@ -285,7 +285,7 @@ void CPU::do_degridding(
     Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
+    const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
@@ -688,13 +688,13 @@ void CPU::do_compute_avg_beam(
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets, const Array4D<float>& weights,
+    const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
     idg::Array4D<std::complex<float>>& average_beam) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
 
-  const unsigned int nr_aterms = aterms_offsets.size() - 1;
+  const unsigned int nr_aterms = aterm_offsets.size() - 1;
   const unsigned int nr_baselines = baselines.get_x_dim();
   const unsigned int nr_timesteps = uvw.get_x_dim();
   const unsigned int subgrid_size = average_beam.get_w_dim();
@@ -709,7 +709,7 @@ void CPU::do_compute_avg_beam(
   m_kernels->run_average_beam(
       nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,
       subgrid_size, nr_polarizations, uvw.data(), baselines_ptr, aterms_ptr,
-      aterms_offsets.data(), weights.data(), average_beam.data());
+      aterm_offsets.data(), weights.data(), average_beam.data());
 
   m_report->print_total(nr_correlations);
 }  // end compute_avg_beam

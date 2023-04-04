@@ -18,7 +18,7 @@ __global__ void kernel_degridder(
           float2*     __restrict__ visibilities,
     const float*      __restrict__ spheroidal,
     const float2*     __restrict__ aterms,
-    const int*        __restrict__ aterms_indices,
+    const int*        __restrict__ aterm_indices,
     const Metadata*   __restrict__ metadata,
     const float2*     __restrict__ subgrid)
 {
@@ -95,7 +95,7 @@ __global__ void kernel_degridder(
         pixel[3] = sph * subgrid[index];
       }
 
-      int aterm_index = aterms_indices[time_offset_global + time];
+      int aterm_index = aterm_indices[time_offset_global + time];
 
       // Load a term for station1
       int station1_index = (aterm_index * nr_stations + station1) *

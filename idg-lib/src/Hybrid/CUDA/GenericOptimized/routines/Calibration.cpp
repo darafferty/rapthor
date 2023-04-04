@@ -72,7 +72,7 @@ void GenericOptimized::do_calibrate_init(
   m_calibrate_state.d_visibilities.clear();
   m_calibrate_state.d_weights.clear();
   m_calibrate_state.d_uvw.clear();
-  m_calibrate_state.d_aterms_indices.clear();
+  m_calibrate_state.d_aterm_indices.clear();
 
   // Find max number of subgrids
   unsigned int max_nr_subgrids = 0;
@@ -98,7 +98,7 @@ void GenericOptimized::do_calibrate_init(
       nr_baselines, nr_timesteps, nr_channels_per_block, nr_correlations);
   auto sizeof_uvw = auxiliary::sizeof_uvw(nr_baselines, nr_timesteps);
   auto sizeof_aterm_idx =
-      auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+      auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
   auto sizeof_wavenumbers =
       auxiliary::sizeof_wavenumbers(nr_channels_per_block);
 
@@ -112,7 +112,7 @@ void GenericOptimized::do_calibrate_init(
       new cu::DeviceMemory(context, sizeof_weights));
   m_calibrate_state.d_uvw.emplace_back(
       new cu::DeviceMemory(context, sizeof_uvw));
-  m_calibrate_state.d_aterms_indices.emplace_back(
+  m_calibrate_state.d_aterm_indices.emplace_back(
       new cu::DeviceMemory(context, sizeof_aterm_idx));
 
   const unsigned int buffer_nr = 0;
@@ -259,7 +259,7 @@ void GenericOptimized::do_calibrate_update(
   auto nr_correlations = 4;
 
   auto sizeof_aterm_idx =
-      auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
+      auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
   auto sizeof_visibilities = auxiliary::sizeof_visibilities(
       nr_baselines, nr_timesteps, nr_channels_per_block, nr_correlations);
   auto sizeof_weights = auxiliary::sizeof_weights(
@@ -297,8 +297,8 @@ void GenericOptimized::do_calibrate_update(
   cu::DeviceMemory& d_sums_x = *m_calibrate_state.d_sums_x;
   cu::DeviceMemory& d_sums_y = *m_calibrate_state.d_sums_y;
   cu::DeviceMemory& d_lmnp = *m_calibrate_state.d_lmnp;
-  cu::DeviceMemory& d_aterms_idx =
-      *m_calibrate_state.d_aterms_indices[buffer_nr];
+  cu::DeviceMemory& d_aterm_indices =
+      *m_calibrate_state.d_aterm_indices[buffer_nr];
 
   // Allocate additional data structures
   cu::DeviceMemory d_aterms(context, aterms.bytes());
@@ -347,7 +347,8 @@ void GenericOptimized::do_calibrate_update(
                                sizeof_visibilities);
     htodstream.memcpyHtoDAsync(d_weights, weights_ptr, sizeof_weights);
 
-    htodstream.memcpyHtoDAsync(d_aterms_idx, aterm_idx_ptr, sizeof_aterm_idx);
+    htodstream.memcpyHtoDAsync(d_aterm_indices, aterm_idx_ptr,
+                               sizeof_aterm_idx);
     htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
     htodstream.memcpyHtoDAsync(
         d_wavenumbers, m_calibrate_state.wavenumbers[channel_block].data(),
@@ -384,7 +385,7 @@ void GenericOptimized::do_calibrate_update(
         nr_subgrids, grid_size, subgrid_size, image_size, w_step,
         total_nr_timesteps, nr_channels_per_block, nr_stations, nr_terms, d_uvw,
         d_wavenumbers, d_visibilities, d_weights, d_aterms, d_aterms_deriv,
-        d_aterms_idx, d_metadata, d_subgrids, d_sums_x, d_sums_y, d_lmnp,
+        d_aterm_indices, d_metadata, d_subgrids, d_sums_x, d_sums_y, d_lmnp,
         d_hessian, d_gradient, d_residual);
     executestream.record(executeFinished);
 
@@ -442,7 +443,7 @@ void GenericOptimized::do_calibrate_finish() {
   m_calibrate_state.d_visibilities.clear();
   m_calibrate_state.d_weights.clear();
   m_calibrate_state.d_uvw.clear();
-  m_calibrate_state.d_aterms_indices.clear();
+  m_calibrate_state.d_aterm_indices.clear();
   get_device(0).free_subgrid_fft();
 }
 

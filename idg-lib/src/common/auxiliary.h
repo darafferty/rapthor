@@ -88,8 +88,8 @@ uint64_t sizeof_wavenumbers(unsigned int nr_channels);
 uint64_t sizeof_aterms(unsigned int nr_stations, unsigned int nr_timeslots,
                        unsigned int subgrid_size, uint64_t nr_correlations = 4);
 
-uint64_t sizeof_aterms_indices(unsigned int nr_baselines,
-                               unsigned int nr_timesteps);
+uint64_t sizeof_aterm_indices(unsigned int nr_baselines,
+                              unsigned int nr_timesteps);
 
 uint64_t sizeof_spheroidal(unsigned int subgrid_size);
 
@@ -98,7 +98,7 @@ uint64_t sizeof_avg_aterm_correction(unsigned int subgrid_size,
 
 uint64_t sizeof_baselines(unsigned int nr_baselines);
 
-uint64_t sizeof_aterms_offsets(unsigned int nr_timeslots);
+uint64_t sizeof_aterm_offsets(unsigned int nr_timeslots);
 
 uint64_t sizeof_weights(unsigned int nr_baselines, unsigned int nr_timesteps,
                         unsigned int nr_channels,

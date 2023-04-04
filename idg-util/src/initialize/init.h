@@ -48,9 +48,9 @@ Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
     proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_stations,
     unsigned int height, unsigned int width);
 
-Array1D<unsigned int> get_example_aterms_offsets(proxy::Proxy& proxy,
-                                                 unsigned int nr_timeslots,
-                                                 unsigned int nr_timesteps);
+Array1D<unsigned int> get_example_aterm_offsets(proxy::Proxy& proxy,
+                                                unsigned int nr_timeslots,
+                                                unsigned int nr_timesteps);
 
 Array2D<float> get_example_spheroidal(proxy::Proxy& proxy, unsigned int height,
                                       unsigned int width);
@@ -85,8 +85,8 @@ Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
     unsigned int nr_timeslots, unsigned int nr_stations, unsigned int height,
     unsigned int width);
 
-Array1D<unsigned int> get_example_aterms_offsets(unsigned int nr_timeslots,
-                                                 unsigned int nr_timesteps);
+Array1D<unsigned int> get_example_aterm_offsets(unsigned int nr_timeslots,
+                                                unsigned int nr_timesteps);
 
 Array2D<float> get_identity_spheroidal(unsigned int height, unsigned int width);
 

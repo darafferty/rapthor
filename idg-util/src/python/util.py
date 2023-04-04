@@ -913,13 +913,13 @@ def init_example_aterms(aterms, nr_timeslots, nr_stations, height, width):
                                   ctypes.c_int(height), ctypes.c_int(width))
 
 
-def init_example_aterms_offset(aterms_offset, nr_time):
+def init_example_aterm_offsets(aterms_offset, nr_time):
     """Initialize aterms offset"""
     nr_timeslots = aterms_offset.shape[0] - 1
     lib.utils_init_example_aterms_offset.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int
     ]
-    lib.utils_init_example_aterms_offset(
+    lib.utils_init_example_aterm_offsets(
         aterms_offset.ctypes.data_as(ctypes.c_void_p),
         ctypes.c_int(nr_timeslots), ctypes.c_int(nr_time))
 
@@ -986,12 +986,12 @@ def get_example_aterms(nr_timeslots,
     return aterms.astype(dtype=dtype)
 
 
-def get_example_aterms_offset(nr_timeslots,
+def get_example_aterm_offsets(nr_timeslots,
                               nr_time,
                               dtype=atermoffsettype,
                               info=False):
     aterms_offset = np.zeros((nr_timeslots + 1), dtype=atermoffsettype)
-    init_example_aterms_offset(aterms_offset, nr_time)
+    init_example_aterm_offsets(aterms_offset, nr_time)
     if info == True:
         print("aterms_offset: np.ndarray(shape = (nr_timeslots + 1), " + \
               "dtype = " + str(dtype) + ")")

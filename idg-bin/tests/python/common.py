@@ -31,7 +31,7 @@ def plot_metadata(
     frequencies,
     uvw,
     baselines,
-    aterms_offsets,
+    aterm_offsets,
     max_nr_timesteps=np.iinfo(np.int32).max,
 ):
     # Debugging only
@@ -43,7 +43,7 @@ def plot_metadata(
         frequencies,
         uvw,
         baselines,
-        aterms_offsets,
+        aterm_offsets,
         max_nr_timesteps,
     )
     nr_subgrids = plan.get_nr_subgrids()
@@ -64,7 +64,7 @@ def gridding(
     uvw,
     baselines,
     aterms,
-    aterms_offsets,
+    aterm_offsets,
     spheroidal,
 ):
     p.init_cache(subgrid_size, cell_size, w_step, shift)
@@ -75,7 +75,7 @@ def gridding(
         uvw,
         baselines,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         spheroidal,
     )
     p.get_final_grid()
@@ -93,7 +93,7 @@ def degridding(
     uvw,
     baselines,
     aterms,
-    aterms_offsets,
+    aterm_offsets,
     spheroidal,
 ):
     p.init_cache(subgrid_size, cell_size, w_step, shift)
@@ -104,7 +104,7 @@ def degridding(
         uvw,
         baselines,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         spheroidal,
     )
 
@@ -173,7 +173,7 @@ def main(proxyname, plot=True):
     aterms = util.get_example_aterms(
         nr_timeslots, nr_stations, subgrid_size, nr_correlations
     )
-    aterms_offsets = util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
+    aterm_offsets = util.get_example_aterm_offsets(nr_timeslots, nr_timesteps)
     spheroidal = util.get_identity_spheroidal(subgrid_size)
     shift = np.zeros(2, dtype=np.float32)
 
@@ -219,7 +219,7 @@ def main(proxyname, plot=True):
             uvw,
             baselines,
             aterms,
-            aterms_offsets,
+            aterm_offsets,
             spheroidal,
         )
 
@@ -249,7 +249,7 @@ def main(proxyname, plot=True):
             uvw,
             baselines,
             aterms,
-            aterms_offsets,
+            aterm_offsets,
             spheroidal,
         )
 

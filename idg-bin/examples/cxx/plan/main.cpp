@@ -176,8 +176,8 @@ int main(int argc, char** argv) {
   // Initialize metadata
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
-  idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+  idg::Array1D<unsigned int> aterm_offsets =
+      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
 
   unsigned int nr_correlations = 4;
   idg::proxy::cpu::Optimized proxy;
@@ -193,7 +193,7 @@ int main(int argc, char** argv) {
   idg::Plan::Options options;
   options.plan_strict = true;
   auto plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines,
-                              aterms_offsets, options);
+                              aterm_offsets, options);
   std::clog << std::endl;
 
   // Report plan

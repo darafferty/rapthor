@@ -66,7 +66,7 @@ def tune():
         nr_subgrids, nr_baselines, nr_timeslots, nr_timesteps_per_subgrid, nr_channels)
 
     # Initialize aterms indices
-    aterms_indices = idg.get_aterms_indices(
+    aterm_indices = idg.get_aterm_indices(
         nr_timesteps_per_baseline, nr_timesteps_per_subgrid)
 
     # The following data types should have the correct dimensions,
@@ -105,7 +105,7 @@ def tune():
         visibilities,
         spheroidal,
         aterms,
-        aterms_indices,
+        aterm_indices,
         metadata,
         subgrids,
     ]

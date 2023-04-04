@@ -85,7 +85,7 @@ cell_size        = image_size / grid_size
 grid           = idg.util.get_example_grid(nr_correlations, grid_size)
 aterms         = idg.util.get_identity_aterms(
                     nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-aterms_offsets = idg.util.get_example_aterms_offset(
+aterm_offsets = idg.util.get_example_aterm_offsets(
                     nr_timeslots, nr_timesteps)
 
 # Initialize taper
@@ -210,7 +210,7 @@ while (nr_rows_read + nr_rows_per_batch) <= nr_rows_to_process:
 
     proxy.gridding(
         kernel_size, frequencies, visibilities,
-        uvw, baselines, aterms, aterms_offsets, taper)
+        uvw, baselines, aterms, aterm_offsets, taper)
 
     time_gridding += time.time()
 

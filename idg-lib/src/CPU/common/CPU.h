@@ -40,7 +40,7 @@ class CPU : public Proxy {
       const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       Plan::Options options) override;
 
   void init_cache(int subgrid_size, float cell_size, float w_step,
@@ -63,7 +63,7 @@ class CPU : public Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal) override;
 
   void do_degridding(
@@ -72,7 +72,7 @@ class CPU : public Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal) override;
 
   void do_calibrate_init(
@@ -99,8 +99,7 @@ class CPU : public Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array4D<float>& weights,
+      const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam) override;
 
  protected:

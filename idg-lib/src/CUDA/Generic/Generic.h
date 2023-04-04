@@ -33,7 +33,7 @@ class Generic : public CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal) override;
 
   void do_degridding(
@@ -42,7 +42,7 @@ class Generic : public CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal) override;
 
   void do_transform(DomainAtoDomainB direction) override;
@@ -53,7 +53,7 @@ class Generic : public CUDA {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal, ImagingMode mode);
 
  public:
@@ -67,7 +67,7 @@ class Generic : public CUDA {
       const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       Plan::Options options) override;
 
   void init_cache(int subgrid_size, float cell_size, float w_step,

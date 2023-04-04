@@ -62,7 +62,7 @@ __global__ void kernel_gridder(
     const float2*     __restrict__ visibilities,
     const float*      __restrict__ spheroidal,
     const float2*     __restrict__ aterms,
-    const int*        __restrict__ aterms_indices,
+    const int*        __restrict__ aterm_indices,
     const Metadata*   __restrict__ metadata,
     const float2*     __restrict__ avg_aterm,
           float2*     __restrict__ subgrid)
@@ -109,13 +109,13 @@ __global__ void kernel_gridder(
     float n = compute_n(l, m);
 
     // Initialize aterm index to first timestep
-    int aterm_idx_previous = aterms_indices[time_offset_global];
+    int aterm_idx_previous = aterm_indices[time_offset_global];
 
     // Iterate all timesteps
     for (int time = 0; time < nr_timesteps; time++) {
       // Get aterm index for current timestep
       int time_current = time_offset_global + time;
-      int aterm_idx_current = aterms_indices[time_current];
+      int aterm_idx_current = aterm_indices[time_current];
 
       // Determine whether aterm has changed
       bool aterm_changed = aterm_idx_previous != aterm_idx_current;

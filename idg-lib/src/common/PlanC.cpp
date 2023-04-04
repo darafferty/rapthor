@@ -13,7 +13,7 @@ void Plan_copy_metadata(struct idg::Plan* plan, void* ptr) {
   plan->copy_metadata(ptr);
 }
 
-void Plan_copy_aterms_indices(struct idg::Plan* plan, void* ptr) {
+void Plan_copy_aterm_indices(struct idg::Plan* plan, void* ptr) {
   plan->copy_aterm_indices(ptr);
 }
 
@@ -26,8 +26,8 @@ struct idg::Plan* Plan_init(int kernel_size, int subgrid_size, int grid_size,
                             int uvw_nr_coordinates,
                             std::pair<unsigned int, unsigned int>* baselines,
                             int baselines_nr_baselines, int baselines_two,
-                            unsigned int* aterms_offsets,
-                            int aterms_offsets_nr_timeslots) {
+                            unsigned int* aterm_offsets,
+                            int aterm_offsets_nr_timeslots) {
   idg::Array1D<float> shift_array(3);
   shift_array(0) = 0;
   shift_array(1) = 0;
@@ -38,12 +38,12 @@ struct idg::Plan* Plan_init(int kernel_size, int subgrid_size, int grid_size,
                                           uvw_nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_array(
       baselines, baselines_nr_baselines);
-  idg::Array1D<unsigned int> aterms_offsets_array(aterms_offsets,
-                                                  aterms_offsets_nr_timeslots);
+  idg::Array1D<unsigned int> aterm_offsets_array(aterm_offsets,
+                                                 aterm_offsets_nr_timeslots);
 
   return new idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
                        shift_array, frequencies_array, uvw_array,
-                       baselines_array, aterms_offsets_array);
+                       baselines_array, aterm_offsets_array);
 }
 
 }  // extern "C"

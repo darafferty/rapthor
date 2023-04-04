@@ -18,7 +18,7 @@ void OptimizedKernels::run_gridder(KERNEL_GRIDDER_ARGUMENTS) {
   kernel_gridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                  image_size, w_step_in_lambda, shift, nr_correlations,
                  nr_channels, nr_stations, uvw, wavenumbers, visibilities,
-                 spheroidal, aterms, aterms_indices, avg_aterm, metadata,
+                 spheroidal, aterms, aterm_indices, avg_aterm, metadata,
                  subgrid);
   states[1] = m_powersensor->read();
   if (m_report) {
@@ -32,7 +32,7 @@ void OptimizedKernels::run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) {
   kernel_degridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                    image_size, w_step_in_lambda, shift, nr_correlations,
                    nr_channels, nr_stations, uvw, wavenumbers, visibilities,
-                   spheroidal, aterms, aterms_indices, metadata, subgrid);
+                   spheroidal, aterms, aterm_indices, metadata, subgrid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::degridder, states[0], states[1]);
@@ -44,7 +44,7 @@ void OptimizedKernels::run_average_beam(KERNEL_AVERAGE_BEAM_ARGUMENTS) {
   states[0] = m_powersensor->read();
   kernel_average_beam(nr_baselines, nr_antennas, nr_timesteps, nr_channels,
                       nr_aterms, subgrid_size, nr_polarizations, uvw, baselines,
-                      aterms, aterms_offsets, weights, average_beam);
+                      aterms, aterm_offsets, weights, average_beam);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::average_beam, states[0], states[1]);
@@ -103,8 +103,8 @@ void OptimizedKernels::run_calibrate(KERNEL_CALIBRATE_ARGUMENTS) {
                    image_size, w_step_in_lambda, shift, max_nr_timesteps,
                    nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
                    wavenumbers, visibilities, weights, aterms,
-                   aterm_derivatives, aterms_indices, metadata, subgrid,
-                   phasors, hessian, gradient, residual);
+                   aterm_derivatives, aterm_indices, metadata, subgrid, phasors,
+                   hessian, gradient, residual);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update<Report::calibrate>(states[0], states[1]);

@@ -71,7 +71,7 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
                     const idg::UVW<float>* uvw, const float* wavenumbers,
                     const std::complex<float>* visibilities,
                     const float* spheroidal, const std::complex<float>* aterms,
-                    const int* aterms_indices,
+                    const int* aterm_indices,
                     const std::complex<float>* avg_aterm_correction,
                     const idg::Metadata* metadata,
                     std::complex<float>* subgrid) {
@@ -157,7 +157,7 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
            4 * nr_pixels * sizeof(std::complex<float>));
 
     // Initialize aterm index to first timestep
-    int aterm_idx_previous = aterms_indices[time_offset_global];
+    int aterm_idx_previous = aterm_indices[time_offset_global];
 
     // Compute u and v offset in wavelenghts
     const float u_offset = (x_coordinate + subgrid_size / 2 - grid_size / 2) *
@@ -172,7 +172,7 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
          time_offset_local += current_nr_timesteps) {
       // Get aterm indices for current timestep
       int time_current = time_offset_global + time_offset_local;
-      int aterm_idx_current = aterms_indices[time_current];
+      int aterm_idx_current = aterm_indices[time_current];
 
 // Determine whether aterm has changed
 #if defined(__PPC__)  // workaround compiler bug
@@ -185,7 +185,7 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
       // Determine number of timesteps to process
       current_nr_timesteps = 0;
       for (int time = time_offset_local; time < nr_timesteps; time++) {
-        if (aterms_indices[time_offset_global + time] == aterm_idx_current) {
+        if (aterm_indices[time_offset_global + time] == aterm_idx_current) {
           current_nr_timesteps++;
         } else {
           break;

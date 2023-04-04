@@ -47,7 +47,7 @@ class Proxy(object):
         uvw,
         baselines,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         taper):
         """
         Grid visibilities onto grid.
@@ -68,7 +68,7 @@ class Proxy(object):
         :param aterms: np.ndarray(
                 shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
                 dtype = np.complex64)
-        :param aterms_offsets: np.ndarray(
+        :param aterm_offsets: np.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = np.int)
         :param taper: np.ndarray(
@@ -122,7 +122,7 @@ class Proxy(object):
             np.ctypeslib.ndpointer(
                 dtype=np.intc,
                 shape=(nr_timeslots+1, ),
-                flags='C_CONTIGUOUS'), # aterms_offsets
+                flags='C_CONTIGUOUS'), # aterm_offsets
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
                 shape=(subgrid_size, subgrid_size),
@@ -143,7 +143,7 @@ class Proxy(object):
             uvw,
             baselines,
             aterms,
-            aterms_offsets,
+            aterm_offsets,
             taper)
 
     def degridding(
@@ -154,7 +154,7 @@ class Proxy(object):
         uvw,
         baselines,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         taper):
         """
         Degrid visibilities from grid.
@@ -175,7 +175,7 @@ class Proxy(object):
         :param aterms: np.ndarray(
                 shape=(nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
                 dtype = np.complex64)
-        :param aterms_offsets: np.ndarray(
+        :param aterm_offsets: np.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = np.intc)
         :param taper: np.ndarray(
@@ -228,7 +228,7 @@ class Proxy(object):
             np.ctypeslib.ndpointer(
                 dtype=np.intc,
                 shape=(nr_timeslots+1, ),
-                flags='C_CONTIGUOUS'), # aterms_offsets
+                flags='C_CONTIGUOUS'), # aterm_offsets
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
                 shape=(subgrid_size, subgrid_size),
@@ -249,7 +249,7 @@ class Proxy(object):
             uvw,
             baselines,
             aterms,
-            aterms_offsets,
+            aterm_offsets,
             taper)
 
     def init_cache(self, subgrid_size, cell_size, w_step, shift):
@@ -287,7 +287,7 @@ class Proxy(object):
         weights,
         uvw,
         baselines,
-        aterms_offsets,
+        aterm_offsets,
         taper):
         """
         Initialize calibration.
@@ -322,7 +322,7 @@ class Proxy(object):
         nr_baselines    = visibilities.shape[0]
         nr_timesteps    = visibilities.shape[1]
         nr_correlations = visibilities.shape[3]
-        nr_timeslots    = aterms_offsets.shape[0] - 1
+        nr_timeslots    = aterm_offsets.shape[0] - 1
 
         # call C function to do the work
 
@@ -359,7 +359,7 @@ class Proxy(object):
                 dtype=np.int32,
                 ndim=1,
                 shape=(nr_timeslots+1, ),
-                flags='C_CONTIGUOUS'),    # aterms_offsets
+                flags='C_CONTIGUOUS'),    # aterm_offsets
             np.ctypeslib.ndpointer(
                 dtype=np.float32,
                 ndim=2,
@@ -381,7 +381,7 @@ class Proxy(object):
             weights,
             uvw,
             baselines,
-            aterms_offsets,
+            aterm_offsets,
             taper)
 
     def calibrate_update(self, antenna_nr, aterms, aterm_derivatives, hessian, gradient, residual):

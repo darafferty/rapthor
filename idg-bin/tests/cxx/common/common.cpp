@@ -161,8 +161,8 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_example_aterms(proxy2, nr_timeslots, nr_stations, subgrid_size,
                               subgrid_size);
-  idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(proxy2, nr_timeslots, nr_timesteps);
+  idg::Array1D<unsigned int> aterm_offsets =
+      idg::get_example_aterm_offsets(proxy2, nr_timeslots, nr_timesteps);
   idg::Array2D<float> spheroidal =
       idg::get_example_spheroidal(proxy2, subgrid_size, subgrid_size);
   idg::Array1D<float> shift = idg::get_zero_shift();
@@ -207,9 +207,9 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   options.mode = stokes_i_only ? idg::Plan::Mode::STOKES_I_ONLY
                                : idg::Plan::Mode::FULL_POLARIZATION;
   std::unique_ptr<idg::Plan> plan1 = proxy1.make_plan(
-      kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
+      kernel_size, frequencies, uvw, baselines, aterm_offsets, options);
   std::unique_ptr<idg::Plan> plan2 = proxy2.make_plan(
-      kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
+      kernel_size, frequencies, uvw, baselines, aterm_offsets, options);
   std::clog << std::endl;
 
 #if TEST_GRIDDING
@@ -217,13 +217,13 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   std::clog << ">>> Run gridding" << std::endl;
   grid->zero();
   proxy2.gridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
-                  aterms_offsets, spheroidal);
+                  aterm_offsets, spheroidal);
   proxy2.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
   grid_ref->zero();
   proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
-                  aterms_offsets, spheroidal);
+                  aterm_offsets, spheroidal);
   proxy1.get_final_grid();
 
   float grid_error = get_accuracy(nr_polarizations * grid_size * grid_size,
@@ -239,12 +239,12 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.zero();
   proxy2.degridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
-                    aterms_offsets, spheroidal);
+                    aterm_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
   visibilities_ref.zero();
   proxy1.degridding(*plan1, frequencies, visibilities_ref, uvw, baselines,
-                    aterms, aterms_offsets, spheroidal);
+                    aterms, aterm_offsets, spheroidal);
 
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,
@@ -262,9 +262,9 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   average_beam.init(0.0f);
   average_beam_ref.init(0.0f);
   proxy1.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
-                          aterms_offsets, weights, average_beam);
+                          aterm_offsets, weights, average_beam);
   proxy2.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
-                          aterms_offsets, weights, average_beam_ref);
+                          aterm_offsets, weights, average_beam_ref);
   float average_beam_error =
       get_accuracy(subgrid_size * subgrid_size * 4 * 4,
                    (std::complex<float>*)average_beam.data(),

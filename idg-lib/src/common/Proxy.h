@@ -65,7 +65,7 @@ class Proxy {
    * floats. The axes are time slot, station, subgrid x, subgrid y. A time slot
    * is a range of time samples over which the aterms are constant The time
    * slots are defined by the aterm_offsets parameters.
-   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * @param[in] aterm_offsets A one dimensional array of time indices (ints)
    * that represent the time ranges of time slots. The array is one longer than
    * the number of time slots. Time slot k is valid from aterm_offsets[k] until
    * aterm_offsets[k+1].
@@ -78,7 +78,7 @@ class Proxy {
                 const Array2D<UVW<float>>& uvw,
                 const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
                 const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array1D<unsigned int>& aterms_offsets,
+                const Array1D<unsigned int>& aterm_offsets,
                 const Array2D<float>& taper);
 
   /**
@@ -105,7 +105,7 @@ class Proxy {
    * floats. The axes are time slot, station, subgrid x, subgrid y. A time slot
    * is a range of time samples over which the aterms are constant The time
    * slots are defined by the aterm_offsets parameters.
-   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * @param[in] aterm_offsets A one dimensional array of time indices (ints)
    * that represent the time ranges of time slots. The array is one longer than
    * the number of time slots. Time slot k is valid from aterm_offsets[k] until
    * aterm_offsets[k+1].
@@ -118,7 +118,7 @@ class Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets, const Array2D<float>& taper);
+      const Array1D<unsigned int>& aterm_offsets, const Array2D<float>& taper);
 
   /**
    * @brief Prepare a calibration cycle
@@ -139,7 +139,7 @@ class Proxy {
    * floats). The axes are baseline and time.
    * @param[in] baselines A one dimensional array of pairs station indices
    * (integers) comprising a baseline.
-   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * @param[in] aterm_offsets A one dimensional array of time indices (ints)
    * that represent the time ranges of time slots. The array is one longer than
    * the number of time slots. Time slot k is valid from aterm_offsets[k] until
    * aterm_offsets[k+1].
@@ -151,7 +151,7 @@ class Proxy {
       Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets, const Array2D<float>& taper);
+      const Array1D<unsigned int>& aterm_offsets, const Array2D<float>& taper);
 
   /**
    * @brief Compute a hessian, gradient and residual per time slot for station
@@ -217,7 +217,7 @@ class Proxy {
    * @param[in] uvw
    * @param[in] baselines
    * @param[in] aterms
-   * @param[in] aterms_offsets
+   * @param[in] aterm_offsets
    * @param[in] weights
    * @param[out] average_beam Four dimensional array of complex floats.
    *                          The axes are subgrid x, subgrid y, mueller matrix
@@ -228,8 +228,7 @@ class Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array4D<float>& weights,
+      const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam);
 
   //! Methods for querying and disabling Proxy capabilities
@@ -344,7 +343,7 @@ class Proxy {
    * floats). The axes are baseline and time.
    * @param[in] baselines A one dimensional array of pairs station indices
    * (integers) comprising a baseline.
-   * @param[in] aterms_offsets A one dimensional array of time indices (ints)
+   * @param[in] aterm_offsets A one dimensional array of time indices (ints)
    * that represent the time ranges of time slots. The array is one longer than
    * the number of time slots. Time slot k is valid from aterm_offsets[k] until
    * aterm_offsets[k+1].
@@ -355,13 +354,13 @@ class Proxy {
       const int kernel_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       Plan::Options options = Plan::Options()) {
     options.w_step = m_cache_state.w_step;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
-                 baselines, aterms_offsets, options));
+                 baselines, aterm_offsets, options));
   }
 
  private:
@@ -372,7 +371,7 @@ class Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& taper) = 0;
 
   virtual void do_degridding(
@@ -381,7 +380,7 @@ class Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& taper) = 0;
 
   // Using rvalue references (&&) for all containers do_calibrate_init will take
@@ -417,8 +416,7 @@ class Proxy {
       const Array2D<UVW<float>>& uvw_array,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array4D<float>& weights,
+      const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam);
 
  protected:
@@ -435,7 +433,7 @@ class Proxy {
       unsigned int grid_width, unsigned int aterms_nr_timeslots,
       unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
       unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
-      unsigned int aterms_offsets_nr_timeslots_plus_one,
+      unsigned int aterm_offsets_nr_timeslots_plus_one,
       unsigned int taper_height, unsigned int taper_width) const;
 
   void check_dimensions(
@@ -445,7 +443,7 @@ class Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
+      const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& taper) const;
 
   Array1D<float> compute_wavenumbers(const Array1D<float>& frequencies) const;

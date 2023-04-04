@@ -50,7 +50,7 @@ class InstanceCUDA : public KernelsInstance {
       int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
       cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
       cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
-      cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
+      cu::DeviceMemory& d_aterm_indices, cu::DeviceMemory& d_metadata,
       cu::DeviceMemory& d_subgrid);
 
   void launch_average_beam(int nr_baselines, int nr_antennas, int nr_timesteps,
@@ -58,7 +58,7 @@ class InstanceCUDA : public KernelsInstance {
                            cu::DeviceMemory& d_uvw,
                            cu::DeviceMemory& d_baselines,
                            cu::DeviceMemory& d_aterms,
-                           cu::DeviceMemory& d_aterms_offsets,
+                           cu::DeviceMemory& d_aterm_offsets,
                            cu::DeviceMemory& d_weights,
                            cu::DeviceMemory& d_average_beam);
 

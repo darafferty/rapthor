@@ -22,7 +22,7 @@ void kernel_average_beam(const unsigned int nr_baselines,
                          const idg::UVW<float>* __restrict__ uvw_,
                          const idg::Baseline* __restrict__ baselines_,
                          const std::complex<float>* __restrict__ aterms_,
-                         const unsigned int* __restrict__ aterms_offsets_,
+                         const unsigned int* __restrict__ aterm_offsets_,
                          const float* __restrict__ weights_,
                          std::complex<float>* __restrict__ average_beam_) {
   // Define multidimensional types
@@ -41,7 +41,7 @@ void kernel_average_beam(const unsigned int nr_baselines,
   const ATerms& aterms = *reinterpret_cast<const ATerms*>(aterms_);
   AverageBeam& average_beam = *reinterpret_cast<AverageBeam*>(average_beam_);
   const ATermOffsets& aterm_offsets =
-      *reinterpret_cast<const ATermOffsets*>(aterms_offsets_);
+      *reinterpret_cast<const ATermOffsets*>(aterm_offsets_);
   const StationPairs& station_pairs =
       *reinterpret_cast<const StationPairs*>(baselines_);
   const UVW& uvw = *reinterpret_cast<const UVW*>(uvw_);

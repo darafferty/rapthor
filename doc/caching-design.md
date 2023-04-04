@@ -18,15 +18,15 @@ Caching strategies may postpone updates to the grid. To get the final grid after
 ### Gridding
 In the old interface there were multiple varieties of the `gridding(...)` method. The shortest form was:
 ```
-proxy.gridding(w_step, shift, float cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+proxy.gridding(w_step, shift, float cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterm_offsets, spheroidal);
 ```
 
 In the new interface the only way is the following series of calls, in this precise order:
 ```
 proxy.set_grid(grid);
 proxy.init_cache(subgrid_size, cell_size, w_step, shift);
-std::unique_ptr<Plan> plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
-proxy.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms, aterms_offsets, spheroidal);
+std::unique_ptr<Plan> plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines, aterm_offsets, options);
+proxy.gridding(*plan, frequencies, visibilities, uvw, baselines, aterms, aterm_offsets, spheroidal);
 proxy.get_grid();
 ```
 where the `make_plan(...); gridding(...);` calls can be repeated as many times as there blocks of data to be gridded.
@@ -35,13 +35,13 @@ where the `make_plan(...); gridding(...);` calls can be repeated as many times a
 Degridding is similar to gridding, except that there is no final call to the `get_final_grid()` method.
 The equivalent of the old
 ```
-proxy.degridding(w_step, shift, float cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterms_offsets, spheroidal);
+proxy.degridding(w_step, shift, float cell_size, kernel_size, subgrid_size, frequencies, visibilities, uvw, baselines, grid, aterms, aterm_offsets, spheroidal);
 ```
 is
 ```
 proxy.set_grid(grid);
 proxy.init_cache(subgrid_size, cell_size, w_step, shift);
-std::unique_ptr<Plan> plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
-proxy.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms, aterms_offsets, spheroidal);
+std::unique_ptr<Plan> plan = proxy.make_plan(kernel_size, frequencies, uvw, baselines, aterm_offsets, options);
+proxy.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms, aterm_offsets, spheroidal);
 ```
 where the `make_plan(...); degridding(...);` calls can be repeated as many times as there blocks of data to be degridded.

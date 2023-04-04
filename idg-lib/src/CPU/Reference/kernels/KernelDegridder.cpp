@@ -20,7 +20,7 @@ void kernel_degridder(
     const int nr_correlations, const int nr_channels, const int nr_stations,
     const idg::UVW<float>* uvw, const float* wavenumbers,
     std::complex<float>* visibilities, const float* spheroidal,
-    const std::complex<float>* aterms, const int* aterms_indices,
+    const std::complex<float>* aterms, const int* aterm_indices,
     const idg::Metadata* metadata, const std::complex<float>* subgrid) {
 // Iterate all subgrids
 #pragma omp parallel for
@@ -80,7 +80,7 @@ void kernel_degridder(
           }
 
           // Load aterm index
-          int aterm_index = aterms_indices[time_offset + time];
+          int aterm_index = aterm_indices[time_offset + time];
 
           // Load aterm for station1
           int station1_index = (aterm_index * nr_stations + station1) *

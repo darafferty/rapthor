@@ -55,14 +55,14 @@ for _nr_timesteps in [1*60*60, 6*60*60, 12*60*60]:
             data.get_frequencies(frequencies, nr_channels, image_size, channel_offset)
             data.get_uvw(uvw, nr_baselines, nr_timesteps, baseline_offset, time_offset, integration_time)
             baselines      = idg.util.get_example_baselines(nr_stations, nr_baselines)
-            aterms_offsets = idg.util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
+            aterm_offsets = idg.util.get_example_aterm_offsets(nr_timeslots, nr_timesteps)
 
             ######################################################################
             # create plan
             ######################################################################
             plan = idg.Plan(
                 kernel_size, subgrid_size, grid_size, cell_size,
-                frequencies, uvw, baselines, aterms_offsets)
+                frequencies, uvw, baselines, aterm_offsets)
             nr_subgrids = plan.get_nr_subgrids()
             metadata = numpy.zeros(nr_subgrids, dtype = idg.metadatatype)
             plan.copy_metadata(metadata)
