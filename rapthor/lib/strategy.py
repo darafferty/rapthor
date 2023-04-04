@@ -46,10 +46,6 @@ def set_strategy(field):
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
-            if i <= 2:
-                strategy_steps[i]['solve_min_uv_lambda'] = 2000
-            else:
-                strategy_steps[i]['solve_min_uv_lambda'] = 350
             strategy_steps[i]['peel_bright_sources'] = False
             strategy_steps[i]['max_normalization_delta'] = 0.3
             strategy_steps[i]['scale_normalization_delta'] = True
@@ -131,7 +127,7 @@ def set_strategy(field):
     primary_parameters = ['do_calibrate', 'do_image', 'do_check']
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'target_flux',
                                              'max_directions', 'regroup_model',
-                                             'max_normalization_delta', 'solve_min_uv_lambda',
+                                             'max_normalization_delta',
                                              'scale_normalization_delta'],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
                                          'peel_outliers', 'peel_bright_sources'],
