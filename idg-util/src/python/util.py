@@ -904,7 +904,7 @@ def init_example_spheroidal(spheroidal):
 
 def init_example_aterms(aterms, nr_timeslots, nr_stations, height, width):
     """Initialize aterms"""
-    lib.utils_init_example_aterms_offset.argtypes = [
+    lib.utils_init_example_aterm_offsets.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
     lib.utils_init_example_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
@@ -916,7 +916,7 @@ def init_example_aterms(aterms, nr_timeslots, nr_stations, height, width):
 def init_example_aterm_offsets(aterms_offset, nr_time):
     """Initialize aterms offset"""
     nr_timeslots = aterms_offset.shape[0] - 1
-    lib.utils_init_example_aterms_offset.argtypes = [
+    lib.utils_init_example_aterm_offsets.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int
     ]
     lib.utils_init_example_aterm_offsets(
