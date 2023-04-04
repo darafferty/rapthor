@@ -206,8 +206,8 @@ int main(int argc, char* argv[]) {
   data.get_uvw(uvw);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
-  idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+  idg::Array1D<unsigned int> aterm_offsets =
+      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
   idg::Array1D<float> shift = idg::get_zero_shift();
   shift(0) = 10.1f;
   shift(0) = 20.2f;
@@ -224,7 +224,7 @@ int main(int argc, char* argv[]) {
   idg::Plan::Options options;
   options.plan_strict = true;
   idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
-                 frequencies, uvw, baselines, aterms_offsets, wtiles, options);
+                 frequencies, uvw, baselines, aterm_offsets, wtiles, options);
   int nr_subgrids = plan.get_nr_subgrids();
 
   // Get W-Tiling paramters

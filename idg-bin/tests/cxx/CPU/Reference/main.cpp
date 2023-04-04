@@ -70,8 +70,8 @@ int test01() {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
-  idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
+  idg::Array1D<unsigned int> aterm_offsets =
+      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
   idg::Array2D<float> spheroidal =
       idg::get_identity_spheroidal(subgrid_size, subgrid_size);
   idg::Array1D<float> shift = idg::get_zero_shift();
@@ -115,13 +115,13 @@ int test01() {
   idg::Plan::Options options;
   options.plan_strict = true;
   std::unique_ptr<idg::Plan> plan = proxy.make_plan(
-      kernel_size, frequencies, uvw, baselines, aterms_offsets, options);
+      kernel_size, frequencies, uvw, baselines, aterm_offsets, options);
   clog << endl;
 
   // Grid reference visibilities
   clog << ">>> Grid visibilities" << endl;
   proxy.gridding(*plan, frequencies, visibilities_ref, uvw, baselines, aterms,
-                 aterms_offsets, spheroidal);
+                 aterm_offsets, spheroidal);
   proxy.transform(idg::FourierDomainToImageDomain);
 
   float grid_error = get_accuracy(grid_size * grid_size * nr_correlations,
@@ -137,7 +137,7 @@ int test01() {
   proxy.set_grid(grid_ref);
 
   proxy.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-                   aterms_offsets, spheroidal);
+                   aterm_offsets, spheroidal);
   clog << endl;
 
   // Compute error

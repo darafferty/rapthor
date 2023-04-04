@@ -259,19 +259,19 @@ Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
   return aterms;
 }
 
-Array1D<unsigned int> get_example_aterms_offsets(proxy::Proxy& proxy,
-                                                 unsigned int nr_timeslots,
-                                                 unsigned int nr_timesteps) {
+Array1D<unsigned int> get_example_aterm_offsets(proxy::Proxy& proxy,
+                                                unsigned int nr_timeslots,
+                                                unsigned int nr_timesteps) {
   using T = unsigned int;
-  Array1D<T> aterms_offsets = proxy.allocate_array1d<T>(nr_timeslots + 1);
+  Array1D<T> aterm_offsets = proxy.allocate_array1d<T>(nr_timeslots + 1);
 
   for (unsigned time = 0; time < nr_timeslots; time++) {
-    aterms_offsets(time) = time * (nr_timesteps / nr_timeslots);
+    aterm_offsets(time) = time * (nr_timesteps / nr_timeslots);
   }
 
-  aterms_offsets(nr_timeslots) = nr_timesteps;
+  aterm_offsets(nr_timeslots) = nr_timesteps;
 
-  return aterms_offsets;
+  return aterm_offsets;
 }
 
 Array2D<float> get_example_spheroidal(proxy::Proxy& proxy, unsigned int height,
@@ -442,17 +442,17 @@ Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
   return aterms;
 }
 
-Array1D<unsigned int> get_example_aterms_offsets(unsigned int nr_timeslots,
-                                                 unsigned int nr_timesteps) {
-  Array1D<unsigned int> aterms_offsets(nr_timeslots + 1);
+Array1D<unsigned int> get_example_aterm_offsets(unsigned int nr_timeslots,
+                                                unsigned int nr_timesteps) {
+  Array1D<unsigned int> aterm_offsets(nr_timeslots + 1);
 
   for (unsigned time = 0; time < nr_timeslots; time++) {
-    aterms_offsets(time) = time * (nr_timesteps / nr_timeslots);
+    aterm_offsets(time) = time * (nr_timesteps / nr_timeslots);
   }
 
-  aterms_offsets(nr_timeslots) = nr_timesteps;
+  aterm_offsets(nr_timeslots) = nr_timesteps;
 
-  return aterms_offsets;
+  return aterm_offsets;
 }
 
 Array2D<float> get_identity_spheroidal(unsigned int height,

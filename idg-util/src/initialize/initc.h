@@ -58,11 +58,11 @@ void utils_init_example_aterms(void* ptr, int nr_timeslots, int nr_stations,
   memcpy(ptr, aterms.data(), aterms.bytes());
 }
 
-void utils_init_example_aterms_offset(void* ptr, int nr_timeslots,
+void utils_init_example_aterm_offsets(void* ptr, int nr_timeslots,
                                       int nr_timesteps) {
-  idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(nr_timeslots, nr_timesteps);
-  memcpy(ptr, aterms_offsets.data(), aterms_offsets.bytes());
+  idg::Array1D<unsigned int> aterm_offsets =
+      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
+  memcpy(ptr, aterm_offsets.data(), aterm_offsets.bytes());
 }
 
 void utils_init_example_baselines(void* ptr, int nr_stations,

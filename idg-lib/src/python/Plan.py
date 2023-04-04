@@ -20,7 +20,7 @@ class Plan(object):
         frequencies,
         uvw,
         baselines,
-        aterms_offsets):
+        aterm_offsets):
 
         # extract dimensions
         nr_channels                  = frequencies.shape[0]
@@ -29,7 +29,7 @@ class Plan(object):
         uvw_nr_coordinates           = 3
         baselines_nr_baselines       = baselines.shape[0]
         baselines_two                = 2
-        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
+        aterm_offsets_nr_timeslots  = aterm_offsets.shape[0]
 
         lib.Plan_init.restype = ctypes.c_void_p
         lib.Plan_init.argtypes = [
@@ -62,8 +62,8 @@ class Plan(object):
             baselines.ctypes.data_as(ctypes.c_void_p),
             ctypes.c_uint(baselines_nr_baselines),
             ctypes.c_uint(baselines_two),
-            aterms_offsets.ctypes.data_as(ctypes.c_void_p),
-            ctypes.c_uint(aterms_offsets_nr_timeslots))
+            aterm_offsets.ctypes.data_as(ctypes.c_void_p),
+            ctypes.c_uint(aterm_offsets_nr_timeslots))
 
 
     def __del__(self):
@@ -85,12 +85,12 @@ class Plan(object):
             self.obj,
             metadata.ctypes.data_as(ctypes.c_void_p))
 
-    def copy_aterms_indices(
+    def copy_aterm_indices(
         self,
-        aterms_indices):
-        lib.Plan_copy_aterms_indices.argtypes = [
+        aterm_indices):
+        lib.Plan_copy_aterm_indices.argtypes = [
             ctypes.c_void_p,
             ctypes.c_void_p]
-        lib.Plan_copy_aterms_indices(
+        lib.Plan_copy_aterm_indices(
             self.obj,
-            aterms_indices.ctypes.data_as(ctypes.c_void_p))
+            aterm_indices.ctypes.data_as(ctypes.c_void_p))

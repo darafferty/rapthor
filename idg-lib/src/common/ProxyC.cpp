@@ -42,7 +42,7 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
                     float* frequencies, std::complex<float>* visibilities,
                     idg::UVW<float>* uvw,
                     std::pair<unsigned int, unsigned int>* baselines,
-                    std::complex<float>* aterms, unsigned int* aterms_offsets,
+                    std::complex<float>* aterms, unsigned int* aterm_offsets,
                     float* taper) {
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
   idg::Array4D<std::complex<float>> visibilities_(
@@ -53,7 +53,7 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       (idg::Matrix2x2<std::complex<float>>*)aterms, nr_timeslots, nr_stations,
       subgrid_size, subgrid_size);
-  idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
+  idg::Array1D<unsigned int> aterm_offsets_(aterm_offsets, nr_timeslots + 1);
   idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
 
   idg::Plan::Options options;
@@ -62,11 +62,11 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
 
   std::unique_ptr<idg::Plan> plan = ExitOnException(
       &idg::proxy::Proxy::make_plan, reinterpret_cast<idg::proxy::Proxy*>(p),
-      kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_, options);
+      kernel_size, frequencies_, uvw_, baselines_, aterm_offsets_, options);
 
   ExitOnException(&idg::proxy::Proxy::gridding,
                   reinterpret_cast<idg::proxy::Proxy*>(p), *plan, frequencies_,
-                  visibilities_, uvw_, baselines_, aterms_, aterms_offsets_,
+                  visibilities_, uvw_, baselines_, aterms_, aterm_offsets_,
                   taper_);
 }
 
@@ -76,7 +76,7 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
                       float* frequencies, std::complex<float>* visibilities,
                       idg::UVW<float>* uvw,
                       std::pair<unsigned int, unsigned int>* baselines,
-                      std::complex<float>* aterms, unsigned int* aterms_offsets,
+                      std::complex<float>* aterms, unsigned int* aterm_offsets,
                       float* taper) {
   idg::Array1D<float> frequencies_(frequencies, nr_channels);
   idg::Array4D<std::complex<float>> visibilities_(
@@ -87,7 +87,7 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
       (idg::Matrix2x2<std::complex<float>>*)aterms, nr_timeslots, nr_stations,
       subgrid_size, subgrid_size);
-  idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
+  idg::Array1D<unsigned int> aterm_offsets_(aterm_offsets, nr_timeslots + 1);
   idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
 
   idg::Plan::Options options;
@@ -96,11 +96,11 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
 
   std::unique_ptr<idg::Plan> plan = ExitOnException(
       &idg::proxy::Proxy::make_plan, reinterpret_cast<idg::proxy::Proxy*>(p),
-      kernel_size, frequencies_, uvw_, baselines_, aterms_offsets_, options);
+      kernel_size, frequencies_, uvw_, baselines_, aterm_offsets_, options);
 
   ExitOnException(&idg::proxy::Proxy::degridding,
                   reinterpret_cast<idg::proxy::Proxy*>(p), *plan, frequencies_,
-                  visibilities_, uvw_, baselines_, aterms_, aterms_offsets_,
+                  visibilities_, uvw_, baselines_, aterms_, aterm_offsets_,
                   taper_);
 }
 
@@ -120,7 +120,7 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
                           unsigned int nr_timeslots, float* frequencies,
                           std::complex<float>* visibilities, float* weights,
                           float* uvw, unsigned int* baselines,
-                          unsigned int* aterms_offsets, float* spheroidal) {
+                          unsigned int* aterm_offsets, float* spheroidal) {
   const unsigned int nr_correlations = 4;
   const unsigned int nr_channels = nr_channel_blocks * nr_channels_per_block;
   idg::Array2D<float> frequencies_(frequencies, nr_channel_blocks,
@@ -133,13 +133,13 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
                                      nr_timesteps);
   idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(
       (std::pair<unsigned int, unsigned int>*)baselines, nr_baselines);
-  idg::Array1D<unsigned int> aterms_offsets_(aterms_offsets, nr_timeslots + 1);
+  idg::Array1D<unsigned int> aterm_offsets_(aterm_offsets, nr_timeslots + 1);
   idg::Array2D<float> spheroidal_(spheroidal, subgrid_size, subgrid_size);
 
   ExitOnException(&idg::proxy::Proxy::calibrate_init,
                   reinterpret_cast<idg::proxy::Proxy*>(p), kernel_size,
                   frequencies_, visibilities_, weights_, uvw_, baselines_,
-                  aterms_offsets_, spheroidal_);
+                  aterm_offsets_, spheroidal_);
 }
 
 void Proxy_calibrate_update(

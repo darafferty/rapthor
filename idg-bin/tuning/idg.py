@@ -40,12 +40,12 @@ def get_metadata(
     return metadata
 
 
-def get_aterms_indices(nr_timesteps_per_baseline, nr_timesteps_per_subgrid):
-    aterms_indices = np.zeros((nr_timesteps_per_baseline), dtype=np.int32)
+def get_aterm_indices(nr_timesteps_per_baseline, nr_timesteps_per_subgrid):
+    aterm_indices = np.zeros((nr_timesteps_per_baseline), dtype=np.int32)
     for t in range(nr_timesteps_per_baseline):
-        aterms_indices[t] = np.floor(t / nr_timesteps_per_subgrid)
+        aterm_indices[t] = np.floor(t / nr_timesteps_per_subgrid)
 
-    return aterms_indices
+    return aterm_indices
 
 
 def flops_gridder(

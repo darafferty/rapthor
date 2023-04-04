@@ -16,7 +16,7 @@ void GenericOptimized::run_imaging(
     Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
+    const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal, ImagingMode mode) {
   InstanceCUDA& device = get_device(0);
   const cu::Context& context = device.get_context();
@@ -48,9 +48,9 @@ void GenericOptimized::run_imaging(
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Aterm indices
-  size_t sizeof_aterms_indices =
-      auxiliary::sizeof_aterms_indices(nr_baselines, nr_timesteps);
-  auto aterms_indices = plan.get_aterm_indices_ptr();
+  size_t sizeof_aterm_indices =
+      auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
+  auto aterm_indices = plan.get_aterm_indices_ptr();
 
   // Configuration
   const unsigned nr_devices = get_num_devices();
@@ -72,7 +72,7 @@ void GenericOptimized::run_imaging(
   cu::DeviceMemory d_wavenumbers(context, wavenumbers.bytes());
   cu::DeviceMemory d_spheroidal(context, spheroidal.bytes());
   cu::DeviceMemory d_aterms(context, aterms.bytes());
-  cu::DeviceMemory d_aterms_indices(context, sizeof_aterms_indices);
+  cu::DeviceMemory d_aterm_indices(context, sizeof_aterm_indices);
 
   // Initialize device memory
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.data(),
@@ -80,8 +80,8 @@ void GenericOptimized::run_imaging(
   htodstream.memcpyHtoDAsync(d_spheroidal, spheroidal.data(),
                              spheroidal.bytes());
   htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), aterms.bytes());
-  htodstream.memcpyHtoDAsync(d_aterms_indices, aterms_indices,
-                             sizeof_aterms_indices);
+  htodstream.memcpyHtoDAsync(d_aterm_indices, aterm_indices,
+                             sizeof_aterm_indices);
 
   // When degridding, d_avg_aterm is not used and remains a null pointer.
   // When gridding, d_avg_aterm always holds a cu::DeviceMemory object. When
@@ -254,7 +254,7 @@ void GenericOptimized::run_imaging(
           time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
           subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
           shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
-          d_aterms, d_aterms_indices, d_metadata, *d_avg_aterm, d_subgrids);
+          d_aterms, d_aterm_indices, d_metadata, *d_avg_aterm, d_subgrids);
 
       // Launch FFT
       device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
@@ -354,7 +354,7 @@ void GenericOptimized::run_imaging(
           time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
           subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
           shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
-          d_aterms, d_aterms_indices, d_metadata, d_subgrids);
+          d_aterms, d_aterm_indices, d_metadata, d_subgrids);
       executestream.record(gpuFinished[job_id]);
 
       // Copy visibilities to host

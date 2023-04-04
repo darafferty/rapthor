@@ -16,7 +16,7 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const float cell_size, const Array1D<float>& shift,
            const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-           const Array1D<unsigned int>& aterms_offsets, Options options)
+           const Array1D<unsigned int>& aterm_offsets, Options options)
     : m_subgrid_size(subgrid_size),
       m_cell_size(cell_size),
       use_wtiles(false),
@@ -30,14 +30,14 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
   m_shift(1) = shift(1);
 
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
-             baselines, aterms_offsets, dummy_wtiles, options);
+             baselines, aterm_offsets, dummy_wtiles, options);
 }
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
            const float cell_size, const Array1D<float>& shift,
            const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
            const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-           const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
+           const Array1D<unsigned int>& aterm_offsets, WTiles& wtiles,
            Options options)
     : m_subgrid_size(subgrid_size),
       m_cell_size(cell_size),
@@ -50,7 +50,7 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
   m_shift(0) = shift(0);
   m_shift(1) = shift(1);
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
-             baselines, aterms_offsets, wtiles, options);
+             baselines, aterm_offsets, wtiles, options);
 }
 
 class Subgrid {
@@ -241,7 +241,7 @@ void Plan::initialize(
     const float cell_size, const Array1D<float>& frequencies,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
+    const Array1D<unsigned int>& aterm_offsets, WTiles& wtiles,
     const Options& options) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << endl;
@@ -256,7 +256,7 @@ void Plan::initialize(
   // Initialize arguments
   auto nr_baselines = uvw.get_y_dim();
   auto nr_timesteps = uvw.get_x_dim();
-  auto nr_timeslots = aterms_offsets.get_x_dim() - 1;
+  auto nr_timeslots = aterm_offsets.get_x_dim() - 1;
   auto nr_channels = frequencies.get_x_dim();
   auto image_size = cell_size * grid_size;  // TODO: remove
   auto wtile_size = wtiles.get_wtile_size();
@@ -539,8 +539,8 @@ void Plan::initialize(
 
     for (unsigned timeslot = 0; timeslot < nr_timeslots; timeslot++) {
       // Get aterm offset
-      const unsigned current_aterms_offset = aterms_offsets(timeslot);
-      const unsigned next_aterms_offset = aterms_offsets(timeslot + 1);
+      const unsigned current_aterms_offset = aterm_offsets(timeslot);
+      const unsigned next_aterms_offset = aterm_offsets(timeslot + 1);
 
       // The aterm index is equal to the timeslot
       const unsigned aterm_index = timeslot;

@@ -89,7 +89,7 @@ font_size       = 16
 ######################################################################
 aterms         = util.get_identity_aterms(
                     nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-aterms_offsets = util.get_example_aterms_offset(
+aterm_offsets = util.get_example_aterm_offsets(
                     nr_timeslots, nr_timesteps)
 
 # Initialize spheroidal
@@ -274,7 +274,7 @@ class IDGThread(threading.Thread):
 
             self.proxy.gridding(
                 w_offset, cell_size, kernel_size, frequencies, visibilities,
-                uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+                uvw, baselines, grid, aterms, aterm_offsets, spheroidal)
 
             time_gridding += time.time()
 

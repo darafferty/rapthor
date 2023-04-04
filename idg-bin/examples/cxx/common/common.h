@@ -247,8 +247,8 @@ void run() {
   idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
       idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
-  idg::Array1D<unsigned int> aterms_offsets =
-      idg::get_example_aterms_offsets(proxy, nr_timeslots, nr_timesteps);
+  idg::Array1D<unsigned int> aterm_offsets =
+      idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
   idg::Array2D<float> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
   auto grid =
@@ -344,7 +344,7 @@ void run() {
         // Create plan
         if (plans.size() == 0 || cycle == 0) {
           plans.emplace_back(proxy.make_plan(kernel_size, frequencies, uvw,
-                                             baselines, aterms_offsets,
+                                             baselines, aterm_offsets,
                                              options));
         }
         idg::Plan& plan = *plans[t];
@@ -355,7 +355,7 @@ void run() {
         double runtime_gridding = -omp_get_wtime();
         if (!disable_gridding)
           proxy.gridding(plan, frequencies, visibilities, uvw, baselines,
-                         aterms, aterms_offsets, spheroidal);
+                         aterms, aterm_offsets, spheroidal);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
 
@@ -364,7 +364,7 @@ void run() {
         double runtime_degridding = -omp_get_wtime();
         if (!disable_degridding)
           proxy.degridding(plan, frequencies, visibilities, uvw, baselines,
-                           aterms, aterms_offsets, spheroidal);
+                           aterms, aterm_offsets, spheroidal);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
       }  // end for channel_offset

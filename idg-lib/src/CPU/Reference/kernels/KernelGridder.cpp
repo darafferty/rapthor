@@ -20,7 +20,7 @@ void kernel_gridder(
     const int nr_channels, const int nr_stations, const idg::UVW<float>* uvw,
     const float* wavenumbers, const std::complex<float>* visibilities,
     const float* spheroidal, const std::complex<float>* aterms,
-    const int* aterms_indices, const std::complex<float>* avg_aterm_correction,
+    const int* aterm_indices, const std::complex<float>* avg_aterm_correction,
     const idg::Metadata* metadata, std::complex<float>* subgrid) {
 // Iterate all subgrids
 #pragma omp parallel for
@@ -104,7 +104,7 @@ void kernel_gridder(
           }  // end for channel
 
           // Load aterm index
-          int aterm_index = aterms_indices[time_offset + time];
+          int aterm_index = aterm_indices[time_offset + time];
 
           // Load a term for station1
           int station1_index = (aterm_index * nr_stations + station1) *

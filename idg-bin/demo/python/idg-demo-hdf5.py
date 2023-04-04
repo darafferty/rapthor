@@ -73,7 +73,7 @@ cell_size          = image_size / grid_size
 grid           = util.get_example_grid(nr_correlations, grid_size)
 aterms         = util.get_identity_aterms(
                     nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-aterms_offsets = util.get_identity_aterms_offset(
+aterm_offsets = util.get_identity_aterm_offsets(
                     nr_timeslots, nr_timesteps)
 # Initialize spheroidal
 spheroidal = util.get_example_spheroidal(subgrid_size)
@@ -157,7 +157,7 @@ for iteration in np.arange(num_iter):
 
     proxy.gridding(
         w_offset, cell_size, kernel_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterms_offsets, spheroidal)
+        uvw, baselines, grid, aterms, aterm_offsets, spheroidal)
 
     time_gridding += time.time()
 

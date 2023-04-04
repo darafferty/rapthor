@@ -43,7 +43,7 @@ __global__ void kernel_average_beam(
     const UVW<float>*      __restrict__ uvw,
     const Baseline*        __restrict__ baselines,
     const float2*          __restrict__ aterms,
-    const int*             __restrict__ aterms_offsets,
+    const int*             __restrict__ aterm_offsets,
     const float*           __restrict__ weights,
          double2*          __restrict__ average_beam)
 {
@@ -75,12 +75,12 @@ __global__ void kernel_average_beam(
 
       // Loop over aterms
       for (unsigned int n = 0; n < current_nr_aterms; n++) {
-        unsigned int aterms_idx = aterms_offset + n;
+        unsigned int aterm_idx = aterms_offset + n;
 
         // Compute sum of weights
         if (i == tid) {
-          unsigned int time_start = aterms_offsets[aterms_idx];
-          unsigned int time_end   = aterms_offsets[aterms_idx + 1];
+          unsigned int time_start = aterm_offsets[aterm_idx];
+          unsigned int time_end   = aterm_offsets[aterm_idx + 1];
 
           for (unsigned int t = time_start; t < time_end; t++) {
             float u = uvw[bl * nr_timesteps + t].u;
@@ -95,8 +95,8 @@ __global__ void kernel_average_beam(
           } // end for time
         }
 
-        int station1_idx = index_aterm(subgrid_size, 4, nr_antennas, aterms_idx, antenna1, y, x, 0);
-        int station2_idx = index_aterm(subgrid_size, 4, nr_antennas, aterms_idx, antenna2, y, x, 0);
+        int station1_idx = index_aterm(subgrid_size, 4, nr_antennas, aterm_idx, antenna1, y, x, 0);
+        int station2_idx = index_aterm(subgrid_size, 4, nr_antennas, aterm_idx, antenna2, y, x, 0);
 
         float2 aXX1 = aterms[station1_idx + 0];
         float2 aXY1 = aterms[station1_idx + 1];

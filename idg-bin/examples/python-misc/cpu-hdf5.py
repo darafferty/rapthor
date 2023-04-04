@@ -54,7 +54,7 @@ baselines[0]['station1'] = 0
 baselines[0]['station2'] = 1
 grid = numpy.zeros(shape=(nr_correlations, grid_size, grid_size), dtype=numpy.complex64)
 aterms = idg.utils.get_identity_aterms(nr_timeslots, nr_stations, subgrid_size, nr_correlations)
-aterms_offset = idg.utils.get_example_aterms_offset(nr_timeslots, nr_time)
+aterms_offset = idg.utils.get_example_aterm_offsets(nr_timeslots, nr_time)
 spheroidal = idg.utils.get_identity_spheroidal(subgrid_size)
 visibilities = numpy.ones(shape=(nr_baselines, nr_time, nr_channels, nr_correlations), dtype=idg.visibilitiestype)
 

@@ -249,7 +249,7 @@ class DummyData:
         baselines = util.get_example_baselines(self.nr_stations, self.nr_baselines)
 
         # Initialize aterms offfsets
-        aterms_offsets = util.get_example_aterms_offset(
+        aterm_offsets = util.get_example_aterm_offsets(
             self.nr_timeslots, self.nr_timesteps
         )
 
@@ -264,7 +264,7 @@ class DummyData:
             frequencies,
             uvw,
             baselines,
-            aterms_offsets,
+            aterm_offsets,
         )
 
         return plan
@@ -349,16 +349,16 @@ class DummyData:
         cuda_memcpy_htod(d_metadata, metadata, sizeof_metadata, self.stream)
         return metadata, d_metadata
 
-    def get_aterms_indices(self, plan):
-        aterms_indices = np.zeros(
+    def get_aterm_indices(self, plan):
+        aterm_indices = np.zeros(
             (self.nr_baselines, self.nr_timesteps), dtype=np.int32
         )
-        plan.copy_aterms_indices(aterms_indices)
-        sizeof_aterms_indices, d_aterms_indices = cuda_mem_alloc(aterms_indices)
+        plan.copy_aterm_indices(aterm_indices)
+        sizeof_aterm_indices, d_aterm_indices = cuda_mem_alloc(aterm_indices)
         cuda_memcpy_htod(
-            d_aterms_indices, aterms_indices, sizeof_aterms_indices, self.stream
+            d_aterm_indices, aterm_indices, sizeof_aterm_indices, self.stream
         )
-        return aterms_indices, d_aterms_indices
+        return aterm_indices, d_aterm_indices
 
 
 def get_accuracy(a, b):

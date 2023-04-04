@@ -225,7 +225,7 @@ class Reference(Proxy):
         baselines,
         grid,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         spheroidal):
         """
         Grid visibilities onto grid.
@@ -248,7 +248,7 @@ class Reference(Proxy):
         :param aterms: numpy.ndarray(
                 shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
                 dtype = idg.atermtype)
-        :param aterms_offsets: numpy.ndarray(
+        :param aterm_offsets: numpy.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = idg.atermoffsettype)
         :param spheroidal: numpy.ndarray(
@@ -274,7 +274,7 @@ class Reference(Proxy):
         aterms_aterm_height          = aterms.shape[2]
         aterms_aterm_width           = aterms.shape[3]
         aterms_nr_correlations       = aterms.shape[4]
-        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
+        aterm_offsets_nr_timeslots  = aterm_offsets.shape[0]
         spheroidal_height            = spheroidal.shape[0]
         spheroidal_width             = spheroidal.shape[1]
 
@@ -295,7 +295,7 @@ class Reference(Proxy):
         # create plan
         plan = idg.Plan(
                     kernel_size, subgrid_size, grid_size, cell_size,
-                    frequencies, uvw, baselines, aterms_offsets, nr_timesteps)
+                    frequencies, uvw, baselines, aterm_offsets, nr_timesteps)
 
         # allocate subgrids
         nr_subgrids = plan.get_nr_subgrids()
@@ -345,7 +345,7 @@ class Reference(Proxy):
         baselines,
         grid,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         spheroidal):
         """
         Degrid visibilities from grid.
@@ -368,7 +368,7 @@ class Reference(Proxy):
         :param aterms: numpy.ndarray(
                 shape=(nr_timeslots, nr_stations, height, width, nr_correlations),
                 dtype = idg.atermtype)
-        :param aterms_offsets: numpy.ndarray(
+        :param aterm_offsets: numpy.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = idg.atermoffsettype)
         :param spheroidal: numpy.ndarray(
@@ -394,7 +394,7 @@ class Reference(Proxy):
         aterms_aterm_height          = aterms.shape[2]
         aterms_aterm_width           = aterms.shape[3]
         aterms_nr_correlations       = aterms.shape[4]
-        aterms_offsets_nr_timeslots  = aterms_offsets.shape[0]
+        aterm_offsets_nr_timeslots  = aterm_offsets.shape[0]
         spheroidal_height            = spheroidal.shape[0]
         spheroidal_width             = spheroidal.shape[1]
 
@@ -415,7 +415,7 @@ class Reference(Proxy):
         # create plan
         plan = idg.Plan(
                     kernel_size, subgrid_size, grid_size, cell_size,
-                    frequencies, uvw, baselines, aterms_offsets, nr_timesteps)
+                    frequencies, uvw, baselines, aterm_offsets, nr_timesteps)
 
         # allocate subgrids
         nr_subgrids = plan.get_nr_subgrids()

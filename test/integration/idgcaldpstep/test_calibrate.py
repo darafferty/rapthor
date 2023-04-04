@@ -170,7 +170,7 @@ def test_idgcal(params):
     aterms = util.get_identity_aterms(
         nr_timeslots, nr_stations, subgrid_size, nr_correlations
     )
-    aterms_offsets = util.get_example_aterms_offset(nr_timeslots, nr_timesteps)
+    aterm_offsets = util.get_example_aterm_offsets(nr_timeslots, nr_timesteps)
 
     B0 = np.ones((1, subgrid_size, subgrid_size, 1))
 
@@ -285,7 +285,7 @@ def test_idgcal(params):
         uvw,
         baselines,
         aterms,
-        aterms_offsets,
+        aterm_offsets,
         taper,
     )
     residual_visibilities = visibilities - predicted_visibilities
@@ -297,7 +297,7 @@ def test_idgcal(params):
         weights,
         uvw,
         baselines,
-        aterms_offsets,
+        aterm_offsets,
         taper,
     )
 
@@ -346,7 +346,7 @@ def test_idgcal(params):
         aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
 
         proxy.calibrate_update(
-            i, aterms[np.newaxis,...], aterm_derivatives[np.newaxis,...], 
+            i, aterms[np.newaxis,...], aterm_derivatives[np.newaxis,...],
             hessian[np.newaxis,...], gradient[np.newaxis,...], residual
         )
 
@@ -376,7 +376,7 @@ def test_idgcal(params):
                 uvw1[i],
                 baselines1[i],
                 aterms_local,
-                aterms_offsets,
+                aterm_offsets,
                 taper,
             )
 
@@ -396,7 +396,7 @@ def test_idgcal(params):
         M = np.zeros((nr_timeslots, nr_parameters0, nr_parameters0), dtype=np.complex64)
 
         for l in range(nr_timeslots):
-            time_idx = slice(aterms_offsets[l], aterms_offsets[l + 1])
+            time_idx = slice(aterm_offsets[l], aterm_offsets[l + 1])
             for j in range(nr_parameters0):
                 v[l, j] = np.sum(
                     weights1[i, :, time_idx, :, :]

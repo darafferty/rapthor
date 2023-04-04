@@ -263,7 +263,7 @@ __device__ void kernel_degridder_tp(
           float2*        __restrict__ visibilities,
     const float*         __restrict__ spheroidal,
     const float2*        __restrict__ aterms,
-    const int*           __restrict__ aterms_indices,
+    const int*           __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
@@ -282,12 +282,12 @@ __device__ void kernel_degridder_tp(
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx = aterms_indices[time_offset_global + time_offset_local];
+        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
         // Determine number of timesteps to process
         current_nr_timesteps = 0;
         for (int time = time_offset_local; time < nr_timesteps; time++) {
-            if (aterms_indices[time_offset_global + time] == aterm_idx) {
+            if (aterm_indices[time_offset_global + time] == aterm_idx) {
                 current_nr_timesteps++;
             } else {
                 break;
@@ -372,7 +372,7 @@ __device__ void kernel_degridder_pt(
           float2*        visibilities,
     const float*         spheroidal,
     const float2*        aterms,
-    const int*           aterms_indices,
+    const int*           aterm_indices,
     const Metadata*      metadata,
           float2*        subgrid)
 {
@@ -398,12 +398,12 @@ __device__ void kernel_degridder_pt(
         // Iterate timesteps
         int current_nr_timesteps = 0;
         for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-            int aterm_idx = aterms_indices[time_offset_global + time_offset_local];
+            int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
             // Determine number of timesteps to process
             current_nr_timesteps = 0;
             for (int time = time_offset_local; time < nr_timesteps; time++) {
-                if (aterms_indices[time_offset_global + time] == aterm_idx) {
+                if (aterm_indices[time_offset_global + time] == aterm_idx) {
                     current_nr_timesteps++;
                 } else {
                     break;
@@ -475,14 +475,14 @@ __device__ void kernel_degridder_pt(
             kernel_degridder_tp<current_nr_channels>( \
                 time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
                 shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations, \
-                uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
+                uvw, wavenumbers, visibilities, spheroidal, aterms, aterm_indices, metadata, subgrid); \
         } \
     } else { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_pt<1>( \
                 time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
                 shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations, \
-                uvw, wavenumbers, visibilities, spheroidal, aterms, aterms_indices, metadata, subgrid); \
+                uvw, wavenumbers, visibilities, spheroidal, aterms, aterm_indices, metadata, subgrid); \
         } \
     }
 
@@ -508,7 +508,7 @@ void kernel_degridder(
           float2*     __restrict__ visibilities,
     const float*      __restrict__ spheroidal,
     const float2*     __restrict__ aterms,
-    const int*        __restrict__ aterms_indices,
+    const int*        __restrict__ aterm_indices,
     const Metadata*   __restrict__ metadata,
           float2*     __restrict__ subgrid)
 {

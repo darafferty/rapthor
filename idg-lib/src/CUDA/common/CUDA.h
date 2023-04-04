@@ -54,8 +54,7 @@ class CUDA : public Proxy {
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterms_offsets,
-      const Array4D<float>& weights,
+      const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
       idg::Array4D<std::complex<float>>& average_beam) override;
 
  protected:

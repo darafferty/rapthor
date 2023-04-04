@@ -66,7 +66,7 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
     const int kernel_size, const Array1D<float>& frequencies,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterms_offsets, Plan::Options options) {
+    const Array1D<unsigned int>& aterm_offsets, Plan::Options options) {
   if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
     options.w_step = m_cache_state.w_step;
     options.nr_w_layers = INT_MAX;
@@ -80,11 +80,11 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
-                 baselines, aterms_offsets, m_wtiles, options));
+                 baselines, aterm_offsets, m_wtiles, options));
   } else {
     // Defer call to cpuProxy
     return cpuProxy->make_plan(kernel_size, frequencies, uvw, baselines,
-                               aterms_offsets, options);
+                               aterm_offsets, options);
   }
 }
 
@@ -97,7 +97,7 @@ void GenericOptimized::do_gridding(
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
+    const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
@@ -110,7 +110,7 @@ void GenericOptimized::do_gridding(
   auto& visibilities_ptr =
       const_cast<Array4D<std::complex<float>>&>(visibilities);
   run_imaging(plan, frequencies, visibilities_ptr, uvw, baselines, *m_grid,
-              aterms, aterms_offsets, spheroidal, ImagingMode::mode_gridding);
+              aterms, aterm_offsets, spheroidal, ImagingMode::mode_gridding);
 }  // end do_gridding
 
 void GenericOptimized::do_degridding(
@@ -118,14 +118,14 @@ void GenericOptimized::do_degridding(
     Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterms_offsets,
+    const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
 #endif
 
   run_imaging(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
-              aterms_offsets, spheroidal, ImagingMode::mode_degridding);
+              aterm_offsets, spheroidal, ImagingMode::mode_degridding);
 }  // end do_degridding
 
 /*

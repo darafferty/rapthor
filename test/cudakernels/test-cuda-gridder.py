@@ -34,7 +34,7 @@ def compare_gridder(device, kernel1, kernel2, stokes_i_only):
     taper, d_taper = data.get_taper()
     metadata, d_metadata = data.get_metadata(plan)
     aterms, d_aterms = data.get_aterms()
-    aterms_indices, d_aterms_indices = data.get_aterms_indices(plan)
+    aterm_indices, d_aterm_indices = data.get_aterm_indices(plan)
 
     # Debug
     # util.plot_metadata(metadata, uvw, frequencies, grid_size, subgrid_size, image_size)
@@ -64,7 +64,7 @@ def compare_gridder(device, kernel1, kernel2, stokes_i_only):
         d_visibilities,
         d_taper,
         d_aterms,
-        d_aterms_indices,
+        d_aterm_indices,
         d_metadata,
         0,  # average aterm is not used
         d_subgrids,

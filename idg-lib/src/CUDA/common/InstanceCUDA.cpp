@@ -476,7 +476,7 @@ void InstanceCUDA::launch_gridder(
     int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
     cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
-    cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_aterm_indices, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_avg_aterm, cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {&time_offset,
                               &nr_polarizations,
@@ -493,7 +493,7 @@ void InstanceCUDA::launch_gridder(
                               d_visibilities.data(),
                               d_spheroidal.data(),
                               d_aterms.data(),
-                              d_aterms_indices.data(),
+                              d_aterm_indices.data(),
                               d_metadata.data(),
                               d_avg_aterm.data(),
                               d_subgrid.data()};
@@ -516,7 +516,7 @@ void InstanceCUDA::launch_degridder(
     int nr_stations, float shift_l, float shift_m, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
     cu::DeviceMemory& d_spheroidal, cu::DeviceMemory& d_aterms,
-    cu::DeviceMemory& d_aterms_indices, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_aterm_indices, cu::DeviceMemory& d_metadata,
     cu::DeviceMemory& d_subgrid) {
   const void* parameters[] = {&time_offset,
                               &nr_polarizations,
@@ -533,7 +533,7 @@ void InstanceCUDA::launch_degridder(
                               d_visibilities.data(),
                               d_spheroidal.data(),
                               d_aterms.data(),
-                              d_aterms_indices.data(),
+                              d_aterm_indices.data(),
                               d_metadata.data(),
                               d_subgrid.data()};
 
@@ -555,12 +555,12 @@ void InstanceCUDA::launch_average_beam(
     int nr_baselines, int nr_antennas, int nr_timesteps, int nr_channels,
     int nr_aterms, int subgrid_size, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_baselines, cu::DeviceMemory& d_aterms,
-    cu::DeviceMemory& d_aterms_offsets, cu::DeviceMemory& d_weights,
+    cu::DeviceMemory& d_aterm_offsets, cu::DeviceMemory& d_weights,
     cu::DeviceMemory& d_average_beam) {
   const void* parameters[] = {
       &nr_antennas,       &nr_timesteps,        &nr_channels,
       &nr_aterms,         &subgrid_size,        d_uvw.data(),
-      d_baselines.data(), d_aterms.data(),      d_aterms_offsets.data(),
+      d_baselines.data(), d_aterms.data(),      d_aterm_offsets.data(),
       d_weights.data(),   d_average_beam.data()};
 
   dim3 grid(nr_baselines);

@@ -70,14 +70,13 @@ class Plan {
        const float cell_size, const Array1D<float>& shift,
        const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
        const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-       const Array1D<unsigned int>& aterms_offsets,
-       Options options = Options());
+       const Array1D<unsigned int>& aterm_offsets, Options options = Options());
 
   Plan(const int kernel_size, const int subgrid_size, const int grid_size,
        const float cell_size, const Array1D<float>& shift,
        const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
        const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-       const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
+       const Array1D<unsigned int>& aterm_offsets, WTiles& wtiles,
        Options options = Options());
 
   // Destructor
@@ -88,7 +87,7 @@ class Plan {
       const float cell_size, const Array1D<float>& frequencies,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterms_offsets, WTiles& wtiles,
+      const Array1D<unsigned int>& aterm_offsets, WTiles& wtiles,
       const Options& options);
 
   // options
