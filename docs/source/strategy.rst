@@ -79,7 +79,7 @@ The following processing parameters must be set for each cycle:
         Boolean flag that determines whether the check for self-calibration convergence should be done for this cycle.
 
     convergence_ratio
-        Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have converged (must be in the range 0.5 -- 2). A check is also done for the image dynamic range, where the ratio of the current to previous value must be below 1 / ``convergence_ratio``. Selfcal is considered to have converged only if both of these conditions are met.
+        Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have converged (must be in the range 0.5 -- 2). A check is also done for the image dynamic range and number of sources, where the ratio of the current to previous value must be below 1 / ``convergence_ratio``. Selfcal is considered to have converged only if all of these conditions are met.
 
     divergence_ratio
         Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have diverged (must be > 1).

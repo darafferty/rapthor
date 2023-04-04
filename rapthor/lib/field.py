@@ -1214,7 +1214,8 @@ class Field(object):
             # converged (or diverged)
             return False, False
 
-        # Get noise and dynamic range from previous and current images of each sector
+        # Get noise, dynamic range, and number of sources from previous and current
+        # images of each sector
         converged = []
         diverged = []
         for sector in self.imaging_sectors:
@@ -1226,7 +1227,13 @@ class Field(object):
             dynrpost = sector.diagnostics[-1]['dynamic_range_global']
             self.log.info('Ratio of current image dynamic range to previous image '
                           'dynamic range for {0} = {1:.2f}'.format(sector.name, dynrpost/dynrpre))
-            if (rmspost / rmspre < convergence_ratio or dynrpost / dynrpre > 1/convergence_ratio):
+            nsrcpre = sector.diagnostics[-2]['nsources']
+            nsrcpost = sector.diagnostics[-1]['nsources']
+            self.log.info('Ratio of current number of sources to previous number '
+                          'of sources for {0} = {1:.2f}'.format(sector.name, nsrcpost/nsrcpre))
+            if (rmspost / rmspre < convergence_ratio or
+                    dynrpost / dynrpre > 1 / convergence_ratio or
+                    nsrcpost / nsrcpre > 1 / convergence_ratio):
                 # Report not converged (and not diverged)
                 converged.append(False)
                 diverged.append(False)
