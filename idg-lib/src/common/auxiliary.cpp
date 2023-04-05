@@ -244,7 +244,7 @@ uint64_t sizeof_aterms(unsigned int nr_stations, unsigned int nr_timeslots,
 
 uint64_t sizeof_aterm_indices(unsigned int nr_baselines,
                               unsigned int nr_timesteps) {
-  return 1ULL * nr_baselines * nr_timesteps * sizeof(int);
+  return 1ULL * nr_baselines * nr_timesteps * sizeof(unsigned int);
 }
 
 uint64_t sizeof_spheroidal(unsigned int subgrid_size) {

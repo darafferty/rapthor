@@ -86,7 +86,7 @@ def compare_gridder(device, kernel1, kernel2, stokes_i_only):
         None,  # visibilities
         None,  # spheroidal
         None,  # aterms
-        None,  # aterms_indicies
+        None,  # aterm_indices
         None,  # metadata
         ctypes.c_int,  # avg_aterm
         None,  # subgrid

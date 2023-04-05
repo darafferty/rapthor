@@ -87,24 +87,24 @@ __global__ void kernel_calibrate_lmnp(
 
 
 __global__ void kernel_calibrate_sums(
-    const int                      nr_polarizations,
-    const int                      subgrid_size,
-    const float                    image_size,
-    const int                      total_nr_timesteps,
-    const int                      nr_channels,
-    const int                      nr_stations,
-    const int                      term_offset,
-    const int                      current_nr_terms,
-    const int                      nr_terms,
-    const UVW<float>* __restrict__ uvw,
-    const float*      __restrict__ wavenumbers,
-    const float2*     __restrict__ aterm,
-    const float2*     __restrict__ aterm_derivatives,
-    const int*        __restrict__ aterm_indices,
-    const Metadata*   __restrict__ metadata,
-    const float2*     __restrict__ subgrid,
-          float2*     __restrict__ sums,
-    const float4*     __restrict__ lmnp)
+    const int                        nr_polarizations,
+    const int                        subgrid_size,
+    const float                      image_size,
+    const int                        total_nr_timesteps,
+    const int                        nr_channels,
+    const int                        nr_stations,
+    const int                        term_offset,
+    const int                        current_nr_terms,
+    const int                        nr_terms,
+    const UVW<float>*   __restrict__ uvw,
+    const float*        __restrict__ wavenumbers,
+    const float2*       __restrict__ aterm,
+    const float2*       __restrict__ aterm_derivatives,
+    const unsigned int* __restrict__ aterm_indices,
+    const Metadata*     __restrict__ metadata,
+    const float2*       __restrict__ subgrid,
+          float2*       __restrict__ sums,
+    const float4*       __restrict__ lmnp)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -132,7 +132,7 @@ __global__ void kernel_calibrate_sums(
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+        const unsigned int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
         // Determine number of timesteps to process
         current_nr_timesteps = 0;
@@ -266,28 +266,28 @@ __global__ void kernel_calibrate_sums(
 
 
 __global__ void kernel_calibrate_gradient(
-    const int                      nr_polarizations,
-    const int                      subgrid_size,
-    const float                    image_size,
-    const int                      total_nr_timesteps,
-    const int                      nr_channels,
-    const int                      nr_stations,
-    const int                      term_offset,
-    const int                      current_nr_terms,
-    const int                      nr_terms,
-    const UVW<float>* __restrict__ uvw,
-    const float*      __restrict__ wavenumbers,
-    const float2*     __restrict__ visibilities,
-    const float*      __restrict__ weights,
-    const float2*     __restrict__ aterm,
-    const float2*     __restrict__ aterm_derivatives,
-    const int*        __restrict__ aterm_indices,
-    const Metadata*   __restrict__ metadata,
-    const float2*     __restrict__ subgrid,
-    const float2*     __restrict__ sums,
-    const float4*     __restrict__ lmnp,
-          double*     __restrict__ gradient,
-          double*     __restrict__ residual_sum)
+    const int                        nr_polarizations,
+    const int                        subgrid_size,
+    const float                      image_size,
+    const int                        total_nr_timesteps,
+    const int                        nr_channels,
+    const int                        nr_stations,
+    const int                        term_offset,
+    const int                        current_nr_terms,
+    const int                        nr_terms,
+    const UVW<float>*   __restrict__ uvw,
+    const float*        __restrict__ wavenumbers,
+    const float2*       __restrict__ visibilities,
+    const float*        __restrict__ weights,
+    const float2*       __restrict__ aterm,
+    const float2*       __restrict__ aterm_derivatives,
+    const unsigned int* __restrict__ aterm_indices,
+    const Metadata*     __restrict__ metadata,
+    const float2*       __restrict__ subgrid,
+    const float2*       __restrict__ sums,
+    const float4*       __restrict__ lmnp,
+          double*       __restrict__ gradient,
+          double*       __restrict__ residual_sum)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -320,7 +320,7 @@ __global__ void kernel_calibrate_gradient(
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+        const unsigned int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
         // Reset update to zero
         for (unsigned int term_nr = 0; term_nr < MAX_NR_TERMS; term_nr++) {
@@ -470,18 +470,18 @@ __global__ void kernel_calibrate_gradient(
 
 
 __global__ void kernel_calibrate_hessian(
-    const int                    nr_polarizations,
-    const int                    total_nr_timesteps,
-    const int                    nr_channels,
-    const int                    term_offset_y,
-    const int                    term_offset_x,
-    const int                    nr_terms,
-    const float*    __restrict__ weights,
-    const int*      __restrict__ aterm_indices,
-    const Metadata* __restrict__ metadata,
-    const float2*   __restrict__ sums_y,
-    const float2*   __restrict__ sums_x,
-          double*   __restrict__ hessian)
+    const int                        nr_polarizations,
+    const int                        total_nr_timesteps,
+    const int                        nr_channels,
+    const int                        term_offset_y,
+    const int                        term_offset_x,
+    const int                        nr_terms,
+    const float*        __restrict__ weights,
+    const unsigned int* __restrict__ aterm_indices,
+    const Metadata*     __restrict__ metadata,
+    const float2*       __restrict__ sums_y,
+    const float2*       __restrict__ sums_x,
+          double*       __restrict__ hessian)
 {
     unsigned tidx       = threadIdx.x;
     unsigned tidy       = threadIdx.y;
@@ -498,7 +498,7 @@ __global__ void kernel_calibrate_hessian(
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+        const unsigned int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
         // Determine number of timesteps to process
         current_nr_timesteps = 0;

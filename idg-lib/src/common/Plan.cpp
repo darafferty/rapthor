@@ -539,15 +539,15 @@ void Plan::initialize(
 
     for (unsigned timeslot = 0; timeslot < nr_timeslots; timeslot++) {
       // Get aterm offset
-      const unsigned current_aterms_offset = aterm_offsets(timeslot);
-      const unsigned next_aterms_offset = aterm_offsets(timeslot + 1);
+      const unsigned int current_aterm_offset = aterm_offsets(timeslot);
+      const unsigned int next_aterm_offset = aterm_offsets(timeslot + 1);
 
       // The aterm index is equal to the timeslot
-      const unsigned aterm_index = timeslot;
+      const unsigned int aterm_index = timeslot;
 
       // Determine number of timesteps in current aterm
       const unsigned nr_timesteps_per_aterm =
-          next_aterms_offset - current_aterms_offset;
+          next_aterm_offset - current_aterm_offset;
 
       for (unsigned timestep = 0; timestep < nr_timesteps_per_aterm;
            timestep++) {
@@ -678,10 +678,11 @@ void Plan::copy_metadata(void* ptr) const {
 }
 
 void Plan::copy_aterm_indices(void* ptr) const {
-  memcpy(ptr, get_aterm_indices_ptr(), aterm_indices.size() * sizeof(int));
+  memcpy(ptr, get_aterm_indices_ptr(),
+         aterm_indices.size() * sizeof(unsigned int));
 }
 
-const int* Plan::get_aterm_indices_ptr(int bl) const {
+const unsigned int* Plan::get_aterm_indices_ptr(int bl) const {
   auto offset = get_subgrid_offset(bl);
   return &(aterm_indices[offset]);
 }

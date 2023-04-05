@@ -19,7 +19,7 @@ void kernel_degridder(
     const int nr_correlations, const int nr_channels, const int nr_stations,
     const idg::UVW<float>* uvw, const float* wavenumbers,
     std::complex<float>* visibilities, const float* spheroidal,
-    const std::complex<float>* aterms, const int* aterm_indices,
+    const std::complex<float>* aterms, const unsigned int* aterm_indices,
     const idg::Metadata* metadata, const std::complex<float>* subgrid) {
 #if defined(USE_LOOKUP)
   initialize_lookup();
@@ -62,7 +62,7 @@ void kernel_degridder(
     const float w_offset_in_lambda = w_step_in_lambda * (m.coordinate.z + 0.5);
 
     // Initialize aterm index to first timestep
-    size_t aterm_idx_previous = aterm_indices[time_offset];
+    unsigned int aterm_idx_previous = aterm_indices[time_offset];
 
     // Allocate memory
     float* pixels_xx_real = nullptr;
@@ -110,7 +110,7 @@ void kernel_degridder(
       float w = uvw[time_offset + time].w;
 
       // Get aterm indices for current timestep
-      size_t aterm_idx_current = aterm_indices[time_offset + time];
+      const unsigned int aterm_idx_current = aterm_indices[time_offset + time];
 
 // Determine whether aterm has changed
 #if defined(__PPC__)  // workaround compiler bug

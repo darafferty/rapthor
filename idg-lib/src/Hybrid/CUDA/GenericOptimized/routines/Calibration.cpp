@@ -329,8 +329,9 @@ void GenericOptimized::do_calibrate_update(
         m_calibrate_state.plans[antenna_nr][channel_block]->get_metadata_ptr();
     auto subgrids_ptr =
         m_calibrate_state.subgrids[antenna_nr][channel_block].data();
-    auto aterm_idx_ptr = m_calibrate_state.plans[antenna_nr][channel_block]
-                             ->get_aterm_indices_ptr();
+    const unsigned int* aterm_idx_ptr =
+        m_calibrate_state.plans[antenna_nr][channel_block]
+            ->get_aterm_indices_ptr();
     auto visibilities_ptr =
         m_calibrate_state.visibilities.data(antenna_nr, channel_block);
     auto weights_ptr =

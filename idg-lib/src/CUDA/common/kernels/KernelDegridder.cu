@@ -263,7 +263,7 @@ __device__ void kernel_degridder_tp(
           float2*        __restrict__ visibilities,
     const float*         __restrict__ spheroidal,
     const float2*        __restrict__ aterms,
-    const int*           __restrict__ aterm_indices,
+    const unsigned int*  __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
           float2*        __restrict__ subgrid)
 {
@@ -282,7 +282,7 @@ __device__ void kernel_degridder_tp(
     // Iterate timesteps
     int current_nr_timesteps = 0;
     for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-        int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+        const unsigned int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
         // Determine number of timesteps to process
         current_nr_timesteps = 0;
@@ -355,26 +355,26 @@ __device__ void kernel_degridder_tp(
 
 template<int unroll_channels>
 __device__ void kernel_degridder_pt(
-    const int                         time_offset_job,
-    const int                         nr_polarizations,
-    const int                         grid_size,
-    const int                         subgrid_size,
-    const float                       image_size,
-    const float                       w_step,
-    const float                       shift_l,
-    const float                       shift_m,
-    const int                         nr_channels,
-    const int                         current_nr_channels,
-    const int                         channel_offset,
-    const int                         nr_stations,
-    const UVW<float>*    uvw,
-    const float*         wavenumbers,
-          float2*        visibilities,
-    const float*         spheroidal,
-    const float2*        aterms,
-    const int*           aterm_indices,
-    const Metadata*      metadata,
-          float2*        subgrid)
+    const int           time_offset_job,
+    const int           nr_polarizations,
+    const int           grid_size,
+    const int           subgrid_size,
+    const float         image_size,
+    const float         w_step,
+    const float         shift_l,
+    const float         shift_m,
+    const int           nr_channels,
+    const int           current_nr_channels,
+    const int           channel_offset,
+    const int           nr_stations,
+    const UVW<float>*   uvw,
+    const float*        wavenumbers,
+          float2*       visibilities,
+    const float*        spheroidal,
+    const float2*       aterms,
+    const unsigned int* aterm_indices,
+    const Metadata*     metadata,
+          float2*       subgrid)
 {
     int s           = blockIdx.x;
     int num_threads = blockDim.x;
@@ -398,7 +398,7 @@ __device__ void kernel_degridder_pt(
         // Iterate timesteps
         int current_nr_timesteps = 0;
         for (int time_offset_local = 0; time_offset_local < nr_timesteps; time_offset_local += current_nr_timesteps) {
-            int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
+            const unsigned int aterm_idx = aterm_indices[time_offset_global + time_offset_local];
 
             // Determine number of timesteps to process
             current_nr_timesteps = 0;
@@ -493,24 +493,24 @@ __global__
 __launch_bounds__(NUM_THREADS, NUM_BLOCKS)
 #endif
 void kernel_degridder(
-    const int                      time_offset,
-    const int                      nr_polarizations,
-    const int                      grid_size,
-    const int                      subgrid_size,
-    const float                    image_size,
-    const float                    w_step,
-    const float                    shift_l,
-    const float                    shift_m,
-    const int                      nr_channels,
-    const int                      nr_stations,
-    const UVW<float>* __restrict__ uvw,
-    const float*      __restrict__ wavenumbers,
-          float2*     __restrict__ visibilities,
-    const float*      __restrict__ spheroidal,
-    const float2*     __restrict__ aterms,
-    const int*        __restrict__ aterm_indices,
-    const Metadata*   __restrict__ metadata,
-          float2*     __restrict__ subgrid)
+    const int                        time_offset,
+    const int                        nr_polarizations,
+    const int                        grid_size,
+    const int                        subgrid_size,
+    const float                      image_size,
+    const float                      w_step,
+    const float                      shift_l,
+    const float                      shift_m,
+    const int                        nr_channels,
+    const int                        nr_stations,
+    const UVW<float>*   __restrict__ uvw,
+    const float*        __restrict__ wavenumbers,
+          float2*       __restrict__ visibilities,
+    const float*        __restrict__ spheroidal,
+    const float2*       __restrict__ aterms,
+    const unsigned int* __restrict__ aterm_indices,
+    const Metadata*     __restrict__ metadata,
+          float2*       __restrict__ subgrid)
 {
     int s                   = blockIdx.x;
     int num_threads         = blockDim.x;
