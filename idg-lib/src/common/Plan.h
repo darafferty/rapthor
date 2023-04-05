@@ -142,7 +142,7 @@ class Plan {
 
   void copy_metadata(void* ptr) const;
 
-  const int* get_aterm_indices_ptr(int baseline = 0) const;
+  const unsigned int* get_aterm_indices_ptr(int baseline = 0) const;
 
   void copy_aterm_indices(void* ptr) const;
 
@@ -188,7 +188,7 @@ class Plan {
   std::vector<int> total_nr_visibilities_per_baseline;
   WTileUpdateSet m_wtile_initialize_set;
   WTileUpdateSet m_wtile_flush_set;
-  std::vector<int> aterm_indices;
+  std::vector<unsigned int> aterm_indices;
   bool use_wtiles;
   Options m_options;
 };  // class Plan

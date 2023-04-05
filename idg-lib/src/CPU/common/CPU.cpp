@@ -208,7 +208,7 @@ void CPU::do_gridding(
       auto* wavenumbers_ptr = wavenumbers.data();
       auto* spheroidal_ptr = spheroidal.data();
       auto* aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
-      auto* aterm_idx_ptr = plan.get_aterm_indices_ptr();
+      const unsigned int* aterm_idx_ptr = plan.get_aterm_indices_ptr();
       auto* avg_aterm_ptr = m_avg_aterm_correction.size()
                                 ? m_avg_aterm_correction.data()
                                 : nullptr;
@@ -339,7 +339,7 @@ void CPU::do_degridding(
       auto* wavenumbers_ptr = wavenumbers.data();
       auto* spheroidal_ptr = spheroidal.data();
       auto* aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
-      auto* aterm_idx_ptr = plan.get_aterm_indices_ptr();
+      const unsigned int* aterm_idx_ptr = plan.get_aterm_indices_ptr();
       auto* metadata_ptr = plan.get_metadata_ptr(first_bl);
       auto* uvw_ptr = uvw.data(0, 0);
       auto* visibilities_ptr =
@@ -571,7 +571,7 @@ void CPU::do_calibrate_update(
   auto aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
   auto aterm_derivative_ptr =
       reinterpret_cast<std::complex<float>*>(aterm_derivatives.data());
-  auto aterm_idx_ptr =
+  const unsigned int* aterm_idx_ptr =
       m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
   auto metadata_ptr =
       m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();

@@ -3,24 +3,24 @@
 
 extern "C" {
 __global__ void kernel_degridder(
-    const int                      time_offset,
-    const int                      nr_polarizations,
-    const int                      grid_size,
-    const int                      subgrid_size,
-    const float                    image_size,
-    const float                    w_step,
-    const float                    shift_l,
-    const float                    shift_m,
-    const int                      nr_channels,
-    const int                      nr_stations,
-    const UVW<float>* __restrict__ uvw,
-    const float*      __restrict__ wavenumbers,
-          float2*     __restrict__ visibilities,
-    const float*      __restrict__ spheroidal,
-    const float2*     __restrict__ aterms,
-    const int*        __restrict__ aterm_indices,
-    const Metadata*   __restrict__ metadata,
-    const float2*     __restrict__ subgrid)
+    const int                        time_offset,
+    const int                        nr_polarizations,
+    const int                        grid_size,
+    const int                        subgrid_size,
+    const float                      image_size,
+    const float                      w_step,
+    const float                      shift_l,
+    const float                      shift_m,
+    const int                        nr_channels,
+    const int                        nr_stations,
+    const UVW<float>*   __restrict__ uvw,
+    const float*        __restrict__ wavenumbers,
+          float2*       __restrict__ visibilities,
+    const float*        __restrict__ spheroidal,
+    const float2*       __restrict__ aterms,
+    const unsigned int* __restrict__ aterm_indices,
+    const Metadata*     __restrict__ metadata,
+    const float2*       __restrict__ subgrid)
 {
   int s = blockIdx.x;
   int tid = threadIdx.x;
@@ -95,7 +95,7 @@ __global__ void kernel_degridder(
         pixel[3] = sph * subgrid[index];
       }
 
-      int aterm_index = aterm_indices[time_offset_global + time];
+      const unsigned int aterm_index = aterm_indices[time_offset_global + time];
 
       // Load a term for station1
       int station1_index = (aterm_index * nr_stations + station1) *

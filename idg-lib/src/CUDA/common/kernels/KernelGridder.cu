@@ -154,7 +154,7 @@ __device__ void
     const float2*          __restrict__ visibilities,
     const float*           __restrict__ spheroidal,
     const float2*          __restrict__ aterms,
-    const int*             __restrict__ aterm_indices,
+    const unsigned int*    __restrict__ aterm_indices,
     const Metadata*        __restrict__ metadata,
     const float2*          __restrict__ avg_aterm,
           float2*          __restrict__ subgrid)
@@ -190,7 +190,7 @@ __device__ void
         }
 
         // Initialize aterm index to first timestep
-        int aterm_idx_previous = aterm_indices[time_offset_global];
+        unsigned int aterm_idx_previous = aterm_indices[time_offset_global];
 
         // Compute l,m,n, phase_offset
         float l_index[UNROLL_PIXELS];
@@ -269,7 +269,7 @@ __device__ void
 
                 // Get aterm index for current timestep
                 int time_current = time_offset_global + time_offset_local + time;
-                int aterm_idx_current = aterm_indices[time_current];
+                const unsigned int aterm_idx_current = aterm_indices[time_current];
 
                 // Determine whether aterm has changed
                 bool aterm_changed = aterm_idx_previous != aterm_idx_current;
@@ -353,25 +353,25 @@ __global__
 __launch_bounds__(NUM_THREADS, NUM_BLOCKS)
 #endif
 void kernel_gridder(
-        const int                      time_offset,
-        const int                      nr_polarizations,
-        const int                      grid_size,
-        const int                      subgrid_size,
-        const float                    image_size,
-        const float                    w_step,
-        const float                    shift_l,
-        const float                    shift_m,
-        const int                      nr_channels,
-        const int                      nr_stations,
-        const UVW<float>* __restrict__ uvw,
-        const float*      __restrict__ wavenumbers,
-        const float2*     __restrict__ visibilities,
-        const float*      __restrict__ spheroidal,
-        const float2*     __restrict__ aterms,
-        const int*        __restrict__ aterm_indices,
-        const Metadata*   __restrict__ metadata,
-        const float2*     __restrict__ avg_aterm,
-              float2*     __restrict__ subgrid)
+        const int                        time_offset,
+        const int                        nr_polarizations,
+        const int                        grid_size,
+        const int                        subgrid_size,
+        const float                      image_size,
+        const float                      w_step,
+        const float                      shift_l,
+        const float                      shift_m,
+        const int                        nr_channels,
+        const int                        nr_stations,
+        const UVW<float>*   __restrict__ uvw,
+        const float*        __restrict__ wavenumbers,
+        const float2*       __restrict__ visibilities,
+        const float*        __restrict__ spheroidal,
+        const float2*       __restrict__ aterms,
+        const unsigned int* __restrict__ aterm_indices,
+        const Metadata*     __restrict__ metadata,
+        const float2*       __restrict__ avg_aterm,
+              float2*       __restrict__ subgrid)
 {
     int s                   = blockIdx.x;
     const Metadata &m       = metadata[s];

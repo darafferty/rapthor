@@ -46,7 +46,7 @@ void Generic::run_imaging(
   // Aterm indices
   size_t sizeof_aterm_indices =
       auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
-  auto aterm_indices = plan.get_aterm_indices_ptr();
+  const unsigned int* aterm_indices = plan.get_aterm_indices_ptr();
 
   // Configuration
   const unsigned nr_devices = get_num_devices();

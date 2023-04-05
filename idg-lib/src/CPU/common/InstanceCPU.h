@@ -36,7 +36,7 @@ class InstanceCPU : public KernelsInstance {
       const int nr_channels, const int nr_correlations, const int nr_stations, \
       const idg::UVW<float>*uvw, const float *wavenumbers,                     \
       const std::complex<float>*visibilities, const float *spheroidal,         \
-      const std::complex<float>*aterms, const int *aterm_indices,              \
+      const std::complex<float>*aterms, const unsigned int *aterm_indices,     \
       const std::complex<float>*avg_aterm, const idg::Metadata *metadata,      \
       std::complex<float>*subgrid
   virtual void run_gridder(KERNEL_GRIDDER_ARGUMENTS) = 0;
@@ -48,7 +48,7 @@ class InstanceCPU : public KernelsInstance {
       const int nr_channels, const int nr_correlations, const int nr_stations, \
       const idg::UVW<float>*uvw, const float *wavenumbers,                     \
       std::complex<float>*visibilities, const float *spheroidal,               \
-      const std::complex<float>*aterms, const int *aterm_indices,              \
+      const std::complex<float>*aterms, const unsigned int *aterm_indices,     \
       const idg::Metadata *metadata, const std::complex<float>*subgrid
   virtual void run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) = 0;
 
@@ -85,20 +85,20 @@ class InstanceCPU : public KernelsInstance {
 /*
  * Calibration
  */
-#define KERNEL_CALIBRATE_ARGUMENTS                                           \
-  const unsigned int nr_subgrids, const unsigned int nr_polarizations,       \
-      const unsigned long grid_size, const unsigned int subgrid_size,        \
-      const float image_size, const float w_step_in_lambda,                  \
-      const float *__restrict__ shift, const unsigned int max_nr_timesteps,  \
-      const unsigned int nr_channels, const unsigned int nr_terms,           \
-      const unsigned int nr_stations, const unsigned int nr_time_slots,      \
-      const idg::UVW<float>*uvw, const float *wavenumbers,                   \
-      std::complex<float>*visibilities, const float *weights,                \
-      const std::complex<float>*aterms,                                      \
-      const std::complex<float>*aterm_derivatives, const int *aterm_indices, \
-      const idg::Metadata *metadata, const std::complex<float>*subgrid,      \
-      const std::complex<float>*phasors, double *hessian, double *gradient,  \
-      double *residual
+#define KERNEL_CALIBRATE_ARGUMENTS                                          \
+  const unsigned int nr_subgrids, const unsigned int nr_polarizations,      \
+      const unsigned long grid_size, const unsigned int subgrid_size,       \
+      const float image_size, const float w_step_in_lambda,                 \
+      const float *__restrict__ shift, const unsigned int max_nr_timesteps, \
+      const unsigned int nr_channels, const unsigned int nr_terms,          \
+      const unsigned int nr_stations, const unsigned int nr_time_slots,     \
+      const idg::UVW<float>*uvw, const float *wavenumbers,                  \
+      std::complex<float>*visibilities, const float *weights,               \
+      const std::complex<float>*aterms,                                     \
+      const std::complex<float>*aterm_derivatives,                          \
+      const unsigned int *aterm_indices, const idg::Metadata *metadata,     \
+      const std::complex<float>*subgrid, const std::complex<float>*phasors, \
+      double *hessian, double *gradient, double *residual
   virtual void run_calibrate(KERNEL_CALIBRATE_ARGUMENTS){};
 
 #define KERNEL_CALIBRATE_PHASOR_ARGUMENTS                              \

@@ -35,10 +35,10 @@ void kernel_calibrate(
     const idg::UVW<float>* uvw, const float* wavenumbers,
     std::complex<float>* visibilities, const float* weights,
     const std::complex<float>* aterms,
-    const std::complex<float>* aterm_derivatives, const int* aterm_indices,
-    const idg::Metadata* metadata, const std::complex<float>* subgrid,
-    const std::complex<float>* phasors, double* hessian, double* gradient,
-    double* residual) {
+    const std::complex<float>* aterm_derivatives,
+    const unsigned int* aterm_indices, const idg::Metadata* metadata,
+    const std::complex<float>* subgrid, const std::complex<float>* phasors,
+    double* hessian, double* gradient, double* residual) {
 #if defined(USE_LOOKUP)
   initialize_lookup();
 #endif
@@ -75,7 +75,7 @@ void kernel_calibrate(
     const unsigned int station2 = m.baseline.station2;
 
     // Initialize aterm index to first timestep
-    size_t aterm_idx_previous = aterm_indices[time_offset];
+    unsigned int aterm_idx_previous = aterm_indices[time_offset];
 
     // Storage
     unsigned nr_pixels = subgrid_size * subgrid_size;
@@ -99,7 +99,7 @@ void kernel_calibrate(
     // Iterate all timesteps
     for (unsigned int time = 0; time < nr_timesteps; time++) {
       // Get aterm indices for current timestep
-      size_t aterm_idx_current = aterm_indices[time_offset + time];
+      const unsigned int aterm_idx_current = aterm_indices[time_offset + time];
 
       // Determine whether aterm has changed
       bool aterm_changed = aterm_idx_previous != aterm_idx_current;

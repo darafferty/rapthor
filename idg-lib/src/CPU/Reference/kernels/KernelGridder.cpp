@@ -13,15 +13,18 @@ namespace kernel {
 namespace cpu {
 namespace reference {
 
-void kernel_gridder(
-    const int nr_subgrids, const int nr_polarizations, const long grid_size,
-    const int subgrid_size, const float image_size,
-    const float w_step_in_lambda, const float* shift, const int nr_correlations,
-    const int nr_channels, const int nr_stations, const idg::UVW<float>* uvw,
-    const float* wavenumbers, const std::complex<float>* visibilities,
-    const float* spheroidal, const std::complex<float>* aterms,
-    const int* aterm_indices, const std::complex<float>* avg_aterm_correction,
-    const idg::Metadata* metadata, std::complex<float>* subgrid) {
+void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
+                    const long grid_size, const int subgrid_size,
+                    const float image_size, const float w_step_in_lambda,
+                    const float* shift, const int nr_correlations,
+                    const int nr_channels, const int nr_stations,
+                    const idg::UVW<float>* uvw, const float* wavenumbers,
+                    const std::complex<float>* visibilities,
+                    const float* spheroidal, const std::complex<float>* aterms,
+                    const unsigned int* aterm_indices,
+                    const std::complex<float>* avg_aterm_correction,
+                    const idg::Metadata* metadata,
+                    std::complex<float>* subgrid) {
 // Iterate all subgrids
 #pragma omp parallel for
   for (int s = 0; s < nr_subgrids; s++) {
@@ -104,7 +107,7 @@ void kernel_gridder(
           }  // end for channel
 
           // Load aterm index
-          int aterm_index = aterm_indices[time_offset + time];
+          const unsigned int aterm_index = aterm_indices[time_offset + time];
 
           // Load a term for station1
           int station1_index = (aterm_index * nr_stations + station1) *
