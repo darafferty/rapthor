@@ -537,7 +537,9 @@ class Field(object):
                                   'check the sky model (in working_dir/skymodels/calibrate_{}/) '
                                   'for problems or lower the target flux density. '
                                   'Exiting...'.format(index))
-                sys.exit(1)
+                raise RuntimeError('No groups found that meet the target flux density. Please '
+                    'check the sky model (in working_dir/skymodels/calibrate_{}/) '
+                    'for problems or lower the target flux density.'.format(index))
 
             # Update the patch positions after the tessellation to ensure they match the
             # ones from the meanshift grouping
