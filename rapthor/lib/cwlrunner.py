@@ -189,7 +189,6 @@ class ToilRunner(CWLRunner):
             self.args.extend(['--coordinationDir', self.operation.coordination_dir])
         self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])
-        self.args.extend(['--stats'])
         if self.operation.debug_workflow:
             self.args.extend(['--cleanWorkDir', 'never'])
             self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
@@ -238,6 +237,10 @@ class CWLToolRunner(CWLRunner):
         if self.operation.debug_workflow:
             self.args.extend(["--debug"])
             self.args.extend(["--leave-tmpdir"])
+
+    def teardown(self) -> None:
+        return super().teardown()
+
 
 
 def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
