@@ -103,7 +103,7 @@ class Data():
             ctypes.c_uint]
         lib.DATA_get_frequencies(
             self.obj,
-            frequencies.ctypes.data_as(ctypes.c_void_p),
+            frequencies.ctypes.data,
             ctypes.c_uint(nr_channels),
             ctypes.c_float(image_size),
             ctypes.c_uint(channel_offset))
@@ -127,7 +127,7 @@ class Data():
             ctypes.c_float]
         lib.DATA_get_uvw(
             self.obj,
-            uvw.ctypes.data_as(ctypes.c_void_p),
+            uvw.ctypes.data,
             ctypes.c_uint(nr_baselines),
             ctypes.c_uint(nr_timesteps),
             ctypes.c_uint(baseline_offset),

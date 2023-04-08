@@ -555,7 +555,7 @@ class Proxy(object):
         # Call the C function
         self.lib.Proxy_set_grid(
             ctypes.c_void_p(self.obj),
-            grid.ctypes.data_as(ctypes.c_void_p),
+            grid.ctypes.data,
             ctypes.c_int(nr_w_layers),
             ctypes.c_int(nr_correlations),
             ctypes.c_int(height),
@@ -597,7 +597,7 @@ class Proxy(object):
             # Call the C function
             self.lib.Proxy_get_final_grid(
                 ctypes.c_void_p(self.obj),
-                grid.ctypes.data_as(ctypes.c_void_p),
+                grid.ctypes.data,
                 ctypes.c_int(nr_w_layers),
                 ctypes.c_int(nr_correlations),
                 ctypes.c_int(height),

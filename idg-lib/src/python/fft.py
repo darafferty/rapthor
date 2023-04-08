@@ -21,7 +21,7 @@ def fft2f(matrix):
                           ctypes.c_void_p]
     fftlib.fft2f(ctypes.c_int(m),
               ctypes.c_int(n),
-              matrix.ctypes.data_as(ctypes.c_void_p))
+              matrix.ctypes.data)
 
 
 def ifft2f(matrix):
@@ -36,7 +36,7 @@ def ifft2f(matrix):
                            ctypes.c_void_p]
     fftlib.ifft2f(ctypes.c_int(m),
                ctypes.c_int(n),
-               matrix.ctypes.data_as(ctypes.c_void_p))
+               matrix.ctypes.data)
 
 
 def fft2f_r2c(matrix):
@@ -54,8 +54,8 @@ def fft2f_r2c(matrix):
                               ctypes.c_void_p]
     fftlib.fft2f_r2c(ctypes.c_int(m),
                   ctypes.c_int(n),
-                  matrix.ctypes.data_as(ctypes.c_void_p),
-                  result.ctypes.data_as(ctypes.c_void_p))
+                  matrix.ctypes.data,
+                  result.ctypes.data)
     return result
 
 
@@ -74,8 +74,8 @@ def ifft2f_c2r(matrix):
                                ctypes.c_void_p]
     fftlib.ifft2f_c2r(ctypes.c_int(m),
                    ctypes.c_int(n),
-                   matrix.ctypes.data_as(ctypes.c_void_p),
-                   result.ctypes.data_as(ctypes.c_void_p))
+                   matrix.ctypes.data,
+                   result.ctypes.data)
     return result
 
 
@@ -91,7 +91,7 @@ def fftshift2f(matrix):
                                ctypes.c_void_p]
     fftlib.fftshift2f(ctypes.c_int(m),
                    ctypes.c_int(n),
-                   matrix.ctypes.data_as(ctypes.c_void_p))
+                   matrix.ctypes.data)
 
 
 def ifftshift2f(matrix):
@@ -106,7 +106,7 @@ def ifftshift2f(matrix):
                                 ctypes.c_void_p]
     fftlib.ifftshift2f(ctypes.c_int(m),
                     ctypes.c_int(n),
-                    matrix.ctypes.data_as(ctypes.c_void_p))
+                    matrix.ctypes.data)
 
 
 def resize2f_r2r(image, out_height, out_width):
@@ -126,10 +126,10 @@ def resize2f_r2r(image, out_height, out_width):
                                  ctypes.c_void_p]
     fftlib.resize2f_r2r(ctypes.c_int(m),
                      ctypes.c_int(n),
-                     image.ctypes.data_as(ctypes.c_void_p),
+                     image.ctypes.data,
                      ctypes.c_int(out_height),
                      ctypes.c_int(out_width),
-                     result.ctypes.data_as(ctypes.c_void_p))
+                     result.ctypes.data)
     return result
 
 
@@ -150,10 +150,10 @@ def resize2f_c2c(image, out_height, out_width):
                                  ctypes.c_void_p]
     fftlib.resize2f_c2c(ctypes.c_int(m),
                      ctypes.c_int(n),
-                     image.ctypes.data_as(ctypes.c_void_p),
+                     image.ctypes.data,
                      ctypes.c_int(out_height),
                      ctypes.c_int(out_width),
-                     result.ctypes.data_as(ctypes.c_void_p))
+                     result.ctypes.data)
     return result
 
 
@@ -174,10 +174,10 @@ def resize2_r2r(image, out_height, out_width):
                                 ctypes.c_void_p]
     fftlib.resize2_r2r(ctypes.c_int(m),
                     ctypes.c_int(n),
-                    image.ctypes.data_as(ctypes.c_void_p),
+                    image.ctypes.data,
                     ctypes.c_int(out_height),
                     ctypes.c_int(out_width),
-                    result.ctypes.data_as(ctypes.c_void_p))
+                    result.ctypes.data)
     return result
 
 
@@ -198,8 +198,8 @@ def resize2_c2c(image, out_height, out_width):
                                 ctypes.c_void_p]
     fftlib.resize2_c2c(ctypes.c_int(m),
                     ctypes.c_int(n),
-                    image.ctypes.data_as(ctypes.c_void_p),
+                    image.ctypes.data,
                     ctypes.c_int(out_height),
                     ctypes.c_int(out_width),
-                    result.ctypes.data_as(ctypes.c_void_p))
+                    result.ctypes.data)
     return result
