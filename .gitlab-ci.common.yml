@@ -203,7 +203,8 @@ test-integration:
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGES=On -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
     # Compile against wsclean
-    - mkdir /wsclean && cd /wsclean && git clone https://gitlab.com/aroffringa/wsclean.git src
+    - mkdir /wsclean && cd /wsclean
+    - git clone --depth 1 --branch v3.3 https://gitlab.com/aroffringa/wsclean.git src
     - mkdir build && cd build
     - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
