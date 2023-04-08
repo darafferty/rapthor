@@ -53,16 +53,16 @@ class Plan(object):
             ctypes.c_int(subgrid_size),
             ctypes.c_int(grid_size),
             ctypes.c_float(cell_size),
-            frequencies.ctypes.data_as(ctypes.c_void_p),
+            frequencies.ctypes.data,
             ctypes.c_uint(nr_channels),
-            uvw.ctypes.data_as(ctypes.c_void_p),
+            uvw.ctypes.data,
             ctypes.c_uint(uvw_nr_baselines),
             ctypes.c_uint(uvw_nr_timesteps),
             ctypes.c_uint(uvw_nr_coordinates),
-            baselines.ctypes.data_as(ctypes.c_void_p),
+            baselines.ctypes.data,
             ctypes.c_uint(baselines_nr_baselines),
             ctypes.c_uint(baselines_two),
-            aterm_offsets.ctypes.data_as(ctypes.c_void_p),
+            aterm_offsets.ctypes.data,
             ctypes.c_uint(aterm_offsets_nr_timeslots))
 
 
@@ -83,7 +83,7 @@ class Plan(object):
             ctypes.c_void_p]
         lib.Plan_copy_metadata(
             self.obj,
-            metadata.ctypes.data_as(ctypes.c_void_p))
+            metadata.ctypes.data)
 
     def copy_aterm_indices(
         self,
@@ -93,4 +93,4 @@ class Plan(object):
             ctypes.c_void_p]
         lib.Plan_copy_aterm_indices(
             self.obj,
-            aterm_indices.ctypes.data_as(ctypes.c_void_p))
+            aterm_indices.ctypes.data)

@@ -105,9 +105,9 @@ def add_pt_src(x, y, amplitude, nr_baselines, nr_time, nr_channels,
                          ctypes.c_int(nr_time), ctypes.c_int(nr_channels),
                          ctypes.c_int(nr_correlations),
                          ctypes.c_float(image_size), ctypes.c_int(grid_size),
-                         uvw.ctypes.data_as(ctypes.c_void_p),
-                         frequencies.ctypes.data_as(ctypes.c_void_p),
-                         vis.ctypes.data_as(ctypes.c_void_p))
+                         uvw.ctypes.data,
+                         frequencies.ctypes.data,
+                         vis.ctypes.data)
 
 
 def func_spheroidal(nu):
@@ -783,7 +783,7 @@ def init_identity_aterms(aterms):
     lib.utils_init_identity_aterms.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
-    lib.utils_init_identity_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+    lib.utils_init_identity_aterms(aterms.ctypes.data,
                                    ctypes.c_int(nr_timeslots),
                                    ctypes.c_int(nr_stations),
                                    ctypes.c_int(subgrid_size),
@@ -796,7 +796,7 @@ def init_identity_spheroidal(spheroidal):
         ctypes.c_void_p, ctypes.c_int
     ]
     lib.utils_init_identity_spheroidal(
-        spheroidal.ctypes.data_as(ctypes.c_void_p), ctypes.c_int(subgrid_size))
+        spheroidal.ctypes.data, ctypes.c_int(subgrid_size))
 
 
 def get_identity_aterms(nr_timeslots,
@@ -858,7 +858,7 @@ def init_example_frequencies(frequencies):
         ctypes.c_void_p, ctypes.c_int
     ]
     lib.utils_init_example_frequencies(
-        frequencies.ctypes.data_as(ctypes.c_void_p), ctypes.c_int(nr_channels))
+        frequencies.ctypes.data, ctypes.c_int(nr_channels))
 
 
 def init_dummy_visibilities(visibilities):
@@ -871,7 +871,7 @@ def init_dummy_visibilities(visibilities):
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
     lib.utils_init_dummy_visibilities(
-        visibilities.ctypes.data_as(ctypes.c_void_p),
+        visibilities.ctypes.data,
         ctypes.c_int(nr_baselines), ctypes.c_int(nr_time),
         ctypes.c_int(nr_channels), ctypes.c_int(nr_correlations))
 
@@ -885,7 +885,7 @@ def init_identity_aterms(aterms):
     lib.utils_init_identity_aterms.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
-    lib.utils_init_identity_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+    lib.utils_init_identity_aterms(aterms.ctypes.data,
                                    ctypes.c_int(nr_timeslots),
                                    ctypes.c_int(nr_stations),
                                    ctypes.c_int(subgrid_size),
@@ -899,15 +899,15 @@ def init_example_spheroidal(spheroidal):
         ctypes.c_void_p, ctypes.c_int
     ]
     lib.utils_init_example_spheroidal(
-        spheroidal.ctypes.data_as(ctypes.c_void_p), ctypes.c_int(subgrid_size))
+        spheroidal.ctypes.data, ctypes.c_int(subgrid_size))
 
 
 def init_example_aterms(aterms, nr_timeslots, nr_stations, height, width):
     """Initialize aterms"""
-    lib.utils_init_example_aterm_offsets.argtypes = [
+    lib.utils_init_example_aterms.argtypes = [
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int
     ]
-    lib.utils_init_example_aterms(aterms.ctypes.data_as(ctypes.c_void_p),
+    lib.utils_init_example_aterms(aterms.ctypes.data,
                                   ctypes.c_int(nr_timeslots),
                                   ctypes.c_int(nr_stations),
                                   ctypes.c_int(height), ctypes.c_int(width))
@@ -920,7 +920,7 @@ def init_example_aterm_offsets(aterms_offset, nr_time):
         ctypes.c_void_p, ctypes.c_int, ctypes.c_int
     ]
     lib.utils_init_example_aterm_offsets(
-        aterms_offset.ctypes.data_as(ctypes.c_void_p),
+        aterms_offset.ctypes.data,
         ctypes.c_int(nr_timeslots), ctypes.c_int(nr_time))
 
 
@@ -933,7 +933,7 @@ def init_example_baselines(baselines, nr_stations):
     lib.utils_init_example_baselines.argtypes = [ctypes.c_void_p,
                                                  ctypes.c_int,
                                                  ctypes.c_int]
-    lib.utils_init_example_baselines(baselines.ctypes.data_as(ctypes.c_void_p),
+    lib.utils_init_example_baselines(baselines.ctypes.data,
                                      ctypes.c_int(nr_stations),
                                      ctypes.c_int(nr_baselines))
 
@@ -952,7 +952,7 @@ def get_example_baselines(nr_stations, nr_baselines,
                           dtype=np.int32, info=False):
     """Initialize and return example baselines array"""
     baselines = np.zeros((nr_baselines, 2),
-                            dtype = np.int32)
+                          dtype = np.int32)
     init_example_baselines(baselines, nr_stations)
     if info==True:
         print("baselines: np.ndarray(shape = (nr_channels), " + \
