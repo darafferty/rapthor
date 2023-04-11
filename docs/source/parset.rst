@@ -167,7 +167,8 @@ The available options are described below under their respective sections.
 
     fast_smoothnessreffrequency
         Smoothness constraint reference frequency used during fast phase calibration, in
-        Hz (default = midpoint of frequency coverage).
+        Hz. If not specified this will automatically be set to 144 MHz for HBA or the
+        midpoint of the frequency coverage for LBA (default = None).
 
     fast_smoothnessrefdistance
         Smoothness constraint reference distance used during fast phase calibration, in
