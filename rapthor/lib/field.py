@@ -42,7 +42,6 @@ class Field(object):
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
         self.input_h5parm = self.parset['input_h5parm']
-        self.solve_min_uv_lambda = self.parset['calibration_specific']['solve_min_uv_lambda']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
@@ -69,10 +68,12 @@ class Field(object):
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
 
+        # Set strategy parameter defaults
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
-        self.max_normalization_delta = 1.0
-        self.scale_normalization_delta = False
+        self.max_normalization_delta = 0.3
+        self.solve_min_uv_lambda = 350
+        self.scale_normalization_delta = True
         self.lofar_to_true_flux_ratio = 1.0
         self.lofar_to_true_flux_std = 0.0
         self.peel_outliers = False

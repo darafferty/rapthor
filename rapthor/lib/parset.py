@@ -281,12 +281,6 @@ def get_calibration_options(parset):
     else:
         parset_dict['use_included_skymodels'] = False
 
-    # Minimum uv distance in lambda for calibration (default = 350)
-    if 'solve_min_uv_lambda' in parset_dict:
-        parset_dict['solve_min_uv_lambda'] = parset.getfloat('calibration', 'solve_min_uv_lambda')
-    else:
-        parset_dict['solve_min_uv_lambda'] = 350.0
-
     # Calculate the beam correction once per calibration patch (default = False)? If
     # False, the beam correction is calculated separately for each source in the patch.
     # Setting this to True can speed up calibration and prediction, but can also
@@ -387,8 +381,7 @@ def get_calibration_options(parset):
         parset_dict['solverlbfgs_minibatches'] = 1
 
     # Check for invalid options
-    allowed_options = ['solve_min_uv_lambda', 'fast_timestep_sec',
-                       'fast_freqstep_hz', 'slow_timestep_joint_sec',
+    allowed_options = ['fast_timestep_sec', 'fast_freqstep_hz', 'slow_timestep_joint_sec',
                        'slow_timestep_separate_sec', 'onebeamperpatch',
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter', 'stepsize',
                        'tolerance', 'llssolver', 'fast_smoothnessconstraint',
