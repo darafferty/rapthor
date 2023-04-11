@@ -595,8 +595,6 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_joint
-      - id: smoothnessreffrequency
-        source: fast_smoothnessreffrequency
       - id: antennaconstraint
         source: slow_antennaconstraint
       - id: numthreads
@@ -734,8 +732,6 @@ steps:
         source: uvlambdamin
       - id: smoothnessconstraint
         source: slow_smoothnessconstraint_separate
-      - id: smoothnessreffrequency
-        source: fast_smoothnessreffrequency
       - id: numthreads
         source: max_threads
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]

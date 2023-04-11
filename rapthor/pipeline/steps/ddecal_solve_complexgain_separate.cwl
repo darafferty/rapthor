@@ -147,12 +147,6 @@ inputs:
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
-  - id: smoothnessreffrequency
-    type: float
-    default: 144000000.0
-    inputBinding:
-      prefix: solve.smoothnessreffrequency=
-      separate: False
   - id: numthreads
     type: int
     inputBinding:
