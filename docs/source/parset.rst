@@ -371,13 +371,26 @@ The available options are described below under their respective sections.
               section and ``dir_local`` is not on a shared filesystem.
 
     cwl_runner
-        CWL runner to use. Currently supported runners are: cwltool and toil (default).
+        CWL runner to use. Currently supported runners are: "cwltool" and "toil" (default).
         Toil is the recommended runner, since it provides much more fine-grained control
         over the execution of a workflow. For example, Toil can use Slurm to automatically
         distribute workflow steps over different compute nodes, whereas CWLTool can only
         execute workflows on a single node. With CWLTool you also run the risk of
         overloading your machine when too many jobs are run in parallel. For debugging
         purposes CWLTool outshines Toil, because its logs are easier to understand.
+
+    dir_coordination
+        Set Toil's coordination directory (only used when Toil is the CWL
+        runner; default = selected automatically by Toil). In most cases, it
+        should not be necessary to set this parameter. However, if errors
+        relating to Toil's ``jobStateFile`` are encountered, they may be fixed
+        by setting the coordination directory explicitly.
+
+        .. note::
+
+            This directory does not need to be on a shared file system but must be
+            located on one that is 100% POSIX-compatible (which many shared file
+            systems are not).
 
     debug_workflow
         Debug workflow related issues. Enabling this will require significantly more
