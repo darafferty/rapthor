@@ -221,4 +221,4 @@ class Operation(object):
             self.finalize()
         else:
             self.log.error('Operation {0} failed due to an error'.format(self.name))
-            sys.exit(1)
+            raise RuntimeError('Operation {0} failed due to an error'.format(self.name))
