@@ -388,9 +388,9 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            This directory does not need to be on a shared file system but must be
-            located on one that is 100% POSIX-compatible (which many shared file
-            systems are not).
+            This directory must be on a 100% POSIX-compatible file system, because Toil
+            heavily depends on POSIX file locking to work reliably. For many shared file
+            systems, this criterion is not met.
 
     debug_workflow
         Debug workflow related issues. Enabling this will require significantly more
