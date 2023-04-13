@@ -4,13 +4,9 @@ Definition of the master Operation class
 import os
 import sys
 import logging
-import subprocess
 import json
-from rapthor import _logging
 from jinja2 import Environment, FileSystemLoader
 from rapthor.lib import miscellaneous as misc
-from toil.leader import FailedJobsException
-from toil.cwl import cwltoil
 import toil.version as toil_version
 from rapthor.lib.context import Timer
 from rapthor.lib.cwl import NpEncoder
@@ -133,6 +129,9 @@ class Operation(object):
 
         # Set the temp directory local to each node
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
+
+        # Toil's coordination directory
+        self.coordination_dir  = self.parset['cluster_specific']['dir_coordination']
 
         # Get the container type
         if self.parset['cluster_specific']['use_container']:

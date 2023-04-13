@@ -202,6 +202,12 @@ input_ms = /data/ms/*.ms
 # CWL runner to use. Currently supported runners are: cwltool and toil (default)
 # cwl_runner = toil
 
+# Set Toil's coordination directory (only used when Toil is used as the CWL runner;
+# default = selected automatically by Toil). Note that this directory must be on a
+# 100% POSIX-compatible file system, because Toil heavily depends on POSIX file
+# locking to work reliably. For many shared file systems, this criterion is not met
+# dir_coordination = /tmp
+
 # Debug workflow related issues. Enabling this will require significantly more
 # disk space. The working directory will never be cleaned up, stdout and stderr
 # will not be redirectied, and log level of the CWL runner will be set to DEBUG.
