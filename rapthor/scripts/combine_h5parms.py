@@ -513,7 +513,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
 
         else:
             print('ERROR: mode not understood')
-            sys.exit(1)
+            raise ValueError('Mode not understood')
 
         # Close the files, copies are removed automatically
         h1.close()
