@@ -203,9 +203,9 @@ input_ms = /data/ms/*.ms
 # cwl_runner = toil
 
 # Set Toil's coordination directory (only used when Toil is used as the CWL runner;
-# default = selected automatically by Toil). Note that this directory does not
-# need to be on a shared file system but must be located one that is 100%
-# POSIX-compatible (which many shared file systems are not)
+# default = selected automatically by Toil). Note that this directory must be on a
+# 100% POSIX-compatible file system, because Toil heavily depends on POSIX file
+# locking to work reliably. For many shared file systems, this criterion is not met
 # dir_coordination = /tmp
 
 # Debug workflow related issues. Enabling this will require significantly more
