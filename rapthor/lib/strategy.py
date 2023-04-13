@@ -46,7 +46,7 @@ def set_strategy(field):
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
-            if i <= 2:
+            if i == 2:
                 strategy_steps[i]['solve_min_uv_lambda'] = 2000
             else:
                 strategy_steps[i]['solve_min_uv_lambda'] = 350
