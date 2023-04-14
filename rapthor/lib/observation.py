@@ -272,8 +272,11 @@ class Observation(object):
         # Set the smoothnessreffrequency for the fast solves, if not set by the user
         fast_smoothnessreffrequency = parset['calibration_specific']['fast_smoothnessreffrequency']
         if fast_smoothnessreffrequency is None:
-            # Select a frequency at the midpoint of the frequency coverage of this observation
-            fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
+            if self.antenna == 'HBA':
+                fast_smoothnessreffrequency = 144e6
+            elif self.antenna == 'LBA':
+                # Select a frequency at the midpoint of the frequency coverage of this observation
+                fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
         self.parameters['fast_smoothnessreffrequency'] = [fast_smoothnessreffrequency] * self.ntimechunks
 
     def set_prediction_parameters(self, sector_name, patch_names, scratch_dir):
