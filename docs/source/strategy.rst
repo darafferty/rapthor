@@ -61,10 +61,10 @@ The following processing parameters must be set for each cycle:
         Float that sets WSClean's automask value for this cycle.
 
     threshisl
-        Float that sets PyBDFS's threshisl value for this cycle.
+        Float that sets PyBDSF's threshisl value for this cycle.
 
     threshpix
-        Float that sets PyBDFS's threshpix value for this cycle.
+        Float that sets PyBDSF's threshpix value for this cycle.
 
     max_nmiter
         Integer that sets the maximum number of major iterations done during imaging for this cycle.
