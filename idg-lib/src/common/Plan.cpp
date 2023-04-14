@@ -710,50 +710,6 @@ void Plan::initialize_job(const unsigned int nr_baselines,
   (*current_nr_baselines_) = last_bl - first_bl;
 }
 
-void Plan::mask_visibilities(Array5D<std::complex<float>>& visibilities) const {
-  // Get visibilities dimensions
-  auto nr_baselines = visibilities.get_d_dim();
-  auto nr_timesteps = visibilities.get_c_dim();
-  auto nr_channels = visibilities.get_b_dim();
-  auto nr_correlations = visibilities.get_a_dim();
-
-  // The visibility mask is zero
-  const std::complex<float> zero = {0.0f, 0.0f};
-
-  // Sanity check
-  assert((unsigned)get_nr_baselines() == nr_baselines);
-
-  // Iterate all metadata elements
-  int nr_subgrids = get_nr_subgrids();
-  for (int i = 0; i < nr_subgrids; i++) {
-    const Metadata& m_current = metadata[i];
-
-    // Determine which visibilities are used in the plan
-    unsigned time_index = m_current.time_index;
-    unsigned current_nr_timesteps = m_current.nr_timesteps;
-
-    // Determine which visibilities to mask
-    unsigned first = time_index + current_nr_timesteps;
-    unsigned last = 0;
-    if (i < nr_subgrids - 1) {
-      const Metadata& m_next = metadata[i + 1];
-      int next_index = m_next.time_index;
-      last = next_index;
-    } else {
-      last = nr_baselines * nr_timesteps;
-    }
-
-    // Mask all selected visibilities for all channels
-    for (unsigned t = first; t < last; t++) {
-      for (unsigned c = 0; c < nr_channels; c++) {
-        for (unsigned cor = 0; cor < nr_correlations; cor++) {
-          visibilities(0, t, c, cor) = zero;
-        }
-      }
-    }
-  }
-}
-
 size_t Plan::baseline_index(size_t antenna1, size_t antenna2,
                             size_t nr_stations) {
   assert(antenna1 < antenna2);
