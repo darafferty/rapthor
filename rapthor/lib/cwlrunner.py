@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("rapthor:cwlrunner")
 
+
 class CWLRunner:
     """
     Base class.
@@ -182,6 +183,8 @@ class ToilRunner(CWLRunner):
                 # directory
                 prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
             self.args.extend(['--tmp-outdir-prefix', prefix])
+        if self.operation.coordination_dir is not None:
+            self.args.extend(['--coordinationDir', self.operation.coordination_dir])
         self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])
         self.args.extend(['--stats'])

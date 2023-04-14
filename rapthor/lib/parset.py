@@ -722,6 +722,15 @@ def get_cluster_options(parset):
                      cwl_runner, ', '.join(supported_cwl_runners))
         sys.exit(1)
 
+    # Set Toil's coordination directory (only used when Toil is used as the CWL runner;
+    # default = selected automatically by Toil). Note that this directory does not
+    # need to be on a shared file system but must be located one that is 100%
+    # POSIX-compatible (which many shared file systems are not)
+    if 'dir_coordination' not in parset_dict:
+        parset_dict['dir_coordination'] = None
+    else:
+        parset_dict['dir_coordination'] = parset_dict['dir_coordination']
+
     # Check if debugging is enabled
     if 'debug_workflow' in parset_dict:
         parset_dict['debug_workflow'] = parset.getboolean('cluster', 'debug_workflow')
@@ -732,7 +741,7 @@ def get_cluster_options(parset):
     allowed_options = ['cpus_per_task', 'batch_system', 'max_nodes', 'max_cores',
                        'max_threads', 'deconvolution_threads', 'parallel_gridding_threads', 'dir_local',
                        'mem_per_node_gb', 'use_container', 'container_type',
-                       'cwl_runner', 'debug_workflow']
+                       'cwl_runner', 'dir_coordination', 'debug_workflow']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [cluster] section of the '
