@@ -49,7 +49,7 @@ def get_angular_distance(ra_dec1, ra_dec2):
 
     Returns
     -------
-    dist : float, float
+    dist : float
         Distance in degrees
     """
     coord1 = SkyCoord(ra_dec1[0], ra_dec1[1], unit=(u.degree, u.degree), frame='fk5')
@@ -58,7 +58,7 @@ def get_angular_distance(ra_dec1, ra_dec2):
     return coord1.separation(coord2).value
 
 
-def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=True,
+def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=False,
                         phase_center=None):
     """
     Normalize amplitudes so that the mean of the XX and YY median amplitudes
