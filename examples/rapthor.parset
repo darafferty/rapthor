@@ -76,7 +76,7 @@ input_ms = /data/ms/*.ms
 # fast_timestep_sec = 8.0
 # fast_freqstep_hz = 1e6
 # fast_smoothnessconstraint = 3e6
-# fast_smoothnessreffrequency = midpoint of frequency coverage
+# fast_smoothnessreffrequency = None
 # fast_smoothnessrefdistance = 0
 
 # Slow solve parameters (defaults shown):
