@@ -212,7 +212,7 @@ class ToilRunner(CWLRunner):
                     leftover_tempdirs.append(tempdir)
             for t in leftover_tempdirs:
                 logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
-                shutil.rmtree(t)
+                shutil.rmtree(t, ignore_errors=True)
 
 
 class CWLToolRunner(CWLRunner):
