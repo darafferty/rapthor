@@ -36,6 +36,9 @@ The following processing parameters must be set for each cycle:
     do_calibrate
         Boolean flag that determines whether the calibration step should be done for this cycle.
 
+    solve_min_uv_lambda
+        Minimum uv distance in lambda used during calibration for this cycle (applies to both fast-phase and slow-gain solves).
+
     do_slowgain_solve
         Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle.
 

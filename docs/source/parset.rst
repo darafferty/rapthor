@@ -152,9 +152,6 @@ The available options are described below under their respective sections.
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
 
-    solve_min_uv_lambda
-        Minimum uv distance in lambda used during calibration (default = 2000).
-
     fast_timestep_sec
         Time step used during fast phase calibration, in seconds (default = 8).
 
