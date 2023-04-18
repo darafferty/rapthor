@@ -229,6 +229,12 @@ inputs:
       The name of the calibration solution table (length = 1).
     type: string
 
+  - id: apply_diagonal_solutions
+    label: Apply diagonal solutions
+    doc: |
+      Apply diagonal (separate XX and YY) solutions (length = 1).
+    type: bool
+
   - id: parallel_gridding_threads
     label: Max number of gridding threads
     doc: |
@@ -455,6 +461,8 @@ steps:
         source: facet_region_file
       - id: soltabs
         source: soltabs
+      - id: apply_diagonal_solutions
+        source: apply_diagonal_solutions
 {% else %}
 # start not use_facets
       - id: central_patch_name

@@ -33,11 +33,17 @@ class Calibrate(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
+        if self.field.dde_method == 'facets':
+            use_facets = True
+        else:
+            use_facets = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_screens': self.field.use_screens,
+                             'use_facets': use_facets,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
+                             'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
 
     def set_input_parameters(self):

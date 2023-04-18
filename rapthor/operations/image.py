@@ -61,6 +61,7 @@ class Image(Operation):
         image_timestep = []
         dir_local = []
         phasecenter = []
+        apply_diagonal_solutions = []
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
@@ -192,6 +193,11 @@ class Image(Operation):
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
+                if self.field.do_slowgain_solve and self.field.apply_diagonal_solutions:
+                    # Diagonal solutions generated and should be applied
+                    self.input_parms.update({'apply_diagonal_solutions': True})
+                else:
+                    self.input_parms.update({'apply_diagonal_solutions': False})
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
 

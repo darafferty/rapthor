@@ -915,8 +915,16 @@ steps:
         valueFrom: 'p1p2a2'
       - id: reweight
         valueFrom: 'True'
+{% elif use_facets %}
+{% if apply_diagonal_solutions %}
+        valueFrom: 'p1p2a2_diagonal'
 {% else %}
         valueFrom: 'p1p2a2_scalar'
+{% endif %}
+      - id: reweight
+        valueFrom: 'False'
+{% else %}
+        valueFrom: 'p1p2a2_diagonal'
       - id: reweight
         valueFrom: 'False'
 {% endif %}

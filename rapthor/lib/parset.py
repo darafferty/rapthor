@@ -541,6 +541,13 @@ def get_imaging_options(parset):
     else:
         parset_dict['mem_fraction'] = 0.9
 
+    # Apply separate XX and YY corrections during imaging (default = False). If False,
+    # scalar solutions (the average of the XX and YY solutions) are applied instead
+    if 'apply_diagonal_solutions' in parset_dict:
+        parset_dict['apply_diagonal_solutions'] = parset.getboolean('imaging', 'apply_diagonal_solutions')
+    else:
+        parset_dict['apply_diagonal_solutions'] = False
+
     # Use MPI during imaging (default = False).
     if 'use_mpi' in parset_dict:
         parset_dict['use_mpi'] = parset.getboolean('imaging', 'use_mpi')
@@ -594,7 +601,7 @@ def get_imaging_options(parset):
 
     # Check for invalid options
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
-                       'grid_center_ra', 'grid_center_dec',
+                       'grid_center_ra', 'grid_center_dec', 'apply_diagonal_solutions',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
                        'min_uv_lambda', 'max_uv_lambda', 'mem_fraction', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',

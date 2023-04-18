@@ -92,6 +92,13 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -multiscale
+  - id: apply_diagonal_solutions
+    label: Apply diagonal solutions
+    doc: |
+      Apply diagonal (separate XX and YY) solutions.
+    type: boolean
+    inputBinding:
+      prefix: -diagonal-solutions
   - id: cellsize_deg
     type: float
     inputBinding:
