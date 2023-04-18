@@ -150,6 +150,7 @@ class Image(Operation):
             # Set number of nodes to allocate to each imaging subpipeline. We subtract
             # one node because Toil must use one node for its job, which in turn calls
             # salloc to reserve the nodes for the MPI job
+            self.use_mpi = True
             nnodes = self.parset['cluster_specific']['max_nodes']
             nsubpipes = min(nsectors, nnodes)
             nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)

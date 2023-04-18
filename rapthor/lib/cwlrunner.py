@@ -92,7 +92,7 @@ class CWLRunner:
             # runner/mode used
             prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
             self.args.extend(['--tmpdir-prefix', prefix])
-        if self.operation.field.use_mpi:
+        if self.operation.use_mpi:
             self._create_mpi_config_file()
             self.args.extend(['--mpi-config-file', self.operation.mpi_config_file])
             self.args.extend(['--enable-ext'])
