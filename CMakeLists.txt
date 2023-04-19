@@ -30,6 +30,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED YES)
 set(CMAKE_CXX_EXTENSIONS NO)
 
+include_directories(${CMAKE_SOURCE_DIR}/external/aocommon/include/)
+include(external/aocommon/CMake/FetchXTensor.cmake)
+include_directories(SYSTEM "${xtensor_SOURCE_DIR}/include")
+include_directories(SYSTEM "${xtl_SOURCE_DIR}/include")
+
 # build shared or static libraries (default: shared)
 if(BUILD_STATIC_LIBS)
   set(BUILD_SHARED_LIBS FALSE)

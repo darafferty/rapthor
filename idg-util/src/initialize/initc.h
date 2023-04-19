@@ -4,72 +4,100 @@
 extern "C" {
 
 void utils_init_identity_spheroidal(void* ptr, int subgrid_size) {
-  idg::Array2D<float> spheroidal =
-      idg::get_identity_spheroidal(subgrid_size, subgrid_size);
-  memcpy(ptr, spheroidal.data(), spheroidal.bytes());
+  const std::array<size_t, 2> spheroidal_shape{
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
+  auto spheroidal =
+      aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr), spheroidal_shape);
+  idg::init_identity_spheroidal(spheroidal);
 }
 
 void utils_init_example_spheroidal(void* ptr, int subgrid_size) {
-  idg::Array2D<float> spheroidal =
-      idg::get_example_spheroidal(subgrid_size, subgrid_size);
-  memcpy(ptr, spheroidal.data(), spheroidal.bytes());
+  const std::array<size_t, 2> spheroidal_shape{
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
+  auto spheroidal =
+      aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr), spheroidal_shape);
+  idg::init_example_spheroidal(spheroidal);
 }
 
 void utils_init_example_frequencies(void* ptr, int nr_channels) {
-  idg::Array1D<float> frequencies = idg::get_example_frequencies(nr_channels);
-  memcpy(ptr, frequencies.data(), frequencies.bytes());
+  const std::array<size_t, 1> frequencies_shape{
+      static_cast<size_t>(nr_channels)};
+  auto frequencies = aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr),
+                                              frequencies_shape);
+  idg::init_example_frequencies(frequencies);
 }
 
 void utils_init_dummy_visibilities(void* ptr, int nr_baselines,
                                    int nr_timesteps, int nr_channels,
                                    int nr_correlations) {
-  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
-      nr_baselines, nr_timesteps, nr_channels, nr_correlations);
-  memcpy(ptr, visibilities.data(), visibilities.bytes());
+  const std::array<size_t, 4> visibilities_shape{
+      static_cast<size_t>(nr_baselines), static_cast<size_t>(nr_timesteps),
+      static_cast<size_t>(nr_channels), static_cast<size_t>(nr_correlations)};
+  auto visibilities = aocommon::xt::CreateSpan(
+      reinterpret_cast<std::complex<float>*>(ptr), visibilities_shape);
+  idg::init_dummy_visibilities(visibilities);
 }
 
 void utils_add_pt_src(float x, float y, float amplitude, int nr_baselines,
                       int nr_timesteps, int nr_channels, int nr_correlations,
                       float image_size, int grid_size, void* uvw,
                       void* frequencies, void* visibilities) {
-  typedef idg::UVW<float> UVWType;
-  idg::Array4D<std::complex<float>> visibilities_(
-      reinterpret_cast<std::complex<float>*>(visibilities), nr_baselines,
-      nr_timesteps, nr_channels, nr_correlations);
-  idg::Array2D<UVWType> uvw_((UVWType*)uvw, nr_baselines, nr_timesteps);
-  idg::Array1D<float> frequencies_((float*)frequencies, nr_channels);
-  idg::add_pt_src(visibilities_, uvw_, frequencies_, image_size, grid_size, x,
-                  y, amplitude);
+  const std::array<size_t, 1> frequencies_shape{
+      static_cast<size_t>(nr_channels)};
+  auto frequencies_span = aocommon::xt::CreateSpan(
+      reinterpret_cast<float*>(frequencies), frequencies_shape);
+  const std::array<size_t, 2> uvw_shape{static_cast<size_t>(nr_baselines),
+                                        static_cast<size_t>(nr_timesteps)};
+  auto uvw_span = aocommon::xt::CreateSpan(
+      reinterpret_cast<idg::UVW<float>*>(uvw), uvw_shape);
+  const std::array<size_t, 4> visibilities_shape{
+      static_cast<size_t>(nr_baselines), static_cast<size_t>(nr_timesteps),
+      static_cast<size_t>(nr_channels), static_cast<size_t>(nr_correlations)};
+  auto visibilities_span = aocommon::xt::CreateSpan(
+      reinterpret_cast<std::complex<float>*>(visibilities), visibilities_shape);
+  idg::add_pt_src(visibilities_span, uvw_span, frequencies_span, image_size,
+                  grid_size, x, y, amplitude);
 }
 
 void utils_init_identity_aterms(void* ptr, int nr_timeslots, int nr_stations,
                                 int subgrid_size, int nr_correlations) {
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-      idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size,
-                               subgrid_size);
-  memcpy(ptr, aterms.data(), aterms.bytes());
+  const std::array<size_t, 4> aterms_shape{
+      static_cast<size_t>(nr_timeslots), static_cast<size_t>(nr_stations),
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
+  using T = idg::Matrix2x2<std::complex<float>>;
+  auto aterms =
+      aocommon::xt::CreateSpan(reinterpret_cast<T*>(ptr), aterms_shape);
+  idg::init_identity_aterms(aterms);
 }
 
 void utils_init_example_aterms(void* ptr, int nr_timeslots, int nr_stations,
                                int subgrid_size, int nr_correlations) {
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-      idg::get_example_aterms(nr_timeslots, nr_stations, subgrid_size,
-                              subgrid_size);
-  memcpy(ptr, aterms.data(), aterms.bytes());
+  const std::array<size_t, 4> aterms_shape{
+      static_cast<size_t>(nr_timeslots), static_cast<size_t>(nr_stations),
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
+  using Aterm = idg::Matrix2x2<std::complex<float>>;
+  auto aterms =
+      aocommon::xt::CreateSpan(reinterpret_cast<Aterm*>(ptr), aterms_shape);
+  idg::init_example_aterms(aterms);
 }
 
 void utils_init_example_aterm_offsets(void* ptr, int nr_timeslots,
                                       int nr_timesteps) {
-  idg::Array1D<unsigned int> aterm_offsets =
-      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
-  memcpy(ptr, aterm_offsets.data(), aterm_offsets.bytes());
+  const std::array<size_t, 1> aterm_offsets_shape{
+      static_cast<size_t>(nr_timeslots) + 1};
+  auto aterm_offsets = aocommon::xt::CreateSpan(
+      reinterpret_cast<unsigned int*>(ptr), aterm_offsets_shape);
+  idg::init_example_aterm_offsets(aterm_offsets, nr_timesteps);
 }
 
 void utils_init_example_baselines(void* ptr, int nr_stations,
                                   int nr_baselines) {
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
-      idg::get_example_baselines(nr_stations, nr_baselines);
-  memcpy(ptr, baselines.data(), baselines.bytes());
+  const std::array<size_t, 1> baselines_shape{
+      static_cast<size_t>(nr_baselines)};
+  auto baselines = aocommon::xt::CreateSpan(
+      reinterpret_cast<std::pair<unsigned int, unsigned int>*>(ptr),
+      baselines_shape);
+  idg::init_example_baselines(baselines, nr_stations);
 }
 
 }  // end extern "C"

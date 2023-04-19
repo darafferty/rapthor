@@ -41,15 +41,18 @@ float DATA_get_nr_baselines(idg::Data* data) {
 
 void DATA_get_frequencies(idg::Data* data, void* ptr, unsigned int nr_channels,
                           float image_size, unsigned int channel_offset) {
-  idg::Array1D<float> frequencies((float*)ptr, nr_channels);
+  const std::array<size_t, 1> frequencies_shape{nr_channels};
+  auto frequencies = aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr),
+                                              frequencies_shape);
   data->get_frequencies(frequencies, image_size, channel_offset);
 }
 
 void DATA_get_uvw(idg::Data* data, void* ptr, unsigned int nr_baselines,
                   unsigned int nr_timesteps, unsigned int baseline_offset,
                   unsigned int time_offset, float integration_time) {
-  idg::Array2D<idg::UVW<float>> uvw((idg::UVW<float>*)ptr, nr_baselines,
-                                    nr_timesteps);
+  const std::array<size_t, 2> uvw_shape{nr_baselines, nr_timesteps};
+  auto uvw = aocommon::xt::CreateSpan(reinterpret_cast<idg::UVW<float>*>(ptr),
+                                      uvw_shape);
   data->get_uvw(uvw, baseline_offset, time_offset, integration_time);
 }
 

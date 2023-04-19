@@ -38,6 +38,27 @@ void Proxy::gridding(
               aterm_offsets, spheroidal);
 }
 
+void Proxy::gridding(
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
+  const Array1D<float> frequencies_array(frequencies);
+  const Array4D<std::complex<float>> visibilities_array(visibilities);
+  const Array2D<UVW<float>> uvw_array(uvw);
+  const Array1D<std::pair<unsigned int, unsigned int>> baselines_array(
+      baselines);
+  const Array4D<Matrix2x2<std::complex<float>>> aterms_array(aterms);
+  const Array1D<unsigned int> aterms_offsets_array(aterms_offsets);
+  const Array2D<float> taper_array(taper);
+  gridding(plan, frequencies_array, visibilities_array, uvw_array,
+           baselines_array, aterms_array, aterms_offsets_array, taper_array);
+}
+
 void Proxy::degridding(
     const Plan& plan, const Array1D<float>& frequencies,
     Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
@@ -58,6 +79,27 @@ void Proxy::degridding(
 
   do_degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
                 aterm_offsets, spheroidal);
+}
+
+void Proxy::degridding(
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
+  const Array1D<float> frequencies_array(frequencies);
+  Array4D<std::complex<float>> visibilities_array(visibilities);
+  const Array2D<UVW<float>> uvw_array(uvw);
+  const Array1D<std::pair<unsigned int, unsigned int>> baselines_array(
+      baselines);
+  const Array4D<Matrix2x2<std::complex<float>>> aterms_array(aterms);
+  const Array1D<unsigned int> aterms_offsets_array(aterms_offsets);
+  const Array2D<float> taper_array(taper);
+  degridding(plan, frequencies_array, visibilities_array, uvw_array,
+             baselines_array, aterms_array, aterms_offsets_array, taper_array);
 }
 
 void Proxy::calibrate_init(
@@ -96,7 +138,7 @@ void Proxy::calibrate_init(
   auto nr_timesteps = visibilities.get_z_dim();
   auto nr_correlations = visibilities.get_x_dim();
   assert(nr_correlations == 4);
-  auto nr_baselines = baselines.get_x_dim();
+  const size_t nr_baselines = baselines.size();
   auto nr_channel_blocks = frequencies.get_y_dim();
   auto nr_channels_per_block = frequencies.get_x_dim();
 
@@ -188,14 +230,20 @@ void Proxy::calibrate_init(
     plans[i].reserve(nr_channel_blocks);
     for (unsigned int channel_block = 0; channel_block < nr_channel_blocks;
          channel_block++) {
-      Array1D<float> frequencies_channel_block(frequencies.data(channel_block),
-                                               nr_channels_per_block);
+      const std::array<size_t, 1> frequencies_channel_block_shape{
+          nr_channels_per_block};
+      auto frequencies_channel_block = aocommon::xt::CreateSpan(
+          frequencies.data(channel_block), frequencies_channel_block_shape);
+      const std::array<size_t, 1> aterm_offsets_shape{aterm_offsets.size()};
+      auto aterm_offsets_span =
+          aocommon::xt::CreateSpan(aterm_offsets.data(), aterm_offsets_shape);
+      const std::array<size_t, 2> uvw_shape{nr_antennas - 1, nr_timesteps};
+      const std::array<size_t, 1> baselines_shape{nr_antennas - 1};
       plans[i].push_back(make_plan(
           kernel_size, frequencies_channel_block,
-          Array2D<UVW<float>>(uvw1.data(i), nr_antennas - 1, nr_timesteps),
-          Array1D<std::pair<unsigned int, unsigned int>>(baselines1.data(i),
-                                                         nr_antennas - 1),
-          aterm_offsets, options));
+          aocommon::xt::CreateSpan(uvw1.data(i), uvw_shape),
+          aocommon::xt::CreateSpan(baselines1.data(i), baselines_shape),
+          aterm_offsets_span, options));
     }
   }
 

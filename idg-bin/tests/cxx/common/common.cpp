@@ -145,30 +145,30 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
                    image_size, grid_size, subgrid_size, kernel_size);
 
   std::clog << ">>> Initialize data structures" << std::endl;
-  idg::Array1D<float> frequencies = proxy2.allocate_array1d<float>(nr_channels);
-
+  aocommon::xt::Span<float, 1> frequencies =
+      proxy2.allocate_span<float, 1>({nr_channels});
   data.get_frequencies(frequencies, image_size);
-  idg::Array2D<idg::UVW<float>> uvw =
-      proxy2.allocate_array2d<idg::UVW<float>>(nr_baselines, nr_timesteps);
+  aocommon::xt::Span<idg::UVW<float>, 2> uvw =
+      proxy2.allocate_span<idg::UVW<float>, 2>({nr_baselines, nr_timesteps});
   data.get_uvw(uvw);
-  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
-      proxy2, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
-  idg::Array4D<std::complex<float>> visibilities_ref =
+  aocommon::xt::Span<std::complex<float>, 4> visibilities =
+      idg::get_dummy_visibilities(proxy2, nr_baselines, nr_timesteps,
+                                  nr_channels, nr_correlations);
+  aocommon::xt::Span<std::complex<float>, 4> visibilities_ref =
       idg::get_dummy_visibilities(proxy1, nr_baselines, nr_timesteps,
                                   nr_channels, nr_correlations);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(proxy2, nr_stations, nr_baselines);
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
+  aocommon::xt::Span<idg::Matrix2x2<std::complex<float>>, 4> aterms =
       idg::get_example_aterms(proxy2, nr_timeslots, nr_stations, subgrid_size,
                               subgrid_size);
-  idg::Array1D<unsigned int> aterm_offsets =
+  aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy2, nr_timeslots, nr_timesteps);
-  idg::Array2D<float> spheroidal =
+  aocommon::xt::Span<float, 2> spheroidal =
       idg::get_example_spheroidal(proxy2, subgrid_size, subgrid_size);
-  idg::Array1D<float> shift = idg::get_zero_shift();
   // Set shift to some random non-zero value
-  shift(0) = 0.02;  // shift is in radians, 0.02rad is about 1deg
-  shift(1) = -0.03;
+  // shift is in radians, 0.02rad is about 1deg
+  std::array<float, 2> shift{0.02f, -0.03f};
   auto grid = proxy2.allocate_grid(1, nr_polarizations, grid_size, grid_size);
   auto grid_ref =
       proxy1.allocate_grid(1, nr_polarizations, grid_size, grid_size);
@@ -237,12 +237,12 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
 #if TEST_DEGRIDDING
   // Run degridder
   std::clog << ">>> Run degridding" << std::endl;
-  visibilities.zero();
+  visibilities.fill(std::complex<float>(0.0f, 0.0f));
   proxy2.degridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
                     aterm_offsets, spheroidal);
 
   std::clog << ">>> Run reference degridding" << std::endl;
-  visibilities_ref.zero();
+  visibilities_ref.fill(std::complex<float>(0.0f, 0.0f));
   proxy1.degridding(*plan1, frequencies, visibilities_ref, uvw, baselines,
                     aterms, aterm_offsets, spheroidal);
 

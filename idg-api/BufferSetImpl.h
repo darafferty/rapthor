@@ -78,7 +78,7 @@ class BufferSetImpl : public virtual BufferSet {
 
   float get_cell_size() const { return m_cell_size; }
   float get_w_step() const { return m_w_step; }
-  const idg::Array1D<float>& get_shift() const { return m_shift; }
+  const std::array<float, 2>& get_shift() const { return m_shift; }
   float get_kernel_size() const { return m_kernel_size; }
   const Array2D<float>& get_spheroidal() const { return m_spheroidal; }
 
@@ -123,7 +123,7 @@ class BufferSetImpl : public virtual BufferSet {
   float m_cell_size;
   float m_w_step;
   int m_nr_w_layers;
-  Array1D<float> m_shift;
+  std::array<float, 2> m_shift;
   size_t m_size;
   size_t m_padded_size;
   float m_kernel_size;

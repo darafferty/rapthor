@@ -32,6 +32,7 @@ CUDA::~CUDA() {
   // contexts are free'ed, hence the explicit calls here.
   free_unified_grid();
   free_buffers_wtiling();
+  free_memory();
 }
 
 void CUDA::init_devices() {

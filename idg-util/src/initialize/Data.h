@@ -47,17 +47,11 @@ class Data {
 
   unsigned int get_nr_baselines() const { return m_baselines.size(); };
 
-  void get_frequencies(Array1D<float>& frequencies, float image_size,
-                       unsigned int channel_offset = 0) const;
+  void get_frequencies(aocommon::xt::Span<float, 1>& frequencies,
+                       float image_size, unsigned int channel_offset = 0) const;
 
-  Array2D<UVW<float>> get_uvw(unsigned int nr_baselines,
-                              unsigned int nr_timesteps,
-                              unsigned int baseline_offset = 0,
-                              unsigned int time_offset = 0,
-                              float integration_time = 1.0f) const;
-
-  void get_uvw(Array2D<UVW<float>>& uvw, unsigned int baseline_offset = 0,
-               unsigned int time_offset = 0,
+  void get_uvw(aocommon::xt::Span<UVW<float>, 2>& uvw,
+               unsigned int baseline_offset = 0, unsigned int time_offset = 0,
                float integration_time = 1.0f) const;
 
   float get_max_uv() const;

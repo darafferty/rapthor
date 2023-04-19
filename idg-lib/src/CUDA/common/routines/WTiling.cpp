@@ -55,16 +55,15 @@ size_t CUDA::bytes_required_wtiling(const WTileUpdateSet& wtile_set,
                                     const int nr_polarizations,
                                     const int subgrid_size,
                                     const float image_size, const float w_step,
-                                    const idg::Array1D<float>& shift,
+                                    const std::array<float, 2>& shift,
                                     const size_t bytes_free) const {
   if (wtile_set.empty()) {
     return 0;
   }
 
   // Compute the maximum padded w-tile size for any w-tile in the set
-  int w_padded_tile_size =
-      compute_w_padded_tile_size_max(wtile_set, m_tile_size, subgrid_size,
-                                     image_size, w_step, shift(0), shift(1));
+  int w_padded_tile_size = compute_w_padded_tile_size_max(
+      wtile_set, m_tile_size, subgrid_size, image_size, w_step, shift);
 
   // Compute the memory required for such a padded w-tile
   size_t sizeof_w_padded_tile = w_padded_tile_size * w_padded_tile_size *
@@ -159,7 +158,7 @@ void CUDA::init_buffers_wtiling(unsigned int subgrid_size) {
 }
 
 void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
-                              float w_step, const Array1D<float>& shift,
+                              float w_step, const std::array<float, 2>& shift,
                               WTileUpdateInfo& wtile_flush_info) {
   // Load grid parameters
   unsigned int nr_polarizations = m_grid->get_z_dim();
@@ -192,7 +191,7 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
   // Compute w_padded_tile_size for all tiles
   const float image_size_shift =
-      image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
+      image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
   std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
       tile_coordinates.data(), nr_tiles, w_step, image_size, image_size_shift,
       padded_tile_size);
@@ -225,8 +224,9 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
   }
 
   // Copy shift to device
-  cu::DeviceMemory d_shift(context, shift.bytes());
-  executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
+  const size_t sizeof_shift = shift.size() * sizeof(float);
+  cu::DeviceMemory d_shift(context, sizeof_shift);
+  executestream.memcpyHtoDAsync(d_shift, shift.data(), sizeof_shift);
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
@@ -386,7 +386,7 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 void CUDA::run_subgrids_to_wtiles(
     unsigned nr_polarizations, unsigned int subgrid_offset,
     unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
-    float w_step, const idg::Array1D<float>& shift,
+    float w_step, const std::array<float, 2>& shift,
     WTileUpdateSet& wtile_flush_set, cu::DeviceMemory& d_subgrids,
     cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
@@ -447,7 +447,7 @@ void CUDA::run_subgrids_to_wtiles(
 }
 
 void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
-                                float w_step, const Array1D<float>& shift,
+                                float w_step, const std::array<float, 2>& shift,
                                 WTileUpdateInfo& wtile_initialize_info) {
   // Load grid parameters
   unsigned int nr_polarizations = m_grid->get_z_dim();
@@ -480,7 +480,7 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
 
   // Compute w_padded_tile_size for all tiles
   const float image_size_shift =
-      image_size + 2 * std::max(std::abs(shift(0)), std::abs(shift(1)));
+      image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
   std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
       tile_coordinates.data(), nr_tiles, w_step, image_size, image_size_shift,
       padded_tile_size);
@@ -517,8 +517,9 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
                                 sizeof_tile_ids);
 
   // Copy shift to device
-  cu::DeviceMemory d_shift(context, shift.bytes());
-  executestream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
+  const size_t sizeof_shift = shift.size() * sizeof(float);
+  cu::DeviceMemory d_shift(context, sizeof_shift);
+  executestream.memcpyHtoDAsync(d_shift, shift.data(), sizeof_shift);
 
   // FFT plan
   std::unique_ptr<cufft::C2C_2D> fft;
@@ -675,14 +676,12 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
   }  // end for tile_offset
 }
 
-void CUDA::run_subgrids_from_wtiles(unsigned int nr_polarizations,
-                                    unsigned int subgrid_offset,
-                                    unsigned int nr_subgrids,
-                                    unsigned int subgrid_size, float image_size,
-                                    float w_step, const Array1D<float>& shift,
-                                    WTileUpdateSet& wtile_initialize_set,
-                                    cu::DeviceMemory& d_subgrids,
-                                    cu::DeviceMemory& d_metadata) {
+void CUDA::run_subgrids_from_wtiles(
+    unsigned int nr_polarizations, unsigned int subgrid_offset,
+    unsigned int nr_subgrids, unsigned int subgrid_size, float image_size,
+    float w_step, const std::array<float, 2>& shift,
+    WTileUpdateSet& wtile_initialize_set, cu::DeviceMemory& d_subgrids,
+    cu::DeviceMemory& d_metadata) {
   // Load CUDA objects
   kernel::cuda::InstanceCUDA& device = get_device(0);
   cu::Stream& stream = device.get_execute_stream();
@@ -749,7 +748,7 @@ void CUDA::flush_wtiles() {
   float image_size = grid_size * cell_size;
   int subgrid_size = m_cache_state.subgrid_size;
   float w_step = m_cache_state.w_step;
-  const Array1D<float>& shift = m_cache_state.shift;
+  const std::array<float, 2>& shift = m_cache_state.shift;
 
   // Get all the remaining wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();

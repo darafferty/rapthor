@@ -252,8 +252,8 @@ void GenericOptimized::run_imaging(
       // Launch gridder kernel
       device.launch_gridder(
           time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
-          subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
-          shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+          subgrid_size, image_size, w_step, nr_channels, nr_stations, shift[0],
+          shift[1], d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
           d_aterms, d_aterm_indices, d_metadata, *d_avg_aterm, d_subgrids);
 
       // Launch FFT
@@ -352,8 +352,8 @@ void GenericOptimized::run_imaging(
       // Launch degridder kernel
       device.launch_degridder(
           time_offset_current, nr_subgrids_current, nr_polarizations, grid_size,
-          subgrid_size, image_size, w_step, nr_channels, nr_stations, shift(0),
-          shift(1), d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
+          subgrid_size, image_size, w_step, nr_channels, nr_stations, shift[0],
+          shift[1], d_uvw, d_wavenumbers, d_visibilities, d_spheroidal,
           d_aterms, d_aterm_indices, d_metadata, d_subgrids);
       executestream.record(gpuFinished[job_id]);
 

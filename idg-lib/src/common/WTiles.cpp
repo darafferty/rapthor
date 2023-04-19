@@ -116,7 +116,7 @@ std::vector<int> compute_w_padded_tile_sizes(const idg::Coordinate* coordinates,
 int compute_w_padded_tile_size_max(const WTileUpdateSet& wtile_set,
                                    const int tile_size, const int subgrid_size,
                                    const float image_size, const float w_step,
-                                   const float shift_l, const float shift_m) {
+                                   const std::array<float, 2>& shift) {
   int w_padded_tile_size_max = 0;
 
   for (unsigned int i = 0; i < wtile_set.size(); i++) {
@@ -126,7 +126,7 @@ int compute_w_padded_tile_size_max(const WTileUpdateSet& wtile_set,
         wtile_info.wtile_coordinates;
     const int padded_tile_size = tile_size + subgrid_size;
     const float image_size_shift =
-        image_size + 2 * std::max(std::abs(shift_l), std::abs(shift_m));
+        image_size + 2 * std::max(std::abs(shift[0]), std::abs(shift[1]));
     const std::vector<int> w_padded_tile_sizes = compute_w_padded_tile_sizes(
         tile_coordinates.data(), nr_tiles, w_step, image_size, image_size_shift,
         padded_tile_size);

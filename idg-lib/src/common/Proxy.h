@@ -10,12 +10,16 @@
 #include <cstring>
 #include <utility>  // pair
 
+#include <aocommon/xt/span.h>
+
+#include "ArrayTypes.h"
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"
 #include "Types.h"
 #include "Plan.h"
 #include "Report.h"
 #include "Exception.h"
+#include "Tensor.h"
 
 namespace idg {
 enum DomainAtoDomainB {
@@ -81,6 +85,16 @@ class Proxy {
                 const Array1D<unsigned int>& aterm_offsets,
                 const Array2D<float>& taper);
 
+  void gridding(
+      const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+      const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+      const aocommon::xt::Span<float, 2>& taper);
+
   /**
    * @brief Degrid (predict) visibilities, applying A-terms.
    *
@@ -119,6 +133,16 @@ class Proxy {
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
       const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterm_offsets, const Array2D<float>& taper);
+
+  void degridding(
+      const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+      aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+      const aocommon::xt::Span<float, 2>& taper);
 
   /**
    * @brief Prepare a calibration cycle
@@ -276,6 +300,37 @@ class Proxy {
     return Array4D<T>(allocate_memory(bytes), d_dim, c_dim, b_dim, a_dim);
   };
 
+  template <typename T, size_t Dimensions>
+  Tensor<T, Dimensions> allocate_tensor(
+      const std::initializer_list<size_t> shape) {
+    assert(shape.size() == Dimensions);
+    std::array<size_t, Dimensions> shape_array;
+    size_t bytes = sizeof(T);
+    for (size_t i = 0; i < shape.size(); i++) {
+      const size_t dimension = *(shape.begin() + i);
+      shape_array[i] = dimension;
+      bytes *= dimension;
+    }
+    return Tensor<T, Dimensions>(allocate_memory(bytes), shape_array);
+  }
+
+  template <typename T, size_t Dimensions>
+  aocommon::xt::Span<T, Dimensions> allocate_span(
+      const std::initializer_list<size_t> shape) {
+    assert(shape.size() == Dimensions);
+    std::array<size_t, Dimensions> shape_array;
+    size_t bytes = sizeof(T);
+    for (size_t i = 0; i < shape.size(); i++) {
+      const size_t dimension = *(shape.begin() + i);
+      shape_array[i] = dimension;
+      bytes *= dimension;
+    }
+    std::unique_ptr<auxiliary::Memory> memory = allocate_memory(bytes);
+    T* ptr = reinterpret_cast<T*>(memory->data());
+    memory_.push_back(std::move(memory));
+    return aocommon::xt::CreateSpan(ptr, shape_array);
+  }
+
   //! Methods for grid management
   virtual std::shared_ptr<Grid> allocate_grid(size_t nr_w_layers,
                                               size_t nr_correlations,
@@ -320,12 +375,11 @@ class Proxy {
    * @param shift
    */
   virtual void init_cache(int subgrid_size, float cell_size, float w_step,
-                          const Array1D<float>& shift) {
+                          const std::array<float, 2>& shift) {
     m_cache_state.subgrid_size = subgrid_size;
     m_cache_state.cell_size = cell_size;
     m_cache_state.w_step = w_step;
-    m_cache_state.shift(0) = shift(0);
-    m_cache_state.shift(1) = shift(1);
+    m_cache_state.shift = shift;
   };
 
   // The cache needs to have been initialized by call to init_cache first
@@ -351,10 +405,11 @@ class Proxy {
    * @return std::unique_ptr<Plan>
    */
   virtual std::unique_ptr<Plan> make_plan(
-      const int kernel_size, const Array1D<float>& frequencies,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterm_offsets,
+      const int kernel_size, const aocommon::xt::Span<float, 1>& frequencies,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
       Plan::Options options = Plan::Options()) {
     options.w_step = m_cache_state.w_step;
     return std::unique_ptr<Plan>(
@@ -467,8 +522,13 @@ class Proxy {
     int subgrid_size;
     float cell_size;
     float w_step;
-    Array1D<float> shift{2};
+    std::array<float, 2> shift;
   } m_cache_state;
+
+  void free_memory() { memory_.clear(); };
+
+ private:
+  std::vector<std::unique_ptr<auxiliary::Memory>> memory_;
 
 };  // end class Proxy
 

@@ -44,17 +44,35 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
                     std::pair<unsigned int, unsigned int>* baselines,
                     std::complex<float>* aterms, unsigned int* aterm_offsets,
                     float* taper) {
-  idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array4D<std::complex<float>> visibilities_(
-      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
-  idg::Array2D<idg::UVW<float>> uvw_(uvw, nr_baselines, nr_timesteps);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(baselines,
-                                                                 nr_baselines);
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
-      (idg::Matrix2x2<std::complex<float>>*)aterms, nr_timeslots, nr_stations,
-      subgrid_size, subgrid_size);
-  idg::Array1D<unsigned int> aterm_offsets_(aterm_offsets, nr_timeslots + 1);
-  idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
+  const std::array<size_t, 1> frequencies_shape{
+      static_cast<size_t>(nr_channels)};
+  const std::array<size_t, 2> uvw_shape{static_cast<size_t>(nr_baselines),
+                                        static_cast<size_t>(nr_timesteps)};
+  const std::array<size_t, 4> visibilities_shape{
+      static_cast<size_t>(nr_baselines), static_cast<size_t>(nr_timesteps),
+      static_cast<size_t>(nr_channels), static_cast<size_t>(nr_correlations)};
+  const std::array<size_t, 1> baselines_shape{
+      static_cast<size_t>(nr_baselines)};
+  const std::array<size_t, 4> aterms_shape{
+      static_cast<size_t>(nr_timeslots), static_cast<size_t>(nr_stations),
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
+  const std::array<size_t, 1> aterm_offsets_shape{
+      static_cast<size_t>(nr_timeslots + 1)};
+  const std::array<size_t, 2> taper_shape{static_cast<size_t>(subgrid_size),
+                                          static_cast<size_t>(subgrid_size)};
+
+  auto frequencies_span =
+      aocommon::xt::CreateSpan(frequencies, frequencies_shape);
+  auto uvw_span = aocommon::xt::CreateSpan(uvw, uvw_shape);
+  auto visibilities_span =
+      aocommon::xt::CreateSpan(visibilities, visibilities_shape);
+  auto baselines_span = aocommon::xt::CreateSpan(baselines, baselines_shape);
+  auto aterms_span = aocommon::xt::CreateSpan(
+      reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
+      aterms_shape);
+  auto aterm_offsets_span =
+      aocommon::xt::CreateSpan(aterm_offsets, aterm_offsets_shape);
+  auto taper_span = aocommon::xt::CreateSpan(taper, taper_shape);
 
   idg::Plan::Options options;
   options.mode = nr_correlations == 4 ? idg::Plan::Mode::FULL_POLARIZATION
@@ -62,12 +80,12 @@ void Proxy_gridding(struct Proxy* p, int kernel_size, int subgrid_size,
 
   std::unique_ptr<idg::Plan> plan = ExitOnException(
       &idg::proxy::Proxy::make_plan, reinterpret_cast<idg::proxy::Proxy*>(p),
-      kernel_size, frequencies_, uvw_, baselines_, aterm_offsets_, options);
+      kernel_size, frequencies_span, uvw_span, baselines_span,
+      aterm_offsets_span, options);
 
-  ExitOnException(&idg::proxy::Proxy::gridding,
-                  reinterpret_cast<idg::proxy::Proxy*>(p), *plan, frequencies_,
-                  visibilities_, uvw_, baselines_, aterms_, aterm_offsets_,
-                  taper_);
+  reinterpret_cast<idg::proxy::Proxy*>(p)->gridding(
+      *plan, frequencies_span, visibilities_span, uvw_span, baselines_span,
+      aterms_span, aterm_offsets_span, taper_span);
 }
 
 void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
@@ -78,17 +96,35 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
                       std::pair<unsigned int, unsigned int>* baselines,
                       std::complex<float>* aterms, unsigned int* aterm_offsets,
                       float* taper) {
-  idg::Array1D<float> frequencies_(frequencies, nr_channels);
-  idg::Array4D<std::complex<float>> visibilities_(
-      visibilities, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
-  idg::Array2D<idg::UVW<float>> uvw_(uvw, nr_baselines, nr_timesteps);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(baselines,
-                                                                 nr_baselines);
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms_(
-      (idg::Matrix2x2<std::complex<float>>*)aterms, nr_timeslots, nr_stations,
-      subgrid_size, subgrid_size);
-  idg::Array1D<unsigned int> aterm_offsets_(aterm_offsets, nr_timeslots + 1);
-  idg::Array2D<float> taper_(taper, subgrid_size, subgrid_size);
+  const std::array<size_t, 1> frequencies_shape{
+      static_cast<size_t>(nr_channels)};
+  const std::array<size_t, 2> uvw_shape{static_cast<size_t>(nr_baselines),
+                                        static_cast<size_t>(nr_timesteps)};
+  const std::array<size_t, 4> visibilities_shape{
+      static_cast<size_t>(nr_baselines), static_cast<size_t>(nr_timesteps),
+      static_cast<size_t>(nr_channels), static_cast<size_t>(nr_correlations)};
+  const std::array<size_t, 1> baselines_shape{
+      static_cast<size_t>(nr_baselines)};
+  const std::array<size_t, 4> aterms_shape{
+      static_cast<size_t>(nr_timeslots), static_cast<size_t>(nr_stations),
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
+  const std::array<size_t, 1> aterm_offsets_shape{
+      static_cast<size_t>(nr_timeslots + 1)};
+  const std::array<size_t, 2> taper_shape{static_cast<size_t>(subgrid_size),
+                                          static_cast<size_t>(subgrid_size)};
+
+  auto frequencies_span =
+      aocommon::xt::CreateSpan(frequencies, frequencies_shape);
+  auto uvw_span = aocommon::xt::CreateSpan(uvw, uvw_shape);
+  auto visibilities_span =
+      aocommon::xt::CreateSpan(visibilities, visibilities_shape);
+  auto baselines_span = aocommon::xt::CreateSpan(baselines, baselines_shape);
+  auto aterms_span = aocommon::xt::CreateSpan(
+      reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
+      aterms_shape);
+  auto aterm_offsets_span =
+      aocommon::xt::CreateSpan(aterm_offsets, aterm_offsets_shape);
+  auto taper_span = aocommon::xt::CreateSpan(taper, taper_shape);
 
   idg::Plan::Options options;
   options.mode = nr_correlations == 4 ? idg::Plan::Mode::FULL_POLARIZATION
@@ -96,20 +132,20 @@ void Proxy_degridding(struct Proxy* p, int kernel_size, int subgrid_size,
 
   std::unique_ptr<idg::Plan> plan = ExitOnException(
       &idg::proxy::Proxy::make_plan, reinterpret_cast<idg::proxy::Proxy*>(p),
-      kernel_size, frequencies_, uvw_, baselines_, aterm_offsets_, options);
+      kernel_size, frequencies_span, uvw_span, baselines_span,
+      aterm_offsets_span, options);
 
-  ExitOnException(&idg::proxy::Proxy::degridding,
-                  reinterpret_cast<idg::proxy::Proxy*>(p), *plan, frequencies_,
-                  visibilities_, uvw_, baselines_, aterms_, aterm_offsets_,
-                  taper_);
+  reinterpret_cast<idg::proxy::Proxy*>(p)->degridding(
+      *plan, frequencies_span, visibilities_span, uvw_span, baselines_span,
+      aterms_span, aterm_offsets_span, taper_span);
 }
 
 void Proxy_init_cache(struct Proxy* p, unsigned int subgrid_size,
                       const float cell_size, float w_step, float* shift) {
-  idg::Array1D<float> shift_(shift, 2);
+  const std::array<float, 2> shift_array{shift[0], shift[1]};
   ExitOnException(&idg::proxy::Proxy::init_cache,
                   reinterpret_cast<idg::proxy::Proxy*>(p), subgrid_size,
-                  cell_size, w_step, shift_);
+                  cell_size, w_step, shift_array);
 }
 
 void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
@@ -131,8 +167,11 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
                                nr_timesteps, nr_channels, nr_correlations);
   idg::Array2D<idg::UVW<float>> uvw_((idg::UVW<float>*)uvw, nr_baselines,
                                      nr_timesteps);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_(
-      (std::pair<unsigned int, unsigned int>*)baselines, nr_baselines);
+  const std::array<size_t, 1> baselines_shape{
+      static_cast<size_t>(nr_baselines)};
+  auto baselines_ = aocommon::xt::CreateSpan(
+      reinterpret_cast<std::pair<unsigned int, unsigned int>*>(baselines),
+      baselines_shape);
   idg::Array1D<unsigned int> aterm_offsets_(aterm_offsets, nr_timeslots + 1);
   idg::Array2D<float> spheroidal_(spheroidal, subgrid_size, subgrid_size);
 

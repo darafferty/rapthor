@@ -76,15 +76,13 @@ BufferSetImpl::BufferSetImpl(Type architecture)
       m_nr_correlations(4),
       m_nr_polarizations(4),
       m_proxy(create_proxy(architecture)),
-      m_shift(2),
+      m_shift({0, 0}),
       m_get_image_watch(Stopwatch::create()),
       m_set_image_watch(Stopwatch::create()),
       m_avg_beam_watch(Stopwatch::create()),
       m_plan_watch(Stopwatch::create()),
       m_gridding_watch(Stopwatch::create()),
-      m_degridding_watch(Stopwatch::create()) {
-  m_shift.zero();
-}
+      m_degridding_watch(Stopwatch::create()) {}
 
 BufferSetImpl::~BufferSetImpl() {
   // Free all objects allocated via the proxy before destroying the proxy.
@@ -258,8 +256,8 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   std::cout << "nr_w_layers: " << m_nr_w_layers << std::endl;
 #endif
 
-  m_shift(0) = shiftl;
-  m_shift(1) = shiftm;
+  m_shift[0] = shiftl;
+  m_shift[1] = shiftm;
 
   m_kernel_size = taper_kernel_size + w_kernel_size + a_term_kernel_size;
 
