@@ -49,15 +49,15 @@ class CWLRunner:
         logger.debug("Creating MPI config file %s", self.operation.mpi_config_file)
         if self.operation.batch_system == 'slurm':
             mpi_config_lines = [
-                "runner: 'mpirun'",
-                "nproc_flag: '-np'",
-                "extra_flags: ['--map-by', 'node']"
-            ]
-        else:
-            mpi_config_lines = [
                 "runner: 'mpi_runner.sh'",
                 "nproc_flag: '-N'",
                 "extra_flags: ['mpirun', '--map-by', 'node']"
+            ]
+        else:
+            mpi_config_lines = [
+                "runner: 'mpirun'",
+                "nproc_flag: '-np'",
+                "extra_flags: ['--map-by', 'node']"
             ]
             logger.warning('MPI support for non-Slurm clusters is experimental. '
                            'Please report any issues encountered.')
@@ -101,9 +101,8 @@ class CWLRunner:
         """
         Clean up after the runner has run.
         """
-        if self.operation.field.use_mpi:
+        if self.operation.use_mpi:
             self._delete_mpi_config_file()
-
 
     def run(self) -> bool:
         """
@@ -162,6 +161,12 @@ class ToilRunner(CWLRunner):
             self.args.extend(['--disableCaching'])
             self.args.extend(['--defaultCores', str(self.operation.cpus_per_task)])
             self.args.extend(['--defaultMemory', self.operation.mem_per_node_gb])
+
+            # When the slurm batch system is used, the use of --bypass-file-store
+            # requires that --tmp-outdir-prefix points to a shared filesystem, so
+            # here we set it to the output directory
+            prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
+            self.args.extend(['--tmp-outdir-prefix', prefix])
         self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
         self.args.extend(['--jobStore', self.operation.jobstore])
         if os.path.exists(self.operation.jobstore):
@@ -175,16 +180,12 @@ class ToilRunner(CWLRunner):
             # Note: add a trailing directory separator, required by Toil v5.3+, using
             #       os.path.join()
             self.args.extend(['--workDir', os.path.join(self.operation.scratch_dir, '')])
-            if self.operation.batch_system == 'slurm':
-                # When the slurm batch system is used, the use of --bypass-file-store
-                # requires that --tmp-outdir-prefix points to a shared filesystem, so
-                # here we set it to the output directory
-                prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
-            else:
+            if self.operation.batch_system != 'slurm':
                 # For non-slurm batch systems, set --tmp-outdir-prefix to the scratch
-                # directory
+                # directory (when the slurm batch system is used, --tmp-outdir-prefix
+                # is set above to a shared filesystem)
                 prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
-            self.args.extend(['--tmp-outdir-prefix', prefix])
+                self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.coordination_dir is not None:
             self.args.extend(['--coordinationDir', self.operation.coordination_dir])
         self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
@@ -240,7 +241,6 @@ class CWLToolRunner(CWLRunner):
 
     def teardown(self) -> None:
         return super().teardown()
-
 
 
 def create_cwl_runner(runner: str, operation: Operation) -> CWLRunner:
