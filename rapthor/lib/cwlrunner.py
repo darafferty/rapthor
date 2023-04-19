@@ -101,7 +101,7 @@ class CWLRunner:
         """
         Clean up after the runner has run.
         """
-        if self.operation.field.use_mpi:
+        if self.operation.use_mpi:
             self._delete_mpi_config_file()
 
 
