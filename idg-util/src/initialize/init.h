@@ -21,83 +21,103 @@ Data get_example_data(unsigned int max_nr_baselines, unsigned int grid_size,
 /*
  * Memory-allocation is handled by Proxy
  */
-Array1D<float> get_example_frequencies(
+aocommon::xt::Span<float, 1> get_example_frequencies(
     proxy::Proxy& proxy, unsigned int nr_channels,
     float start_frequency = Data::start_frequency,
     float frequency_increment = Data::frequency_increment);
 
-Array4D<std::complex<float>> get_dummy_visibilities(
+aocommon::xt::Span<std::complex<float>, 4> get_dummy_visibilities(
     proxy::Proxy& proxy, unsigned int nr_baselines, unsigned int nr_timesteps,
     unsigned int nr_channels, unsigned int nr_correlations);
 
-Array4D<std::complex<float>> get_example_visibilities(
-    proxy::Proxy& proxy, Array2D<UVW<float>>& uvw, Array1D<float>& frequencies,
-    float image_size, unsigned int nr_correlations, unsigned int grid_size,
-    unsigned int nr_polarizations, unsigned int nr_point_sources = 4,
-    unsigned int max_pixel_offset = -1, unsigned int random_seed = 2,
-    float amplitude = 1);
+aocommon::xt::Span<std::complex<float>, 4> get_example_visibilities(
+    proxy::Proxy& proxy, aocommon::xt::Span<UVW<float>, 2>& uvw,
+    aocommon::xt::Span<float, 1>& frequencies, float image_size,
+    unsigned int nr_correlations, unsigned int grid_size,
+    unsigned int nr_point_sources = 4, unsigned int max_pixel_offset = 0,
+    unsigned int random_seed = 2, float amplitude = 1);
 
-Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
-    proxy::Proxy& proxy, unsigned int nr_stations, unsigned int nr_baselines);
+aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>
+get_example_baselines(proxy::Proxy& proxy, unsigned int nr_stations,
+                      unsigned int nr_baselines);
 
-Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
+aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4> get_identity_aterms(
     proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_stations,
     unsigned int height, unsigned int width);
 
-Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4> get_example_aterms(
     proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_stations,
     unsigned int height, unsigned int width);
 
-Array1D<unsigned int> get_example_aterm_offsets(proxy::Proxy& proxy,
-                                                unsigned int nr_timeslots,
-                                                unsigned int nr_timesteps);
+aocommon::xt::Span<unsigned int, 1> get_example_aterm_offsets(
+    proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_timesteps);
 
-Array2D<float> get_example_spheroidal(proxy::Proxy& proxy, unsigned int height,
-                                      unsigned int width);
+aocommon::xt::Span<float, 2> get_identity_spheroidal(proxy::Proxy& proxy,
+                                                     unsigned int height,
+                                                     unsigned int width);
 
-Array1D<float> get_zero_shift();
+aocommon::xt::Span<float, 2> get_example_spheroidal(proxy::Proxy& proxy,
+                                                    unsigned int height,
+                                                    unsigned int width);
 
 /*
  * Default memory allocation
  */
-Array1D<float> get_example_frequencies(
-    unsigned int nr_channels, float start_frequency = Data::start_frequency,
+void init_example_frequencies(
+    aocommon::xt::Span<float, 1>& frequencies,
+    float start_frequency = Data::start_frequency,
     float frequency_increment = Data::frequency_increment);
 
-Array4D<std::complex<float>> get_dummy_visibilities(
-    unsigned int nr_baselines, unsigned int nr_timesteps,
-    unsigned int nr_channels, unsigned int nr_correlations);
+void init_example_visibilities(
+    aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    aocommon::xt::Span<UVW<float>, 2>& uvw,
+    aocommon::xt::Span<float, 1>& frequencies, float image_size,
+    unsigned int grid_size, unsigned int nr_point_sources = 4,
+    unsigned int max_pixel_offset = 0, unsigned int random_seed = 2,
+    float amplitude = 1);
 
-Array4D<std::complex<float>> get_example_visibilities(
-    Array2D<UVW<float>>& uvw, Array1D<float>& frequencies, float image_size,
-    unsigned int grid_size, unsigned int nr_correlations,
-    unsigned int nr_point_sources = 4, unsigned int max_pixel_offset = -1,
-    unsigned int random_seed = 2, float amplitude = 1);
+void init_dummy_visibilities(
+    aocommon::xt::Span<std::complex<float>, 4>& visibilities);
 
-Array1D<std::pair<unsigned int, unsigned int>> get_example_baselines(
+xt::xtensor<std::pair<unsigned int, unsigned int>, 1> get_example_baselines(
     unsigned int nr_stations, unsigned int nr_baselines);
 
-Array4D<Matrix2x2<std::complex<float>>> get_identity_aterms(
+xt::xtensor<Matrix2x2<std::complex<float>>, 4> get_identity_aterms(
     unsigned int nr_timeslots, unsigned int nr_stations, unsigned int height,
     unsigned int width);
 
-Array4D<Matrix2x2<std::complex<float>>> get_example_aterms(
+xt::xtensor<Matrix2x2<std::complex<float>>, 4> get_example_aterms(
     unsigned int nr_timeslots, unsigned int nr_stations, unsigned int height,
     unsigned int width);
 
-Array1D<unsigned int> get_example_aterm_offsets(unsigned int nr_timeslots,
-                                                unsigned int nr_timesteps);
+xt::xtensor<unsigned int, 1> get_example_aterm_offsets(
+    unsigned int nr_timeslots, unsigned int nr_timesteps);
 
-Array2D<float> get_identity_spheroidal(unsigned int height, unsigned int width);
+void init_identity_spheroidal(aocommon::xt::Span<float, 2>& spheroidal);
 
-Array2D<float> get_example_spheroidal(unsigned int height, unsigned int width);
+void init_example_spheroidal(aocommon::xt::Span<float, 2>& spheroidal);
 
 float evaluate_spheroidal(float nu);
 
-void add_pt_src(Array4D<std::complex<float>>& visibilities,
-                Array2D<UVW<float>>& uvw, Array1D<float>& frequencies,
-                float image_size, unsigned int grid_size, float x, float y,
-                float amplitude);
+void add_pt_src(aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+                const aocommon::xt::Span<UVW<float>, 2>& uvw,
+                const aocommon::xt::Span<float, 1>& frequencies,
+                float image_size, unsigned int grid_size, float offset_x,
+                float offset_y, float amplitude);
+
+void init_identity_aterms(
+    aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms);
+
+void init_example_aterms(
+    aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms);
+
+void init_example_aterm_offsets(
+    aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    unsigned int nr_timesteps);
+
+void init_example_baselines(
+    aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>& baselines,
+    unsigned int nr_stations);
 
 }  // namespace idg
 

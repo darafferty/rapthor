@@ -18,31 +18,6 @@ from idg.idgtypes import *
 lib = ctypes.cdll.LoadLibrary('libidg-util.so')
 
 
-def resize_spheroidal(spheroidal, size, dtype=np.float32):
-    """
-    Resize a spheroidal
-
-    :param spheroidal: Input spheroidal
-    :type spheroidal: np.arrayd(type=float) (two dimensions)
-    :param size: New size along one axis
-    :type size: int
-    :param dtype: new dtype, defaults to np.float32
-    :type dtype: np.dtype, optional
-    :return: New spheroidal
-    :rtype: np.array(dtype=float) (two dimensions)
-    """
-    if spheroidal.shape[1] != spheroidal.shape[0]:
-        raise ValueError("Input spheroidal size should be square")
-    subgrid_size = spheroidal.shape[0]
-    tmp = spheroidal.astype(np.float32)
-    result = np.zeros(shape=(size, size), dtype=np.float32)
-    lib.utils_resize_spheroidal(tmp.ctypes.data_as(ctypes.c_void_p),
-                                ctypes.c_int(subgrid_size),
-                                result.ctypes.data_as(ctypes.c_void_p),
-                                ctypes.c_int(size))
-    return result.astype(dtype)
-
-
 def nr_baselines_to_nr_stations(nr_baselines):
     """
     Convert number of baselines to number of stations, assuming that all station

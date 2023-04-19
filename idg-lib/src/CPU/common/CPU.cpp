@@ -43,10 +43,12 @@ std::unique_ptr<auxiliary::Memory> CPU::allocate_memory(size_t bytes) {
 }
 
 std::unique_ptr<Plan> CPU::make_plan(
-    const int kernel_size, const Array1D<float>& frequencies,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterm_offsets, Plan::Options options) {
+    const int kernel_size, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    Plan::Options options) {
   if (supports_wtiling() && m_cache_state.w_step != 0.0 &&
       m_wtiles.get_wtile_buffer_size()) {
     options.w_step = m_cache_state.w_step;
@@ -62,7 +64,7 @@ std::unique_ptr<Plan> CPU::make_plan(
 }
 
 void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
-                     const Array1D<float>& shift) {
+                     const std::array<float, 2>& shift) {
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
   const int nr_polarizations = m_grid->get_z_dim();
   const size_t grid_size = m_grid->get_x_dim();

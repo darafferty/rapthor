@@ -1,6 +1,8 @@
 // Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <xtensor/xcomplex.hpp>
+
 #include "idg-cpu.h"   // Reference proxy
 #include "idg-util.h"  // Data init routines
 
@@ -50,31 +52,39 @@ int test01() {
   // error tolerance, which might need to be adjusted if parameters are changed
   float tol = 0.1f;
 
+  // Initialize proxy
+  clog << ">>> Initialize proxy" << endl;
+  idg::proxy::cpu::Reference proxy;
+
+  // Initialize frequency data
+  aocommon::xt::Span<float, 1> frequencies =
+      proxy.allocate_span<float, 1>({nr_channels});
+  data.get_frequencies(frequencies, image_size);
+
   // Allocate and initialize data structures
   clog << ">>> Initialize data structures" << endl;
-  idg::Array1D<float> frequencies(nr_channels);
-  data.get_frequencies(frequencies, image_size);
-  idg::Array2D<idg::UVW<float>> uvw = data.get_uvw(nr_baselines, nr_timesteps);
-  idg::Array4D<std::complex<float>> visibilities =
-      idg::get_example_visibilities(uvw, frequencies, image_size, grid_size,
-                                    nr_correlations);
-  idg::Array4D<std::complex<float>> visibilities_ref =
-      idg::get_example_visibilities(uvw, frequencies, image_size, grid_size,
-                                    nr_correlations);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
-      idg::get_example_baselines(nr_stations, nr_baselines);
+  auto uvw =
+      proxy.allocate_span<idg::UVW<float>, 2>({nr_baselines, nr_timesteps});
+  aocommon::xt::Span<std::complex<float>, 4> visibilities =
+      idg::get_example_visibilities(proxy, uvw, frequencies, image_size,
+                                    nr_correlations, grid_size);
+  aocommon::xt::Span<std::complex<float>, 4> visibilities_ref =
+      idg::get_example_visibilities(proxy, uvw, frequencies, image_size,
+                                    nr_correlations, grid_size);
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
+      idg::get_example_baselines(proxy, nr_stations, nr_baselines);
   auto grid = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations,
                                           grid_size, grid_size);
   auto grid_ref = std::make_shared<idg::Grid>(nr_w_layers, nr_correlations,
                                               grid_size, grid_size);
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
-      idg::get_identity_aterms(nr_timeslots, nr_stations, subgrid_size,
+  aocommon::xt::Span<idg::Matrix2x2<std::complex<float>>, 4> aterms =
+      idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
-  idg::Array1D<unsigned int> aterm_offsets =
-      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
-  idg::Array2D<float> spheroidal =
-      idg::get_identity_spheroidal(subgrid_size, subgrid_size);
-  idg::Array1D<float> shift = idg::get_zero_shift();
+  aocommon::xt::Span<unsigned int, 1> aterm_offsets =
+      idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
+  aocommon::xt::Span<float, 2> spheroidal =
+      idg::get_identity_spheroidal(proxy, subgrid_size, subgrid_size);
+  std::array<float, 2> shift{0.0f, 0.0f};
   clog << endl;
 
   // Set w-terms to zero
@@ -96,14 +106,10 @@ int test01() {
   (*grid_ref)(0, 1, location_y, location_x) = amplitude;
   (*grid_ref)(0, 2, location_y, location_x) = amplitude;
   (*grid_ref)(0, 3, location_y, location_x) = amplitude;
-  visibilities_ref.zero();
+  visibilities_ref.fill(std::complex<float>(0.0f, 0.0f));
   add_pt_src(visibilities_ref, uvw, frequencies, image_size, grid_size,
              offset_x, offset_y, amplitude);
   clog << endl;
-
-  // Initialize proxy
-  clog << ">>> Initialize proxy" << endl;
-  idg::proxy::cpu::Reference proxy;
 
   // Set grid
   proxy.set_grid(grid);

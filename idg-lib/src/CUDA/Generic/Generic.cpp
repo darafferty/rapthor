@@ -123,10 +123,12 @@ std::shared_ptr<Grid> Generic::get_final_grid() {
 }
 
 std::unique_ptr<Plan> Generic::make_plan(
-    const int kernel_size, const Array1D<float>& frequencies,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterm_offsets, Plan::Options options) {
+    const int kernel_size, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    Plan::Options options) {
   if (do_supports_wtiling() && !m_disable_wtiling) {
     options.w_step = m_cache_state.w_step;
     options.nr_w_layers = std::numeric_limits<int>::max();
@@ -141,7 +143,7 @@ std::unique_ptr<Plan> Generic::make_plan(
 }
 
 void Generic::init_cache(int subgrid_size, float cell_size, float w_step,
-                         const Array1D<float>& shift) {
+                         const std::array<float, 2>& shift) {
   // Initialize cache
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
 

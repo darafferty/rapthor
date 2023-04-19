@@ -147,14 +147,15 @@ float receive_float(int src = 0) {
 }
 
 template <typename T>
-void send_array(int dst, T& array) {
-  MPI_Send(array.data(), array.bytes(), MPI_BYTE, dst, 0, MPI_COMM_WORLD);
+void send_tensor(int dst, T& tensor) {
+  MPI_Send(tensor.data(), tensor.size() * sizeof(T), MPI_BYTE, dst, 0,
+           MPI_COMM_WORLD);
 }
 
 template <typename T>
-void receive_array(int src, T& array) {
-  MPI_Recv(array.data(), array.bytes(), MPI_BYTE, src, 0, MPI_COMM_WORLD,
-           MPI_STATUS_IGNORE);
+void receive_tensor(int src, T& tensor) {
+  MPI_Recv(tensor.data(), tensor.size() * sizeof(T), MPI_BYTE, src, 0,
+           MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 }
 
 void send_bytes(int dst, void* buf, size_t bytes) {
@@ -249,7 +250,7 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
   unsigned int nr_polarizations = grid->get_z_dim();
   unsigned int grid_size = grid->get_y_dim();
 
-  idg::Array2D<std::complex<float>> tmp(grid_size, grid_size);
+  xt::xtensor<std::complex<float>, 2> tmp({grid_size, grid_size});
   size_t sizeof_row = grid_size * sizeof(std::complex<float>);
 
 #pragma omp parallel
@@ -260,7 +261,7 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
           if (omp_get_thread_num() == 0) {
             MPIRequestList requests;
             for (unsigned int y = 0; y < grid_size; y++) {
-              requests.create()->receive(tmp.data(y, 0), sizeof_row, i + rank);
+              requests.create()->receive(&tmp(y, 0), sizeof_row, i + rank);
             }
             requests.wait();
           }
@@ -271,12 +272,12 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
 #pragma omp for
           for (unsigned int y = 0; y < grid_size; y++)
             for (unsigned int x = 0; x < grid_size; x++) {
-              grid_(w, pol, y, x) += *tmp.data(y, x);
+              grid_(w, pol, y, x) += tmp(y, x);
             }
         } else if (rank < (2 * i) && omp_get_thread_num() == 0) {
           MPIRequestList requests;
           for (unsigned int y = 0; y < grid_size; y++) {
-            requests.create()->send(tmp.data(y, 0), sizeof_row, rank - i);
+            requests.create()->send(&tmp(y, 0), sizeof_row, rank - i);
           }
         }
       }  // end for i
@@ -383,8 +384,12 @@ void run_master() {
     send_string(dst, layout_file);
   }
 
+  // Initialize proxy
+  ProxyType proxy;
+
   // Initialize frequency data for master
-  idg::Array1D<float> frequencies(nr_channels);
+  aocommon::xt::Span<float, 1> frequencies =
+      proxy.allocate_span<float, 1>({nr_channels});
   data.get_frequencies(frequencies, image_size);
 
   // Distribute frequencies to workers
@@ -392,10 +397,11 @@ void run_master() {
   // take a channel offset into account when initializing
   // frequencies.
   for (int dst = 1; dst < world_size; dst++) {
-    int channel_offset = (dst - 1) * nr_channels;
-    idg::Array1D<float> frequencies_(nr_channels);
+    const int channel_offset = (dst - 1) * nr_channels;
+    aocommon::xt::Span<float, 1> frequencies_ =
+        proxy.allocate_span<float, 1>({nr_channels});
     data.get_frequencies(frequencies_, image_size, channel_offset);
-    send_array(dst, frequencies_);
+    send_tensor(dst, frequencies_);
   }
 
   // Distribute data
@@ -403,21 +409,18 @@ void run_master() {
     send_bytes(dst, &data, sizeof(data));
   }
 
-  // Initialize proxy
-  ProxyType proxy;
-
   // Allocate and initialize static data structures
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
+  aocommon::xt::Span<idg::Matrix2x2<std::complex<float>>, 4> aterms =
       idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
-  idg::Array1D<unsigned int> aterm_offsets =
+  aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
-  idg::Array2D<float> spheroidal =
+  aocommon::xt::Span<float, 2> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
-  auto grid =
+  std::shared_ptr<idg::Grid> grid =
       proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
-  idg::Array1D<float> shift = idg::get_zero_shift();
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
+  std::array<float, 2> shift{0.0f, 0.0f};
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(proxy, nr_stations, nr_baselines);
 
   // Plan options
@@ -427,10 +430,12 @@ void run_master() {
   // Buffers for input data
   unsigned int nr_time_blocks =
       std::ceil((float)total_nr_timesteps / nr_timesteps);
-  idg::Array3D<idg::UVW<float>> uvws = proxy.allocate_array3d<idg::UVW<float>>(
-      nr_time_blocks, nr_baselines, nr_timesteps);
-  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
-      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+  aocommon::xt::Span<idg::UVW<float>, 3> uvws =
+      proxy.allocate_span<idg::UVW<float>, 3>(
+          {nr_time_blocks, nr_baselines, nr_timesteps});
+  aocommon::xt::Span<std::complex<float>, 4> visibilities =
+      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
+                                  nr_channels, nr_correlations);
   unsigned int bl_offset = 0;
 
   // Vector of plans
@@ -491,8 +496,9 @@ void run_master() {
       unsigned int time_offset = t * nr_timesteps;
 
       // Get UVW coordinates for current cycle
-      idg::Array2D<idg::UVW<float>> uvw(uvws.data(t, 0, 0), nr_baselines,
-                                        nr_timesteps);
+      const std::array<size_t, 2> uvw_shape{nr_baselines, nr_timesteps};
+      auto uvw = aocommon::xt::CreateSpan(&uvws(t, 0, 0), uvw_shape);
+
       if (init) {
         runtimes_init[t] -= omp_get_wtime();
         data.get_uvw(uvw, bl_offset, time_offset, integration_time);
@@ -638,22 +644,23 @@ void run_worker() {
   ProxyType proxy;
 
   // Allocate and initialize static data structures
-  idg::Array4D<idg::Matrix2x2<std::complex<float>>> aterms =
+  aocommon::xt::Span<idg::Matrix2x2<std::complex<float>>, 4> aterms =
       idg::get_identity_aterms(proxy, nr_timeslots, nr_stations, subgrid_size,
                                subgrid_size);
-  idg::Array1D<unsigned int> aterm_offsets =
+  aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
-  idg::Array2D<float> spheroidal =
+  aocommon::xt::Span<float, 2> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
-  auto grid =
+  std::shared_ptr<idg::Grid> grid =
       proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
-  idg::Array1D<float> shift = idg::get_zero_shift();
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
+  std::array<float, 2> shift{0.0f, 0.0f};
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(proxy, nr_stations, nr_baselines);
 
   // Receive frequencies
-  idg::Array1D<float> frequencies = proxy.allocate_array1d<float>(nr_channels);
-  receive_array(0, frequencies);
+  aocommon::xt::Span<float, 1> frequencies =
+      proxy.allocate_span<float, 1>({nr_channels});
+  receive_tensor(0, frequencies);
 
   // Receive data
   idg::Data data =
@@ -667,10 +674,12 @@ void run_worker() {
   // Buffers for input data
   unsigned int nr_time_blocks =
       std::ceil((float)total_nr_timesteps / nr_timesteps);
-  idg::Array3D<idg::UVW<float>> uvws = proxy.allocate_array3d<idg::UVW<float>>(
-      nr_time_blocks, nr_baselines, nr_timesteps);
-  idg::Array4D<std::complex<float>> visibilities = idg::get_dummy_visibilities(
-      proxy, nr_baselines, nr_timesteps, nr_channels, nr_correlations);
+  aocommon::xt::Span<idg::UVW<float>, 3> uvws =
+      proxy.allocate_span<idg::UVW<float>, 3>(
+          {nr_time_blocks, nr_baselines, nr_timesteps});
+  aocommon::xt::Span<std::complex<float>, 4> visibilities =
+      idg::get_dummy_visibilities(proxy, nr_baselines, nr_timesteps,
+                                  nr_channels, nr_correlations);
   unsigned int bl_offset = 0;
 
   // Vector of plans
@@ -710,8 +719,10 @@ void run_worker() {
       unsigned int time_offset = t * nr_timesteps;
 
       // Get UVW coordinates for current cycle
-      idg::Array2D<idg::UVW<float>> uvw(uvws.data(t, 0, 0), nr_baselines,
-                                        nr_timesteps);
+      const std::array<size_t, 2> uvw_shape{nr_baselines, nr_timesteps};
+      aocommon::xt::Span<idg::UVW<float>, 2> uvw =
+          aocommon::xt::CreateSpan(&uvws(t, 0, 0), uvw_shape);
+
       if (init) {
         data.get_uvw(uvw, bl_offset, time_offset, integration_time);
       }

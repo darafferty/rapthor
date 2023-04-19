@@ -58,19 +58,22 @@ void BulkDegridderImpl::compute_visibilities(
   static const double kDefaultUVWFactors[3] = {1.0, 1.0, 1.0};
   if (!uvw_factors) uvw_factors = kDefaultUVWFactors;
 
-  auto bufferStationPairs =
-      proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
-          nr_baselines);
+  auto bufferStationPairs_tensor =
+      proxy.allocate_tensor<std::pair<unsigned int, unsigned int>, 1>(
+          {nr_baselines});
+  auto bufferStationPairs = bufferStationPairs_tensor.Span();
+  bufferStationPairs.fill(
+      std::pair<unsigned int, unsigned int>(nr_stations_, nr_stations_));
   std::vector<int> baseline_map;
-  auto bufferUVW =
-      proxy.allocate_array2d<UVW<float>>(nr_baselines, nr_timesteps);
+  auto bufferUVW_tensor =
+      proxy.allocate_tensor<UVW<float>, 2>({nr_baselines, nr_timesteps});
+  auto bufferUVW = bufferUVW_tensor.Span();
   auto bufferVisibilities = proxy.allocate_array4d<std::complex<float>>(
       nr_baselines, nr_timesteps, frequencies_.size(), nr_correlations);
   // The proxy does not touch visibilities for out-of-bound uvw coordinates.
   // Since we copy all visibilities to the caller, initialize them to zero.
   bufferVisibilities.zero();
 
-  bufferStationPairs.init({nr_stations_, nr_stations_});
   baseline_map.reserve(nr_baselines);
   for (size_t bl = 0; bl < nr_baselines; ++bl) {
     const size_t ant1 = antennas1[bl];
@@ -96,8 +99,10 @@ void BulkDegridderImpl::compute_visibilities(
   // The proxy expects the number of time steps as last value.
   std::vector<unsigned int> local_aterm_offsets = aterm_offsets;
   local_aterm_offsets.push_back(nr_timesteps);
-  const Array1D<unsigned int> aterm_offsets_array(local_aterm_offsets.data(),
-                                                  local_aterm_offsets.size());
+  const std::array<size_t, 1> local_aterm_offsets_shape{
+      local_aterm_offsets.size()};
+  auto aterm_offsets_span = aocommon::xt::CreateSpan(local_aterm_offsets.data(),
+                                                     local_aterm_offsets_shape);
 
   // If aterms is empty, create default values and update the pointer.
   std::vector<Matrix2x2<std::complex<float>>> default_aterms;
@@ -113,8 +118,8 @@ void BulkDegridderImpl::compute_visibilities(
   auto* local_aterms = reinterpret_cast<Matrix2x2<std::complex<float>>*>(
       const_cast<std::complex<float>*>(aterms));
   const Array4D<Matrix2x2<std::complex<float>>> aterms_array(
-      local_aterms, aterm_offsets_array.get_x_dim() - 1, nr_stations_,
-      subgridsize, subgridsize);
+      local_aterms, aterm_offsets_span.size() - 1, nr_stations_, subgridsize,
+      subgridsize);
 
   // Set Plan options
   Plan::Options options;
@@ -126,15 +131,18 @@ void BulkDegridderImpl::compute_visibilities(
 
   // Create plan
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Start();
+  const std::array<size_t, 1> frequencies_shape{frequencies_.size()};
+  auto frequencies_span =
+      aocommon::xt::CreateSpan(frequencies_.data(), frequencies_shape);
   std::unique_ptr<Plan> plan =
-      proxy.make_plan(bufferset_.get_kernel_size(), frequencies_, bufferUVW,
-                      bufferStationPairs, aterm_offsets_array, options);
+      proxy.make_plan(bufferset_.get_kernel_size(), frequencies_span, bufferUVW,
+                      bufferStationPairs, aterm_offsets_span, options);
   bufferset_.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run degridding
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Start();
   proxy.degridding(*plan, frequencies_, bufferVisibilities, bufferUVW,
-                   bufferStationPairs, aterms_array, aterm_offsets_array,
+                   bufferStationPairs, aterms_array, aterm_offsets_span,
                    bufferset_.get_spheroidal());
   bufferset_.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 

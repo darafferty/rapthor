@@ -6,18 +6,26 @@
 #include <algorithm>  // max_element
 #include <memory.h>   // memcpy
 
+#include <xtensor/xview.hpp>
+#include <xtensor/xsort.hpp>
+
 #include "Plan.h"
+#include "auxiliary.h"
 
 using namespace std;
 
 namespace idg {
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-           const float cell_size, const Array1D<float>& shift,
-           const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
-           const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-           const Array1D<unsigned int>& aterm_offsets, Options options)
-    : m_subgrid_size(subgrid_size),
+           const float cell_size, const std::array<float, 2>& shift,
+           const aocommon::xt::Span<float, 1>& frequencies,
+           const aocommon::xt::Span<UVW<float>, 2>& uvw,
+           const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+               baselines,
+           const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+           Options options)
+    : m_shift(shift),
+      m_subgrid_size(subgrid_size),
       m_cell_size(cell_size),
       use_wtiles(false),
       m_options(options) {
@@ -26,20 +34,21 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
 #endif
 
   WTiles dummy_wtiles;
-  m_shift(0) = shift(0);
-  m_shift(1) = shift(1);
 
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterm_offsets, dummy_wtiles, options);
 }
 
 Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
-           const float cell_size, const Array1D<float>& shift,
-           const Array1D<float>& frequencies, const Array2D<UVW<float>>& uvw,
-           const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-           const Array1D<unsigned int>& aterm_offsets, WTiles& wtiles,
-           Options options)
-    : m_subgrid_size(subgrid_size),
+           const float cell_size, const std::array<float, 2>& shift,
+           const aocommon::xt::Span<float, 1>& frequencies,
+           const aocommon::xt::Span<UVW<float>, 2>& uvw,
+           const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+               baselines,
+           const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+           WTiles& wtiles, Options options)
+    : m_shift(shift),
+      m_subgrid_size(subgrid_size),
       m_cell_size(cell_size),
       use_wtiles(true),
       m_options(options) {
@@ -47,8 +56,6 @@ Plan::Plan(const int kernel_size, const int subgrid_size, const int grid_size,
   cout << "Plan::" << __func__ << " (with WTiles)" << endl;
 #endif
 
-  m_shift(0) = shift(0);
-  m_shift(1) = shift(1);
   initialize(kernel_size, subgrid_size, grid_size, cell_size, frequencies, uvw,
              baselines, aterm_offsets, wtiles, options);
 }
@@ -206,10 +213,11 @@ inline float meters_to_lambda(float meters, float frequency) {
 
 std::vector<std::pair<int, int>> make_channel_groups(
     float baseline_length, float uv_span_frequency, float image_size,
-    const Array1D<float>& frequencies, unsigned int max_nr_channels = 0) {
+    const aocommon::xt::Span<float, 1>& frequencies,
+    unsigned int max_nr_channels = 0) {
   std::vector<std::pair<int, int>> result;
 
-  unsigned int nr_channels = frequencies.get_x_dim();
+  const size_t nr_channels = frequencies.size();
 
   // There will be at most as many channel_groups as channels
   result.reserve(nr_channels);
@@ -238,10 +246,11 @@ std::vector<std::pair<int, int>> make_channel_groups(
 
 void Plan::initialize(
     const int kernel_size, const int subgrid_size, const int grid_size,
-    const float cell_size, const Array1D<float>& frequencies,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterm_offsets, WTiles& wtiles,
+    const float cell_size, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets, WTiles& wtiles,
     const Options& options) {
 #if defined(DEBUG)
   cout << "Plan::" << __func__ << endl;
@@ -250,41 +259,33 @@ void Plan::initialize(
   std::clog << "grid_size    : " << grid_size << std::endl;
 #endif
 
-  // Check arguments
-  assert(baselines.get_x_dim() == uvw.get_y_dim());
-
   // Initialize arguments
-  auto nr_baselines = uvw.get_y_dim();
-  auto nr_timesteps = uvw.get_x_dim();
-  auto nr_timeslots = aterm_offsets.get_x_dim() - 1;
-  auto nr_channels = frequencies.get_x_dim();
-  auto image_size = cell_size * grid_size;  // TODO: remove
-  auto wtile_size = wtiles.get_wtile_size();
+  const size_t nr_baselines = uvw.shape(0);
+  assert(baselines.size() == nr_baselines);
+  const size_t nr_timesteps = uvw.shape(1);
+  const size_t nr_timeslots = aterm_offsets.size() - 1;
+  const size_t nr_channels = frequencies.size();
+  const float image_size = cell_size * grid_size;  // TODO: remove
+  const size_t wtile_size = wtiles.get_wtile_size();
 
   // Get options
   m_w_step = options.w_step;
-  int nr_w_layers = options.nr_w_layers;
-  int max_nr_timesteps_per_subgrid =
-      min(options.max_nr_timesteps_per_subgrid, nr_timesteps);
-  int max_nr_channels_per_subgrid = options.max_nr_channels_per_subgrid;
-  bool plan_strict = options.plan_strict;
-
-  // Spectral-line imaging
-  bool simulate_spectral_line = options.simulate_spectral_line;
-  auto nr_channels_ = nr_channels;
-  if (simulate_spectral_line) {
-    nr_channels = 1;
-  }
+  const size_t nr_w_layers = options.nr_w_layers;
+  const size_t max_nr_timesteps_per_subgrid = min(
+      static_cast<size_t>(options.max_nr_timesteps_per_subgrid), nr_timesteps);
+  const size_t max_nr_channels_per_subgrid =
+      options.max_nr_channels_per_subgrid;
+  const bool plan_strict = options.plan_strict;
 
   // Temporary metadata vector for individual baselines
-  int max_nr_subgrids_per_baseline =
+  const size_t max_nr_subgrids_per_baseline =
       max_nr_timesteps_per_subgrid > 0
           ? ((nr_timesteps + max_nr_timesteps_per_subgrid) /
              max_nr_timesteps_per_subgrid) +
                 1
           : nr_timesteps;
-  idg::Array2D<Metadata> metadata_(nr_baselines,
-                                   nr_channels * max_nr_subgrids_per_baseline);
+  xt::xtensor<Metadata, 2> metadata_(
+      {nr_baselines, nr_channels * max_nr_subgrids_per_baseline});
 
   // Count the actual number of subgrids per baseline
   std::vector<unsigned int> nr_subgrids_per_baseline(nr_baselines);
@@ -327,14 +328,14 @@ void Plan::initialize(
 
     // Compute uv coordinates in pixels
     struct DataPoint {
-      unsigned timestep;
+      unsigned int timestep;
       float u_pixels;
       float v_pixels;
       float w_lambda;
     };
 
     // Allocate datapoints for first and last channel in a group
-    idg::Array2D<DataPoint> datapoints(nr_timesteps, 2);
+    xt::xtensor<DataPoint, 2> datapoints({nr_timesteps, 2});
 
     for (auto channel_group : channel_groups) {
       auto channel_begin = channel_group.first;
@@ -376,22 +377,22 @@ void Plan::initialize(
       while (time_offset < nr_timesteps) {
         // Create subgrid
         subgrid.reset();
-        int nr_timesteps_subgrid = 0;
+        size_t nr_timesteps_subgrid = 0;
 
         // Load first visibility
-        DataPoint first_datapoint = datapoints(time_offset, 0);
-        const int first_timestep = first_datapoint.timestep;
+        const DataPoint first_datapoint = datapoints(time_offset, 0);
+        const size_t first_timestep = first_datapoint.timestep;
 
         // Iterate all datapoints
         for (; time_offset < nr_timesteps; time_offset++) {
           // Visibility for first channel
-          DataPoint visibility0 = datapoints(time_offset, 0);
+          const DataPoint visibility0 = datapoints(time_offset, 0);
           const float u_pixels0 = visibility0.u_pixels;
           const float v_pixels0 = visibility0.v_pixels;
           const float w_lambda0 = visibility0.w_lambda;
 
           // Visibility for last channel
-          DataPoint visibility1 = datapoints(time_offset, 1);
+          const DataPoint visibility1 = datapoints(time_offset, 1);
           const float u_pixels1 = visibility1.u_pixels;
           const float v_pixels1 = visibility1.v_pixels;
 
@@ -431,7 +432,7 @@ void Plan::initialize(
         }
 
         // Compute time index for first visibility on subgrid
-        auto time_index = bl * nr_timesteps + first_timestep;
+        const size_t time_index = bl * nr_timesteps + first_timestep;
 
         // Finish subgrid
         subgrid.finish();
@@ -439,8 +440,8 @@ void Plan::initialize(
         // Add subgrid to metadata
         if (subgrid.in_range()) {
           Metadata m = {
-              .time_index = (int)time_index,         // time index
-              .nr_timesteps = nr_timesteps_subgrid,  // nr of timesteps
+              .time_index = static_cast<int>(time_index),
+              .nr_timesteps = static_cast<int>(nr_timesteps_subgrid),
               .channel_begin = channel_begin,
               .channel_end = channel_end,
               .baseline = baseline,                    // baselines
@@ -453,18 +454,6 @@ void Plan::initialize(
 
           unsigned subgrid_idx = nr_subgrids_per_baseline[bl];
           metadata_(bl, subgrid_idx++) = m;
-
-          // Add additional subgrids for subsequent frequencies
-          if (simulate_spectral_line) {
-            for (unsigned c = 1; c < nr_channels_; c++) {
-              // Compute shifted subgrid for current frequency
-              float shift = frequencies(c) / frequencies(0);
-              Metadata m = metadata_(bl, subgrid_idx);
-              m.coordinate.x *= shift;
-              m.coordinate.y *= shift;
-              metadata_(bl, subgrid_idx++) = m;
-            }
-          }
 
           // Update number of subgrids
           nr_subgrids_per_baseline[bl] = subgrid_idx;
@@ -530,7 +519,7 @@ void Plan::initialize(
   }  // end for bl
 
   // Reserve aterm indices
-  aterm_indices.resize(nr_baselines * nr_timesteps);
+  aterm_indices.resize({nr_baselines, nr_timesteps});
 
 // Set aterm index for every timestep
 #pragma omp parallel for
@@ -545,31 +534,31 @@ void Plan::initialize(
       // The aterm index is equal to the timeslot
       const unsigned int aterm_index = timeslot;
 
-      // Determine number of timesteps in current aterm
-      const unsigned nr_timesteps_per_aterm =
+      // Determine timesteps in current aterm
+      const unsigned int nr_timesteps_per_aterm =
           next_aterm_offset - current_aterm_offset;
+      const unsigned int first_aterm = time_idx;
+      const unsigned int last_aterm = time_idx + nr_timesteps_per_aterm;
 
-      for (unsigned timestep = 0; timestep < nr_timesteps_per_aterm;
-           timestep++) {
-        aterm_indices[bl * nr_timesteps + time_idx++] = aterm_index;
-      }
+      xt::view(aterm_indices, bl, xt::range(first_aterm, last_aterm)) =
+          aterm_index;
+
+      time_idx += nr_timesteps_per_aterm;
     }
   }
 
-  // Set nr_aterms
 #pragma omp parallel for
-  for (unsigned i = 0; i < metadata.size(); i++) {
-    auto& m = metadata[i];
-    auto aterm_index = aterm_indices[m.time_index];
-    auto nr_aterms = 1;
-    for (auto time = 0; time < m.nr_timesteps; time++) {
-      auto aterm_index_current = aterm_indices[m.time_index + time];
+  for (size_t i = 0; i < metadata.size(); ++i) {
+    Metadata& m = metadata[i];
+    size_t aterm_index = aterm_indices[m.time_index];
+    size_t nr_aterms = 1;
+    for (size_t time = 0; time < static_cast<size_t>(m.nr_timesteps); ++time) {
+      const size_t aterm_index_current = aterm_indices[m.time_index + time];
       if (aterm_index != aterm_index_current) {
-        nr_aterms++;
+        ++nr_aterms;
         aterm_index = aterm_index_current;
       }
     }
-
     m.nr_aterms = nr_aterms;
   }
 
@@ -678,8 +667,11 @@ void Plan::copy_metadata(void* ptr) const {
 }
 
 void Plan::copy_aterm_indices(void* ptr) const {
-  memcpy(ptr, get_aterm_indices_ptr(),
-         aterm_indices.size() * sizeof(unsigned int));
+  const size_t nr_baselines = aterm_indices.shape(0);
+  const size_t nr_timesteps = aterm_indices.shape(1);
+  const size_t sizeof_aterm_indices =
+      auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
+  memcpy(ptr, aterm_indices.data(), sizeof_aterm_indices);
 }
 
 const unsigned int* Plan::get_aterm_indices_ptr(int bl) const {

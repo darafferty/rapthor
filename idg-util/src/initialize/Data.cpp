@@ -215,40 +215,33 @@ void Data::limit_nr_baselines(unsigned int n) {
   std::swap(m_baselines, baselines_selected);
 }
 
-void Data::get_frequencies(Array1D<float>& frequencies, float image_size,
+void Data::get_frequencies(aocommon::xt::Span<float, 1>& frequencies,
+                           float image_size,
                            unsigned int channel_offset) const {
-  auto nr_channels = frequencies.get_x_dim();
-  auto max_uv = get_max_uv();
-  float frequency_increment = SPEED_OF_LIGHT / (max_uv * image_size);
-  for (unsigned chan = 0; chan < nr_channels; chan++) {
+  const size_t nr_channels = frequencies.size();
+  const float max_uv = get_max_uv();
+  const float frequency_increment = SPEED_OF_LIGHT / (max_uv * image_size);
+  for (size_t chan = 0; chan < nr_channels; chan++) {
     frequencies(chan) =
         start_frequency + frequency_increment * (chan + channel_offset);
   }
 }
 
-Array2D<UVW<float>> Data::get_uvw(unsigned int nr_baselines,
-                                  unsigned int nr_timesteps,
-                                  unsigned int baseline_offset,
-                                  unsigned int time_offset,
-                                  float integration_time) const {
-  Array2D<UVW<float>> uvw(nr_baselines, nr_timesteps);
-  get_uvw(uvw, baseline_offset, time_offset, integration_time);
-  return uvw;
-}
-
-void Data::get_uvw(Array2D<UVW<float>>& uvw, unsigned int baseline_offset,
-                   unsigned int time_offset, float integration_time) const {
-  unsigned int nr_baselines_total = m_baselines.size();
-  unsigned int nr_baselines = uvw.get_y_dim();
-  unsigned int nr_timesteps = uvw.get_x_dim();
+void Data::get_uvw(aocommon::xt::Span<UVW<float>, 2>& uvw,
+                   unsigned int baseline_offset, unsigned int time_offset,
+                   float integration_time) const {
+  const size_t nr_baselines_total = m_baselines.size();
+  const size_t nr_baselines = uvw.shape(0);
+  const size_t nr_timesteps = uvw.shape(1);
 
   if (baseline_offset + nr_baselines > nr_baselines_total) {
-    std::cerr << "Out-of-range baselines selected: ";
+    std::stringstream message;
+    message << "Out-of-range baselines selected: ";
     if (baseline_offset > 0) {
-      std::cerr << baseline_offset << " + " << nr_baselines;
+      message << baseline_offset << " + " << nr_baselines;
     }
-    std::cerr << nr_baselines << " > " << nr_baselines_total << std::endl;
-    nr_baselines = nr_baselines_total;
+    message << nr_baselines << " > " << nr_baselines_total << std::endl;
+    throw std::runtime_error(message.str());
   }
 
 // Evaluate uvw per baseline

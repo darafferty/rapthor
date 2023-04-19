@@ -28,22 +28,28 @@ struct idg::Plan* Plan_init(int kernel_size, int subgrid_size, int grid_size,
                             int baselines_nr_baselines, int baselines_two,
                             unsigned int* aterm_offsets,
                             int aterm_offsets_nr_timeslots) {
-  idg::Array1D<float> shift_array(3);
-  shift_array(0) = 0;
-  shift_array(1) = 0;
-  shift_array(2) = 0;
-  idg::Array1D<float> frequencies_array(frequencies, frequencies_nr_channels);
+  std::array<float, 2> shift{0.0f, 0.0f};
+  const std::array<size_t, 1> frequencies_shape{
+      static_cast<size_t>(frequencies_nr_channels)};
+  aocommon::xt::Span<float, 1> frequencies_span =
+      aocommon::xt::CreateSpan(frequencies, frequencies_shape);
   assert(uvw_nr_coordinates == 3);
-  idg::Array2D<idg::UVW<float>> uvw_array(uvw, uvw_nr_baselines,
-                                          uvw_nr_timesteps);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines_array(
-      baselines, baselines_nr_baselines);
-  idg::Array1D<unsigned int> aterm_offsets_array(aterm_offsets,
-                                                 aterm_offsets_nr_timeslots);
+  const std::array<size_t, 2> uvw_shape{static_cast<size_t>(uvw_nr_baselines),
+                                        static_cast<size_t>(uvw_nr_timesteps)};
+  aocommon::xt::Span<idg::UVW<float>, 2> uvw_span =
+      aocommon::xt::CreateSpan(uvw, uvw_shape);
+  const std::array<size_t, 1> baselines_shape{
+      static_cast<size_t>(baselines_nr_baselines)};
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines_span =
+      aocommon::xt::CreateSpan(baselines, baselines_shape);
+  const std::array<size_t, 1> aterm_offsets_shape{
+      static_cast<size_t>(aterm_offsets_nr_timeslots)};
+  aocommon::xt::Span<unsigned int, 1> aterm_offsets_span =
+      aocommon::xt::CreateSpan(aterm_offsets, aterm_offsets_shape);
 
-  return new idg::Plan(kernel_size, subgrid_size, grid_size, cell_size,
-                       shift_array, frequencies_array, uvw_array,
-                       baselines_array, aterm_offsets_array);
+  return new idg::Plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
+                       frequencies_span, uvw_span, baselines_span,
+                       aterm_offsets_span);
 }
 
 }  // extern "C"

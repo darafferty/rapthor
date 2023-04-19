@@ -103,6 +103,10 @@ void DegridderBufferImpl::flush() {
       m_aterms.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
       subgridsize, subgridsize);
 
+  const std::array<size_t, 1> aterm_offsets_shape{m_aterm_offsets_array.size()};
+  auto aterm_offsets_span = aocommon::xt::CreateSpan(
+      m_aterm_offsets_array.data(), aterm_offsets_shape);
+
   proxy::Proxy& proxy = m_bufferset.get_proxy();
 
   // Set Plan options
@@ -115,9 +119,18 @@ void DegridderBufferImpl::flush() {
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
+  const std::array<size_t, 1> frequencies_shape{m_frequencies.size()};
+  auto frequencies_span =
+      aocommon::xt::CreateSpan(m_frequencies.data(), frequencies_shape);
+  const std::array<size_t, 1> station_pairs_shape{m_bufferStationPairs.size()};
+  const std::array<size_t, 2> uvw_shape{m_bufferUVW.get_y_dim(),
+                                        m_bufferUVW.get_x_dim()};
+  auto uvw_span = aocommon::xt::CreateSpan(m_bufferUVW.data(), uvw_shape);
+  auto station_pairs_span = aocommon::xt::CreateSpan(
+      m_bufferStationPairs.data(), station_pairs_shape);
   std::unique_ptr<Plan> plan =
-      proxy.make_plan(m_bufferset.get_kernel_size(), m_frequencies, m_bufferUVW,
-                      m_bufferStationPairs, m_aterm_offsets_array, options);
+      proxy.make_plan(m_bufferset.get_kernel_size(), frequencies_span, uvw_span,
+                      station_pairs_span, aterm_offsets_span, options);
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run degridding

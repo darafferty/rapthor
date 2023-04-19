@@ -119,31 +119,31 @@ class CUDA : public Proxy {
                                 const int nr_polarizations,
                                 const int subgrid_size, const float image_size,
                                 const float w_step,
-                                const idg::Array1D<float>& shift,
+                                const std::array<float, 2>& shift,
                                 const size_t bytes_free) const;
 
   void run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
-                          float w_step, const Array1D<float>& shift,
+                          float w_step, const std::array<float, 2>& shift,
                           WTileUpdateInfo& wtile_flush_info);
 
   void run_subgrids_to_wtiles(unsigned int nr_polarizations,
                               unsigned int subgrid_offset,
                               unsigned int nr_subgrids,
                               unsigned int subgrid_size, float image_size,
-                              float w_step, const Array1D<float>& shift,
+                              float w_step, const std::array<float, 2>& shift,
                               WTileUpdateSet& wtile_flush_set,
                               cu::DeviceMemory& d_subgrids,
                               cu::DeviceMemory& d_metadata);
 
   void run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
-                            float w_step, const Array1D<float>& shift,
+                            float w_step, const std::array<float, 2>& shift,
                             WTileUpdateInfo& wtile_initialize_info);
 
   void run_subgrids_from_wtiles(unsigned int nr_polarizations,
                                 unsigned int subgrid_offset,
                                 unsigned int nr_subgrids,
                                 unsigned int subgrid_size, float image_size,
-                                float w_step, const Array1D<float>& shift,
+                                float w_step, const std::array<float, 2>& shift,
                                 WTileUpdateSet& wtile_initialize_set,
                                 cu::DeviceMemory& d_subgrids,
                                 cu::DeviceMemory& d_metadata);

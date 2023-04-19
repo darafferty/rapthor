@@ -37,14 +37,15 @@ class CPU : public Proxy {
   std::shared_ptr<kernel::cpu::InstanceCPU> get_kernels() { return m_kernels; }
 
   std::unique_ptr<Plan> make_plan(
-      const int kernel_size, const Array1D<float>& frequencies,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterm_offsets,
+      const int kernel_size, const aocommon::xt::Span<float, 1>& frequencies,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
       Plan::Options options) override;
 
   void init_cache(int subgrid_size, float cell_size, float w_step,
-                  const Array1D<float>& shift) override;
+                  const std::array<float, 2>& shift) override;
 
   std::shared_ptr<Grid> get_final_grid() override;
 

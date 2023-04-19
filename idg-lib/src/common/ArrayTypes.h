@@ -8,6 +8,7 @@
 #include <cassert>
 
 #include <omp.h>
+#include <aocommon/xt/span.h>
 
 #include "auxiliary.h"
 #include "Types.h"
@@ -46,6 +47,20 @@ class Array1D {
    */
   Array1D(T* data, size_t size)
       : m_x_dim(size), m_memory(nullptr), m_buffer(data) {}
+
+  /**
+   * @brief Construct a new Array1D object from a Span
+   *
+   * @param data The Span that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   */
+  Array1D(const aocommon::xt::Span<T, 1>& data)
+      : m_x_dim(data.size()),
+        m_memory(nullptr),
+        // This const_cast simplifies the transition to XTensor. It will
+        // be removed at the end of the transition, together with Array1D.
+        m_buffer(const_cast<T*>(data.data())) {}
 
   /**
    * @brief Construct a new Array 1 D object from a Memory object
@@ -264,6 +279,21 @@ class Array2D : public Array1D<T> {
       : Array1D<T>(data, y_dim * x_dim), m_y_dim(y_dim), m_x_dim(x_dim) {}
 
   /**
+   * @brief Construct a new Array2D object from a Span
+   *
+   * @param data The Span that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   */
+  Array2D(const aocommon::xt::Span<T, 2>& data)
+      : m_y_dim(data.shape(0)), m_x_dim(data.shape(1)) {
+    this->m_memory = nullptr;
+    // This const_cast simplifies the transition to XTensor. It will
+    // be removed at the end of the transition, together with Array2D.
+    this->m_buffer = const_cast<T*>(data.data());
+  }
+
+  /**
    * @brief Construct a new Array2D object from a Memory object
    *
    * @param memory Unique pointer to the Memory object that will hold the data.
@@ -412,6 +442,21 @@ class Array3D : public Array1D<T> {
         m_z_dim(z_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
+
+  /**
+   * @brief Construct a new Array3D object from a Span
+   *
+   * @param data The Span that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   */
+  Array3D(const aocommon::xt::Span<T, 3>& data)
+      : m_z_dim(data.shape(0)), m_y_dim(data.shape(1)), m_x_dim(data.shape(2)) {
+    this->m_memory = nullptr;
+    // This const_cast simplifies the transition to XTensor. It will
+    // be removed at the end of the transition, together with Array3D.
+    this->m_buffer = const_cast<T*>(data.data());
+  }
 
   /**
    * @brief Construct a new Array3D object from a Memory object
@@ -589,6 +634,24 @@ class Array4D : public Array1D<T> {
         m_z_dim(z_dim),
         m_y_dim(y_dim),
         m_x_dim(x_dim) {}
+
+  /**
+   * @brief Construct a new Array4D object from a Span
+   *
+   * @param data The Span that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
+   */
+  Array4D(const aocommon::xt::Span<T, 4>& data)
+      : m_w_dim(data.shape(0)),
+        m_z_dim(data.shape(1)),
+        m_y_dim(data.shape(2)),
+        m_x_dim(data.shape(3)) {
+    this->m_memory = nullptr;
+    // This const_cast simplifies the transition to XTensor. It will
+    // be removed at the end of the transition, together with Array4D.
+    this->m_buffer = const_cast<T*>(data.data());
+  }
 
   /**
    * @brief Construct a new Array4D object from a Memory object

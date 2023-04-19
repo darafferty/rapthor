@@ -191,7 +191,7 @@ std::vector<int> compute_w_padded_tile_sizes(const idg::Coordinate* coordinates,
 int compute_w_padded_tile_size_max(const WTileUpdateSet& wtile_set,
                                    const int tile_size, const int subgrid_size,
                                    const float image_size, const float w_step,
-                                   const float shift_l, const float shift_m);
+                                   const std::array<float, 2>& shift);
 }  // namespace idg
 
 #endif

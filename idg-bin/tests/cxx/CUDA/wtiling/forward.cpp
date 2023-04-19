@@ -217,7 +217,8 @@ void subgrids_to_wtiles(const long nr_subgrids, const int nr_polarizations,
 void wtiles_to_grid(int nr_tiles, int nr_polarizations, int grid_size,
                     int tile_size, int padded_tile_size, int* tile_ids,
                     idg::Coordinate* tile_coordinates,
-                    std::complex<float>* tiles, std::complex<float>* grid) {
+                    std::complex<float>* tiles,
+                    xt::xtensor<std::complex<float>, 3>& grid) {
   for (int i = 0; i < nr_tiles; i++) {
     idg::Coordinate& coordinate = tile_coordinates[i];
 
@@ -236,11 +237,10 @@ void wtiles_to_grid(int nr_tiles, int nr_polarizations, int grid_size,
           const int index_pol_transposed[nr_polarizations] = {0, 2, 1, 3};
           unsigned int pol_src = pol;
           unsigned int pol_dst = index_pol_transposed[pol];
-          unsigned long dst_idx = index_grid_3d(grid_size, pol_src, y, x);
           unsigned long src_idx =
               index_grid_4d(nr_polarizations, padded_tile_size, i, pol_dst,
                             (y - y0), (x - x0));
-          grid[dst_idx] += tiles[src_idx];
+          grid(pol_src, y, x) += tiles[src_idx];
         }  // end for pol
       }    // end for x
     }      // end for y
@@ -274,17 +274,21 @@ int main(int argc, char* argv[]) {
   float w_step = 4.0 / (image_size * image_size);
 
   // Initialize data
-  idg::Array1D<float> frequencies(nr_channels);
-  data.get_frequencies(frequencies, image_size);
-  idg::Array2D<idg::UVW<float>> uvw(nr_baselines, nr_timesteps);
-  data.get_uvw(uvw);
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
+  const std::array<size_t, 1> frequencies_shape{nr_channels};
+  xt::xtensor<float, 1> frequencies(frequencies_shape);
+  aocommon::xt::Span<float, 1> frequencies_span =
+      aocommon::xt::CreateSpan(frequencies);
+  data.get_frequencies(frequencies_span, image_size);
+  const std::array<size_t, 2> uvw_shape{nr_baselines, nr_timesteps};
+  xt::xtensor<idg::UVW<float>, 2> uvw(uvw_shape);
+  auto uvw_span = aocommon::xt::CreateSpan(uvw);
+  data.get_uvw(uvw_span);
+  xt::xtensor<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(nr_stations, nr_baselines);
-  idg::Array1D<unsigned int> aterm_offsets =
-      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
-  idg::Array1D<float> shift = idg::get_zero_shift();
-  shift(0) = 10.1f;
-  shift(0) = 20.2f;
+  auto baselines_span = aocommon::xt::CreateSpan(baselines);
+  xt::xtensor<unsigned int, 1> aterm_offsets({nr_timeslots + 1}, 0);
+  auto aterm_offsets_span = aocommon::xt::CreateSpan(aterm_offsets);
+  std::array<float, 2> shift{10.1f, 20.2f};
 
   // Set w-terms to zero
   for (unsigned bl = 0; bl < nr_baselines; bl++) {
@@ -298,7 +302,8 @@ int main(int argc, char* argv[]) {
   idg::Plan::Options options;
   options.plan_strict = true;
   idg::Plan plan(kernel_size, subgrid_size, grid_size, cell_size, shift,
-                 frequencies, uvw, baselines, aterm_offsets, wtiles, options);
+                 frequencies_span, uvw_span, baselines_span, aterm_offsets_span,
+                 wtiles, options);
   int nr_subgrids = plan.get_nr_subgrids();
 
   // Get W-Tiling paramters
@@ -379,7 +384,7 @@ int main(int argc, char* argv[]) {
                          h_tiles.size());
 
   // Init shift
-  stream.memcpyHtoDAsync(d_shift, shift.data(), shift.bytes());
+  stream.memcpyHtoDAsync(d_shift, shift.data(), sizeof_shift);
 
   // Start tests
   std::cout << std::endl;
@@ -549,14 +554,14 @@ int main(int argc, char* argv[]) {
   stream.synchronize();
 
   // Run adder_wtiles_to_grid on host
-  idg::Array3D<std::complex<float>> grid(nr_polarizations, grid_size,
-                                         grid_size);
-  grid.zero();
+  xt::xtensor<std::complex<float>, 3> grid(
+      {nr_polarizations, grid_size, grid_size},
+      std::complex<float>(0.0f, 0.0f));
   wtiles_to_grid(
       nr_tiles, nr_polarizations, grid_size, tile_size - subgrid_size,
       padded_tile_size, static_cast<int*>(h_padded_tile_ids.data()),
       tile_coordinates.data(),
-      static_cast<std::complex<float>*>(h_padded_tiles.data()), grid.data());
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), grid);
 
   n = nr_polarizations * grid_size * grid_size;
   accuracy = compare_arrays(n, static_cast<std::complex<float>*>(u_grid.data()),
@@ -632,12 +637,12 @@ int main(int argc, char* argv[]) {
   }
 
   // Create reference grid
-  grid.zero();
+  grid.fill(std::complex<float>(0.0f, 0.0f));
   wtiles_to_grid(
       nr_tiles, nr_polarizations, grid_size, tile_size - subgrid_size,
       padded_tile_size, static_cast<int*>(h_padded_tile_ids.data()),
       tile_coordinates.data(),
-      static_cast<std::complex<float>*>(h_padded_tiles.data()), grid.data());
+      static_cast<std::complex<float>*>(h_padded_tiles.data()), grid);
 
   n = nr_polarizations * grid_size * grid_size;
   accuracy = compare_arrays(n, static_cast<std::complex<float>*>(u_grid.data()),

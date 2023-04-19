@@ -163,22 +163,9 @@ int main(int argc, char** argv) {
   std::clog << ">>> Initialize data structures" << std::endl;
 
   // Initialize shift
-  idg::Array1D<float> shift = idg::get_zero_shift();
+  std::array<float, 2> shift{0.0f, 0.0f};
 
-  // Initialize frequency data
-  idg::Array1D<float> frequencies(nr_channels);
-  data.get_frequencies(frequencies, image_size);
-
-  // Initalize UVW coordiantes
-  idg::Array2D<idg::UVW<float>> uvw(nr_baselines, nr_timesteps);
-  data.get_uvw(uvw);
-
-  // Initialize metadata
-  idg::Array1D<std::pair<unsigned int, unsigned int>> baselines =
-      idg::get_example_baselines(nr_stations, nr_baselines);
-  idg::Array1D<unsigned int> aterm_offsets =
-      idg::get_example_aterm_offsets(nr_timeslots, nr_timesteps);
-
+  // Initialize proxy
   unsigned int nr_correlations = 4;
   idg::proxy::cpu::Optimized proxy;
   std::shared_ptr<idg::Grid> grid(
@@ -187,6 +174,21 @@ int main(int argc, char** argv) {
   float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 
   proxy.init_cache(subgrid_size, cell_size, w_step, shift);
+
+  // Initalize UVW coordinates
+  aocommon::xt::Span<idg::UVW<float>, 2> uvw =
+      proxy.allocate_span<idg::UVW<float>, 2>({nr_baselines, nr_timesteps});
+  data.get_uvw(uvw);
+
+  // Initialize frequency data
+  auto frequencies = proxy.allocate_span<float, 1>({nr_channels});
+  data.get_frequencies(frequencies, image_size);
+
+  // Initialize metadata
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
+      idg::get_example_baselines(proxy, nr_stations, nr_baselines);
+  aocommon::xt::Span<unsigned int, 1> aterm_offsets =
+      idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
 
   // Create plan
   std::clog << ">>> Create plan" << std::endl;
