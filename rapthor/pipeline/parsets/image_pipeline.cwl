@@ -309,12 +309,6 @@ inputs:
       The WSClean taper value in arcsec (length = n_sectors).
     type: float[]
 
-  - id: use_wsclean_mem_limit
-    label: Use limit
-    doc: |
-      Flag to activate use of memory limit for WSClean (length = n_sectors).
-    type: boolean[]
-
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -529,7 +523,7 @@ steps:
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda, use_wsclean_mem_limit,
+              wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix]
 {% else %}
@@ -547,7 +541,7 @@ steps:
               central_patch_name,
 {% endif %}
               channels_out, deconvolution_channels, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda, use_wsclean_mem_limit,
+              wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
               auto_mask, idg_mode, threshisl, threshpix]
 {% endif %}

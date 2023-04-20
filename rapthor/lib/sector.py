@@ -101,9 +101,10 @@ class Sector(object):
         self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
         self.mem_limit_gb = self.field.parset['imaging_specific']['mem_gb']
-        slurm_limit_gb = self.field.parset['imaging_specific']['mem_per_node_gb']
+        slurm_limit_gb = self.field.parset['cluster_specific']['mem_per_node_gb']
         if slurm_limit_gb > 0:
-            # Obey the Slurm limit if it's more restrictive
+            # Obey the Slurm limit if it's set and is more restrictive than the
+            # WSClean-specific limit
             if self.mem_limit_gb > 0:
                 # WSClean-specific limit set, so take the lower limit
                 self.mem_limit_gb = min(self.mem_limit_gb, slurm_limit_gb)
@@ -111,10 +112,6 @@ class Sector(object):
                 # WSClean-specific limit not set (i.e., use all available memory), so
                 # take Slurm limit
                 self.mem_limit_gb = slurm_limit_gb
-        if self.mem_limit_gb > 0:
-            self.use_mem_limit = True
-        else:
-            self.use_mem_limit = False
         self.reweight = self.field.parset['imaging_specific']['reweight']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']

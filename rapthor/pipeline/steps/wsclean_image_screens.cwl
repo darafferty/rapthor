@@ -169,13 +169,13 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
-  - id: use_wsclean_mem_limit
-    label: Activate memory limit
+  - id: wsclean_mem
+    label: Memory in GB
     doc: |
-      Flag that activate the memory limit, which is defined by the input wsclean_mem in GB.
-    type: boolean
+      The memory limit in GB.
+    type: float
     inputBinding:
-      prefix: -abs-mem $(inputs.wsclean_mem)
+      prefix: -abs-mem
   - id: auto_mask
     label: Auto mask value
     doc: |
