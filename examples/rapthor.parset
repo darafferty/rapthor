@@ -112,8 +112,8 @@ input_ms = /data/ms/*.ms
 # "cpu" or "hybrid". Note that IDG is only used when dde_method = "none" or "screens"
 # idg_mode = cpu
 
-# Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9 = 90%)
-# mem_fraction = 0.9
+# Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
+# mem_gb = 0
 
 # Apply separate XX and YY corrections during facet-based imaging (default = False).
 # If False, scalar solutions (the average of the XX and YY solutions) are applied instead.

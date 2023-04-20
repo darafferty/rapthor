@@ -169,13 +169,13 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
-  - id: wsclean_mem
-    label: Memory percentage
+  - id: use_wsclean_mem_limit
+    label: Activate memory limit
     doc: |
-      The memory limit in percent of total.
-    type: float
+      Flag that activate the memory limit, which is defined by the input wsclean_mem in GB.
+    type: boolean
     inputBinding:
-      prefix: -mem
+      prefix: -abs-mem $(inputs.wsclean_mem)
   - id: auto_mask
     label: Auto mask value
     doc: |

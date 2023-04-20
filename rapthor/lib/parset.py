@@ -535,11 +535,11 @@ def get_imaging_options(parset):
         log.error('The option screen_type must be one of "kl", or "tessellated"')
         sys.exit(1)
 
-    # Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9)
-    if 'mem_fraction' in parset_dict:
-        parset_dict['mem_fraction'] = parset.getfloat('imaging', 'mem_fraction')
+    # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
+    if 'mem_gb' in parset_dict:
+        parset_dict['mem_gb'] = parset.getfloat('imaging', 'mem_gb')
     else:
-        parset_dict['mem_fraction'] = 0.9
+        parset_dict['mem_gb'] = 0
 
     # Apply separate XX and YY corrections during imaging (default = False). If False,
     # scalar solutions (the average of the XX and YY solutions) are applied instead
@@ -603,7 +603,7 @@ def get_imaging_options(parset):
     allowed_options = ['max_peak_smearing', 'cellsize_arcsec', 'robust', 'reweight',
                        'grid_center_ra', 'grid_center_dec', 'apply_diagonal_solutions',
                        'grid_width_ra_deg', 'grid_width_dec_deg', 'grid_nsectors_ra',
-                       'min_uv_lambda', 'max_uv_lambda', 'mem_fraction', 'screen_type',
+                       'min_uv_lambda', 'max_uv_lambda', 'mem_gb', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'do_multiscale_clean', 'use_mpi',

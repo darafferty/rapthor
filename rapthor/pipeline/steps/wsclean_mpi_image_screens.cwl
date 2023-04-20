@@ -136,10 +136,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
-  - id: wsclean_mem
-    type: float
+  - id: use_wsclean_mem_limit
+    type: boolean
     inputBinding:
-      prefix: -mem
+      prefix: -abs-mem $(inputs.wsclean_mem)
   - id: auto_mask
     type: float
     inputBinding:

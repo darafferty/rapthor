@@ -274,10 +274,16 @@ inputs:
       The WSClean taper value in arcsec (length = 1).
     type: float
 
-  - id: wsclean_mem
-    label: Memory percentage
+  - id: use_wsclean_mem_limit
+    label: Use limit
     doc: |
-      The memory limit for WSClean in percent of total (length = 1).
+      Flag to activate use of memory limit for WSClean (length = n_sectors).
+    type: boolean
+
+  - id: wsclean_mem
+    label: Memory in GB
+    doc: |
+      The memory limit for WSClean in GB (length = 1).
     type: float
 
   - id: auto_mask
@@ -562,6 +568,8 @@ steps:
         source: deconvolution_channels
       - id: taper_arcsec
         source: taper_arcsec
+      - id: use_wsclean_mem_limit
+        source: use_wsclean_mem_limit
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask

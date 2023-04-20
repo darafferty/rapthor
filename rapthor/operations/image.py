@@ -61,7 +61,6 @@ class Image(Operation):
         image_timestep = []
         dir_local = []
         phasecenter = []
-        apply_diagonal_solutions = []
         image_root = []
         central_patch_name = []
         for i, sector in enumerate(self.field.imaging_sectors):
@@ -138,7 +137,8 @@ class Image(Operation):
                             'taper_arcsec': [sector.taper_arcsec for sector in self.field.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.field.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
-                            'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
+                            'use_wsclean_mem_limit': [sector.use_mem_limit for sector in self.field.imaging_sectors],
+                            'wsclean_mem': [sector.mem_limit_gb for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
                             'do_multiscale': [sector.multiscale for sector in self.field.imaging_sectors],
