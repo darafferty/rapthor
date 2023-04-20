@@ -233,7 +233,7 @@ inputs:
     label: Apply diagonal solutions
     doc: |
       Apply diagonal (separate XX and YY) solutions (length = 1).
-    type: bool
+    type: boolean
 
   - id: parallel_gridding_threads
     label: Max number of gridding threads
