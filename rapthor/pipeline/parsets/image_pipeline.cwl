@@ -489,8 +489,6 @@ steps:
         source: do_multiscale
       - id: taper_arcsec
         source: taper_arcsec
-      - id: use_wsclean_mem_limit
-        source: use_wsclean_mem_limit
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
