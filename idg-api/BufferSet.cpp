@@ -70,8 +70,7 @@ int nextcomposite(int n) {
 }
 
 BufferSetImpl::BufferSetImpl(Type architecture)
-    : m_default_aterm_correction(0, 0, 0, 0),
-      m_avg_aterm_correction(0, 0, 0, 0),
+    : m_spheroidal(aocommon::xt::CreateSpan<float, 2>(nullptr, {0, 0})),
       m_stokes_I_only(false),
       m_nr_correlations(4),
       m_nr_polarizations(4),
@@ -91,7 +90,6 @@ BufferSetImpl::~BufferSetImpl() {
   m_gridderbuffers.clear();
   m_degridderbuffers.clear();
   m_bulkdegridders.clear();
-  m_spheroidal.free();
   m_proxy.reset();
   report_runtime();
 }
@@ -269,17 +267,6 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
       int(std::ceil((m_kernel_size + uv_span_time + uv_span_frequency) / 8.0)) *
       8;
 
-  m_default_aterm_correction =
-      Array4D<std::complex<float>>(m_subgridsize, m_subgridsize, 4, 4);
-  m_default_aterm_correction.init(0.0);
-  for (size_t i = 0; i < m_subgridsize; i++) {
-    for (size_t j = 0; j < m_subgridsize; j++) {
-      for (size_t k = 0; k < 4; k++) {
-        m_default_aterm_correction(i, j, k, k) = 1.0;
-      }
-    }
-  }
-
   allocate_grid();
   m_proxy->init_cache(m_subgridsize, m_cell_size, m_w_step, m_shift);
 
@@ -306,7 +293,8 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
   }
 
   // Generate spheroidal using m_taper_subgrid.
-  m_spheroidal = m_proxy->allocate_array2d<float>(m_subgridsize, m_subgridsize);
+  m_spheroidal =
+      m_proxy->allocate_span<float, 2>({m_subgridsize, m_subgridsize});
   for (size_t y = 0; y < m_subgridsize; y++) {
     for (size_t x = 0; x < m_subgridsize; x++) {
       m_spheroidal(y, x) = m_taper_subgrid[y] * m_taper_subgrid[x];
@@ -421,13 +409,14 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
     arr_float_1D_t& phasor_imag __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
 
+    auto image_array = aocommon::xt::CreateSpan(
+        image, std::array<size_t, 3>{static_cast<size_t>(m_nr_polarizations),
+                                     m_size, m_size});
+
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
       memset(w0_row_real, 0, m_nr_polarizations * m_size * sizeof(float));
       memset(w0_row_imag, 0, m_nr_polarizations * m_size * sizeof(float));
-
-      const Array3D<double> image_array(const_cast<double*>(image),
-                                        m_nr_polarizations, m_size, m_size);
 
       // Copy row of image and convert stokes to polarizations
       if (m_stokes_I_only) {
@@ -652,11 +641,12 @@ void BufferSetImpl::get_image(double* image) {
     arr_float_1D_t& phasor_imag __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
 
+    auto image_array = aocommon::xt::CreateSpan(
+        image, std::array<size_t, 3>{static_cast<size_t>(m_nr_polarizations),
+                                     m_size, m_size});
+
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
-      Array3D<double> image_array((double*)image, m_nr_polarizations, m_size,
-                                  m_size);
-
       // Compute inverse spheroidal
       for (int x = 0; x < m_size; x++) {
         inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
@@ -944,9 +934,10 @@ void BufferSetImpl::finalize_compute_avg_beam() {
   }
 #endif
 
-  m_avg_aterm_correction = Array4D<std::complex<float>>(
-      m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
-  m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
+  auto matrix_inverse_beam_span =
+      aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          m_matrix_inverse_beam->data(), {m_subgridsize, m_subgridsize, 4, 4});
+  m_proxy->set_avg_aterm_correction(matrix_inverse_beam_span);
 
 #ifndef NDEBUG
   {
@@ -962,14 +953,14 @@ void BufferSetImpl::finalize_compute_avg_beam() {
 void BufferSetImpl::set_matrix_inverse_beam(
     std::shared_ptr<std::vector<std::complex<float>>> matrix_inverse_beam) {
   m_matrix_inverse_beam = matrix_inverse_beam;
-  m_avg_aterm_correction = Array4D<std::complex<float>>(
-      m_matrix_inverse_beam->data(), m_subgridsize, m_subgridsize, 4, 4);
-  m_proxy->set_avg_aterm_correction(m_avg_aterm_correction);
+  auto matrix_inverse_beam_span =
+      aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          m_matrix_inverse_beam->data(), {m_subgridsize, m_subgridsize, 4, 4});
+  m_proxy->set_avg_aterm_correction(matrix_inverse_beam_span);
 }
 
 void BufferSetImpl::unset_matrix_inverse_beam() {
   m_matrix_inverse_beam.reset();
-  m_avg_aterm_correction = Array4D<std::complex<float>>(0, 0, 0, 0);
   m_proxy->unset_avg_aterm_correction();
 }
 

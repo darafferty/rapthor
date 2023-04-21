@@ -253,18 +253,19 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
 #endif
 
 #if TEST_AVERAGE_BEAM
-  idg::Array4D<std::complex<float>> average_beam(subgrid_size, subgrid_size, 4,
-                                                 4);
-  idg::Array4D<std::complex<float>> average_beam_ref(subgrid_size, subgrid_size,
-                                                     4, 4);
-  idg::Array4D<float> weights(nr_baselines, nr_timesteps, nr_channels, 4);
-  weights.init(1.0f);
-  average_beam.init(0.0f);
-  average_beam_ref.init(0.0f);
+  auto average_beam = proxy2.allocate_span<std::complex<float>, 4>(
+      {subgrid_size, subgrid_size, 4, 4});
+  auto average_beam_ref = proxy1.allocate_span<std::complex<float>, 4>(
+      {subgrid_size, subgrid_size, 4, 4});
+  auto weights = proxy1.allocate_span<float, 4>(
+      {nr_baselines, nr_timesteps, nr_channels, 4});
+  weights.fill(1);
+  average_beam.fill(std::complex<float>(0, 0));
+  average_beam_ref.fill(std::complex<float>(0, 0));
   proxy1.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
-                          aterm_offsets, weights, average_beam);
-  proxy2.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
                           aterm_offsets, weights, average_beam_ref);
+  proxy2.compute_avg_beam(nr_stations, nr_channels, uvw, baselines, aterms,
+                          aterm_offsets, weights, average_beam);
   float average_beam_error =
       get_accuracy(subgrid_size * subgrid_size * 4 * 4,
                    (std::complex<float>*)average_beam.data(),

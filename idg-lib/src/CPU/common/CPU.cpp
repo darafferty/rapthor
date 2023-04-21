@@ -687,26 +687,31 @@ void CPU::do_transform(DomainAtoDomainB direction) {
 
 void CPU::do_compute_avg_beam(
     const unsigned int nr_antennas, const unsigned int nr_channels,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
-    idg::Array4D<std::complex<float>>& average_beam) {
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 4>& weights,
+    aocommon::xt::Span<std::complex<float>, 4>& average_beam) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
 
-  const unsigned int nr_aterms = aterm_offsets.size() - 1;
-  const unsigned int nr_baselines = baselines.get_x_dim();
-  const unsigned int nr_timesteps = uvw.get_x_dim();
-  const unsigned int subgrid_size = average_beam.get_w_dim();
-  const unsigned int nr_polarizations = 4;
+  const size_t nr_aterms = aterm_offsets.size() - 1;
+  const size_t nr_baselines = baselines.size();
+  assert(uvw.shape(0) == nr_baselines);
+  const size_t nr_timesteps = uvw.shape(1);
+  const size_t subgrid_size = average_beam.shape(0);
+  assert(average_beam.shape(1) == subgrid_size);
+  const size_t nr_polarizations = 4;
 
   m_report->initialize();
   m_kernels->set_report(m_report);
 
-  auto* baselines_ptr = reinterpret_cast<idg::Baseline*>(baselines.data());
-  auto* aterms_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
+  auto* baselines_ptr = reinterpret_cast<const Baseline*>(baselines.data());
+  auto* aterms_ptr =
+      reinterpret_cast<const std::complex<float>*>(aterms.data());
 
   m_kernels->run_average_beam(
       nr_baselines, nr_antennas, nr_timesteps, nr_channels, nr_aterms,

@@ -20,10 +20,17 @@ namespace api {
 GridderBufferImpl::GridderBufferImpl(const BufferSetImpl& bufferset,
                                      size_t bufferTimesteps)
     : BufferImpl(bufferset, bufferTimesteps),
-      m_bufferUVW2(0, 0),
-      m_bufferStationPairs2(0),
-      m_buffer_weights(0, 0, 0, 0),
-      m_buffer_weights2(0, 0, 0, 0),
+      m_bufferUVW2(
+          aocommon::xt::CreateSpan<idg::UVW<float>, 2>(nullptr, {0, 0})),
+      m_bufferStationPairs2(
+          aocommon::xt::CreateSpan<std::pair<unsigned int, unsigned int>, 1>(
+              nullptr, {0})),
+      m_bufferVisibilities2(aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          nullptr, {0, 0, 0, 0})),
+      m_buffer_weights(
+          aocommon::xt::CreateSpan<float, 4>(nullptr, {0, 0, 0, 0})),
+      m_buffer_weights2(
+          aocommon::xt::CreateSpan<float, 4>(nullptr, {0, 0, 0, 0})),
       m_average_beam(nullptr) {
 #if defined(DEBUG)
   cout << __func__ << endl;
@@ -99,24 +106,37 @@ void GridderBufferImpl::grid_visibilities(
 void GridderBufferImpl::compute_avg_beam() {
   m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Start();
 
-  const unsigned int subgrid_size = m_bufferset.get_subgridsize();
-  const unsigned int nr_aterms = m_aterm_offsets2.size() - 1;
-  const unsigned int nr_antennas = m_nrStations;
+  const size_t subgrid_size = m_bufferset.get_subgridsize();
+  const size_t nr_aterms = m_aterm_offsets2.size() - 1;
+  const size_t nr_antennas = m_nrStations;
 
   // average beam is always computed for all polarizations (for now)
-  const int nr_correlations = 4;
+  const size_t nr_correlations = 4;
 
-  Array4D<Matrix2x2<std::complex<float>>> aterms(
-      m_aterms2.data(), nr_aterms, nr_antennas, subgrid_size, subgrid_size);
-  Array1D<unsigned int> aterm_offsets(m_aterm_offsets2.data(), nr_aterms + 1);
-  idg::Array4D<std::complex<float>> average_beam(m_average_beam, subgrid_size,
-                                                 subgrid_size, nr_correlations,
-                                                 nr_correlations);
+  const std::array<size_t, 4> average_beam_shape{
+      subgrid_size, subgrid_size, nr_correlations, nr_correlations};
+  const std::array<size_t, 4> weights_shape{m_nr_baselines, m_bufferTimesteps,
+                                            m_nr_channels, nr_correlations};
+  const std::array<size_t, 2> uvw_shape{m_nr_baselines, m_bufferTimesteps};
+  const std::array<size_t, 1> station_pairs_shape{m_nr_baselines};
+  const std::array<size_t, 4> aterms_shape{nr_aterms, nr_antennas, subgrid_size,
+                                           subgrid_size};
+  const std::array<size_t, 1> aterm_offsets_shape{nr_aterms + 1};
+  auto uvw = aocommon::xt::CreateSpan(m_bufferUVW2.data(), uvw_shape);
+  auto station_pairs = aocommon::xt::CreateSpan(m_bufferStationPairs2.data(),
+                                                station_pairs_shape);
+  auto aterms = aocommon::xt::CreateSpan(m_aterms2.data(), aterms_shape);
+  auto aterm_offsets =
+      aocommon::xt::CreateSpan(m_aterm_offsets2.data(), aterm_offsets_shape);
+  auto average_beam =
+      aocommon::xt::CreateSpan(m_average_beam, average_beam_shape);
+  auto weights =
+      aocommon::xt::CreateSpan(m_buffer_weights2.data(), weights_shape);
 
   proxy::Proxy& proxy = m_bufferset.get_proxy();
-  proxy.compute_avg_beam(m_nrStations, get_frequencies_size(), m_bufferUVW2,
-                         m_bufferStationPairs2, aterms, aterm_offsets,
-                         m_buffer_weights2, average_beam);
+  proxy.compute_avg_beam(m_nrStations, get_frequencies_size(), uvw,
+                         station_pairs, aterms, aterm_offsets, weights,
+                         average_beam);
 
   m_bufferset.get_watch(BufferSetImpl::Watch::kAvgBeam).Pause();
 
@@ -131,17 +151,23 @@ void GridderBufferImpl::flush_thread_worker() {
 
   const size_t subgridsize = m_bufferset.get_subgridsize();
 
-  if (!m_bufferset.get_apply_aterm()) {
-    m_aterm_offsets_array = Array1D<unsigned int>(
-        m_default_aterm_offsets.data(), m_default_aterm_offsets.size());
-    m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
-        m_default_aterms.data(), m_default_aterm_offsets.size() - 1,
-        m_nrStations, subgridsize, subgridsize);
-  }
+  auto aterm_offsets_span =
+      m_bufferset.get_apply_aterm()
+          ? aocommon::xt::CreateSpan<unsigned int, 1>(m_aterm_offsets2.data(),
+                                                      {m_aterm_offsets2.size()})
+          : aocommon::xt::CreateSpan<unsigned int, 1>(
+                m_default_aterm_offsets.data(),
+                {m_default_aterm_offsets.size()});
 
-  const std::array<size_t, 1> aterm_offsets_shape{m_aterm_offsets_array.size()};
-  auto aterm_offsets_span = aocommon::xt::CreateSpan(
-      m_aterm_offsets_array.data(), aterm_offsets_shape);
+  auto aterms_span =
+      m_bufferset.get_apply_aterm()
+          ? aocommon::xt::CreateSpan<Matrix2x2<std::complex<float>>, 4>(
+                m_aterms2.data(), {m_aterm_offsets2.size() - 1, m_nrStations,
+                                   subgridsize, subgridsize})
+          : aocommon::xt::CreateSpan<Matrix2x2<std::complex<float>>, 4>(
+                m_default_aterms.data(),
+                {m_default_aterm_offsets.size() - 1, m_nrStations, subgridsize,
+                 subgridsize});
 
   proxy::Proxy& proxy = m_bufferset.get_proxy();
 
@@ -155,24 +181,15 @@ void GridderBufferImpl::flush_thread_worker() {
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
-  const std::array<size_t, 1> frequencies_shape{m_frequencies.size()};
-  auto frequencies_span =
-      aocommon::xt::CreateSpan(m_frequencies.data(), frequencies_shape);
-  const std::array<size_t, 1> station_pairs_shape{m_bufferStationPairs.size()};
-  const std::array<size_t, 2> uvw_shape{m_bufferUVW2.get_y_dim(),
-                                        m_bufferUVW2.get_x_dim()};
-  auto uvw_span = aocommon::xt::CreateSpan(m_bufferUVW2.data(), uvw_shape);
-  auto station_pairs_span = aocommon::xt::CreateSpan(
-      m_bufferStationPairs2.data(), station_pairs_shape);
-  std::unique_ptr<Plan> plan =
-      proxy.make_plan(m_bufferset.get_kernel_size(), frequencies_span, uvw_span,
-                      station_pairs_span, aterm_offsets_span, options);
+  std::unique_ptr<Plan> plan = proxy.make_plan(
+      m_bufferset.get_kernel_size(), m_frequencies, m_bufferUVW2,
+      m_bufferStationPairs2, aterm_offsets_span, options);
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run gridding
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Start();
   proxy.gridding(*plan, m_frequencies, m_bufferVisibilities2, m_bufferUVW2,
-                 m_bufferStationPairs2, m_aterms_array, m_aterm_offsets_array,
+                 m_bufferStationPairs2, aterms_span, aterm_offsets_span,
                  m_bufferset.get_spheroidal());
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Pause();
 }
@@ -192,15 +209,8 @@ void GridderBufferImpl::flush() {
   std::swap(m_bufferVisibilities, m_bufferVisibilities2);
   std::swap(m_buffer_weights, m_buffer_weights2);
   std::swap(m_aterm_offsets, m_aterm_offsets2);
-  m_aterm_offsets_array =
-      Array1D<unsigned int>(m_aterm_offsets2.data(), m_aterm_offsets2.size());
 
   std::swap(m_aterms, m_aterms2);
-  assert(m_aterms2.size() == (m_aterm_offsets_array.get_x_dim() - 1) *
-                                 m_nrStations * subgridsize * subgridsize);
-  m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
-      m_aterms2.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
-      subgridsize, subgridsize);
 
   m_flush_thread = std::thread(&GridderBufferImpl::flush_thread_worker, this);
 
@@ -248,22 +258,22 @@ void GridderBufferImpl::finished() {
 void GridderBufferImpl::malloc_buffers() {
   BufferImpl::malloc_buffers();
 
-  int nr_correlations = m_bufferset.get_nr_correlations();
+  const size_t nr_correlations = m_bufferset.get_nr_correlations();
   proxy::Proxy& proxy = m_bufferset.get_proxy();
   m_bufferUVW2 =
-      proxy.allocate_array2d<UVW<float>>(m_nr_baselines, m_bufferTimesteps);
-  m_bufferVisibilities2 = proxy.allocate_array4d<std::complex<float>>(
-      m_nr_baselines, m_bufferTimesteps, m_nr_channels, nr_correlations);
+      proxy.allocate_span<UVW<float>, 2>({m_nr_baselines, m_bufferTimesteps});
+  m_bufferVisibilities2 = proxy.allocate_span<std::complex<float>, 4>(
+      {m_nr_baselines, m_bufferTimesteps, m_nr_channels, nr_correlations});
   m_bufferStationPairs2 =
-      proxy.allocate_array1d<std::pair<unsigned int, unsigned int>>(
-          m_nr_baselines);
-  int nr_correlations_weights = 4;
+      proxy.allocate_span<std::pair<unsigned int, unsigned int>, 1>(
+          {m_nr_baselines});
+  const size_t nr_correlations_weights = 4;
   m_buffer_weights =
-      proxy.allocate_array4d<float>(m_nr_baselines, m_bufferTimesteps,
-                                    m_nr_channels, nr_correlations_weights);
+      proxy.allocate_span<float, 4>({m_nr_baselines, m_bufferTimesteps,
+                                     m_nr_channels, nr_correlations_weights});
   m_buffer_weights2 =
-      proxy.allocate_array4d<float>(m_nr_baselines, m_bufferTimesteps,
-                                    m_nr_channels, nr_correlations_weights);
+      proxy.allocate_span<float, 4>({m_nr_baselines, m_bufferTimesteps,
+                                     m_nr_channels, nr_correlations_weights});
 }
 
 }  // namespace api

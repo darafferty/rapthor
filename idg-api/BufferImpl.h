@@ -99,20 +99,20 @@ class BufferImpl : public virtual Buffer {
   size_t m_nrStations;
   size_t m_nr_channels;
   size_t m_nr_baselines;
-  Array1D<float> m_shift;
+  std::array<float, 2> m_shift;
   std::vector<unsigned int> m_default_aterm_offsets;
   std::vector<unsigned int> m_aterm_offsets;
-  Array1D<unsigned int> m_aterm_offsets_array;
 
   // Buffers
-  Array1D<float> m_frequencies;  // CH
+  aocommon::xt::Span<float, 1> m_frequencies;  // CH
   std::vector<Matrix2x2<std::complex<float>>> m_aterms;
   std::vector<Matrix2x2<std::complex<float>>> m_default_aterms;
-  Array4D<Matrix2x2<std::complex<float>>> m_aterms_array;  // ST x SB x SB
 
-  Array2D<UVW<float>> m_bufferUVW;  // BL x TI
-  Array1D<std::pair<unsigned int, unsigned int>> m_bufferStationPairs;  // BL
-  Array4D<std::complex<float>> m_bufferVisibilities;  // BL x TI x CH x CR
+  aocommon::xt::Span<UVW<float>, 2> m_bufferUVW;  // BL x TI
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>
+      m_bufferStationPairs;  // BL
+  aocommon::xt::Span<std::complex<float>, 4>
+      m_bufferVisibilities;  // BL x TI x CH x CR
 };
 
 }  // namespace api

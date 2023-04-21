@@ -10,7 +10,7 @@
 
 #include "BulkDegridder.h"
 
-#include "common/ArrayTypes.h"
+#include <aocommon/xt/span.h>
 
 namespace idg {
 namespace api {
@@ -36,9 +36,9 @@ class BulkDegridderImpl : public BulkDegridder {
 
  private:
   const BufferSetImpl& bufferset_;
-  Array1D<float> frequencies_;
+  aocommon::xt::Span<float, 1> frequencies_;
   std::size_t nr_stations_;
-  Array1D<float> shift_;
+  std::array<float, 2> shift_;
 };
 
 }  // namespace api

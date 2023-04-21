@@ -9,7 +9,10 @@
 
 namespace idg {
 namespace proxy {
-Proxy::Proxy() { m_report.reset(new Report()); }
+Proxy::Proxy()
+    : m_avg_aterm_correction(aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          nullptr, {0, 0, 0, 0})),
+      m_report(std::make_shared<Report>()) {}
 
 Proxy::~Proxy() {}
 
@@ -265,17 +268,14 @@ void Proxy::calibrate_update(
 void Proxy::calibrate_finish() { do_calibrate_finish(); }
 
 void Proxy::set_avg_aterm_correction(
-    const Array4D<std::complex<float>>& avg_aterm_correction) {
-  // check_dimensions_avg_aterm_correction();
-  std::complex<float>* data = avg_aterm_correction.data();
-  size_t size =
-      avg_aterm_correction.get_x_dim() * avg_aterm_correction.get_y_dim() *
-      avg_aterm_correction.get_z_dim() * avg_aterm_correction.get_w_dim();
-  m_avg_aterm_correction.resize(size);
-  std::copy(data, data + size, m_avg_aterm_correction.begin());
+    const aocommon::xt::Span<std::complex<float>, 4>& avg_aterm_correction) {
+  m_avg_aterm_correction = avg_aterm_correction;
 }
 
-void Proxy::unset_avg_aterm_correction() { m_avg_aterm_correction.resize(0); }
+void Proxy::unset_avg_aterm_correction() {
+  m_avg_aterm_correction =
+      aocommon::xt::CreateSpan<std::complex<float>, 4>(nullptr, {0, 0, 0, 0});
+}
 
 void Proxy::transform(DomainAtoDomainB direction) { do_transform(direction); }
 
@@ -300,11 +300,13 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
 
 void Proxy::compute_avg_beam(
     const unsigned int nr_antennas, const unsigned int nr_channels,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
-    idg::Array4D<std::complex<float>>& average_beam) {
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 4>& weights,
+    aocommon::xt::Span<std::complex<float>, 4>& average_beam) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
@@ -315,12 +317,14 @@ void Proxy::compute_avg_beam(
 
 void Proxy::do_compute_avg_beam(
     const unsigned int nr_antennas, const unsigned int nr_channels,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
-    idg::Array4D<std::complex<float>>& average_beam) {
-  average_beam.init(1.0f);
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 4>& weights,
+    aocommon::xt::Span<std::complex<float>, 4>& average_beam) {
+  average_beam.fill(std::complex<float>(1.0f, 0.0f));
 }
 
 void Proxy::check_dimensions(

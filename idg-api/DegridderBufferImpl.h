@@ -130,7 +130,8 @@ class DegridderBufferImpl : public virtual DegridderBuffer, public BufferImpl {
   bool m_buffer_full;
   bool m_data_read;
   std::vector<std::pair<size_t, std::complex<float>*>> m_row_ids_to_data;
-  Array3D<std::complex<float>> m_bufferVisibilities2;
+  aocommon::xt::Span<std::complex<float>, 4>
+      m_bufferVisibilities2;  // BL x TI x CH x CR
 };
 
 }  // namespace api
