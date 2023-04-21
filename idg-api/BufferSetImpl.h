@@ -80,18 +80,14 @@ class BufferSetImpl : public virtual BufferSet {
   float get_w_step() const { return m_w_step; }
   const std::array<float, 2>& get_shift() const { return m_shift; }
   float get_kernel_size() const { return m_kernel_size; }
-  const Array2D<float>& get_spheroidal() const { return m_spheroidal; }
+  const aocommon::xt::Span<float, 2>& get_spheroidal() const {
+    return m_spheroidal;
+  }
 
   Stopwatch& get_watch(Watch watch) const;
 
   bool get_do_gridding() const { return m_do_gridding; }
   bool get_apply_aterm() const { return m_apply_aterm; }
-  const Array4D<std::complex<float>>& get_default_aterm_correction() const {
-    return m_default_aterm_correction;
-  }
-  const Array4D<std::complex<float>>& get_avg_aterm_correction() const {
-    return m_avg_aterm_correction;
-  }
 
   proxy::Proxy& get_proxy() const { return *m_proxy; }
 
@@ -109,12 +105,10 @@ class BufferSetImpl : public virtual BufferSet {
   std::vector<float> m_taper_subgrid;
   std::vector<float> m_taper_grid;
   std::vector<float> m_inv_taper;
-  Array2D<float> m_spheroidal;
+  aocommon::xt::Span<float, 2> m_spheroidal;
   std::vector<std::complex<float>> m_average_beam;
   std::shared_ptr<std::vector<float>> m_scalar_beam;
   std::shared_ptr<std::vector<std::complex<float>>> m_matrix_inverse_beam;
-  Array4D<std::complex<float>> m_default_aterm_correction;
-  Array4D<std::complex<float>> m_avg_aterm_correction;
   bool m_stokes_I_only;
   int m_nr_correlations;
   int m_nr_polarizations;

@@ -18,7 +18,9 @@ DegridderBufferImpl::DegridderBufferImpl(const BufferSetImpl& bufferset,
                                          size_t bufferTimesteps)
     : BufferImpl(bufferset, bufferTimesteps),
       m_buffer_full(false),
-      m_data_read(true) {
+      m_data_read(true),
+      m_bufferVisibilities2(aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          nullptr, {0, 0, 0, 0})) {
 #if defined(DEBUG)
   cout << __func__ << endl;
 #endif
@@ -75,8 +77,7 @@ bool DegridderBufferImpl::request_visibilities(size_t rowId, size_t timeIndex,
 
   // Keep mapping rowId -> (local_bl, local_time) for reading
   m_row_ids_to_data.emplace_back(
-      rowId, reinterpret_cast<std::complex<float>*>(
-                 m_bufferVisibilities.data(local_bl, local_time)));
+      rowId, &m_bufferVisibilities(local_bl, local_time, 0, 0));
 
   // Copy data into buffers
   m_bufferUVW(local_bl, local_time) = {static_cast<float>(uvwInMeters[0]),
@@ -97,15 +98,12 @@ void DegridderBufferImpl::flush() {
 
   const size_t subgridsize = m_bufferset.get_subgridsize();
 
-  m_aterm_offsets_array =
-      Array1D<unsigned int>(m_aterm_offsets.data(), m_aterm_offsets.size());
-  m_aterms_array = Array4D<Matrix2x2<std::complex<float>>>(
-      m_aterms.data(), m_aterm_offsets_array.get_x_dim() - 1, m_nrStations,
-      subgridsize, subgridsize);
-
-  const std::array<size_t, 1> aterm_offsets_shape{m_aterm_offsets_array.size()};
-  auto aterm_offsets_span = aocommon::xt::CreateSpan(
-      m_aterm_offsets_array.data(), aterm_offsets_shape);
+  auto aterm_offsets_span = aocommon::xt::CreateSpan<unsigned int, 1>(
+      m_aterm_offsets.data(), {m_aterm_offsets.size()});
+  auto aterms_span =
+      aocommon::xt::CreateSpan<Matrix2x2<std::complex<float>>, 4>(
+          m_aterms.data(),
+          {m_aterm_offsets.size() - 1, m_nrStations, subgridsize, subgridsize});
 
   proxy::Proxy& proxy = m_bufferset.get_proxy();
 
@@ -119,24 +117,15 @@ void DegridderBufferImpl::flush() {
 
   // Create plan
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Start();
-  const std::array<size_t, 1> frequencies_shape{m_frequencies.size()};
-  auto frequencies_span =
-      aocommon::xt::CreateSpan(m_frequencies.data(), frequencies_shape);
-  const std::array<size_t, 1> station_pairs_shape{m_bufferStationPairs.size()};
-  const std::array<size_t, 2> uvw_shape{m_bufferUVW.get_y_dim(),
-                                        m_bufferUVW.get_x_dim()};
-  auto uvw_span = aocommon::xt::CreateSpan(m_bufferUVW.data(), uvw_shape);
-  auto station_pairs_span = aocommon::xt::CreateSpan(
-      m_bufferStationPairs.data(), station_pairs_shape);
   std::unique_ptr<Plan> plan =
-      proxy.make_plan(m_bufferset.get_kernel_size(), frequencies_span, uvw_span,
-                      station_pairs_span, aterm_offsets_span, options);
+      proxy.make_plan(m_bufferset.get_kernel_size(), m_frequencies, m_bufferUVW,
+                      m_bufferStationPairs, aterm_offsets_span, options);
   m_bufferset.get_watch(BufferSetImpl::Watch::kPlan).Pause();
 
   // Run degridding
   m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Start();
   proxy.degridding(*plan, m_frequencies, m_bufferVisibilities, m_bufferUVW,
-                   m_bufferStationPairs, m_aterms_array, m_aterm_offsets_array,
+                   m_bufferStationPairs, aterms_span, aterm_offsets_span,
                    m_bufferset.get_spheroidal());
   m_bufferset.get_watch(BufferSetImpl::Watch::kDegridding).Pause();
 
@@ -175,15 +164,17 @@ DegridderBufferImpl::compute() {
   flush();
   m_buffer_full = false;
   if (m_bufferset.get_nr_correlations() == 2) {
-    m_bufferVisibilities2.zero();
-    for (int row_id = 0; row_id < m_row_ids_to_data.size(); ++row_id) {
-      for (int i = 0; i < m_nr_channels; ++i) {
-        m_bufferVisibilities2(row_id, i, 0) =
-            *(m_row_ids_to_data[row_id].second + i * 2);
-        m_bufferVisibilities2(row_id, i, 3) =
-            *(m_row_ids_to_data[row_id].second + i * 2 + 1);
+    m_bufferVisibilities2.fill(std::complex<float>(0.0f, 0.0f));
+    for (size_t row_id = 0; row_id < m_row_ids_to_data.size(); ++row_id) {
+      const size_t bl = row_id / m_bufferTimesteps;
+      const size_t time = row_id % m_bufferTimesteps;
+      for (size_t chan = 0; chan < m_nr_channels; ++chan) {
+        m_bufferVisibilities2(bl, time, chan, 0) =
+            *(m_row_ids_to_data[row_id].second + chan * 2);
+        m_bufferVisibilities2(bl, time, chan, 3) =
+            *(m_row_ids_to_data[row_id].second + chan * 2 + 1);
       }
-      m_row_ids_to_data[row_id].second = m_bufferVisibilities2.data(row_id);
+      m_row_ids_to_data[row_id].second = &m_bufferVisibilities2(bl, time, 0, 0);
     }
   }
   return std::move(m_row_ids_to_data);
@@ -202,8 +193,9 @@ void DegridderBufferImpl::malloc_buffers() {
   BufferImpl::malloc_buffers();
 
   if (m_bufferset.get_nr_correlations() == 2) {
-    m_bufferVisibilities2 = Array3D<std::complex<float>>(
-        m_nr_baselines * m_bufferTimesteps, m_nr_channels, 4);
+    m_bufferVisibilities2 =
+        m_bufferset.get_proxy().allocate_span<std::complex<float>, 4>(
+            {m_nr_baselines, m_bufferTimesteps, m_nr_channels, 4});
   }
 }
 

@@ -101,12 +101,16 @@ class GridderBufferImpl : public virtual GridderBuffer, public BufferImpl {
 
  private:
   // secondary buffers
-  Array2D<UVW<float>> m_bufferUVW2;  // BL x TI
-  Array1D<std::pair<unsigned int, unsigned int>> m_bufferStationPairs2;  // BL
-  Array4D<std::complex<float>> m_bufferVisibilities2;     // BL x TI x CH x CR
+  aocommon::xt::Span<UVW<float>, 2> m_bufferUVW2;  // BL x TI
+  aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>
+      m_bufferStationPairs2;  // BL
+  aocommon::xt::Span<std::complex<float>, 4>
+      m_bufferVisibilities2;                              // BL x TI x CH x CR
   std::vector<Matrix2x2<std::complex<float>>> m_aterms2;  // ST x SB x SB
-  Array4D<float> m_buffer_weights;   // BL x TI x NR_CHANNELS x NR_CORRELATIONS
-  Array4D<float> m_buffer_weights2;  // BL x TI x NR_CHANNELS x NR_CORRELATIONS
+  aocommon::xt::Span<float, 4>
+      m_buffer_weights;  // BL x TI x NR_CHANNELS x NR_CORRELATIONS
+  aocommon::xt::Span<float, 4>
+      m_buffer_weights2;  // BL x TI x NR_CHANNELS x NR_CORRELATIONS
   std::vector<unsigned int> m_aterm_offsets2;
 
   std::thread m_flush_thread;

@@ -249,11 +249,13 @@ class Proxy {
    */
   virtual void compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
-      idg::Array4D<std::complex<float>>& average_beam);
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+      const aocommon::xt::Span<float, 4>& weights,
+      aocommon::xt::Span<std::complex<float>, 4>& average_beam);
 
   //! Methods for querying and disabling Proxy capabilities
   bool supports_wstacking() {
@@ -269,7 +271,7 @@ class Proxy {
   }
 
   void set_avg_aterm_correction(
-      const Array4D<std::complex<float>>& avg_aterm_correction);
+      const aocommon::xt::Span<std::complex<float>, 4>& avg_aterm_correction);
   void unset_avg_aterm_correction();
 
   //! Methods for memory management
@@ -468,11 +470,13 @@ class Proxy {
 
   virtual void do_compute_avg_beam(
       const unsigned int nr_antennas, const unsigned int nr_channels,
-      const Array2D<UVW<float>>& uvw_array,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterm_offsets, const Array4D<float>& weights,
-      idg::Array4D<std::complex<float>>& average_beam);
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+      const aocommon::xt::Span<float, 4>& weights,
+      aocommon::xt::Span<std::complex<float>, 4>& average_beam);
 
  protected:
   void check_dimensions(
@@ -505,7 +509,7 @@ class Proxy {
 
   const int nr_correlations = 4;
 
-  std::vector<std::complex<float>> m_avg_aterm_correction;
+  aocommon::xt::Span<std::complex<float>, 4> m_avg_aterm_correction;
 
  protected:
   virtual bool do_supports_wstacking() { return false; }
