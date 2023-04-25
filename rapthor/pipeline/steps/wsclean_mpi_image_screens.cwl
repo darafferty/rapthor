@@ -156,6 +156,10 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: dd_psf_grid
+    type: int[]
+    inputBinding:
+      prefix: -dd-psf-grid
   - id: nnodes
     label: Number of nodes
     doc: |

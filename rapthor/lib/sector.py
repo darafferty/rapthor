@@ -120,6 +120,7 @@ class Sector(object):
         self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
+        self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
 
         # Set image size based on current sector polygon
         if recalculate_imsize or self.imsize is None:

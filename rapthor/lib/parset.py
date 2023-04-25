@@ -468,8 +468,6 @@ def get_imaging_options(parset):
     len_list = []
     if 'sector_center_ra_list' in parset_dict:
         val_list = parset_dict['sector_center_ra_list'].strip('[]').split(',')
-        if val_list[0] == '':
-            val_list = []
         val_list = [Angle(v).to('deg').value for v in val_list]
         parset_dict['sector_center_ra_list'] = val_list
         len_list.append(len(val_list))
@@ -477,8 +475,6 @@ def get_imaging_options(parset):
         parset_dict['sector_center_ra_list'] = []
     if 'sector_center_dec_list' in parset_dict:
         val_list = parset_dict['sector_center_dec_list'].strip('[]').split(',')
-        if val_list[0] == '':
-            val_list = []
         val_list = [Angle(v).to('deg').value for v in val_list]
         parset_dict['sector_center_dec_list'] = val_list
         len_list.append(len(val_list))
@@ -486,8 +482,6 @@ def get_imaging_options(parset):
         parset_dict['sector_center_dec_list'] = []
     if 'sector_width_ra_deg_list' in parset_dict:
         val_list = parset_dict['sector_width_ra_deg_list'].strip('[]').split(',')
-        if val_list[0] == '':
-            val_list = []
         val_list = [float(v) for v in val_list]
         parset_dict['sector_width_ra_deg_list'] = val_list
         len_list.append(len(val_list))
@@ -495,8 +489,6 @@ def get_imaging_options(parset):
         parset_dict['sector_width_ra_deg_list'] = []
     if 'sector_width_dec_deg_list' in parset_dict:
         val_list = parset_dict['sector_width_dec_deg_list'].strip('[]').split(',')
-        if val_list[0] == '':
-            val_list = []
         val_list = [float(v) for v in val_list]
         parset_dict['sector_width_dec_deg_list'] = val_list
         len_list.append(len(val_list))
@@ -547,6 +539,17 @@ def get_imaging_options(parset):
         parset_dict['apply_diagonal_solutions'] = parset.getboolean('imaging', 'apply_diagonal_solutions')
     else:
         parset_dict['apply_diagonal_solutions'] = False
+
+    # The number of direction-dependent PSFs which should be fit horizontally and
+    # vertically in the image (default = [1, 1] = direction-independent PSF).
+    if 'dd_psf_grid' in parset_dict:
+        val_list = parset_dict['dd_psf_grid'].strip('[]').split(',')
+        parset_dict['dd_psf_grid'] = [int(v) for v in val_list]
+    else:
+        parset_dict['dd_psf_grid'] = [1, 1]
+    if len(parset_dict['dd_psf_grid']) != 2:
+        log.error('The option dd_psf_grid must be a list of length 2 (e.g. "[3, 3]")')
+        sys.exit(1)
 
     # Use MPI during imaging (default = False).
     if 'use_mpi' in parset_dict:
@@ -607,7 +610,7 @@ def get_imaging_options(parset):
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
                        'idg_mode', 'do_multiscale_clean', 'use_mpi',
-                       'dde_method', 'skip_corner_sectors']
+                       'dde_method', 'skip_corner_sectors', 'dd_psf_grid']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [imaging] section of the '

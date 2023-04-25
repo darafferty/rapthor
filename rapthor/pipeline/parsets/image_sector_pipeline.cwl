@@ -324,6 +324,14 @@ inputs:
       The maximum number of threads to use during deconvolution (length = 1).
     type: int
 
+  - id: dd_psf_grid
+    label: Direction-dependent PSF grid
+    doc: |
+      The number of direction-dependent PSFs which should be fit horizontally and
+      vertically in the image (length = 2).
+    type: int[]
+
+
 outputs:
   - id: filtered_skymodels
     outputSource:
@@ -572,6 +580,8 @@ steps:
         source: max_threads
       - id: num_deconvolution_threads
         source: deconvolution_threads
+      - id: dd_psf_grid
+        source: dd_psf_grid
     out:
       - id: image_nonpb_name
       - id: image_pb_name

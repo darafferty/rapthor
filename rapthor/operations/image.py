@@ -141,6 +141,7 @@ class Image(Operation):
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
                             'do_multiscale': [sector.multiscale for sector in self.field.imaging_sectors],
+                            'dd_psf_grid': [sector.dd_psf_grid for sector in self.field.imaging_sectors],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 

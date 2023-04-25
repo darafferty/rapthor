@@ -201,6 +201,14 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: dd_psf_grid
+    label: Direction-dependent PSF grid
+    doc: |
+      The number of direction-dependent PSFs which should be fit horizontally and
+      vertically in the image.
+    type: int[]
+    inputBinding:
+      prefix: -dd-psf-grid
 
 outputs:
   - id: image_nonpb_name
