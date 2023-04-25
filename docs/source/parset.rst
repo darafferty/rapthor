@@ -249,6 +249,10 @@ The available options are described below under their respective sections.
         (Separate XX and YY corrections are always applied when using non-facet-based imaging
         methods.)
 
+    dd_psf_grid
+        The number of direction-dependent PSFs which should be fit horizontally and
+        vertically in the image (default = ``[1, 1]`` = direction-independent PSF).
+
     use_mpi
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each
