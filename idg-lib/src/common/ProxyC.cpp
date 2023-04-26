@@ -223,19 +223,22 @@ void Proxy_destroy(struct Proxy* p) {
 
 void* Proxy_allocate_grid(struct Proxy* p, unsigned int nr_correlations,
                           unsigned int grid_size) {
-  const unsigned int nr_w_layers = 1;
-  auto grid = reinterpret_cast<idg::proxy::Proxy*>(p)->allocate_grid(
-      nr_w_layers, nr_correlations, grid_size, grid_size);
+  const size_t nr_w_layers = 1;
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      reinterpret_cast<idg::proxy::Proxy*>(p)
+          ->allocate_span<std::complex<float>, 4>(
+              {nr_w_layers, nr_correlations, grid_size, grid_size});
   ExitOnException(&idg::proxy::Proxy::set_grid,
                   reinterpret_cast<idg::proxy::Proxy*>(p), grid);
-  return grid->data();
+  return grid.data();
 }
 
 void Proxy_set_grid(struct Proxy* p, std::complex<float>* grid_ptr,
                     unsigned int nr_w_layers, unsigned int nr_correlations,
                     unsigned int height, unsigned int width) {
-  std::shared_ptr<idg::Grid> grid = std::shared_ptr<idg::Grid>(
-      new idg::Grid(grid_ptr, nr_w_layers, nr_correlations, height, width));
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          grid_ptr, {nr_w_layers, nr_correlations, height, width});
   ExitOnException(&idg::proxy::Proxy::set_grid,
                   reinterpret_cast<idg::proxy::Proxy*>(p), grid);
 }
@@ -244,15 +247,15 @@ void Proxy_get_final_grid(struct Proxy* p, std::complex<float>* grid_ptr,
                           unsigned int nr_w_layers,
                           unsigned int nr_correlations, unsigned int height,
                           unsigned int width) {
-  std::shared_ptr<idg::Grid> grid =
+  aocommon::xt::Span<std::complex<float>, 4> grid =
       ExitOnException(&idg::proxy::Proxy::get_final_grid,
                       reinterpret_cast<idg::proxy::Proxy*>(p));
   if (grid_ptr) {
-    assert(grid->get_w_dim() == nr_w_layers);
-    assert(grid->get_z_dim() == nr_correlations);
-    assert(grid->get_y_dim() == height);
-    assert(grid->get_x_dim() == width);
-    memcpy(grid_ptr, grid->data(), grid->bytes());
+    assert(grid.shape(0) == nr_w_layers);
+    assert(grid.shape(1) == nr_correlations);
+    assert(grid.shape(2) == height);
+    assert(grid.shape(3) == width);
+    std::copy_n(grid.data(), grid.size(), grid_ptr);
   }
 }
 

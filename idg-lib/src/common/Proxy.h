@@ -333,31 +333,24 @@ class Proxy {
     return aocommon::xt::CreateSpan(ptr, shape_array);
   }
 
-  //! Methods for grid management
-  virtual std::shared_ptr<Grid> allocate_grid(size_t nr_w_layers,
-                                              size_t nr_correlations,
-                                              size_t height, size_t width);
-
   /**
    * Set grid to be used for gridding, degridding or calibration.
    */
-  virtual void set_grid(std::shared_ptr<Grid> grid);
+  virtual void set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid);
   virtual void free_grid();
 
   /**
    * @brief Flush all pending operations and return the final grid.
+   * @return aocommon::xt::Span<std::complex<float>
    */
-  virtual std::shared_ptr<Grid> get_final_grid();
+  virtual aocommon::xt::Span<std::complex<float>, 4>& get_final_grid();
 
   /**
    * @brief Get the current grid without flushing pending operations.
    *
-   * Use this function for reading the grid dimensions, and not the grid
-   * data.
-   *
-   * @return const Grid&
+   * @return aocommon::xt::Span<std::complex<float>
    */
-  const Grid& get_grid() const { return *m_grid; }
+  aocommon::xt::Span<std::complex<float>, 4>& get_grid() { return grid_; }
 
   //! Methods for cache management
 
@@ -414,10 +407,12 @@ class Proxy {
       const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
       Plan::Options options = Plan::Options()) {
     options.w_step = m_cache_state.w_step;
-    return std::unique_ptr<Plan>(
-        new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
-                 m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
-                 baselines, aterm_offsets, options));
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
+    return std::make_unique<Plan>(kernel_size, m_cache_state.subgrid_size,
+                                  grid_size, m_cache_state.cell_size,
+                                  m_cache_state.shift, frequencies, uvw,
+                                  baselines, aterm_offsets, options);
   }
 
  private:
@@ -501,7 +496,8 @@ class Proxy {
       const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const aocommon::xt::Span<std::complex<float>, 4>& grid,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& taper) const;
 
@@ -515,10 +511,6 @@ class Proxy {
   virtual bool do_supports_wstacking() { return false; }
   virtual bool do_supports_wtiling() { return false; }
 
-  std::shared_ptr<Grid> m_grid = nullptr;
-
-  std::shared_ptr<Report> m_report;
-
   bool m_disable_wstacking = false;
   bool m_disable_wtiling = false;
 
@@ -531,8 +523,12 @@ class Proxy {
 
   void free_memory() { memory_.clear(); };
 
+  std::shared_ptr<Report>& get_report() { return report_; }
+
  private:
+  std::shared_ptr<Report> report_;
   std::vector<std::unique_ptr<auxiliary::Memory>> memory_;
+  aocommon::xt::Span<std::complex<float>, 4> grid_;
 
 };  // end class Proxy
 

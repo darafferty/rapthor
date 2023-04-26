@@ -23,21 +23,22 @@ void GenericOptimized::do_calibrate_init(
   std::cout << "GenericOptimized::" << __func__ << std::endl;
 
   auto cpuKernels = cpuProxy->get_kernels();
-  cpuKernels->set_report(m_report);
+  cpuKernels->set_report(get_report());
 
   // Arguments
-  auto nr_antennas = plans.size();
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_x_dim();
-  auto image_size = m_cache_state.cell_size * grid_size;
-  auto w_step = m_cache_state.w_step;
-  auto subgrid_size = m_cache_state.subgrid_size;
-  auto nr_channel_blocks = visibilities.get_e_dim();
-  auto nr_baselines = visibilities.get_d_dim();
-  auto nr_timesteps = visibilities.get_c_dim();
-  auto nr_channels_per_block = visibilities.get_b_dim();
-  auto nr_correlations = visibilities.get_a_dim();
-  auto max_nr_terms = m_calibrate_max_nr_terms;
+  const size_t nr_antennas = plans.size();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = m_cache_state.cell_size * grid_size;
+  const float w_step = m_cache_state.w_step;
+  const size_t subgrid_size = m_cache_state.subgrid_size;
+  const size_t nr_channel_blocks = visibilities.get_e_dim();
+  const size_t nr_baselines = visibilities.get_d_dim();
+  const size_t nr_timesteps = visibilities.get_c_dim();
+  const size_t nr_channels_per_block = visibilities.get_b_dim();
+  const size_t nr_correlations = visibilities.get_a_dim();
+  const size_t max_nr_terms = m_calibrate_max_nr_terms;
   auto& shift = m_cache_state.shift;
 
   std::vector<Array1D<float>> wavenumbers;
@@ -53,13 +54,13 @@ void GenericOptimized::do_calibrate_init(
   std::vector<std::vector<Array4D<std::complex<float>>>> subgrids(nr_antennas);
 
   // Start performance measurement
-  m_report->initialize();
+  get_report()->initialize();
   powersensor::State states[2];
   states[0] = hostPowerSensor->read();
 
   // Load device
   InstanceCUDA& device = get_device(0);
-  device.set_report(m_report);
+  device.set_report(get_report());
   const cu::Context& context = device.get_context();
 
   // Load stream
@@ -136,7 +137,6 @@ void GenericOptimized::do_calibrate_init(
       // Get data pointers
       auto metadata_ptr = plans[antenna_nr][channel_block]->get_metadata_ptr();
       auto subgrids_ptr = subgrids1.data();
-      auto grid_ptr = m_grid->data();
 
       // Copy metadata to device
       htodstream.memcpyHtoDAsync(d_metadata, metadata_ptr, sizeof_metadata1);
@@ -145,7 +145,7 @@ void GenericOptimized::do_calibrate_init(
       if (w_step == 0.0) {
         cpuKernels->run_splitter(nr_subgrids, nr_polarizations, grid_size,
                                  subgrid_size, metadata_ptr, subgrids_ptr,
-                                 grid_ptr);
+                                 get_grid().data());
       } else if (plans[antenna_nr][channel_block]->get_use_wtiles()) {
         WTileUpdateSet wtile_initialize_set =
             plans[antenna_nr][channel_block]->get_wtile_initialize_set();
@@ -172,12 +172,13 @@ void GenericOptimized::do_calibrate_init(
           cpuKernels->run_splitter_wtiles(
               nr_subgrids, nr_polarizations, grid_size, subgrid_size,
               image_size, w_step, shift.data(), 0 /* subgrid_offset */,
-              wtile_initialize_set, metadata_ptr, subgrids_ptr, grid_ptr);
+              wtile_initialize_set, metadata_ptr, subgrids_ptr,
+              get_grid().data());
         }
       } else {
         cpuKernels->run_splitter_wstack(nr_subgrids, nr_polarizations,
                                         grid_size, subgrid_size, metadata_ptr,
-                                        subgrids_ptr, grid_ptr);
+                                        subgrids_ptr, get_grid().data());
       }
 
       // FFT kernel
@@ -186,13 +187,13 @@ void GenericOptimized::do_calibrate_init(
                                   CUFFT_FORWARD);
 
       // Apply spheroidal
-      for (int i = 0; i < (int)nr_subgrids; i++) {
-        for (unsigned int pol = 0; pol < nr_correlations; pol++) {
-          for (int j = 0; j < subgrid_size; j++) {
-            for (int k = 0; k < subgrid_size; k++) {
+      for (size_t i = 0; i < nr_subgrids; i++) {
+        for (size_t pol = 0; pol < nr_correlations; pol++) {
+          for (size_t j = 0; j < subgrid_size; j++) {
+            for (size_t k = 0; k < subgrid_size; k++) {
               // Apply FFT shift (swapping corner and centre) to subgrid indices
-              const int y = (j + (subgrid_size / 2)) % subgrid_size;
-              const int x = (k + (subgrid_size / 2)) % subgrid_size;
+              const size_t y = (j + (subgrid_size / 2)) % subgrid_size;
+              const size_t x = (k + (subgrid_size / 2)) % subgrid_size;
               subgrids1(i, pol, y, x) *= spheroidal(j, k);
             }
           }
@@ -206,8 +207,8 @@ void GenericOptimized::do_calibrate_init(
 
   // End performance measurement
   states[1] = hostPowerSensor->read();
-  m_report->update(Report::host, states[0], states[1]);
-  m_report->print_total(0, 0, 0);
+  get_report()->update(Report::host, states[0], states[1]);
+  get_report()->print_total(0, 0, 0);
 
   // Set calibration state member variables
   m_calibrate_state.wavenumbers = std::move(wavenumbers);
@@ -244,19 +245,20 @@ void GenericOptimized::do_calibrate_update(
     Array4D<double>& hessian, Array3D<double>& gradient,
     Array1D<double>& residual) {
   // Arguments
-  auto nr_baselines = m_calibrate_state.nr_baselines;
-  auto nr_timesteps = m_calibrate_state.nr_timesteps;
-  auto nr_channel_blocks = m_calibrate_state.nr_channel_blocks;
-  auto nr_channels_per_block = m_calibrate_state.nr_channels_per_block;
-  auto nr_terms = aterm_derivatives.get_c_dim();
-  auto subgrid_size = aterms.get_a_dim();
-  auto nr_timeslots = aterms.get_d_dim();
-  auto nr_stations = aterms.get_c_dim();
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_y_dim();
-  auto image_size = m_cache_state.cell_size * grid_size;
-  auto w_step = m_cache_state.w_step;
-  auto nr_correlations = 4;
+  const size_t nr_baselines = m_calibrate_state.nr_baselines;
+  const size_t nr_timesteps = m_calibrate_state.nr_timesteps;
+  const size_t nr_channel_blocks = m_calibrate_state.nr_channel_blocks;
+  const size_t nr_channels_per_block = m_calibrate_state.nr_channels_per_block;
+  const size_t nr_terms = aterm_derivatives.get_c_dim();
+  const size_t subgrid_size = aterms.get_a_dim();
+  const size_t nr_timeslots = aterms.get_d_dim();
+  const size_t nr_stations = aterms.get_c_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = m_cache_state.cell_size * grid_size;
+  const float w_step = m_cache_state.w_step;
+  const size_t nr_correlations = 4;
 
   auto sizeof_aterm_idx =
       auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
@@ -268,7 +270,7 @@ void GenericOptimized::do_calibrate_update(
 
   // Performance measurement
   if (antenna_nr == 0) {
-    m_report->initialize(nr_channels_per_block, subgrid_size, 0, nr_terms);
+    get_report()->initialize(nr_channels_per_block, subgrid_size, 0, nr_terms);
   }
 
   // Start marker
@@ -412,7 +414,7 @@ void GenericOptimized::do_calibrate_update(
                 residual.data(channel_block));
     // Performance reporting
     auto nr_visibilities = nr_timesteps * nr_channels_per_block;
-    m_report->update_total(nr_subgrids, nr_timesteps, nr_visibilities);
+    get_report()->update_total(nr_subgrids, nr_timesteps, nr_visibilities);
   }
   // End marker
   marker.end();
@@ -433,8 +435,9 @@ void GenericOptimized::do_calibrate_finish() {
           m_calibrate_state.plans[antenna_nr][channel_block]->get_nr_subgrids();
     }
   }
-  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
-  m_report->print_visibilities(auxiliary::name_calibrate);
+  get_report()->print_total(nr_correlations, total_nr_timesteps,
+                            total_nr_subgrids);
+  get_report()->print_visibilities(auxiliary::name_calibrate);
   m_calibrate_state.d_wavenumbers.reset();
   m_calibrate_state.d_lmnp.reset();
   m_calibrate_state.d_sums_x.reset();

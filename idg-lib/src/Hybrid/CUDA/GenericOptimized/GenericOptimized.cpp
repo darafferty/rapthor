@@ -79,8 +79,10 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
             ? min(options.max_nr_channels_per_subgrid,
                   KernelGridder::block_size_x)
             : KernelGridder::block_size_x;
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
     return std::unique_ptr<Plan>(
-        new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
+        new Plan(kernel_size, m_cache_state.subgrid_size, grid_size,
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
                  baselines, aterm_offsets, m_wtiles, options));
   } else {
@@ -111,7 +113,7 @@ void GenericOptimized::do_gridding(
   // gridding.
   auto& visibilities_ptr =
       const_cast<Array4D<std::complex<float>>&>(visibilities);
-  run_imaging(plan, frequencies, visibilities_ptr, uvw, baselines, *m_grid,
+  run_imaging(plan, frequencies, visibilities_ptr, uvw, baselines, get_grid(),
               aterms, aterm_offsets, spheroidal, ImagingMode::mode_gridding);
 }  // end do_gridding
 
@@ -126,8 +128,8 @@ void GenericOptimized::do_degridding(
   std::cout << "GenericOptimized::" << __func__ << std::endl;
 #endif
 
-  run_imaging(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
-              aterm_offsets, spheroidal, ImagingMode::mode_degridding);
+  run_imaging(plan, frequencies, visibilities, uvw, baselines, get_grid(),
+              aterms, aterm_offsets, spheroidal, ImagingMode::mode_degridding);
 }  // end do_degridding
 
 /*
@@ -148,15 +150,16 @@ void GenericOptimized::do_transform(DomainAtoDomainB direction) {
 /*
  * Grid
  */
-void GenericOptimized::set_grid(std::shared_ptr<Grid> grid) {
+void GenericOptimized::set_grid(
+    aocommon::xt::Span<std::complex<float>, 4>& grid) {
   cpuProxy->set_grid(grid);
   CUDA::set_grid(grid);
 }
 
-std::shared_ptr<Grid> GenericOptimized::get_final_grid() {
+aocommon::xt::Span<std::complex<float>, 4>& GenericOptimized::get_final_grid() {
   if (!m_disable_wtiling_gpu) {
     flush_wtiles();
-    return m_grid;
+    return get_grid();
   } else {
     // Defer call to cpuProxy
     return cpuProxy->get_final_grid();

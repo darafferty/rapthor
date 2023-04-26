@@ -12,7 +12,8 @@ void Generic::run_imaging(
     const Plan& plan, const Array1D<float>& frequencies,
     const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines, Grid& grid,
+    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    aocommon::xt::Span<std::complex<float>, 4>& grid,
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal, ImagingMode mode) {
@@ -20,18 +21,19 @@ void Generic::run_imaging(
   const cu::Context& context = device.get_context();
 
   // Arguments
-  auto nr_baselines = visibilities.get_w_dim();
-  auto nr_timesteps = visibilities.get_z_dim();
-  auto nr_channels = visibilities.get_y_dim();
-  auto nr_correlations = visibilities.get_x_dim();
-  auto nr_stations = aterms.get_z_dim();
-  auto nr_polarizations = grid.get_z_dim();
-  auto grid_size = grid.get_x_dim();
-  auto cell_size = plan.get_cell_size();
-  auto image_size = cell_size * grid_size;
-  auto subgrid_size = plan.get_subgrid_size();
-  auto w_step = plan.get_w_step();
-  auto& shift = plan.get_shift();
+  const size_t nr_baselines = visibilities.get_w_dim();
+  const size_t nr_timesteps = visibilities.get_z_dim();
+  const size_t nr_channels = visibilities.get_y_dim();
+  const size_t nr_correlations = visibilities.get_x_dim();
+  const size_t nr_stations = aterms.get_z_dim();
+  const size_t nr_polarizations = grid.shape(1);
+  const size_t grid_size = grid.shape(2);
+  assert(grid.shape(3) == grid_size);
+  const float cell_size = plan.get_cell_size();
+  const float image_size = cell_size * grid_size;
+  const size_t subgrid_size = plan.get_subgrid_size();
+  const float w_step = plan.get_w_step();
+  const std::array<float, 2>& shift = plan.get_shift();
 
   WTileUpdateSet wtile_set;
   if (mode == ImagingMode::mode_gridding) {
@@ -53,8 +55,8 @@ void Generic::run_imaging(
   int device_id = 0;  // only one GPU is used
 
   // Performance measurements
-  m_report->initialize(nr_channels, subgrid_size, grid_size);
-  device.set_report(m_report);
+  get_report()->initialize(nr_channels, subgrid_size, grid_size);
+  device.set_report(get_report());
   std::vector<State> startStates(nr_devices + 1);
   std::vector<State> endStates(nr_devices + 1);
 
@@ -325,23 +327,24 @@ void Generic::run_imaging(
   // End performance measurement
   endStates[device_id] = device.measure();
   endStates[nr_devices] = hostPowerSensor->read();
-  m_report->update(Report::device, startStates[device_id],
-                   endStates[device_id]);
-  m_report->update(Report::host, startStates[nr_devices],
-                   endStates[nr_devices]);
+  get_report()->update(Report::device, startStates[device_id],
+                       endStates[device_id]);
+  get_report()->update(Report::host, startStates[nr_devices],
+                       endStates[nr_devices]);
 
   // Update report
   auto total_nr_subgrids = plan.get_nr_subgrids();
   auto total_nr_timesteps = plan.get_nr_timesteps();
   auto total_nr_visibilities = plan.get_nr_visibilities();
-  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
+  get_report()->print_total(nr_correlations, total_nr_timesteps,
+                            total_nr_subgrids);
   const std::string* name;
   if (mode == ImagingMode::mode_gridding) {
     name = &auxiliary::name_gridding;
   } else if (mode == ImagingMode::mode_degridding) {
     name = &auxiliary::name_degridding;
   }
-  m_report->print_visibilities(*name, total_nr_visibilities);
+  get_report()->print_visibilities(*name, total_nr_visibilities);
 
   // Cleanup
   device.free_subgrid_fft();

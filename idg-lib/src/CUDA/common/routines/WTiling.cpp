@@ -119,9 +119,9 @@ void CUDA::init_buffers_wtiling(unsigned int subgrid_size) {
   // This implies that the tiles are processed in batches.
 
   // Compute the size of one tile
-  const int nr_polarizations = m_grid->get_z_dim();
-  int tile_size = m_tile_size + subgrid_size;
-  size_t sizeof_tile =
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t tile_size = m_tile_size + subgrid_size;
+  const size_t sizeof_tile =
       nr_polarizations * tile_size * tile_size * sizeof(std::complex<float>);
 
   // Compute the number of tiles given that:
@@ -161,8 +161,9 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
                               float w_step, const std::array<float, 2>& shift,
                               WTileUpdateInfo& wtile_flush_info) {
   // Load grid parameters
-  unsigned int nr_polarizations = m_grid->get_z_dim();
-  unsigned int grid_size = m_grid->get_x_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
 
   // Load CUDA objects
   kernel::cuda::InstanceCUDA& device = get_device(0);
@@ -375,7 +376,7 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
 
         run_adder_patch_to_grid(
             nr_polarizations, grid_size, m_patch_size, current_nr_patches,
-            &patch_coordinates[patch_offset], m_grid->data(),
+            &patch_coordinates[patch_offset], get_grid().data(),
             static_cast<std::complex<float>*>(h_padded_tiles.data()));
         marker.end();
       }  // end for patch_offset
@@ -429,9 +430,10 @@ void CUDA::run_subgrids_to_wtiles(
     }
 
     // Add all subgrids to the wtiles
-    unsigned int grid_size = m_grid->get_x_dim();
-    int N = subgrid_size * subgrid_size;
-    std::complex<float> scale(1.0f / N, 1.0f / N);
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
+    const size_t N = subgrid_size * subgrid_size;
+    const std::complex<float> scale(1.0f / N, 1.0f / N);
     device.launch_adder_subgrids_to_wtiles(
         nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
         m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles, scale);
@@ -443,15 +445,16 @@ void CUDA::run_subgrids_to_wtiles(
 
   // End performance measurement
   endState = device.measure();
-  m_report->update(Report::wtiling_forward, startState, endState);
+  get_report()->update(Report::wtiling_forward, startState, endState);
 }
 
 void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
                                 float w_step, const std::array<float, 2>& shift,
                                 WTileUpdateInfo& wtile_initialize_info) {
   // Load grid parameters
-  unsigned int nr_polarizations = m_grid->get_z_dim();
-  unsigned int grid_size = m_grid->get_x_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
 
   // Load CUDA objects
   kernel::cuda::InstanceCUDA& device = get_device(0);
@@ -606,7 +609,7 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
         marker.start();
         run_splitter_patch_from_grid(
             nr_polarizations, grid_size, m_patch_size, current_nr_patches,
-            &patch_coordinates[patch_offset], m_grid->data(),
+            &patch_coordinates[patch_offset], get_grid().data(),
             static_cast<std::complex<float>*>(h_padded_tiles.data()));
         marker.end();
 
@@ -725,7 +728,8 @@ void CUDA::run_subgrids_from_wtiles(
     }
 
     // Process all subgrids that can be processed now
-    unsigned int grid_size = m_grid->get_x_dim();
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
     device.launch_splitter_subgrids_from_wtiles(
         nr_subgrids_to_process, nr_polarizations, grid_size, subgrid_size,
         m_tile_size, subgrid_index, d_metadata, d_subgrids, d_tiles);
@@ -737,13 +741,14 @@ void CUDA::run_subgrids_from_wtiles(
 
   // End performance measurement
   endState = device.measure();
-  m_report->update(Report::wtiling_backward, startState, endState);
+  get_report()->update(Report::wtiling_backward, startState, endState);
 }
 
 void CUDA::flush_wtiles() {
   // Get parameters
-  unsigned int nr_polarizations = m_grid->get_z_dim();
-  unsigned int grid_size = m_grid->get_x_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
   float cell_size = m_cache_state.cell_size;
   float image_size = grid_size * cell_size;
   int subgrid_size = m_cache_state.subgrid_size;
@@ -755,15 +760,15 @@ void CUDA::flush_wtiles() {
 
   // Project wtiles to master grid
   if (wtile_flush_info.wtile_ids.size()) {
-    m_report->initialize();
+    get_report()->initialize();
     kernel::cuda::InstanceCUDA& device = get_device(0);
     powersensor::State startState, endState;
     startState = device.measure();
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift,
                        wtile_flush_info);
     endState = device.measure();
-    m_report->update(Report::wtiling_forward, startState, endState);
-    m_report->print_total(nr_polarizations);
+    get_report()->update(Report::wtiling_forward, startState, endState);
+    get_report()->print_total(nr_polarizations);
   }
 }
 

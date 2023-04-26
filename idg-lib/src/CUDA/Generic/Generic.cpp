@@ -69,8 +69,8 @@ void Generic::do_gridding(
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
-  run_imaging(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
-              aterm_offsets, spheroidal, ImagingMode::mode_gridding);
+  run_imaging(plan, frequencies, visibilities, uvw, baselines, get_grid(),
+              aterms, aterm_offsets, spheroidal, ImagingMode::mode_gridding);
 }
 
 void Generic::do_degridding(
@@ -84,42 +84,51 @@ void Generic::do_degridding(
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
-  run_imaging(plan, frequencies, visibilities, uvw, baselines, *m_grid, aterms,
-              aterm_offsets, spheroidal, ImagingMode::mode_degridding);
+  run_imaging(plan, frequencies, visibilities, uvw, baselines, get_grid(),
+              aterms, aterm_offsets, spheroidal, ImagingMode::mode_degridding);
 }
 
-void Generic::set_grid(std::shared_ptr<Grid> grid) {
+void Generic::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {
+  const size_t grid_size = grid.shape(2);
+  assert(grid.shape(3) == grid_size);
+  const size_t sizeof_grid = grid.size() * sizeof(*grid.data());
+
   CUDA::set_grid(grid);
   cu::Context& context = get_device(0).get_context();
   if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& htodstream = device.get_htod_stream();
-    d_grid_.reset(new cu::DeviceMemory(context, grid->bytes()));
-    htodstream.memcpyHtoD(*d_grid_, grid->data(), grid->bytes());
+    d_grid_.reset(new cu::DeviceMemory(context, sizeof_grid));
+    htodstream.memcpyHtoD(*d_grid_, grid.data(), sizeof_grid);
   }
   if (m_use_unified_memory) {
-    cu::UnifiedMemory& u_grid = allocate_unified_grid(context, grid->bytes());
-    char* first = reinterpret_cast<char*>(grid->data());
+    cu::UnifiedMemory& u_grid = allocate_unified_grid(context, sizeof_grid);
+    char* first = reinterpret_cast<char*>(grid.data());
     char* result = reinterpret_cast<char*>(u_grid.data());
-    std::copy_n(first, grid->bytes(), result);
+    std::copy_n(first, sizeof_grid, result);
   }
 }
 
-std::shared_ptr<Grid> Generic::get_final_grid() {
+aocommon::xt::Span<std::complex<float>, 4>& Generic::get_final_grid() {
   if (!m_disable_wtiling) {
     flush_wtiles();
   }
+
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
+
   if (m_use_unified_memory) {
     cu::UnifiedMemory& u_grid = get_unified_grid();
     char* first = reinterpret_cast<char*>(u_grid.data());
-    char* result = reinterpret_cast<char*>(m_grid->data());
-    std::copy_n(first, m_grid->bytes(), result);
+    char* result = reinterpret_cast<char*>(get_grid().data());
+    std::copy_n(first, sizeof_grid, result);
   } else if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& dtohstream = device.get_dtoh_stream();
-    dtohstream.memcpyDtoH(m_grid->data(), *d_grid_, m_grid->bytes());
+    dtohstream.memcpyDtoH(get_grid().data(), *d_grid_, sizeof_grid);
   }
-  return m_grid;
+  return get_grid();
 }
 
 std::unique_ptr<Plan> Generic::make_plan(
@@ -130,10 +139,12 @@ std::unique_ptr<Plan> Generic::make_plan(
     const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
     Plan::Options options) {
   if (do_supports_wtiling() && !m_disable_wtiling) {
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
     options.w_step = m_cache_state.w_step;
     options.nr_w_layers = std::numeric_limits<int>::max();
     return std::unique_ptr<Plan>(
-        new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
+        new Plan(kernel_size, m_cache_state.subgrid_size, grid_size,
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
                  baselines, aterm_offsets, m_wtiles, options));
   } else {

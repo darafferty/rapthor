@@ -13,10 +13,12 @@ void Generic::do_transform(DomainAtoDomainB direction) {
 #endif
 
   // Constants
-  unsigned int grid_size = m_grid->get_x_dim();
-  unsigned int nr_w_layers = m_grid->get_w_dim();
+  const size_t nr_w_layers = get_grid().shape(0);
   assert(nr_w_layers == 1);
-  unsigned int nr_polarizations = m_grid->get_z_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
 
   // Load CUDA objects
   InstanceCUDA& device = get_device(0);
@@ -26,18 +28,18 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   // In case W-Tiling is disabled, d_grid_ is not allocated yet
   if (!m_disable_wtiling) {
     assert(!d_grid_);
-    d_grid_.reset(new cu::DeviceMemory(context, m_grid->bytes()));
+    d_grid_.reset(new cu::DeviceMemory(context, sizeof_grid));
     if (m_use_unified_memory) {
       cu::UnifiedMemory& u_grid = get_unified_grid();
       stream.memcpyHtoDAsync(*d_grid_, u_grid.data(), u_grid.size());
     } else {
-      stream.memcpyHtoDAsync(*d_grid_, m_grid->data(), m_grid->bytes());
+      stream.memcpyHtoDAsync(*d_grid_, get_grid().data(), sizeof_grid);
     }
   }
 
   // Performance measurements
-  m_report->initialize(0, 0, grid_size);
-  device.set_report(m_report);
+  get_report()->initialize(0, 0, grid_size);
+  device.set_report(get_report());
   powersensor::State powerStates[4];
   powerStates[0] = hostPowerSensor->read();
   powerStates[2] = device.measure();
@@ -61,7 +63,7 @@ void Generic::do_transform(DomainAtoDomainB direction) {
       cu::UnifiedMemory& u_grid = get_unified_grid();
       stream.memcpyDtoHAsync(u_grid.data(), *d_grid_, u_grid.size());
     } else {
-      stream.memcpyDtoHAsync(m_grid->data(), *d_grid_, m_grid->bytes());
+      stream.memcpyDtoHAsync(get_grid().data(), *d_grid_, sizeof_grid);
     }
   }
 
@@ -71,9 +73,9 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   powerStates[3] = device.measure();
 
   // Report performance
-  m_report->update<Report::host>(powerStates[0], powerStates[1]);
-  m_report->update<Report::device>(powerStates[2], powerStates[3]);
-  m_report->print_total(nr_polarizations);
+  get_report()->update<Report::host>(powerStates[0], powerStates[1]);
+  get_report()->update<Report::device>(powerStates[2], powerStates[3]);
+  get_report()->print_total(nr_polarizations);
 
   // Free device grid
   if (!m_disable_wtiling) {

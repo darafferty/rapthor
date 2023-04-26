@@ -32,9 +32,9 @@ class Unified : public Generic {
 
   void do_transform(DomainAtoDomainB direction) override;
 
-  void set_grid(std::shared_ptr<Grid> grid) override;
+  void set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) override;
 
-  std::shared_ptr<Grid> get_final_grid() override;
+  aocommon::xt::Span<std::complex<float>, 4>& get_final_grid() override;
 
   bool do_supports_wtiling() override { return false; }
 

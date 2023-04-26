@@ -24,21 +24,17 @@ class KernelsInstance {
   /*
       Misc math routines
   */
-  void shift(Array3D<std::complex<float>>& data);
+  void fftshift_grid(aocommon::xt::Span<std::complex<float>, 3>& grid);
 
-  void scale(Array3D<std::complex<float>>& data,
-             std::complex<float> scale) const;
-
-  void tile_backward(const unsigned int nr_polarizations,
-                     const unsigned long grid_size,
-                     const unsigned int tile_size,
-                     const Array5D<std::complex<float>>& grid_src,
-                     Grid& grid_dst) const;
-
-  void tile_forward(const unsigned int nr_polarizations,
-                    const unsigned long grid_size, const unsigned int tile_size,
-                    const Grid& grid_src,
-                    Array5D<std::complex<float>>& grid_dst) const;
+  /// Convert from a untiled grid to a tiled grid (or backwards when !forward)
+  /// The grids are assumed to have the following dimensions:
+  ///  - grid_untiled: nr_w_layers * nr_polarizations * grid_size * grid_size
+  ///  - grid_tiled: nr_tiles_1d * nr_tiles_1d * nr_polarizations * tile_size *
+  ///  tile_size
+  /// with nr_w_layers == 1 and grid_size == (nr_tiles_1d * tile_size).
+  void tile_grid(aocommon::xt::Span<std::complex<float>, 4>& grid_untiled,
+                 aocommon::xt::Span<std::complex<float>, 5>& grid_tiled,
+                 bool forward = true) const;
 
   void transpose_aterm(
       const unsigned int nr_polarizations,

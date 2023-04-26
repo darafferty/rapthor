@@ -94,7 +94,7 @@ class BufferSetImpl : public virtual BufferSet {
  private:
   std::unique_ptr<proxy::Proxy> create_proxy(Type architecture);
 
-  std::shared_ptr<idg::Grid> allocate_grid();
+  aocommon::xt::Span<std::complex<float>, 4> allocate_grid();
   void free_grid();
 
   std::unique_ptr<proxy::Proxy> m_proxy;
@@ -134,7 +134,8 @@ class BufferSetImpl : public virtual BufferSet {
   std::unique_ptr<Stopwatch> m_degridding_watch;
 
   // debug
-  static void write_grid(const idg::Grid& grid);
+  static void write_grid(
+      const aocommon::xt::Span<std::complex<float>, 4>& grid);
 };
 
 }  // namespace api

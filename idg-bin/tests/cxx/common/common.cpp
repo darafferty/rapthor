@@ -169,9 +169,12 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   // Set shift to some random non-zero value
   // shift is in radians, 0.02rad is about 1deg
   std::array<float, 2> shift{0.02f, -0.03f};
-  auto grid = proxy2.allocate_grid(1, nr_polarizations, grid_size, grid_size);
-  auto grid_ref =
-      proxy1.allocate_grid(1, nr_polarizations, grid_size, grid_size);
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      proxy2.allocate_span<std::complex<float>, 4>(
+          {1, nr_polarizations, grid_size, grid_size});
+  aocommon::xt::Span<std::complex<float>, 4> grid_ref =
+      proxy1.allocate_span<std::complex<float>, 4>(
+          {1, nr_polarizations, grid_size, grid_size});
   std::clog << std::endl;
 
   // Flag the first visibilities by setting UVW coordinate to infinity
@@ -215,19 +218,19 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
 #if TEST_GRIDDING
   // Run gridder
   std::clog << ">>> Run gridding" << std::endl;
-  grid->zero();
+  grid.fill(std::complex<float>(0, 0));
   proxy2.gridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
                   aterm_offsets, spheroidal);
   proxy2.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
-  grid_ref->zero();
+  grid_ref.fill(std::complex<float>(0.0f, 0.0f));
   proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
                   aterm_offsets, spheroidal);
   proxy1.get_final_grid();
 
   float grid_error = get_accuracy(nr_polarizations * grid_size * grid_size,
-                                  grid->data(), grid_ref->data());
+                                  grid.data(), grid_ref.data());
 #endif
 
   // Use the same grid for both degridding calls

@@ -14,6 +14,7 @@
 #include <thread>
 
 #include <mpi.h>
+#include <xtensor/xview.hpp>
 
 #include "idg-util.h"  // Data init routines
 
@@ -244,14 +245,15 @@ idg::Plan::Options get_plan_options() {
   return options;
 }
 
-void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
-                  unsigned int world_size) {
-  unsigned int w = 0;  // W-stacking is handled by the workers
-  unsigned int nr_polarizations = grid->get_z_dim();
-  unsigned int grid_size = grid->get_y_dim();
+void reduce_grids(aocommon::xt::Span<std::complex<float>, 4>& grid,
+                  unsigned int rank, unsigned int world_size) {
+  const size_t w = 0;  // W-stacking is handled by the workers
+  const size_t nr_polarizations = grid.shape(1);
+  const size_t grid_size = grid.shape(2);
+  assert(grid.shape(3) == grid_size);
 
   xt::xtensor<std::complex<float>, 2> tmp({grid_size, grid_size});
-  size_t sizeof_row = grid_size * sizeof(std::complex<float>);
+  size_t sizeof_row = grid_size * sizeof(*tmp.data());
 
 #pragma omp parallel
   {
@@ -260,23 +262,20 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
         if ((unsigned int)rank < i) {
           if (omp_get_thread_num() == 0) {
             MPIRequestList requests;
-            for (unsigned int y = 0; y < grid_size; y++) {
+            for (size_t y = 0; y < grid_size; y++) {
               requests.create()->receive(&tmp(y, 0), sizeof_row, i + rank);
             }
             requests.wait();
           }
 
-          auto& grid_ = *grid;
-
 #pragma omp barrier
 #pragma omp for
-          for (unsigned int y = 0; y < grid_size; y++)
-            for (unsigned int x = 0; x < grid_size; x++) {
-              grid_(w, pol, y, x) += tmp(y, x);
-            }
+          for (size_t y = 0; y < grid_size; y++) {
+            xt::view(grid, w, pol, y, xt::all()) += xt::view(tmp, y, xt::all());
+          }
         } else if (rank < (2 * i) && omp_get_thread_num() == 0) {
           MPIRequestList requests;
-          for (unsigned int y = 0; y < grid_size; y++) {
+          for (size_t y = 0; y < grid_size; y++) {
             requests.create()->send(&tmp(y, 0), sizeof_row, rank - i);
           }
         }
@@ -285,14 +284,17 @@ void reduce_grids(std::shared_ptr<idg::Grid> grid, unsigned int rank,
   }      // end pragma parallel
 }
 
-void broadcast_grid(std::shared_ptr<idg::Grid> grid, int root) {
-  unsigned int nr_polarizations = grid->get_z_dim();
-  unsigned int grid_size = grid->get_y_dim();
-  unsigned int w = 0;  // W-stacking is handled by the workers
-  for (unsigned int y = 0; y < grid_size; y++) {
-    for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
-      std::complex<float>* row_ptr = grid->data(w, pol, y, 0);
-      size_t sizeof_row = grid_size * sizeof(std::complex<float>);
+void broadcast_grid(aocommon::xt::Span<std::complex<float>, 4>& grid,
+                    int root) {
+  const size_t w = 0;  // W-stacking is handled by the workers
+  const size_t nr_polarizations = grid.shape(1);
+  const size_t grid_size = grid.shape(2);
+  assert(grid.shape(3) == grid_size);
+
+  for (size_t y = 0; y < grid_size; y++) {
+    for (size_t pol = 0; pol < nr_polarizations; pol++) {
+      std::complex<float>* row_ptr = &grid(w, pol, y, 0);
+      size_t sizeof_row = grid_size * sizeof(*grid.data());
       MPI_Bcast(row_ptr, sizeof_row, MPI_BYTE, root, MPI_COMM_WORLD);
     }
   }
@@ -417,8 +419,9 @@ void run_master() {
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
   aocommon::xt::Span<float, 2> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
-  std::shared_ptr<idg::Grid> grid =
-      proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      proxy.allocate_span<std::complex<float>, 4>(
+          {nr_w_layers, nr_correlations, grid_size, grid_size});
   std::array<float, 2> shift{0.0f, 0.0f};
   aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(proxy, nr_stations, nr_baselines);
@@ -556,7 +559,8 @@ void run_master() {
       broadcast_grid(grid, 0);
       runtime_broadcast += omp_get_wtime();
       runtimes_grid_broadcast[cycle] = runtime_broadcast;
-      size_t sizeof_broadcast = grid->bytes() * (world_size - 1);
+      const size_t sizeof_broadcast =
+          grid.size() * sizeof(*grid.data()) * (world_size - 1);
       float bandwidth_broadcast = 1e-9f * sizeof_broadcast / runtime_broadcast;
       std::cout << "broadcast: " << runtime_broadcast << " s, "
                 << bandwidth_broadcast << " GB/s" << std::endl;
@@ -651,8 +655,9 @@ void run_worker() {
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
   aocommon::xt::Span<float, 2> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
-  std::shared_ptr<idg::Grid> grid =
-      proxy.allocate_grid(nr_w_layers, nr_correlations, grid_size, grid_size);
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      proxy.allocate_span<std::complex<float>, 4>(
+          {nr_w_layers, nr_correlations, grid_size, grid_size});
   std::array<float, 2> shift{0.0f, 0.0f};
   aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(proxy, nr_stations, nr_baselines);

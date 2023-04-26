@@ -168,8 +168,9 @@ int main(int argc, char** argv) {
   // Initialize proxy
   unsigned int nr_correlations = 4;
   idg::proxy::cpu::Optimized proxy;
-  std::shared_ptr<idg::Grid> grid(
-      new idg::Grid(nullptr, 1, nr_correlations, grid_size, grid_size));
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      proxy.allocate_span<std::complex<float>, 4>(
+          {1, nr_correlations, grid_size, grid_size});
   proxy.set_grid(grid);
   float w_step = use_wtiles ? 4.0 / (image_size * image_size) : 0.0;
 

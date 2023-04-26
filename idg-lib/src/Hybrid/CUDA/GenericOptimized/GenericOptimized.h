@@ -39,9 +39,9 @@ class GenericOptimized : public cuda::CUDA {
 
   void set_disable_wtiling_gpu(bool v) { m_disable_wtiling_gpu = v; }
 
-  void set_grid(std::shared_ptr<Grid> grid) override;
+  void set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) override;
 
-  std::shared_ptr<Grid> get_final_grid() override;
+  aocommon::xt::Span<std::complex<float>, 4>& get_final_grid() override;
 
   void init_cache(int subgrid_size, float cell_size, float w_step,
                   const std::array<float, 2>& shift) override;
@@ -60,7 +60,8 @@ class GenericOptimized : public cuda::CUDA {
       Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      aocommon::xt::Span<std::complex<float>, 4>& grid,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal, ImagingMode mode);
 
@@ -81,7 +82,8 @@ class GenericOptimized : public cuda::CUDA {
       const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const aocommon::xt::Span<std::complex<float>, 4>& grid,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal);
 
@@ -102,7 +104,8 @@ class GenericOptimized : public cuda::CUDA {
       Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      const aocommon::xt::Span<std::complex<float>, 4>& grid,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal);
 
