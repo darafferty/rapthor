@@ -173,7 +173,7 @@ void GridderBufferImpl::flush_thread_worker() {
 
   // Set Plan options
   Plan::Options options;
-  options.nr_w_layers = proxy.get_grid().get_w_dim();
+  options.nr_w_layers = proxy.get_grid().shape(0);
   options.plan_strict = false;
   options.mode = (m_bufferset.get_nr_polarizations() == 4)
                      ? Plan::Mode::FULL_POLARIZATION

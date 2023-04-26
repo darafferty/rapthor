@@ -243,9 +243,10 @@ void run() {
   aocommon::xt::Span<float, 2> spheroidal =
       idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
 
-  auto grid =
-      proxy.allocate_grid(nr_w_layers, nr_polarizations, grid_size, grid_size);
-  grid->zero();
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      proxy.allocate_span<std::complex<float>, 4>(
+          {nr_w_layers, nr_polarizations, grid_size, grid_size});
+  grid.fill(std::complex<float>(0, 0));
   std::array<float, 2> shift{0.0f, 0.0f};
   aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1> baselines =
       idg::get_example_baselines(proxy, nr_stations, nr_baselines);

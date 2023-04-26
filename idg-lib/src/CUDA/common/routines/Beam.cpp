@@ -32,8 +32,8 @@ void CUDA::do_compute_avg_beam(
   cu::Context& context = device.get_context();
 
   // Performance reporting
-  m_report->initialize();
-  device.set_report(m_report);
+  get_report()->initialize();
+  device.set_report(get_report());
 
   // Allocate device memory
   const size_t sizeof_aterms = aterms.size() * sizeof(*aterms.data());
@@ -184,7 +184,7 @@ void CUDA::do_compute_avg_beam(
   }
 
   // Performance reporting
-  m_report->print_total(nr_polarizations);
+  get_report()->print_total(nr_polarizations);
 }
 
 }  // end namespace cuda

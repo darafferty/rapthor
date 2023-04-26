@@ -12,7 +12,9 @@ namespace proxy {
 Proxy::Proxy()
     : m_avg_aterm_correction(aocommon::xt::CreateSpan<std::complex<float>, 4>(
           nullptr, {0, 0, 0, 0})),
-      m_report(std::make_shared<Report>()) {}
+      report_(std::make_shared<Report>()),
+      grid_(aocommon::xt::CreateSpan<std::complex<float>, 4>(nullptr,
+                                                             {0, 0, 0, 0})) {}
 
 Proxy::~Proxy() {}
 
@@ -24,11 +26,11 @@ void Proxy::gridding(
     const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) {
-  assert(m_grid != nullptr);
+  assert(get_grid().data() != nullptr);
 
   check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
-                   visibilities, uvw, baselines, *m_grid, aterms, aterm_offsets,
-                   spheroidal);
+                   visibilities, uvw, baselines, get_grid(), aterms,
+                   aterm_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) &&
       (!do_supports_wstacking() && !do_supports_wtiling())) {
@@ -70,8 +72,8 @@ void Proxy::degridding(
     const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) {
   check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
-                   visibilities, uvw, baselines, *m_grid, aterms, aterm_offsets,
-                   spheroidal);
+                   visibilities, uvw, baselines, get_grid(), aterms,
+                   aterm_offsets, spheroidal);
 
   if ((plan.get_w_step() != 0.0) &&
       (!do_supports_wstacking() && !do_supports_wtiling())) {
@@ -127,7 +129,7 @@ void Proxy::calibrate_init(
     if (supports_wtiling()) {
       nr_w_layers = INT_MAX;
     } else if (supports_wstacking()) {
-      nr_w_layers = m_grid->get_w_dim();
+      nr_w_layers = get_grid().shape(0);
     } else {
       throw std::invalid_argument(
           "w_step is not zero, but this Proxy does not support calibration "
@@ -287,9 +289,10 @@ void Proxy::transform(DomainAtoDomainB direction, std::complex<float>* grid_ptr,
 
   unsigned int grid_nr_w_layers = 1;  // TODO: make this a parameter
 
-  auto grid =
-      std::make_shared<Grid>(grid_ptr, grid_nr_w_layers, grid_nr_correlations,
-                             grid_height, grid_width);
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      aocommon::xt::CreateSpan<std::complex<float>, 4>(
+          grid_ptr,
+          {grid_nr_w_layers, grid_nr_correlations, grid_height, grid_width});
 
   set_grid(grid);
 
@@ -377,14 +380,15 @@ void Proxy::check_dimensions(
     const Array4D<std::complex<float>>& visibilities,
     const Array2D<UVW<float>>& uvw,
     const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+    const aocommon::xt::Span<std::complex<float>, 4>& grid,
+    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
     const Array1D<unsigned int>& aterm_offsets,
     const Array2D<float>& spheroidal) const {
   check_dimensions(options, subgrid_size, frequencies.get_x_dim(),
                    visibilities.get_w_dim(), visibilities.get_z_dim(),
                    visibilities.get_y_dim(), visibilities.get_x_dim(),
                    uvw.get_y_dim(), uvw.get_x_dim(), 3, baselines.get_x_dim(),
-                   2, grid.get_z_dim(), grid.get_y_dim(), grid.get_x_dim(),
+                   2, grid.shape(1), grid.shape(2), grid.shape(3),
                    aterms.get_w_dim(), aterms.get_z_dim(), aterms.get_y_dim(),
                    aterms.get_x_dim(), 4, aterm_offsets.get_x_dim(),
                    spheroidal.get_y_dim(), spheroidal.get_x_dim());
@@ -403,23 +407,25 @@ Array1D<float> Proxy::compute_wavenumbers(
   return wavenumbers;
 }
 
-std::shared_ptr<Grid> Proxy::allocate_grid(size_t nr_w_layers,
-                                           size_t nr_polarizations,
-                                           size_t height, size_t width) {
-  return std::make_shared<Grid>(nr_w_layers, nr_polarizations, height, width);
+void Proxy::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {
+  grid_ = grid;
 }
 
-void Proxy::set_grid(std::shared_ptr<idg::Grid> grid) {
-  // Don't create a new shared_ptr when the grid data pointer is
-  // the same. This can be the case when the C-interface is used.
-  if (!m_grid || m_grid->data() != grid->data()) {
-    m_grid = grid;
+void Proxy::free_grid() {
+  for (auto memory_iterator = std::begin(memory_);
+       memory_iterator != std::end(memory_); ++memory_iterator) {
+    if (memory_iterator->get() == reinterpret_cast<void*>(get_grid().data())) {
+      memory_.erase(memory_iterator);
+      break;
+    }
   }
+  grid_ =
+      aocommon::xt::CreateSpan<std::complex<float>, 4>(nullptr, {0, 0, 0, 0});
 }
 
-void Proxy::free_grid() { m_grid.reset(); }
-
-std::shared_ptr<Grid> Proxy::get_final_grid() { return m_grid; }
+aocommon::xt::Span<std::complex<float>, 4>& Proxy::get_final_grid() {
+  return grid_;
+}
 
 std::unique_ptr<auxiliary::Memory> Proxy::allocate_memory(size_t bytes) {
   return std::unique_ptr<auxiliary::Memory>(

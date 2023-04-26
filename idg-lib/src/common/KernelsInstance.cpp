@@ -5,15 +5,18 @@
 
 #include <csignal>
 
+#include <xtensor/xview.hpp>
+
 #include "Index.h"
 
 namespace idg {
 namespace kernel {
 
-void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
-  int nr_polarizations = data.get_z_dim();
-  int height = data.get_y_dim();
-  int width = data.get_x_dim();
+void KernelsInstance::fftshift_grid(
+    aocommon::xt::Span<std::complex<float>, 3>& grid) {
+  const size_t nr_polarizations = grid.shape(0);
+  const size_t height = grid.shape(1);
+  const size_t width = grid.shape(2);
   ASSERT(height == width);
 
   powersensor::State states[2];
@@ -22,21 +25,21 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
   std::complex<float> tmp13, tmp24;
 
   // Dimensions
-  int n = height;
-  int n2 = n / 2;
+  const size_t n = height;
+  const size_t n2 = n / 2;
 
   // Interchange entries in 4 quadrants, 1 <--> 3 and 2 <--> 4
-  for (int pol = 0; pol < nr_polarizations; pol++) {
+  for (size_t pol = 0; pol < nr_polarizations; pol++) {
 #pragma omp parallel for private(tmp13, tmp24) collapse(2)
-    for (int i = 0; i < n2; i++) {
-      for (int k = 0; k < n2; k++) {
-        tmp13 = data(pol, i, k);
-        data(pol, i, k) = data(pol, i + n2, k + n2);
-        data(pol, i + n2, k + n2) = tmp13;
+    for (size_t i = 0; i < n2; i++) {
+      for (size_t k = 0; k < n2; k++) {
+        tmp13 = grid(pol, i, k);
+        grid(pol, i, k) = grid(pol, i + n2, k + n2);
+        grid(pol, i + n2, k + n2) = tmp13;
 
-        tmp24 = data(pol, i + n2, k);
-        data(pol, i + n2, k) = data(pol, i, k + n2);
-        data(pol, i, k + n2) = tmp24;
+        tmp24 = grid(pol, i + n2, k);
+        grid(pol, i + n2, k) = grid(pol, i, k + n2);
+        grid(pol, i, k + n2) = tmp24;
       }
     }
   }
@@ -45,70 +48,46 @@ void KernelsInstance::shift(Array3D<std::complex<float>>& data) {
   m_report->update<Report::ID::fft_shift>(states[0], states[1]);
 }
 
-void KernelsInstance::scale(Array3D<std::complex<float>>& data,
-                            std::complex<float> scale) const {
-  int nr_polarizations = data.get_z_dim();
-  int height = data.get_y_dim();
-  int width = data.get_x_dim();
+void KernelsInstance::tile_grid(
+    aocommon::xt::Span<std::complex<float>, 4>& grid_untiled,
+    aocommon::xt::Span<std::complex<float>, 5>& grid_tiled,
+    bool forward) const {
+  const size_t nr_w_layers = grid_untiled.shape(0);
+  const size_t untiled_nr_polarizations = grid_untiled.shape(1);
+  const size_t grid_height = grid_untiled.shape(2);
+  const size_t grid_width = grid_untiled.shape(3);
+  const size_t grid_size = grid_height;
 
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  const size_t nr_tiles_y = grid_tiled.shape(0);
+  const size_t nr_tiles_x = grid_tiled.shape(1);
+  const size_t nr_tiles_1d = nr_tiles_y;
+  const size_t tiled_nr_polarizations = grid_tiled.shape(2);
+  const size_t tile_height = grid_tiled.shape(3);
+  const size_t tile_width = grid_tiled.shape(4);
+  const size_t tile_size = tile_height;
 
-#pragma omp parallel for collapse(3)
-  for (int pol = 0; pol < nr_polarizations; pol++) {
-    for (int y = 0; y < height; y++) {
-      for (int x = 0; x < width; x++) {
-        std::complex<float> value = data(pol, y, x);
-        data(pol, y, x) = std::complex<float>(value.real() * scale.real(),
-                                              value.imag() * scale.imag());
-      }
-    }
-  }
-
-  states[1] = m_powersensor->read();
-  m_report->update<Report::ID::fft_scale>(states[0], states[1]);
-}
-
-void KernelsInstance::tile_backward(
-    const unsigned int nr_polarizations, const unsigned long grid_size,
-    const unsigned int tile_size, const Array5D<std::complex<float>>& grid_src,
-    Grid& grid_dst) const {
-  ASSERT(grid_src.bytes() == grid_dst.bytes());
-
-  std::complex<float>* src_ptr = (std::complex<float>*)grid_src.data();
-  std::complex<float>* dst_ptr = (std::complex<float>*)grid_dst.data();
+  assert(nr_w_layers == 1);
+  assert(grid_height == grid_width);
+  assert(nr_tiles_y == nr_tiles_x);
+  assert(untiled_nr_polarizations == tiled_nr_polarizations);
+  assert(tile_height == tile_width);
+  assert(nr_tiles_1d * tile_size == grid_size);
 
 #pragma omp parallel for
-  for (unsigned long pixel = 0; pixel < grid_size * grid_size; pixel++) {
-    int y = pixel / grid_size;
-    int x = pixel % grid_size;
-    for (unsigned short pol = 0; pol < nr_polarizations; pol++) {
-      long src_idx =
-          index_grid_tiling(nr_polarizations, tile_size, grid_size, pol, y, x);
-      long dst_idx = index_grid_4d(nr_polarizations, grid_size, 0, pol, y, x);
-      dst_ptr[dst_idx] = src_ptr[src_idx];
-    }
-  }
-}
-
-void KernelsInstance::tile_forward(
-    const unsigned int nr_polarizations, const unsigned long grid_size,
-    const unsigned int tile_size, const Grid& grid_src,
-    Array5D<std::complex<float>>& grid_dst) const {
-  ASSERT(grid_src.bytes() == grid_dst.bytes());
-
-  std::complex<float>* src_ptr = (std::complex<float>*)grid_src.data();
-  std::complex<float>* dst_ptr = (std::complex<float>*)grid_dst.data();
-
-#pragma omp parallel for
-  for (unsigned long pixel = 0; pixel < grid_size * grid_size; pixel++) {
-    int y = pixel / grid_size;
-    int x = pixel % grid_size;
-    for (unsigned short pol = 0; pol < nr_polarizations; pol++) {
-      long src_idx = index_grid_4d(nr_polarizations, grid_size, 0, pol, y, x);
-      long dst_idx =
-          index_grid_tiling(nr_polarizations, tile_size, grid_size, pol, y, x);
-      dst_ptr[dst_idx] = src_ptr[src_idx];
+  for (size_t pixel = 0; pixel < grid_size * grid_size; pixel++) {
+    const size_t grid_y = pixel / grid_size;
+    const size_t grid_x = pixel % grid_size;
+    const size_t tile_id_y = grid_y / tile_size;
+    const size_t tile_id_x = grid_x / tile_size;
+    const size_t tile_y = grid_y % tile_size;
+    const size_t tile_x = grid_x % tile_size;
+    auto tiled_view =
+        xt::view(grid_tiled, tile_id_y, tile_id_x, xt::all(), tile_y, tile_x);
+    auto untiled_view = xt::view(grid_untiled, 0, xt::all(), grid_y, grid_x);
+    if (forward) {
+      tiled_view = untiled_view;
+    } else {
+      untiled_view = tiled_view;
     }
   }
 }

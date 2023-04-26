@@ -15,6 +15,7 @@
 #include <csignal>
 
 #include <omp.h>
+#include <xtensor/xcomplex.hpp>
 
 // #if defined(HAVE_MKL)
 //     #include <mkl_lapacke.h>
@@ -152,11 +153,14 @@ std::unique_ptr<proxy::Proxy> BufferSetImpl::create_proxy(Type architecture) {
   return proxy;
 }
 
-std::shared_ptr<idg::Grid> BufferSetImpl::allocate_grid() {
+aocommon::xt::Span<std::complex<float>, 4> BufferSetImpl::allocate_grid() {
   m_proxy->free_grid();
-  std::shared_ptr<idg::Grid> grid = m_proxy->allocate_grid(
-      m_nr_w_layers, m_nr_polarizations, m_padded_size, m_padded_size);
-  grid->zero();
+  aocommon::xt::Span<std::complex<float>, 4> grid =
+      m_proxy->allocate_span<std::complex<float>, 4>(
+          {static_cast<size_t>(m_nr_w_layers),
+           static_cast<size_t>(m_nr_polarizations), m_padded_size,
+           m_padded_size});
+  grid.fill(std::complex<float>(0, 0));
   m_proxy->set_grid(grid);
   return grid;
 }
@@ -375,9 +379,9 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   std::cout << std::setprecision(3);
 #endif
 
-  Grid& grid = *allocate_grid();
+  aocommon::xt::Span<std::complex<float>, 4> grid = allocate_grid();
 
-  const int nr_w_layers = grid.get_w_dim();
+  const size_t nr_w_layers = grid.shape(0);
   const size_t y0 = (m_padded_size - m_size) / 2;
   const size_t x0 = (m_padded_size - m_size) / 2;
 
@@ -386,7 +390,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   std::cout << "set grid from image" << std::endl;
 #endif
   double runtime_stacking = -omp_get_wtime();
-  grid.zero();
+  grid.fill(std::complex<float>(0, 0));
 #pragma omp parallel
   {
     typedef float arr_float_1D_t[m_size];
@@ -543,7 +547,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
 #endif
   int batch = nr_w_layers * m_nr_polarizations;
   double runtime_fft = -omp_get_wtime();
-  fft2f(batch, m_padded_size, m_padded_size, grid.data(0, 0, 0, 0));
+  fft2f(batch, m_padded_size, m_padded_size, grid.data());
   runtime_fft += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << ", runtime: " << runtime_fft << std::endl;
@@ -558,49 +562,36 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
   m_set_image_watch->Pause();
 }
 
-void BufferSetImpl::write_grid(const idg::Grid& grid) {
-  size_t nr_w_layers = grid.get_w_dim();
-  size_t nr_polarizations = grid.get_z_dim();
-  size_t grid_size = grid.get_y_dim();
-  assert(grid_size == grid.get_x_dim());
-
-  std::vector<float> grid_real(nr_w_layers * nr_polarizations * grid_size *
-                               grid_size * sizeof(float));
-  std::vector<float> grid_imag(nr_w_layers * nr_polarizations * grid_size *
-                               grid_size * sizeof(float));
-  for (int w = 0; w < nr_w_layers; w++) {
-#pragma omp parallel for
-    for (int y = 0; y < grid_size; y++) {
-      for (int x = 0; x < grid_size; x++) {
-        for (int pol = 0; pol < nr_polarizations; pol++) {
-          size_t idx = w * nr_polarizations * grid_size * grid_size +
-                       pol * grid_size * grid_size + y * grid_size + x;
-          grid_real[idx] = grid(w, pol, y, x).real();
-          grid_imag[idx] = grid(w, pol, y, x).imag();
-        }
-      }
-    }
-  }
+void BufferSetImpl::write_grid(
+    const aocommon::xt::Span<std::complex<float>, 4>& grid) {
+  const size_t nr_w_layers = grid.shape(0);
+  const size_t nr_polarizations = grid.shape(1);
+  const size_t grid_size = grid.shape(2);
+  assert(grid.shape(3) == grid_size);
   std::cout << "writing grid to grid_real.npy and grid_imag.npy" << std::endl;
-  const long unsigned leshape[] = {(long unsigned int)nr_w_layers,
+  const long unsigned leshape[] = {static_cast<long unsigned int>(nr_w_layers),
                                    nr_polarizations, grid_size, grid_size};
-  npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape, grid_real);
-  npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape, grid_imag);
+  auto grid_real = xt::real(grid);
+  auto grid_imag = xt::imag(grid);
+  npy::SaveArrayAsNumpy("grid_real.npy", false, 4, leshape,
+                        std::vector<float>(grid_real.begin(), grid_real.end()));
+  npy::SaveArrayAsNumpy("grid_imag.npy", false, 4, leshape,
+                        std::vector<float>(grid_imag.begin(), grid_imag.end()));
 }
 
 void BufferSetImpl::get_image(double* image) {
   m_get_image_watch->Start();
 
   // Flush all pending operations on the grid
-  const Grid& grid = *m_proxy->get_final_grid();
-  int nr_polarizations = grid.get_z_dim();
+  aocommon::xt::Span<std::complex<float>, 4>& grid = m_proxy->get_final_grid();
+  const size_t nr_w_layers = grid.shape(0);
+  const size_t nr_polarizations = grid.shape(1);
 
   double runtime = -omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << std::setprecision(3);
 #endif
 
-  const int nr_w_layers = grid.get_w_dim();
   const size_t y0 = (m_padded_size - m_size) / 2;
   const size_t x0 = (m_padded_size - m_size) / 2;
 
@@ -610,7 +601,7 @@ void BufferSetImpl::get_image(double* image) {
 #endif
   int batch = nr_w_layers * nr_polarizations;
   double runtime_fft = -omp_get_wtime();
-  idg::ifft2f(batch, m_padded_size, m_padded_size, grid.data(0, 0, 0, 0));
+  idg::ifft2f(batch, m_padded_size, m_padded_size, grid.data());
   runtime_fft += omp_get_wtime();
 #if ENABLE_VERBOSE_TIMING
   std::cout << ", runtime: " << runtime_fft << std::endl;

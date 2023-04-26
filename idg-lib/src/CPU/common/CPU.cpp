@@ -53,8 +53,10 @@ std::unique_ptr<Plan> CPU::make_plan(
       m_wtiles.get_wtile_buffer_size()) {
     options.w_step = m_cache_state.w_step;
     options.nr_w_layers = INT_MAX;
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
     return std::unique_ptr<Plan>(
-        new Plan(kernel_size, m_cache_state.subgrid_size, m_grid->get_y_dim(),
+        new Plan(kernel_size, m_cache_state.subgrid_size, grid_size,
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
                  baselines, aterm_offsets, m_wtiles, options));
   } else {
@@ -66,36 +68,38 @@ std::unique_ptr<Plan> CPU::make_plan(
 void CPU::init_cache(int subgrid_size, float cell_size, float w_step,
                      const std::array<float, 2>& shift) {
   Proxy::init_cache(subgrid_size, cell_size, w_step, shift);
-  const int nr_polarizations = m_grid->get_z_dim();
-  const size_t grid_size = m_grid->get_x_dim();
+  const int nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
   const int nr_wtiles =
       m_kernels->init_wtiles(nr_polarizations, grid_size, subgrid_size);
   m_wtiles = WTiles(nr_wtiles, kernel::cpu::InstanceCPU::kWTileSize);
 }
 
-std::shared_ptr<Grid> CPU::get_final_grid() {
+aocommon::xt::Span<std::complex<float>, 4>& CPU::get_final_grid() {
   // flush all pending Wtiles
   WTileUpdateInfo wtile_flush_info = m_wtiles.clear();
   if (wtile_flush_info.wtile_ids.size()) {
-    auto nr_polarizations = m_grid->get_z_dim();
-    auto grid_size = m_grid->get_x_dim();
-    auto image_size = grid_size * m_cache_state.cell_size;
-    auto subgrid_size = m_cache_state.subgrid_size;
-    auto w_step = m_cache_state.w_step;
+    const size_t nr_polarizations = get_grid().shape(1);
+    const size_t grid_size = get_grid().shape(2);
+    assert(get_grid().shape(3) == grid_size);
+    const float image_size = grid_size * m_cache_state.cell_size;
+    const size_t subgrid_size = m_cache_state.subgrid_size;
+    const float w_step = m_cache_state.w_step;
     auto& shift = m_cache_state.shift;
     State states[2];
-    m_report->initialize(0, subgrid_size, grid_size);
+    get_report()->initialize(0, subgrid_size, grid_size);
     states[0] = m_powersensor->read();
     m_kernels->run_adder_tiles_to_grid(
         nr_polarizations, grid_size, subgrid_size, image_size, w_step,
         shift.data(), wtile_flush_info.wtile_ids.size(),
         wtile_flush_info.wtile_ids.data(),
-        wtile_flush_info.wtile_coordinates.data(), m_grid->data());
+        wtile_flush_info.wtile_coordinates.data(), get_grid().data());
     states[1] = m_powersensor->read();
-    m_report->update(Report::wtiling_forward, states[0], states[1]);
-    m_report->print_total(nr_correlations);
+    get_report()->update(Report::wtiling_forward, states[0], states[1]);
+    get_report()->print_total(nr_correlations);
   }
-  return m_grid;
+  return get_grid();
 }
 
 unsigned int CPU::compute_jobsize(const Plan& plan,
@@ -162,22 +166,23 @@ void CPU::do_gridding(
   std::cout << __func__ << std::endl;
 #endif
 
-  m_kernels->set_report(m_report);
+  m_kernels->set_report(get_report());
 
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_baselines = visibilities.get_w_dim();
-  auto nr_timesteps = visibilities.get_z_dim();
-  auto nr_channels = visibilities.get_y_dim();
-  auto nr_correlations = visibilities.get_x_dim();
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_x_dim();
-  auto subgrid_size = plan.get_subgrid_size();
-  auto& shift = plan.get_shift();
-  auto w_step = plan.get_w_step();
-  auto image_size = plan.get_cell_size() * grid_size;
-  auto nr_stations = aterms.get_z_dim();
+  const size_t nr_baselines = visibilities.get_w_dim();
+  const size_t nr_timesteps = visibilities.get_z_dim();
+  const size_t nr_channels = visibilities.get_y_dim();
+  const size_t nr_correlations = visibilities.get_x_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const size_t subgrid_size = plan.get_subgrid_size();
+  const std::array<float, 2>& shift = plan.get_shift();
+  const float w_step = plan.get_w_step();
+  const float image_size = plan.get_cell_size() * grid_size;
+  const size_t nr_stations = aterms.get_z_dim();
 
   WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
 
@@ -192,7 +197,7 @@ void CPU::do_gridding(
                                           subgrid_size, subgrid_size);
 
     // Performance measurement
-    m_report->initialize(nr_channels, subgrid_size, grid_size);
+    get_report()->initialize(nr_channels, subgrid_size, grid_size);
     State states[2];
     states[0] = m_powersensor->read();
 
@@ -219,7 +224,7 @@ void CPU::do_gridding(
       auto* visibilities_ptr =
           reinterpret_cast<std::complex<float>*>(visibilities.data(0, 0, 0));
       auto* subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      std::complex<float>* grid_ptr = m_grid->data();
+      std::complex<float>* grid_ptr = get_grid().data();
 
       // Gridder kernel
       m_kernels->run_gridder(current_nr_subgrids, nr_polarizations, grid_size,
@@ -254,21 +259,21 @@ void CPU::do_gridding(
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      m_report->print(nr_correlations, current_nr_timesteps,
-                      current_nr_subgrids);
+      get_report()->print(nr_correlations, current_nr_timesteps,
+                          current_nr_subgrids);
     }  // end for bl
 
     states[1] = m_powersensor->read();
-    m_report->update(Report::host, states[0], states[1]);
+    get_report()->update(Report::host, states[0], states[1]);
 
     // Performance report
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    m_report->print_total(nr_correlations, total_nr_timesteps,
-                          total_nr_subgrids);
+    get_report()->print_total(nr_correlations, total_nr_timesteps,
+                              total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
-    m_report->print_visibilities(auxiliary::name_gridding,
-                                 total_nr_visibilities);
+    get_report()->print_visibilities(auxiliary::name_gridding,
+                                     total_nr_visibilities);
 
   } catch (const std::invalid_argument& e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
@@ -293,22 +298,23 @@ void CPU::do_degridding(
   std::cout << __func__ << std::endl;
 #endif
 
-  m_kernels->set_report(m_report);
+  m_kernels->set_report(get_report());
 
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_baselines = visibilities.get_w_dim();
-  auto nr_timesteps = visibilities.get_z_dim();
-  auto nr_channels = visibilities.get_y_dim();
-  auto nr_correlations = visibilities.get_x_dim();
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_x_dim();
-  auto image_size = plan.get_cell_size() * grid_size;
-  auto subgrid_size = plan.get_subgrid_size();
-  auto w_step = plan.get_w_step();
-  auto nr_stations = aterms.get_z_dim();
-  auto& shift = plan.get_shift();
+  const size_t nr_baselines = visibilities.get_w_dim();
+  const size_t nr_timesteps = visibilities.get_z_dim();
+  const size_t nr_channels = visibilities.get_y_dim();
+  const size_t nr_correlations = visibilities.get_x_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = plan.get_cell_size() * grid_size;
+  const size_t subgrid_size = plan.get_subgrid_size();
+  const float w_step = plan.get_w_step();
+  const size_t nr_stations = aterms.get_z_dim();
+  const std::array<float, 2>& shift = plan.get_shift();
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
 
@@ -323,7 +329,7 @@ void CPU::do_degridding(
                                           subgrid_size, subgrid_size);
 
     // Performance measurement
-    m_report->initialize(nr_channels, subgrid_size, grid_size);
+    get_report()->initialize(nr_channels, subgrid_size, grid_size);
     State states[2];
     states[0] = m_powersensor->read();
 
@@ -335,7 +341,7 @@ void CPU::do_degridding(
       if (current_nr_baselines == 0) continue;
 
       // Initialize iteration
-      auto current_nr_subgrids =
+      const size_t current_nr_subgrids =
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
       const float* shift_ptr = shift.data();
       auto* wavenumbers_ptr = wavenumbers.data();
@@ -347,7 +353,7 @@ void CPU::do_degridding(
       auto* visibilities_ptr =
           reinterpret_cast<std::complex<float>*>(visibilities.data(0, 0, 0));
       auto* subgrids_ptr = subgrids.data(0, 0, 0, 0);
-      auto* grid_ptr = m_grid->data();
+      const std::complex<float>* grid_ptr = get_grid().data();
 
       // Splitter kernel
       if (plan.get_use_wtiles()) {
@@ -381,21 +387,21 @@ void CPU::do_degridding(
       // Performance reporting
       auto current_nr_timesteps =
           plan.get_nr_timesteps(first_bl, current_nr_baselines);
-      m_report->print(nr_correlations, current_nr_timesteps,
-                      current_nr_subgrids);
+      get_report()->print(nr_correlations, current_nr_timesteps,
+                          current_nr_subgrids);
     }  // end for bl
 
     states[1] = m_powersensor->read();
-    m_report->update(Report::host, states[0], states[1]);
+    get_report()->update(Report::host, states[0], states[1]);
 
     // Report performance
     auto total_nr_subgrids = plan.get_nr_subgrids();
     auto total_nr_timesteps = plan.get_nr_timesteps();
-    m_report->print_total(nr_correlations, total_nr_timesteps,
-                          total_nr_subgrids);
+    get_report()->print_total(nr_correlations, total_nr_timesteps,
+                              total_nr_subgrids);
     auto total_nr_visibilities = plan.get_nr_visibilities();
-    m_report->print_visibilities(auxiliary::name_degridding,
-                                 total_nr_visibilities);
+    get_report()->print_visibilities(auxiliary::name_degridding,
+                                     total_nr_visibilities);
 
   } catch (const std::invalid_argument& e) {
     std::cerr << __func__ << ": invalid argument: " << e.what() << std::endl;
@@ -419,17 +425,18 @@ void CPU::do_calibrate_init(
   Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  auto nr_antennas = plans.size();
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_x_dim();
-  auto image_size = m_cache_state.cell_size * grid_size;
-  auto w_step = m_cache_state.w_step;
-  auto subgrid_size = m_cache_state.subgrid_size;
-  auto nr_channel_blocks = visibilities.get_e_dim();
-  auto nr_baselines = visibilities.get_d_dim();
-  auto nr_timesteps = visibilities.get_c_dim();
-  auto nr_channels = visibilities.get_b_dim();
-  auto nr_correlations = visibilities.get_a_dim();
+  const size_t nr_antennas = plans.size();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = m_cache_state.cell_size * grid_size;
+  const float w_step = m_cache_state.w_step;
+  const size_t subgrid_size = m_cache_state.subgrid_size;
+  const size_t nr_channel_blocks = visibilities.get_e_dim();
+  const size_t nr_baselines = visibilities.get_d_dim();
+  const size_t nr_timesteps = visibilities.get_c_dim();
+  const size_t nr_channels = visibilities.get_b_dim();
+  const size_t nr_correlations = visibilities.get_a_dim();
   assert(nr_correlations == 4);
 
   if (nr_channel_blocks > 1) {
@@ -449,14 +456,14 @@ void CPU::do_calibrate_init(
   max_nr_timesteps.reserve(nr_antennas);
 
   // Start performance measurement
-  m_report->initialize();
+  get_report()->initialize();
   powersensor::State states[2];
   states[0] = m_powersensor->read();
 
   // Create subgrids for every antenna
   for (unsigned int antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
     // Allocate subgrids for current antenna
-    int nr_subgrids = plans[antenna_nr][0]->get_nr_subgrids();
+    const size_t nr_subgrids = plans[antenna_nr][0]->get_nr_subgrids();
     Array4D<std::complex<float>> subgrids_(nr_subgrids, nr_correlations,
                                            m_cache_state.subgrid_size,
                                            m_cache_state.subgrid_size);
@@ -468,7 +475,7 @@ void CPU::do_calibrate_init(
     auto* shift_ptr = m_cache_state.shift.data();
     auto* metadata_ptr = plans[antenna_nr][0]->get_metadata_ptr();
     auto* subgrids_ptr = subgrids_.data();
-    std::complex<float>* grid_ptr = m_grid->data();
+    const std::complex<float>* grid_ptr = get_grid().data();
 
     // Splitter kernel
     if (w_step == 0.0) {
@@ -492,12 +499,12 @@ void CPU::do_calibrate_init(
                                FFTW_FORWARD);
 
     // Apply spheroidal
-    for (int i = 0; i < nr_subgrids; i++) {
-      for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
-        for (int j = 0; j < subgrid_size; j++) {
-          for (int k = 0; k < subgrid_size; k++) {
-            int y = (j + (subgrid_size / 2)) % subgrid_size;
-            int x = (k + (subgrid_size / 2)) % subgrid_size;
+    for (size_t i = 0; i < nr_subgrids; i++) {
+      for (size_t pol = 0; pol < nr_polarizations; pol++) {
+        for (size_t j = 0; j < subgrid_size; j++) {
+          for (size_t k = 0; k < subgrid_size; k++) {
+            const size_t y = (j + (subgrid_size / 2)) % subgrid_size;
+            const size_t x = (k + (subgrid_size / 2)) % subgrid_size;
             subgrids_(i, pol, y, x) *= taper(j, k);
           }
         }
@@ -529,8 +536,8 @@ void CPU::do_calibrate_init(
 
   // End performance measurement
   states[1] = m_powersensor->read();
-  m_report->update<Report::ID::host>(states[0], states[1]);
-  m_report->print_total(nr_correlations);
+  get_report()->update<Report::ID::host>(states[0], states[1]);
+  get_report()->print_total(nr_correlations);
 
   // Set calibration state member variables
   m_calibrate_state = {std::move(plans),           (unsigned int)nr_baselines,
@@ -551,20 +558,22 @@ void CPU::do_calibrate_update(
   }
 
   // Arguments
-  auto nr_subgrids = m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
-  auto nr_channels = m_calibrate_state.wavenumbers.get_x_dim();
-  auto nr_terms = aterm_derivatives.get_c_dim();
-  auto subgrid_size = aterms.get_a_dim();
-  auto nr_stations = aterms.get_c_dim();
-  auto nr_timeslots = aterms.get_d_dim();
-  auto nr_polarizations = m_grid->get_z_dim();
-  auto grid_size = m_grid->get_y_dim();
-  auto image_size = grid_size * m_cache_state.cell_size;
-  auto w_step = m_cache_state.w_step;
+  const size_t nr_subgrids =
+      m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+  const size_t nr_channels = m_calibrate_state.wavenumbers.get_x_dim();
+  const size_t nr_terms = aterm_derivatives.get_c_dim();
+  const size_t subgrid_size = aterms.get_a_dim();
+  const size_t nr_stations = aterms.get_c_dim();
+  const size_t nr_timeslots = aterms.get_d_dim();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = grid_size * m_cache_state.cell_size;
+  const float w_step = m_cache_state.w_step;
 
   // Performance measurement
   if (antenna_nr == 0) {
-    m_report->initialize(nr_channels, subgrid_size, 0, nr_terms);
+    get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
   }
 
   // Data pointers
@@ -602,8 +611,8 @@ void CPU::do_calibrate_update(
   auto current_nr_timesteps =
       m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
   auto current_nr_visibilities = current_nr_timesteps * nr_channels;
-  m_report->update_total(current_nr_subgrids, current_nr_timesteps,
-                         current_nr_visibilities);
+  get_report()->update_total(current_nr_subgrids, current_nr_timesteps,
+                             current_nr_visibilities);
 }
 
 void CPU::do_calibrate_finish() {
@@ -617,8 +626,9 @@ void CPU::do_calibrate_finish() {
     total_nr_subgrids +=
         m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
   }
-  m_report->print_total(nr_correlations, total_nr_timesteps, total_nr_subgrids);
-  m_report->print_visibilities(auxiliary::name_calibrate);
+  get_report()->print_total(nr_correlations, total_nr_timesteps,
+                            total_nr_subgrids);
+  get_report()->print_visibilities(auxiliary::name_calibrate);
 }
 
 void CPU::do_transform(DomainAtoDomainB direction) {
@@ -631,51 +641,34 @@ void CPU::do_transform(DomainAtoDomainB direction) {
     const auto& grid = get_final_grid();
 
     // Constants
-    unsigned int nr_w_layers = grid->get_w_dim();
-    unsigned int nr_correlations = grid->get_z_dim();
-    unsigned int grid_size = grid->get_y_dim();
+    const size_t nr_w_layers = grid.shape(0);
+    const size_t nr_correlations = grid.shape(1);
+    const size_t grid_size = grid.shape(2);
+    assert(grid.shape(3) == grid_size);
 
     // Performance measurement
-    m_report->initialize(0, 0, grid_size);
-    m_kernels->set_report(m_report);
+    get_report()->initialize(0, 0, grid_size);
+    m_kernels->set_report(get_report());
 
-    for (unsigned int w = 0; w < nr_w_layers; w++) {
-      int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
+    for (size_t w = 0; w < nr_w_layers; w++) {
+      const int sign = (direction == FourierDomainToImageDomain) ? 1 : -1;
 
-      // Grid pointer
-      idg::Array3D<std::complex<float>> grid_ptr(grid->data(w), nr_correlations,
-                                                 grid_size, grid_size);
-
-      // Constants
-      auto grid_size = grid->get_x_dim();
+      aocommon::xt::Span<std::complex<float>, 3> grid_w =
+          aocommon::xt::CreateSpan<std::complex<float>, 3>(
+              &get_grid()(w, 0, 0, 0), {nr_correlations, grid_size, grid_size});
 
       State states[2];
       states[0] = m_powersensor->read();
-
-      // FFT shift
-      if (direction == FourierDomainToImageDomain) {
-        m_kernels->shift(grid_ptr);  // TODO: integrate into adder?
-      } else {
-        m_kernels->shift(grid_ptr);  // TODO: remove
-      }
-
-      // Run FFT
-      m_kernels->run_fft(grid_size, grid_size, nr_correlations, grid->data(),
+      m_kernels->fftshift_grid(grid_w);
+      m_kernels->run_fft(grid_size, grid_size, nr_correlations, grid_w.data(),
                          sign);
-
-      // FFT shift
-      if (direction == FourierDomainToImageDomain)
-        m_kernels->shift(grid_ptr);  // TODO: remove
-      else
-        m_kernels->shift(grid_ptr);  // TODO: integrate into splitter?
-
-      // End measurement
+      m_kernels->fftshift_grid(grid_w);
       states[1] = m_powersensor->read();
-      m_report->update(Report::host, states[0], states[1]);
+      get_report()->update(Report::host, states[0], states[1]);
     }
 
     // Report performance
-    m_report->print_total(nr_correlations);
+    get_report()->print_total(nr_correlations);
     std::clog << std::endl;
 
   } catch (const std::exception& e) {
@@ -706,8 +699,8 @@ void CPU::do_compute_avg_beam(
   assert(average_beam.shape(1) == subgrid_size);
   const size_t nr_polarizations = 4;
 
-  m_report->initialize();
-  m_kernels->set_report(m_report);
+  get_report()->initialize();
+  m_kernels->set_report(get_report());
 
   auto* baselines_ptr = reinterpret_cast<const Baseline*>(baselines.data());
   auto* aterms_ptr =
@@ -718,7 +711,7 @@ void CPU::do_compute_avg_beam(
       subgrid_size, nr_polarizations, uvw.data(), baselines_ptr, aterms_ptr,
       aterm_offsets.data(), weights.data(), average_beam.data());
 
-  m_report->print_total(nr_correlations);
+  get_report()->print_total(nr_correlations);
 }  // end compute_avg_beam
 
 }  // namespace cpu

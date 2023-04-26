@@ -1279,8 +1279,6 @@ class Array6D : public Array1D<T> {
   size_t m_a_dim;
 };
 
-using Grid = Array4D<std::complex<float>>;
-
 template <class T>
 std::ostream& operator<<(std::ostream& os, const Array1D<T>& a) {
   for (size_t x = 0; x < a.get_x_dim(); ++x) {

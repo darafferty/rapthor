@@ -121,7 +121,7 @@ void BulkDegridderImpl::compute_visibilities(
 
   // Set Plan options
   Plan::Options options;
-  options.nr_w_layers = proxy.get_grid().get_w_dim();
+  options.nr_w_layers = proxy.get_grid().shape(0);
   options.plan_strict = false;
   options.mode = (bufferset_.get_nr_polarizations() == 4)
                      ? Plan::Mode::FULL_POLARIZATION

@@ -52,16 +52,17 @@ class Generic : public CUDA {
       const Array4D<std::complex<float>>& visibilities,
       const Array2D<UVW<float>>& uvw,
       const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      Grid& grid, const Array4D<Matrix2x2<std::complex<float>>>& aterms,
+      aocommon::xt::Span<std::complex<float>, 4>& grid,
+      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
       const Array1D<unsigned int>& aterm_offsets,
       const Array2D<float>& spheroidal, ImagingMode mode);
 
  public:
   bool do_supports_wtiling() override { return true; }
 
-  void set_grid(std::shared_ptr<Grid> grid) override;
+  void set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) override;
 
-  std::shared_ptr<Grid> get_final_grid() override;
+  aocommon::xt::Span<std::complex<float>, 4>& get_final_grid() override;
 
   virtual std::unique_ptr<Plan> make_plan(
       const int kernel_size, const aocommon::xt::Span<float, 1>& frequencies,

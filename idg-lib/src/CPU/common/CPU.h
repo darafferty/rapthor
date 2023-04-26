@@ -47,7 +47,7 @@ class CPU : public Proxy {
   void init_cache(int subgrid_size, float cell_size, float w_step,
                   const std::array<float, 2>& shift) override;
 
-  std::shared_ptr<Grid> get_final_grid() override;
+  aocommon::xt::Span<std::complex<float>, 4>& get_final_grid() override;
 
  private:
   unsigned int compute_jobsize(const Plan& plan,
