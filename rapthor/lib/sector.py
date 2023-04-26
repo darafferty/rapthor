@@ -4,6 +4,7 @@ Definition of the Sector class that holds parameters for an image or predict sec
 import logging
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib import cluster
 import lsmtool
 from astropy.coordinates import Angle,  SkyCoord
 import astropy.units as u
@@ -112,6 +113,9 @@ class Sector(object):
                 # WSClean-specific limit not set (i.e., use all available memory), so
                 # take Slurm limit
                 self.mem_limit_gb = slurm_limit_gb
+        if self.mem_limit_gb == 0:
+            # If no limit is set at this point, use the memory of the current machine
+            self.mem_limit_gb = cluster.get_available_memory()
         self.reweight = self.field.parset['imaging_specific']['reweight']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']
