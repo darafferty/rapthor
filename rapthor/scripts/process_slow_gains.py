@@ -121,7 +121,7 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Fal
             if median_station < 1.0:
                 parms[:, :, s, dir, :] /= median_station * (1 + norm_delta)
             else:
-                parms[:, :, s, dir, :] /= median_station * (1 - norm_delta)
+                parms[:, :, s, dir, :] /= median_station / (1 + norm_delta)
         if max_delta > 0:
             # Do one final normalization to make sure the overall median for this direction
             # is unity
