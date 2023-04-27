@@ -75,13 +75,17 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Fal
     scale_delta_with_dist : bool, optional
         If True, max_station_delta is scaled (linearly) with the distance from the
         patch direction to the phase center, allowing larger deltas for more
-        distant sources
+        distant sources (if there is only a single direction, scaling is disabled
+        and the value of this parameter is ignored)
     phase_center : tuple of floats, optional
         The phase center of the observation as (RA, Dec) in degrees. Required when
         scale_delta_with_dist = True
     """
     if max_station_delta < 0.0:
         max_station_delta = 0.0
+    if len(soltab.dir[:]) == 1:
+        # If there is only a single direction, disable the scaling with distance
+        scale_delta_with_dist = False
 
     # Make a copy of the input data to fill with normalized values
     parms = soltab.val[:]
@@ -98,6 +102,12 @@ def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=Fal
             ra_dec = (source_dict[dir][0]*180/np.pi, source_dict[dir][1]*180/np.pi)  # degrees
             dist.append(get_angular_distance(ra_dec, phase_center))
         max_dist = max(dist)
+        if max_dist == 0:
+            # This state should never be reached, since it should only occur when
+            # there is a single direction (and that direction is centered on the
+            # phase center), but we check for it anyway to ensure there is no
+            # divide-by-zero later
+            scale_delta_with_dist = False
 
     # Normalize each direction separately so that the mean of the XX and YY median
     # amplitudes is unity (within max_station_delta) for each station over all times,
