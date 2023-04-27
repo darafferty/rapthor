@@ -427,7 +427,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         with open(output_root+'.true_sky.txt', 'w') as f:
             f.writelines(dummylines)
 
-    # Set the TMPDIR env var back to its original value and clean up
+    # Set the TMPDIR env var back to its original value
     if old_tmpdir is not None:
         os.environ["TMPDIR"] = old_tmpdir
 
