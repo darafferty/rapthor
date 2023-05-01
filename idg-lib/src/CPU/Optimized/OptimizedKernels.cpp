@@ -172,9 +172,10 @@ size_t OptimizedKernels::init_wtiles(int nr_polarizations, size_t grid_size,
   }
   assert(nr_wtiles >= nr_wtiles_min);
 
-  m_wtiles_buffer = idg::Array1D<std::complex<float>>(
-      sizeof_padded_wtiles / sizeof(std::complex<float>));
-  m_wtiles_buffer.zero();
+  m_wtiles_buffer = xt::xtensor<std::complex<float>, 4>(
+      {nr_wtiles, static_cast<size_t>(nr_polarizations), padded_wtile_size,
+       padded_wtile_size},
+      std::complex<float>(0.0f, 0.0f));
   return nr_wtiles;
 }
 

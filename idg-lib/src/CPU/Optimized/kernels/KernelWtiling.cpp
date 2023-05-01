@@ -298,21 +298,21 @@ void kernel_adder_wtiles_to_grid(
   std::map<int, fft_pair> fft_plans;
 
   // Iterate tiles in batches
-  int current_nr_tiles = omp_get_max_threads();
-  for (int tile_offset = 0; tile_offset < nr_tiles;
+  size_t current_nr_tiles = omp_get_max_threads();
+  for (size_t tile_offset = 0; tile_offset < static_cast<size_t>(nr_tiles);
        tile_offset += current_nr_tiles) {
     current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
 
     // Find w_padded_tile_size for current batch
-    int w_padded_tile_size = *std::max_element(
+    size_t w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
     // Allocate tile buffers
-    idg::Array4D<std::complex<float>> tile_buffers(
-        current_nr_tiles, nr_polarizations, w_padded_tile_size,
-        w_padded_tile_size);
-    tile_buffers.zero();
+    xt::xtensor<std::complex<float>, 4> tile_buffers(
+        {current_nr_tiles, static_cast<size_t>(nr_polarizations),
+         w_padded_tile_size, w_padded_tile_size},
+        std::complex<float>(0.0f, 0.0f));
 
     // Initialize FFT plans
     if (fft_plans.find(w_padded_tile_size) == fft_plans.end()) {
@@ -329,15 +329,16 @@ void kernel_adder_wtiles_to_grid(
 
     // Process the current batch of tiles
 #pragma omp parallel for
-    for (int i = 0; i < current_nr_tiles; i++) {
-      unsigned int tile_idx = tile_offset + i;
+    for (size_t i = 0; i < current_nr_tiles; i++) {
+      const size_t tile_idx = tile_offset + i;
       const idg::Coordinate& coordinate = tile_coordinates[tile_idx];
+      std::complex<float>* tile_ptr = &tile_buffers(i, 0, 0, 0);
 
       // Copy tile
       size_t src_idx = index_grid_4d(nr_polarizations, padded_tile_size,
                                      tile_ids[tile_idx], 0, 0, 0);
       kernel_copy_tile(nr_polarizations, padded_tile_size, w_padded_tile_size,
-                       &tiles[src_idx], tile_buffers.data(i, 0, 0, 0));
+                       &tiles[src_idx], tile_ptr);
 
       // Reset tile to zero
       std::fill(&tiles[index_grid_4d(nr_polarizations, padded_tile_size,
@@ -347,15 +348,12 @@ void kernel_adder_wtiles_to_grid(
                 std::complex<float>({0.0, 0.0}));
 
       // Backward FFT
-      std::complex<float>* tile_ptr =
-          reinterpret_cast<std::complex<float>*>(tile_buffers.data(i, 0, 0, 0));
       kernel_fft_composite(plan_backward, nr_polarizations, w_padded_tile_size,
                            tile_ptr);
 
       // Multiply w term
       kernel_apply_phasor(nr_polarizations, w_padded_tile_size, image_size,
-                          w_step, shift, coordinate,
-                          tile_buffers.data(i, 0, 0, 0), -1);
+                          w_step, shift, coordinate, tile_ptr, -1);
 
       // Forward FFT
       kernel_fft_composite(plan_forward, nr_polarizations, w_padded_tile_size,
@@ -471,21 +469,21 @@ void kernel_splitter_wtiles_from_grid(
   std::map<int, fft_pair> fft_plans;
 
   // Iterate tiles in batches
-  int current_nr_tiles = omp_get_max_threads();
-  for (int tile_offset = 0; tile_offset < nr_tiles;
+  size_t current_nr_tiles = omp_get_max_threads();
+  for (size_t tile_offset = 0; tile_offset < static_cast<size_t>(nr_tiles);
        tile_offset += current_nr_tiles) {
     current_nr_tiles = std::min(current_nr_tiles, nr_tiles - tile_offset);
 
     // Find w_padded_tile_size for current batch
-    int w_padded_tile_size = *std::max_element(
+    size_t w_padded_tile_size = *std::max_element(
         w_padded_tile_sizes.begin() + tile_offset,
         w_padded_tile_sizes.begin() + tile_offset + current_nr_tiles);
 
     // Allocate tile buffers
-    idg::Array4D<std::complex<float>> tile_buffers(
-        current_nr_tiles, nr_polarizations, w_padded_tile_size,
-        w_padded_tile_size);
-    tile_buffers.zero();
+    xt::xtensor<std::complex<float>, 4> tile_buffers(
+        {current_nr_tiles, static_cast<size_t>(nr_polarizations),
+         w_padded_tile_size, w_padded_tile_size},
+        std::complex<float>(0.0f, 0.0f));
 
     // Initialize FFT plans
     if (fft_plans.find(w_padded_tile_size) == fft_plans.end()) {
@@ -507,20 +505,18 @@ void kernel_splitter_wtiles_from_grid(
 
     // Process the current batch of tiles
 #pragma omp parallel for
-    for (int i = 0; i < current_nr_tiles; i++) {
+    for (size_t i = 0; i < current_nr_tiles; i++) {
       unsigned int tile_idx = tile_offset + i;
       const idg::Coordinate& coordinate = tile_coordinates[tile_idx];
+      std::complex<float>* tile_ptr = &tile_buffers(i, 0, 0, 0);
 
       // Backwards FFT
-      std::complex<float>* tile_ptr =
-          reinterpret_cast<std::complex<float>*>(tile_buffers.data(i, 0, 0, 0));
       kernel_fft_composite(plan_backward, nr_polarizations, w_padded_tile_size,
                            tile_ptr);
 
       // Multiply w term
       kernel_apply_phasor(nr_polarizations, w_padded_tile_size, image_size,
-                          w_step, shift, coordinate,
-                          tile_buffers.data(i, 0, 0, 0), 1);
+                          w_step, shift, coordinate, tile_ptr, 1);
 
       // Forward FFT
       kernel_fft_composite(plan_forward, nr_polarizations, w_padded_tile_size,
@@ -530,7 +526,7 @@ void kernel_splitter_wtiles_from_grid(
       size_t dst_idx = index_grid_4d(nr_polarizations, padded_tile_size,
                                      tile_ids[tile_idx], 0, 0, 0);
       kernel_copy_tile(nr_polarizations, w_padded_tile_size, padded_tile_size,
-                       tile_buffers.data(i, 0, 0, 0), &tiles[dst_idx]);
+                       tile_ptr, &tiles[dst_idx]);
     }  // end for current_nr_tiles
   }    // end for tile_offset
 

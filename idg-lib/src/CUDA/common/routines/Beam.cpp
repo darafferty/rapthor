@@ -166,19 +166,21 @@ void CUDA::do_compute_avg_beam(
   executestream.synchronize();
 
   // Copy result to host
-  idg::Array4D<std::complex<double>> average_beam_double(subgrid_size,
-                                                         subgrid_size, 4, 4);
-  dtohstream.memcpyDtoHAsync(average_beam_double.data(), d_average_beam,
-                             average_beam_double.bytes());
+  Tensor<std::complex<double>, 4> average_beam_double =
+      allocate_tensor<std::complex<double>, 4>(
+          {subgrid_size, subgrid_size, 4, 4});
+  dtohstream.memcpyDtoH(average_beam_double.Span().data(), d_average_beam,
+                        average_beam_double.Span().size() *
+                            sizeof(*average_beam_double.Span().data()));
 
 // Convert to floating-point
 #pragma omp parallel for
-  for (unsigned int i = 0; i < subgrid_size * subgrid_size; i++) {
-    unsigned int y = i / subgrid_size;
-    unsigned int x = i % subgrid_size;
-    for (int ii = 0; ii < 4; ii++) {
-      for (int jj = 0; jj < 4; jj++) {
-        average_beam(y, x, ii, jj) += average_beam_double(y, x, ii, jj);
+  for (size_t i = 0; i < subgrid_size * subgrid_size; i++) {
+    const size_t y = i / subgrid_size;
+    const size_t x = i % subgrid_size;
+    for (size_t ii = 0; ii < 4; ii++) {
+      for (size_t jj = 0; jj < 4; jj++) {
+        average_beam(y, x, ii, jj) += average_beam_double.Span()(y, x, ii, jj);
       }
     }
   }
