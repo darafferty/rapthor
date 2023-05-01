@@ -277,31 +277,6 @@ class Proxy {
   //! Methods for memory management
   virtual std::unique_ptr<auxiliary::Memory> allocate_memory(size_t bytes);
 
-  template <typename T>
-  Array1D<T> allocate_array1d(size_t a_dim) {
-    auto bytes = a_dim * sizeof(T);
-    return Array1D<T>(allocate_memory(bytes), a_dim);
-  };
-
-  template <typename T>
-  Array2D<T> allocate_array2d(size_t b_dim, size_t a_dim) {
-    auto bytes = a_dim * b_dim * sizeof(T);
-    return Array2D<T>(allocate_memory(bytes), b_dim, a_dim);
-  };
-
-  template <typename T>
-  Array3D<T> allocate_array3d(size_t c_dim, size_t b_dim, size_t a_dim) {
-    auto bytes = a_dim * b_dim * c_dim * sizeof(T);
-    return Array3D<T>(allocate_memory(bytes), c_dim, b_dim, a_dim);
-  };
-
-  template <typename T>
-  Array4D<T> allocate_array4d(size_t d_dim, size_t c_dim, size_t b_dim,
-                              size_t a_dim) {
-    auto bytes = a_dim * b_dim * c_dim * d_dim * sizeof(T);
-    return Array4D<T>(allocate_memory(bytes), d_dim, c_dim, b_dim, a_dim);
-  };
-
   template <typename T, size_t Dimensions>
   Tensor<T, Dimensions> allocate_tensor(
       const std::initializer_list<size_t> shape) {

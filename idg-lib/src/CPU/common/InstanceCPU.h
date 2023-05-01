@@ -169,7 +169,7 @@ class InstanceCPU : public KernelsInstance {
   };
 
  protected:
-  idg::Array1D<std::complex<float>> m_wtiles_buffer;
+  xt::xtensor<std::complex<float>, 4> m_wtiles_buffer;
 };
 
 }  // end namespace cpu
