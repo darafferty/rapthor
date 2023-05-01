@@ -45,7 +45,7 @@ WORKDIR /src
 # Install IDG
 # A shallow clone of IDG breaks its version number. This is an issue for DP3
 # since it has a minimal version requirement.
-RUN git clone https://git.astron.nl/RD/idg.git
+RUN git clone --recurse-submodules https://git.astron.nl/RD/idg.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_WITH_PYTHON=OFF \
