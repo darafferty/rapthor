@@ -52,7 +52,7 @@ The following processing parameters must be set for each cycle:
         Float that sets the maximum allowed fractional delta from unity for the per-station normalization.
 
     scale_normalization_delta
-        Boolean flag that determines whether the maximum allowed fractional normalization delta is constrained to vary linearly with distance from the phase center.
+        Boolean flag that determines whether the maximum allowed fractional normalization delta (set by the ``max_normalization_delta`` parameter) is constrained to vary linearly with distance from the phase center. If True, the maximum delta is zero at the phase center and reaches the value set by ``max_normalization_delta`` for the most distant calibration patch. If False, the maximum delta is the same for all calibration patches.
 
     do_image
         Boolean flag that determines whether the imaging step should be done for this cycle.
