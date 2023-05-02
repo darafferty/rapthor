@@ -299,8 +299,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         hdu[0].data = data
         hdu.writeto(maskfile, overwrite=True)
 
-        # Select the best MS for the beam attenuation and copy it to TMPDIR,
-        # as this is likely to have faster I/O (important for EveryBeam use)
+        # Select the best MS for the beam attenuation
         if len(beamMS) > 1:
             ms_times = []
             for ms in beamMS:
@@ -313,6 +312,10 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         else:
             beam_ind = 0
         with tempfile.TemporaryDirectory() as temp_ms_dir:
+            # Copy the beam MS file to TMPDIR, as this is likely to have faster
+            # I/O (important for EveryBeam, which is used by LSMTool)
+            # TODO: for now we copy the full file, but it may be possible to cache
+            # just the parts of the MS that EveryBeam needs
             beam_ms = os.path.join(temp_ms_dir, os.path.basename(beamMS[beam_ind]))
             subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', beamMS[beam_ind], beam_ms])
 
