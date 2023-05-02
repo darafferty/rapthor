@@ -1,4 +1,4 @@
-cwlVersion: v1.1
+cwlVersion: v1.1  # Note: MPIRequirement does not currently work with v1.2
 class: CommandLineTool
 baseCommand: [wsclean-mp]
 label: Make an image
