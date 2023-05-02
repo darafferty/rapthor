@@ -50,6 +50,14 @@ class Unified : public Generic {
    */
   bool m_enable_tiling = true;
   bool m_grid_is_tiled = false;
+
+  // Override to return a pointer to its own 5D (tiled) grid,
+  // to be used in Generic::run_imaging
+  std::complex<float>* get_unified_grid_data() override {
+    return unified_grid_tiled_.Span().data();
+  }
+
+  Tensor<std::complex<float>, 5> unified_grid_tiled_;
 };  // class Unified
 
 }  // namespace cuda

@@ -548,7 +548,7 @@ int main(int argc, char* argv[]) {
   cuda.launch_adder_wtiles_to_grid(nr_polarizations, nr_tiles, grid_size,
                                    tile_size - subgrid_size, padded_tile_size,
                                    d_padded_tile_ids, d_tile_coordinates,
-                                   d_padded_tiles, u_grid);
+                                   d_padded_tiles, u_grid.data());
 
   // Wait for the computation on the GPU to finish
   stream.synchronize();

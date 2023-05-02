@@ -159,13 +159,7 @@ void CUDA::free_buffers_wtiling() {
   m_buffers_wtiling.d_patches.clear();
 }
 
-cu::UnifiedMemory& CUDA::allocate_unified_grid(const cu::Context& context,
-                                               size_t size) {
-  u_grid_.reset(new cu::UnifiedMemory(context, size));
-  return *u_grid_;
-}
-
-void CUDA::free_unified_grid() { u_grid_.reset(); }
+void CUDA::free_unified_grid() { unified_grid_.Reset(); }
 
 }  // end namespace cuda
 }  // end namespace proxy

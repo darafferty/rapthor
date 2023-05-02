@@ -89,6 +89,9 @@ void Generic::do_degridding(
 }
 
 void Generic::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {
+  const size_t nr_w_layers = grid.shape(0);
+  assert(nr_w_layers == 1);
+  const size_t nr_polarizations = grid.shape(1);
   const size_t grid_size = grid.shape(2);
   assert(grid.shape(3) == grid_size);
   const size_t sizeof_grid = grid.size() * sizeof(*grid.data());
@@ -102,10 +105,11 @@ void Generic::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {
     htodstream.memcpyHtoD(*d_grid_, grid.data(), sizeof_grid);
   }
   if (m_use_unified_memory) {
-    cu::UnifiedMemory& u_grid = allocate_unified_grid(context, sizeof_grid);
-    char* first = reinterpret_cast<char*>(grid.data());
-    char* result = reinterpret_cast<char*>(u_grid.data());
-    std::copy_n(first, sizeof_grid, result);
+    Tensor<std::complex<float>, 3> unified_grid(
+        std::make_unique<cu::UnifiedMemory>(context, sizeof_grid),
+        {nr_polarizations, grid_size, grid_size});
+    std::copy_n(grid.data(), grid.size(), get_unified_grid_data());
+    set_unified_grid(std::move(unified_grid));
   }
 }
 
@@ -116,16 +120,13 @@ aocommon::xt::Span<std::complex<float>, 4>& Generic::get_final_grid() {
 
   const size_t grid_size = get_grid().shape(2);
   assert(get_grid().shape(3) == grid_size);
-  const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
 
   if (m_use_unified_memory) {
-    cu::UnifiedMemory& u_grid = get_unified_grid();
-    char* first = reinterpret_cast<char*>(u_grid.data());
-    char* result = reinterpret_cast<char*>(get_grid().data());
-    std::copy_n(first, sizeof_grid, result);
+    std::copy_n(get_unified_grid_data(), get_grid().size(), get_grid().data());
   } else if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& dtohstream = device.get_dtoh_stream();
+    const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
     dtohstream.memcpyDtoH(get_grid().data(), *d_grid_, sizeof_grid);
   }
   return get_grid();

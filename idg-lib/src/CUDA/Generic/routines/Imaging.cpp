@@ -262,7 +262,7 @@ void Generic::run_imaging(
         if (m_use_unified_memory) {
           device.launch_adder_unified(nr_subgrids_current, grid_size,
                                       subgrid_size, d_metadata, d_subgrids,
-                                      get_unified_grid());
+                                      get_unified_grid_data());
         } else {
           device.launch_adder(nr_subgrids_current, nr_polarizations, grid_size,
                               subgrid_size, d_metadata, d_subgrids, *d_grid_);
@@ -281,7 +281,7 @@ void Generic::run_imaging(
         if (m_use_unified_memory) {
           device.launch_splitter_unified(nr_subgrids_current, grid_size,
                                          subgrid_size, d_metadata, d_subgrids,
-                                         get_unified_grid());
+                                         get_unified_grid_data());
         } else {
           device.launch_splitter(nr_subgrids_current, nr_polarizations,
                                  grid_size, subgrid_size, d_metadata,

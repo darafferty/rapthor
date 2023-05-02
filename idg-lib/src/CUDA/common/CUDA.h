@@ -165,23 +165,20 @@ class CUDA : public Proxy {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
   } m_buffers_wtiling;
 
-  /*
-   * Unified Memory
-   */
-  cu::UnifiedMemory& get_unified_grid() { return *u_grid_; }
-  cu::UnifiedMemory& allocate_unified_grid(const cu::Context& context,
-                                           size_t size);
-  void free_unified_grid();
+ protected:
+  virtual std::complex<float>* get_unified_grid_data() {
+    return unified_grid_.Span().data();
+  }
+  void set_unified_grid(Tensor<std::complex<float>, 3>&& tensor) {
+    unified_grid_ = std::move(tensor);
+  }
 
  private:
+  void free_unified_grid();
+
   ProxyInfo& mInfo;
   std::vector<std::unique_ptr<kernel::cuda::InstanceCUDA>> devices;
-
-  /**
-   * Copy of the grid in CUDA Unified Memory used by the Generic and Unified
-   * proxies.
-   */
-  std::unique_ptr<cu::UnifiedMemory> u_grid_;
+  Tensor<std::complex<float>, 3> unified_grid_;
 };
 }  // namespace cuda
 }  // end namespace proxy

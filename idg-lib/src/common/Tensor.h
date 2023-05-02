@@ -11,13 +11,24 @@ namespace idg {
 template <typename T, size_t Dimensions>
 class Tensor {
  public:
+  Tensor()
+      : span_(aocommon::xt::CreateSpan<T, Dimensions>(
+            nullptr, std::array<size_t, Dimensions>{})) {}
+
   Tensor(std::unique_ptr<auxiliary::Memory> memory,
          const std::array<size_t, Dimensions>& shape)
       : memory_(std::move(memory)),
         span_(aocommon::xt::CreateSpan<T, Dimensions>(
-            reinterpret_cast<T*>(memory_->data()), shape)){};
+            memory_ ? reinterpret_cast<T*>(memory_->data()) : nullptr, shape)) {
+  }
 
   aocommon::xt::Span<T, Dimensions>& Span() { return span_; }
+
+  void Reset() {
+    memory_.reset();
+    span_ = aocommon::xt::CreateSpan<T, Dimensions>(
+        nullptr, std::array<size_t, Dimensions>{});
+  }
 
  private:
   std::unique_ptr<auxiliary::Memory> memory_;

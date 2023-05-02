@@ -83,10 +83,6 @@ class InstanceCUDA : public KernelsInstance {
                           unsigned nr_polarizations,
                           DomainAtoDomainB direction);
 
-  void launch_grid_fft_unified(unsigned long size, unsigned batch,
-                               cu::UnifiedMemory& u_grid,
-                               DomainAtoDomainB direction);
-
   void launch_fft_shift(cu::DeviceMemory& d_data, int batch, long size,
                         std::complex<float> scale = {1.0, 1.0});
 
@@ -96,8 +92,7 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_adder_unified(int nr_subgrids, long grid_size, int subgrid_size,
                             cu::DeviceMemory& d_metadata,
-                            cu::DeviceMemory& d_subgrid,
-                            cu::UnifiedMemory& u_grid);
+                            cu::DeviceMemory& d_subgrid, void* u_grid);
 
   void launch_splitter(int nr_subgrids, int nr_polarizations, long grid_size,
                        int subgrid_size, cu::DeviceMemory& d_metadata,
@@ -105,8 +100,7 @@ class InstanceCUDA : public KernelsInstance {
 
   void launch_splitter_unified(int nr_subgrids, long grid_size,
                                int subgrid_size, cu::DeviceMemory& d_metadata,
-                               cu::DeviceMemory& d_subgrid,
-                               cu::UnifiedMemory& u_grid);
+                               cu::DeviceMemory& d_subgrid, void* u_grid);
 
   void launch_scaler(int nr_subgrids, int nr_polarizations, int subgrid_size,
                      cu::DeviceMemory& d_subgrid);
@@ -141,8 +135,7 @@ class InstanceCUDA : public KernelsInstance {
                                    int padded_tile_size,
                                    cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
-                                   cu::DeviceMemory& d_tiles,
-                                   cu::UnifiedMemory& u_grid);
+                                   cu::DeviceMemory& d_tiles, void* u_grid);
 
   void launch_splitter_subgrids_from_wtiles(
       int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
@@ -155,7 +148,7 @@ class InstanceCUDA : public KernelsInstance {
                                         cu::DeviceMemory& d_tile_ids,
                                         cu::DeviceMemory& d_tile_coordinates,
                                         cu::DeviceMemory& d_tiles,
-                                        cu::UnifiedMemory& u_grid);
+                                        void* u_grid);
 
   void launch_adder_wtiles_to_patch(
       int nr_polarizations, int nr_tiles, long grid_size, int tile_size,
