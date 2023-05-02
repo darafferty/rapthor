@@ -12,12 +12,18 @@ import casacore.tables as pt
 import astropy.io.ascii
 from astropy.io import fits as pyfits
 from astropy import wcs
+from astropy.utils import iers
 import os
 import json
 from rapthor.lib.observation import Observation
 from scipy.interpolate import interp1d
 import subprocess
 import sys
+import tempfile
+
+# Turn off astropy's IERS downloads to fix problems in cases where compute
+# node does not have internet access
+iers.conf.auto_download = False
 
 
 def calc_theoretical_noise(mslist, w_factor=1.5):
@@ -239,7 +245,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
 
     # Collect some diagnostic numbers for later reporting. Note: we ensure all
-    # numbers are float, as, e.g., np.float32 is not supported by json.dump()
+    # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
     theoretical_rms, unflagged_fraction = calc_theoretical_noise(beamMS)  # Jy/beam
     min_rms = float(np.min(img.rms_arr))  # Jy/beam
     max_rms = float(np.max(img.rms_arr))  # Jy/beam
@@ -293,9 +299,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         hdu[0].data = data
         hdu.writeto(maskfile, overwrite=True)
 
-        # Now filter the sky model using the mask made above
+        # Select the best MS for the beam attenuation
         if len(beamMS) > 1:
-            # Select the best MS for the beam attenuation
             ms_times = []
             for ms in beamMS:
                 tab = pt.table(ms, ack=False)
@@ -306,42 +311,54 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             beam_ind = ms_times.index(mid_time)
         else:
             beam_ind = 0
-        try:
-            s_in = lsmtool.load(input_skymodel_pb, beamMS=beamMS[beam_ind])
-        except astropy.io.ascii.InconsistentTableError:
-            emptysky = True
-        if input_bright_skymodel_pb is not None:
-            try:
-                # If bright sources were peeled before imaging, add them back
-                s_bright = lsmtool.load(input_bright_skymodel_pb, beamMS=beamMS[beam_ind])
+        with tempfile.TemporaryDirectory() as temp_ms_dir:
+            # Copy the beam MS file to TMPDIR, as this is likely to have faster
+            # I/O (important for EveryBeam, which is used by LSMTool)
+            # TODO: for now we copy the full file, but it may be possible to cache
+            # just the parts of the MS that EveryBeam needs
+            beam_ms = os.path.join(temp_ms_dir, os.path.basename(beamMS[beam_ind]))
+            subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', beamMS[beam_ind], beam_ms])
 
-                # Rename the bright sources, removing the '_sector_*' added previously
-                # (otherwise the '_sector_*' text will be added every iteration,
-                # eventually making for very long source names)
-                new_names = [name.split('_sector')[0] for name in s_bright.getColValues('Name')]
-                s_bright.setColValues('Name', new_names)
-                if not emptysky:
-                    s_in.concatenate(s_bright)
-                else:
-                    s_in = s_bright
-                    emptysky = False
+            # Load the sky model with the associated beam MS
+            try:
+                s_in = lsmtool.load(input_skymodel_pb, beamMS=beam_ms)
             except astropy.io.ascii.InconsistentTableError:
-                pass
-        if not emptysky:
-            # Keep only those sources with positive flux densities
-            if remove_negative:
-                s_in.select('I > 0.0')
-            if s_in and filter_by_mask:
-                # Keep only those sources in PyBDSF masked regions
-                s_in.select('{} == True'.format(maskfile))
-            if s_in:
-                # Write out apparent- and true-sky models
-                del(img)  # helps reduce memory usage
-                s_in.group(maskfile)  # group the sky model by mask islands
-                s_in.write(output_root+'.true_sky.txt', clobber=True)
-                s_in.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
-            else:
                 emptysky = True
+
+            # If bright sources were peeled before imaging, add them back
+            if input_bright_skymodel_pb is not None:
+                try:
+                    s_bright = lsmtool.load(input_bright_skymodel_pb)
+
+                    # Rename the bright sources, removing the '_sector_*' added previously
+                    # (otherwise the '_sector_*' text will be added every iteration,
+                    # eventually making for very long source names)
+                    new_names = [name.split('_sector')[0] for name in s_bright.getColValues('Name')]
+                    s_bright.setColValues('Name', new_names)
+                    if not emptysky:
+                        s_in.concatenate(s_bright)
+                    else:
+                        s_in = s_bright
+                        emptysky = False
+                except astropy.io.ascii.InconsistentTableError:
+                    pass
+
+            # Do final filtering and write out the sky models
+            if not emptysky:
+                if remove_negative:
+                    # Keep only those sources with positive flux densities
+                    s_in.select('I > 0.0')
+                if s_in and filter_by_mask:
+                    # Keep only those sources in PyBDSF masked regions
+                    s_in.select('{} == True'.format(maskfile))
+                if s_in:
+                    # Write out apparent- and true-sky models
+                    del(img)  # helps reduce memory usage
+                    s_in.group(maskfile)  # group the sky model by mask islands
+                    s_in.write(output_root+'.true_sky.txt', clobber=True)
+                    s_in.write(output_root+'.apparent_sky.txt', clobber=True, applyBeam=True)
+                else:
+                    emptysky = True
     else:
         emptysky = True
 

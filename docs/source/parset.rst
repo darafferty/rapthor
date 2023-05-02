@@ -152,9 +152,6 @@ The available options are described below under their respective sections.
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
 
-    solve_min_uv_lambda
-        Minimum uv distance in lambda used during calibration (default = 350).
-
     fast_timestep_sec
         Time step used during fast phase calibration, in seconds (default = 8).
 
@@ -193,9 +190,6 @@ The available options are described below under their respective sections.
     slow_smoothnessconstraint_separate
         Smoothness constraint bandwidth used during the second slow gain calibration,
         where separate solutions are found for each station, in Hz (default = 3e6).
-
-    use_idg_predict
-       Use IDG for predict during calibration (default = ``False``)?
 
     solverlbfgs_dof
        Degrees of freedom for LBFGS solver (only used when solveralgorithm = "lbfgs"; default 200.0).
@@ -253,8 +247,7 @@ The available options are described below under their respective sections.
         Use MPI to distribute WSClean jobs over multiple nodes (default =
         ``False``)? If ``True`` and more than one node can be allocated to each
         WSClean job (i.e., max_nodes / num_images >= 2), then distributed
-        imaging will be used (only available if ``batch_system = slurm`` and
-        ``dde_method = screens``).
+        imaging will be used (only available if ``batch_system = slurm``).
 
         .. note::
 

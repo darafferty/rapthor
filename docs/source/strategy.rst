@@ -36,6 +36,9 @@ The following processing parameters must be set for each cycle:
     do_calibrate
         Boolean flag that determines whether the calibration step should be done for this cycle.
 
+    solve_min_uv_lambda
+        Minimum uv distance in lambda used during calibration for this cycle (applies to both fast-phase and slow-gain solves).
+
     do_slowgain_solve
         Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle.
 
@@ -45,6 +48,12 @@ The following processing parameters must be set for each cycle:
     peel_bright_sources
         Boolean flag that determines whether the bright sources should be peeled for this cycle (for imaging only). The peeled bright sources are added back before subsequent selfcal cycles are performed (so they are included in the calibration, etc.).
 
+    max_normalization_delta
+        Float that sets the maximum allowed fractional delta from unity for the per-station normalization.
+
+    scale_normalization_delta
+        Boolean flag that determines whether the maximum allowed fractional normalization delta (set by the ``max_normalization_delta`` parameter) is constrained to vary linearly with distance from the phase center. If True, the maximum delta is zero at the phase center and reaches the value set by ``max_normalization_delta`` for the most distant calibration patch. If False, the maximum delta is the same for all calibration patches.
+
     do_image
         Boolean flag that determines whether the imaging step should be done for this cycle.
 
@@ -52,10 +61,10 @@ The following processing parameters must be set for each cycle:
         Float that sets WSClean's automask value for this cycle.
 
     threshisl
-        Float that sets PyBDFS's threshisl value for this cycle.
+        Float that sets PyBDSF's threshisl value for this cycle.
 
     threshpix
-        Float that sets PyBDFS's threshpix value for this cycle.
+        Float that sets PyBDSF's threshpix value for this cycle.
 
     max_nmiter
         Integer that sets the maximum number of major iterations done during imaging for this cycle.
@@ -73,7 +82,7 @@ The following processing parameters must be set for each cycle:
         Boolean flag that determines whether the check for self-calibration convergence should be done for this cycle.
 
     convergence_ratio
-        Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have converged (must be in the range 0.5 -- 2). A check is also done for the image dynamic range, where the ratio of the current to previous value must be below 1 / ``convergence_ratio``. Selfcal is considered to have converged only if both of these conditions are met.
+        Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have converged (must be in the range 0.5 -- 2). A check is also done for the image dynamic range and number of sources, where the ratio of the current to previous value must be below 1 / ``convergence_ratio``. Selfcal is considered to have converged only if all of these conditions are met.
 
     divergence_ratio
         Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have diverged (must be > 1).

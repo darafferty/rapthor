@@ -7,8 +7,9 @@ from argparse import RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from scipy.optimize import curve_fit
 from astropy.stats import sigma_clipped_stats
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 from scipy.ndimage import generic_filter
 import sys
 
@@ -35,92 +36,110 @@ def get_ant_dist(ant_xyz, ref_xyz):
     return np.sqrt((ref_xyz[0] - ant_xyz[0])**2 + (ref_xyz[1] - ant_xyz[1])**2 + (ref_xyz[2] - ant_xyz[2])**2)
 
 
-def func(x, m, c):
-    return m * x + c
+def get_angular_distance(ra_dec1, ra_dec2):
+    """
+    Return the distance in degrees between the given coordinates
+
+    Parameters
+    ----------
+    ra_dec1 : tuple of floats
+        The coordinates of direction 1 as (RA, Dec) in degrees
+    ra_dec2 : tuple of floats
+        The coordinates of direction 2 as (RA, Dec) in degrees
+
+    Returns
+    -------
+    dist : float
+        Distance in degrees
+    """
+    coord1 = SkyCoord(ra_dec1[0], ra_dec1[1], unit=(u.degree, u.degree), frame='fk5')
+    coord2 = SkyCoord(ra_dec2[0], ra_dec2[1], unit=(u.degree, u.degree), frame='fk5')
+
+    return coord1.separation(coord2).value
 
 
-def normalize_direction(soltab, remove_core_gradient=True, solset=None, ref_id=0):
+def normalize_direction(soltab, max_station_delta=0.0, scale_delta_with_dist=False,
+                        phase_center=None):
     """
     Normalize amplitudes so that the mean of the XX and YY median amplitudes
-    is equal to unity, per direction
+    for each station is equal to unity, per direction
 
     Parameters
     ----------
     soltab : solution table
-        Input table with solutions. Solution axes are assumed to be in the
+        Input table with amplitude solutions. Solution axes are assumed to be in the
         standard DDECal order of ['time', 'freq', 'ant', 'dir', 'pol']
-    remove_core_gradient : bool, optional
-        If True, remove any gradient with distance from the core stations
-    solset : solution set, optional
-        Input set, needed if remove_core_gradient is True
-    ref_id : int, optional
-        Index of reference station, needed if remove_core_gradient is True
+    max_station_delta : float, optional
+        The maximum allowed difference from unity of the median of the amplitudes, per
+        station (must be >= 0)
+    scale_delta_with_dist : bool, optional
+        If True, max_station_delta is scaled (linearly) with the distance from the
+        patch direction to the phase center, allowing larger deltas for more
+        distant sources (if there is only a single direction, scaling is disabled
+        and the value of this parameter is ignored)
+    phase_center : tuple of floats, optional
+        The phase center of the observation as (RA, Dec) in degrees. Required when
+        scale_delta_with_dist = True
     """
+    if max_station_delta < 0.0:
+        max_station_delta = 0.0
+    if len(soltab.dir[:]) == 1:
+        # If there is only a single direction, disable the scaling with distance
+        scale_delta_with_dist = False
+
     # Make a copy of the input data to fill with normalized values
     parms = soltab.val[:]
     weights = soltab.weight[:]
-    initial_flagged_indx = np.logical_or(~np.isfinite(parms), weights == 0.0)
-    parms[initial_flagged_indx] = np.nan
 
-    # Work in log space, as required for amplitudes
-    parms = np.log10(parms)
+    # Find the distance to each direction from the phase center
+    if scale_delta_with_dist:
+        if phase_center is None:
+            raise ValueError("The phase_center must be specified if scale_delta_with_dist = True")
 
-    # Find and remove any gradient for each direction separately
-    if remove_core_gradient:
+        source_dict = soltab.getSolset().getSou()
         dist = []
-        station_names = soltab.ant[:]
-        if type(station_names) is not list:
-            station_names = station_names.tolist()
-        station_dict = solset.getAnt()
-        station_positions = []
-        for station in station_names:
-            station_positions.append(station_dict[station])
-        for s in range(len(station_names)):
-            if s == ref_id:
-                dist.append(1.0)
-            else:
-                dist.append(get_ant_dist(station_positions[s], station_positions[ref_id]))
-        for dir in range(len(soltab.dir[:])):
-            dist_vals = []
-            mean_vals = []
-            stat_names = []
-            for s in range(len(station_names)):
-                if 'CS' in station_names[s] and s != ref_id:
-                    if not np.all(~np.isfinite(parms[:, :, s, dir, :])):
-                        mean_vals.append(np.nanmean(parms[:, :, s, dir, :]))
-                        dist_vals.append(dist[s])
-                        stat_names.append(station_names[s])
-
-            # Find best-fit gradient for core only
-            x = np.log10(np.array(dist_vals))
-            y = np.array(mean_vals)
-            w = np.ones_like(y)
-            popt, pcov = curve_fit(func, x, y, sigma=w, p0=[0.0, 1.0])
-
-            # Divide out the gradient, assuming the values at the largest distances
-            # are more likely correct (and so should be around 1.0, after normalization)
-            for s in range(len(station_names)):
-                if 'CS' in station_names[s]:
-                    if s == ref_id:
-                        # For the reference station, take as the distance that of a
-                        # neighboring station, to avoid large extrapolations to zero
-                        # distance
-                        parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s+1]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
-                    else:
-                        parms[:, :, s, dir, :] -= popt[0]*np.log10(dist[s]) + popt[1] - (popt[0]*np.log10(np.max(dist_vals)) + popt[1])
+        for dir in soltab.dir[:]:
+            ra_dec = (source_dict[dir][0]*180/np.pi, source_dict[dir][1]*180/np.pi)  # degrees
+            dist.append(get_angular_distance(ra_dec, phase_center))
+        max_dist = max(dist)
+        if max_dist == 0:
+            # This state should never be reached, since it should only occur when
+            # there is a single direction (and that direction is centered on the
+            # phase center), but we check for it anyway to ensure there is no
+            # divide-by-zero later
+            scale_delta_with_dist = False
 
     # Normalize each direction separately so that the mean of the XX and YY median
-    # amplitudes is unity over all times, frequencies, and pols
+    # amplitudes is unity (within max_station_delta) for each station over all times,
+    # frequencies, and pols
     for dir in range(len(soltab.dir[:])):
-        norm_factor = np.log10(get_median_amp(10**parms[:, :, :, dir, :], weights[:, :, :, dir, :]))
-        parms[:, :, :, dir, :] -= norm_factor
+        if scale_delta_with_dist:
+            max_delta = max_station_delta * dist[dir] / max_dist
+        else:
+            max_delta = max_station_delta
 
-    # Convert back to non-log values and make sure flagged solutions are still flagged
-    parms = 10**parms
-    parms[initial_flagged_indx] = np.nan
-    weights[initial_flagged_indx] = 0.0
+        # First, renormalize the direction so that core stations have a median
+        # amplitude of unity
+        core_ind = np.array([i for i, stat in enumerate(soltab.ant[:]) if 'CS' in stat])
+        median_dir = get_median_amp(parms[:, :, core_ind, dir, :], weights[:, :, core_ind, dir, :])
+        parms[:, :, :, dir, :] /= median_dir
+
+        # Now renormalize station-by-station, allowing some delta from unity
+        for s in range(len(soltab.ant[:])):
+            median_station = get_median_amp(parms[:, :, s, dir, :], weights[:, :, s, dir, :])
+            norm_delta = min(max_delta, abs(1 - median_station))
+            if median_station < 1.0:
+                parms[:, :, s, dir, :] /= median_station * (1 + norm_delta)
+            else:
+                parms[:, :, s, dir, :] /= median_station / (1 + norm_delta)
+        if max_delta > 0:
+            # Do one final normalization to make sure the overall median for this direction
+            # is unity
+            median_dir = get_median_amp(parms[:, :, :, dir, :], weights[:, :, :, dir, :])
+            parms[:, :, :, dir, :] /= median_dir
+
+    # Save the normalized values
     soltab.setValues(parms)
-    soltab.setValues(weights, weight=True)
 
 
 def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
@@ -254,7 +273,7 @@ def get_median_amp(amps, weights):
     return medamp
 
 
-def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
+def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.2):
     """
     Flag high and low amplitudes per direction
 
@@ -283,34 +302,35 @@ def flag_amps(soltab, lowampval=None, highampval=None, threshold_factor=0.5):
     weights = soltab.weight[:]
 
     for dir in range(len(soltab.dir[:])):
-        amps_dir = amps[:, :, :, dir, :]
-        weights_dir = weights[:, :, :, dir, :]
-        medamp = get_median_amp(amps_dir, weights_dir)
-        if lowampval is None:
-            low = medamp * threshold_factor
-        else:
-            low = lowampval
-        if highampval is None:
-            high = medamp / threshold_factor
-        else:
-            high = highampval
-        if low < 0.1:
-            low = 0.1
-        if high > 10.0:
-            high = 10.0
-        if low >= high:
-            high = low * 2.0
+        for s in range(len(soltab.ant[:])):
+            amps_dir = amps[:, :, s, dir, :]
+            weights_dir = weights[:, :, s, dir, :]
+            medamp = get_median_amp(amps_dir, weights_dir)
+            if lowampval is None:
+                low = medamp * threshold_factor
+            else:
+                low = lowampval
+            if highampval is None:
+                high = medamp / threshold_factor
+            else:
+                high = highampval
+            if low < 0.1:
+                low = 0.1
+            if high > 10.0:
+                high = 10.0
+            if low >= high:
+                high = low * 2.0
 
-        # Flag, setting flagged values to NaN and weights to 0
-        initial_flagged_indx = np.logical_or(~np.isfinite(amps_dir), weights_dir == 0.0)
-        amps_dir[initial_flagged_indx] = medamp
-        new_flag_indx = np.logical_or(amps_dir < low, amps_dir > high)
-        amps_dir[initial_flagged_indx] = np.nan
-        amps_dir[new_flag_indx] = np.nan
-        weights_dir[initial_flagged_indx] = 0.0
-        weights_dir[new_flag_indx] = 0.0
-        amps[:, :, :, dir, :] = amps_dir
-        weights[:, :, :, dir, :] = weights_dir
+            # Flag, setting flagged values to NaN and weights to 0
+            initial_flagged_indx = np.logical_or(~np.isfinite(amps_dir), weights_dir == 0.0)
+            amps_dir[initial_flagged_indx] = medamp
+            new_flag_indx = np.logical_or(amps_dir < low, amps_dir > high)
+            amps_dir[initial_flagged_indx] = np.nan
+            amps_dir[new_flag_indx] = np.nan
+            weights_dir[initial_flagged_indx] = 0.0
+            weights_dir[new_flag_indx] = 0.0
+            amps[:, :, s, dir, :] = amps_dir
+            weights[:, :, s, dir, :] = weights_dir
 
     # Save the new flags
     soltab.setValues(amps)
@@ -344,7 +364,8 @@ def transfer_flags(soltab1, soltab2):
 
 def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
          phasesoltabname='phase000', ref_id=None, smooth=False, normalize=False,
-         flag=False, lowampval=None, highampval=None):
+         flag=False, lowampval=None, highampval=None, max_station_delta=0.0,
+         scale_delta_with_dist=False, phase_center=None):
     """
     Process gain solutions
 
@@ -373,6 +394,16 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     highampval : float, optional
         The threshold value above which amplitudes are flagged. If None, the
         threshold is set to 2 times the median
+    max_station_delta : float, optional
+        The maximum allowed fractional difference between core and remote station
+        normalizations.
+    scale_delta_with_dist : bool, optional
+        If True, max_station_delta is scaled (linearly) with the distance from the
+        patch direction to the phase center, allowing larger deltas for more
+        distant sources
+    phase_center : tuple of floats, optional
+        The phase center of the observation as (RA, Dec) in degrees. Required when
+        scale_delta_with_dist = True
     """
     # Read in solutions
     H = h5parm(h5parmfile, readonly=False)
@@ -389,7 +420,9 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
     if smooth:
         smooth_solutions(ampsoltab, phasesoltab=phasesoltab, ref_id=ref_id)
     if normalize:
-        normalize_direction(ampsoltab, remove_core_gradient=True, solset=solset, ref_id=ref_id)
+        normalize_direction(ampsoltab, max_station_delta=max_station_delta,
+                            scale_delta_with_dist=scale_delta_with_dist,
+                            phase_center=phase_center)
     H.close()
 
 
@@ -407,8 +440,15 @@ if __name__ == '__main__':
     parser.add_argument('--flag', help='Flag amplitude solutions', type=bool, default=False)
     parser.add_argument('--lowampval', help='Low threshold for amplitude flagging', type=float, default=None)
     parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
+    parser.add_argument('--max_station_delta', help='Max difference of median from unity allowed '
+                        'for station normalizations', type=float, default=0.0)
+    parser.add_argument('--scale_delta_with_dist', help='Scale max difference with distance', type=bool, default=False)
+    parser.add_argument('--phase_center_ra', help='RA of phase center in degrees', type=float, default=0.0)
+    parser.add_argument('--phase_center_dec', help='Dec of phase center in degrees', type=float, default=0.0)
     args = parser.parse_args()
+    phase_center = (args.phase_center_ra, args.phase_center_dec)
     main(args.h5parmfile, solsetname=args.solsetname, ampsoltabname=args.ampsoltabname,
          phasesoltabname=args.phasesoltabname, ref_id=args.ref_id, smooth=args.smooth,
          normalize=args.normalize, flag=args.flag, lowampval=args.lowampval,
-         highampval=args.highampval)
+         highampval=args.highampval, max_station_delta=args.max_station_delta,
+         scale_delta_with_dist=args.scale_delta_with_dist, phase_center=phase_center)

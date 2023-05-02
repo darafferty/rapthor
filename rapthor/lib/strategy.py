@@ -28,10 +28,9 @@ def set_strategy(field):
         # Standard selfcal:
         #     - calibration on all sources
         #     - peeling of non-sector sources
-        #     - peeling of bright sources (after 2 cycles)
         #     - imaging of sectors
         #     - regrouping of resulting sky model to meet flux criteria
-        #     - calibration on regrouped sources (calibration groups may differ from sectors)
+        #     - calibration on regrouped sources (calibration groups may span multiple sectors)
         min_selfcal_loops = 4
         max_selfcal_loops = 8
         for i in range(max_selfcal_loops):
@@ -41,15 +40,19 @@ def set_strategy(field):
             if i == 0:
                 strategy_steps[i]['do_slowgain_solve'] = False
                 strategy_steps[i]['peel_outliers'] = True
-                strategy_steps[i]['peel_bright_sources'] = False
             elif i == 1:
                 strategy_steps[i]['do_slowgain_solve'] = False
                 strategy_steps[i]['peel_outliers'] = False
-                strategy_steps[i]['peel_bright_sources'] = False
             else:
                 strategy_steps[i]['do_slowgain_solve'] = True
                 strategy_steps[i]['peel_outliers'] = False
-                strategy_steps[i]['peel_bright_sources'] = True
+            if i == 2:
+                strategy_steps[i]['solve_min_uv_lambda'] = 2000
+            else:
+                strategy_steps[i]['solve_min_uv_lambda'] = 350
+            strategy_steps[i]['peel_bright_sources'] = False
+            strategy_steps[i]['max_normalization_delta'] = 0.3
+            strategy_steps[i]['scale_normalization_delta'] = True
 
             strategy_steps[i]['do_image'] = True
             if i < 2:
@@ -66,21 +69,21 @@ def set_strategy(field):
                 strategy_steps[i]['threshpix'] = 5.0
 
             if i == 0:
-                strategy_steps[i]['target_flux'] = 1.0
+                strategy_steps[i]['target_flux'] = 0.6
                 strategy_steps[i]['max_nmiter'] = 8
-                strategy_steps[i]['max_directions'] = 10
-            elif i == 1:
-                strategy_steps[i]['target_flux'] = 0.7
-                strategy_steps[i]['max_nmiter'] = 9
-                strategy_steps[i]['max_directions'] = 10
-            elif i == 2:
-                strategy_steps[i]['target_flux'] = 0.5
-                strategy_steps[i]['max_nmiter'] = 10
                 strategy_steps[i]['max_directions'] = 20
-            else:
+            elif i == 1:
                 strategy_steps[i]['target_flux'] = 0.4
-                strategy_steps[i]['max_nmiter'] = 12
+                strategy_steps[i]['max_nmiter'] = 9
                 strategy_steps[i]['max_directions'] = 30
+            elif i == 2:
+                strategy_steps[i]['target_flux'] = 0.3
+                strategy_steps[i]['max_nmiter'] = 10
+                strategy_steps[i]['max_directions'] = 40
+            else:
+                strategy_steps[i]['target_flux'] = 0.25
+                strategy_steps[i]['max_nmiter'] = 12
+                strategy_steps[i]['max_directions'] = 50
             strategy_steps[i]['regroup_model'] = True
 
             if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
@@ -127,7 +130,9 @@ def set_strategy(field):
     # parameter has a default defined or raise an error if not
     primary_parameters = ['do_calibrate', 'do_image', 'do_check']
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'target_flux',
-                                             'max_directions', 'regroup_model'],
+                                             'max_directions', 'regroup_model',
+                                             'max_normalization_delta', 'solve_min_uv_lambda',
+                                             'scale_normalization_delta'],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
                                          'peel_outliers', 'peel_bright_sources'],
                             'do_check': ['convergence_ratio', 'divergence_ratio']}

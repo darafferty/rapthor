@@ -17,20 +17,29 @@ for i in range(max_selfcal_loops):
     # phase-only calibration are done (outliers -- sources that lie
     # outside of imaged regions -- are peeled in the first cycle).
     # Starting with the third cycle, slow-gain calibration is also
-    # done, and bright sources are peeled (for the imagining only).
+    # done. The minimum uv distance used in the solves is set to 350
+    # lambda, except for the first slow-gain cycle where it is often
+    # beneficial to exclude short baselines. Lastly, the maximum allowed
+    # difference from unity in the normalized amplitude solutions (per
+    # station) is set to 0.3, to allow for small adjustments to the
+    # station calibration (done in LINC).
     strategy_steps[i]['do_calibrate'] = True
     if i == 0:
         strategy_steps[i]['do_slowgain_solve'] = False
         strategy_steps[i]['peel_outliers'] = True
-        strategy_steps[i]['peel_bright_sources'] = False
     elif i == 1:
         strategy_steps[i]['do_slowgain_solve'] = False
         strategy_steps[i]['peel_outliers'] = False
-        strategy_steps[i]['peel_bright_sources'] = False
     else:
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
-        strategy_steps[i]['peel_bright_sources'] = True
+    if i == 2:
+        strategy_steps[i]['solve_min_uv_lambda'] = 2000
+    else:
+        strategy_steps[i]['solve_min_uv_lambda'] = 350
+    strategy_steps[i]['peel_bright_sources'] = False
+    strategy_steps[i]['max_normalization_delta'] = 0.3
+    strategy_steps[i]['scale_normalization_delta'] = True
 
     # Here we set the imaging strategy, lowering the masking
     # thresholds as selfcal proceeds to ensure all emission is
@@ -57,21 +66,21 @@ for i in range(max_selfcal_loops):
     # to ensure that the resource requirements and runtimes don't
     # grow unnecessarily large
     if i == 0:
-        strategy_steps[i]['target_flux'] = 1.0
+        strategy_steps[i]['target_flux'] = 0.6
         strategy_steps[i]['max_nmiter'] = 8
-        strategy_steps[i]['max_directions'] = 10
-    elif i == 1:
-        strategy_steps[i]['target_flux'] = 0.7
-        strategy_steps[i]['max_nmiter'] = 9
-        strategy_steps[i]['max_directions'] = 10
-    elif i == 2:
-        strategy_steps[i]['target_flux'] = 0.5
-        strategy_steps[i]['max_nmiter'] = 10
         strategy_steps[i]['max_directions'] = 20
-    else:
+    elif i == 1:
         strategy_steps[i]['target_flux'] = 0.4
-        strategy_steps[i]['max_nmiter'] = 12
+        strategy_steps[i]['max_nmiter'] = 9
         strategy_steps[i]['max_directions'] = 30
+    elif i == 2:
+        strategy_steps[i]['target_flux'] = 0.3
+        strategy_steps[i]['max_nmiter'] = 10
+        strategy_steps[i]['max_directions'] = 40
+    else:
+        strategy_steps[i]['target_flux'] = 0.25
+        strategy_steps[i]['max_nmiter'] = 12
+        strategy_steps[i]['max_directions'] = 50
     strategy_steps[i]['regroup_model'] = True
 
     # Here we specify that the convergence/divergence checks
