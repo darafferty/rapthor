@@ -211,7 +211,6 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         if os.path.exists(tmpdir):
             os.environ["TMPDIR"] = tmpdir
             break
-    temp_ms_dir = tempfile.mkdtemp()  # used for storing a copy of the beam MS file
 
     # Run PyBDSF to make a mask for grouping
     if use_adaptive_threshold:
@@ -431,10 +430,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         with open(output_root+'.true_sky.txt', 'w') as f:
             f.writelines(dummylines)
 
-    # Set the TMPDIR env var back to its original value and clean up
+    # Set the TMPDIR env var back to its original value
     if old_tmpdir is not None:
         os.environ["TMPDIR"] = old_tmpdir
-    misc.delete_directory(temp_ms_dir)
 
 
 if __name__ == '__main__':
