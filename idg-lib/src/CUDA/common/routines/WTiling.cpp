@@ -294,7 +294,7 @@ void CUDA::run_wtiles_to_grid(unsigned int subgrid_size, float image_size,
       device.launch_adder_wtiles_to_grid(
           nr_polarizations, current_nr_tiles, grid_size, tile_size,
           current_w_padded_tile_size, d_padded_tile_ids, d_tile_coordinates,
-          d_padded_tiles, *u_grid_);
+          d_padded_tiles, get_unified_grid_data());
       executestream.synchronize();
     } else {
       // Find all tiles that (partially) fit in the current patch
@@ -568,7 +568,7 @@ void CUDA::run_wtiles_from_grid(unsigned int subgrid_size, float image_size,
       device.launch_splitter_wtiles_from_grid(
           nr_polarizations, current_nr_tiles, grid_size, tile_size,
           current_w_padded_tile_size, d_padded_tile_ids, d_tile_coordinates,
-          d_padded_tiles, *u_grid_);
+          d_padded_tiles, get_unified_grid_data());
     } else {
       // Find all tiles that (partially) fit in the current patch
       std::vector<idg::Coordinate> patch_coordinates;

@@ -366,7 +366,7 @@ int main(int argc, char* argv[]) {
   cuda.launch_splitter_wtiles_from_grid(
       nr_polarizations, nr_tiles, grid_size, tile_size - subgrid_size,
       padded_tile_size, d_padded_tile_ids, d_tile_coordinates, d_padded_tiles,
-      u_grid);
+      u_grid.data());
   stream.memcpyDtoHAsync(h_padded_tiles.data(), d_padded_tiles,
                          sizeof_padded_tiles);
   stream.synchronize();

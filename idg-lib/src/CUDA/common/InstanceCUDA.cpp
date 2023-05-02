@@ -887,35 +887,6 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   end_measurement(data);
 }
 
-void InstanceCUDA::launch_grid_fft_unified(unsigned long size,
-                                           unsigned int batch,
-                                           cu::UnifiedMemory& u_grid,
-                                           DomainAtoDomainB direction) {
-  cu::ScopedContext scc(*context);
-
-  int sign =
-      (direction == FourierDomainToImageDomain) ? CUFFT_INVERSE : CUFFT_FORWARD;
-
-  cufft::C2C_1D fft_plan_row(*context, size, 1, 1, 1);
-  cufft::C2C_1D fft_plan_col(*context, size, size, 1, 1);
-
-  for (unsigned i = 0; i < batch; i++) {
-    // Execute 1D FFT over all columns
-    for (unsigned col = 0; col < size; col++) {
-      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.data());
-      ptr += i * size * size + col;
-      fft_plan_row.execute(ptr, ptr, sign);
-    }
-
-    // Execute 1D FFT over all rows
-    for (unsigned row = 0; row < size; row++) {
-      cufftComplex* ptr = static_cast<cufftComplex*>(u_grid.data());
-      ptr += i * size * size + row * size;
-      fft_plan_col.execute(ptr, ptr, sign);
-    }
-  }
-}
-
 void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
                                     long size, std::complex<float> scale) {
   const void* parameters[] = {&size, d_data.data(), &scale};
@@ -955,13 +926,12 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
                                         int subgrid_size,
                                         cu::DeviceMemory& d_metadata,
                                         cu::DeviceMemory& d_subgrid,
-                                        cu::UnifiedMemory& u_grid) {
-  CUdeviceptr grid_ptr = u_grid;
+                                        void* u_grid) {
   bool enable_tiling = true;
   const int nr_polarizations = 4;
   const void* parameters[] = {
       &nr_polarizations, &grid_size, &subgrid_size, d_metadata.data(),
-      d_subgrid.data(),  &grid_ptr,  &enable_tiling};
+      d_subgrid.data(),  &u_grid,    &enable_tiling};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -996,13 +966,12 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
                                            int subgrid_size,
                                            cu::DeviceMemory& d_metadata,
                                            cu::DeviceMemory& d_subgrid,
-                                           cu::UnifiedMemory& u_grid) {
-  CUdeviceptr grid_ptr = u_grid;
+                                           void* u_grid) {
   const bool enable_tiling = true;
   const int nr_polarizations = 4;
   const void* parameters[] = {
       &nr_polarizations, &grid_size, &subgrid_size, d_metadata.data(),
-      d_subgrid.data(),  &grid_ptr,  &enable_tiling};
+      d_subgrid.data(),  &u_grid,    &enable_tiling};
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
@@ -1073,15 +1042,14 @@ void InstanceCUDA::launch_adder_wtiles_to_grid(
     int nr_polarizations, int nr_tiles, long grid_size, int tile_size,
     int padded_tile_size, cu::DeviceMemory& d_tile_ids,
     cu::DeviceMemory& d_tile_coordinates, cu::DeviceMemory& d_tiles,
-    cu::UnifiedMemory& u_grid) {
-  CUdeviceptr grid_ptr = u_grid;
+    void* u_grid) {
   const void* parameters[] = {&grid_size,
                               &tile_size,
                               &padded_tile_size,
                               d_tile_ids.data(),
                               d_tile_coordinates.data(),
                               d_tiles.data(),
-                              &grid_ptr};
+                              &u_grid};
   dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[3], grid, block, 0,
@@ -1105,15 +1073,14 @@ void InstanceCUDA::launch_splitter_wtiles_from_grid(
     int nr_polarizations, int nr_tiles, long grid_size, int tile_size,
     int padded_tile_size, cu::DeviceMemory& d_tile_ids,
     cu::DeviceMemory& d_tile_coordinates, cu::DeviceMemory& d_tiles,
-    cu::UnifiedMemory& u_grid) {
-  CUdeviceptr grid_ptr = u_grid;
+    void* u_grid) {
   const void* parameters[] = {&grid_size,
                               &tile_size,
                               &padded_tile_size,
                               d_tile_ids.data(),
                               d_tile_coordinates.data(),
                               d_tiles.data(),
-                              &grid_ptr};
+                              &u_grid};
   dim3 grid(nr_polarizations, nr_tiles);
   dim3 block(128);
   executestream->launchKernel(*functions_wtiling[5], grid, block, 0,
