@@ -185,7 +185,7 @@ inputs:
   - id: facet_region_file
     label: Filename of output region file
     doc: |
-      The filename of the output ds9 region file (length =1).
+      The filename of the output ds9 region file (length = 1).
     type: string
 
   - id: soltabs
@@ -193,6 +193,12 @@ inputs:
     doc: |
       The names of the calibration solution tables (length = 1).
     type: string
+
+  - id: apply_diagonal_solutions
+    label: Apply diagonal solutions
+    doc: |
+      Apply diagonal (separate XX and YY) solutions (length = 1).
+    type: boolean
 
   - id: parallel_gridding_threads
     label: Max number of gridding threads
@@ -269,9 +275,9 @@ inputs:
     type: float
 
   - id: wsclean_mem
-    label: Memory percentage
+    label: Memory in GB
     doc: |
-      The memory limit for WSClean in percent of total (length = 1).
+      The memory limit for WSClean in GB (length = 1).
     type: float
 
   - id: auto_mask
@@ -317,6 +323,14 @@ inputs:
     doc: |
       The maximum number of threads to use during deconvolution (length = 1).
     type: int
+
+  - id: dd_psf_grid
+    label: Direction-dependent PSF grid
+    doc: |
+      The number of direction-dependent PSFs which should be fit horizontally and
+      vertically in the image (length = 2).
+    type: int[]
+
 
 outputs:
   - id: filtered_skymodels
@@ -527,6 +541,8 @@ steps:
         source: soltabs
       - id: region_file
         source: make_region_file/region_file
+      - id: apply_diagonal_solutions
+        source: apply_diagonal_solutions
 {% if not use_mpi %}
       - id: num_gridding_threads
         source: parallel_gridding_threads
@@ -564,6 +580,8 @@ steps:
         source: max_threads
       - id: num_deconvolution_threads
         source: deconvolution_threads
+      - id: dd_psf_grid
+        source: dd_psf_grid
     out:
       - id: image_nonpb_name
       - id: image_pb_name

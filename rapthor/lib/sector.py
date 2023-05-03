@@ -4,6 +4,7 @@ Definition of the Sector class that holds parameters for an image or predict sec
 import logging
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib import cluster
 import lsmtool
 from astropy.coordinates import Angle,  SkyCoord
 import astropy.units as u
@@ -100,7 +101,21 @@ class Sector(object):
         self.min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
         self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
-        self.mem_percent = self.field.parset['imaging_specific']['mem_fraction'] * 100
+        self.mem_limit_gb = self.field.parset['imaging_specific']['mem_gb']
+        slurm_limit_gb = self.field.parset['cluster_specific']['mem_per_node_gb']
+        if slurm_limit_gb > 0:
+            # Obey the Slurm limit if it's set and is more restrictive than the
+            # WSClean-specific limit
+            if self.mem_limit_gb > 0:
+                # WSClean-specific limit set, so take the lower limit
+                self.mem_limit_gb = min(self.mem_limit_gb, slurm_limit_gb)
+            else:
+                # WSClean-specific limit not set (i.e., use all available memory), so
+                # take Slurm limit
+                self.mem_limit_gb = slurm_limit_gb
+        if self.mem_limit_gb == 0:
+            # If no limit is set at this point, use the memory of the current machine
+            self.mem_limit_gb = cluster.get_available_memory()
         self.reweight = self.field.parset['imaging_specific']['reweight']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']
@@ -109,6 +124,7 @@ class Sector(object):
         self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
+        self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
 
         # Set image size based on current sector polygon
         if recalculate_imsize or self.imsize is None:

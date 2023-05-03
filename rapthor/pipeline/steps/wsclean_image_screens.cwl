@@ -170,12 +170,12 @@ inputs:
     inputBinding:
       prefix: -taper-gaussian
   - id: wsclean_mem
-    label: Memory percentage
+    label: Memory in GB
     doc: |
-      The memory limit in percent of total.
+      The memory limit in GB.
     type: float
     inputBinding:
-      prefix: -mem
+      prefix: -abs-mem
   - id: auto_mask
     label: Auto mask value
     doc: |
@@ -201,6 +201,14 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: dd_psf_grid
+    label: Direction-dependent PSF grid
+    doc: |
+      The number of direction-dependent PSFs which should be fit horizontally and
+      vertically in the image.
+    type: int[]
+    inputBinding:
+      prefix: -dd-psf-grid
 
 outputs:
   - id: image_nonpb_name

@@ -229,6 +229,12 @@ inputs:
       The name of the calibration solution table (length = 1).
     type: string
 
+  - id: apply_diagonal_solutions
+    label: Apply diagonal solutions
+    doc: |
+      Apply diagonal (separate XX and YY) solutions (length = 1).
+    type: boolean
+
   - id: parallel_gridding_threads
     label: Max number of gridding threads
     doc: |
@@ -304,9 +310,9 @@ inputs:
     type: float[]
 
   - id: wsclean_mem
-    label: Memory percentage
+    label: Memory in GB
     doc: |
-      The memory limit for WSClean in percent of total (length = n_sectors).
+      The memory limit for WSClean in GB (length = n_sectors).
     type: float[]
 
   - id: auto_mask
@@ -352,6 +358,17 @@ inputs:
     doc: |
       The maximum number of threads to use during deconvolution (length = 1).
     type: int
+
+  - id: dd_psf_grid
+    label: Direction-dependent PSF grid
+    doc: |
+      The number of direction-dependent PSFs which should be fit horizontally and
+      vertically in the image (length = n_sectors).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
 
 
 outputs:
@@ -455,6 +472,8 @@ steps:
         source: facet_region_file
       - id: soltabs
         source: soltabs
+      - id: apply_diagonal_solutions
+        source: apply_diagonal_solutions
 {% else %}
 # start not use_facets
       - id: central_patch_name
@@ -495,6 +514,8 @@ steps:
         source: max_threads
       - id: deconvolution_threads
         source: deconvolution_threads
+      - id: dd_psf_grid
+        source: dd_psf_grid
 {% if use_facets %}
       - id: parallel_gridding_threads
         source: parallel_gridding_threads
@@ -515,7 +536,7 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix]
+              auto_mask, idg_mode, threshisl, threshpix, dd_psf_grid]
 {% else %}
 # start not use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
@@ -533,7 +554,7 @@ steps:
               channels_out, deconvolution_channels, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda,
               max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix]
+              auto_mask, idg_mode, threshisl, threshpix, dd_psf_grid]
 {% endif %}
 # end use_screens / not use_screens
 

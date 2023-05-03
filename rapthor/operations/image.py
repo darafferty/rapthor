@@ -137,10 +137,11 @@ class Image(Operation):
                             'taper_arcsec': [sector.taper_arcsec for sector in self.field.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.field.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
-                            'wsclean_mem': [sector.mem_percent for sector in self.field.imaging_sectors],
+                            'wsclean_mem': [sector.mem_limit_gb for sector in self.field.imaging_sectors],
                             'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
                             'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
                             'do_multiscale': [sector.multiscale for sector in self.field.imaging_sectors],
+                            'dd_psf_grid': [sector.dd_psf_grid for sector in self.field.imaging_sectors],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
@@ -192,6 +193,11 @@ class Image(Operation):
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
+                if self.field.do_slowgain_solve and self.field.apply_diagonal_solutions:
+                    # Diagonal solutions generated and should be applied
+                    self.input_parms.update({'apply_diagonal_solutions': True})
+                else:
+                    self.input_parms.update({'apply_diagonal_solutions': False})
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
 

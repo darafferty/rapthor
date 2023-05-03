@@ -89,7 +89,7 @@ input_ms = /data/ms/*.ms
 
 [imaging]
 # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
-# robust parameter (default = -0.5), min and max uv distance in lambda (default = 80, none),
+# robust parameter (default = -0.5), min and max uv distance in lambda (default = 0, none),
 # taper in arcsec (default = none), and whether multiscale clean should be used (default =
 # True)
 # cellsize_arcsec = 1.25
@@ -112,8 +112,18 @@ input_ms = /data/ms/*.ms
 # "cpu" or "hybrid". Note that IDG is only used when dde_method = "none" or "screens"
 # idg_mode = cpu
 
-# Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9 = 90%)
-# mem_fraction = 0.9
+# Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
+# mem_gb = 0
+
+# Apply separate XX and YY corrections during facet-based imaging (default = False).
+# If False, scalar solutions (the average of the XX and YY solutions) are applied instead.
+# (Separate XX and YY corrections are always applied when using non-facet-based imaging
+# methods.)
+# apply_diagonal_solutions = False
+
+# The number of direction-dependent PSFs which should be fit horizontally and
+# vertically in the image (default = [1, 1] = direction-independent PSF).
+# dd_psf_grid = [1, 1]
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
 # more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images

@@ -105,7 +105,7 @@ inputs:
   - id: wsclean_mem
     type: float
     inputBinding:
-      prefix: -mem
+      prefix: -abs-mem
   - id: auto_mask
     type: float
     inputBinding:
@@ -122,6 +122,10 @@ inputs:
     type: int
     inputBinding:
       prefix: -deconvolution-threads
+  - id: dd_psf_grid
+    type: int[]
+    inputBinding:
+      prefix: -dd-psf-grid
   - id: nnodes
     label: Number of nodes
     doc: |
