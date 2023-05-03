@@ -548,8 +548,7 @@ def get_imaging_options(parset):
     else:
         parset_dict['dd_psf_grid'] = [1, 1]
     if len(parset_dict['dd_psf_grid']) != 2:
-        log.error('The option dd_psf_grid must be a list of length 2 (e.g. "[3, 3]")')
-        sys.exit(1)
+        raise ValueError('The option dd_psf_grid must be a list of length 2 (e.g. "[3, 3]")')
 
     # Use MPI during imaging (default = False).
     if 'use_mpi' in parset_dict:
