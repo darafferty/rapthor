@@ -30,7 +30,6 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         Dict of parset parameters
     """
     if not os.path.isfile(parset_file):
-        log.critical("Missing parset file ({}), I don't know what to do :'(".format(parset_file))
         raise FileNotFoundError("Missing parset file ({}).".format(parset_file))
 
     log.info("Reading parset file: {}".format(parset_file))
@@ -61,7 +60,6 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
     except Exception as e:
-        log.critical("Cannot use the working dir {0}: {1}".format(parset_dict['dir_working'], e))
         raise RuntimeError("Cannot use the working dir {0}: {1}".format(parset_dict['dir_working'], e))
     if use_log_file:
         set_log_file(os.path.join(parset_dict['dir_working'], 'logs', 'rapthor.log'))
@@ -143,20 +141,16 @@ def get_global_options(parset):
     else:
         parset_dict['selfcal_data_fraction'] = 0.2
     if parset_dict['selfcal_data_fraction'] <= 0.0:
-        log.error('The selfcal_data_fraction parameter is <= 0. It must be > 0 and <= 1')
         raise ValueError('The selfcal_data_fraction parameter is <= 0. It must be > 0 and <= 1')
     if parset_dict['selfcal_data_fraction'] > 1.0:
-        log.error('The selfcal_data_fraction parameter is > 1. It must be > 0 and <= 1')
         raise ValueError('The selfcal_data_fraction parameter is > 1. It must be > 0 and <= 1')
     if 'final_data_fraction' in parset_dict:
         parset_dict['final_data_fraction'] = parset.getfloat('global', 'final_data_fraction')
     else:
         parset_dict['final_data_fraction'] = parset_dict['selfcal_data_fraction']
     if parset_dict['final_data_fraction'] <= 0.0:
-        log.error('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
         raise ValueError('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
     if parset_dict['final_data_fraction'] > 1.0:
-        log.error('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
         raise ValueError('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
     if parset_dict['final_data_fraction'] < parset_dict['selfcal_data_fraction']:
         log.warning('The final_data_fraction parameter is less than selfcal_data_fraction.')
@@ -232,7 +226,6 @@ def get_global_options(parset):
     else:
         for f in flag_list:
             if f not in parset_dict['flag_expr']:
-                log.error('Flag selection "{}" was specified but does not '
                           'appear in flag_expr'.format(f))
                 raise ValueError('Flag selection "{}" was specified but does not '
                           'appear in flag_expr'.format(f))
@@ -498,9 +491,6 @@ def get_imaging_options(parset):
 
     # Check that all the above options have the same number of entries
     if len(set(len_list)) > 1:
-        log.error('The options sector_center_ra_list, sector_center_dec_list, '
-                  'sector_width_ra_deg_list, and sector_width_dec_deg_list '
-                  'must all have the same number of entries')
         raise ValueError('The options sector_center_ra_list, sector_center_dec_list, '
                   'sector_width_ra_deg_list, and sector_width_dec_deg_list '
                   'must all have the same number of entries')
@@ -510,7 +500,6 @@ def get_imaging_options(parset):
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'cpu'
     if parset_dict['idg_mode'] not in ['cpu', 'gpu', 'hybrid']:
-        log.error('The option idg_mode must be one of "cpu", "gpu", or "hybrid"')
         raise ValueError('The option idg_mode must be one of "cpu", "gpu", or "hybrid"')
 
     # Method to use to apply direction-dependent effects during imaging: "none",
@@ -522,12 +511,10 @@ def get_imaging_options(parset):
     if 'dde_method' not in parset_dict:
         parset_dict['dde_method'] = 'facets'
     if parset_dict['dde_method'] not in ['none', 'screens', 'facets']:
-        log.error('The option dde_method must be one of "none", "screens", or "facets"')
         raise ValueError('The option dde_method must be one of "none", "screens", or "facets"')
     if 'screen_type' not in parset_dict:
         parset_dict['screen_type'] = 'kl'
     if parset_dict['screen_type'] not in ['kl', 'tessellated']:
-        log.error('The option screen_type must be one of "kl", or "tessellated"')
         raise ValueError('The option screen_type must be one of "kl", or "tessellated"')
 
     # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
@@ -730,8 +717,6 @@ def get_cluster_options(parset):
     cwl_runner = parset_dict['cwl_runner']
     supported_cwl_runners = ('cwltool', 'toil')
     if cwl_runner not in supported_cwl_runners:
-        log.critical("CWL runner '%s' is not supported; select one of: %s",
-                     cwl_runner, ', '.join(supported_cwl_runners))
         raise ValueError("CWL runner '%s' is not supported; select one of: %s",
                      cwl_runner, ', '.join(supported_cwl_runners))
 
