@@ -49,7 +49,6 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
                                      ximsize=ximsize, yimsize=yimsize,
                                      cellsize_deg=float(cellsize_deg), fill_val=1)
         else:
-            print('ERROR: a reference position must be given to make an empty template image')
             raise ValueError('ERROR: a reference position must be given to make an empty template image')
     else:
         make_blank_image = False
