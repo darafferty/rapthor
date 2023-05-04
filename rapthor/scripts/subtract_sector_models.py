@@ -188,7 +188,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                 starttime_exact = convert_mjd2mvt(starttime_chunk)  # store exact value for use later
             tin.close()
         if len(set(nrows_list)) > 1:
-            print('subtract_sector_models: Model data files have differing number of rows...')
             raise RuntimeError('subtract_sector_models: Model data files have differing number of rows...')
     # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
     chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
@@ -199,7 +198,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             model_list.pop(i)
     nsectors = len(model_list)
     if nsectors == 0:
-        print('subtract_sector_models: No model data found. Exiting...')
         raise ValueError('subtract_sector_models: No model data found.')
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
     for m in model_list:
