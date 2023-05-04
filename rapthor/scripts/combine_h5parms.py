@@ -512,7 +512,6 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
             sso = combine_phase1_phase2_amp2_scalar(ss1, ss2, sso)
 
         else:
-            print('ERROR: mode not understood')
             raise ValueError('Mode not understood')
 
         # Close the files, copies are removed automatically
