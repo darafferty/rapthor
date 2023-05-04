@@ -220,5 +220,4 @@ class Operation(object):
             self.log.info('--> Operation {0} completed'.format(self.name))
             self.finalize()
         else:
-            self.log.error('Operation {0} failed due to an error'.format(self.name))
             raise RuntimeError('Operation {0} failed due to an error'.format(self.name))
