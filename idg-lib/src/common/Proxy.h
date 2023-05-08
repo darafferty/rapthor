@@ -171,15 +171,19 @@ class Proxy {
    * subgrid.
    */
   void calibrate_init(
-      const unsigned int kernel_size, const Array2D<float>& frequencies,
-      Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array1D<unsigned int>& aterm_offsets, const Array2D<float>& taper);
+      const unsigned int kernel_size,
+      const aocommon::xt::Span<float, 2>& frequencies,
+      aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+      aocommon::xt::Span<float, 4>& weights,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+      const aocommon::xt::Span<float, 2>& taper);
 
   /**
    * @brief Compute a hessian, gradient and residual per time slot for station
-   * station_nr, given the current aterms and derivative aterms.
+   * antenna_nr, given the current aterms and derivative aterms.
    *
    * The calibration functions provided by the Proxy do not implement a full
    * solving strategy. They are intended to be called by an iterative solver to
@@ -190,7 +194,7 @@ class Proxy {
    * by a model with a number of unknown parameters.
    *
    * The aterm_derivatives are the derivatives of the aterm of station
-   * station_nr with respect to the unknowns.
+   * antenna_nr with respect to the unknowns.
    *
    * The values returned are
    * 1) the residual, the root mean square (TODO check, maybe it is the sum
@@ -200,12 +204,12 @@ class Proxy {
    * derivative of the residual with respect to the unknowns 3) the derivative
    * of the gradient with respect to the unknowns
    *
-   * @param[in] station_nr
+   * @param[in] antenna_nr
    * @param[in] aterms Five dimensional array of 2x2 (Jones) matrices of complex
    * floats. The axes are channel block, time slot, station, subgrid x, subgrid
    * y. A time slot is a range of time samples over which the aterms are
    * constant The time slots are defined by the aterm_offsets parameters.
-   * @param[in] derivative_aterms Five dimensional array of 2x2 (Jones) matrices
+   * @param[in] aterm_derivatives Five dimensional array of 2x2 (Jones) matrices
    * of complex floats. The axes are channel block, time slot, terms, subgrid x,
    * subgrid y.
    *
@@ -215,11 +219,13 @@ class Proxy {
    * @param[out] residual
    */
   void calibrate_update(
-      const int station_nr,
-      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array4D<double>& hessian, Array3D<double>& gradient,
-      Array1D<double>& residual);
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 4>& hessian,
+      aocommon::xt::Span<double, 3>& gradient,
+      aocommon::xt::Span<double, 1>& residual);
 
   /**
    * @brief Clean up after calibration cycle.
@@ -414,21 +420,23 @@ class Proxy {
   // ownership of. Call with std::move(...)
   virtual void do_calibrate_init(
       std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
-      const Array2D<float>& frequencies,
-      Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
-      Array3D<UVW<float>>&& uvw,
-      Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Array2D<float>& taper) {
+      const aocommon::xt::Span<float, 2>& frequencies,
+      Tensor<std::complex<float>, 6>&& visibilities, Tensor<float, 6>&& weights,
+      Tensor<UVW<float>, 3>&& uvw,
+      Tensor<std::pair<unsigned int, unsigned int>, 2>&& baselines,
+      const aocommon::xt::Span<float, 2>& taper) {
     throw std::runtime_error(
         "do_calibrate_init is not implemented by this proxy");
   }
 
   virtual void do_calibrate_update(
-      const int station_nr,
-      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array4D<double>& hessian, Array3D<double>& gradient,
-      Array1D<double>& residual) {
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 4>& hessian,
+      aocommon::xt::Span<double, 3>& gradient,
+      aocommon::xt::Span<double, 1>& residual) {
     throw std::runtime_error(
         "do_calibrate_update is not implemented by this proxy");
   }
@@ -477,6 +485,9 @@ class Proxy {
       const Array2D<float>& taper) const;
 
   Array1D<float> compute_wavenumbers(const Array1D<float>& frequencies) const;
+
+  Tensor<float, 1> compute_wavenumbers(
+      aocommon::xt::Span<float, 1>& frequencies);
 
   const int nr_correlations = 4;
 

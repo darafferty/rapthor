@@ -38,8 +38,8 @@ class KernelsInstance {
 
   void transpose_aterm(
       const unsigned int nr_polarizations,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms_src,
-      Array4D<std::complex<float>>& aterms_dst) const;
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms_src,
+      aocommon::xt::Span<std::complex<float>, 4>& aterms_dst) const;
 
   /*
       Debug

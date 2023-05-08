@@ -170,7 +170,7 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
  *
  * @param p[in] Pointer to Proxy object, previously obtained by one of the
  *              create_<proxy_name>() functions.
- * @param[in] station_nr Station for which the update is computed
+ * @param[in] antenna_nr Antenna for which the update is computed
  * @param[in] subgrid_size Size of the subgrid
  * @param[in] nr_stations Number of stations
  * @param nr_timeslots[in] Number of a-term time slots
@@ -187,7 +187,7 @@ void Proxy_calibrate_init(struct Proxy* p, unsigned int kernel_size,
  * @param[out] gradient
  * @param[out] residual
  */
-void Proxy_calibrate_update(struct Proxy* p, const unsigned int station_nr,
+void Proxy_calibrate_update(struct Proxy* p, const unsigned int antenna_nr,
                             const unsigned int nr_channel_blocks,
                             const unsigned int subgrid_size,
                             const unsigned int nr_stations,
