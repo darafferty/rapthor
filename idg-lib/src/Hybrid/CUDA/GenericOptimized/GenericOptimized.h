@@ -119,18 +119,20 @@ class GenericOptimized : public cuda::CUDA {
    */
   void do_calibrate_init(
       std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
-      const Array2D<float>& frequencies,
-      Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
-      Array3D<UVW<float>>&& uvw,
-      Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Array2D<float>& spheroidal) override;
+      const aocommon::xt::Span<float, 2>& frequencies,
+      Tensor<std::complex<float>, 6>&& visibilities, Tensor<float, 6>&& weights,
+      Tensor<UVW<float>, 3>&& uvw,
+      Tensor<std::pair<unsigned int, unsigned int>, 2>&& baselines,
+      const aocommon::xt::Span<float, 2>& taper) override;
 
   void do_calibrate_update(
-      const int station_nr,
-      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array4D<double>& hessian, Array3D<double>& gradient,
-      Array1D<double>& residual) override;
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 4>& hessian,
+      aocommon::xt::Span<double, 3>& gradient,
+      aocommon::xt::Span<double, 1>& residual) override;
 
   void do_calibrate_finish() override;
 
@@ -147,11 +149,11 @@ class GenericOptimized : public cuda::CUDA {
    */
   struct {
     std::vector<std::vector<std::unique_ptr<Plan>>> plans;
-    std::vector<std::vector<Array4D<std::complex<float>>>> subgrids;
-    std::vector<Array1D<float>> wavenumbers;
-    Array6D<std::complex<float>> visibilities;
-    Array6D<float> weights;
-    Array3D<UVW<float>> uvw;
+    std::vector<std::vector<Tensor<std::complex<float>, 4>>> subgrids;
+    std::vector<Tensor<float, 1>> wavenumbers;
+    Tensor<std::complex<float>, 6> visibilities;
+    Tensor<float, 6> weights;
+    Tensor<UVW<float>, 3> uvw;
     unsigned int nr_baselines;
     unsigned int nr_timesteps;
     unsigned int nr_channels_per_block;

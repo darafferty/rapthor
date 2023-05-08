@@ -108,12 +108,15 @@ void Proxy::degridding(
 }
 
 void Proxy::calibrate_init(
-    const unsigned int kernel_size, const Array2D<float>& frequencies,
-    Array4D<std::complex<float>>& visibilities, Array4D<float>& weights,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
+    const unsigned int kernel_size,
+    const aocommon::xt::Span<float, 2>& frequencies,
+    aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    aocommon::xt::Span<float, 4>& weights,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
@@ -140,12 +143,12 @@ void Proxy::calibrate_init(
   }
 
   // Arguments
-  auto nr_timesteps = visibilities.get_z_dim();
-  auto nr_correlations = visibilities.get_x_dim();
+  const size_t nr_timesteps = visibilities.shape(1);
+  const size_t nr_correlations = visibilities.shape(3);
   assert(nr_correlations == 4);
   const size_t nr_baselines = baselines.size();
-  auto nr_channel_blocks = frequencies.get_y_dim();
-  auto nr_channels_per_block = frequencies.get_x_dim();
+  const size_t nr_channel_blocks = frequencies.shape(0);
+  const size_t nr_channels_per_block = frequencies.shape(1);
 
   // Initialize
   unsigned int nr_antennas = 0;
@@ -155,14 +158,18 @@ void Proxy::calibrate_init(
   }
 
   // New buffers for data grouped by station
-  Array3D<UVW<float>> uvw1(nr_antennas, nr_antennas - 1, nr_timesteps);
-  Array6D<std::complex<float>> visibilities1(
-      nr_antennas, nr_channel_blocks, nr_antennas - 1, nr_timesteps,
-      nr_channels_per_block, nr_correlations);
-  Array6D<float> weights1(nr_antennas, nr_channel_blocks, nr_antennas - 1,
-                          nr_timesteps, nr_channels_per_block, nr_correlations);
-  Array2D<std::pair<unsigned int, unsigned int>> baselines1(nr_antennas,
-                                                            nr_antennas - 1);
+  Tensor<UVW<float>, 3> uvw1 = allocate_tensor<UVW<float>, 3>(
+      {nr_antennas, nr_antennas - 1, nr_timesteps});
+  Tensor<std::complex<float>, 6> visibilities1 =
+      allocate_tensor<std::complex<float>, 6>(
+          {nr_antennas, nr_channel_blocks, nr_antennas - 1, nr_timesteps,
+           nr_channels_per_block, nr_correlations});
+  Tensor<float, 6> weights1 = allocate_tensor<float, 6>(
+      {nr_antennas, nr_channel_blocks, nr_antennas - 1, nr_timesteps,
+       nr_channels_per_block, nr_correlations});
+  Tensor<std::pair<unsigned int, unsigned int>, 2> baselines1 =
+      allocate_tensor<std::pair<unsigned int, unsigned int>, 2>(
+          {nr_antennas, nr_antennas - 1});
 
   // Group baselines by station
   for (unsigned int bl = 0; bl < nr_baselines; bl++) {
@@ -171,20 +178,21 @@ void Proxy::calibrate_init(
     if (antenna1 == antenna2) continue;
     unsigned int bl1 = antenna2 - (antenna2 > antenna1);
 
-    baselines1(antenna1, bl1) = {antenna1, antenna2};
+    baselines1.Span()(antenna1, bl1) = {antenna1, antenna2};
 
     for (unsigned int channel_block = 0; channel_block < nr_channel_blocks;
          channel_block++) {
       for (unsigned int time = 0; time < nr_timesteps; time++) {
-        uvw1(antenna1, bl1, time) = uvw(bl, time);
+        uvw1.Span()(antenna1, bl1, time) = uvw(bl, time);
         for (unsigned int channel = 0; channel < nr_channels_per_block;
              channel++) {
           for (unsigned int cor = 0; cor < nr_correlations; cor++) {
-            visibilities1(antenna1, channel_block, bl1, time, channel, cor) =
+            visibilities1.Span()(antenna1, channel_block, bl1, time, channel,
+                                 cor) =
                 visibilities(bl, time,
                              channel_block * nr_channels_per_block + channel,
                              cor);
-            weights1(antenna1, channel_block, bl1, time, channel, cor) =
+            weights1.Span()(antenna1, channel_block, bl1, time, channel, cor) =
                 weights(bl, time,
                         channel_block * nr_channels_per_block + channel, cor);
           }
@@ -198,24 +206,25 @@ void Proxy::calibrate_init(
 
     std::swap(antenna1, antenna2);
     bl1 = antenna2 - (antenna2 > antenna1);
-    baselines1(antenna1, bl1) = {antenna1, antenna2};
+    baselines1.Span()(antenna1, bl1) = {antenna1, antenna2};
 
     for (unsigned int channel_block = 0; channel_block < nr_channel_blocks;
          channel_block++) {
       for (unsigned int time = 0; time < nr_timesteps; time++) {
-        uvw1(antenna1, bl1, time).u = -uvw(bl, time).u;
-        uvw1(antenna1, bl1, time).v = -uvw(bl, time).v;
-        uvw1(antenna1, bl1, time).w = -uvw(bl, time).w;
+        uvw1.Span()(antenna1, bl1, time).u = -uvw(bl, time).u;
+        uvw1.Span()(antenna1, bl1, time).v = -uvw(bl, time).v;
+        uvw1.Span()(antenna1, bl1, time).w = -uvw(bl, time).w;
 
         for (unsigned int channel = 0; channel < nr_channels_per_block;
              channel++) {
           unsigned int index_cor_transposed[4] = {0, 2, 1, 3};
           for (unsigned int cor = 0; cor < nr_correlations; cor++) {
-            visibilities1(antenna1, channel_block, bl1, time, channel, cor) =
+            visibilities1.Span()(antenna1, channel_block, bl1, time, channel,
+                                 cor) =
                 conj(visibilities(
                     bl, time, channel_block * nr_channels_per_block + channel,
                     index_cor_transposed[cor]));
-            weights1(antenna1, channel_block, bl1, time, channel, cor) =
+            weights1.Span()(antenna1, channel_block, bl1, time, channel, cor) =
                 weights(bl, time,
                         channel_block * nr_channels_per_block + channel,
                         index_cor_transposed[cor]);
@@ -238,7 +247,8 @@ void Proxy::calibrate_init(
       const std::array<size_t, 1> frequencies_channel_block_shape{
           nr_channels_per_block};
       auto frequencies_channel_block = aocommon::xt::CreateSpan(
-          frequencies.data(channel_block), frequencies_channel_block_shape);
+          const_cast<float*>(&frequencies(channel_block, 0)),
+          frequencies_channel_block_shape);
       const std::array<size_t, 1> aterm_offsets_shape{aterm_offsets.size()};
       auto aterm_offsets_span =
           aocommon::xt::CreateSpan(aterm_offsets.data(), aterm_offsets_shape);
@@ -246,24 +256,27 @@ void Proxy::calibrate_init(
       const std::array<size_t, 1> baselines_shape{nr_antennas - 1};
       plans[i].push_back(make_plan(
           kernel_size, frequencies_channel_block,
-          aocommon::xt::CreateSpan(uvw1.data(i), uvw_shape),
-          aocommon::xt::CreateSpan(baselines1.data(i), baselines_shape),
-          aterm_offsets_span, options));
+          aocommon::xt::CreateSpan(&uvw1.Span()(i, 0, 0), uvw_shape),
+          aocommon::xt::CreateSpan(&baselines1.Span()(i, 0), baselines_shape),
+          aterm_offsets, options));
     }
   }
 
   // Initialize calibration
   do_calibrate_init(std::move(plans), frequencies, std::move(visibilities1),
                     std::move(weights1), std::move(uvw1), std::move(baselines1),
-                    spheroidal);
+                    taper);
 }
 
 void Proxy::calibrate_update(
-    const int station_nr, const Array5D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-    Array4D<double>& hessian, Array3D<double>& gradient,
-    Array1D<double>& residual) {
-  do_calibrate_update(station_nr, aterms, derivative_aterms, hessian, gradient,
+    const int antenna_nr,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+        aterm_derivatives,
+    aocommon::xt::Span<double, 4>& hessian,
+    aocommon::xt::Span<double, 3>& gradient,
+    aocommon::xt::Span<double, 1>& residual) {
+  do_calibrate_update(antenna_nr, aterms, aterm_derivatives, hessian, gradient,
                       residual);
 }
 
@@ -392,6 +405,14 @@ void Proxy::check_dimensions(
                    aterms.get_w_dim(), aterms.get_z_dim(), aterms.get_y_dim(),
                    aterms.get_x_dim(), 4, aterm_offsets.get_x_dim(),
                    spheroidal.get_y_dim(), spheroidal.get_x_dim());
+}
+
+Tensor<float, 1> Proxy::compute_wavenumbers(
+    aocommon::xt::Span<float, 1>& frequencies) {
+  auto wavenumbers = allocate_tensor<float, 1>({frequencies.size()});
+  const double speed_of_light = 299792458.0;
+  wavenumbers.Span() = 2 * M_PI * frequencies / speed_of_light;
+  return wavenumbers;
 }
 
 Array1D<float> Proxy::compute_wavenumbers(

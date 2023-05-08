@@ -94,22 +94,22 @@ void KernelsInstance::tile_grid(
 
 void KernelsInstance::transpose_aterm(
     const unsigned int nr_polarizations,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms_src,
-    Array4D<std::complex<float>>& aterms_dst) const {
-  ASSERT(aterms_src.bytes() == aterms_dst.bytes());
-  ASSERT(aterms_src.get_y_dim() == aterms_src.get_x_dim());
-  ASSERT(aterms_dst.get_z_dim() == nr_polarizations);
-  const unsigned int nr_stations = aterms_src.get_w_dim();
-  const unsigned int nr_timeslots = aterms_src.get_z_dim();
-  const unsigned int subgrid_size = aterms_src.get_y_dim();
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms_src,
+    aocommon::xt::Span<std::complex<float>, 4>& aterms_dst) const {
+  ASSERT(nr_polarizations * aterms_src.size() == aterms_dst.size());
+  const size_t nr_stations = aterms_src.shape(0);
+  const size_t nr_timeslots = aterms_src.shape(1);
+  const size_t subgrid_size = aterms_src.shape(2);
+  assert(subgrid_size == aterms_src.shape(3));
+  assert(nr_polarizations == aterms_dst.shape(1));
 
 #pragma omp parallel for
-  for (unsigned int pixel = 0; pixel < subgrid_size * subgrid_size; pixel++) {
-    for (unsigned int station = 0; station < nr_stations; station++) {
-      for (unsigned int timeslot = 0; timeslot < nr_timeslots; timeslot++) {
-        unsigned int y = pixel / subgrid_size;
-        unsigned int x = pixel % subgrid_size;
-        unsigned int term_nr = station * nr_timeslots + timeslot;
+  for (size_t pixel = 0; pixel < subgrid_size * subgrid_size; pixel++) {
+    for (size_t station = 0; station < nr_stations; station++) {
+      for (size_t timeslot = 0; timeslot < nr_timeslots; timeslot++) {
+        const size_t y = pixel / subgrid_size;
+        const size_t x = pixel % subgrid_size;
+        const size_t term_nr = station * nr_timeslots + timeslot;
 
         Matrix2x2<std::complex<float>> term =
             aterms_src(station, timeslot, y, x);

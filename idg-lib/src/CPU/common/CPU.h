@@ -78,18 +78,20 @@ class CPU : public Proxy {
 
   void do_calibrate_init(
       std::vector<std::vector<std::unique_ptr<Plan>>>&& plans,
-      const Array2D<float>& frequencies,
-      Array6D<std::complex<float>>&& visibilities, Array6D<float>&& weights,
-      Array3D<UVW<float>>&& uvw,
-      Array2D<std::pair<unsigned int, unsigned int>>&& baselines,
-      const Array2D<float>& taper) override;
+      const aocommon::xt::Span<float, 2>& frequencies,
+      Tensor<std::complex<float>, 6>&& visibilities, Tensor<float, 6>&& weights,
+      Tensor<UVW<float>, 3>&& uvw,
+      Tensor<std::pair<unsigned int, unsigned int>, 2>&& baselines,
+      const aocommon::xt::Span<float, 2>& taper) override;
 
   virtual void do_calibrate_update(
-      const int station_nr,
-      const Array5D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array5D<Matrix2x2<std::complex<float>>>& derivative_aterms,
-      Array4D<double>& hessian, Array3D<double>& gradient,
-      Array1D<double>& residual) override;
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 4>& hessian,
+      aocommon::xt::Span<double, 3>& gradient,
+      aocommon::xt::Span<double, 1>& residual) override;
 
   void do_calibrate_finish() override;
 
@@ -131,16 +133,16 @@ class CPU : public Proxy {
 
   struct {
     std::vector<std::vector<std::unique_ptr<Plan>>> plans;
-    unsigned int nr_baselines;
-    unsigned int nr_timesteps;
-    unsigned int nr_channels;
-    Array1D<float> wavenumbers;
-    Array6D<std::complex<float>> visibilities;  // ANTxANTxTIMExCHANxCOR
-    Array6D<float> weights;                     // ANTxANTxTIMExCHANxCOR
-    Array3D<UVW<float>> uvw;
-    Array2D<std::pair<unsigned int, unsigned int>> baselines;
-    std::vector<Array4D<std::complex<float>>> subgrids;
-    std::vector<Array4D<std::complex<float>>> phasors;
+    size_t nr_baselines;
+    size_t nr_timesteps;
+    size_t nr_channels;
+    Tensor<float, 1> wavenumbers;
+    Tensor<std::complex<float>, 6> visibilities;  // ANTxANTxTIMExCHANxCOR
+    Tensor<float, 6> weights;                     // ANTxANTxTIMExCHANxCOR
+    Tensor<UVW<float>, 3> uvw;
+    Tensor<std::pair<unsigned int, unsigned int>, 2> baselines;
+    std::vector<Tensor<std::complex<float>, 4>> subgrids;
+    std::vector<Tensor<std::complex<float>, 4>> phasors;
     std::vector<int> max_nr_timesteps;
   } m_calibrate_state;
 

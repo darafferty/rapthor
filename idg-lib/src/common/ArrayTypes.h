@@ -854,26 +854,21 @@ class Array5D : public Array1D<T> {
         m_a_dim(a_dim) {}
 
   /**
-   * @brief Construct a new Array5D object from a Memory object
+   * @brief Construct a new Array5D object from a Span
    *
-   * @param memory Unique pointer to the Memory object that will hold the data.
-   *               Must be large enough to hold all elements.
-   *               The Array class will take ownership of the unique_ptr by
-   * moving it.
-   * @param e_dim Size of the e dimension
-   * @param d_dim Size of the d dimension
-   * @param c_dim Size of the c dimension
-   * @param b_dim Size of the b dimension
-   * @param a_dim Size of the a dimension (fastest changing index)
+   * @param data The Span that the Array will use.
+   *             Must be avaible during the life time of the Array
+   *             The user is responsible for allocation and deallocation.
    */
-  Array5D(std::unique_ptr<auxiliary::Memory> memory, size_t e_dim, size_t d_dim,
-          size_t z_dim, size_t c_dim, size_t b_dim, size_t a_dim)
-      : Array1D<T>(std::move(memory), e_dim * d_dim * c_dim * b_dim * a_dim),
-        m_e_dim(e_dim),
-        m_d_dim(d_dim),
-        m_c_dim(c_dim),
-        m_b_dim(b_dim),
-        m_a_dim(a_dim) {}
+  Array5D(const aocommon::xt::Span<T, 5>& data)
+      : m_e_dim(data.shape(0)),
+        m_d_dim(data.shape(1)),
+        m_c_dim(data.shape(2)),
+        m_b_dim(data.shape(3)),
+        m_a_dim(data.shape(4)) {
+    this->m_memory = nullptr;
+    this->m_buffer = const_cast<T*>(data.data());
+  }
 
   /**
    * @brief Move constructor
@@ -1073,31 +1068,6 @@ class Array6D : public Array1D<T> {
   Array6D(T* data, size_t f_dim, size_t e_dim, size_t d_dim, size_t c_dim,
           size_t b_dim, size_t a_dim)
       : Array1D<T>(data, f_dim * e_dim * d_dim * c_dim * b_dim * a_dim),
-        m_f_dim(f_dim),
-        m_e_dim(e_dim),
-        m_d_dim(d_dim),
-        m_c_dim(c_dim),
-        m_b_dim(b_dim),
-        m_a_dim(a_dim) {}
-
-  /**
-   * @brief Construct a new Array6D object from a Memory object
-   *
-   * @param memory Unique pointer to the Memory object that will hold the data.
-   *               Must be large enough to hold all elements.
-   *               The Array class will take ownership of the unique_ptr by
-   * moving it.
-   * @param f_dim Size of the f dimension
-   * @param e_dim Size of the e dimension
-   * @param d_dim Size of the d dimension
-   * @param c_dim Size of the c dimension
-   * @param b_dim Size of the b dimension
-   * @param a_dim Size of the a dimension (fastest changing index)
-   */
-  Array6D(std::unique_ptr<auxiliary::Memory> memory, size_t f_dim, size_t e_dim,
-          size_t d_dim, size_t z_dim, size_t c_dim, size_t b_dim, size_t a_dim)
-      : Array1D<T>(std::move(memory),
-                   f_dim * e_dim * d_dim * c_dim * b_dim * a_dim),
         m_f_dim(f_dim),
         m_e_dim(e_dim),
         m_d_dim(d_dim),
