@@ -16,8 +16,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 from rapthor._version import __version__ as version
 from rapthor import process, modifystate
+from rapthor.lib.parset import parset_read
 import optparse
 import sys
+import traceback
 
 
 if __name__ == '__main__':
@@ -46,6 +48,7 @@ if __name__ == '__main__':
         # Run state modification tool
         modifystate.run(parset_file)
     else:
+        parset = parset_read(parset_file, use_log_file=False)
         try:
             # Run the processing
             process.run(parset_file, logging_level=logging_level)
@@ -53,3 +56,6 @@ if __name__ == '__main__':
             import logging
             log = logging.getLogger('rapthor')
             log.critical(e)
+            if parset.debug_workflow:
+                print(traceback.format_exc())
+                traceback.print_exc()
