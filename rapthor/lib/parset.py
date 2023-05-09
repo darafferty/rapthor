@@ -75,7 +75,6 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         ms_files += glob.glob(os.path.join(search_str))
     parset_dict['mss'] = sorted(ms_files)
     if len(parset_dict['mss']) == 0:
-        log.error('No input MS files were found!')
         raise FileNotFoundError('No input MS files were found!')
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
@@ -99,8 +98,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
             log.info('User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one.')
             parset_dict['download_initial_skymodel'] = True
     elif not os.path.exists(parset_dict['input_skymodel']):
-        log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
-        raise FileNotFoundError('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
+        raise FileNotFoundError('Input sky model file "{}" not found.'.format(parset_dict['input_skymodel']))
 
     # Check for invalid sections
     given_sections = list(parset._sections.keys())
