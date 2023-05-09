@@ -17,6 +17,7 @@
 from rapthor._version import __version__ as version
 from rapthor import process, modifystate
 from rapthor.lib.parset import parset_read
+import logging
 import optparse
 import sys
 import traceback
@@ -53,7 +54,6 @@ if __name__ == '__main__':
             # Run the processing
             process.run(parset_file, logging_level=logging_level)
         except Exception as e:
-            import logging
             log = logging.getLogger('rapthor')
             log.critical(e)
             if parset.debug_workflow:
