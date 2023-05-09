@@ -5,6 +5,7 @@ Script to combine two h5parms
 import argparse
 from argparse import RawTextHelpFormatter
 from losoto.h5parm import h5parm
+import logging
 import os
 import sys
 import numpy as np
@@ -621,5 +622,9 @@ if __name__ == '__main__':
     parser.add_argument('--cal_fluxes', help='Flux densities of calibrators', type=str, default='')
     args = parser.parse_args()
 
-    main(args.h51, args.h52, args.outh5, args.mode, reweight=args.reweight,
+    try:
+        main(args.h51, args.h52, args.outh5, args.mode, reweight=args.reweight,
          cal_names=args.cal_names, cal_fluxes=args.cal_fluxes)
+    except ValueError as e:
+        log = logging.getLogger('rapthor:combine_h5parms')
+        log.critical(e)
