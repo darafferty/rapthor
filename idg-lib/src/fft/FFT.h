@@ -8,10 +8,11 @@
 #ifndef IDG_FFTW_H_
 #define IDG_FFTW_H_
 
-#include <iostream>
 #include <complex>
-#include <stdexcept>
+#include <cstdint>
 #include <cstring>
+#include <iostream>
+#include <stdexcept>
 
 namespace idg {
 
