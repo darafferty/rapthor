@@ -11,7 +11,6 @@ set(${PROJECT_NAME}_headers
     auxiliary.h
     Types.h
     KernelTypes.h
-    ArrayTypes.h
     Index.h
     KernelsInstance.h
     Proxy.h

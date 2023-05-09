@@ -28,7 +28,7 @@ class Reference(Proxy):
         wavenumbers,
         visibilities,
         uvw,
-        spheroidal,
+        taper,
         aterms,
         subgrids):
 
@@ -153,8 +153,8 @@ class Reference(Proxy):
                     pixels[3]  = (pixelsXY * aXY2)
                     pixels[3] += (pixelsYY * aYY2)
 
-                    # Load spheroidal
-                    sph = spheroidal[y, x]
+                    # Load taper
+                    sph = taper[y, x]
 
                     # Compute shifted position in subgrid
                     x_dst = (x + (subgrid_size/2)) % subgrid_size
@@ -226,7 +226,7 @@ class Reference(Proxy):
         grid,
         aterms,
         aterm_offsets,
-        spheroidal):
+        taper):
         """
         Grid visibilities onto grid.
 
@@ -251,7 +251,7 @@ class Reference(Proxy):
         :param aterm_offsets: numpy.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = idg.atermoffsettype)
-        :param spheroidal: numpy.ndarray(
+        :param taper: numpy.ndarray(
                 shape=(height, width),
                 dtype = idg.tapertype)
         """
@@ -275,8 +275,8 @@ class Reference(Proxy):
         aterms_aterm_width           = aterms.shape[3]
         aterms_nr_correlations       = aterms.shape[4]
         aterm_offsets_nr_timeslots  = aterm_offsets.shape[0]
-        spheroidal_height            = spheroidal.shape[0]
-        spheroidal_width             = spheroidal.shape[1]
+        taper_height            = taper.shape[0]
+        taper_width             = taper.shape[1]
 
         # convert frequencies into wavenumbers
         wavenumbers = self.compute_wavenumber(frequencies)
@@ -304,7 +304,7 @@ class Reference(Proxy):
         # run subroutines
         self.grid_onto_subgrids(
                 plan, w_step, grid_size, image_size,
-                wavenumbers, visibilities, uvw, spheroidal, aterms, subgrids)
+                wavenumbers, visibilities, uvw, taper, aterms, subgrids)
 
         self.add_subgrids_to_grid(
                 plan, w_step, subgrids, grid)
@@ -328,7 +328,7 @@ class Reference(Proxy):
         wavenumbers,
         visibilities,
         uvw,
-        spheroidal,
+        taper,
         aterms,
         subgrids):
         pass
@@ -346,7 +346,7 @@ class Reference(Proxy):
         grid,
         aterms,
         aterm_offsets,
-        spheroidal):
+        taper):
         """
         Degrid visibilities from grid.
 
@@ -371,7 +371,7 @@ class Reference(Proxy):
         :param aterm_offsets: numpy.ndarray(
                 shape=(nr_timeslots+1),
                 dtype = idg.atermoffsettype)
-        :param spheroidal: numpy.ndarray(
+        :param taper: numpy.ndarray(
                 shape=(height, width),
                 dtype = idg.tapertype)
         """
@@ -395,8 +395,8 @@ class Reference(Proxy):
         aterms_aterm_width           = aterms.shape[3]
         aterms_nr_correlations       = aterms.shape[4]
         aterm_offsets_nr_timeslots  = aterm_offsets.shape[0]
-        spheroidal_height            = spheroidal.shape[0]
-        spheroidal_width             = spheroidal.shape[1]
+        taper_height            = taper.shape[0]
+        taper_width             = taper.shape[1]
 
         # convert frequencies into wavenumbers
         wavenumbers = self.compute_wavenumber(frequencies)
@@ -427,7 +427,7 @@ class Reference(Proxy):
 
         self.degrid_from_subgrids(
                 plan, w_step, grid_size, image_size,
-                wavenumbers, visibilities, uvw, spheroidal, aterms, subgrids)
+                wavenumbers, visibilities, uvw, taper, aterms, subgrids)
 
 
     def transform(

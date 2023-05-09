@@ -102,7 +102,7 @@ __device__ void update_subgrid(
     const unsigned             s,
     const unsigned             y,
     const unsigned             x,
-    const float*  __restrict__ spheroidal,
+    const float*  __restrict__ taper,
     const float2* __restrict__ avg_aterm,
           float2* __restrict__ pixel,
           float2* __restrict__ subgrid)
@@ -120,18 +120,18 @@ __device__ void update_subgrid(
             avg_aterm + i*16, pixel);
     }
 
-    // Load spheroidal
-    float spheroidal_ = spheroidal[i];
+    // Load taper
+    const float taper_ = taper[i];
 
     // Update subgrid
     if (nr_polarizations == 4) {
         for (int pol = 0; pol < 4; pol++) {
             int idx = index_subgrid(4, subgrid_size, s, pol, y_dst, x_dst);
-            subgrid[idx] = pixel[pol] * spheroidal_;
+            subgrid[idx] = pixel[pol] * taper_;
         }
     } else if (nr_polarizations == 1) {
         int idx = index_subgrid(1, subgrid_size, s, 0, y_dst, x_dst);
-        subgrid[idx] = (pixel[0] + pixel[3]) * spheroidal_ * 0.5f;
+        subgrid[idx] = (pixel[0] + pixel[3]) * taper_ * 0.5f;
     }
 }
 
@@ -152,7 +152,7 @@ __device__ void
     const UVW<float>*      __restrict__ uvw,
     const float*           __restrict__ wavenumbers,
     const float2*          __restrict__ visibilities,
-    const float*           __restrict__ spheroidal,
+    const float*           __restrict__ taper,
     const float2*          __restrict__ aterms,
     const unsigned int*    __restrict__ aterm_indices,
     const Metadata*        __restrict__ metadata,
@@ -341,7 +341,7 @@ __device__ void
                     &pixel_cur[j][0], &pixel_sum[j][0]);
                 update_subgrid<nr_polarizations>(
                     subgrid_size, s, y, x,
-                    spheroidal, avg_aterm, &pixel_sum[j][0], subgrid);
+                    taper, avg_aterm, &pixel_sum[j][0], subgrid);
             }
         }
     } // end for i (pixels)
@@ -366,7 +366,7 @@ void kernel_gridder(
         const UVW<float>*   __restrict__ uvw,
         const float*        __restrict__ wavenumbers,
         const float2*       __restrict__ visibilities,
-        const float*        __restrict__ spheroidal,
+        const float*        __restrict__ taper,
         const float2*       __restrict__ aterms,
         const unsigned int* __restrict__ aterm_indices,
         const Metadata*     __restrict__ metadata,
@@ -385,13 +385,13 @@ void kernel_gridder(
         kernel_gridder_<1>(
             time_offset, grid_size, subgrid_size, image_size, w_step,
             shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, aterm_indices,
+            uvw, wavenumbers, visibilities, taper, aterms, aterm_indices,
             metadata, avg_aterm, subgrid);
     }  else {
         kernel_gridder_<4>(
             time_offset, grid_size, subgrid_size, image_size, w_step,
             shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations,
-            uvw, wavenumbers, visibilities, spheroidal, aterms, aterm_indices,
+            uvw, wavenumbers, visibilities, taper, aterms, aterm_indices,
             metadata, avg_aterm, subgrid);
     }
 }

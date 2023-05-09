@@ -72,7 +72,7 @@ __device__ void prepare_shared(
     const int                  nr_stations,
     const int                  aterm_idx,
     const Metadata&            metadata,
-    const float*  spheroidal,
+    const float*  taper,
     const float2* aterms,
     const float2* subgrid)
 {
@@ -99,22 +99,22 @@ __device__ void prepare_shared(
         int x_src = (x + (subgrid_size/2)) % subgrid_size;
         int y_src = (y + (subgrid_size/2)) % subgrid_size;
 
-        // Load spheroidal
-        const float spheroidal_ = spheroidal[y * subgrid_size + x];
+        // Load taper
+        const float taper_ = taper[y * subgrid_size + x];
 
         // Load pixels
         float2 pixel[4];
         if (nr_polarizations == 4) {
             for (unsigned pol = 0; pol < nr_polarizations; pol++) {
                 unsigned int pixel_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_src, x_src);
-                pixel[pol] = subgrid[pixel_idx] * spheroidal_;
+                pixel[pol] = subgrid[pixel_idx] * taper_;
             }
         } else if (nr_polarizations == 1) {
             unsigned int pixel_idx = index_subgrid(nr_polarizations, subgrid_size, s, 0, y_src, x_src);
-            pixel[0] = subgrid[pixel_idx] * spheroidal_;
+            pixel[0] = subgrid[pixel_idx] * taper_;
             pixel[1] = make_float2(0, 0);
             pixel[2] = make_float2(0, 0);
-            pixel[3] = subgrid[pixel_idx] * spheroidal_;
+            pixel[3] = subgrid[pixel_idx] * taper_;
         }
 
         // Apply aterm
@@ -261,7 +261,7 @@ __device__ void kernel_degridder_tp(
     const UVW<float>*    __restrict__ uvw,
     const float*         __restrict__ wavenumbers,
           float2*        __restrict__ visibilities,
-    const float*         __restrict__ spheroidal,
+    const float*         __restrict__ taper,
     const float2*        __restrict__ aterms,
     const unsigned int*  __restrict__ aterm_indices,
     const Metadata*      __restrict__ metadata,
@@ -334,7 +334,7 @@ __device__ void kernel_degridder_tp(
                 prepare_shared(
                     current_nr_pixels, pixel_offset, nr_polarizations, grid_size,
                     subgrid_size, image_size, w_step, shift_l, shift_m, nr_stations,
-                    aterm_idx, m, spheroidal, aterms, subgrid);
+                    aterm_idx, m, taper, aterms, subgrid);
 
                 __syncthreads();
 
@@ -370,7 +370,7 @@ __device__ void kernel_degridder_pt(
     const UVW<float>*   uvw,
     const float*        wavenumbers,
           float2*       visibilities,
-    const float*        spheroidal,
+    const float*        taper,
     const float2*       aterms,
     const unsigned int* aterm_indices,
     const Metadata*     metadata,
@@ -416,7 +416,7 @@ __device__ void kernel_degridder_pt(
             prepare_shared(
                 current_nr_pixels, pixel_offset, nr_polarizations, grid_size,
                 subgrid_size, image_size, w_step, shift_l, shift_m, nr_stations,
-                aterm_idx, m, spheroidal, aterms, subgrid);
+                aterm_idx, m, taper, aterms, subgrid);
 
             __syncthreads();
 
@@ -475,14 +475,14 @@ __device__ void kernel_degridder_pt(
             kernel_degridder_tp<current_nr_channels>( \
                 time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
                 shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations, \
-                uvw, wavenumbers, visibilities, spheroidal, aterms, aterm_indices, metadata, subgrid); \
+                uvw, wavenumbers, visibilities, taper, aterms, aterm_indices, metadata, subgrid); \
         } \
     } else { \
         for (; (channel_offset + current_nr_channels) <= channel_end; channel_offset += current_nr_channels) { \
             kernel_degridder_pt<1>( \
                 time_offset, nr_polarizations, grid_size, subgrid_size, image_size, w_step, \
                 shift_l, shift_m, nr_channels, current_nr_channels, channel_offset, nr_stations, \
-                uvw, wavenumbers, visibilities, spheroidal, aterms, aterm_indices, metadata, subgrid); \
+                uvw, wavenumbers, visibilities, taper, aterms, aterm_indices, metadata, subgrid); \
         } \
     }
 
@@ -506,7 +506,7 @@ void kernel_degridder(
     const UVW<float>*   __restrict__ uvw,
     const float*        __restrict__ wavenumbers,
           float2*       __restrict__ visibilities,
-    const float*        __restrict__ spheroidal,
+    const float*        __restrict__ taper,
     const float2*       __restrict__ aterms,
     const unsigned int* __restrict__ aterm_indices,
     const Metadata*     __restrict__ metadata,

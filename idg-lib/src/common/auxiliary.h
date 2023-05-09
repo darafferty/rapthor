@@ -89,7 +89,7 @@ uint64_t sizeof_aterms(unsigned int nr_stations, unsigned int nr_timeslots,
 uint64_t sizeof_aterm_indices(unsigned int nr_baselines,
                               unsigned int nr_timesteps);
 
-uint64_t sizeof_spheroidal(unsigned int subgrid_size);
+uint64_t sizeof_taper(unsigned int subgrid_size);
 
 uint64_t sizeof_avg_aterm_correction(unsigned int subgrid_size,
                                      uint64_t nr_correlations = 4);

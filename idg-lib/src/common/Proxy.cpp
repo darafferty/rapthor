@@ -19,18 +19,19 @@ Proxy::Proxy()
 Proxy::~Proxy() {}
 
 void Proxy::gridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    const Array4D<std::complex<float>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
   assert(get_grid().data() != nullptr);
 
   check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
                    visibilities, uvw, baselines, get_grid(), aterms,
-                   aterm_offsets, spheroidal);
+                   aterm_offsets, taper);
 
   if ((plan.get_w_step() != 0.0) &&
       (!do_supports_wstacking() && !do_supports_wtiling())) {
@@ -40,50 +41,7 @@ void Proxy::gridding(
   }
 
   do_gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
-              aterm_offsets, spheroidal);
-}
-
-void Proxy::gridding(
-    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
-    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
-    const aocommon::xt::Span<UVW<float>, 2>& uvw,
-    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
-        baselines,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
-    const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
-    const aocommon::xt::Span<float, 2>& taper) {
-  const Array1D<float> frequencies_array(frequencies);
-  const Array4D<std::complex<float>> visibilities_array(visibilities);
-  const Array2D<UVW<float>> uvw_array(uvw);
-  const Array1D<std::pair<unsigned int, unsigned int>> baselines_array(
-      baselines);
-  const Array4D<Matrix2x2<std::complex<float>>> aterms_array(aterms);
-  const Array1D<unsigned int> aterms_offsets_array(aterms_offsets);
-  const Array2D<float> taper_array(taper);
-  gridding(plan, frequencies_array, visibilities_array, uvw_array,
-           baselines_array, aterms_array, aterms_offsets_array, taper_array);
-}
-
-void Proxy::degridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
-  check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
-                   visibilities, uvw, baselines, get_grid(), aterms,
-                   aterm_offsets, spheroidal);
-
-  if ((plan.get_w_step() != 0.0) &&
-      (!do_supports_wstacking() && !do_supports_wtiling())) {
-    throw std::invalid_argument(
-        "w_step is not zero, but this Proxy does not support degridding with "
-        "W-stacking.");
-  }
-
-  do_degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
-                aterm_offsets, spheroidal);
+              aterm_offsets, taper);
 }
 
 void Proxy::degridding(
@@ -93,18 +51,21 @@ void Proxy::degridding(
     const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
         baselines,
     const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
-    const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
     const aocommon::xt::Span<float, 2>& taper) {
-  const Array1D<float> frequencies_array(frequencies);
-  Array4D<std::complex<float>> visibilities_array(visibilities);
-  const Array2D<UVW<float>> uvw_array(uvw);
-  const Array1D<std::pair<unsigned int, unsigned int>> baselines_array(
-      baselines);
-  const Array4D<Matrix2x2<std::complex<float>>> aterms_array(aterms);
-  const Array1D<unsigned int> aterms_offsets_array(aterms_offsets);
-  const Array2D<float> taper_array(taper);
-  degridding(plan, frequencies_array, visibilities_array, uvw_array,
-             baselines_array, aterms_array, aterms_offsets_array, taper_array);
+  check_dimensions(plan.get_options(), plan.get_subgrid_size(), frequencies,
+                   visibilities, uvw, baselines, get_grid(), aterms,
+                   aterm_offsets, taper);
+
+  if ((plan.get_w_step() != 0.0) &&
+      (!do_supports_wstacking() && !do_supports_wtiling())) {
+    throw std::invalid_argument(
+        "w_step is not zero, but this Proxy does not support degridding with "
+        "W-stacking.");
+  }
+
+  do_degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
+                aterm_offsets, taper);
 }
 
 void Proxy::calibrate_init(
@@ -124,7 +85,7 @@ void Proxy::calibrate_init(
   // TODO
   // check_dimensions(
   //    subgrid_size, frequencies, visibilities, uvw, baselines,
-  //    grid, aterms, aterm_offsets, spheroidal);
+  //    grid, aterms, aterm_offsets, taper);
 
   int nr_w_layers;
 
@@ -356,8 +317,8 @@ void Proxy::check_dimensions(
     unsigned int grid_width, unsigned int aterms_nr_timeslots,
     unsigned int aterms_nr_stations, unsigned int aterms_aterm_height,
     unsigned int aterms_aterm_width, unsigned int aterms_nr_polarizations,
-    unsigned int aterm_offsets_nr_timeslots_plus_one,
-    unsigned int spheroidal_height, unsigned int spheroidal_width) const {
+    unsigned int aterm_offsets_nr_timeslots_plus_one, unsigned int taper_height,
+    unsigned int taper_width) const {
   throw_assert(frequencies_nr_channels > 0, "");
   throw_assert(frequencies_nr_channels == visibilities_nr_channels, "");
   throw_assert(visibilities_nr_baselines == uvw_nr_baselines, "");
@@ -373,8 +334,8 @@ void Proxy::check_dimensions(
                "");
   throw_assert(aterms_aterm_height == aterms_aterm_width,
                "");  // TODO: remove restriction
-  throw_assert(spheroidal_height == subgrid_size, "");
-  throw_assert(spheroidal_height == subgrid_size, "");
+  throw_assert(taper_height == subgrid_size, "");
+  throw_assert(taper_height == subgrid_size, "");
   if (options.mode == Plan::Mode::FULL_POLARIZATION) {
     throw_assert(visibilities_nr_correlations == 4, "");
     throw_assert(grid_nr_polarizations == 4, "");
@@ -389,42 +350,29 @@ void Proxy::check_dimensions(
 
 void Proxy::check_dimensions(
     const Plan::Options& options, unsigned int subgrid_size,
-    const Array1D<float>& frequencies,
-    const Array4D<std::complex<float>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+    const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
     const aocommon::xt::Span<std::complex<float>, 4>& grid,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) const {
-  check_dimensions(options, subgrid_size, frequencies.get_x_dim(),
-                   visibilities.get_w_dim(), visibilities.get_z_dim(),
-                   visibilities.get_y_dim(), visibilities.get_x_dim(),
-                   uvw.get_y_dim(), uvw.get_x_dim(), 3, baselines.get_x_dim(),
-                   2, grid.shape(1), grid.shape(2), grid.shape(3),
-                   aterms.get_w_dim(), aterms.get_z_dim(), aterms.get_y_dim(),
-                   aterms.get_x_dim(), 4, aterm_offsets.get_x_dim(),
-                   spheroidal.get_y_dim(), spheroidal.get_x_dim());
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) const {
+  check_dimensions(options, subgrid_size, frequencies.size(),
+                   visibilities.shape(0), visibilities.shape(1),
+                   visibilities.shape(2), visibilities.shape(3), uvw.shape(0),
+                   uvw.shape(1), 3, baselines.size(), 2, grid.shape(1),
+                   grid.shape(2), grid.shape(3), aterms.shape(0),
+                   aterms.shape(1), aterms.shape(2), aterms.shape(3), 4,
+                   aterm_offsets.size(), taper.shape(0), taper.shape(1));
 }
 
 Tensor<float, 1> Proxy::compute_wavenumbers(
-    aocommon::xt::Span<float, 1>& frequencies) {
+    const aocommon::xt::Span<float, 1>& frequencies) {
   auto wavenumbers = allocate_tensor<float, 1>({frequencies.size()});
   const double speed_of_light = 299792458.0;
   wavenumbers.Span() = 2 * M_PI * frequencies / speed_of_light;
-  return wavenumbers;
-}
-
-Array1D<float> Proxy::compute_wavenumbers(
-    const Array1D<float>& frequencies) const {
-  int nr_channels = frequencies.get_x_dim();
-  Array1D<float> wavenumbers(nr_channels);
-
-  const double speed_of_light = 299792458.0;
-  for (int i = 0; i < nr_channels; i++) {
-    wavenumbers(i) = 2 * M_PI * frequencies(i) / speed_of_light;
-  }
-
   return wavenumbers;
 }
 

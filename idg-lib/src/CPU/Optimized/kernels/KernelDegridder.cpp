@@ -18,7 +18,7 @@ void kernel_degridder(
     const float w_step_in_lambda, const float* __restrict__ shift,
     const int nr_correlations, const int nr_channels, const int nr_stations,
     const idg::UVW<float>* uvw, const float* wavenumbers,
-    std::complex<float>* visibilities, const float* spheroidal,
+    std::complex<float>* visibilities, const float* taper,
     const std::complex<float>* aterms, const unsigned int* aterm_indices,
     const idg::Metadata* metadata, const std::complex<float>* subgrid) {
 #if defined(USE_LOOKUP)
@@ -131,25 +131,25 @@ void kernel_degridder(
           int y = i / subgrid_size;
           int x = i % subgrid_size;
 
-          // Load spheroidal
-          float _spheroidal = spheroidal[y * subgrid_size + x];
+          // Load taper
+          const float taper_ = taper[y * subgrid_size + x];
 
           // Compute shifted position in subgrid
           int x_src = (x + (subgrid_size / 2)) % subgrid_size;
           int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
-          // Load pixel values and apply spheroidal
+          // Load pixel values and apply taper
           std::complex<float> pixels[4] __attribute__((aligned(ALIGNMENT)));
           if (nr_correlations == 4) {
             for (int pol = 0; pol < nr_polarizations; pol++) {
               size_t src_idx = index_subgrid(nr_polarizations, subgrid_size, s,
                                              pol, y_src, x_src);
-              pixels[pol] = _spheroidal * subgrid[src_idx];
+              pixels[pol] = taper_ * subgrid[src_idx];
             }
           } else if (nr_correlations == 2) {
             size_t src_idx = index_subgrid(nr_polarizations, subgrid_size, s, 0,
                                            y_src, x_src);
-            std::complex<float> value = _spheroidal * subgrid[src_idx];
+            std::complex<float> value = taper_ * subgrid[src_idx];
             pixels[0] = value;
             pixels[3] = value;
           }

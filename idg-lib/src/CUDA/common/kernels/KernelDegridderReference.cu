@@ -16,7 +16,7 @@ __global__ void kernel_degridder(
     const UVW<float>*   __restrict__ uvw,
     const float*        __restrict__ wavenumbers,
           float2*       __restrict__ visibilities,
-    const float*        __restrict__ spheroidal,
+    const float*        __restrict__ taper,
     const float2*       __restrict__ aterms,
     const unsigned int* __restrict__ aterm_indices,
     const Metadata*     __restrict__ metadata,
@@ -69,14 +69,14 @@ __global__ void kernel_degridder(
         break;
       }
 
-      // Load spheroidal
-      float sph = spheroidal[y * subgrid_size + x];
+      // Load taper
+      float sph = taper[y * subgrid_size + x];
 
       // Compute shifted position in subgrid
       int x_src = (x + (subgrid_size / 2)) % subgrid_size;
       int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
-      // Load pixel value and apply spheroidal
+      // Load pixel value and apply taper
       float2 pixel[4];
       if (nr_polarizations == 4) {
         for (int pol = 0; pol < nr_polarizations; pol++) {

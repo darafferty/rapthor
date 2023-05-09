@@ -35,7 +35,7 @@ class InstanceCPU : public KernelsInstance {
       const float w_step_in_lambda, const float *__restrict__ shift,           \
       const int nr_channels, const int nr_correlations, const int nr_stations, \
       const idg::UVW<float>*uvw, const float *wavenumbers,                     \
-      const std::complex<float>*visibilities, const float *spheroidal,         \
+      const std::complex<float>*visibilities, const float *taper,              \
       const std::complex<float>*aterms, const unsigned int *aterm_indices,     \
       const std::complex<float>*avg_aterm, const idg::Metadata *metadata,      \
       std::complex<float>*subgrid
@@ -47,7 +47,7 @@ class InstanceCPU : public KernelsInstance {
       const float w_step_in_lambda, const float *__restrict__ shift,           \
       const int nr_channels, const int nr_correlations, const int nr_stations, \
       const idg::UVW<float>*uvw, const float *wavenumbers,                     \
-      std::complex<float>*visibilities, const float *spheroidal,               \
+      std::complex<float>*visibilities, const float *taper,                    \
       const std::complex<float>*aterms, const unsigned int *aterm_indices,     \
       const idg::Metadata *metadata, const std::complex<float>*subgrid
   virtual void run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) = 0;

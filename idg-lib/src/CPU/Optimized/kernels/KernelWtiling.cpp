@@ -11,10 +11,11 @@
 #include <omp.h>
 #include <fftw3.h>
 
+#include <xtensor/xtensor.hpp>
+
 #include "common/memory.h"
 #include "common/Types.h"
 #include "common/Index.h"
-#include "common/ArrayTypes.h"
 #include "common/WTiles.h"
 #include "Math.h"
 
@@ -136,7 +137,7 @@ inline void kernel_copy_tile(int nr_polarizations, int src_tile_size,
   const int index_pol_transposed[nr_polarizations] = {0, 2, 1, 3};
   int padding = dst_tile_size - src_tile_size;
   int padding2 = padding / 2;
-  int copy_tile_size = min(src_tile_size, dst_tile_size);
+  int copy_tile_size = std::min(src_tile_size, dst_tile_size);
 
   for (int pol = 0; pol < nr_polarizations; pol++) {
     for (int y = 0; y < copy_tile_size; y++) {

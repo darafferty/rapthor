@@ -60,7 +60,7 @@ __global__ void kernel_gridder(
     const UVW<float>*   __restrict__ uvw,
     const float*        __restrict__ wavenumbers,
     const float2*       __restrict__ visibilities,
-    const float*        __restrict__ spheroidal,
+    const float*        __restrict__ taper,
     const float2*       __restrict__ aterms,
     const unsigned int* __restrict__ aterm_indices,
     const Metadata*     __restrict__ metadata,
@@ -174,8 +174,8 @@ __global__ void kernel_gridder(
         aterm_idx_previous, station1, station2, aterms,
         pixel_cur, pixel_sum);
 
-    // Load spheroidal
-    float sph = spheroidal[y * subgrid_size + x];
+    // Load taper
+    float sph = taper[y * subgrid_size + x];
 
     // Compute shifted position in subgrid
     int x_dst = (x + (subgrid_size/2)) % subgrid_size;

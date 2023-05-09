@@ -13,8 +13,7 @@ void ReferenceKernels::run_gridder(KERNEL_GRIDDER_ARGUMENTS) {
   kernel_gridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                  image_size, w_step_in_lambda, shift, nr_correlations,
                  nr_channels, nr_stations, uvw, wavenumbers, visibilities,
-                 spheroidal, aterms, aterm_indices, avg_aterm, metadata,
-                 subgrid);
+                 taper, aterms, aterm_indices, avg_aterm, metadata, subgrid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::gridder, states[0], states[1]);
@@ -27,7 +26,7 @@ void ReferenceKernels::run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) {
   kernel_degridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                    image_size, w_step_in_lambda, shift, nr_correlations,
                    nr_channels, nr_stations, uvw, wavenumbers, visibilities,
-                   spheroidal, aterms, aterm_indices, metadata, subgrid);
+                   taper, aterms, aterm_indices, metadata, subgrid);
   states[1] = m_powersensor->read();
   if (m_report) {
     m_report->update(Report::degridder, states[0], states[1]);
