@@ -226,7 +226,6 @@ def get_global_options(parset):
     else:
         for f in flag_list:
             if f not in parset_dict['flag_expr']:
-                          'appear in flag_expr'.format(f))
                 raise ValueError('Flag selection "{}" was specified but does not '
                           'appear in flag_expr'.format(f))
 
