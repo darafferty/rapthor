@@ -296,7 +296,7 @@ void kernel_adder_wtiles_to_grid(
 
   // FFT plans
   typedef std::pair<fftwf_plan, fftwf_plan> fft_pair;
-  std::map<int, fft_pair> fft_plans;
+  std::map<size_t, fft_pair> fft_plans;
 
   // Iterate tiles in batches
   size_t current_nr_tiles = omp_get_max_threads();
@@ -467,7 +467,7 @@ void kernel_splitter_wtiles_from_grid(
 
   // FFT plans
   typedef std::pair<fftwf_plan, fftwf_plan> fft_pair;
-  std::map<int, fft_pair> fft_plans;
+  std::map<size_t, fft_pair> fft_plans;
 
   // Iterate tiles in batches
   size_t current_nr_tiles = omp_get_max_threads();
