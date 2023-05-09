@@ -155,26 +155,27 @@ unsigned int CPU::compute_jobsize(const Plan& plan,
     High level routines
 */
 void CPU::do_gridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    const Array4D<std::complex<float>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
 
   m_kernels->set_report(get_report());
 
-  Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+  Tensor<float, 1> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  const size_t nr_baselines = visibilities.get_w_dim();
-  const size_t nr_timesteps = visibilities.get_z_dim();
-  const size_t nr_channels = visibilities.get_y_dim();
-  const size_t nr_correlations = visibilities.get_x_dim();
+  const size_t nr_baselines = visibilities.shape(0);
+  const size_t nr_timesteps = visibilities.shape(1);
+  const size_t nr_channels = visibilities.shape(2);
+  const size_t nr_correlations = visibilities.shape(3);
   const size_t nr_polarizations = get_grid().shape(1);
   const size_t grid_size = get_grid().shape(2);
   assert(get_grid().shape(3) == grid_size);
@@ -182,7 +183,7 @@ void CPU::do_gridding(
   const std::array<float, 2>& shift = plan.get_shift();
   const float w_step = plan.get_w_step();
   const float image_size = plan.get_cell_size() * grid_size;
-  const size_t nr_stations = aterms.get_z_dim();
+  const size_t nr_stations = aterms.shape(1);
 
   WTileUpdateSet wtile_flush_set = plan.get_wtile_flush_set();
 
@@ -192,9 +193,11 @@ void CPU::do_gridding(
                         nr_polarizations, subgrid_size);
 
     // Allocate memory for subgrids
-    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_correlations,
-                                          subgrid_size, subgrid_size);
+    const size_t max_nr_subgrids =
+        plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+    Tensor<std::complex<float>, 4> subgrids =
+        allocate_tensor<std::complex<float>, 4>(
+            {max_nr_subgrids, nr_correlations, subgrid_size, subgrid_size});
 
     // Performance measurement
     get_report()->initialize(nr_channels, subgrid_size, grid_size);
@@ -212,27 +215,26 @@ void CPU::do_gridding(
       auto current_nr_subgrids =
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
       const float* shift_ptr = shift.data();
-      auto* wavenumbers_ptr = wavenumbers.data();
-      auto* spheroidal_ptr = spheroidal.data();
-      auto* aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
+      const float* wavenumbers_ptr = wavenumbers.Span().data();
+      auto* taper_ptr = taper.data();
+      auto* aterm_ptr =
+          reinterpret_cast<const std::complex<float>*>(aterms.data());
       const unsigned int* aterm_idx_ptr = plan.get_aterm_indices_ptr();
       auto* avg_aterm_ptr = m_avg_aterm_correction.size()
                                 ? m_avg_aterm_correction.data()
                                 : nullptr;
       auto* metadata_ptr = plan.get_metadata_ptr(first_bl);
-      auto* uvw_ptr = uvw.data(0, 0);
-      auto* visibilities_ptr =
-          reinterpret_cast<std::complex<float>*>(visibilities.data(0, 0, 0));
-      auto* subgrids_ptr = subgrids.data(0, 0, 0, 0);
+      const UVW<float>* uvw_ptr = uvw.data();
+      const std::complex<float>* visibilities_ptr = visibilities.data();
+      std::complex<float>* subgrids_ptr = subgrids.Span().data();
       std::complex<float>* grid_ptr = get_grid().data();
 
       // Gridder kernel
-      m_kernels->run_gridder(current_nr_subgrids, nr_polarizations, grid_size,
-                             subgrid_size, image_size, w_step, shift_ptr,
-                             nr_channels, nr_correlations, nr_stations, uvw_ptr,
-                             wavenumbers_ptr, visibilities_ptr, spheroidal_ptr,
-                             aterm_ptr, aterm_idx_ptr, avg_aterm_ptr,
-                             metadata_ptr, subgrids_ptr);
+      m_kernels->run_gridder(
+          current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+          image_size, w_step, shift_ptr, nr_channels, nr_correlations,
+          nr_stations, uvw_ptr, wavenumbers_ptr, visibilities_ptr, taper_ptr,
+          aterm_ptr, aterm_idx_ptr, avg_aterm_ptr, metadata_ptr, subgrids_ptr);
 
       // FFT kernel
       m_kernels->run_subgrid_fft(grid_size, subgrid_size,
@@ -288,32 +290,34 @@ void CPU::do_gridding(
 }  // end gridding
 
 void CPU::do_degridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
 #if defined(DEBUG)
   std::cout << __func__ << std::endl;
 #endif
 
   m_kernels->set_report(get_report());
 
-  Array1D<float> wavenumbers = compute_wavenumbers(frequencies);
+  Tensor<float, 1> wavenumbers = compute_wavenumbers(frequencies);
 
   // Arguments
-  const size_t nr_baselines = visibilities.get_w_dim();
-  const size_t nr_timesteps = visibilities.get_z_dim();
-  const size_t nr_channels = visibilities.get_y_dim();
-  const size_t nr_correlations = visibilities.get_x_dim();
+  const size_t nr_baselines = visibilities.shape(0);
+  const size_t nr_timesteps = visibilities.shape(1);
+  const size_t nr_channels = visibilities.shape(2);
+  const size_t nr_correlations = visibilities.shape(3);
   const size_t nr_polarizations = get_grid().shape(1);
   const size_t grid_size = get_grid().shape(2);
   assert(get_grid().shape(3) == grid_size);
   const float image_size = plan.get_cell_size() * grid_size;
   const size_t subgrid_size = plan.get_subgrid_size();
   const float w_step = plan.get_w_step();
-  const size_t nr_stations = aterms.get_z_dim();
+  const size_t nr_stations = aterms.shape(1);
   const std::array<float, 2>& shift = plan.get_shift();
 
   WTileUpdateSet wtile_initialize_set = plan.get_wtile_initialize_set();
@@ -324,9 +328,11 @@ void CPU::do_degridding(
                         nr_polarizations, subgrid_size);
 
     // Allocate memory for subgrids
-    int max_nr_subgrids = plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
-    Array4D<std::complex<float>> subgrids(max_nr_subgrids, nr_correlations,
-                                          subgrid_size, subgrid_size);
+    const size_t max_nr_subgrids =
+        plan.get_max_nr_subgrids(0, nr_baselines, jobsize);
+    Tensor<std::complex<float>, 4> subgrids =
+        allocate_tensor<std::complex<float>, 4>(
+            {max_nr_subgrids, nr_correlations, subgrid_size, subgrid_size});
 
     // Performance measurement
     get_report()->initialize(nr_channels, subgrid_size, grid_size);
@@ -344,15 +350,15 @@ void CPU::do_degridding(
       const size_t current_nr_subgrids =
           plan.get_nr_subgrids(first_bl, current_nr_baselines);
       const float* shift_ptr = shift.data();
-      auto* wavenumbers_ptr = wavenumbers.data();
-      auto* spheroidal_ptr = spheroidal.data();
-      auto* aterm_ptr = reinterpret_cast<std::complex<float>*>(aterms.data());
+      const float* wavenumbers_ptr = wavenumbers.Span().data();
+      auto* taper_ptr = taper.data();
+      auto* aterm_ptr =
+          reinterpret_cast<const std::complex<float>*>(aterms.data());
       const unsigned int* aterm_idx_ptr = plan.get_aterm_indices_ptr();
       auto* metadata_ptr = plan.get_metadata_ptr(first_bl);
-      auto* uvw_ptr = uvw.data(0, 0);
-      auto* visibilities_ptr =
-          reinterpret_cast<std::complex<float>*>(visibilities.data(0, 0, 0));
-      auto* subgrids_ptr = subgrids.data(0, 0, 0, 0);
+      const UVW<float>* uvw_ptr = uvw.data();
+      std::complex<float>* visibilities_ptr = visibilities.data();
+      std::complex<float>* subgrids_ptr = subgrids.Span().data();
       const std::complex<float>* grid_ptr = get_grid().data();
 
       // Splitter kernel
@@ -381,8 +387,8 @@ void CPU::do_degridding(
       m_kernels->run_degridder(
           current_nr_subgrids, nr_polarizations, grid_size, subgrid_size,
           image_size, w_step, shift_ptr, nr_channels, nr_correlations,
-          nr_stations, uvw_ptr, wavenumbers_ptr, visibilities_ptr,
-          spheroidal_ptr, aterm_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr);
+          nr_stations, uvw_ptr, wavenumbers_ptr, visibilities_ptr, taper_ptr,
+          aterm_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr);
 
       // Performance reporting
       auto current_nr_timesteps =
@@ -504,7 +510,7 @@ void CPU::do_calibrate_init(
                                nr_subgrids * nr_correlations, subgrids_ptr,
                                FFTW_FORWARD);
 
-    // Apply spheroidal
+    // Apply taper
     for (size_t i = 0; i < nr_subgrids; i++) {
       for (size_t pol = 0; pol < nr_polarizations; pol++) {
         for (size_t j = 0; j < subgrid_size; j++) {

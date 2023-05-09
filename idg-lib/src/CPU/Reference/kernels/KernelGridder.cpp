@@ -19,8 +19,8 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
                     const float* shift, const int nr_correlations,
                     const int nr_channels, const int nr_stations,
                     const idg::UVW<float>* uvw, const float* wavenumbers,
-                    const std::complex<float>* visibilities,
-                    const float* spheroidal, const std::complex<float>* aterms,
+                    const std::complex<float>* visibilities, const float* taper,
+                    const std::complex<float>* aterms,
                     const unsigned int* aterm_indices,
                     const std::complex<float>* avg_aterm_correction,
                     const idg::Metadata* metadata,
@@ -147,8 +147,8 @@ void kernel_gridder(const int nr_subgrids, const int nr_polarizations,
               avg_aterm_correction + (y * subgrid_size + x) * 16, pixel);
         }
 
-        // Load spheroidal
-        float sph = spheroidal[y * subgrid_size + x];
+        // Load taper
+        float sph = taper[y * subgrid_size + x];
 
         // Compute shifted position in subgrid
         int x_dst = (x + (subgrid_size / 2)) % subgrid_size;

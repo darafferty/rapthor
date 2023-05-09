@@ -186,7 +186,7 @@ void GenericOptimized::do_calibrate_init(
                                   nr_subgrids * nr_polarizations, subgrids_ptr,
                                   CUFFT_FORWARD);
 
-      // Apply spheroidal
+      // Apply taper
       for (size_t i = 0; i < nr_subgrids; i++) {
         for (size_t pol = 0; pol < nr_correlations; pol++) {
           for (size_t j = 0; j < subgrid_size; j++) {

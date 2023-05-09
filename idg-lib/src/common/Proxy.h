@@ -12,7 +12,6 @@
 
 #include <aocommon/xt/span.h>
 
-#include "ArrayTypes.h"
 #include "RuntimeWrapper.h"
 #include "ProxyInfo.h"
 #include "Types.h"
@@ -76,15 +75,6 @@ class Proxy {
    * @param[in] taper A two dimensional array of floats of the size of a
    * subgrid.
    */
-
-  void gridding(const Plan& plan, const Array1D<float>& frequencies,
-                const Array4D<std::complex<float>>& visibilities,
-                const Array2D<UVW<float>>& uvw,
-                const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-                const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-                const Array1D<unsigned int>& aterm_offsets,
-                const Array2D<float>& taper);
-
   void gridding(
       const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
       const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
@@ -92,7 +82,7 @@ class Proxy {
       const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
           baselines,
       const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
-      const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
       const aocommon::xt::Span<float, 2>& taper);
 
   /**
@@ -127,21 +117,13 @@ class Proxy {
    * subgrid.
    */
   void degridding(
-      const Plan& plan, const Array1D<float>& frequencies,
-      Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterm_offsets, const Array2D<float>& taper);
-
-  void degridding(
       const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
       aocommon::xt::Span<std::complex<float>, 4>& visibilities,
       const aocommon::xt::Span<UVW<float>, 2>& uvw,
       const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
           baselines,
       const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
-      const aocommon::xt::Span<unsigned int, 1>& aterms_offsets,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
       const aocommon::xt::Span<float, 2>& taper);
 
   /**
@@ -399,22 +381,24 @@ class Proxy {
  private:
   //! Degrid the visibilities from a uniform grid
   virtual void do_gridding(
-      const Plan& plan, const Array1D<float>& frequencies,
-      const Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterm_offsets,
-      const Array2D<float>& taper) = 0;
+      const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+      const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+      const aocommon::xt::Span<float, 2>& taper) = 0;
 
   virtual void do_degridding(
-      const Plan& plan, const Array1D<float>& frequencies,
-      Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterm_offsets,
-      const Array2D<float>& taper) = 0;
+      const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+      aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+      const aocommon::xt::Span<float, 2>& taper) = 0;
 
   // Using rvalue references (&&) for all containers do_calibrate_init will take
   // ownership of. Call with std::move(...)
@@ -475,19 +459,18 @@ class Proxy {
 
   void check_dimensions(
       const Plan::Options& options, unsigned int subgrid_size,
-      const Array1D<float>& frequencies,
-      const Array4D<std::complex<float>>& visibilities,
-      const Array2D<UVW<float>>& uvw,
-      const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
+      const aocommon::xt::Span<float, 1>& frequencies,
+      const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+      const aocommon::xt::Span<UVW<float>, 2>& uvw,
+      const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+          baselines,
       const aocommon::xt::Span<std::complex<float>, 4>& grid,
-      const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-      const Array1D<unsigned int>& aterm_offsets,
-      const Array2D<float>& taper) const;
-
-  Array1D<float> compute_wavenumbers(const Array1D<float>& frequencies) const;
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+      const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+      const aocommon::xt::Span<float, 2>& taper) const;
 
   Tensor<float, 1> compute_wavenumbers(
-      aocommon::xt::Span<float, 1>& frequencies);
+      const aocommon::xt::Span<float, 1>& frequencies);
 
   const int nr_correlations = 4;
 

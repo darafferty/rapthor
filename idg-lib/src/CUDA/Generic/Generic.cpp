@@ -58,34 +58,37 @@ Generic::~Generic() {
 
 /* High level routines */
 void Generic::do_gridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    const Array4D<std::complex<float>>& visibilities,
-    const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
 #if defined(DEBUG)
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
   run_imaging(plan, frequencies, visibilities, uvw, baselines, get_grid(),
-              aterms, aterm_offsets, spheroidal, ImagingMode::mode_gridding);
+              aterms, aterm_offsets, taper, ImagingMode::mode_gridding);
 }
 
 void Generic::do_degridding(
-    const Plan& plan, const Array1D<float>& frequencies,
-    Array4D<std::complex<float>>& visibilities, const Array2D<UVW<float>>& uvw,
-    const Array1D<std::pair<unsigned int, unsigned int>>& baselines,
-    const Array4D<Matrix2x2<std::complex<float>>>& aterms,
-    const Array1D<unsigned int>& aterm_offsets,
-    const Array2D<float>& spheroidal) {
+    const Plan& plan, const aocommon::xt::Span<float, 1>& frequencies,
+    aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    const aocommon::xt::Span<std::pair<unsigned int, unsigned int>, 1>&
+        baselines,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
+    const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
+    const aocommon::xt::Span<float, 2>& taper) {
 #if defined(DEBUG)
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
   run_imaging(plan, frequencies, visibilities, uvw, baselines, get_grid(),
-              aterms, aterm_offsets, spheroidal, ImagingMode::mode_degridding);
+              aterms, aterm_offsets, taper, ImagingMode::mode_degridding);
 }
 
 void Generic::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {

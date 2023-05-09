@@ -37,9 +37,9 @@ uint64_t flops_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
   uint64_t flops_per_subgrid = 0;
   flops_per_subgrid += nr_polarizations_aterm * 30;  // aterm
   if (nr_correlations == 4) {
-    flops_per_subgrid += 4 * 2;  // spheroidal
+    flops_per_subgrid += 4 * 2;  // taper
   } else {
-    flops_per_subgrid += 1 * 2;  // spheroidal
+    flops_per_subgrid += 1 * 2;  // taper
   }
   flops_per_subgrid += 6;  // shift
 
@@ -74,9 +74,9 @@ uint64_t bytes_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
   bytes_per_aterm +=
       1ULL * 2 * nr_polarizations_aterm * 2 * sizeof(float);  // read aterm
 
-  // Number of bytes per spheroidal
-  uint64_t bytes_per_spheroidal = 0;
-  bytes_per_spheroidal += 1ULL * sizeof(float);  // read spheroidal
+  // Number of bytes per taper
+  uint64_t bytes_per_taper = 0;
+  bytes_per_taper += 1ULL * sizeof(float);  // read taper
 
   // Total number of bytes
   uint64_t bytes_total = 0;
@@ -87,7 +87,7 @@ uint64_t bytes_gridder(uint64_t nr_channels, uint64_t nr_timesteps,
   bytes_total +=
       1ULL * nr_subgrids * subgrid_size * subgrid_size * bytes_per_aterm;
   bytes_total +=
-      1ULL * nr_subgrids * subgrid_size * subgrid_size * bytes_per_spheroidal;
+      1ULL * nr_subgrids * subgrid_size * subgrid_size * bytes_per_taper;
   return bytes_total;
 }
 
@@ -242,7 +242,7 @@ uint64_t sizeof_aterm_indices(unsigned int nr_baselines,
   return 1ULL * nr_baselines * nr_timesteps * sizeof(unsigned int);
 }
 
-uint64_t sizeof_spheroidal(unsigned int subgrid_size) {
+uint64_t sizeof_taper(unsigned int subgrid_size) {
   return 1ULL * subgrid_size * subgrid_size * sizeof(float);
 }
 

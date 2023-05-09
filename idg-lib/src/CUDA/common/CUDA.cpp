@@ -103,12 +103,12 @@ std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
   return std::unique_ptr<auxiliary::Memory>(new cu::HostMemory(context, bytes));
 }
 
-int CUDA::initialize_jobs(const int nr_baselines, const int nr_timesteps,
-                          const int nr_channels, const int subgrid_size,
-                          const size_t bytes_free, const Plan& plan,
-                          const Array4D<std::complex<float>>& visibilities,
-                          const Array2D<UVW<float>>& uvw,
-                          std::vector<JobData>& jobs) const {
+int CUDA::initialize_jobs(
+    const int nr_baselines, const int nr_timesteps, const int nr_channels,
+    const int subgrid_size, const size_t bytes_free, const Plan& plan,
+    const aocommon::xt::Span<std::complex<float>, 4>& visibilities,
+    const aocommon::xt::Span<UVW<float>, 2>& uvw,
+    std::vector<JobData>& jobs) const {
   int jobsize = 0;
   size_t bytes_required = 0;
 
@@ -144,8 +144,9 @@ int CUDA::initialize_jobs(const int nr_baselines, const int nr_timesteps,
     job.current_nr_timesteps =
         plan.get_nr_timesteps(first_bl, current_nr_baselines);
     job.metadata_ptr = plan.get_metadata_ptr(first_bl);
-    job.uvw_ptr = uvw.data(first_bl, 0);
-    job.visibilities_ptr = visibilities.data(first_bl, 0, 0, 0);
+    job.uvw_ptr = &uvw(first_bl, 0);
+    job.visibilities_ptr =
+        const_cast<std::complex<float>*>(&visibilities(first_bl, 0, 0, 0));
     jobs.push_back(job);
   }
 
