@@ -79,7 +79,7 @@ def tune():
     visibilities = np.random.randn(
         nr_baselines, nr_timesteps_per_baseline, nr_channels, nr_correlations
     ).astype(dtype=np.complex64)
-    spheroidal = np.random.randn(
+    taper = np.random.randn(
         subgrid_size, subgrid_size).astype(dtype=np.float32)
     aterms = np.random.randn(nr_aterms, subgrid_size, subgrid_size, 4).astype(
         dtype=np.complex64
@@ -103,7 +103,7 @@ def tune():
         uvw,
         wavenumbers,
         visibilities,
-        spheroidal,
+        taper,
         aterms,
         aterm_indices,
         metadata,

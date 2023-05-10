@@ -240,8 +240,8 @@ void run() {
                                subgrid_size);
   aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
-  aocommon::xt::Span<float, 2> spheroidal =
-      idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
+  aocommon::xt::Span<float, 2> taper =
+      idg::get_example_taper(proxy, subgrid_size, subgrid_size);
 
   aocommon::xt::Span<std::complex<float>, 4> grid =
       proxy.allocate_span<std::complex<float>, 4>(
@@ -335,7 +335,7 @@ void run() {
         double runtime_gridding = -omp_get_wtime();
         if (!disable_gridding)
           proxy.gridding(plan, frequencies, visibilities, uvw, baselines,
-                         aterms, aterm_offsets, spheroidal);
+                         aterms, aterm_offsets, taper);
         runtimes_gridding.push_back(runtime_gridding + omp_get_wtime());
         clog << endl;
 
@@ -344,7 +344,7 @@ void run() {
         double runtime_degridding = -omp_get_wtime();
         if (!disable_degridding)
           proxy.degridding(plan, frequencies, visibilities, uvw, baselines,
-                           aterms, aterm_offsets, spheroidal);
+                           aterms, aterm_offsets, taper);
         runtimes_degridding.push_back(runtime_degridding + omp_get_wtime());
         clog << endl;
       }  // end for channel_offset

@@ -92,7 +92,7 @@ def compare_degridder(device, kernel1, kernel2, stokes_i_only):
         None,  # uvw
         None,  # wavenumbers
         None,  # visibilities
-        None,  # spheroidal
+        None,  # taper
         None,  # aterms
         None,  # aterm_indices
         None,  # metadata

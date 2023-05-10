@@ -85,9 +85,10 @@ def add_pt_src(x, y, amplitude, nr_baselines, nr_time, nr_channels,
                          vis.ctypes.data)
 
 
-def func_spheroidal(nu):
+def evaluate_spheroidal(nu):
     """Function to compute spheroidal
-        Based on reference code by Bas"""
+        Based on libreSpheroidal function in CASA
+        https://github.com/radio-astro/casa/blob/4ebd5b1508a5d31b74e7b5f6b89313368d30b9ef/code/synthesis/TransformMachines/Utils.cc#L776"""
     P = np.array(
         [[8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1, 2.312756e-1],
          [4.028559e-3, -3.697768e-2, 1.021332e-1, -1.201436e-1, 6.412774e-2]])
@@ -140,25 +141,25 @@ def make_gaussian(size, fwhm=3, center=None):
     return np.exp(-4 * np.log(2) * ((x - x0)**2 + (y - y0)**2) / fwhm**2)
 
 
-def init_example_spheroidal_subgrid(subgrid_size):
-    """Construct spheroidal for subgrid"""
+def init_example_taper_subgrid(subgrid_size):
+    """Construct taper for subgrid"""
     # Spheroidal from Bas
     x = np.array(np.abs(
         np.linspace(-1, 1, num=subgrid_size, endpoint=False)),
                     dtype=np.float32)
-    x = np.array([func_spheroidal(e) for e in x], dtype=np.float32)
-    spheroidal = x[np.newaxis, :] * x[:, np.newaxis]
-    return spheroidal
+    x = np.array([evaluate_spheroidal(e) for e in x], dtype=np.float32)
+    taper = x[np.newaxis, :] * x[:, np.newaxis]
+    return taper
     # Ones
     #return np.ones((subgrid_size, subgrid_size), dtype = np.float32)
     # Gaussian
     #return make_gaussian(subgrid_size, int(subgrid_size * 0.3))
 
 
-def init_example_spheroidal_grid(subgrid_size, grid_size):
-    """Construct spheroidal for grid"""
-    spheroidal = init_example_spheroidal_subgrid(subgrid_size)
-    s = np.fft.fft2(spheroidal)
+def init_example_taper_grid(subgrid_size, grid_size):
+    """Construct taper for grid"""
+    taper = init_example_taper_subgrid(subgrid_size)
+    s = np.fft.fft2(taper)
     s = np.fft.fftshift(s)
     s1 = np.zeros((grid_size, grid_size), dtype=np.complex64)
     support_size1 = int((grid_size - subgrid_size) / 2)
@@ -515,16 +516,16 @@ def plot_aterms(aterms):
     print("TO BE IMPLEMENTED")
 
 
-def plot_spheroidal(spheroidal, interpolation_method='none'):
-    """Plot spheroidal
+def plot_taper(taper, interpolation_method='none'):
+    """Plot taper
     Input:
-    spheroidal - np.ndarray(shape=(subgrid_size, subgrid_size),
+    taper - np.ndarray(shape=(subgrid_size, subgrid_size),
                                dtype = idg.tapertype)
     interpolation_method - 'none', 'nearest', 'bilinear', 'bicubic',
                            'spline16', ... (see matplotlib imshow)
     """
-    plt.figure(get_figure_name("spheroidal"))
-    plt.imshow(spheroidal, interpolation=interpolation_method)
+    plt.figure(get_figure_name("taper"))
+    plt.imshow(taper, interpolation=interpolation_method)
     plt.colorbar()
 
 
@@ -765,13 +766,13 @@ def init_identity_aterms(aterms):
                                    ctypes.c_int(nr_correlations))
 
 
-def init_identity_spheroidal(spheroidal):
-    subgrid_size = spheroidal.shape[0]
-    lib.utils_init_identity_spheroidal.argtypes = [
+def init_identity_taper(taper):
+    subgrid_size = taper.shape[0]
+    lib.utils_init_identity_taper.argtypes = [
         ctypes.c_void_p, ctypes.c_int
     ]
-    lib.utils_init_identity_spheroidal(
-        spheroidal.ctypes.data, ctypes.c_int(subgrid_size))
+    lib.utils_init_identity_taper(
+        taper.ctypes.data, ctypes.c_int(subgrid_size))
 
 
 def get_identity_aterms(nr_timeslots,
@@ -799,14 +800,14 @@ def get_zero_grid(nr_correlations, grid_size, dtype=gridtype, info=False):
     return grid
 
 
-def get_identity_spheroidal(subgrid_size, dtype=tapertype, info=False):
-    spheroidal = np.zeros(shape=(subgrid_size, subgrid_size),
+def get_identity_taper(subgrid_size, dtype=tapertype, info=False):
+    taper = np.zeros(shape=(subgrid_size, subgrid_size),
                              dtype=tapertype)
-    init_identity_spheroidal(spheroidal)
+    init_identity_taper(taper)
     if info == True:
         print("grid: np.ndarray(shape = (subgrid_size, subgrid_size), " + \
                                    "dtype = " + str(dtype) + ")")
-    return spheroidal.astype(dtype=dtype)
+    return taper.astype(dtype=dtype)
 
 
 def get_zero_visibilities(nr_baselines,
@@ -867,14 +868,14 @@ def init_identity_aterms(aterms):
                                    ctypes.c_int(nr_correlations))
 
 
-def init_example_spheroidal(spheroidal):
-    """Initialize spheroidal for test case defined in utility/initialize"""
-    subgrid_size = spheroidal.shape[0]
-    lib.utils_init_example_spheroidal.argtypes = [
+def init_example_taper(taper):
+    """Initialize taper for test case defined in utility/initialize"""
+    subgrid_size = taper.shape[0]
+    lib.utils_init_example_taper.argtypes = [
         ctypes.c_void_p, ctypes.c_int
     ]
-    lib.utils_init_example_spheroidal(
-        spheroidal.ctypes.data, ctypes.c_int(subgrid_size))
+    lib.utils_init_example_taper(
+        taper.ctypes.data, ctypes.c_int(subgrid_size))
 
 
 def init_example_aterms(aterms, nr_timeslots, nr_stations, height, width):
@@ -973,13 +974,13 @@ def get_example_aterm_offsets(nr_timeslots,
     return aterms_offset.astype(dtype=dtype)
 
 
-def get_example_spheroidal(subgrid_size, dtype=tapertype, info=False):
-    spheroidal = np.ones((subgrid_size, subgrid_size), dtype=tapertype)
-    init_example_spheroidal(spheroidal)
+def get_example_taper(subgrid_size, dtype=tapertype, info=False):
+    taper = np.ones((subgrid_size, subgrid_size), dtype=tapertype)
+    init_example_taper(taper)
     if info == True:
-        print("spheroidal: np.ndarray(shape = (subgrid_size, subgrid_size), " + \
+        print("taper: np.ndarray(shape = (subgrid_size, subgrid_size), " + \
               "dtype = " + str(dtype) + ")")
-    return spheroidal.astype(dtype=dtype)
+    return taper.astype(dtype=dtype)
 
 
 def get_example_visibilities(nr_baselines,
@@ -1020,7 +1021,7 @@ def get_example_visibilities(nr_baselines,
                    frequencies, visibilities)
 
     if info == True:
-        print("spheroidal: np.ndarray(shape = (nr_baselines, nr_time, " + \
+        print("taper: np.ndarray(shape = (nr_baselines, nr_time, " + \
               "nr_channels, nr_correlations), " + \
               "dtype = " + str(dtype) + ")")
 

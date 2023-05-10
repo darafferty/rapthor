@@ -257,8 +257,8 @@ def run_gridding(
         )
 
     # Initialize taper
-    taper = idg.util.get_example_spheroidal(subgrid_size)
-    taper_grid = idg.util.get_example_spheroidal(grid_size)
+    taper = idg.util.get_example_taper(subgrid_size)
+    taper_grid = idg.util.get_example_taper(grid_size)
 
     shift = np.zeros(2, np.float32)
     proxy.set_grid(grid)

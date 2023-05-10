@@ -3,20 +3,20 @@
 
 extern "C" {
 
-void utils_init_identity_spheroidal(void* ptr, int subgrid_size) {
-  const std::array<size_t, 2> spheroidal_shape{
-      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
-  auto spheroidal =
-      aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr), spheroidal_shape);
-  idg::init_identity_spheroidal(spheroidal);
+void utils_init_identity_taper(void* ptr, int subgrid_size) {
+  const std::array<size_t, 2> taper_shape{static_cast<size_t>(subgrid_size),
+                                          static_cast<size_t>(subgrid_size)};
+  auto taper =
+      aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr), taper_shape);
+  idg::init_identity_taper(taper);
 }
 
-void utils_init_example_spheroidal(void* ptr, int subgrid_size) {
-  const std::array<size_t, 2> spheroidal_shape{
-      static_cast<size_t>(subgrid_size), static_cast<size_t>(subgrid_size)};
-  auto spheroidal =
-      aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr), spheroidal_shape);
-  idg::init_example_spheroidal(spheroidal);
+void utils_init_example_taper(void* ptr, int subgrid_size) {
+  const std::array<size_t, 2> taper_shape{static_cast<size_t>(subgrid_size),
+                                          static_cast<size_t>(subgrid_size)};
+  auto taper =
+      aocommon::xt::CreateSpan(reinterpret_cast<float*>(ptr), taper_shape);
+  idg::init_example_taper(taper);
 }
 
 void utils_init_example_frequencies(void* ptr, int nr_channels) {

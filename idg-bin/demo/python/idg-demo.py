@@ -89,8 +89,8 @@ aterm_offsets = idg.util.get_example_aterm_offsets(
                     nr_timeslots, nr_timesteps)
 
 # Initialize taper
-taper = idg.util.get_example_spheroidal(subgrid_size)
-taper_grid = idg.util.get_identity_spheroidal(grid_size)
+taper = idg.util.get_example_taper(subgrid_size)
+taper_grid = idg.util.get_identity_taper(grid_size)
 
 ######################################################################
 # Initialize proxy
@@ -226,7 +226,7 @@ while (nr_rows_read + nr_rows_per_batch) <= nr_rows_to_process:
 
     time_plot = -time.time()
 
-    # Remove spheroidal from grid
+    # Remove taper from grid
     img_real = img_real/taper_grid
 
     # Crop image

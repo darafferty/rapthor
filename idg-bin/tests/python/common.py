@@ -65,7 +65,7 @@ def gridding(
     baselines,
     aterms,
     aterm_offsets,
-    spheroidal,
+    taper,
 ):
     p.init_cache(subgrid_size, cell_size, w_step, shift)
     p.gridding(
@@ -76,7 +76,7 @@ def gridding(
         baselines,
         aterms,
         aterm_offsets,
-        spheroidal,
+        taper,
     )
     p.get_final_grid()
 
@@ -94,7 +94,7 @@ def degridding(
     baselines,
     aterms,
     aterm_offsets,
-    spheroidal,
+    taper,
 ):
     p.init_cache(subgrid_size, cell_size, w_step, shift)
     p.degridding(
@@ -105,7 +105,7 @@ def degridding(
         baselines,
         aterms,
         aterm_offsets,
-        spheroidal,
+        taper,
     )
 
 
@@ -174,7 +174,7 @@ def main(proxyname, plot=True):
         nr_timeslots, nr_stations, subgrid_size, nr_correlations
     )
     aterm_offsets = util.get_example_aterm_offsets(nr_timeslots, nr_timesteps)
-    spheroidal = util.get_identity_spheroidal(subgrid_size)
+    taper = util.get_identity_taper(subgrid_size)
     shift = np.zeros(2, dtype=np.float32)
 
     # set w to zero
@@ -220,7 +220,7 @@ def main(proxyname, plot=True):
             baselines,
             aterms,
             aterm_offsets,
-            spheroidal,
+            taper,
         )
 
     diff_grid = opt_grid - ref_grid
@@ -250,7 +250,7 @@ def main(proxyname, plot=True):
             baselines,
             aterms,
             aterm_offsets,
-            spheroidal,
+            taper,
         )
 
     diff_visibilities = opt_visibilities - ref_visibilities

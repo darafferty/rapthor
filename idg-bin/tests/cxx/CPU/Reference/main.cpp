@@ -84,8 +84,8 @@ int test01() {
                                subgrid_size);
   aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
-  aocommon::xt::Span<float, 2> spheroidal =
-      idg::get_identity_spheroidal(proxy, subgrid_size, subgrid_size);
+  aocommon::xt::Span<float, 2> taper =
+      idg::get_identity_taper(proxy, subgrid_size, subgrid_size);
   std::array<float, 2> shift{0.0f, 0.0f};
   clog << endl;
 
@@ -129,7 +129,7 @@ int test01() {
   // Grid reference visibilities
   clog << ">>> Grid visibilities" << endl;
   proxy.gridding(*plan, frequencies, visibilities_ref, uvw, baselines, aterms,
-                 aterm_offsets, spheroidal);
+                 aterm_offsets, taper);
   proxy.transform(idg::FourierDomainToImageDomain);
 
   float grid_error = get_accuracy(grid_size * grid_size * nr_correlations,
@@ -145,7 +145,7 @@ int test01() {
   proxy.set_grid(grid_ref);
 
   proxy.degridding(*plan, frequencies, visibilities, uvw, baselines, aterms,
-                   aterm_offsets, spheroidal);
+                   aterm_offsets, taper);
   clog << endl;
 
   // Compute error

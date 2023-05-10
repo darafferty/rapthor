@@ -75,9 +75,9 @@ aterms         = util.get_identity_aterms(
                     nr_timeslots, nr_stations, subgrid_size, nr_correlations)
 aterm_offsets = util.get_identity_aterm_offsets(
                     nr_timeslots, nr_timesteps)
-# Initialize spheroidal
-spheroidal = util.get_example_spheroidal(subgrid_size)
-spheroidal_grid = util.get_identity_spheroidal(grid_size)
+# Initialize taper
+taper = util.get_example_taper(subgrid_size)
+taper_grid = util.get_identity_taper(grid_size)
 
 
 ######################################################################
@@ -157,7 +157,7 @@ for iteration in np.arange(num_iter):
 
     proxy.gridding(
         w_offset, cell_size, kernel_size, frequencies, visibilities,
-        uvw, baselines, grid, aterms, aterm_offsets, spheroidal)
+        uvw, baselines, grid, aterms, aterm_offsets, taper)
 
     time_gridding += time.time()
 
@@ -172,8 +172,8 @@ for iteration in np.arange(num_iter):
 
     time_plot = -time.time()
 
-    # Remove spheroidal from grid
-    img = img/spheroidal_grid
+    # Remove taper from grid
+    img = img/taper_grid
 
     # Crop image
     # img = img[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]

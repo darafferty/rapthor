@@ -5,7 +5,9 @@
 
 #include <xtensor/xview.hpp>
 namespace {
-// Function to compute spheroidal. Based on reference code by BvdT.
+// Function to compute spheroidal.
+// Based on libreSpheroidal function in CASA
+// https://github.com/radio-astro/casa/blob/4ebd5b1508a5d31b74e7b5f6b89313368d30b9ef/code/synthesis/TransformMachines/Utils.cc#L776
 float evaluate_spheroidal(float nu) {
   float P[2][5] = {
       {8.203343e-2, -3.644705e-1, 6.278660e-1, -5.335581e-1, 2.312756e-1},
@@ -125,22 +127,22 @@ aocommon::xt::Span<unsigned int, 1> get_example_aterm_offsets(
   return aterm_offsets;
 }
 
-aocommon::xt::Span<float, 2> get_identity_spheroidal(proxy::Proxy& proxy,
-                                                     unsigned int height,
-                                                     unsigned int width) {
+aocommon::xt::Span<float, 2> get_identity_taper(proxy::Proxy& proxy,
+                                                unsigned int height,
+                                                unsigned int width) {
   using T = float;
-  auto spheroidal = proxy.allocate_span<T, 2>({height, width});
-  init_identity_spheroidal(spheroidal);
-  return spheroidal;
+  auto taper = proxy.allocate_span<T, 2>({height, width});
+  init_identity_taper(taper);
+  return taper;
 }
 
-aocommon::xt::Span<float, 2> get_example_spheroidal(proxy::Proxy& proxy,
-                                                    unsigned int height,
-                                                    unsigned int width) {
+aocommon::xt::Span<float, 2> get_example_taper(proxy::Proxy& proxy,
+                                               unsigned int height,
+                                               unsigned int width) {
   using T = float;
-  auto spheroidal = proxy.allocate_span<T, 2>({height, width});
-  init_example_spheroidal(spheroidal);
-  return spheroidal;
+  auto taper = proxy.allocate_span<T, 2>({height, width});
+  init_example_taper(taper);
+  return taper;
 }
 
 /*
@@ -313,13 +315,13 @@ void init_example_aterm_offsets(
   aterm_offsets(nr_timeslots) = nr_timesteps;
 }
 
-void init_identity_spheroidal(aocommon::xt::Span<float, 2>& spheroidal) {
-  spheroidal.fill(1.0f);
+void init_identity_taper(aocommon::xt::Span<float, 2>& taper) {
+  taper.fill(1.0f);
 }
 
-void init_example_spheroidal(aocommon::xt::Span<float, 2>& spheroidal) {
-  const size_t height = spheroidal.shape(0);
-  const size_t width = spheroidal.shape(1);
+void init_example_taper(aocommon::xt::Span<float, 2>& taper) {
+  const size_t height = taper.shape(0);
+  const size_t width = taper.shape(1);
 
   // Evaluate rows
   float y[height];
@@ -338,7 +340,7 @@ void init_example_spheroidal(aocommon::xt::Span<float, 2>& spheroidal) {
   // Set values
   for (size_t i = 0; i < height; i++) {
     for (size_t j = 0; j < width; j++) {
-      spheroidal(i, j) = y[i] * x[j];
+      taper(i, j) = y[i] * x[j];
     }
   }
 }

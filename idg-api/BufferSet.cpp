@@ -71,7 +71,7 @@ int nextcomposite(int n) {
 }
 
 BufferSetImpl::BufferSetImpl(Type architecture)
-    : m_spheroidal(aocommon::xt::CreateSpan<float, 2>(nullptr, {0, 0})),
+    : m_taper(aocommon::xt::CreateSpan<float, 2>(nullptr, {0, 0})),
       m_stokes_I_only(false),
       m_nr_correlations(4),
       m_nr_polarizations(4),
@@ -296,12 +296,11 @@ void BufferSetImpl::init(size_t size, float cell_size, float max_w,
     m_inv_taper[i] = 1.0 / y;
   }
 
-  // Generate spheroidal using m_taper_subgrid.
-  m_spheroidal =
-      m_proxy->allocate_span<float, 2>({m_subgridsize, m_subgridsize});
+  // Generate m_taper using m_taper_subgrid.
+  m_taper = m_proxy->allocate_span<float, 2>({m_subgridsize, m_subgridsize});
   for (size_t y = 0; y < m_subgridsize; y++) {
     for (size_t x = 0; x < m_subgridsize; x++) {
-      m_spheroidal(y, x) = m_taper_subgrid[y] * m_taper_subgrid[x];
+      m_taper(y, x) = m_taper_subgrid[y] * m_taper_subgrid[x];
     }
   }
 }
@@ -406,7 +405,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
         *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w_row_imag __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
-    arr_float_1D_t& inv_tapers __attribute__((aligned(64))) =
+    arr_float_1D_t& inverse_taper __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_real __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
@@ -473,9 +472,9 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
         }  // end for x
       }
 
-      // Compute inverse spheroidal
+      // Compute inverse taper
       for (int x = 0; x < m_size; x++) {
-        inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
+        inverse_taper[x] = m_inv_taper[y] * m_inv_taper[x];
       }  // end for x
 
       // Copy to other w planes and multiply by w term
@@ -485,8 +484,8 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
         if (!m_apply_wstack_correction) {
           for (int pol = 0; pol < m_nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
-              w_row_real[pol][x] = w0_row_real[pol][x] * inv_tapers[x];
-              w_row_imag[pol][x] = w0_row_imag[pol][x] * inv_tapers[x];
+              w_row_real[pol][x] = w0_row_real[pol][x] * inverse_taper[x];
+              w_row_imag[pol][x] = w0_row_imag[pol][x] * inverse_taper[x];
             }  // end for x
           }    // end for pol
         } else {
@@ -505,8 +504,8 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
           // Compute current row of w-plane
           for (int pol = 0; pol < m_nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
-              float value_real = w0_row_real[pol][x] * inv_tapers[x];
-              float value_imag = w0_row_imag[pol][x] * inv_tapers[x];
+              float value_real = w0_row_real[pol][x] * inverse_taper[x];
+              float value_imag = w0_row_imag[pol][x] * inverse_taper[x];
               float phasor_real_ = phasor_real[x];
               float phasor_imag_ = phasor_imag[x];
               w_row_real[pol][x] = value_real * phasor_real_;
@@ -531,7 +530,7 @@ void BufferSetImpl::set_image(const double* image, bool do_scale) {
     free(w0_row_imag);
     free(w_row_real);
     free(w_row_imag);
-    free(inv_tapers);
+    free(inverse_taper);
     free(phasor_real);
     free(phasor_imag);
   }
@@ -625,7 +624,7 @@ void BufferSetImpl::get_image(double* image) {
         *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
     arr_float_2D_t& w_row_imag __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_2D_t*>(aligned_alloc(64, size_2D));
-    arr_float_1D_t& inv_tapers __attribute__((aligned(64))) =
+    arr_float_1D_t& inverse_taper __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
     arr_float_1D_t& phasor_real __attribute__((aligned(64))) =
         *reinterpret_cast<arr_float_1D_t*>(aligned_alloc(64, size_1D));
@@ -638,9 +637,9 @@ void BufferSetImpl::get_image(double* image) {
 
 #pragma omp for
     for (int y = 0; y < m_size; y++) {
-      // Compute inverse spheroidal
+      // Compute inverse taper
       for (int x = 0; x < m_size; x++) {
-        inv_tapers[x] = m_inv_taper[y] * m_inv_taper[x];
+        inverse_taper[x] = m_inv_taper[y] * m_inv_taper[x];
       }
 
       if (!m_apply_wstack_correction) {
@@ -648,8 +647,8 @@ void BufferSetImpl::get_image(double* image) {
         for (int pol = 0; pol < nr_polarizations; pol++) {
           for (int x = 0; x < m_size; x++) {
             auto value = grid(0, pol, y + y0, x + x0);
-            w0_row_real[pol][x] = value.real() * inv_tapers[x];
-            w0_row_imag[pol][x] = value.imag() * inv_tapers[x];
+            w0_row_real[pol][x] = value.real() * inverse_taper[x];
+            w0_row_imag[pol][x] = value.imag() * inverse_taper[x];
           }  // end for x
         }    // end for pol
       } else {
@@ -682,8 +681,8 @@ void BufferSetImpl::get_image(double* image) {
           // Compute current row of w-plane
           for (int pol = 0; pol < nr_polarizations; pol++) {
             for (int x = 0; x < m_size; x++) {
-              float value_real = w_row_real[pol][x] * inv_tapers[x];
-              float value_imag = w_row_imag[pol][x] * inv_tapers[x];
+              float value_real = w_row_real[pol][x] * inverse_taper[x];
+              float value_imag = w_row_imag[pol][x] * inverse_taper[x];
               float phasor_real_ = phasor_real[x];
               float phasor_imag_ = phasor_imag[x];
               w_row_real[pol][x] = value_real * phasor_real_;
@@ -735,7 +734,7 @@ void BufferSetImpl::get_image(double* image) {
     free(w0_row_imag);
     free(w_row_real);
     free(w_row_imag);
-    free(inv_tapers);
+    free(inverse_taper);
     free(phasor_real);
     free(phasor_imag);
   }
