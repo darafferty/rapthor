@@ -80,9 +80,7 @@ class BufferSetImpl : public virtual BufferSet {
   float get_w_step() const { return m_w_step; }
   const std::array<float, 2>& get_shift() const { return m_shift; }
   float get_kernel_size() const { return m_kernel_size; }
-  const aocommon::xt::Span<float, 2>& get_spheroidal() const {
-    return m_spheroidal;
-  }
+  const aocommon::xt::Span<float, 2>& get_taper() const { return m_taper; }
 
   Stopwatch& get_watch(Watch watch) const;
 
@@ -105,7 +103,7 @@ class BufferSetImpl : public virtual BufferSet {
   std::vector<float> m_taper_subgrid;
   std::vector<float> m_taper_grid;
   std::vector<float> m_inv_taper;
-  aocommon::xt::Span<float, 2> m_spheroidal;
+  aocommon::xt::Span<float, 2> m_taper;
   std::vector<std::complex<float>> m_average_beam;
   std::shared_ptr<std::vector<float>> m_scalar_beam;
   std::shared_ptr<std::vector<std::complex<float>>> m_matrix_inverse_beam;

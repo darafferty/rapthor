@@ -164,8 +164,8 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
                               subgrid_size);
   aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy2, nr_timeslots, nr_timesteps);
-  aocommon::xt::Span<float, 2> spheroidal =
-      idg::get_example_spheroidal(proxy2, subgrid_size, subgrid_size);
+  aocommon::xt::Span<float, 2> taper =
+      idg::get_example_taper(proxy2, subgrid_size, subgrid_size);
   // Set shift to some random non-zero value
   // shift is in radians, 0.02rad is about 1deg
   std::array<float, 2> shift{0.02f, -0.03f};
@@ -220,13 +220,13 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   std::clog << ">>> Run gridding" << std::endl;
   grid.fill(std::complex<float>(0, 0));
   proxy2.gridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
-                  aterm_offsets, spheroidal);
+                  aterm_offsets, taper);
   proxy2.get_final_grid();
 
   std::clog << ">>> Run reference gridding" << std::endl;
   grid_ref.fill(std::complex<float>(0.0f, 0.0f));
   proxy1.gridding(*plan1, frequencies, visibilities, uvw, baselines, aterms,
-                  aterm_offsets, spheroidal);
+                  aterm_offsets, taper);
   proxy1.get_final_grid();
 
   float grid_error = get_accuracy(nr_polarizations * grid_size * grid_size,
@@ -242,12 +242,12 @@ int compare(idg::proxy::Proxy& proxy1, idg::proxy::Proxy& proxy2, float tol) {
   std::clog << ">>> Run degridding" << std::endl;
   visibilities.fill(std::complex<float>(0.0f, 0.0f));
   proxy2.degridding(*plan2, frequencies, visibilities, uvw, baselines, aterms,
-                    aterm_offsets, spheroidal);
+                    aterm_offsets, taper);
 
   std::clog << ">>> Run reference degridding" << std::endl;
   visibilities_ref.fill(std::complex<float>(0.0f, 0.0f));
   proxy1.degridding(*plan1, frequencies, visibilities_ref, uvw, baselines,
-                    aterms, aterm_offsets, spheroidal);
+                    aterms, aterm_offsets, taper);
 
   float degrid_error =
       get_accuracy(nr_baselines * nr_timesteps * nr_channels * nr_correlations,

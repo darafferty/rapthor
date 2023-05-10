@@ -190,7 +190,7 @@ void GridderBufferImpl::flush_thread_worker() {
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Start();
   proxy.gridding(*plan, m_frequencies, m_bufferVisibilities2, m_bufferUVW2,
                  m_bufferStationPairs2, aterms_span, aterm_offsets_span,
-                 m_bufferset.get_spheroidal());
+                 m_bufferset.get_taper());
   m_bufferset.get_watch(BufferSetImpl::Watch::kGridding).Pause();
 }
 

@@ -326,10 +326,10 @@ class DummyData:
 
     def get_taper(self):
         # Initalize taper
-        spheroidal = util.get_identity_spheroidal(self.subgrid_size)
-        sizeof_spheroidal, d_spheroidal = cuda_mem_alloc(spheroidal)
-        cuda_memcpy_htod(d_spheroidal, spheroidal, sizeof_spheroidal, self.stream)
-        return spheroidal, d_spheroidal
+        taper = util.get_identity_taper(self.subgrid_size)
+        sizeof_taper, d_taper = cuda_mem_alloc(taper)
+        cuda_memcpy_htod(d_taper, taper, sizeof_taper, self.stream)
+        return taper, d_taper
 
     def get_aterms(self):
         # Initialize aterms

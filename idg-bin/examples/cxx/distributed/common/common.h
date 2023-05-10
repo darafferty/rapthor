@@ -417,8 +417,8 @@ void run_master() {
                                subgrid_size);
   aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
-  aocommon::xt::Span<float, 2> spheroidal =
-      idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
+  aocommon::xt::Span<float, 2> taper =
+      idg::get_example_taper(proxy, subgrid_size, subgrid_size);
   aocommon::xt::Span<std::complex<float>, 4> grid =
       proxy.allocate_span<std::complex<float>, 4>(
           {nr_w_layers, nr_correlations, grid_size, grid_size});
@@ -521,14 +521,14 @@ void run_master() {
       // Run gridding
       runtimes_gridding[cycle] -= omp_get_wtime();
       proxy.gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
-                     aterm_offsets, spheroidal);
+                     aterm_offsets, taper);
       synchronize();
       runtimes_gridding[cycle] += omp_get_wtime();
 
       // Run degridding
       runtimes_degridding[cycle] -= omp_get_wtime();
       proxy.degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
-                       aterm_offsets, spheroidal);
+                       aterm_offsets, taper);
       synchronize();
       runtimes_degridding[cycle] += omp_get_wtime();
     }
@@ -653,8 +653,8 @@ void run_worker() {
                                subgrid_size);
   aocommon::xt::Span<unsigned int, 1> aterm_offsets =
       idg::get_example_aterm_offsets(proxy, nr_timeslots, nr_timesteps);
-  aocommon::xt::Span<float, 2> spheroidal =
-      idg::get_example_spheroidal(proxy, subgrid_size, subgrid_size);
+  aocommon::xt::Span<float, 2> taper =
+      idg::get_example_taper(proxy, subgrid_size, subgrid_size);
   aocommon::xt::Span<std::complex<float>, 4> grid =
       proxy.allocate_span<std::complex<float>, 4>(
           {nr_w_layers, nr_correlations, grid_size, grid_size});
@@ -742,12 +742,12 @@ void run_worker() {
 
       // Run gridding
       proxy.gridding(plan, frequencies, visibilities, uvw, baselines, aterms,
-                     aterm_offsets, spheroidal);
+                     aterm_offsets, taper);
       synchronize();
 
       // Run degridding
       proxy.degridding(plan, frequencies, visibilities, uvw, baselines, aterms,
-                       aterm_offsets, spheroidal);
+                       aterm_offsets, taper);
       synchronize();
     }
 

@@ -52,13 +52,15 @@ aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4> get_example_aterms(
 aocommon::xt::Span<unsigned int, 1> get_example_aterm_offsets(
     proxy::Proxy& proxy, unsigned int nr_timeslots, unsigned int nr_timesteps);
 
-aocommon::xt::Span<float, 2> get_identity_spheroidal(proxy::Proxy& proxy,
-                                                     unsigned int height,
-                                                     unsigned int width);
+// Initialize taper with all ones
+aocommon::xt::Span<float, 2> get_identity_taper(proxy::Proxy& proxy,
+                                                unsigned int height,
+                                                unsigned int width);
 
-aocommon::xt::Span<float, 2> get_example_spheroidal(proxy::Proxy& proxy,
-                                                    unsigned int height,
-                                                    unsigned int width);
+// Initialize taper with prolate spheroidal
+aocommon::xt::Span<float, 2> get_example_taper(proxy::Proxy& proxy,
+                                               unsigned int height,
+                                               unsigned int width);
 
 /*
  * Default memory allocation
@@ -93,9 +95,11 @@ xt::xtensor<Matrix2x2<std::complex<float>>, 4> get_example_aterms(
 xt::xtensor<unsigned int, 1> get_example_aterm_offsets(
     unsigned int nr_timeslots, unsigned int nr_timesteps);
 
-void init_identity_spheroidal(aocommon::xt::Span<float, 2>& spheroidal);
+// Initialize taper with all ones
+void init_identity_taper(aocommon::xt::Span<float, 2>& taper);
 
-void init_example_spheroidal(aocommon::xt::Span<float, 2>& spheroidal);
+// Initialize taper with prolate spheroidal
+void init_example_taper(aocommon::xt::Span<float, 2>& taper);
 
 float evaluate_spheroidal(float nu);
 

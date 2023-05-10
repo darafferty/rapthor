@@ -92,9 +92,9 @@ aterms         = util.get_identity_aterms(
 aterm_offsets = util.get_example_aterm_offsets(
                     nr_timeslots, nr_timesteps)
 
-# Initialize spheroidal
-spheroidal = util.get_example_spheroidal(subgrid_size)
-spheroidal_grid = util.get_identity_spheroidal(grid_size)
+# Initialize taper
+taper = util.get_example_taper(subgrid_size)
+taper_grid = util.get_identity_taper(grid_size)
 
 ######################################################################
 # Initialize proxy
@@ -274,7 +274,7 @@ class IDGThread(threading.Thread):
 
             self.proxy.gridding(
                 w_offset, cell_size, kernel_size, frequencies, visibilities,
-                uvw, baselines, grid, aterms, aterm_offsets, spheroidal)
+                uvw, baselines, grid, aterms, aterm_offsets, taper)
 
             time_gridding += time.time()
 
@@ -289,8 +289,8 @@ class IDGThread(threading.Thread):
 
             time_plot = -time.time()
 
-            # Remove spheroidal from grid
-            img_real = img_real/spheroidal_grid
+            # Remove taper from grid
+            img_real = img_real/taper_grid
 
             # Crop image
             img_crop = img_real[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
