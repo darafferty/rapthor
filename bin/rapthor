@@ -53,7 +53,7 @@ if __name__ == '__main__':
             parset = parset_read(parset_file, use_log_file=False)
         except Exception as e:
             log = logging.getLogger('rapthor:parset')
-            log.critical('Failed to parset parset:')
+            log.critical('Failed to parse parset:')
             log.critical(e)
             sys.exit(-1)
         try:
@@ -62,6 +62,6 @@ if __name__ == '__main__':
         except Exception as e:
             log = logging.getLogger('rapthor')
             log.critical(e)
-            if parset.debug_workflow:
+            if parset['debug_workflow']:
                 print(traceback.format_exc())
                 traceback.print_exc()
