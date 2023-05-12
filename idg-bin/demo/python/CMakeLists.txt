@@ -3,7 +3,7 @@
 
 # Install Python examples
 install(
-  FILES idg-demo.py idg-demo2.py idg-demo-hdf5.py
+  FILES idg-demo.py
   PERMISSIONS
     OWNER_READ
     OWNER_WRITE
