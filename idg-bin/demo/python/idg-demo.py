@@ -4,8 +4,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import scipy.constants as sc
-import casacore.tables as pt
+import casacore.tables
 import signal
 import argparse
 import time
@@ -38,46 +37,55 @@ parser.add_argument('-c', '--column',
 parser.add_argument('--imagesize',
                     help='Image size (cell size / grid size)',
                     required=False, type=float, default=0.2)
-parser.add_argument('--use-cuda',
-                    help='Use CUDA proxy',
-                    required=False, action='store_true')
+modes = ["cpu", "hybrid", "gpu"]
+parser.add_argument('--mode', choices=modes, required=False, help="Proxy to be used", default=modes[0])
+
 args = parser.parse_args()
 msin = args.msin[0]
 percentage = args.percentage
 image_size = args.imagesize
 datacolumn = args.column
-use_cuda   = args.use_cuda
+mode       = args.mode
 
 
 ######################################################################
 # Open measurementset
 ######################################################################
-table = pt.taql(f"SELECT * FROM {msin} WHERE ANTENNA1 != ANTENNA2")
-nr_times_ms = len(pt.taql(f"SELECT DISTINCT TIME FROM {msin}"))
+table = casacore.tables.taql(f"SELECT * FROM {msin} WHERE ANTENNA1 != ANTENNA2")
+nr_times_ms = len(casacore.tables.taql(f"SELECT DISTINCT TIME FROM {msin}"))
 print(f"nr_times_ms: {nr_times_ms}")
 
 # Read parameters from measurementset
-t_ant = pt.table(table.getkeyword("ANTENNA"))
-t_spw = pt.table(table.getkeyword("SPECTRAL_WINDOW"))
+t_ant = casacore.tables.table(table.getkeyword("ANTENNA"))
+t_spw = casacore.tables.table(table.getkeyword("SPECTRAL_WINDOW"))
 frequencies = np.asarray(t_spw[0]['CHAN_FREQ'], dtype=np.float32)
-
-nr_baselines     = len(table.iter("TIME").next())
+nr_baselines = len(table.iter("TIME").next())
 
 ######################################################################
 # Parameters
 ######################################################################
 nr_stations      = len(t_ant)
 nr_channels      = table[0][datacolumn].shape[0]
-nr_timesteps     = min(nr_times_ms, 256) # Number of time steps per call to IDG
-if nr_timesteps > nr_times_ms:
-  nr_timesteps = 2  # This should be much larger...
-nr_timeslots     = 1 # Number of time steps per A-term
+# Number of time steps per call to IDG.
+# With 1 time step at a time, you can see the grid build up.
+# This value is typically much larger, e.g. 128 or 256.
+nr_timesteps     = 1
+# Number of A-terms in the time dimension per call to IDG.
+# When no A-terms are needed, use nr_timeslots = 1,
+# and set the # A-terms to identiy.
+nr_timeslots     = 1
 nr_correlations  = 4
 grid_size        = 512
 subgrid_size     = 32
 kernel_size      = 16
 cell_size        = image_size / grid_size
 
+######################################################################
+# Plot properties
+######################################################################
+colormap_grid   = plt.get_cmap('hot')
+colormap_img    = plt.get_cmap('hot')
+font_size       = 16
 
 ######################################################################
 # Initialize data
@@ -95,10 +103,13 @@ taper_grid = idg.util.get_identity_taper(grid_size)
 ######################################################################
 # Initialize proxy
 ######################################################################
-if use_cuda:
-    proxy = idg.CUDA.Generic()
-else:
+proxy = None
+if mode == modes[0]:
     proxy = idg.CPU.Optimized()
+elif mode == modes[1]:
+    proxy = idg.HybridCUDA.GenericOptimized()
+elif mode == modes[2]:
+    proxy = idg.CUDA.Generic()
 
 w_step = 0.0
 shift = np.zeros(2, np.float32)
@@ -111,7 +122,7 @@ proxy.init_cache(subgrid_size, cell_size, w_step, shift)
 nr_rows = table.nrows()
 nr_rows_read = 0
 nr_rows_per_batch = nr_baselines * nr_timesteps
-nr_rows_to_process = min( int( nr_rows * percentage / 100. ), nr_rows)
+nr_rows_to_process = nr_baselines * min(int( nr_rows * percentage / 100. ), nr_rows)
 print(f"nr_rows: {nr_rows}")
 
 # Initialize empty buffers
@@ -129,7 +140,7 @@ iteration = 0
 print(f"nr_rows_read: {nr_rows_read}")
 print(f"nr_rows_per_batch: {nr_rows_per_batch}")
 print(f"nr_rows_to_process: {nr_rows_to_process}")
-while (nr_rows_read + nr_rows_per_batch) <= nr_rows_to_process:
+while (nr_rows_read + nr_rows_per_batch) < nr_rows_to_process:
     # Reset buffers
     uvw.fill(0)
     visibilities.fill(0)
@@ -214,14 +225,14 @@ while (nr_rows_read + nr_rows_per_batch) <= nr_rows_to_process:
 
     time_gridding += time.time()
 
+    # Get the raw grid
+    proxy.get_final_grid()
+    raw_grid = np.abs(grid[0,:,:])
+
     # Compute fft over grid
     time_fft = -time.time()
-
-    # Using fft from library
-    # proxy.transform(idg.FourierDomainToImageDomain, img)
-    # np.copyto(img, grid)
-    img = np.fft.fft2(grid[0,:,:])
-    img_real = np.real(img)
+    proxy.transform(idg.FourierDomainToImageDomain)
+    img_real = np.real(grid[0,:,:])
     time_fft += time.time()
 
     time_plot = -time.time()
@@ -232,15 +243,10 @@ while (nr_rows_read + nr_rows_per_batch) <= nr_rows_to_process:
     # Crop image
     img_crop = img_real[int(grid_size*0.1):int(grid_size*0.9),int(grid_size*0.1):int(grid_size*0.9)]
 
-    # Set plot properties
-    colormap_grid=plt.get_cmap('hot')
-    colormap_img=plt.get_cmap('hot')
-    font_size = 16
-
     # Make first plot (raw grid)
     ax1.set_xticks([])
     ax1.set_yticks([])
-    ax1.imshow(np.log(np.abs(grid[0,:,:]) + 1), cmap=colormap_grid)
+    ax1.imshow(np.log(raw_grid + 1), cmap=colormap_grid)
     time1 = timestamp_block[0]
     ax1.set_title("UV Data: %2.2i:%2.2i\n" % (np.mod(int(time1/3600 ),24), np.mod(int(time1/60),60)), fontsize=font_size)
 

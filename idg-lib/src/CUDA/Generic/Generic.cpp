@@ -5,6 +5,7 @@
 
 #include "Generic.h"
 #include "InstanceCUDA.h"
+#include "kernels/KernelGridder.cuh"
 
 using namespace idg::kernel::cuda;
 using namespace powersensor;
@@ -147,6 +148,11 @@ std::unique_ptr<Plan> Generic::make_plan(
     assert(get_grid().shape(3) == grid_size);
     options.w_step = m_cache_state.w_step;
     options.nr_w_layers = std::numeric_limits<int>::max();
+    options.max_nr_channels_per_subgrid =
+        options.max_nr_channels_per_subgrid
+            ? min(options.max_nr_channels_per_subgrid,
+                  KernelGridder::block_size_x)
+            : KernelGridder::block_size_x;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, grid_size,
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,
