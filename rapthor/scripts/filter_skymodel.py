@@ -13,6 +13,11 @@ import astropy.io.ascii
 from astropy.io import fits as pyfits
 from astropy import wcs
 from astropy.utils import iers
+from astropy.table import Table
+import astropy.units as u
+from astropy.coordinates import SkyCoord
+from astropy.coordinates import match_coordinates_sky
+from astropy.stats import sigma_clip
 import os
 import json
 from rapthor.lib.observation import Observation
@@ -20,6 +25,7 @@ from scipy.interpolate import interp1d
 import subprocess
 import sys
 import tempfile
+
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
 # node does not have internet access
@@ -174,7 +180,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         Value of rms_box PyBDSF parameter
     rmsbox_bright : tuple of floats, optional
         Value of rms_box_bright PyBDSF parameter
-    adaptive_rmsbox : tuple of floats, optional
+    adaptive_rmsbox : bool, optional
         Value of adaptive_rms_box PyBDSF parameter
     use_adaptive_threshold : bool, optional
         If True, use an adaptive threshold estimated from the negative values in
@@ -243,6 +249,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                              thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
+    catalog_filename = output_root+'.srl.fits'
+    img.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
+                      clobber=True)
 
     # Collect some diagnostic numbers for later reporting. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
@@ -377,6 +386,45 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
                 s_comp = None
         else:
             s_comp = lsmtool.load(comparison_skymodel)
+
+        # Do cross matching of the comparison model with the PyBFSF-derived one
+        if s_comp is not None:
+            # Write comparison catalog to FITS file for use with astropy
+            catalog_comp_filename = output_root+'.comparison.fits'
+            s_comp.write(catalog_comp_filename, format='fits', clobber=True)
+
+            # Read in catalogs and filter to keep only comparison sources within
+            # a radius of FWHM / 2 of phase center
+            catalog = Table.read(catalog_filename, format='fits')
+            catalog_comp = Table.read(catalog_comp_filename, format='fits')
+            obs = Observation(beamMS[beam_ind])
+            phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
+            separation = phase_center.separation(catalog_comp)
+            catalog_comp = catalog_comp[separation < obs.fwhm/2*u.degree]
+
+            # Cross match the coordinates and keep only matches that have a
+            # separation of 5 arcsec or less
+            coords = SkyCoord(ra=catalog['RA']*u.degree, dec=catalog['Dec']*u.degree)
+            coords_comp = SkyCoord(ra=catalog_comp['RA']*u.degree, dec=catalog_comp['Dec']*u.degree)
+            idx, sep2d, _ = match_coordinates_sky(coords_comp, coords)
+            constraint = sep2d < 5*u.arcsec
+            catalog_comp = catalog_comp[constraint]
+            catalog = catalog[idx[constraint]]
+
+            # Find the mean flux ratio (input / comparison). We use the total island
+            # flux density from PyBDSF as it gives less scatter than the Gaussian
+            # fluxes when comparing to a lower-resolution catalog (such as TGSS)
+            ratio = catalog['Isl_Total_Flux'] / catalog_comp['Stotal']
+            meanRatio = np.mean(ratio)
+            stdRatio = np.std(ratio)
+            clippedRatio = sigma_clip(ratio)
+            meanClippedRatio = np.mean(clippedRatio)
+            stdClippedRatio = np.std(clippedRatio)
+            stats = {'meanRatio_pybdsf': meanRatio,
+                     'stdRatio_pybdsf': stdRatio,
+                     'meanClippedRatio_pybdsf': meanClippedRatio,
+                     'stdClippedRatio_pybdsf': stdClippedRatio}
+            cwl_output.update(stats)
 
         # Group the comparison sky model into sources and select only those sources
         # that are composed entirely of type "POINT", as the comparison method in

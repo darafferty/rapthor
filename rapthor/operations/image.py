@@ -291,6 +291,11 @@ class Image(Operation):
                     stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
                     self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio'])
                     self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
+                    ratio_pybdsf = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
+                    self.field.lofar_to_true_flux_ratio_pybdsf = diagnostics_dict['meanClippedRatio_pybdsf']
+                    stdratio_pybdsf = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
+                    self.field.lofar_to_true_flux_std_pybdsf = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
+                    self.log.info('    LOFAR/TGSS flux ratio (PyBDSF) = {0} +/- {1}'.format(ratio_pybdsf, stdratio_pybdsf))
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
                     stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
                     self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
