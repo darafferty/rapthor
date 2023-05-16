@@ -396,8 +396,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             s_comp.table.columns['I'].format = None
             s_comp.write(catalog_comp_filename, format='fits', clobber=True)
 
-            # Read in catalogs and filter to keep only comparison sources within
-            # a radius of FWHM / 2 of phase center
+            # Read in PyBDSF-derived and comparison catalogs and filter to keep
+            # only comparison sources within a radius of FWHM / 2 of phase center
             catalog = Table.read(catalog_filename, format='fits')
             catalog_comp = Table.read(catalog_comp_filename, format='fits')
             obs = Observation(beamMS[beam_ind])
