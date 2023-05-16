@@ -391,6 +391,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         if s_comp is not None:
             # Write comparison catalog to FITS file for use with astropy
             catalog_comp_filename = output_root+'.comparison.fits'
+            s_comp.table.columns['Ra'].format = None
+            s_comp.table.columns['Dec'].format = None
+            s_comp.table.columns['I'].format = None
             s_comp.write(catalog_comp_filename, format='fits', clobber=True)
 
             # Read in catalogs and filter to keep only comparison sources within
@@ -399,13 +402,17 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             catalog_comp = Table.read(catalog_comp_filename, format='fits')
             obs = Observation(beamMS[beam_ind])
             phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
-            separation = phase_center.separation(catalog_comp)
-            catalog_comp = catalog_comp[separation < obs.fwhm/2*u.degree]
+            coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
+            separation = phase_center.separation(coords_comp)
+            sec_el = 1.0 / np.sin(obs.mean_el_rad)
+            fwhm_deg = 1.1 * ((3.0e8 / obs.referencefreq) /
+                               obs.diam) * 180. / np.pi * sec_el
+            catalog_comp = catalog_comp[separation < fwhm_deg/2*u.degree]
 
             # Cross match the coordinates and keep only matches that have a
             # separation of 5 arcsec or less
-            coords = SkyCoord(ra=catalog['RA']*u.degree, dec=catalog['Dec']*u.degree)
-            coords_comp = SkyCoord(ra=catalog_comp['RA']*u.degree, dec=catalog_comp['Dec']*u.degree)
+            coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
+            coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
             idx, sep2d, _ = match_coordinates_sky(coords_comp, coords)
             constraint = sep2d < 5*u.arcsec
             catalog_comp = catalog_comp[constraint]
@@ -414,7 +421,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             # Find the mean flux ratio (input / comparison). We use the total island
             # flux density from PyBDSF as it gives less scatter than the Gaussian
             # fluxes when comparing to a lower-resolution catalog (such as TGSS)
-            ratio = catalog['Isl_Total_Flux'] / catalog_comp['Stotal']
+            ratio = catalog['Isl_Total_flux'] / catalog_comp['I']
             meanRatio = np.mean(ratio)
             stdRatio = np.std(ratio)
             clippedRatio = sigma_clip(ratio)
