@@ -52,8 +52,7 @@ if __name__ == '__main__':
             parset = parset_read(parset_file, use_log_file=False)
         except Exception as e:
             log = logging.getLogger('rapthor:parset')
-            log.critical('Failed to parse parset:')
-            log.critical(e)
+            log.critical('Failed to parse parset:\n%s', e)
             sys.exit(-1)
         try:
             # Run the processing
