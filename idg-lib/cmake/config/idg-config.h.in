@@ -39,7 +39,7 @@
 #define FFTW3_LIB "@FFTW3_LIBRARY@"
 #define FFTW3F_LIB "@FFTW3F_LIBRARY@"
 
-#cmakedefine HAVE_POWERSENSOR
+#cmakedefine HAVE_PMT
 
 #cmakedefine REGISTER_HOST_MEMORY
 

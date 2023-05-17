@@ -7,10 +7,6 @@
 #include "idg-common.h"
 #include "CUDA/common/CUDA.h"
 
-namespace powersensor {
-class PowerSensor;
-}
-
 namespace idg {
 namespace proxy {
 namespace cuda {

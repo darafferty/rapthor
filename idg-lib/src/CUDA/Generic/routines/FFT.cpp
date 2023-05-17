@@ -39,8 +39,8 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   // Performance measurements
   get_report()->initialize(0, 0, grid_size);
   device.set_report(get_report());
-  powersensor::State powerStates[4];
-  powerStates[0] = hostPowerSensor->read();
+  pmt::State powerStates[4];
+  powerStates[0] = power_meter_->Read();
   powerStates[2] = device.measure();
 
   // Perform fft shift
@@ -67,7 +67,7 @@ void Generic::do_transform(DomainAtoDomainB direction) {
 
   // End measurements
   stream.synchronize();
-  powerStates[1] = hostPowerSensor->read();
+  powerStates[1] = power_meter_->Read();
   powerStates[3] = device.measure();
 
   // Report performance

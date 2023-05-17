@@ -5,7 +5,6 @@ using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
-using namespace powersensor;
 
 namespace idg {
 namespace proxy {
@@ -66,8 +65,8 @@ void GenericOptimized::run_imaging(
   get_report()->initialize(nr_channels, subgrid_size, grid_size);
   device.set_report(get_report());
   cpuKernels->set_report(get_report());
-  std::vector<State> startStates(nr_devices + 1);
-  std::vector<State> endStates(nr_devices + 1);
+  std::vector<pmt::State> startStates(nr_devices + 1);
+  std::vector<pmt::State> endStates(nr_devices + 1);
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -164,7 +163,7 @@ void GenericOptimized::run_imaging(
 
   // Start performance measurement
   startStates[device_id] = device.measure();
-  startStates[nr_devices] = hostPowerSensor->read();
+  startStates[nr_devices] = power_meter_->Read();
 
   // Iterate all jobs
   for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
@@ -387,7 +386,7 @@ void GenericOptimized::run_imaging(
 
   // End performance measurement
   endStates[device_id] = device.measure();
-  endStates[nr_devices] = hostPowerSensor->read();
+  endStates[nr_devices] = power_meter_->Read();
   get_report()->update(Report::device, startStates[device_id],
                        endStates[device_id]);
   get_report()->update(Report::host, startStates[nr_devices],

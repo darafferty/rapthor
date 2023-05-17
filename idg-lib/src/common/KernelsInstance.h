@@ -54,7 +54,7 @@ class KernelsInstance {
 
  protected:
   std::shared_ptr<Report> m_report;
-  std::shared_ptr<powersensor::PowerSensor> m_powersensor;
+  std::unique_ptr<pmt::Pmt> power_meter_;
 
 };  // end class KernelsInstance
 

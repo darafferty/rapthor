@@ -19,8 +19,8 @@ void KernelsInstance::fftshift_grid(
   const size_t width = grid.shape(2);
   ASSERT(height == width);
 
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
 
   std::complex<float> tmp13, tmp24;
 
@@ -44,7 +44,7 @@ void KernelsInstance::fftshift_grid(
     }
   }
 
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   m_report->update<Report::ID::fft_shift>(states[0], states[1]);
 }
 

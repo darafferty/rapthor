@@ -67,10 +67,9 @@ void report(string name, double runtime, double joules, uint64_t flops,
 #endif
 }
 
-void report(string name, uint64_t flops, uint64_t bytes,
-            powersensor::PowerSensor* powerSensor,
-            powersensor::State startState, powersensor::State endState) {
-  double seconds = powerSensor->seconds(startState, endState);
+void report(string name, uint64_t flops, uint64_t bytes, pmt::Pmt* powerSensor,
+            pmt::State startState, pmt::State endState) {
+  double seconds = powerSensor->Seconds(startState, endState);
   double joules = powerSensor->Joules(startState, endState);
   bool ignore_short = false;
   report(name, seconds, flops, bytes, joules, ignore_short);
