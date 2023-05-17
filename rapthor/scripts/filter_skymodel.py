@@ -395,6 +395,10 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             s_comp.table.columns['Dec'].format = None
             s_comp.table.columns['I'].format = None
             s_comp.write(catalog_comp_filename, format='fits', clobber=True)
+            if 'ReferenceFrequency' in s_comp.getColNames():
+                freq_comp = np.mean(s_comp.getColValues('ReferenceFrequency'))
+            else:
+                freq_comp = s_comp.table.meta['ReferenceFrequency']
 
             # Read in PyBDSF-derived and comparison catalogs and filter to keep
             # only comparison sources within a radius of FWHM / 2 of phase center
@@ -405,8 +409,7 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
             coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
             separation = phase_center.separation(coords_comp)
             sec_el = 1.0 / np.sin(obs.mean_el_rad)
-            fwhm_deg = 1.1 * ((3.0e8 / obs.referencefreq) /
-                               obs.diam) * 180. / np.pi * sec_el
+            fwhm_deg = 1.1 * ((3.0e8 / freq) / obs.diam) * 180 / np.pi * sec_el
             catalog_comp = catalog_comp[separation < fwhm_deg/2*u.degree]
 
             # Cross match the coordinates and keep only matches that have a
@@ -420,8 +423,12 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
 
             # Find the mean flux ratio (input / comparison). We use the total island
             # flux density from PyBDSF as it gives less scatter than the Gaussian
-            # fluxes when comparing to a lower-resolution catalog (such as TGSS)
-            ratio = catalog['Isl_Total_flux'] / catalog_comp['I']
+            # fluxes when comparing to a lower-resolution catalog (such as TGSS).
+            # Lastly, a correction factor is used to correct for the potentially
+            # different frequencies of the LOFAR image and the comparison catalog
+            alpha = -0.7  # adopt a typical spectral index
+            freq_factor = (freq_comp / freq)**alpha
+            ratio = catalog['Isl_Total_flux'] / catalog_comp['I'] * freq_factor
             meanRatio = np.mean(ratio)
             stdRatio = np.std(ratio)
             clippedRatio = sigma_clip(ratio)
