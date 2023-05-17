@@ -12,7 +12,7 @@
 
 #include "auxiliary.h"
 
-#include "PowerSensor.h"
+#include "Pmt.h"
 
 namespace idg {
 
@@ -50,8 +50,7 @@ void report(const std::string name, double runtime, double joules,
             uint64_t flops, uint64_t bytes, bool ignore_short = false);
 
 void report(const std::string name, uint64_t flops, uint64_t bytes,
-            powersensor::PowerSensor* powerSensor,
-            powersensor::State startState, powersensor::State endState);
+            pmt::Pmt* powerSensor, pmt::State startState, pmt::State endState);
 
 void report_visibilities(const std::string name, double runtime,
                          uint64_t nr_visibilities);
@@ -271,9 +270,9 @@ class Report {
     update(id, runtime);
   }
 
-  void update(ID id, powersensor::State& start, powersensor::State& end) {
-    double runtime = powersensor::PowerSensor::seconds(start, end);
-    double energy = powersensor::PowerSensor::Joules(start, end);
+  void update(ID id, pmt::State& start, pmt::State& end) {
+    double runtime = pmt::Pmt::Seconds(start, end);
+    double energy = pmt::Pmt::Joules(start, end);
     update(id, runtime);
     auto& item = items[id];
     item.energy_current = energy;
@@ -281,7 +280,7 @@ class Report {
   }
 
   template <ID id>
-  void update(powersensor::State& start, powersensor::State& end) {
+  void update(pmt::State& start, pmt::State& end) {
     update(id, start, end);
   }
 

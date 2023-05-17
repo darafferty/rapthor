@@ -17,7 +17,7 @@ set(${PROJECT_NAME}_headers
     ProxyC.h
     Plan.h
     PlanC.h
-    PowerSensor.h
+    Pmt.h
     Report.h
     Math.h
     WTiles.h
@@ -33,7 +33,7 @@ set(${PROJECT_NAME}_sources
     ProxyC.cpp
     Plan.cpp
     PlanC.cpp
-    PowerSensor.cpp
+    Pmt.cpp
     Report.cpp
     WTiles.cpp
     WTiling.cpp)
@@ -42,6 +42,10 @@ add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
 set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC" SOVERSION
                                                                        0)
+
+if(BUILD_WITH_PMT)
+  target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${PMT_INCLUDE_DIR})
+endif()
 
 # Copy header files
 install(FILES ${${PROJECT_NAME}_headers} DESTINATION include/common)

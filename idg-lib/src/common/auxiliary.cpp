@@ -14,7 +14,6 @@
 #include "idg-common.h"
 #include "auxiliary.h"
 #include "memory.h"
-#include "PowerSensor.h"
 
 namespace idg {
 namespace auxiliary {

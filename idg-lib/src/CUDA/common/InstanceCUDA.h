@@ -32,7 +32,7 @@ class InstanceCUDA : public KernelsInstance {
 
   std::string get_compiler_flags();
 
-  powersensor::State measure();
+  pmt::State measure();
   void measure(PowerRecord& record, cu::Stream& stream);
 
   void launch_gridder(

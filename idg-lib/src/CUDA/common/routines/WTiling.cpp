@@ -396,7 +396,8 @@ void CUDA::run_subgrids_to_wtiles(
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
 
   // Performance measurement
-  powersensor::State startState, endState;
+  pmt::State startState;
+  pmt::State endState;
   startState = device.measure();
 
   for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;) {
@@ -693,7 +694,8 @@ void CUDA::run_subgrids_from_wtiles(
   cu::DeviceMemory& d_tiles = *m_buffers_wtiling.d_tiles;
 
   // Performance measurement
-  powersensor::State startState, endState;
+  pmt::State startState;
+  pmt::State endState;
   startState = device.measure();
 
   for (unsigned int subgrid_index = 0; subgrid_index < nr_subgrids;) {
@@ -762,7 +764,8 @@ void CUDA::flush_wtiles() {
   if (wtile_flush_info.wtile_ids.size()) {
     get_report()->initialize();
     kernel::cuda::InstanceCUDA& device = get_device(0);
-    powersensor::State startState, endState;
+    pmt::State startState;
+    pmt::State endState;
     startState = device.measure();
     run_wtiles_to_grid(subgrid_size, image_size, w_step, shift,
                        wtile_flush_info);

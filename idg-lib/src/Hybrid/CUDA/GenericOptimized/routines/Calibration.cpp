@@ -7,7 +7,6 @@ using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
 using namespace idg::kernel::cpu;
 using namespace idg::kernel::cuda;
-using namespace powersensor;
 
 namespace idg {
 namespace proxy {
@@ -54,8 +53,8 @@ void GenericOptimized::do_calibrate_init(
 
   // Start performance measurement
   get_report()->initialize();
-  powersensor::State states[2];
-  states[0] = hostPowerSensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
 
   // Load device
   InstanceCUDA& device = get_device(0);
@@ -206,7 +205,7 @@ void GenericOptimized::do_calibrate_init(
   }    // end for antennas
 
   // End performance measurement
-  states[1] = hostPowerSensor->read();
+  states[1] = power_meter_->Read();
   get_report()->update(Report::host, states[0], states[1]);
   get_report()->print_total(0, 0, 0);
 

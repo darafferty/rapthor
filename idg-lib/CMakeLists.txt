@@ -11,7 +11,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
 option(BUILD_LIB_CPU "Build CPU libraries" ON)
 option(BUILD_LIB_CUDA "Build CUDA libraries" OFF)
 option(BUILD_WITH_MKL "Build with MKL (if available)" OFF)
-option(BUILD_WITH_POWERSENSOR "Build with PowerSensor" OFF)
+option(BUILD_WITH_PMT "Build with Power Measurement Toolkit (PMT)" OFF)
 option(PERFORMANCE_REPORT "Report performance metrics" OFF)
 option(COMPILE_VERBOSE "Report compiler flags used during runtime compilation"
        OFF)
@@ -82,15 +82,9 @@ if(${ARCHITECTURE} STREQUAL "ppc64le")
 endif()
 
 # resolve dependencies
-if(BUILD_WITH_POWERSENSOR)
-  find_package(PowerSensor REQUIRED)
-endif()
-if(${POWERSENSOR_FOUND})
-  set(HAVE_POWERSENSOR TRUE)
-  include_directories(${POWERSENSOR_INCLUDE_DIR})
-else()
-  unset(POWERSENSOR_LIBRARY CACHE)
-  unset(POWERSENSOR_INCLUDE_DIR CACHE)
+if(BUILD_WITH_PMT)
+  find_package(PMT REQUIRED)
+  set(HAVE_PMT TRUE)
 endif()
 
 # FFT library

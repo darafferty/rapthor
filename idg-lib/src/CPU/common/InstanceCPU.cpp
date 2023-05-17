@@ -15,7 +15,7 @@ InstanceCPU::InstanceCPU() : KernelsInstance() {
   cout << __func__ << endl;
 #endif
 
-  m_powersensor.reset(powersensor::get_power_sensor(powersensor::sensor_host));
+  power_meter_ = pmt::get_power_meter(pmt::sensor_host);
 }
 
 // Destructor

@@ -12,7 +12,7 @@
 #include "common/Types.h"
 #include "common/Plan.h"
 #include "common/KernelsInstance.h"
-#include "common/PowerSensor.h"
+#include "common/Pmt.h"
 #include "common/Report.h"
 #include "common/WTiles.h"
 #endif

@@ -7,7 +7,7 @@ namespace idg {
 namespace kernel {
 namespace cuda {
 
-PowerRecord::PowerRecord(cu::Event& event, powersensor::PowerSensor& sensor)
+PowerRecord::PowerRecord(cu::Event& event, pmt::Pmt& sensor)
     : sensor(sensor), event(event) {}
 
 void PowerRecord::enqueue(cu::Stream& stream) {
@@ -17,7 +17,7 @@ void PowerRecord::enqueue(cu::Stream& stream) {
 
 void PowerRecord::getPower(CUstream, CUresult, void* userData) {
   PowerRecord* record = static_cast<PowerRecord*>(userData);
-  record->state = record->sensor.read();
+  record->state = record->sensor.Read();
 }
 
 }  // end namespace cuda

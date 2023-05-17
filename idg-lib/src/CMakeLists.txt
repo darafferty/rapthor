@@ -55,8 +55,8 @@ add_library(idg-common $<TARGET_OBJECTS:common>)
 
 set(LINK_LIBRARIES idg-external)
 
-if(HAVE_POWERSENSOR)
-  set(LINK_LIBRARIES ${LINK_LIBRARIES} ${POWERSENSOR_LIBRARY})
+if(HAVE_PMT)
+  set(LINK_LIBRARIES ${LINK_LIBRARIES} ${PMT_LIBRARY})
 endif()
 
 target_link_libraries(idg-common ${LINK_LIBRARIES})

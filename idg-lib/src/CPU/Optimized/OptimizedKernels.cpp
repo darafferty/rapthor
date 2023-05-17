@@ -13,80 +13,80 @@ using namespace idg::kernel::cpu::optimized;
  * Main
  */
 void OptimizedKernels::run_gridder(KERNEL_GRIDDER_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_gridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                  image_size, w_step_in_lambda, shift, nr_correlations,
                  nr_channels, nr_stations, uvw, wavenumbers, visibilities,
                  taper, aterms, aterm_indices, avg_aterm, metadata, subgrid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::gridder, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_degridder(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                    image_size, w_step_in_lambda, shift, nr_correlations,
                    nr_channels, nr_stations, uvw, wavenumbers, visibilities,
                    taper, aterms, aterm_indices, metadata, subgrid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::degridder, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_average_beam(KERNEL_AVERAGE_BEAM_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_average_beam(nr_baselines, nr_antennas, nr_timesteps, nr_channels,
                       nr_aterms, subgrid_size, nr_polarizations, uvw, baselines,
                       aterms, aterm_offsets, weights, average_beam);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::average_beam, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_fft(KERNEL_FFT_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_fft(grid_size, size, batch, data, sign);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::grid_fft, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_subgrid_fft(KERNEL_SUBGRID_FFT_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_fft(grid_size, size, batch, data, sign);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::subgrid_fft, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_adder(KERNEL_ADDER_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_adder(nr_subgrids, nr_polarizations, grid_size, subgrid_size, metadata,
                subgrid, grid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::adder, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_splitter(KERNEL_SPLITTER_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_splitter(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                   metadata, subgrid, grid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::splitter, states[0], states[1]);
   }
@@ -96,15 +96,15 @@ void OptimizedKernels::run_splitter(KERNEL_SPLITTER_ARGUMENTS) {
  * Calibration
  */
 void OptimizedKernels::run_calibrate(KERNEL_CALIBRATE_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_calibrate(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                    image_size, w_step_in_lambda, shift, max_nr_timesteps,
                    nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
                    wavenumbers, visibilities, weights, aterms,
                    aterm_derivatives, aterm_indices, metadata, subgrid, phasors,
                    hessian, gradient, residual);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update<Report::calibrate>(states[0], states[1]);
   }
@@ -120,22 +120,22 @@ void OptimizedKernels::run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS) {
  * W-Stacking
  */
 void OptimizedKernels::run_adder_wstack(KERNEL_ADDER_WSTACK_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_adder_wstack(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                       metadata, subgrid, grid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::adder, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_splitter_wstack(KERNEL_SPLITTER_WSTACK_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_splitter_wstack(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                          metadata, subgrid, grid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::splitter, states[0], states[1]);
   }
@@ -180,21 +180,21 @@ size_t OptimizedKernels::init_wtiles(int nr_polarizations, size_t grid_size,
 
 void OptimizedKernels::run_adder_tiles_to_grid(
     KERNEL_ADDER_TILES_TO_GRID_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   kernel_adder_wtiles_to_grid(nr_polarizations, grid_size, subgrid_size,
                               kWTileSize, image_size, w_step, shift, nr_tiles,
                               tile_ids, tile_coordinates,
                               m_wtiles_buffer.data(), grid);
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::wtiling_forward, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
   for (int subgrid_index = 0; subgrid_index < (int)nr_subgrids;) {
     // Is a flush needed right now?
     if (!wtile_flush_set.empty() && wtile_flush_set.front().subgrid_index ==
@@ -239,15 +239,15 @@ void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
     subgrid_index += nr_subgrids_to_process;
   }
 
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::wtiling_forward, states[0], states[1]);
   }
 }
 
 void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
 
   for (int subgrid_index = 0; subgrid_index < nr_subgrids;) {
     // Check whether initialize is needed right now
@@ -295,7 +295,7 @@ void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
     subgrid_index += nr_subgrids_to_process;
   }  // end for subgrid_index
 
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   if (m_report) {
     m_report->update(Report::wtiling_backward, states[0], states[1]);
   }

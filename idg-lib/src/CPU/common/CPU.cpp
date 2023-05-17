@@ -12,19 +12,16 @@
 //#define DEBUG_COMPUTE_JOBSIZE
 
 using namespace idg::kernel;
-using namespace powersensor;
 
 namespace idg {
 namespace proxy {
 namespace cpu {
 
 // Constructor
-CPU::CPU() {
+CPU::CPU() : power_meter_(pmt::get_power_meter(pmt::sensor_host)) {
 #if defined(DEBUG)
   std::cout << "CPU::" << __func__ << std::endl;
 #endif
-
-  m_powersensor.reset(get_power_sensor(sensor_host));
 }
 
 // Destructor
@@ -87,15 +84,15 @@ aocommon::xt::Span<std::complex<float>, 4>& CPU::get_final_grid() {
     const size_t subgrid_size = m_cache_state.subgrid_size;
     const float w_step = m_cache_state.w_step;
     auto& shift = m_cache_state.shift;
-    State states[2];
+    pmt::State states[2];
     get_report()->initialize(0, subgrid_size, grid_size);
-    states[0] = m_powersensor->read();
+    states[0] = power_meter_->Read();
     m_kernels->run_adder_tiles_to_grid(
         nr_polarizations, grid_size, subgrid_size, image_size, w_step,
         shift.data(), wtile_flush_info.wtile_ids.size(),
         wtile_flush_info.wtile_ids.data(),
         wtile_flush_info.wtile_coordinates.data(), get_grid().data());
-    states[1] = m_powersensor->read();
+    states[1] = power_meter_->Read();
     get_report()->update(Report::wtiling_forward, states[0], states[1]);
     get_report()->print_total(nr_correlations);
   }
@@ -201,8 +198,8 @@ void CPU::do_gridding(
 
     // Performance measurement
     get_report()->initialize(nr_channels, subgrid_size, grid_size);
-    State states[2];
-    states[0] = m_powersensor->read();
+    pmt::State states[2];
+    states[0] = power_meter_->Read();
 
     // Start gridder
     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -265,7 +262,7 @@ void CPU::do_gridding(
                           current_nr_subgrids);
     }  // end for bl
 
-    states[1] = m_powersensor->read();
+    states[1] = power_meter_->Read();
     get_report()->update(Report::host, states[0], states[1]);
 
     // Performance report
@@ -336,8 +333,8 @@ void CPU::do_degridding(
 
     // Performance measurement
     get_report()->initialize(nr_channels, subgrid_size, grid_size);
-    State states[2];
-    states[0] = m_powersensor->read();
+    pmt::State states[2];
+    states[0] = power_meter_->Read();
 
     // Run subroutines
     for (unsigned int bl = 0; bl < nr_baselines; bl += jobsize) {
@@ -397,7 +394,7 @@ void CPU::do_degridding(
                           current_nr_subgrids);
     }  // end for bl
 
-    states[1] = m_powersensor->read();
+    states[1] = power_meter_->Read();
     get_report()->update(Report::host, states[0], states[1]);
 
     // Report performance
@@ -465,8 +462,8 @@ void CPU::do_calibrate_init(
 
   // Start performance measurement
   get_report()->initialize();
-  powersensor::State states[2];
-  states[0] = m_powersensor->read();
+  pmt::State states[2];
+  states[0] = power_meter_->Read();
 
   // Create subgrids for every antenna
   for (size_t antenna_nr = 0; antenna_nr < nr_antennas; antenna_nr++) {
@@ -551,7 +548,7 @@ void CPU::do_calibrate_init(
   }  // end for antennas
 
   // End performance measurement
-  states[1] = m_powersensor->read();
+  states[1] = power_meter_->Read();
   get_report()->update<Report::ID::host>(states[0], states[1]);
   get_report()->print_total(nr_correlations);
 
@@ -689,13 +686,13 @@ void CPU::do_transform(DomainAtoDomainB direction) {
           aocommon::xt::CreateSpan<std::complex<float>, 3>(
               &get_grid()(w, 0, 0, 0), {nr_correlations, grid_size, grid_size});
 
-      State states[2];
-      states[0] = m_powersensor->read();
+      pmt::State states[2];
+      states[0] = power_meter_->Read();
       m_kernels->fftshift_grid(grid_w);
       m_kernels->run_fft(grid_size, grid_size, nr_correlations, grid_w.data(),
                          sign);
       m_kernels->fftshift_grid(grid_w);
-      states[1] = m_powersensor->read();
+      states[1] = power_meter_->Read();
       get_report()->update(Report::host, states[0], states[1]);
     }
 

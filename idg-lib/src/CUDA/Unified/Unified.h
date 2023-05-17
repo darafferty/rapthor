@@ -6,10 +6,6 @@
 
 #include "CUDA/Generic/Generic.h"
 
-namespace powersensor {
-class PowerSensor;
-}
-
 namespace cu {
 class UnifiedMemory;
 }

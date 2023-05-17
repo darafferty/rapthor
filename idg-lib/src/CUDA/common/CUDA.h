@@ -62,7 +62,7 @@ class CUDA : public Proxy {
  protected:
   void init_devices();
 
-  std::unique_ptr<powersensor::PowerSensor> hostPowerSensor;
+  std::unique_ptr<pmt::Pmt> power_meter_;
 
   /*
    * Options used internally by the CUDA proxies

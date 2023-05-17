@@ -10,7 +10,6 @@
 #include "kernels/KernelDegridder.cuh"
 
 using namespace idg::kernel;
-using namespace powersensor;
 
 /*
  * Option to enable repeated kernel invocations
@@ -45,8 +44,7 @@ InstanceCUDA::InstanceCUDA(ProxyInfo& info, int device_id)
   executestream.reset(new cu::Stream(*context));
   htodstream.reset(new cu::Stream(*context));
   dtohstream.reset(new cu::Stream(*context));
-  m_powersensor.reset(
-      powersensor::get_power_sensor(powersensor::sensor_device, device_id));
+  power_meter_ = pmt::get_power_meter(pmt::sensor_device, device_id);
 
   // Compile kernels
   compile_kernels();
@@ -405,10 +403,10 @@ std::ostream& operator<<(std::ostream& os, InstanceCUDA& d) {
   return os;
 }
 
-State InstanceCUDA::measure() { return m_powersensor->read(); }
+pmt::State InstanceCUDA::measure() { return power_meter_->Read(); }
 
 void InstanceCUDA::measure(PowerRecord& record, cu::Stream& stream) {
-  record.sensor = *m_powersensor;
+  record.sensor = *power_meter_;
   record.enqueue(stream);
 }
 
@@ -430,10 +428,10 @@ typedef struct {
   PowerRecord* end;
   std::shared_ptr<Report> report;
   Report::ID id;
-  void (Report::*update_report)(State&, State&);
+  void (Report::*update_report)(pmt::State&, pmt::State&);
 } UpdateData;
 
-UpdateData* get_update_data(cu::Event& event, PowerSensor& sensor,
+UpdateData* get_update_data(cu::Event& event, pmt::Pmt& sensor,
                             std::shared_ptr<Report> report, Report::ID id) {
   UpdateData* data = new UpdateData();
   data->start = new PowerRecord(event, sensor);
@@ -501,7 +499,7 @@ void InstanceCUDA::launch_gridder(
   dim3 grid(nr_subgrids);
   dim3 block(KernelGridder::block_size_x);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::gridder);
+      get_update_data(get_event(), *power_meter_, m_report, Report::gridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
@@ -541,7 +539,7 @@ void InstanceCUDA::launch_degridder(
   dim3 block(KernelDegridder::block_size_x);
 
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::degridder);
+      get_update_data(get_event(), *power_meter_, m_report, Report::degridder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_GRIDDER; i++)
@@ -566,7 +564,7 @@ void InstanceCUDA::launch_average_beam(
   dim3 grid(nr_baselines);
   dim3 block(128);
 
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report,
+  UpdateData* data = get_update_data(get_event(), *power_meter_, m_report,
                                      Report::average_beam);
   start_measurement(data);
   executestream->launchKernel(*function_average_beam, grid, block, 0,
@@ -588,7 +586,7 @@ void InstanceCUDA::launch_calibrate(
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::calibrate);
+      get_update_data(get_event(), *power_meter_, m_report, Report::calibrate);
   start_measurement(data);
 
   // Get functions
@@ -757,7 +755,7 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int batch,
 
   // Enqueue start of measurement
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::grid_fft);
+      get_update_data(get_event(), *power_meter_, m_report, Report::grid_fft);
   start_measurement(data);
 
 #if ENABLE_REPEAT_KERNELS
@@ -857,7 +855,7 @@ void InstanceCUDA::launch_subgrid_fft(cu::DeviceMemory& d_data,
   cu::ScopedContext scc(*context);
 
   // Enqueue start of measurement
-  UpdateData* data = get_update_data(get_event(), *m_powersensor, m_report,
+  UpdateData* data = get_update_data(get_event(), *power_meter_, m_report,
                                      Report::subgrid_fft);
   start_measurement(data);
 
@@ -895,7 +893,7 @@ void InstanceCUDA::launch_fft_shift(cu::DeviceMemory& d_data, int batch,
   dim3 block(128);
 
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::fft_shift);
+      get_update_data(get_event(), *power_meter_, m_report, Report::fft_shift);
   start_measurement(data);
   executestream->launchKernel(*function_fft_shift, grid, block, 0, parameters);
   end_measurement(data);
@@ -913,7 +911,7 @@ void InstanceCUDA::launch_adder(int nr_subgrids, int nr_polarizations,
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::adder);
+      get_update_data(get_event(), *power_meter_, m_report, Report::adder);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
@@ -935,7 +933,7 @@ void InstanceCUDA::launch_adder_unified(int nr_subgrids, long grid_size,
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::adder);
+      get_update_data(get_event(), *power_meter_, m_report, Report::adder);
   start_measurement(data);
   executestream->launchKernel(*function_adder, grid, block, 0, parameters);
   end_measurement(data);
@@ -953,7 +951,7 @@ void InstanceCUDA::launch_splitter(int nr_subgrids, int nr_polarizations,
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
+      get_update_data(get_event(), *power_meter_, m_report, Report::splitter);
   start_measurement(data);
 #if ENABLE_REPEAT_KERNELS
   for (int i = 0; i < NR_REPETITIONS_ADDER; i++)
@@ -975,7 +973,7 @@ void InstanceCUDA::launch_splitter_unified(int nr_subgrids, long grid_size,
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::splitter);
+      get_update_data(get_event(), *power_meter_, m_report, Report::splitter);
   start_measurement(data);
   executestream->launchKernel(*function_splitter, grid, block, 0, parameters);
   end_measurement(data);
@@ -989,7 +987,7 @@ void InstanceCUDA::launch_scaler(int nr_subgrids, int nr_polarizations,
   dim3 grid(nr_subgrids);
   dim3 block(128);
   UpdateData* data =
-      get_update_data(get_event(), *m_powersensor, m_report, Report::fft_scale);
+      get_update_data(get_event(), *power_meter_, m_report, Report::fft_scale);
   start_measurement(data);
   executestream->launchKernel(*function_scaler, grid, block, 0, parameters);
   end_measurement(data);

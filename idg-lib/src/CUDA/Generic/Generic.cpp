@@ -8,7 +8,6 @@
 #include "kernels/KernelGridder.cuh"
 
 using namespace idg::kernel::cuda;
-using namespace powersensor;
 
 namespace idg {
 namespace proxy {
