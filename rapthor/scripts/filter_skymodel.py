@@ -256,10 +256,10 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
     # Collect some diagnostic numbers for later reporting. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
     theoretical_rms, unflagged_fraction = calc_theoretical_noise(beamMS)  # Jy/beam
-    min_rms = float(np.min(img.rms_arr))  # Jy/beam
-    max_rms = float(np.max(img.rms_arr))  # Jy/beam
-    mean_rms = float(np.mean(img.rms_arr))  # Jy/beam
-    median_rms = float(np.median(img.rms_arr))  # Jy/beam
+    min_rms = float(np.nanmin(img.rms_arr))  # Jy/beam
+    max_rms = float(np.nanmax(img.rms_arr))  # Jy/beam
+    mean_rms = float(np.nanmean(img.rms_arr))  # Jy/beam
+    median_rms = float(np.nanmedian(img.rms_arr))  # Jy/beam
     nsources = img.nsrc
     dynamic_range_global = float(np.max(img.ch0_arr) / min_rms)
     dynamic_range_local = float(np.max(img.ch0_arr / img.rms_arr))
