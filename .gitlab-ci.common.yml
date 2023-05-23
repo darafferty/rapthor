@@ -186,9 +186,6 @@ test-unit:
 # Notes for all integration test jobs:
 # - allow_failure is true, since the job will fail when IDG has breaking API
 #   changes and WSClean/DP3 have not incorporated those changes yet.
-# - Always use the most recent WSClean/DP3 master, instead of a fixed version:
-#   - EveryBeam may change, which will require the latest WSclean/DP3.
-#   - When the IDG API itself changes, use the latest WSClean/DP3 ASAP.
 # - Since the IDG repo should not have (circular) dependencies on WSClean and
 #   DP3, we want to run these jobs elsewhere in the future. See AST-653.
 test-integration:
@@ -205,15 +202,15 @@ test-integration:
     - cd build
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGES=On -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
-    # Compile against wsclean
+    # Install wsclean v3.3
     - mkdir /wsclean && cd /wsclean
     - git clone --depth 1 --branch v3.3 https://gitlab.com/aroffringa/wsclean.git src
     - mkdir build && cd build
     - cmake -DCMAKE_PREFIX_PATH=/opt/idg -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
     - cd $CI_PROJECT_DIR && rm -rf /wsclean
-    # Install dp3
-    - mkdir /dp3 && cd /dp3 && git clone https://git.astron.nl/RD/dp3.git src
+    # Install dp3 v5.4 (2022-12-09, not an official release)
+    - mkdir /dp3 && cd /dp3 && git clone https://git.astron.nl/RD/dp3.git src && cd src && git checkout 548828e2fde1a5fc && cd ..
     - mkdir build && cd build
     - cmake -DBUILD_PACKAGES=On -DCMAKE_INSTALL_PREFIX=/usr ../src
     - make install -j4
