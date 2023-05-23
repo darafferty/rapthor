@@ -1,23 +1,14 @@
-// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// Copyright (C) 2023 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef IDG_KERNELS_H_
-#define IDG_KERNELS_H_
-
-#include <cassert>
-
-#ifndef NDEBUG
-#define ASSERT(x) assert(x)
-#else
-#define ASSERT(x) ((void)(x))
-#endif
+#ifndef IDG_KERNELS_INSTANCE_H_
+#define IDG_KERNELS_INSTANCE_H_
 
 #include "Report.h"
 
 #include "idg-common.h"
 
-namespace idg {
-namespace kernel {
+namespace idg::kernel {
 
 class KernelsInstance {
  public:
@@ -50,15 +41,14 @@ class KernelsInstance {
       Performance reporting
   */
  public:
-  void set_report(std::shared_ptr<Report> report) { m_report = report; }
+  void set_report(std::shared_ptr<Report> report) { report_ = report; }
 
  protected:
-  std::shared_ptr<Report> m_report;
+  std::shared_ptr<Report> report_;
   std::unique_ptr<pmt::Pmt> power_meter_;
 
 };  // end class KernelsInstance
 
-}  // namespace kernel
-}  // namespace idg
+}  // namespace idg::kernel
 
 #endif

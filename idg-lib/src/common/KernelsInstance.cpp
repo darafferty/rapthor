@@ -1,23 +1,21 @@
-// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// Copyright (C) 2023 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "KernelsInstance.h"
 
+#include <cassert>
 #include <csignal>
 
 #include <xtensor/xview.hpp>
 
-#include "Index.h"
-
-namespace idg {
-namespace kernel {
+namespace idg::kernel {
 
 void KernelsInstance::fftshift_grid(
     aocommon::xt::Span<std::complex<float>, 3>& grid) {
   const size_t nr_polarizations = grid.shape(0);
   const size_t height = grid.shape(1);
   const size_t width = grid.shape(2);
-  ASSERT(height == width);
+  assert(height == width);
 
   pmt::State states[2];
   states[0] = power_meter_->Read();
@@ -45,7 +43,7 @@ void KernelsInstance::fftshift_grid(
   }
 
   states[1] = power_meter_->Read();
-  m_report->update<Report::ID::fft_shift>(states[0], states[1]);
+  report_->update<Report::ID::fft_shift>(states[0], states[1]);
 }
 
 void KernelsInstance::tile_grid(
@@ -96,7 +94,7 @@ void KernelsInstance::transpose_aterm(
     const unsigned int nr_polarizations,
     const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms_src,
     aocommon::xt::Span<std::complex<float>, 4>& aterms_dst) const {
-  ASSERT(nr_polarizations * aterms_src.size() == aterms_dst.size());
+  assert(nr_polarizations * aterms_src.size() == aterms_dst.size());
   const size_t nr_stations = aterms_src.shape(0);
   const size_t nr_timeslots = aterms_src.shape(1);
   const size_t subgrid_size = aterms_src.shape(2);
@@ -123,8 +121,8 @@ void KernelsInstance::transpose_aterm(
 }
 
 void KernelsInstance::print_memory_info() {
-  auto memory_total = auxiliary::get_total_memory() / (float)1024;  // GBytes
-  auto memory_used = auxiliary::get_used_memory() / (float)1024;    // GBytes
+  auto memory_total = auxiliary::get_total_memory() / float(1024);  // GBytes
+  auto memory_used = auxiliary::get_used_memory() / float(1024);    // GBytes
   auto memory_free = memory_total - memory_used;
   std::clog << "Host memory -> " << std::fixed << std::setprecision(1);
   std::clog << "total: " << memory_total << " Gb, ";
@@ -132,5 +130,4 @@ void KernelsInstance::print_memory_info() {
   std::clog << "free: " << memory_free << " Gb" << std::endl;
 }
 
-}  // namespace kernel
-}  // namespace idg
+}  // namespace idg::kernel

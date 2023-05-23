@@ -12,9 +12,7 @@
 
 #include "idg-common.h"
 
-namespace idg {
-namespace kernel {
-namespace cpu {
+namespace idg::kernel::cpu {
 
 class InstanceCPU : public KernelsInstance {
  public:
@@ -169,11 +167,9 @@ class InstanceCPU : public KernelsInstance {
   };
 
  protected:
-  xt::xtensor<std::complex<float>, 4> m_wtiles_buffer;
+  xt::xtensor<std::complex<float>, 4> wtiles_buffer_;
 };
 
-}  // end namespace cpu
-}  // end namespace kernel
-}  // end namespace idg
+}  // end namespace idg::kernel::cpu
 
 #endif
