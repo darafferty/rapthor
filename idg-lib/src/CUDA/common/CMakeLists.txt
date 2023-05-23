@@ -35,7 +35,6 @@ endif()
 install(
   FILES kernels/KernelDegridder.cuh
         kernels/KernelDegridder.cu
-        kernels/KernelFFT.cu
         kernels/KernelGridder.cuh
         kernels/KernelGridder.cu
         kernels/KernelScaler.cu

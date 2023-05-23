@@ -20,8 +20,8 @@ void OptimizedKernels::run_gridder(KERNEL_GRIDDER_ARGUMENTS) {
                  nr_channels, nr_stations, uvw, wavenumbers, visibilities,
                  taper, aterms, aterm_indices, avg_aterm, metadata, subgrid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::gridder, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::gridder, states[0], states[1]);
   }
 }
 
@@ -33,8 +33,8 @@ void OptimizedKernels::run_degridder(KERNEL_DEGRIDDER_ARGUMENTS) {
                    nr_channels, nr_stations, uvw, wavenumbers, visibilities,
                    taper, aterms, aterm_indices, metadata, subgrid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::degridder, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::degridder, states[0], states[1]);
   }
 }
 
@@ -45,8 +45,8 @@ void OptimizedKernels::run_average_beam(KERNEL_AVERAGE_BEAM_ARGUMENTS) {
                       nr_aterms, subgrid_size, nr_polarizations, uvw, baselines,
                       aterms, aterm_offsets, weights, average_beam);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::average_beam, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::average_beam, states[0], states[1]);
   }
 }
 
@@ -55,8 +55,8 @@ void OptimizedKernels::run_fft(KERNEL_FFT_ARGUMENTS) {
   states[0] = power_meter_->Read();
   kernel_fft(grid_size, size, batch, data, sign);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::grid_fft, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::grid_fft, states[0], states[1]);
   }
 }
 
@@ -65,8 +65,8 @@ void OptimizedKernels::run_subgrid_fft(KERNEL_SUBGRID_FFT_ARGUMENTS) {
   states[0] = power_meter_->Read();
   kernel_fft(grid_size, size, batch, data, sign);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::subgrid_fft, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::subgrid_fft, states[0], states[1]);
   }
 }
 
@@ -76,8 +76,8 @@ void OptimizedKernels::run_adder(KERNEL_ADDER_ARGUMENTS) {
   kernel_adder(nr_subgrids, nr_polarizations, grid_size, subgrid_size, metadata,
                subgrid, grid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::adder, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::adder, states[0], states[1]);
   }
 }
 
@@ -87,8 +87,8 @@ void OptimizedKernels::run_splitter(KERNEL_SPLITTER_ARGUMENTS) {
   kernel_splitter(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                   metadata, subgrid, grid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::splitter, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::splitter, states[0], states[1]);
   }
 }
 
@@ -105,8 +105,8 @@ void OptimizedKernels::run_calibrate(KERNEL_CALIBRATE_ARGUMENTS) {
                    aterm_derivatives, aterm_indices, metadata, subgrid, phasors,
                    hessian, gradient, residual);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update<Report::calibrate>(states[0], states[1]);
+  if (report_) {
+    report_->update<Report::calibrate>(states[0], states[1]);
   }
 }
 
@@ -125,8 +125,8 @@ void OptimizedKernels::run_adder_wstack(KERNEL_ADDER_WSTACK_ARGUMENTS) {
   kernel_adder_wstack(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                       metadata, subgrid, grid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::adder, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::adder, states[0], states[1]);
   }
 }
 
@@ -136,8 +136,8 @@ void OptimizedKernels::run_splitter_wstack(KERNEL_SPLITTER_WSTACK_ARGUMENTS) {
   kernel_splitter_wstack(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
                          metadata, subgrid, grid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::splitter, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::splitter, states[0], states[1]);
   }
 }
 
@@ -171,7 +171,7 @@ size_t OptimizedKernels::init_wtiles(int nr_polarizations, size_t grid_size,
   }
   assert(nr_wtiles >= nr_wtiles_min);
 
-  m_wtiles_buffer = xt::xtensor<std::complex<float>, 4>(
+  wtiles_buffer_ = xt::xtensor<std::complex<float>, 4>(
       {nr_wtiles, static_cast<size_t>(nr_polarizations), padded_wtile_size,
        padded_wtile_size},
       std::complex<float>(0.0f, 0.0f));
@@ -182,13 +182,12 @@ void OptimizedKernels::run_adder_tiles_to_grid(
     KERNEL_ADDER_TILES_TO_GRID_ARGUMENTS) {
   pmt::State states[2];
   states[0] = power_meter_->Read();
-  kernel_adder_wtiles_to_grid(nr_polarizations, grid_size, subgrid_size,
-                              kWTileSize, image_size, w_step, shift, nr_tiles,
-                              tile_ids, tile_coordinates,
-                              m_wtiles_buffer.data(), grid);
+  kernel_adder_wtiles_to_grid(
+      nr_polarizations, grid_size, subgrid_size, kWTileSize, image_size, w_step,
+      shift, nr_tiles, tile_ids, tile_coordinates, wtiles_buffer_.data(), grid);
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::wtiling_forward, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::wtiling_forward, states[0], states[1]);
   }
 }
 
@@ -208,7 +207,7 @@ void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
                                   wtile_flush_info.wtile_ids.size(),
                                   wtile_flush_info.wtile_ids.data(),
                                   wtile_flush_info.wtile_coordinates.data(),
-                                  m_wtiles_buffer.data(), grid);
+                                  wtiles_buffer_.data(), grid);
 
       // Remove the flush event from the queue
       wtile_flush_set.pop_front();
@@ -234,14 +233,14 @@ void OptimizedKernels::run_adder_wtiles(KERNEL_ADDER_WTILES_ARGUMENTS) {
                                     &metadata[subgrid_index],
                                     &subgrid[subgrid_index * subgrid_size *
                                              subgrid_size * nr_polarizations],
-                                    m_wtiles_buffer.data());
+                                    wtiles_buffer_.data());
     // Increment the subgrid index by the actual number of processed subgrids
     subgrid_index += nr_subgrids_to_process;
   }
 
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::wtiling_forward, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::wtiling_forward, states[0], states[1]);
   }
 }
 
@@ -261,8 +260,8 @@ void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
           nr_polarizations, grid_size, subgrid_size, kWTileSize, image_size,
           w_step, shift, wtile_initialize_info.wtile_ids.size(),
           wtile_initialize_info.wtile_ids.data(),
-          wtile_initialize_info.wtile_coordinates.data(),
-          m_wtiles_buffer.data(), grid);
+          wtile_initialize_info.wtile_coordinates.data(), wtiles_buffer_.data(),
+          grid);
 
       // Remove initialize even from queue
       wtile_initialize_set.pop_front();
@@ -289,15 +288,15 @@ void OptimizedKernels::run_splitter_wtiles(KERNEL_SPLITTER_WTILES_ARGUMENTS) {
         kWTileSize, &metadata[subgrid_index],
         &subgrid[subgrid_index * subgrid_size * subgrid_size *
                  nr_polarizations],
-        m_wtiles_buffer.data());
+        wtiles_buffer_.data());
 
     // Increment the subgrid index by the actual number of processed subgrids
     subgrid_index += nr_subgrids_to_process;
   }  // end for subgrid_index
 
   states[1] = power_meter_->Read();
-  if (m_report) {
-    m_report->update(Report::wtiling_backward, states[0], states[1]);
+  if (report_) {
+    report_->update(Report::wtiling_backward, states[0], states[1]);
   }
 }  // end run_splitter_wtiles
 

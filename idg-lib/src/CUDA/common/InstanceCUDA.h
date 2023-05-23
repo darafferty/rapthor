@@ -1,34 +1,52 @@
-// Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
+// Copyright (C) 2023 ASTRON (Netherlands Institute for Radio Astronomy)
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-#ifndef IDG_CUDA_INSTANCE_H_
-#define IDG_CUDA_INSTANCE_H_
+#ifndef IDG_INSTANCE_CUDA_H_
+#define IDG_INSTANCE_CUDA_H_
 
 #include <memory>
-
-#include "idg-common.h"
 
 #include "CU.h"
 #include "CUFFT.h"
 #include "PowerRecord.h"
 
-namespace idg {
-namespace kernel {
-namespace cuda {
+namespace idg::kernel::cuda {
 
 class InstanceCUDA : public KernelsInstance {
  public:
-  // Constructor
-  InstanceCUDA(ProxyInfo& info, int device_id = 0);
+  const size_t kTileSizeGrid = 128;
+  const size_t kFftSubgridBatch = 1024;
 
-  // Destructor
+  const std::string kNameGridder = "kernel_gridder";
+  const std::string kNameDegridder = "kernel_degridder";
+  const std::string kNameAdder = "kernel_adder";
+  const std::string kNameSplitter = "kernel_splitter";
+  const std::string kNameFft = "kernel_fft";
+  const std::string kNameScaler = "kernel_scaler";
+  const std::string kNnameCalibrateLMNP = "kernel_calibrate_lmnp";
+  const std::string kNameCalibrateSums = "kernel_calibrate_sums";
+  const std::string kNameCalibrateGradient = "kernel_calibrate_gradient";
+  const std::string kNameCalibrateHessian = "kernel_calibrate_hessian";
+  const std::string kNameAverageBeam = "kernel_average_beam";
+  const std::string kNameFftShift = "kernel_fft_shift";
+  const std::string kNameCopyTiles = "kernel_copy_tiles";
+  const std::string kNameApplyPhasor = "kernel_apply_phasor";
+  const std::string kNameSubgridsToWtiles = "kernel_subgrids_to_wtiles";
+  const std::string kNameWtilesToGrid = "kernel_wtiles_to_grid";
+  const std::string kNameSubgridsFromWtiles = "kernel_subgrids_from_wtiles";
+  const std::string kNameWtilesFromGrid = "kernel_wtiles_from_grid";
+  const std::string kNameWtilesToPatch = "kernel_wtiles_to_patch";
+  const std::string kNameWtilesFromPatch = "kernel_wtiles_from_patch";
+
+  InstanceCUDA(ProxyInfo& info, size_t device_id = 0);
+
   ~InstanceCUDA();
 
-  cu::Context& get_context() const { return *context; }
-  cu::Device& get_device() const { return *device; }
-  cu::Stream& get_execute_stream() const { return *executestream; };
-  cu::Stream& get_htod_stream() const { return *htodstream; };
-  cu::Stream& get_dtoh_stream() const { return *dtohstream; };
+  cu::Context& get_context() const { return *context_; }
+  cu::Device& get_device() const { return *device_; }
+  cu::Stream& get_execute_stream() const { return *stream_execute_; };
+  cu::Stream& get_htod_stream() const { return *stream_htod_; };
+  cu::Stream& get_dtoh_stream() const { return *stream_dtoh_; };
 
   std::string get_compiler_flags();
 
@@ -79,7 +97,7 @@ class InstanceCUDA : public KernelsInstance {
   void launch_grid_fft(cu::DeviceMemory& d_data, int batch, long size,
                        DomainAtoDomainB direction);
 
-  void plan_subgrid_fft(unsigned size, unsigned nr_polarizations);
+  void plan_subgrid_fft(size_t size, size_t nr_polarizations);
 
   void launch_subgrid_fft(cu::DeviceMemory& d_data, unsigned nr_subgrids,
                           unsigned nr_polarizations,
@@ -164,17 +182,18 @@ class InstanceCUDA : public KernelsInstance {
       cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
       cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch);
 
-  // Misc
   void free_subgrid_fft();
-  int get_tile_size_grid() const { return m_tile_size_grid; };
+  int get_tile_size_grid() const { return kTileSizeGrid; };
   void free_events();
 
-  // Device interface
   void print_device_memory_info() const;
   size_t get_free_memory() const;
   size_t get_total_memory() const;
   template <CUdevice_attribute attribute>
   int get_attribute() const;
+
+  void enqueue_report(cu::Stream& stream, int nr_polarizations,
+                      int nr_timesteps, int nr_subgrids);
 
  private:
   void reset();
@@ -185,84 +204,48 @@ class InstanceCUDA : public KernelsInstance {
   cu::Event& get_event();
   std::vector<std::unique_ptr<cu::Event>> events;
 
- protected:
+  // Runtime compilation
   cu::Module* compile_kernel(std::string& flags, std::string& src,
                              std::string& bin);
   void compile_kernels();
   void load_kernels();
+
   void set_parameters();
   void set_parameters_default();
 
- protected:
-  // Variables shared by all InstanceCUDA instances
-  ProxyInfo& mInfo;
+  std::unique_ptr<cu::Context> context_;
+  std::unique_ptr<cu::Device> device_;
+  std::unique_ptr<cu::Stream>
+      stream_execute_;  ///< Stream for kernel execution.
+  std::unique_ptr<cu::Stream>
+      stream_htod_;  ///< Stream for host to device memory copies.
+  std::unique_ptr<cu::Stream>
+      stream_dtoh_;  ///< Stream for device to host memory copies.
+  std::unique_ptr<cu::Profiler> profiler_;
+  std::unique_ptr<cu::Function> function_gridder_;
+  std::unique_ptr<cu::Function> function_degridder_;
+  std::unique_ptr<cu::Function> function_adder_;
+  std::unique_ptr<cu::Function> function_splitter_;
+  std::unique_ptr<cu::Function> function_scaler_;
+  std::unique_ptr<cu::Function> function_average_beam_;
+  std::unique_ptr<cu::Function> function_fft_shift_;
+  std::vector<std::unique_ptr<cu::Function>> functions_calibrate_;
+  std::vector<std::unique_ptr<cu::Function>> functions_wtiling_;
+  std::vector<std::unique_ptr<cu::Module>> modules_;
 
- private:
-  std::unique_ptr<cu::Context> context;
-  std::unique_ptr<cu::Device> device;
-  std::unique_ptr<cu::Stream> executestream;
-  std::unique_ptr<cu::Stream> htodstream;
-  std::unique_ptr<cu::Stream> dtohstream;
-  std::unique_ptr<cu::Profiler> profiler;
-  std::unique_ptr<cu::Function> function_gridder;
-  std::unique_ptr<cu::Function> function_degridder;
-  std::unique_ptr<cu::Function> function_fft;
-  std::unique_ptr<cu::Function> function_adder;
-  std::unique_ptr<cu::Function> function_splitter;
-  std::unique_ptr<cu::Function> function_scaler;
-  std::unique_ptr<cu::Function> function_average_beam;
-  std::unique_ptr<cu::Function> function_fft_shift;
-  std::vector<std::unique_ptr<cu::Function>> functions_calibrate;
-  std::vector<std::unique_ptr<cu::Function>> functions_wtiling;
-
-  // All CUDA modules private to this InstanceCUDA
-  std::vector<std::unique_ptr<cu::Module>> m_modules;
-
- protected:
-  int m_tile_size_grid = 128;
+  ProxyInfo& proxy_info_;
 
   // Subgrid FFT
-  const unsigned m_fft_subgrid_batch_default = 1024;
-  unsigned m_fft_subgrid_batch = m_fft_subgrid_batch_default;
-  unsigned m_fft_subgrid_size = 0;
-  std::unique_ptr<cufft::C2C_2D> m_fft_plan_subgrid;
-  std::unique_ptr<cu::DeviceMemory> d_fft_subgrid;
+  size_t fft_subgrid_batch_ = kFftSubgridBatch;
+  size_t fft_subgrid_size_ = 0;
+  std::unique_ptr<cufft::C2C_2D> fft_plan_subgrid_;
+  std::unique_ptr<cu::DeviceMemory> device_subgrid_fft_;
 
- public:
-  void enqueue_report(cu::Stream& stream, int nr_polarizations,
-                      int nr_timesteps, int nr_subgrids);
-
- private:
   void start_measurement(void* data);
   void end_measurement(void* data);
 };
 std::ostream& operator<<(std::ostream& os, InstanceCUDA& d);
 
-// Kernel names
-static const std::string name_gridder = "kernel_gridder";
-static const std::string name_degridder = "kernel_degridder";
-static const std::string name_adder = "kernel_adder";
-static const std::string name_splitter = "kernel_splitter";
-static const std::string name_fft = "kernel_fft";
-static const std::string name_scaler = "kernel_scaler";
-static const std::string name_calibrate_lmnp = "kernel_calibrate_lmnp";
-static const std::string name_calibrate_sums = "kernel_calibrate_sums";
-static const std::string name_calibrate_gradient = "kernel_calibrate_gradient";
-static const std::string name_calibrate_hessian = "kernel_calibrate_hessian";
-static const std::string name_average_beam = "kernel_average_beam";
-static const std::string name_fft_shift = "kernel_fft_shift";
-static const std::string name_copy_tiles = "kernel_copy_tiles";
-static const std::string name_apply_phasor = "kernel_apply_phasor";
-static const std::string name_subgrids_to_wtiles = "kernel_subgrids_to_wtiles";
-static const std::string name_wtiles_to_grid = "kernel_wtiles_to_grid";
-static const std::string name_subgrids_from_wtiles =
-    "kernel_subgrids_from_wtiles";
-static const std::string name_wtiles_from_grid = "kernel_wtiles_from_grid";
-static const std::string name_wtiles_to_patch = "kernel_wtiles_to_patch";
-static const std::string name_wtiles_from_patch = "kernel_wtiles_from_patch";
-
-}  // end namespace cuda
-}  // end namespace kernel
-}  // end namespace idg
+}  // end namespace idg::kernel::cuda
 
 #endif
