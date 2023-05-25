@@ -2,7 +2,7 @@
 
 ## Quick installation guide:
 ```
-git clone --recursive -j4 https://git.astron.nl/RD/idg.git
+git clone https://git.astron.nl/RD/idg.git
 cd idg
 mkdir build; cd build
 cmake -DCMAKE_INSTALL_PREFIX=<idg_install_path> ..
