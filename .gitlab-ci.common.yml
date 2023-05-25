@@ -11,9 +11,6 @@ workflow:
       when: never
     - when: always
 
-variables:
-  GIT_SUBMODULE_STRATEGY: recursive
-
 stages:
   - versioning
   - prepare
