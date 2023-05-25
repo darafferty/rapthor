@@ -75,8 +75,8 @@ class Field(object):
         self.max_normalization_delta = 0.3
         self.solve_min_uv_lambda = 350
         self.scale_normalization_delta = True
-        self.lofar_to_true_flux_ratio = 1.0
-        self.lofar_to_true_flux_std = 0.0
+        self.lofar_to_true_flux_ratio_pybdsf = 1.0
+        self.lofar_to_true_flux_std_pybdsf = 0.0
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
