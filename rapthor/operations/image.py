@@ -260,6 +260,9 @@ class Image(Operation):
             sector.diagnostics.append(diagnostics_dict)
             try:
                 theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
+                min_rms_pb = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_pb']*1e6)
+                median_rms_pb = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_pb']*1e6)
+                dynr_pb = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_pb'])
                 min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
                 median_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms']*1e6)
                 dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
@@ -273,6 +276,9 @@ class Image(Operation):
                 self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
                 self.log.info('    Median RMS noise = {}'.format(median_rms))
                 self.log.info('    Dynamic range = {}'.format(dynr))
+                self.log.info('    Min RMS noise (PB-corrected) = {0} (theoretical = {1})'.format(min_rms_pb, theoretical_rms))
+                self.log.info('    Median RMS noise (PB-corrected) = {}'.format(median_rms_pb))
+                self.log.info('    Dynamic range (PB-corrected) = {}'.format(dynr_pb))
                 self.log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
                 self.log.info('    Reference frequency = {}'.format(freq))
                 self.log.info('    Beam = {}'.format(beam))
@@ -286,16 +292,13 @@ class Image(Operation):
                     # Note: the reported error is not allowed to fall below
                     # 10% for the flux ratio and 0.5" for the astrometry, as these
                     # are the realistic minimum uncertainties in these values
-                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio'])
                     self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio']
-                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
                     self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio'])
-                    self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
                     ratio_pybdsf = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
                     self.field.lofar_to_true_flux_ratio_pybdsf = diagnostics_dict['meanClippedRatio_pybdsf']
                     stdratio_pybdsf = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
                     self.field.lofar_to_true_flux_std_pybdsf = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
-                    self.log.info('    LOFAR/TGSS flux ratio (PyBDSF) = {0} +/- {1}'.format(ratio_pybdsf, stdratio_pybdsf))
+                    self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio_pybdsf, stdratio_pybdsf))
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
                     stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
                     self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
@@ -312,7 +315,9 @@ class Image(Operation):
                 self.log.warn('One or more of the expected image diagnostics unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
                 req_keys = ['theoretical_rms', 'min_rms', 'median_rms', 'dynamic_range_global',
+                            'min_rms_pb', 'median_rms_pb', 'dynamic_range_global_pb',
                             'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
+                            'meanClippedRatio_pybdsf', 'stdClippedRatio_pybdsf',
                             'meanClippedRatio', 'stdClippedRatio', 'meanClippedRAOffsetDeg',
                             'stdClippedRAOffsetDeg', 'meanClippedDecOffsetDeg',
                             'stdClippedDecOffsetDeg']

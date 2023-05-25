@@ -139,7 +139,7 @@ def find_unflagged_fraction(ms_file):
     return unflagged_fraction
 
 
-def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
+def main(input_image, input_image_pb, input_skymodel_pb, output_root, vertices_file, beamMS,
          input_bright_skymodel_pb=None, threshisl=5.0, threshpix=7.5,
          rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_rmsbox=True,
          use_adaptive_threshold=False, adaptive_thresh=75.0,
@@ -158,6 +158,9 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
     input_image : str
         Filename of input image to use to detect sources for filtering. Ideally, this
         should be a flat-noise image (i.e., without primary-beam correction)
+    input_image_pb : str
+        Filename of input image to use to measure the flux densities sources. This
+        should be a true-sky image (i.e., with primary-beam correction)
     input_skymodel_pb : str
         Filename of input makesourcedb sky model, with primary-beam correction
     output_root : str
@@ -244,8 +247,8 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
         if threshisl_neg > threshisl:
             threshisl = threshisl_neg
 
-    img = bdsf.process_image(input_image, mean_map='zero', rms_box=rmsbox,
-                             thresh_pix=threshpix, thresh_isl=threshisl,
+    img = bdsf.process_image(input_image_pb, detection_image=input_image, mean_map='zero',
+                             rms_box=rmsbox, thresh_pix=threshpix, thresh_isl=threshisl,
                              thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
@@ -256,17 +259,29 @@ def main(input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
     # Collect some diagnostic numbers for later reporting. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
     theoretical_rms, unflagged_fraction = calc_theoretical_noise(beamMS)  # Jy/beam
-    min_rms = float(np.nanmin(img.rms_arr))  # Jy/beam
-    max_rms = float(np.nanmax(img.rms_arr))  # Jy/beam
-    mean_rms = float(np.nanmean(img.rms_arr))  # Jy/beam
-    median_rms = float(np.nanmedian(img.rms_arr))  # Jy/beam
+    min_rms_pb = float(np.nanmin(img.rms_arr))  # Jy/beam
+    max_rms_pb = float(np.nanmax(img.rms_arr))  # Jy/beam
+    mean_rms_pb = float(np.nanmean(img.rms_arr))  # Jy/beam
+    median_rms_pb = float(np.nanmedian(img.rms_arr))  # Jy/beam
+    min_rms = float(np.nanmin(img.detection_rms_arr))  # Jy/beam
+    max_rms = float(np.nanmax(img.detection_rms_arr))  # Jy/beam
+    mean_rms = float(np.nanmean(img.detection_rms_arr))  # Jy/beam
+    median_rms = float(np.nanmedian(img.detection_rms_arr))  # Jy/beam
     nsources = img.nsrc
-    dynamic_range_global = float(np.max(img.ch0_arr) / min_rms)
-    dynamic_range_local = float(np.max(img.ch0_arr / img.rms_arr))
+    dynamic_range_global_pb = float(np.nanmax(img.ch0_arr) / min_rms_pb)
+    dynamic_range_local_pb = float(np.nanmax(img.ch0_arr / img.rms_arr))
+    dynamic_range_global = float(np.nanmax(img.ch0_arr) / min_rms)
+    dynamic_range_local = float(np.nanmax(img.ch0_arr / img.detection_rms_arr))
     beam_fwhm = [float(img.beam[0]), float(img.beam[1]), float(img.beam[2])]  # (maj, min, pa), all in deg
     freq = float(img.frequency)  # Hz
     cwl_output = {'theoretical_rms': theoretical_rms,
                   'unflagged_data_fraction': unflagged_fraction,
+                  'min_rms_pb': min_rms_pb,
+                  'max_rms_pb': max_rms_pb,
+                  'mean_rms_pb': mean_rms_pb,
+                  'median_rms_pb': median_rms_pb,
+                  'dynamic_range_global_pb': dynamic_range_global_pb,
+                  'dynamic_range_local_pb': dynamic_range_local_pb,
                   'min_rms': min_rms,
                   'max_rms': max_rms,
                   'mean_rms': mean_rms,

@@ -655,11 +655,15 @@ steps:
 {% if peel_bright_sources %}
       - id: input_image
         source: restore_pb/restored_image
+      - id: detection_image
+        source: restore_nonpb/restored_image
       - id: input_bright_skymodel_pb
         source: bright_skymodel_pb
 {% else %}
       - id: input_image
         source: image/image_pb_name
+      - id: detection_image
+        source: image/image_nonpb_name
 {% endif %}
       - id: input_skymodel_pb
         source: image/skymodel_pb
