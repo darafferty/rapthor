@@ -15,34 +15,41 @@ requirements:
 
 
 inputs:
-  - id: input_image
-    label: Input image
+  - id: detection_image
+    label: Detection image
     doc: |
-      The filename of the input FITS image.
+      The filename of the input FITS image used for source detection.
     type: File
     inputBinding:
       position: 1
+  - id: input_image
+    label: Input image
+    doc: |
+      The filename of the input primary-beam-corrected FITS image.
+    type: File
+    inputBinding:
+      position: 2
   - id: input_skymodel_pb
     label: PB-corrected model
     doc: |
       The filename of the input primary-beam-corrected sky model.
     type: File
     inputBinding:
-      position: 2
+      position: 3
   - id: output_root
     label: Output root name
     doc: |
       The root of the filenames of the output filtered sky models.
     type: string
     inputBinding:
-      position: 3
+      position: 4
   - id: vertices_file
     label: Filename of vertices file
     doc: |
       The filename of the file containing sector vertices.
     type: File
     inputBinding:
-      position: 4
+      position: 5
   - id: input_bright_skymodel_pb
     label: Bright-source PB-corrected model
     doc: |

@@ -139,7 +139,7 @@ def find_unflagged_fraction(ms_file):
     return unflagged_fraction
 
 
-def main(input_image, input_image_pb, input_skymodel_pb, output_root, vertices_file, beamMS,
+def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_file, beamMS,
          input_bright_skymodel_pb=None, threshisl=5.0, threshpix=7.5,
          rmsbox=(150, 50), rmsbox_bright=(35, 7), adaptive_rmsbox=True,
          use_adaptive_threshold=False, adaptive_thresh=75.0,
@@ -150,15 +150,15 @@ def main(input_image, input_image_pb, input_skymodel_pb, output_root, vertices_f
     Note: If no islands of emission are detected in the input image, a
     blank sky model is made. If any islands are detected in the input image,
     filtered true-sky and apparent-sky models are made, as well as a FITS clean
-    mask (with the filename input_image+'.mask'). Various diagnostics are also
+    mask (with the filename detection_image+'.mask'). Various diagnostics are also
     derived and saved in JSON format.
 
     Parameters
     ----------
-    input_image : str
+    detection_image : str
         Filename of input image to use to detect sources for filtering. Ideally, this
         should be a flat-noise image (i.e., without primary-beam correction)
-    input_image_pb : str
+    input_image : str
         Filename of input image to use to measure the flux densities sources. This
         should be a true-sky image (i.e., with primary-beam correction)
     input_skymodel_pb : str
@@ -224,7 +224,7 @@ def main(input_image, input_image_pb, input_skymodel_pb, output_root, vertices_f
     # Run PyBDSF to make a mask for grouping
     if use_adaptive_threshold:
         # Get an estimate of the rms by running PyBDSF to make an rms map
-        img = bdsf.process_image(input_image, mean_map='zero', rms_box=rmsbox,
+        img = bdsf.process_image(detection_image, mean_map='zero', rms_box=rmsbox,
                                  thresh_pix=threshpix, thresh_isl=threshisl,
                                  thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                                  adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
@@ -247,7 +247,7 @@ def main(input_image, input_image_pb, input_skymodel_pb, output_root, vertices_f
         if threshisl_neg > threshisl:
             threshisl = threshisl_neg
 
-    img = bdsf.process_image(input_image_pb, detection_image=input_image, mean_map='zero',
+    img = bdsf.process_image(input_image, detection_image=detection_image, mean_map='zero',
                              rms_box=rmsbox, thresh_pix=threshpix, thresh_isl=threshisl,
                              thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
@@ -294,7 +294,7 @@ def main(input_image, input_image_pb, input_skymodel_pb, output_root, vertices_f
 
     emptysky = False
     if img.nisl > 0:
-        maskfile = input_image + '.mask'
+        maskfile = detection_image + '.mask'
         img.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
 
         # Construct polygon needed to trim the mask to the sector
@@ -516,7 +516,8 @@ if __name__ == '__main__':
     descriptiontext = "Filter and group a sky model with an image.\n"
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
-    parser.add_argument('input_image', help='Filename of input image')
+    parser.add_argument('detection_image', help='Filename of input detection image')
+    parser.add_argument('input_image', help='Filename of input primary-beam-corrected image')
     parser.add_argument('input_skymodel_pb', help='Filename of input sky model')
     parser.add_argument('output_skymodel', help='Filename of output sky model')
     parser.add_argument('vertices_file', help='Filename of vertices file')
@@ -532,7 +533,7 @@ if __name__ == '__main__':
     parser.add_argument('--beamMS', help='MS filename to use for beam attenuation', type=str, default=None)
 
     args = parser.parse_args()
-    main(args.input_image, args.input_skymodel_pb, args.output_skymodel,
+    main(args.detection_image, args.input_image, args.input_skymodel_pb, args.output_skymodel,
          args.vertices_file, input_bright_skymodel_pb=args.input_bright_skymodel_pb,
          threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
          rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox,
