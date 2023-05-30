@@ -192,7 +192,9 @@ class SubLogParser():
 <<<<<<< HEAD
 =======
 
-def make_cycle_pdfs_sublogs():
+
+def make_cycle_pdfs_sublogs() -> None:
+    """ Make summary PDFs of each iteration and as a grand total."""
     # Every cycle will do calibration, so determine the number of cycles from this.
     Ncycles = len(glob.glob('temp_calibrate_*.pdf'))
     try:
@@ -216,6 +218,7 @@ def make_cycle_pdfs_sublogs():
 >>>>>>> 4547609 (Make a summary PDF)
 
 
+<<<<<<< HEAD
 def make_cycle_pdfs_sublogs() -> None:
     """ Make summary PDFs of each iteration and as a grand total."""
     # Every cycle will do calibration, so determine the number of cycles from this.
@@ -240,6 +243,8 @@ def make_cycle_pdfs_sublogs() -> None:
         print('Concatenation failed. Is pdfunite installed?')
 
 
+=======
+>>>>>>> 79e8fb0 (Docstrings and type hints)
 def main(logdir, detailed: bool = False) -> None:
     """ Main entry point."""
     main_log_file = os.path.join(os.path.abspath(logdir), 'rapthor.log')
