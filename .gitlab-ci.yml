@@ -52,9 +52,9 @@ build-doc:
   image: $BASE_IMAGE
   before_script:
     - apt-get -y update
-    - apt-get -y install make git
+    - apt-get -y install make
     - pip install sphinx numpydoc
-    - pip install .
+    - pip install -e .
   script:
     - cd docs
     - make html
