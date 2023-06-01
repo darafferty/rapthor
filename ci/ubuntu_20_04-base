@@ -116,6 +116,7 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
 # dependencies will have been installed already and (probably) don't need to
 # be updated.
 COPY . rapthor
+RUN python3 -m pip --version
 RUN python3 -m pip install --upgrade ./rapthor && \
     python3 -m pip uninstall -y rapthor
 
