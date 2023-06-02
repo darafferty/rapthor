@@ -151,7 +151,7 @@ def get_global_options(parset):
     if 'final_data_fraction' in parset_dict:
         parset_dict['final_data_fraction'] = parset.getfloat('global', 'final_data_fraction')
     else:
-        parset_dict['final_data_fraction'] = parset_dict['selfcal_data_fraction']
+        parset_dict['final_data_fraction'] = 1.0
     if parset_dict['final_data_fraction'] <= 0.0:
         log.error('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
         sys.exit(1)
@@ -441,8 +441,6 @@ def get_imaging_options(parset):
         parset_dict['grid_nsectors_ra'] = 0
 
     # Center of grid to image (default = phase center of data)
-    # grid_center_ra = 14h41m01.884
-    # grid_center_dec = +35d30m31.52
     if 'grid_center_ra' in parset_dict:
         parset_dict['grid_center_ra'] = Angle(parset_dict['grid_center_ra']).to('deg').value
     else:
@@ -461,10 +459,6 @@ def get_imaging_options(parset):
     # Instead of a grid, imaging sectors can be defined individually by specifying
     # their centers and widths. If sectors are specified in this way, they will be
     # used instead of the sector grid. Note that the sectors should not overlap
-    # sector_center_ra_list = [14h41m01.884, 14h13m23.234]
-    # sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
-    # sector_width_ra_deg_list = [0.532, 0.127]
-    # sector_width_dec_deg_list = [0.532, 0.127]
     len_list = []
     if 'sector_center_ra_list' in parset_dict:
         val_list = parset_dict['sector_center_ra_list'].strip('[]').split(',')

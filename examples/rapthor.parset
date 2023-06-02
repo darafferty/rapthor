@@ -41,7 +41,7 @@ input_ms = /data/ms/*.ms
 # If less than one, the input data are divided by time into chunks (of no less
 # than slow_timestep_separate_sec below) that sum to the requested fraction, spaced out
 # evenly over the full time range. A final fraction can also be specified
-# (default = selfcal_data_fraction) such that a final processing pass (i.e.,
+# (default = 1.0) such that a final processing pass (i.e.,
 # after selfcal finishes) is done with a different fraction
 # selfcal_data_fraction = 0.2
 # final_data_fraction = 1.0
@@ -135,7 +135,7 @@ input_ms = /data/ms/*.ms
 # Reweight the visibility data before imaging (default = False)
 # reweight = False
 
-# Size of area to image when using a grid (default = mean FWHM of the primary beam)
+# Size of area to image when using a grid (default = 1.5 * mean FWHM of the primary beam)
 # Number of sectors along RA to use in imaging grid (default = 0). The number of sectors in
 # Dec will be determined automatically to ensure the whole area specified with grid_center_ra,
 # grid_center_dec, grid_width_ra_deg, and grid_width_dec_deg is imaged. Set grid_nsectors_ra = 0 to force a
