@@ -533,11 +533,9 @@ class Field(object):
                 # If there was insufficient flux in the sky model to meet the
                 # target flux, LSMTool will put all sources into a single patch
                 # with the name 'Patch'. So, check for this case and exit if found
-                self.log.critical('No groups found that meet the target flux density. Please '
-                                  'check the sky model (in working_dir/skymodels/calibrate_{}/) '
-                                  'for problems or lower the target flux density. '
-                                  'Exiting...'.format(index))
-                sys.exit(1)
+                raise RuntimeError('No groups found that meet the target flux density. Please '
+                    'check the sky model (in working_dir/skymodels/calibrate_{}/) '
+                    'for problems or lower the target flux density.'.format(index))
 
             # Update the patch positions after the tessellation to ensure they match the
             # ones from the meanshift grouping

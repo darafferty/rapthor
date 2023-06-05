@@ -5,6 +5,7 @@ Script to subtract sector model data
 import argparse
 from argparse import RawTextHelpFormatter
 import casacore.tables as pt
+import logging
 import numpy as np
 import sys
 import os
@@ -188,8 +189,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
                 starttime_exact = convert_mjd2mvt(starttime_chunk)  # store exact value for use later
             tin.close()
         if len(set(nrows_list)) > 1:
-            print('subtract_sector_models: Model data files have differing number of rows...')
-            sys.exit(1)
+            raise RuntimeError('Model data files have differing number of rows...')
     # In case the user did not concatenate LINC output and fed multiple frequency bands, find the correct frequency band.
     chan_freqs = pt.table(msin+"/SPECTRAL_WINDOW").getcol("CHAN_FREQ")
     for model_ms in model_list[:]:
@@ -199,8 +199,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             model_list.pop(i)
     nsectors = len(model_list)
     if nsectors == 0:
-        print('subtract_sector_models: No model data found. Exiting...')
-        sys.exit(1)
+        raise ValueError('No model data found.')
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
     for m in model_list:
         print(m)
@@ -753,13 +752,18 @@ if __name__ == '__main__':
     parser.add_argument('--quiet', help='Quiet', type=str, default='True')
     parser.add_argument('--infix', help='Infix for output files', type=str, default='')
     args = parser.parse_args()
-    main(args.msin, args.msmod, msin_column=args.msin_column,
-         model_column=args.model_column, out_column=args.out_column,
-         nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
-         use_compression=args.use_compression, peel_outliers=args.peel_outliers,
-         peel_bright=args.peel_bright, reweight=args.reweight,
-         starttime=args.starttime, solint_sec=args.solint_sec,
-         solint_hz=args.solint_hz, weights_colname=args.weights_colname,
-         gainfile=args.gainfile, uvcut_min=args.uvcut_min,
-         uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
-         dirname=args.dirname, quiet=args.quiet, infix=args.infix)
+
+    try:
+        main(args.msin, args.msmod, msin_column=args.msin_column,
+            model_column=args.model_column, out_column=args.out_column,
+            nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
+            use_compression=args.use_compression, peel_outliers=args.peel_outliers,
+            peel_bright=args.peel_bright, reweight=args.reweight,
+            starttime=args.starttime, solint_sec=args.solint_sec,
+            solint_hz=args.solint_hz, weights_colname=args.weights_colname,
+            gainfile=args.gainfile, uvcut_min=args.uvcut_min,
+            uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
+            dirname=args.dirname, quiet=args.quiet, infix=args.infix)
+    except Exception as e:
+        log = logging.getLogger('rapthor:subtract_sector_models')
+        log.critical(e)
