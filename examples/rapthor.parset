@@ -41,8 +41,8 @@ input_ms = /data/ms/*.ms
 # If less than one, the input data are divided by time into chunks (of no less
 # than slow_timestep_separate_sec below) that sum to the requested fraction, spaced out
 # evenly over the full time range. A final fraction can also be specified
-# (default = 1.0) such that a final processing pass (i.e.,
-# after selfcal finishes) is done with a different fraction
+# (default = 1.0) such that a final processing pass (i.e., after selfcal finishes) is
+# done with a different fraction
 # selfcal_data_fraction = 0.2
 # final_data_fraction = 1.0
 
@@ -115,11 +115,11 @@ input_ms = /data/ms/*.ms
 # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
 # mem_gb = 0
 
-# Apply separate XX and YY corrections during facet-based imaging (default = False).
+# Apply separate XX and YY corrections during facet-based imaging (default = True).
 # If False, scalar solutions (the average of the XX and YY solutions) are applied instead.
 # (Separate XX and YY corrections are always applied when using non-facet-based imaging
 # methods.)
-# apply_diagonal_solutions = False
+# apply_diagonal_solutions = True
 
 # The number of direction-dependent PSFs which should be fit horizontally and
 # vertically in the image (default = [1, 1] = direction-independent PSF).

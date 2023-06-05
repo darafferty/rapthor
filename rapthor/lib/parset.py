@@ -420,7 +420,7 @@ def get_imaging_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Size of area to image when using a grid (default = mean FWHM of the primary beam)
+    # Size of area to image when using a grid (default = 1.5 * mean FWHM of the primary beam)
     if 'grid_width_ra_deg' in parset_dict:
         parset_dict['grid_width_ra_deg'] = parset.getfloat('imaging', 'grid_width_ra_deg')
     else:
@@ -527,12 +527,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['mem_gb'] = 0
 
-    # Apply separate XX and YY corrections during imaging (default = False). If False,
+    # Apply separate XX and YY corrections during imaging (default = True). If False,
     # scalar solutions (the average of the XX and YY solutions) are applied instead
     if 'apply_diagonal_solutions' in parset_dict:
         parset_dict['apply_diagonal_solutions'] = parset.getboolean('imaging', 'apply_diagonal_solutions')
     else:
-        parset_dict['apply_diagonal_solutions'] = False
+        parset_dict['apply_diagonal_solutions'] = True
 
     # The number of direction-dependent PSFs which should be fit horizontally and
     # vertically in the image (default = [1, 1] = direction-independent PSF).
