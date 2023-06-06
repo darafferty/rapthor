@@ -6,6 +6,7 @@ a clean mask
 import argparse
 from argparse import RawTextHelpFormatter
 from rapthor.lib import miscellaneous as misc
+import logging
 import numpy as np
 import sys
 from astropy.io import fits as pyfits
@@ -49,8 +50,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
                                      ximsize=ximsize, yimsize=yimsize,
                                      cellsize_deg=float(cellsize_deg), fill_val=1)
         else:
-            print('ERROR: a reference position must be given to make an empty template image')
-            sys.exit(1)
+            raise ValueError('ERROR: a reference position must be given to make an empty template image')
     else:
         make_blank_image = False
 
@@ -101,6 +101,10 @@ if __name__ == '__main__':
     parser.add_argument('--imsize', help='Image size', type=str, default=None)
     parser.add_argument('--region_file', help='Filename of region file', type=str, default=None)
     args = parser.parse_args()
-    main(args.output_image_file, args.input_image_file, vertices_file=args.vertices_file,
-         reference_ra_deg=args.reference_ra_deg, reference_dec_deg=args.reference_dec_deg,
-         cellsize_deg=args.cellsize_deg, imsize=args.imsize, region_file=args.region_file)
+    try:
+        main(args.output_image_file, args.input_image_file, vertices_file=args.vertices_file,
+             reference_ra_deg=args.reference_ra_deg, reference_dec_deg=args.reference_dec_deg,
+             cellsize_deg=args.cellsize_deg, imsize=args.imsize, region_file=args.region_file)
+    except ValueError as e:
+        log = logging.getLogger('rapthor:blank_image')
+        log.critical(e)

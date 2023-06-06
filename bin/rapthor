@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 from rapthor._version import __version__ as version
 from rapthor import process, modifystate
+from rapthor.lib.parset import parset_read
+import logging
 import optparse
 import sys
 
@@ -46,5 +48,18 @@ if __name__ == '__main__':
         # Run state modification tool
         modifystate.run(parset_file)
     else:
-        # Run the processing
-        process.run(parset_file, logging_level=logging_level)
+        try:
+            parset = parset_read(parset_file, use_log_file=False)
+        except Exception as e:
+            log = logging.getLogger('rapthor:parset')
+            log.critical('Failed to parse parset:\n%s', e)
+            sys.exit(-1)
+        try:
+            # Run the processing
+            process.run(parset_file, logging_level=logging_level)
+        except Exception as e:
+            log = logging.getLogger('rapthor')
+            if parset['debug_workflow']:
+                log.exception(e)
+            else:
+                log.critical(e)
