@@ -3,12 +3,12 @@
 Defining a custom processing strategy
 =====================================
 
-The default processing strategy is designed to perform full self calibration of a
-typical LOFAR dataset (see the file ``rapthor/examples/default_calibration_strategy.py``
-in the Rapthor source tree for details). However, depending on the field and the aims of
-the reduction, the default strategy may not be optimal. A custom processing strategy can
-be supplied by specifying the full path to a strategy file in the :term:`strategy` entry
-of the Rapthor parset. The strategy file is a Python file with the following structure:
+The default processing strategy is designed to perform full self calibration of
+a typical LOFAR dataset. However, depending on the field and the aims of the
+reduction, the default strategy may not be optimal. A custom processing strategy
+can be supplied by specifying the full path to a strategy file in the
+:term:`strategy` entry of the Rapthor parset. The strategy file is a Python file
+with the following structure:
 
 .. code-block::
 
@@ -25,9 +25,11 @@ of the Rapthor parset. The strategy file is a Python file with the following str
 
 The file basically defines the variable ``strategy_steps``, which is a list of
 dictionaries. There is one entry (dictionary) in the list per processing cycle. Each
-dictionary stores the processing parameters for that cycle. For an example of a
-custom strategy, see the file ``rapthor/examples/custom_calibration_strategy.py``
-in the Rapthor source tree.
+dictionary stores the processing parameters for that cycle.
+
+.. note::
+
+    An example of a custom strategy file is available `here <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`_. An example of the default self calibration strategy is available `here <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_.
 
 The following processing parameters must be set for each cycle:
 
@@ -43,10 +45,10 @@ The following processing parameters must be set for each cycle:
         Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle.
 
     peel_outliers
-        Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles.
+        Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will than be imaging and its model updated with the rest of the field.
 
     peel_bright_sources
-        Boolean flag that determines whether the bright sources should be peeled for this cycle (for imaging only). The peeled bright sources are added back before subsequent selfcal cycles are performed (so they are included in the calibration, etc.).
+        Boolean flag that determines whether the bright sources should be peeled for this cycle (for imaging only). The peeled bright sources are added back before subsequent selfcal cycles are performed (so they are included in the calibration, etc.). Generally, peeling of bright sources is beneficial when using screens but not when using facets.
 
     max_normalization_delta
         Float that sets the maximum allowed fractional delta from unity for the per-station normalization.

@@ -10,12 +10,16 @@ approximately 192 GB of memory, with a shared filesystem with 1 TB of disk space
 Starting a Rapthor run
 ----------------------
 
-Rapthor can be run with::
+Rapthor can be run with:
+
+.. code-block:: console
 
     $ rapthor rapthor.parset
 
 where ``rapthor.parset`` is the parset described in :ref:`rapthor_parset`. A
-number of options are available and are described below::
+number of options are available and are described below:
+
+.. code-block:: console
 
     Usage: rapthor parset
 
@@ -51,8 +55,30 @@ re-running Rapthor with the same parset.
 Resetting an operation
 ----------------------
 
-Rapthor allows for the processing of an operation to be reset::
+Rapthor allows for the processing of an operation to be reset:
+
+.. code-block:: console
 
     $ rapthor -r rapthor.parset
 
-Once reset, the operation will start from scratch the next time Rapthor is run.
+Upon running this command, a prompt will appear prompting the user to select an operation to reset:
+
+.. code-block:: console
+
+    INFO - rapthor:state - Reading parset and checking state...
+
+    Current strategy: selfcal
+
+    Pipelines:
+        1) calibrate_1
+        2) predict_1
+        3) image_1
+        4) mosaic_1
+        5) calibrate_2
+        6) image_2
+        7) mosaic_2
+        8) calibrate_3
+        9) image_3
+    Enter number of pipeline to reset or "q" to quit:
+
+All operations after the selected one will also be reset.
