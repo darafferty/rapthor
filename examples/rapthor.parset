@@ -6,14 +6,15 @@
 # placed in this directory
 dir_working = /data/rapthor
 
-# Full path to input MS files (required). Wildcards can be used (e.g., /path/to/data/*.ms)
-# or a list can be given
+# Full path to input MS files (required). Wildcards can be used (e.g.,
+# /path/to/data/*.ms) or a list can be given
 input_ms = /data/ms/*.ms
 
-# Automatically download a target sky model (default = True). This will have no effect if
-# input_sky model is specified. The radius out to which a sky model should be downloaded
-# (default is 5 degrees) and the service from which a sky model should be downloaded
-# (default is TGSS) can be specified, as can the option to overwrite an existing sky model
+# Automatically download a target sky model (default = True). This will have no
+# effect if input_sky model is specified. The radius out to which a sky model
+# should be downloaded (default is 5 degrees) and the service from which a sky
+# model should be downloaded (default is TGSS) can be specified, as can the
+# option to overwrite an existing sky model
 # with the downloaded one.
 # download_initial_skymodel = True
 # download_initial_skymodel_radius = 5.0
@@ -21,28 +22,30 @@ input_ms = /data/ms/*.ms
 # download_overwrite_skymodel = False
 
 # Full path to the input sky model file, with true-sky fluxes (required when not
-# automatically downloading). If you also have a sky model with apparent flux densities,
-# specify it with the apparent_skymodel option (note that the source names must be
-# identical in both sky models)
+# automatically downloading). If you also have a sky model with apparent flux
+# densities, specify it with the apparent_skymodel option (note that the source
+# names must be identical in both sky models)
 # input_skymodel = /data/skymodel.txt
 # apparent_skymodel = /data/apparent_skymodel.txt
 
-# Regroup the input or downloaded sky model as needed to meet target flux (default =
-# True). If False, the existing patches are used for the calibration
+# Regroup the input or downloaded sky model as needed to meet target flux
+# (default = True). If False, the existing patches are used for the calibration
 # regroup_input_skymodel = True
 
 # Processing strategy to use (default = selfcal):
 # - selfcal: standard self calibration
-# - image: (not yet supported) image using the input solutions (no calibration is done)
+# - image: (not yet supported) image using the input solutions (no calibration
+#   is done)
 # - user-supplied file: full path to Python file defining custom strategy
 # strategy = selfcal
 
-# Fraction of data to process (default = 0.2 for self calibration and 1.0 for the final pass).
-# If less than one, the input data are divided by time into chunks (of no less
-# than slow_timestep_separate_sec below) that sum to the requested fraction, spaced out
-# evenly over the full time range. A final fraction can also be specified
-# (default = selfcal_data_fraction) such that a final processing pass (i.e.,
-# after selfcal finishes) is done with a different fraction
+# Fraction of data to process (default = 0.2 for self calibration and 1.0 for
+# the final pass). If less than one, the input data are divided by time into
+# chunks (of no less than slow_timestep_separate_sec below) that sum to the
+# requested fraction, spaced out evenly over the full time range. A final
+# fraction can also be specified (default = selfcal_data_fraction) such that a
+# final processing pass (i.e., after selfcal finishes) is done with a different
+# fraction
 # selfcal_data_fraction = 0.2
 # final_data_fraction = 1.0
 
@@ -58,8 +61,8 @@ input_ms = /data/ms/*.ms
 
 
 [calibration]
-# If one of the included sky models (see rapthor/skymodels) is within 2 * PB_FWHM of the
-# field center, include it in the calibration (default = False)
+# If one of the included sky models (see rapthor/skymodels) is within 2 *
+# PB_FWHM of the field center, include it in the calibration (default = False)
 # use_included_skymodels = False
 
 # General solver parameters (defaults shown):
@@ -88,10 +91,10 @@ input_ms = /data/ms/*.ms
 
 
 [imaging]
-# Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA data), Briggs
-# robust parameter (default = -0.5), min and max uv distance in lambda (default = 0, none),
-# taper in arcsec (default = none), and whether multiscale clean should be used (default =
-# True)
+# Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA
+# data), Briggs robust parameter (default = -0.5), min and max uv distance in
+# lambda (default = 0, none), taper in arcsec (default = none), and whether
+# multiscale clean should be used (default = True)
 # cellsize_arcsec = 1.25
 # robust = -0.5
 # min_uv_lambda = 0.0
@@ -108,39 +111,43 @@ input_ms = /data/ms/*.ms
 # dde_method = facets
 # screen_type = kl
 
-# IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can be
-# "cpu" or "hybrid". Note that IDG is only used when dde_method = "none" or "screens"
+# IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
+# can be "cpu" or "hybrid". Note that IDG is only used when dde_method = "none"
+# or "screens"
 # idg_mode = cpu
 
 # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
 # mem_gb = 0
 
-# Apply separate XX and YY corrections during facet-based imaging (default = False).
-# If False, scalar solutions (the average of the XX and YY solutions) are applied instead.
-# (Separate XX and YY corrections are always applied when using non-facet-based imaging
-# methods.)
+# Apply separate XX and YY corrections during facet-based imaging (default =
+# False). If False, scalar solutions (the average of the XX and YY solutions)
+# are applied instead. (Separate XX and YY corrections are always applied when
+# using non-facet-based imaging methods.)
 # apply_diagonal_solutions = False
 
 # The number of direction-dependent PSFs which should be fit horizontally and
 # vertically in the image (default = [1, 1] = direction-independent PSF).
 # dd_psf_grid = [1, 1]
 
-# Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If True and
-# more than one node can be allocated to each WSClean job (i.e., max_nodes / num_images
-# >= 2), then distributed imaging will be used (only available if batch_system = slurm).
-# Note that if MPI is activated, dir_local (under the [cluster] section below) must
-# not be set unless it is on a shared filesystem
+# Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
+# True and more than one node can be allocated to each WSClean job (i.e.,
+# max_nodes / num_images >= 2), then distributed imaging will be used (only
+# available if batch_system = slurm). Note that if MPI is activated, dir_local
+# (under the [cluster] section below) must not be set unless it is on a shared
+# filesystem
 # use_mpi = False
 
 # Reweight the visibility data before imaging (default = False)
 # reweight = False
 
-# Size of area to image when using a grid (default = mean FWHM of the primary beam)
-# Number of sectors along RA to use in imaging grid (default = 0). The number of sectors in
-# Dec will be determined automatically to ensure the whole area specified with grid_center_ra,
-# grid_center_dec, grid_width_ra_deg, and grid_width_dec_deg is imaged. Set grid_nsectors_ra = 0 to force a
-# single sector for the full area. Multiple sectors are useful for parallelizing the imaging
-# over multiple nodes of a cluster or for computers with limited memory
+# Size of area to image when using a grid (default = mean FWHM of the primary
+# beam) Number of sectors along RA to use in imaging grid (default = 0). The
+# number of sectors in Dec will be determined automatically to ensure the whole
+# area specified with grid_center_ra, grid_center_dec, grid_width_ra_deg, and
+# grid_width_dec_deg is imaged. Set grid_nsectors_ra = 0 to force a single
+# sector for the full area. A grid of sectors can be useful for computers with
+# limited memory but generally will give inferior results compared to an
+# equivalent single sector.
 # grid_width_ra_deg = 5.0
 # grid_width_dec_deg = 7.0
 # grid_center_ra = 14h41m01.884
@@ -171,14 +178,15 @@ input_ms = /data/ms/*.ms
 # once can be specified with the max_nodes option (default = 12), the number of
 # processors and amount of memory per node to request from SLURM can be
 # specified with the cpus_per_task (default = 0 = all) and mem_per_node_gb
-# options (default = 0 = all). By setting the cpus_per_task value to the number of
-# processors per node, one can ensure that each task gets the entire node to
+# options (default = 0 = all). By setting the cpus_per_task value to the number
+# of processors per node, one can ensure that each task gets the entire node to
 # itself, which is the recommended way of running Rapthor
 # max_nodes = 12
 # cpus_per_task = 0
 # mem_per_node_gb = 0
 
-# Maximum number of cores and threads per task to use on each node (default = 0 = all)
+# Maximum number of cores and threads per task to use on each node (default = 0
+# = all)
 # max_cores = 0
 # max_threads = 0
 
@@ -202,19 +210,20 @@ input_ms = /data/ms/*.ms
 # dir_local = /tmp
 
 # Run the pipelines inside a container (default = False)? If True, the pipeline
-# for each operation (such as calibrate or image) will be run inside a container.
-# The type of container can also be specified (one of docker, udocker, or
-# singularity; default = docker)
+# for each operation (such as calibrate or image) will be run inside a
+# container. The type of container can also be specified (one of docker,
+# udocker, or singularity; default = docker)
 # use_container = False
 # container_type = docker
 
 # CWL runner to use. Currently supported runners are: cwltool and toil (default)
 # cwl_runner = toil
 
-# Set Toil's coordination directory (only used when Toil is used as the CWL runner;
-# default = selected automatically by Toil). Note that this directory must be on a
-# 100% POSIX-compatible file system, because Toil heavily depends on POSIX file
-# locking to work reliably. For many shared file systems, this criterion is not met
+# Set Toil's coordination directory (only used when Toil is used as the CWL
+# runner; default = selected automatically by Toil). Note that this directory
+# must be on a 100% POSIX-compatible file system, because Toil heavily depends
+# on POSIX file locking to work reliably. For many shared file systems, this
+# criterion is not met
 # dir_coordination = /tmp
 
 # Debug workflow related issues. Enabling this will require significantly more
