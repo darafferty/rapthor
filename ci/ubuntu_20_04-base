@@ -4,7 +4,7 @@ FROM ubuntu:20.04 as builder
 # It lives on the head of its dependencies.
 
 # Install all build-time dependencies
-RUN export DEBIAN_FRONTEND=noninteractive && \
+RUN export DEBIAN_FRONTEND=noninteractive && \ 
     apt-get update && \
     apt-get install -y \
         bison \
@@ -114,7 +114,7 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
 # Install current version of Rapthor, and then uninstall it again. By doing
 # so, we can speed up the build of the final image, because all of Rapthor's
 # dependencies will have been installed already and (probably) don't need to
-# be updated.
+# be updated. 
 COPY . rapthor
 RUN python3 -m pip install --upgrade ./rapthor && \
     python3 -m pip uninstall -y rapthor
@@ -128,12 +128,11 @@ FROM ubuntu:20.04 as runner
 
 COPY --from=builder /usr/local /usr/local
 
-# Only install run-time required packages
+# Only install run-time required packages 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y \
         casacore-tools \
-        git \
         libarmadillo9 \
         libatkmm-1.6-1v5 \
         libboost-date-time1.71.0 \
