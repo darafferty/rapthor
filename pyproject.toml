@@ -52,6 +52,7 @@ dependencies = [
 dynamic = ["version"]
 
 [tool.setuptools]
+# package-data is specified below in section [tool.setuptools.package-data]
 include-package-data = false
 packages = [
     "rapthor",
