@@ -411,7 +411,7 @@ def get_imaging_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Size of area to image when using a grid (default = 1.5 * mean FWHM of the primary beam)
+    # Size of area to image when using a grid (default = 1.7 * mean FWHM of the primary beam)
     if 'grid_width_ra_deg' in parset_dict:
         parset_dict['grid_width_ra_deg'] = parset.getfloat('imaging', 'grid_width_ra_deg')
     else:

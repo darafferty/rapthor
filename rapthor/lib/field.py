@@ -849,11 +849,11 @@ class Field(object):
             else:
                 image_dec = self.parset['imaging_specific']['grid_center_dec']
             if self.parset['imaging_specific']['grid_width_ra_deg'] is None:
-                image_width_ra = self.fwhm_ra_deg * 1.5
+                image_width_ra = self.fwhm_ra_deg * 1.7
             else:
                 image_width_ra = self.parset['imaging_specific']['grid_width_ra_deg']
             if self.parset['imaging_specific']['grid_width_dec_deg'] is None:
-                image_width_dec = self.fwhm_dec_deg * 1.5
+                image_width_dec = self.fwhm_dec_deg * 1.7
             else:
                 image_width_dec = self.parset['imaging_specific']['grid_width_dec_deg']
 

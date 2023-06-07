@@ -280,11 +280,11 @@ The available options are described below under their respective sections.
         should be used with caution.
 
     grid_width_ra_deg
-        Size of area to image when using a grid (default = 1.5 * mean FWHM of the
+        Size of area to image when using a grid (default = 1.7 * mean FWHM of the
         primary beam).
 
     grid_width_dec_deg
-        Size of area to image when using a grid (default = 1.5 * mean FWHM of the
+        Size of area to image when using a grid (default = 1.7 * mean FWHM of the
         primary beam).
 
     grid_center_ra
