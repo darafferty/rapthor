@@ -247,14 +247,23 @@ def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_
         if threshisl_neg > threshisl:
             threshisl = threshisl_neg
 
-    img = bdsf.process_image(input_image, detection_image=detection_image, mean_map='zero',
-                             rms_box=rmsbox, thresh_pix=threshpix, thresh_isl=threshisl,
+    # Run PyBDSF first on the input image to determine the pb-corrected properties
+    # and measure source fluxes
+    img = bdsf.process_image(input_image, mean_map='zero', rms_box=rmsbox,
+                             thresh_pix=threshpix, thresh_isl=threshisl,
                              thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
     catalog_filename = output_root+'.srl.fits'
     img.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
                       clobber=True)
+
+    # Run PyBDSF again on the detection image to determine the flat-noise properties
+    det_img = bdsf.process_image(detection_image, mean_map='zero', rms_box=rmsbox,
+                                 thresh_pix=threshpix, thresh_isl=threshisl,
+                                 thresh='hard', adaptive_rms_box=adaptive_rmsbox,
+                                 adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
+                                 rms_map=True, stop_at='isl', quiet=True)
 
     # Collect some diagnostic numbers for later reporting. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
@@ -263,15 +272,15 @@ def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_
     max_rms_pb = float(np.nanmax(img.rms_arr))  # Jy/beam
     mean_rms_pb = float(np.nanmean(img.rms_arr))  # Jy/beam
     median_rms_pb = float(np.nanmedian(img.rms_arr))  # Jy/beam
-    min_rms = float(np.nanmin(img.detection_rms_arr))  # Jy/beam
-    max_rms = float(np.nanmax(img.detection_rms_arr))  # Jy/beam
-    mean_rms = float(np.nanmean(img.detection_rms_arr))  # Jy/beam
-    median_rms = float(np.nanmedian(img.detection_rms_arr))  # Jy/beam
+    min_rms = float(np.nanmin(det_img.rms_arr))  # Jy/beam
+    max_rms = float(np.nanmax(det_img.rms_arr))  # Jy/beam
+    mean_rms = float(np.nanmean(det_img.rms_arr))  # Jy/beam
+    median_rms = float(np.nanmedian(det_img.rms_arr))  # Jy/beam
     nsources = img.nsrc
     dynamic_range_global_pb = float(np.nanmax(img.ch0_arr) / min_rms_pb)
     dynamic_range_local_pb = float(np.nanmax(img.ch0_arr / img.rms_arr))
-    dynamic_range_global = float(np.nanmax(img.ch0_arr) / min_rms)
-    dynamic_range_local = float(np.nanmax(img.ch0_arr / img.detection_rms_arr))
+    dynamic_range_global = float(np.nanmax(det_img.ch0_arr) / min_rms)
+    dynamic_range_local = float(np.nanmax(det_img.ch0_arr / det_img.rms_arr))
     beam_fwhm = [float(img.beam[0]), float(img.beam[1]), float(img.beam[2])]  # (maj, min, pa), all in deg
     freq = float(img.frequency)  # Hz
     cwl_output = {'theoretical_rms': theoretical_rms,
