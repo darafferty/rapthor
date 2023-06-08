@@ -31,7 +31,6 @@ Setting Up and Running Rapthor
 .. toctree::
    :maxdepth: 2
 
-   tutorials
    preparation
    parset
    strategy
