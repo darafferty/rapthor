@@ -14,10 +14,6 @@
 # import sys
 # sys.path.insert(0, os.path.abspath('.'))
 
-try:
-    import importlib.metadata as metadata
-except ImportError:  # for python<3.8
-    import importlib_metadata as metadata
 
 # -- Project information -----------------------------------------------------
 
@@ -25,10 +21,6 @@ project = 'Rapthor'
 copyright = '2023, Team Rapthor'
 author = 'Team Rapthor'
 
-# The full version, including alpha/beta/rc tags.
-release = metadata.version('rapthor')
-# The short X.Y version.
-version = '.'.join(release.split('.')[:2])
 
 # -- General configuration ---------------------------------------------------
 

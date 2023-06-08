@@ -1,9 +1,5 @@
 # Copied from https://github.com/github/gitignore/blob/master/Python.gitignore (GML: 2020-09-09)
 
-# Project specific
-rapthor/_version.py
-test/resources/
-
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -146,6 +142,3 @@ cython_debug/
 # OS generated files
 .DS_Store
 .DS_Store?
-
-# Visual Studio settings
-.vscode
