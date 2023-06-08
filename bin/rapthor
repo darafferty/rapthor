@@ -50,6 +50,10 @@ if __name__ == '__main__':
     else:
         try:
             parset = parset_read(parset_file, use_log_file=False)
+        except KeyError as e:
+            log = logging.getLogger('rapthor:parset')
+            log.critical('The parset is missing the required parameter %s', e)
+            sys.exit(-1)
         except Exception as e:
             log = logging.getLogger('rapthor:parset')
             log.critical('Failed to parse parset:\n%s', e)
