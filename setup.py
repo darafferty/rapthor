@@ -45,6 +45,7 @@ setup(
                       'toil[cwl]!=5.6,!=5.8', 'reproject', 'python-dateutil',
                       'Rtree', 'lsmtool', 'losoto', 'bdsf',
                       'python-casacore'],
+    python_requires=">=3.7",
     scripts=['bin/rapthor',
              'bin/plotrapthor',
              'bin/concat_linc_files',
