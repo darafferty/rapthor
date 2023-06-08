@@ -849,11 +849,11 @@ class Field(object):
             else:
                 image_dec = self.parset['imaging_specific']['grid_center_dec']
             if self.parset['imaging_specific']['grid_width_ra_deg'] is None:
-                image_width_ra = self.fwhm_ra_deg
+                image_width_ra = self.fwhm_ra_deg * 1.7
             else:
                 image_width_ra = self.parset['imaging_specific']['grid_width_ra_deg']
             if self.parset['imaging_specific']['grid_width_dec_deg'] is None:
-                image_width_dec = self.fwhm_dec_deg
+                image_width_dec = self.fwhm_dec_deg * 1.7
             else:
                 image_width_dec = self.parset['imaging_specific']['grid_width_dec_deg']
 
@@ -1037,11 +1037,10 @@ class Field(object):
         """
         Adjusts the imaging sector boundaries for overlaping sources
         """
-        self.log.info('Adusting sector boundaries to avoid sources...')
-
         # Note: this adjustment only needs to be done when there are multiple sectors,
         # since its purpose is to ensure that sources don't fall in between sectors
         if len(self.imaging_sectors) > 1:
+            self.log.info('Adusting sector boundaries to avoid sources...')
             intersecting_source_polys = self.find_intersecting_sources()
             for sector in self.imaging_sectors:
                 # Make sure all sectors start from their initial polygons

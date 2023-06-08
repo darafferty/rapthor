@@ -145,7 +145,7 @@ def get_global_options(parset):
     if 'final_data_fraction' in parset_dict:
         parset_dict['final_data_fraction'] = parset.getfloat('global', 'final_data_fraction')
     else:
-        parset_dict['final_data_fraction'] = parset_dict['selfcal_data_fraction']
+        parset_dict['final_data_fraction'] = 1.0
     if parset_dict['final_data_fraction'] <= 0.0:
         raise ValueError('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
     if parset_dict['final_data_fraction'] > 1.0:
@@ -411,7 +411,7 @@ def get_imaging_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Size of area to image when using a grid (default = mean FWHM of the primary beam)
+    # Size of area to image when using a grid (default = 1.7 * mean FWHM of the primary beam)
     if 'grid_width_ra_deg' in parset_dict:
         parset_dict['grid_width_ra_deg'] = parset.getfloat('imaging', 'grid_width_ra_deg')
     else:
@@ -432,8 +432,6 @@ def get_imaging_options(parset):
         parset_dict['grid_nsectors_ra'] = 0
 
     # Center of grid to image (default = phase center of data)
-    # grid_center_ra = 14h41m01.884
-    # grid_center_dec = +35d30m31.52
     if 'grid_center_ra' in parset_dict:
         parset_dict['grid_center_ra'] = Angle(parset_dict['grid_center_ra']).to('deg').value
     else:
@@ -452,10 +450,6 @@ def get_imaging_options(parset):
     # Instead of a grid, imaging sectors can be defined individually by specifying
     # their centers and widths. If sectors are specified in this way, they will be
     # used instead of the sector grid. Note that the sectors should not overlap
-    # sector_center_ra_list = [14h41m01.884, 14h13m23.234]
-    # sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
-    # sector_width_ra_deg_list = [0.532, 0.127]
-    # sector_width_dec_deg_list = [0.532, 0.127]
     len_list = []
     if 'sector_center_ra_list' in parset_dict:
         val_list = parset_dict['sector_center_ra_list'].strip('[]').split(',')
@@ -520,12 +514,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['mem_gb'] = 0
 
-    # Apply separate XX and YY corrections during imaging (default = False). If False,
+    # Apply separate XX and YY corrections during imaging (default = True). If False,
     # scalar solutions (the average of the XX and YY solutions) are applied instead
     if 'apply_diagonal_solutions' in parset_dict:
         parset_dict['apply_diagonal_solutions'] = parset.getboolean('imaging', 'apply_diagonal_solutions')
     else:
-        parset_dict['apply_diagonal_solutions'] = False
+        parset_dict['apply_diagonal_solutions'] = True
 
     # The number of direction-dependent PSFs which should be fit horizontally and
     # vertically in the image (default = [1, 1] = direction-independent PSF).
