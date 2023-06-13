@@ -18,6 +18,9 @@ optimal parset):
 
 The available options are described below under their respective sections.
 
+.. note::
+
+    An example parset is available `here <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor.parset>`_.
 
 .. _parset_global_options:
 
@@ -85,7 +88,7 @@ The available options are described below under their respective sections.
         is strongly recommended for typical 8-hour, full-bandwidth observations.
 
     final_data_fraction
-        A final data fraction can be specified (default = ``selfcal_data_fraction``)
+        A final data fraction can be specified (default = 1.0)
         such that a final processing pass (i.e., after selfcal finishes) is
         done with a different fraction.
 
@@ -265,6 +268,11 @@ The available options are described below under their respective sections.
             :ref:`parset_cluster_options` section below) must not be set unless
             it is on a shared filesystem.
 
+        .. note::
+
+            Currently, Toil does not fully support ``openmpi``. Because of this, imaging
+            can only use the worker nodes, and the master node will be idle.
+
     reweight
         Reweight the visibility data before imaging (default = ``False``). If
         ``True``, data with high residuals (compared to the predicted model
@@ -272,11 +280,11 @@ The available options are described below under their respective sections.
         should be used with caution.
 
     grid_width_ra_deg
-        Size of area to image when using a grid (default = mean FWHM of the
+        Size of area to image when using a grid (default = 1.7 * mean FWHM of the
         primary beam).
 
     grid_width_dec_deg
-        Size of area to image when using a grid (default = mean FWHM of the
+        Size of area to image when using a grid (default = 1.7 * mean FWHM of the
         primary beam).
 
     grid_center_ra
@@ -291,8 +299,8 @@ The available options are described below under their respective sections.
         specified with :term:`grid_center_ra`, :term:`grid_center_dec`,
         :term:`grid_width_ra_deg`, and :term:`grid_width_dec_deg` is imaged. Set
         ``grid_nsectors_ra = 0`` to force a single sector for the full area.
-        Multiple sectors are useful for parallelizing the imaging over multiple
-        nodes of a cluster or for computers with limited memory.
+        A grid of sectors can be useful for computers with limited memory but
+        generally will give inferior results compared to an equivalent single sector.
 
     sector_center_ra_list
         List of image centers (default = ``[]``). Instead of a grid, imaging sectors

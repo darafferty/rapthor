@@ -192,8 +192,7 @@ class FITSImage(object):
         # first find beam to convolve with
         convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
         if convolve_beam[0] is None:
-            logging.error('Cannot deconvolve this beam.')
-            sys.exit(1)
+            raise ValueError('Cannot deconvolve this beam.')
         logging.debug('%s: Convolve beam: %.3f" %.3f" (pa %.1f deg)'
                       % (self.imagefile, convolve_beam[0]*3600, convolve_beam[1]*3600, convolve_beam[2]))
         # do convolution on data

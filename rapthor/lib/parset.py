@@ -30,8 +30,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         Dict of parset parameters
     """
     if not os.path.isfile(parset_file):
-        log.critical("Missing parset file ({}), I don't know what to do :'(".format(parset_file))
-        sys.exit(1)
+        raise FileNotFoundError("Missing parset file ({}).".format(parset_file))
 
     log.info("Reading parset file: {}".format(parset_file))
     parset = configparser.RawConfigParser()
@@ -61,8 +60,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
     except Exception as e:
-        log.critical("Cannot use the working dir {0}: {1}".format(parset_dict['dir_working'], e))
-        sys.exit(1)
+        raise RuntimeError("Cannot use the working dir {0}: {1}".format(parset_dict['dir_working'], e))
     if use_log_file:
         set_log_file(os.path.join(parset_dict['dir_working'], 'logs', 'rapthor.log'))
     log.info("=========================================================\n")
@@ -77,8 +75,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         ms_files += glob.glob(os.path.join(search_str))
     parset_dict['mss'] = sorted(ms_files)
     if len(parset_dict['mss']) == 0:
-        log.error('No input MS files were found!')
-        sys.exit(1)
+        raise FileNotFoundError('No input MS files were found!')
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
     # Make sure the initial skymodel is present
@@ -101,8 +98,7 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
             log.info('User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one.')
             parset_dict['download_initial_skymodel'] = True
     elif not os.path.exists(parset_dict['input_skymodel']):
-        log.error('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
-        raise FileNotFoundError('Input sky model file "{}" not found. Exiting...'.format(parset_dict['input_skymodel']))
+        raise FileNotFoundError('Input sky model file "{}" not found.'.format(parset_dict['input_skymodel']))
 
     # Check for invalid sections
     given_sections = list(parset._sections.keys())
@@ -143,21 +139,17 @@ def get_global_options(parset):
     else:
         parset_dict['selfcal_data_fraction'] = 0.2
     if parset_dict['selfcal_data_fraction'] <= 0.0:
-        log.error('The selfcal_data_fraction parameter is <= 0. It must be > 0 and <= 1')
-        sys.exit(1)
+        raise ValueError('The selfcal_data_fraction parameter is <= 0. It must be > 0 and <= 1')
     if parset_dict['selfcal_data_fraction'] > 1.0:
-        log.error('The selfcal_data_fraction parameter is > 1. It must be > 0 and <= 1')
-        sys.exit(1)
+        raise ValueError('The selfcal_data_fraction parameter is > 1. It must be > 0 and <= 1')
     if 'final_data_fraction' in parset_dict:
         parset_dict['final_data_fraction'] = parset.getfloat('global', 'final_data_fraction')
     else:
-        parset_dict['final_data_fraction'] = parset_dict['selfcal_data_fraction']
+        parset_dict['final_data_fraction'] = 1.0
     if parset_dict['final_data_fraction'] <= 0.0:
-        log.error('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
-        sys.exit(1)
+        raise ValueError('The final_data_fraction parameter is <= 0. It must be > 0 and <= 1')
     if parset_dict['final_data_fraction'] > 1.0:
-        log.error('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
-        sys.exit(1)
+        raise ValueError('The final_data_fraction parameter is > 1. It must be > 0 and <= 1')
     if parset_dict['final_data_fraction'] < parset_dict['selfcal_data_fraction']:
         log.warning('The final_data_fraction parameter is less than selfcal_data_fraction.')
 
@@ -232,9 +224,8 @@ def get_global_options(parset):
     else:
         for f in flag_list:
             if f not in parset_dict['flag_expr']:
-                log.error('Flag selection "{}" was specified but does not '
+                raise ValueError('Flag selection "{}" was specified but does not '
                           'appear in flag_expr'.format(f))
-                sys.exit(1)
 
     # Check for invalid options
     given_options = parset.options('global')
@@ -420,7 +411,7 @@ def get_imaging_options(parset):
         parset_dict = {}
         given_options = []
 
-    # Size of area to image when using a grid (default = mean FWHM of the primary beam)
+    # Size of area to image when using a grid (default = 1.7 * mean FWHM of the primary beam)
     if 'grid_width_ra_deg' in parset_dict:
         parset_dict['grid_width_ra_deg'] = parset.getfloat('imaging', 'grid_width_ra_deg')
     else:
@@ -441,8 +432,6 @@ def get_imaging_options(parset):
         parset_dict['grid_nsectors_ra'] = 0
 
     # Center of grid to image (default = phase center of data)
-    # grid_center_ra = 14h41m01.884
-    # grid_center_dec = +35d30m31.52
     if 'grid_center_ra' in parset_dict:
         parset_dict['grid_center_ra'] = Angle(parset_dict['grid_center_ra']).to('deg').value
     else:
@@ -461,10 +450,6 @@ def get_imaging_options(parset):
     # Instead of a grid, imaging sectors can be defined individually by specifying
     # their centers and widths. If sectors are specified in this way, they will be
     # used instead of the sector grid. Note that the sectors should not overlap
-    # sector_center_ra_list = [14h41m01.884, 14h13m23.234]
-    # sector_center_dec_list = [+35d30m31.52, +37d21m56.86]
-    # sector_width_ra_deg_list = [0.532, 0.127]
-    # sector_width_dec_deg_list = [0.532, 0.127]
     len_list = []
     if 'sector_center_ra_list' in parset_dict:
         val_list = parset_dict['sector_center_ra_list'].strip('[]').split(',')
@@ -497,18 +482,16 @@ def get_imaging_options(parset):
 
     # Check that all the above options have the same number of entries
     if len(set(len_list)) > 1:
-        log.error('The options sector_center_ra_list, sector_center_dec_list, '
+        raise ValueError('The options sector_center_ra_list, sector_center_dec_list, '
                   'sector_width_ra_deg_list, and sector_width_dec_deg_list '
                   'must all have the same number of entries')
-        sys.exit(1)
 
     # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can
     # be cpu, gpu, or hybrid.
     if 'idg_mode' not in parset_dict:
         parset_dict['idg_mode'] = 'cpu'
     if parset_dict['idg_mode'] not in ['cpu', 'gpu', 'hybrid']:
-        log.error('The option idg_mode must be one of "cpu", "gpu", or "hybrid"')
-        sys.exit(1)
+        raise ValueError('The option idg_mode must be one of "cpu", "gpu", or "hybrid"')
 
     # Method to use to apply direction-dependent effects during imaging: "none",
     # "facets", or "screens". If "none", the solutions closest to the image centers
@@ -519,13 +502,11 @@ def get_imaging_options(parset):
     if 'dde_method' not in parset_dict:
         parset_dict['dde_method'] = 'facets'
     if parset_dict['dde_method'] not in ['none', 'screens', 'facets']:
-        log.error('The option dde_method must be one of "none", "screens", or "facets"')
-        sys.exit(1)
+        raise ValueError('The option dde_method must be one of "none", "screens", or "facets"')
     if 'screen_type' not in parset_dict:
         parset_dict['screen_type'] = 'kl'
     if parset_dict['screen_type'] not in ['kl', 'tessellated']:
-        log.error('The option screen_type must be one of "kl", or "tessellated"')
-        sys.exit(1)
+        raise ValueError('The option screen_type must be one of "kl", or "tessellated"')
 
     # Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%)
     if 'mem_gb' in parset_dict:
@@ -533,12 +514,12 @@ def get_imaging_options(parset):
     else:
         parset_dict['mem_gb'] = 0
 
-    # Apply separate XX and YY corrections during imaging (default = False). If False,
+    # Apply separate XX and YY corrections during imaging (default = True). If False,
     # scalar solutions (the average of the XX and YY solutions) are applied instead
     if 'apply_diagonal_solutions' in parset_dict:
         parset_dict['apply_diagonal_solutions'] = parset.getboolean('imaging', 'apply_diagonal_solutions')
     else:
-        parset_dict['apply_diagonal_solutions'] = False
+        parset_dict['apply_diagonal_solutions'] = True
 
     # The number of direction-dependent PSFs which should be fit horizontally and
     # vertically in the image (default = [1, 1] = direction-independent PSF).
@@ -727,9 +708,8 @@ def get_cluster_options(parset):
     cwl_runner = parset_dict['cwl_runner']
     supported_cwl_runners = ('cwltool', 'toil')
     if cwl_runner not in supported_cwl_runners:
-        log.critical("CWL runner '%s' is not supported; select one of: %s",
+        raise ValueError("CWL runner '%s' is not supported; select one of: %s",
                      cwl_runner, ', '.join(supported_cwl_runners))
-        sys.exit(1)
 
     # Set Toil's coordination directory (only used when Toil is used as the CWL runner;
     # default = selected automatically by Toil). Note that this directory does not

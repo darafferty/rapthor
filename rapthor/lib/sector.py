@@ -131,8 +131,8 @@ class Sector(object):
             xmin, ymin, xmax, ymax = self.poly.bounds
             self.width_ra = (xmax - xmin) * self.field.wcs_pixel_scale  # deg
             self.width_dec = (ymax - ymin) * self.field.wcs_pixel_scale  # deg
-            self.imsize = [int(self.width_ra / self.cellsize_deg * 1.1),
-                           int(self.width_dec / self.cellsize_deg * 1.1)]
+            self.imsize = [int(self.width_ra / self.cellsize_deg),
+                           int(self.width_dec / self.cellsize_deg)]
 
             if self.use_screens:
                 # IDG does not yet support rectangular images, so ensure image
