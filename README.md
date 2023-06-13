@@ -29,7 +29,7 @@ Rapthor requires the following packages (beyond those installed automatically wi
 Installation can be done in a number of ways. In order of preference (read:
 easy of use):
 
-- Install the latest release from PyPI:
+* Install the latest release from PyPI:
 
   ```
   pip install rapthor
@@ -43,7 +43,7 @@ easy of use):
 
   If the optional `@<branch|tag|hash>` is omitted, `HEAD` of the `master` branch will used.
 
-- Clone the git repository, and install from your working copy. This option is mostly used by developers, who want to make local changes:
+- Clone the git repository, and install from your working copy. This option is mostly used by developers who want to make local changes:
 
   ```
   git clone https://git.astron.nl/RD/rapthor.git
