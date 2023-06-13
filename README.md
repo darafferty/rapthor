@@ -29,7 +29,7 @@ Rapthor requires the following packages (beyond those installed automatically wi
 Installation can be done in a number of ways. In order of preference (read:
 easy of use):
 
-* Install the latest release from PyPI:
+- Install the latest release from PyPI:
 
   ```
   pip install rapthor
