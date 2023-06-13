@@ -249,8 +249,8 @@ def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_
 
     # Run PyBDSF first on the input image to determine the pb-corrected properties
     # and measure source fluxes
-    img = bdsf.process_image(input_image, mean_map='zero', rms_box=rmsbox,
-                             thresh_pix=threshpix, thresh_isl=threshisl,
+    img = bdsf.process_image(input_image, detection_image=detection_image, mean_map='zero',
+                             rms_box=rmsbox, thresh_pix=threshpix, thresh_isl=threshisl,
                              thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                              adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                              atrous_do=True, atrous_jmax=3, rms_map=True, quiet=True)
@@ -259,6 +259,10 @@ def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_
                       clobber=True)
 
     # Run PyBDSF again on the detection image to determine the flat-noise properties
+    #
+    # TODO: this call can be removed once the "add_detection_opts" branch of PyBDSF
+    # is merged, since the detection image's rms array can then be accessed through
+    # img.detection_rms_arr (rather than det_img.rms_arr)
     det_img = bdsf.process_image(detection_image, mean_map='zero', rms_box=rmsbox,
                                  thresh_pix=threshpix, thresh_isl=threshisl,
                                  thresh='hard', adaptive_rms_box=adaptive_rmsbox,
