@@ -26,18 +26,31 @@ Rapthor requires the following packages (beyond those installed automatically wi
 
 ### Downloading and Installing
 
-Get the latest developer version by cloning the git repository:
+Installation can be done in a number of ways. In order of preference (read:
+easy of use):
 
-    git clone https://git.astron.nl/RD/rapthor.git
+* Install the latest release from PyPI:
 
-Then install with:
+  ```
+  pip install rapthor
+  ```
 
-    cd rapthor
-    pip install .
+- Install directly from the Rapthor git repository. This option is useful if you want to use one or more features that have not yet been released:
 
-Or, alternatively, in one go:
+  ```
+  pip install git+https://git.astron.nl/RD/rapthor.git[@<branch|tag|hash>]
+  ```
 
-    pip install git+https://git.astron.nl/RD/rapthor.git
+  If the optional `@<branch|tag|hash>` is omitted, `HEAD` of the `master` branch will used. But you can also specify a specific branch, tag, or hash.
+
+- Clone the git repository, and install from your working copy. This option is mostly used by developers, who want to make local changes:
+
+  ```
+  git clone https://git.astron.nl/RD/rapthor.git
+  cd rapthor
+  git checkout [<branch|tag|hash>]  #optionally
+  pip install .
+  ```
 
 Usage
 -----
