@@ -49,11 +49,21 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if not skip_cluster:
         parset_dict['cluster_specific'].update(get_cluster_options(parset))
 
+    # Check for required parameters, defined in required_parameters below
+    # with each entry being a list of [section_name, parameter_name]
+    required_parameters = [['global', 'dir_working'], ['global', 'input_ms']]
+    for section, key in required_parameters:
+        if section == 'global':
+            test_dict = parset_dict
+        else:
+            test_dict = parset_dict[section]
+        if key not in test_dict:
+            raise KeyError('The parset is missing the required parameter %s', e)
+
     # Set up working directory. All output will be placed in this directory
-    if not os.path.isdir(parset_dict['dir_working']):
-        os.mkdir(parset_dict['dir_working'])
     try:
-        os.chdir(parset_dict['dir_working'])
+        if not os.path.isdir(parset_dict['dir_working']):
+            os.mkdir(parset_dict['dir_working'])
         for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
                        'solutions', 'plots']:
             subdir_path = os.path.join(parset_dict['dir_working'], subdir)
