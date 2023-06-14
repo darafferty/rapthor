@@ -280,44 +280,46 @@ class Image(Operation):
                 self.log.info('    Reference frequency = {}'.format(freq))
                 self.log.info('    Beam = {}'.format(beam))
                 self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
-                if 'meanClippedRatio' in diagnostics_dict:
-                    # If 'meanClippedRatio' is present, assume all of the LSMTool-generated
-                    # comparison diagnostics are available (these are only generated if there
-                    # is a sufficient number of appropriate sources in the image to make the
-                    # comparison)
-                    #
-                    # Note: the reported error is not allowed to fall below
-                    # 10% for the flux ratio and 0.5" for the astrometry, as these
-                    # are the realistic minimum uncertainties in these values
-                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio']
-                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio'])
+
+                # Log the estimates of the global flux ratio and astrometry offsets.
+                # If the required keys are not present, then there were not enough
+                # sources for a reliable estimate to be made so report 'N/A' (not
+                # available)
+                #
+                # Note: the reported error is not allowed to fall below 10% for
+                # the flux ratio and 0.5" for the astrometry, as these are the
+                # realistic minimum uncertainties in these values
+                if 'meanClippedRatio_pybdsf' in diagnostics_dict and 'stdClippedRatio_pybdsf' in diagnostics_dict:
                     ratio_pybdsf = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
                     self.field.lofar_to_true_flux_ratio_pybdsf = diagnostics_dict['meanClippedRatio_pybdsf']
                     stdratio_pybdsf = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
                     self.field.lofar_to_true_flux_std_pybdsf = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
                     self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio_pybdsf, stdratio_pybdsf))
-                    raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
-                    stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
-                    self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
-                    decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
-                    stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
-                    self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
                 else:
                     self.field.lofar_to_true_flux_ratio_pybdsf = 1.0
                     self.field.lofar_to_true_flux_std_pybdsf = 0.0
                     self.log.info('    LOFAR/TGSS flux ratio = N/A')
+                if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
+                    raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
+                    stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
+                    self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
+                else:
                     self.log.info('    LOFAR-TGSS RA offset = N/A')
+                if 'meanClippedDecOffsetDeg' in diagnostics_dict and 'stdClippedDecOffsetDeg' in diagnostics_dict:
+                    decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
+                    stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
+                    self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
+                else:
                     self.log.info('    LOFAR-TGSS Dec offset = N/A')
             except KeyError:
-                self.log.warn('One or more of the expected image diagnostics unavailable '
+                self.log.warn('One or more of the expected image diagnostics is unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
                 req_keys = ['theoretical_rms', 'min_rms', 'median_rms', 'dynamic_range_global',
                             'min_rms_pb', 'median_rms_pb', 'dynamic_range_global_pb',
                             'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
                             'meanClippedRatio_pybdsf', 'stdClippedRatio_pybdsf',
-                            'meanClippedRatio', 'stdClippedRatio', 'meanClippedRAOffsetDeg',
-                            'stdClippedRAOffsetDeg', 'meanClippedDecOffsetDeg',
-                            'stdClippedDecOffsetDeg']
+                            'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
+                            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
                 missing_keys = []
                 for key in req_keys:
                     if key not in diagnostics_dict:

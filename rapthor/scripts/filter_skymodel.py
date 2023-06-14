@@ -415,7 +415,7 @@ def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_
         else:
             s_comp = lsmtool.load(comparison_skymodel)
 
-        # Do cross matching of the comparison model with the PyBFSF-derived one
+        # Do cross matching of the comparison model with the PyBDSF-derived one
         if s_comp is not None:
             # Write comparison catalog to FITS file for use with astropy
             catalog_comp_filename = output_root+'.comparison.fits'
@@ -442,31 +442,37 @@ def main(detection_image, input_image, input_skymodel_pb, output_root, vertices_
 
             # Cross match the coordinates and keep only matches that have a
             # separation of 5 arcsec or less
-            coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
-            coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
-            idx, sep2d, _ = match_coordinates_sky(coords_comp, coords)
-            constraint = sep2d < 5*u.arcsec
-            catalog_comp = catalog_comp[constraint]
-            catalog = catalog[idx[constraint]]
+            #
+            # Note: we require at least 10 sources for the comparison, as using
+            # fewer can give unreliable estimates
+            min_number = 10
+            if len(catalog_comp) >= min_number:
+                coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
+                coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
+                idx, sep2d, _ = match_coordinates_sky(coords_comp, coords)
+                constraint = sep2d < 5*u.arcsec
+                catalog_comp = catalog_comp[constraint]
+                catalog = catalog[idx[constraint]]
 
-            # Find the mean flux ratio (input / comparison). We use the total island
-            # flux density from PyBDSF as it gives less scatter than the Gaussian
-            # fluxes when comparing to a lower-resolution catalog (such as TGSS).
-            # Lastly, a correction factor is used to correct for the potentially
-            # different frequencies of the LOFAR image and the comparison catalog
-            alpha = -0.7  # adopt a typical spectral index
-            freq_factor = (freq_comp / freq)**alpha
-            ratio = catalog['Isl_Total_flux'] / catalog_comp['I'] * freq_factor
-            meanRatio = np.mean(ratio)
-            stdRatio = np.std(ratio)
-            clippedRatio = sigma_clip(ratio)
-            meanClippedRatio = np.mean(clippedRatio)
-            stdClippedRatio = np.std(clippedRatio)
-            stats = {'meanRatio_pybdsf': meanRatio,
-                     'stdRatio_pybdsf': stdRatio,
-                     'meanClippedRatio_pybdsf': meanClippedRatio,
-                     'stdClippedRatio_pybdsf': stdClippedRatio}
-            cwl_output.update(stats)
+                # Find the mean flux ratio (input / comparison). We use the total island
+                # flux density from PyBDSF as it gives less scatter than the Gaussian
+                # fluxes when comparing to a lower-resolution catalog (such as TGSS).
+                # Lastly, a correction factor is used to correct for the potentially
+                # different frequencies of the LOFAR image and the comparison catalog
+                if len(catalog_comp) >= min_number:
+                    alpha = -0.7  # adopt a typical spectral index
+                    freq_factor = (freq_comp / freq)**alpha
+                    ratio = catalog['Isl_Total_flux'] / catalog_comp['I'] * freq_factor
+                    meanRatio = np.mean(ratio)
+                    stdRatio = np.std(ratio)
+                    clippedRatio = sigma_clip(ratio)
+                    meanClippedRatio = np.mean(clippedRatio)
+                    stdClippedRatio = np.std(clippedRatio)
+                    stats = {'meanRatio_pybdsf': meanRatio,
+                             'stdRatio_pybdsf': stdRatio,
+                             'meanClippedRatio_pybdsf': meanClippedRatio,
+                             'stdClippedRatio_pybdsf': stdClippedRatio}
+                    cwl_output.update(stats)
 
         # Group the comparison sky model into sources and select only those sources
         # that are composed entirely of type "POINT", as the comparison method in
