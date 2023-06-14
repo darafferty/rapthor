@@ -303,8 +303,8 @@ class Image(Operation):
                     stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
                     self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
                 else:
-                    self.field.lofar_to_true_flux_ratio = 1.0
-                    self.field.lofar_to_true_flux_std = 0.0
+                    self.field.lofar_to_true_flux_ratio_pybdsf = 1.0
+                    self.field.lofar_to_true_flux_std_pybdsf = 0.0
                     self.log.info('    LOFAR/TGSS flux ratio = N/A')
                     self.log.info('    LOFAR-TGSS RA offset = N/A')
                     self.log.info('    LOFAR-TGSS Dec offset = N/A')
