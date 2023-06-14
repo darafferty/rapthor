@@ -58,7 +58,8 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         else:
             test_dict = parset_dict[section]
         if key not in test_dict:
-            raise KeyError('The parset is missing the required parameter %s', e)
+            raise KeyError('The parset is missing the required parameter "{0}" '
+                           'in the "[{1}]" section'.format(key, section))
 
     # Set up working directory. All output will be placed in this directory
     try:
