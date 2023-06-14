@@ -52,7 +52,4 @@ if __name__ == '__main__':
             process.run(parset_file, logging_level=logging_level)
         except Exception as e:
             log = logging.getLogger('rapthor')
-            if parset['cluster_specific']['debug_workflow']:
-                log.exception(str(e))
-            else:
-                log.critical(str(e))
+            log.critical('{}'.format(str(e).strip("'")))
