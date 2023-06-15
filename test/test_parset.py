@@ -15,6 +15,7 @@ class TestParset(unittest.TestCase):
                     dir_working = .
                     # input_ms = /data/ms/*.ms  # missing required parameter
                     """)
+
         self.parset_misspelled_parameter = 'misspelled_parameter.txt'
         with open(self.parset_misspelled_parameter, 'w') as f:
             f.write("""
@@ -25,6 +26,7 @@ class TestParset(unittest.TestCase):
                     [imaging]
                     dd_method = facets  # misspelled optional parameter
                     """)
+
         self.parset_missing_section = 'missing_section.txt'
         with open(self.parset_missing_section, 'w') as f:
             f.write("""
@@ -32,9 +34,10 @@ class TestParset(unittest.TestCase):
                     dir_working = .
                     input_ms = /data/ms/*.ms
 
-                    [imging]  # misspelled optional section
+                    [imaging]
                     dde_method = facets
                     """)
+
         self.parset_misspelled_section = 'misspelled_section.txt'
         with open(self.parset_misspelled_section, 'w') as f:
             f.write("""
@@ -66,12 +69,12 @@ class TestParset(unittest.TestCase):
                                          'but is not a valid imaging option'])
 
     def test_missing_section(self):
-        self.assertWarns(KeyError, parset_read, self.parset_missing_section)
+        self.assertRaise(KeyError, parset_read, self.parset_missing_section)
 
     def test_misspelled_section(self):
         with self.assertLogs(logger='rapthor:parset', level='WARN') as cm:
             try:
-                parset_read(self.parset_misspelled_parameter)
+                parset_read(self.parset_misspelled_section)
             except FileNotFoundError:
                 # This is expected because the input MS file does not exist. We
                 # ignore it as it happens after the check for misspelled sections
