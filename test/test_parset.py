@@ -69,7 +69,7 @@ class TestParset(unittest.TestCase):
                                          'but is not a valid imaging option'])
 
     def test_missing_section(self):
-        self.assertRaise(KeyError, parset_read, self.parset_missing_section)
+        self.assertRaises(KeyError, parset_read, self.parset_missing_section)
 
     def test_misspelled_section(self):
         with self.assertLogs(logger='rapthor:parset', level='WARN') as cm:
