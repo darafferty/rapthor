@@ -49,17 +49,22 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if not skip_cluster:
         parset_dict['cluster_specific'].update(get_cluster_options(parset))
 
-    # Check for required parameters, defined in required_parameters below
-    # with each entry being a list of [section_name, parameter_name]
-    required_parameters = [['global', 'dir_working'], ['global', 'input_ms']]
-    for section, key in required_parameters:
+    # Check for required parameters. For now, the only required parameters
+    # are in the global section
+    required_parameters = {'global': ['dir_working', 'input_ms'],
+                           'calibration_specific': [],
+                           'imaging_specific': []}
+    if not skip_cluster:
+        required_parameters.update({'cluster_specific': []})
+    for section, key_list in required_parameters.items():
         if section == 'global':
             test_dict = parset_dict
         else:
             test_dict = parset_dict[section]
-        if key not in test_dict:
-            raise KeyError('The parset is missing the required parameter "{0}" '
-                           'in the [{1}] section'.format(key, section))
+        for key in key_list:
+            if key not in test_dict:
+                raise KeyError('The parset is missing the required parameter "{0}" '
+                               'in the [{1}] section'.format(key, section))
 
     # Set up working directory. All output will be placed in this directory
     try:
