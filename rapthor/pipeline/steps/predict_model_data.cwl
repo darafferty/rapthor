@@ -17,7 +17,6 @@ arguments:
   - msout.overwrite=True
   - msout.writefullresflag=False
   - steps=[predict]
-  - predict.type=h5parmpredict  # needed to do multi-direction predict
   - predict.operation=replace
   - predict.applycal.correction=phase000
   - predict.applycal.steps=[slowamp,totalphase]

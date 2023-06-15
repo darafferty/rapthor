@@ -16,7 +16,6 @@ arguments:
   - msout.overwrite=True
   - msout.writefullresflag=False
   - steps=[predict]
-  - predict.type=h5parmpredict
   - predict.operation=replace
   - predict.applycal.correction=phase000
   - predict.applycal.steps=[fastphase]
