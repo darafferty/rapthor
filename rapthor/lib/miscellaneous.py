@@ -19,7 +19,8 @@ from losoto.h5parm import h5parm
 import lsmtool
 
 
-def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS', targetname='Patch'):
+def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
+                      targetname='Patch'):
     """
     Download the skymodel for the target field
 
@@ -31,17 +32,19 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         Declination of the skymodel centre.
     skymodel_path : str
         Full name (with path) to the skymodel.
-    radius : float
+    radius : float, optional
         Radius for the TGSS/GSM cone search in degrees.
-    source : str
+    source : str, optional
         Source where to obtain a skymodel from. Can be TGSS or GSM. Default is TGSS.
-    overwrite : bool
+    overwrite : bool, optional
         Overwrite the existing skymodel pointed to by skymodel_path.
-    target_name : str
+    target_name : str, optional
         Give the patch a certain name. Default is "Patch".
     """
-    SKY_SERVERS = {'TGSS': 'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                   'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
+    SKY_SERVERS = {'TGSS': 'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?'
+                           'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
+                   'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?'
+                          'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
     if source.upper() not in SKY_SERVERS.keys():
         raise ValueError('Unsupported sky model source specified! Please use TGSS or GSM.')
 
@@ -49,36 +52,46 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
     file_exists = os.path.isfile(skymodel_path)
     if file_exists and not overwrite:
-        logger.warning('Sky model "%s" exists and overwrite is set to False! Not downloading sky model. If this is a restart this may be intentional.' % skymodel_path)
+        logger.warning('Sky model "{}" exists and overwrite is set to False! Not '
+                       'downloading sky model. If this is a restart this may be '
+                       'intentional.'.format(skymodel_path))
         return
 
-    if (not file_exists) and os.path.exists(skymodel_path):
+    if not file_exists and os.path.exists(skymodel_path):
         raise ValueError('Path "%s" exists but is not a file!' % skymodel_path)
 
-    # Empty strings are False. Only attempt directory creation if there is a directory path involved.
-    if (not file_exists) and os.path.dirname(skymodel_path) and (not os.path.exists(os.path.dirname(skymodel_path))):
+    # Empty strings are False. Only attempt directory creation if there is a
+    # directory path involved.
+    if (not file_exists
+            and os.path.dirname(skymodel_path)
+            and not os.path.exists(os.path.dirname(skymodel_path))):
         os.makedirs(os.path.dirname(skymodel_path))
 
     if file_exists and overwrite:
-        logger.warning('Found existing sky model "%s" and overwrite is True. Deleting existing sky model!' % skymodel_path)
+        logger.warning('Found existing sky model "{}" and overwrite is True. Deleting '
+                       'existing sky model!'.format(skymodel_path))
         os.remove(skymodel_path)
 
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
 
-    tries = 0
-    while tries < 5:
-        result = subprocess.run(['wget', '-O', skymodel_path, SKY_SERVERS[source].format(ra=ra, dec=dec, radius=radius)])
+    max_tries = 5
+    for tries in range(1, 1 + max_tries):
+        result = subprocess.run(['wget', '-O', skymodel_path,
+                                 SKY_SERVERS[source].format(ra=ra, dec=dec, radius=radius)])
         if result.returncode != 0:
-            logger.error('Attempt #{0:d} to download sky model failed. Attempting {1:d} more times.'.format(tries+1, 5-tries))
+            if tries == max_tries:
+                raise IOError('Download of sky model failed after {} '
+                              'attempts.'.format(max_tries))
+            else:
+                logger.error('Attempt #{0:d} to download sky model failed. Attempting '
+                             '{1:d} more times.'.format(tries, max_tries - tries))
+                time.sleep(5)
         else:
             break
-        time.sleep(5)
-        tries += 1
-        if tries == 5:
-            raise IOError('Download of sky model failed after 6 attempts.')
 
     if not os.path.isfile(skymodel_path):
-        raise IOError('Sky model "%s" does not exist after trying to download the sky model.' % skymodel_path)
+        raise IOError('Sky model file "{}" does not exist after trying to download the '
+                      'sky model.'.format(skymodel_path))
 
     # Treat all sources as one group (direction)
     skymodel = lsmtool.load(skymodel_path)
@@ -166,23 +179,23 @@ def make_template_image(image_name, reference_ra_deg, reference_dec_deg,
     ----------
     image_name : str
         Filename of output image
-    reference_ra_deg : float, optional
+    reference_ra_deg : float
         RA for center of output mask image
-    reference_dec_deg : float, optional
+    reference_dec_deg : float
         Dec for center of output mask image
     imsize : int, optional
         Size of output image
     cellsize_deg : float, optional
         Size of a pixel in degrees
-    freqs : list
+    freqs : list, optional
         Frequencies to use to construct extra axes (for IDG a-term images)
-    times : list
+    times : list, optional
         Times to use to construct extra axes (for IDG a-term images)
-    antennas : list
+    antennas : list, optional
         Antennas to use to construct extra axes (for IDG a-term images)
-    aterm_type : str
+    aterm_type : str, optional
         One of 'tec' or 'gain'
-    fill_val : int
+    fill_val : int, optional
         Value with which to fill the data
     """
     if freqs is not None and times is not None and antennas is not None:
