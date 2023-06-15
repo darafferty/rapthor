@@ -34,7 +34,10 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
 
     log.info("Reading parset file: {}".format(parset_file))
     parset = configparser.RawConfigParser()
-    parset.read(parset_file)
+    try:
+        parset.read(parset_file)
+    except configparser.MissingSectionHeaderError:
+        raise KeyError('The parset is missing the required [global] section')
 
     # Handle global parameters
     parset_dict = get_global_options(parset)
@@ -48,6 +51,14 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     # Handle cluster-specific parameters
     if not skip_cluster:
         parset_dict['cluster_specific'].update(get_cluster_options(parset))
+
+    # Check for invalid sections
+    given_sections = list(parset._sections.keys())
+    allowed_sections = ['global', 'calibration', 'imaging', 'cluster']
+    for section in given_sections:
+        if section not in allowed_sections:
+            log.warning('Section "{}" was given in the parset but is not a valid '
+                        'section name'.format(section))
 
     # Check for required parameters. For now, the only required parameters
     # are in the global section
@@ -115,14 +126,6 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
             parset_dict['download_initial_skymodel'] = True
     elif not os.path.exists(parset_dict['input_skymodel']):
         raise FileNotFoundError('Input sky model file "{}" not found.'.format(parset_dict['input_skymodel']))
-
-    # Check for invalid sections
-    given_sections = list(parset._sections.keys())
-    allowed_sections = ['global', 'calibration', 'imaging', 'cluster']
-    for section in given_sections:
-        if section not in allowed_sections:
-            log.warning('Section "{}" was given in the parset but is not a valid '
-                        'section name'.format(section))
 
     return parset_dict
 
