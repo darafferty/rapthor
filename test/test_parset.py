@@ -8,36 +8,44 @@ class TestParset(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
-        self.parset_missing_parameter = """
-                                        [global]
-                                        dir_working = /data/rapthor
-                                        # input_ms = /data/ms/*.ms  # missing required parameter
-                                        """
-        self.parset_misspelled_parameter = """
-                                           [global]
-                                           dir_working = /data/rapthor
-                                           input_ms = /data/ms/*.ms
+        self.parset_missing_parameter = 'missing_parameter.txt'
+        with open(self.parset_missing_parameter, 'wb') as f:
+            f.write("""
+                    [global]
+                    dir_working = /data/rapthor
+                    # input_ms = /data/ms/*.ms  # missing required parameter
+                    """)
+        self.parset_misspelled_parameter = 'misspelled_parameter.txt'
+        with open(self.parset_misspelled_parameter, 'wb') as f:
+            f.write("""
+                    [global]
+                    dir_working = /data/rapthor
+                    input_ms = /data/ms/*.ms
 
-                                           [imaging]
-                                           dd_method  # misspelled optional parameter
-                                           """
-        self.parset_missing_section = """
-                                      # [global]  # missing required section
-                                      dir_working = /data/rapthor
-                                      input_ms = /data/ms/*.ms
-                                      """
-        self.parset_misspelled_section = """
-                                         # [global]
-                                         dir_working = /data/rapthor
-                                         input_ms = /data/ms/*.ms
+                    [imaging]
+                    dd_method  # misspelled optional parameter
+                    """)
+        self.parset_missing_section = 'missing_section.txt'
+        with open(self.parset_missing_section, 'wb') as f:
+            f.write("""
+                    [global]
+                    dir_working = /data/rapthor
+                    # input_ms = /data/ms/*.ms  # missing required parameter
+                    """)
+        self.parset_misspelled_section = 'misspelled_section.txt'
+        with open(self.parset_misspelled_section, 'wb') as f:
+            f.write("""
+                    # [global]
+                    dir_working = /data/rapthor
+                    input_ms = /data/ms/*.ms
 
-                                         [imging]  # misspelled optional section
-                                         dde_method = facets
-                                         """
+                    [imging]  # misspelled optional section
+                    dde_method = facets
+                    """)
 
     @classmethod
     def tearDownClass(self):
-        pass
+        os.system('rm *.txt')
 
     def test_missing_parameter(self):
         parset_read(self.parset_missing_parameter)
