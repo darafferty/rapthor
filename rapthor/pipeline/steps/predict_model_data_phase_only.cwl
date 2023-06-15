@@ -53,6 +53,15 @@ inputs:
       prefix: predict.onebeamperpatch=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
+  - id: sagecalpredict
+    label: Use SAGECal predict
+    doc: |
+      Flag that enables prediction using SAGECal.
+    type: boolean
+    inputBinding:
+      prefix: predict.type=
+      valueFrom: "$(self ? 'sagecalpredict': 'h5parmpredict')"
+      separate: False
   - id: h5parm
     type: File
     inputBinding:

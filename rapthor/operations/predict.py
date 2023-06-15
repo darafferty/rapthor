@@ -89,6 +89,7 @@ class Predict(Operation):
         min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
         max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
         onebeamperpatch = self.field.onebeamperpatch
+        sagecalpredict = self.field.sagecalpredict
 
         self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
                             'sector_starttime': sector_starttime,
@@ -102,6 +103,7 @@ class Predict(Operation):
                             'min_uv_lambda': min_uv_lambda,
                             'max_uv_lambda': max_uv_lambda,
                             'onebeamperpatch': onebeamperpatch,
+                            'sagecalpredict' : sagecalpredict
                             'obs_filename': CWLDir(obs_filename).to_json(),
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,

@@ -379,6 +379,12 @@ def get_calibration_options(parset):
     else:
         parset_dict['parallelbaselines'] = False
 
+    # Use SAGECalpredict
+    if 'sagecalpredict' in parset_dict:
+        parset_dict['sagecalpredict'] = parset.getboolean('calibration', 'sagecalpredict')
+    else:
+        parset_dict['sagecalpredict'] = False
+
     # LBFGS solver parameters
     if 'solverlbfgs_dof' in parset_dict:
         parset_dict['solverlbfgs_dof'] = parset.getfloat('calibration', 'solverlbfgs_dof')
@@ -402,7 +408,7 @@ def get_calibration_options(parset):
                        'slow_smoothnessconstraint_joint',
                        'slow_smoothnessconstraint_separate', 'parallelbaselines',
                        'solveralgorithm', 'solverlbfgs_dof', 'solverlbfgs_iter',
-                       'solverlbfgs_minibatches']
+                       'solverlbfgs_minibatches','sagecalpredict']
     for option in given_options:
         if option not in allowed_options:
             log.warning('Option "{}" was given in the [calibration] section of the '

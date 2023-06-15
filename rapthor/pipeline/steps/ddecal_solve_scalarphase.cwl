@@ -158,6 +158,16 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
+  - id: sagecalpredict
+    label: predict using SAGECal
+    doc: |
+      Flag that enables prediction using SAGECal.
+    type: boolean
+    inputBinding:
+      prefix: solve.sagecalpredict=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
   - id: stepsize
     label: Solver step size
     doc: |
