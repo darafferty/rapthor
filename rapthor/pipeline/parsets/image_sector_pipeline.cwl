@@ -339,7 +339,7 @@ outputs:
     type: File[]
   - id: sector_diagnostics
     outputSource:
-      - filter/diagnostics
+      - find_diagnostics/diagnostics
     type: File
   - id: sector_images
     outputSource:
@@ -647,25 +647,23 @@ steps:
   - id: filter
     label: Filter sources
     doc: |
-      This step uses PyBDSF to filter artifacts from the sky model and make
-      a clean mask for the next iteration, as well as derive various image
-      diagnostics.
+      This step uses PyBDSF to filter artifacts from the sky model.
     run: {{ rapthor_pipeline_dir }}/steps/filter_skymodel.cwl
     in:
 {% if peel_bright_sources %}
-      - id: input_image
+      - id: true_sky_image
         source: restore_pb/restored_image
-      - id: detection_image
+      - id: flat_noise_image
         source: restore_nonpb/restored_image
-      - id: input_bright_skymodel_pb
+      - id: bright_true_sky_skymodel
         source: bright_skymodel_pb
 {% else %}
-      - id: input_image
+      - id: true_sky_image
         source: image/image_pb_name
-      - id: detection_image
+      - id: flat_noise_image
         source: image/image_nonpb_name
 {% endif %}
-      - id: input_skymodel_pb
+      - id: true_sky_skymodel
         source: image/skymodel_pb
       - id: output_root
         source: image_name
@@ -679,4 +677,34 @@ steps:
         source: prepare_imaging_data/msimg
     out:
       - id: skymodels
+      - id: diagnostics
+      - id: flat_noise_rms_image
+      - id: true_sky_rms_image
+      - id: source_catalog
+
+  - id: find_diagnostics
+    label: Find image diagnostics
+    doc: |
+      This step derives various image diagnostics.
+    run: {{ rapthor_pipeline_dir }}/steps/calculate_image_diagnostics.cwl
+    in:
+      - id: flat_noise_image
+        source: image/image_nonpb_name
+      - id: flat_noise_rms_image
+        source: filter/flat_noise_rms_image
+      - id: true_sky_image
+        source: image/image_pb_name
+      - id: true_sky_rms_image
+        source: filter/true_sky_rms_image
+      - id: input_catalog
+        source: filter/source_catalog
+      - id: input_skymodel
+        source: image/skymodel_pb
+      - id: output_root
+        source: image_name
+      - id: beamMS
+        source: prepare_imaging_data/msimg
+      - id: diagnostics_file
+        source: filter/diagnostics
+    out:
       - id: diagnostics

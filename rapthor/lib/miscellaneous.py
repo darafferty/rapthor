@@ -17,6 +17,9 @@ import multiprocessing
 from math import modf, floor, ceil
 from losoto.h5parm import h5parm
 import lsmtool
+import sys
+from scipy.interpolate import interp1d
+from rapthor.lib.observation import Observation
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
@@ -602,6 +605,113 @@ def remove_soltabs(solset, soltabnames):
             soltab.delete()
         except Exception:
             print('Error: soltab "{}" could not be removed'.format(soltabname))
+
+
+def calc_theoretical_noise(mslist, w_factor=1.5):
+    """
+    Return the expected theoretical image noise for a dataset
+
+    Note: the calculations follow those of SKA Memo 113 (see
+    http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf) and
+    assume no tapering. International stations are not included.
+
+    Parameters
+    ----------
+    mslist : list of str
+        List of the filenames of the input MS files
+    w_factor : float, optional
+        Factor for increase of noise due to the weighting scheme used
+        in imaging (typically ranges from 1.3 - 2)
+
+    Returns
+    -------
+    noise, unflagged_fraction : tuple of floats
+        Estimate of the expected theoretical noise in Jy/beam and the
+        unflagged fraction of the input data
+    """
+    nobs = len(mslist)
+    if nobs == 0:
+        # If no MS files, just return zero for the noise as we cannot
+        # estimate it
+        return 0.0
+
+    # Find the total time and the average total bandwidth, average frequency,
+    # average unflagged fraction, and average number of core and remote stations
+    # (for the averages, assume each observation has equal weight)
+    total_time = 0
+    total_bandwidth = 0
+    ncore = 0
+    nremote = 0
+    mid_freq = 0
+    unflagged_fraction = 0
+    for ms in mslist:
+        obs = Observation(ms)
+        total_time += obs.endtime - obs.starttime  # sec
+        total_bandwidth += obs.endfreq - obs.startfreq  # Hz
+        ncore += len([stat for stat in obs.stations if stat.startswith('CS')])
+        nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
+        mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
+        unflagged_fraction += find_unflagged_fraction(ms)
+    total_bandwidth /= nobs
+    ncore = int(np.round(ncore / nobs))
+    nremote = int(np.round(nremote / nobs))
+    mean_freq = mid_freq / nobs
+    unflagged_fraction /= nobs
+
+    # Define table of system equivalent flux densities and interpolate
+    # to get the values at the mean frequency of the input observations.
+    # Note: values were taken from Table 9 of SKA Memo 113
+    sefd_freq_MHz = np.array([15, 30, 45, 60, 75, 120, 150, 180, 210, 240])
+    sefd_core_kJy = np.array([483, 89, 48, 32, 51, 3.6, 2.8, 3.2, 3.7, 4.1])
+    sefd_remote_kJy = np.array([483, 89, 48, 32, 51, 1.8, 1.4, 1.6, 1.8, 2.0])
+    f_core = interp1d(sefd_freq_MHz, sefd_core_kJy)
+    f_remote = interp1d(sefd_freq_MHz, sefd_remote_kJy)
+    sefd_core = f_core(mean_freq) * 1e3  # Jy
+    sefd_remote = f_remote(mean_freq) * 1e3  # Jy
+
+    # Calculate the theoretical noise, adjusted for the unflagged fraction
+    core_term = ncore * (ncore - 1) / 2 / sefd_core**2
+    remote_term = nremote * (nremote - 1) / 2 / sefd_remote**2
+    mixed_term = ncore * nremote / (sefd_core * sefd_remote)
+    noise = w_factor / np.sqrt(2 * (2 * total_time * total_bandwidth) *
+                               (core_term + mixed_term + remote_term))  # Jy
+    noise /= np.sqrt(unflagged_fraction)
+
+    return (noise, unflagged_fraction)
+
+
+def find_unflagged_fraction(ms_file):
+    """
+    Finds the fraction of data that is unflagged
+
+    Parameters
+    ----------
+    ms_file : str
+        Filename of input MS
+
+    Returns
+    -------
+    unflagged_fraction : float
+        Fraction of unflagged data
+    """
+    # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
+    # hanging/locking issues on some systems
+    if (sys.version_info.major, sys.version_info.minor) >= (3, 7):
+        # Note: the capture_output argument was added in Python 3.7
+        result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                                "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                                shell=True, capture_output=True, check=True)
+        unflagged_fraction = float(result.stdout)
+    else:
+        p = subprocess.Popen("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                             "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                             shell=True, stdout=subprocess.PIPE)
+        r = p.communicate()
+        if p.returncode != 0:
+            raise subprocess.CalledProcessError(p.returncode, p.args)
+        unflagged_fraction = float(r[0])
+
+    return unflagged_fraction
 
 
 def get_flagged_solution_fraction(h5file, solsetname='sol000'):
