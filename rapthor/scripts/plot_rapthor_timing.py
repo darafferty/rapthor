@@ -122,15 +122,7 @@ class MainLogParser():
                 h.bar_label(h.containers[i], labels=labels, fontsize=8)
             except AttributeError:
                 print('Failed to set bar labels. Try updating matplotlib to 3.4 or newer.')
-<<<<<<< HEAD
-<<<<<<< HEAD
         h.set(xlabel='Self calibration cycle', ylabel='Duration [h]', title='Cumulative runtime: {:.2f} hours'.format(df['Duration'].sum()))
-=======
-        h.set(xlabel='Self calibration cycle', ylabel='Duration [h]')
->>>>>>> 4547609 (Make a summary PDF)
-=======
-        h.set(xlabel='Self calibration cycle', ylabel='Duration [h]', title='Cumulative runtime: {:.2f} hours'.format(df['Duration'].sum()))
->>>>>>> 0264f1a (Add cumulative runtime)
         h.figure.savefig('rapthor_timing.pdf', bbox_inches='tight', dpi=300)
         h.figure.savefig('rapthor_timing.png', bbox_inches='tight', dpi=300)
 
@@ -193,8 +185,6 @@ class SubLogParser():
             h.set(xlabel='Duration [s]', ylabel=None, title=self.operation)
         h.figure.savefig('temp_{:s}.pdf'.format(self.operation), bbox_inches='tight', dpi=300)
         h.figure.savefig('temp_{:s}.png'.format(self.operation), bbox_inches='tight', dpi=300)
-<<<<<<< HEAD
-=======
 
 
 def make_cycle_pdfs_sublogs() -> None:
@@ -219,36 +209,8 @@ def make_cycle_pdfs_sublogs() -> None:
     except Exception as e:
         import traceback
         print('Concatenation failed. Is pdfunite installed?')
->>>>>>> 4547609 (Make a summary PDF)
 
 
-<<<<<<< HEAD
-def make_cycle_pdfs_sublogs() -> None:
-    """ Make summary PDFs of each iteration and as a grand total."""
-    # Every cycle will do calibration, so determine the number of cycles from this.
-    Ncycles = len(glob.glob('temp_calibrate_*.pdf'))
-    try:
-        for cycle in range(1, Ncycles+1):
-            print(f'Attempting to concat PDF files for cycle {cycle} with pdfunite')
-            files = glob.glob(f'temp_*{cycle}.pdf')
-            for f in files:
-                if not os.path.isfile(os.path.abspath(f)):
-                    files.remove(f)
-            cmd = ['pdfunite'] + files + [f'summary_cycle_{cycle}.pdf']
-            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-        cmd = ['pdfunite', 'rapthor_timing.pdf'] + sorted(glob.glob(f'summary_cycle_*.pdf')) + ['summary.pdf']
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-        # If we were successful, clean up the temporary plots.
-        for f in glob.glob('temp_*.pdf'):
-            os.remove(f)
-            os.remove(f.replace('pdf','png'))
-    except Exception as e:
-        import traceback
-        print('Concatenation failed. Is pdfunite installed?')
-
-
-=======
->>>>>>> 79e8fb0 (Docstrings and type hints)
 def main(logdir, detailed: bool = False) -> None:
     """ Main entry point."""
     main_log_file = os.path.join(os.path.abspath(logdir), 'rapthor.log')
