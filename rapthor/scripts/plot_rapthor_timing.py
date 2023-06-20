@@ -123,10 +123,14 @@ class MainLogParser():
             except AttributeError:
                 print('Failed to set bar labels. Try updating matplotlib to 3.4 or newer.')
 <<<<<<< HEAD
+<<<<<<< HEAD
         h.set(xlabel='Self calibration cycle', ylabel='Duration [h]', title='Cumulative runtime: {:.2f} hours'.format(df['Duration'].sum()))
 =======
         h.set(xlabel='Self calibration cycle', ylabel='Duration [h]')
 >>>>>>> 4547609 (Make a summary PDF)
+=======
+        h.set(xlabel='Self calibration cycle', ylabel='Duration [h]', title='Cumulative runtime: {:.2f} hours'.format(df['Duration'].sum()))
+>>>>>>> 0264f1a (Add cumulative runtime)
         h.figure.savefig('rapthor_timing.pdf', bbox_inches='tight', dpi=300)
         h.figure.savefig('rapthor_timing.png', bbox_inches='tight', dpi=300)
 
