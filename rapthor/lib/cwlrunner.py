@@ -191,6 +191,10 @@ class ToilRunner(CWLRunner):
         self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])
         if self.operation.debug_workflow:
+            if self.operation.batch_system != 'single_machine':
+                raise ValueError(
+                    'The debug_workflow option can only be used when batch_system = "single_machine".'
+                )
             self.args.extend(['--cleanWorkDir', 'never'])
             self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
             self.args.extend(['--logDebug'])
