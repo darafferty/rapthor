@@ -196,7 +196,7 @@ class ToilRunner(CWLRunner):
                     'The debug_workflow option can only be used when batch_system = "single_machine".'
                 )
             self.args.extend(['--cleanWorkDir', 'never'])
-            self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
+            # self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
             self.args.extend(['--logDebug'])
         os.environ.update(self.toil_env_variables)
 
