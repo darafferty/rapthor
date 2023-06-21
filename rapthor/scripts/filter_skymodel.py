@@ -109,7 +109,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     # Run PyBDSF first on the true-sky image to determine its properties and
     # measure source fluxes. The background RMS map is saved for later use in
     # the image diagnostics step
-    img_true_sky = bdsf.process_image(true_sky_image, flat_noise_image=flat_noise_image, mean_map='zero',
+    img_true_sky = bdsf.process_image(true_sky_image, detection_image=flat_noise_image, mean_map='zero',
                                       rms_box=rmsbox, thresh_pix=threshpix, thresh_isl=threshisl,
                                       thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                                       adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,

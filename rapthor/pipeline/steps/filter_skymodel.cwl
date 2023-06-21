@@ -58,7 +58,6 @@ inputs:
     inputBinding:
       position: 6
       itemSeparator: ","
-      separate: false
   - id: bright_true_sky_skymodel
     label: Bright-source PB-corrected model
     doc: |
