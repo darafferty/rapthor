@@ -8,6 +8,10 @@ class TestParset(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
+        self.parset_empty = 'empty_parset.txt'
+        with open(self.parset_empty, 'w') as f:
+            f.write("")
+
         self.parset_missing_parameter = 'missing_parameter.txt'
         with open(self.parset_missing_parameter, 'w') as f:
             f.write("""
@@ -53,6 +57,13 @@ class TestParset(unittest.TestCase):
     def tearDownClass(self):
         os.system('rm *.txt')
 
+    def test_missing_parset_file(self):
+        self.assertRaises(FileNotFoundError, parset_read, 'this.parset.file.does.not.exist')
+
+    def test_empty_parset_raises(self):
+        self.assertRaisesRegex(KeyError, r'The parset is missing the required \[global\] section',
+                               parset_read, self.parset_empty)
+
     def test_missing_parameter(self):
         self.assertRaises(KeyError, parset_read, self.parset_missing_parameter)
 
@@ -69,7 +80,9 @@ class TestParset(unittest.TestCase):
                                          'but is not a valid imaging option'])
 
     def test_missing_section(self):
-        self.assertRaises(KeyError, parset_read, self.parset_missing_section)
+        self.assertRaisesRegex(ValueError,
+                               'Parset file {0} could not be parsed correctly.'.format(self.parset_missing_section),
+                               parset_read, self.parset_missing_section)
 
     def test_misspelled_section(self):
         with self.assertLogs(logger='rapthor:parset', level='WARN') as cm:

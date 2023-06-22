@@ -29,15 +29,13 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     parset_dict : dict
         Dict of parset parameters
     """
-    if not os.path.isfile(parset_file):
-        raise FileNotFoundError("Missing parset file ({}).".format(parset_file))
-
     log.info("Reading parset file: {}".format(parset_file))
     parset = configparser.RawConfigParser()
     try:
-        parset.read(parset_file)
-    except configparser.MissingSectionHeaderError:
-        raise KeyError('The parset is missing the required [global] section')
+        if not parset.read(parset_file):
+            raise FileNotFoundError("Missing parset file ({}).".format(parset_file))
+    except configparser.ParsingError as err:
+        raise ValueError('Parset file {0} could not be parsed correctly.\n{1}'.format(parset_file, err))
 
     # Handle global parameters
     parset_dict = get_global_options(parset)
@@ -147,7 +145,11 @@ def get_global_options(parset):
     """
     # TODO: Repalce all "if 'some_key' in parset_dict:" with "parset_dict.setdefault(...)"
 
-    parset_dict = parset._sections['global'].copy()
+    try:
+        parset_dict = parset._sections['global'].copy()
+    except KeyError:
+        raise KeyError('The parset is missing the required [global] section')
+
     parset_dict.update({'calibration_specific': {}, 'imaging_specific': {}, 'cluster_specific': {}})
 
     # Fraction of data to use (default = 0.2). If less than one, the input data are divided
