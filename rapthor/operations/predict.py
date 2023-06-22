@@ -103,7 +103,7 @@ class Predict(Operation):
                             'min_uv_lambda': min_uv_lambda,
                             'max_uv_lambda': max_uv_lambda,
                             'onebeamperpatch': onebeamperpatch,
-                            'sagecalpredict' : sagecalpredict
+                            'sagecalpredict' : sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,
