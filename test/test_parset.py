@@ -99,6 +99,8 @@ class TestParset(unittest.TestCase):
 
 def suite():
     suite = unittest.TestSuite()
+    suite.addTest(TestParset('test_missing_parset_file'))
+    suite.addTest(TestParset('test_empty_parset_raises'))
     suite.addTest(TestParset('test_missing_parameter'))
     suite.addTest(TestParset('test_misspelled_parameter'))
     suite.addTest(TestParset('test_missing_section'))
