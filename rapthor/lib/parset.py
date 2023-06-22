@@ -29,12 +29,13 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     parset_dict : dict
         Dict of parset parameters
     """
-    if not os.path.isfile(parset_file):
-        raise FileNotFoundError("Missing parset file ({}).".format(parset_file))
-
     log.info("Reading parset file: {}".format(parset_file))
     parset = configparser.RawConfigParser()
-    parset.read(parset_file)
+    try:
+        if not parset.read(parset_file):
+            raise FileNotFoundError("Missing parset file ({}).".format(parset_file))
+    except configparser.ParsingError as err:
+        raise ValueError('Parset file {0} could not be parsed correctly.\n{1}'.format(parset_file, err))
 
     # Handle global parameters
     parset_dict = get_global_options(parset)
@@ -49,11 +50,35 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     if not skip_cluster:
         parset_dict['cluster_specific'].update(get_cluster_options(parset))
 
+    # Check for invalid sections
+    given_sections = list(parset._sections.keys())
+    allowed_sections = ['global', 'calibration', 'imaging', 'cluster']
+    for section in given_sections:
+        if section not in allowed_sections:
+            log.warning('Section "{}" was given in the parset but is not a valid '
+                        'section name'.format(section))
+
+    # Check for required parameters. For now, the only required parameters
+    # are in the global section
+    required_parameters = {'global': ['dir_working', 'input_ms'],
+                           'calibration_specific': [],
+                           'imaging_specific': []}
+    if not skip_cluster:
+        required_parameters.update({'cluster_specific': []})
+    for section, key_list in required_parameters.items():
+        if section == 'global':
+            test_dict = parset_dict
+        else:
+            test_dict = parset_dict[section]
+        for key in key_list:
+            if key not in test_dict:
+                raise KeyError('The parset is missing the required parameter "{0}" '
+                               'in the [{1}] section'.format(key, section))
+
     # Set up working directory. All output will be placed in this directory
-    if not os.path.isdir(parset_dict['dir_working']):
-        os.mkdir(parset_dict['dir_working'])
     try:
-        os.chdir(parset_dict['dir_working'])
+        if not os.path.isdir(parset_dict['dir_working']):
+            os.mkdir(parset_dict['dir_working'])
         for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
                        'solutions', 'plots']:
             subdir_path = os.path.join(parset_dict['dir_working'], subdir)
@@ -100,14 +125,6 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     elif not os.path.exists(parset_dict['input_skymodel']):
         raise FileNotFoundError('Input sky model file "{}" not found.'.format(parset_dict['input_skymodel']))
 
-    # Check for invalid sections
-    given_sections = list(parset._sections.keys())
-    allowed_sections = ['global', 'calibration', 'imaging', 'cluster']
-    for section in given_sections:
-        if section not in allowed_sections:
-            log.warning('Section "{}" was given in the parset but is not a valid '
-                        'section name'.format(section))
-
     return parset_dict
 
 
@@ -128,7 +145,11 @@ def get_global_options(parset):
     """
     # TODO: Repalce all "if 'some_key' in parset_dict:" with "parset_dict.setdefault(...)"
 
-    parset_dict = parset._sections['global'].copy()
+    try:
+        parset_dict = parset._sections['global'].copy()
+    except KeyError:
+        raise KeyError('The parset is missing the required [global] section')
+
     parset_dict.update({'calibration_specific': {}, 'imaging_specific': {}, 'cluster_specific': {}})
 
     # Fraction of data to use (default = 0.2). If less than one, the input data are divided
