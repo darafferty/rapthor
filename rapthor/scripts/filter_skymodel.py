@@ -119,6 +119,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                clobber=True)
     true_sky_rms_filename = output_root+'.true_sky_rms.fits'
     img_true_sky.export_image(outfile=true_sky_rms_filename, img_type='rms', clobber=True)
+    nsources = img_true_sky.nsrc
 
     # Run PyBDSF again on the flat-noise image and save the RMS map for later
     # use in the image diagnostics step
@@ -246,8 +247,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
             f.writelines(dummylines)
         with open(output_root+'.true_sky.txt', 'w') as f:
             f.writelines(dummylines)
-    else:
-        nsources = img.nsrc
 
     # Write out number of sources found by PyBDSF for later use
     cwl_output = {'nsources': nsources}
