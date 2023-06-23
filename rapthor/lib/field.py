@@ -75,8 +75,8 @@ class Field(object):
         self.max_normalization_delta = 0.3
         self.solve_min_uv_lambda = 350
         self.scale_normalization_delta = True
-        self.lofar_to_true_flux_ratio_pybdsf = 1.0
-        self.lofar_to_true_flux_std_pybdsf = 0.0
+        self.lofar_to_true_flux_ratio = 1.0
+        self.lofar_to_true_flux_std = 0.0
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
@@ -1284,14 +1284,14 @@ class Field(object):
         # previous selfcal cycle. This adjustment is only done if the fractional change
         # is significant (as measured by the standard deviation in the ratio)
         target_flux = step_dict['target_flux']
-        if self.lofar_to_true_flux_ratio_pybdsf <= 0:
-            self.lofar_to_true_flux_ratio_pybdsf = 1.0  # disable adjustment
-        if self.lofar_to_true_flux_ratio_pybdsf <= 1:
-            fractional_change = 1 / self.lofar_to_true_flux_ratio_pybdsf - 1
+        if self.lofar_to_true_flux_ratio <= 0:
+            self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
+        if self.lofar_to_true_flux_ratio <= 1:
+            fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
         else:
-            fractional_change = self.lofar_to_true_flux_ratio_pybdsf - 1
-        if fractional_change > self.lofar_to_true_flux_std_pybdsf:
-            target_flux *= self.lofar_to_true_flux_ratio_pybdsf
+            fractional_change = self.lofar_to_true_flux_ratio - 1
+        if fractional_change > self.lofar_to_true_flux_std:
+            target_flux *= self.lofar_to_true_flux_ratio
             self.log.info('Adjusting the target flux for calibrator selection '
                           'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
                           'in the global flux scale'.format(step_dict['target_flux'],

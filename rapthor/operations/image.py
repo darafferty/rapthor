@@ -260,12 +260,12 @@ class Image(Operation):
             sector.diagnostics.append(diagnostics_dict)
             try:
                 theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
-                min_rms_pb = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_pb']*1e6)
-                median_rms_pb = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_pb']*1e6)
-                dynr_pb = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_pb'])
-                min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
-                median_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms']*1e6)
-                dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+                min_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_true_sky']*1e6)
+                median_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_true_sky']*1e6)
+                dynr_true_sky = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_true_sky'])
+                min_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_flat_noise']*1e6)
+                median_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_flat_noise']*1e6)
+                dynr_flat_noise = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_flat_noise'])
                 nsources = '{0}'.format(diagnostics_dict['nsources'])
                 freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
                 beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
@@ -273,9 +273,13 @@ class Image(Operation):
                                                                       diagnostics_dict['beam_fwhm'][2])
                 unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
                 self.log.info('Diagnostics for {}:'.format(sector.name))
-                self.log.info('    Min RMS noise = {0} (non-PB-corrected), {1} (PB-corrected), {2} (theoretical)'.format(min_rms, min_rms_pb, theoretical_rms))
-                self.log.info('    Median RMS noise = {0} (non-PB-corrected), {1} (PB-corrected)'.format(median_rms, median_rms_pb))
-                self.log.info('    Dynamic range = {0} (non-PB-corrected), {1} (PB-corrected)'.format(dynr, dynr_pb))
+                self.log.info('    Min RMS noise = {0} (non-PB-corrected), '
+                              '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
+                                                                             theoretical_rms))
+                self.log.info('    Median RMS noise = {0} (non-PB-corrected), '
+                              '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
+                self.log.info('    Dynamic range = {0} (non-PB-corrected), '
+                              '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
                 self.log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
                 self.log.info('    Reference frequency = {}'.format(freq))
                 self.log.info('    Beam = {}'.format(beam))
@@ -290,14 +294,14 @@ class Image(Operation):
                 # the flux ratio and 0.5" for the astrometry, as these are the
                 # realistic minimum uncertainties in these values
                 if 'meanClippedRatio_pybdsf' in diagnostics_dict and 'stdClippedRatio_pybdsf' in diagnostics_dict:
-                    ratio_pybdsf = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
-                    self.field.lofar_to_true_flux_ratio_pybdsf = diagnostics_dict['meanClippedRatio_pybdsf']
-                    stdratio_pybdsf = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
-                    self.field.lofar_to_true_flux_std_pybdsf = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
-                    self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio_pybdsf, stdratio_pybdsf))
+                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
+                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio_pybdsf']
+                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
+                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
+                    self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
                 else:
-                    self.field.lofar_to_true_flux_ratio_pybdsf = 1.0
-                    self.field.lofar_to_true_flux_std_pybdsf = 0.0
+                    self.field.lofar_to_true_flux_ratio = 1.0
+                    self.field.lofar_to_true_flux_std = 0.0
                     self.log.info('    LOFAR/TGSS flux ratio = N/A')
                 if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
@@ -314,8 +318,9 @@ class Image(Operation):
             except KeyError:
                 self.log.warn('One or more of the expected image diagnostics is unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
-                req_keys = ['theoretical_rms', 'min_rms', 'median_rms', 'dynamic_range_global',
-                            'min_rms_pb', 'median_rms_pb', 'dynamic_range_global_pb',
+                req_keys = ['theoretical_rms', 'min_rms_flat_noise', 'median_rms_flat_noise',
+                            'dynamic_range_global_flat_noise', 'min_rms_true_sky',
+                            'median_rms_true_sky', 'dynamic_range_global_true_sky',
                             'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
                             'meanClippedRatio_pybdsf', 'stdClippedRatio_pybdsf',
                             'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
