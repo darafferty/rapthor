@@ -217,19 +217,6 @@ class Image(Operation):
             sector.I_model_file_true_sky = image_root + '-MFS-model.fits'
             sector.I_residual_file_apparent_sky = image_root + '-MFS-residual.fits'
 
-            # Check to see if a clean mask image was made (only made when at least one
-            # island is found in the Stokes I image). The filename is defined
-            # in the rapthor/scripts/filter_skymodel.py file
-            #
-            # Note: for now, the clean mask is not used as it has not been found to
-            # be necessary (WSClean automasking is used on its own)
-            use_clean_mask = False
-            mask_filename = sector.I_image_file_apparent_sky + '.mask'
-            if use_clean_mask and os.path.exists(mask_filename):
-                sector.I_mask_file = mask_filename
-            else:
-                sector.I_mask_file = None
-
             # The sky models, both true sky and apparent sky (the filenames are defined
             # in the rapthor/scripts/filter_skymodel.py file)
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'

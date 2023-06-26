@@ -333,10 +333,14 @@ inputs:
 
 
 outputs:
-  - id: filtered_skymodels
+  - id: filtered_skymodel_true_sky
     outputSource:
-      - filter/skymodels
-    type: File[]
+      - filter/filtered_skymodel_true_sky
+    type: File
+  - id: filtered_skymodel_apparent_sky
+    outputSource:
+      - filter/filtered_skymodel_apparent_sky
+    type: File
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics
@@ -674,9 +678,10 @@ steps:
       - id: threshpix
         source: threshpix
       - id: beamMS
-        source: prepare_imaging_data/msimg
+        source: obs_filename
     out:
-      - id: skymodels
+      - id: filtered_skymodel_true_sky
+      - id: filtered_skymodel_apparent_sky
       - id: diagnostics
       - id: flat_noise_rms_image
       - id: true_sky_rms_image
@@ -699,11 +704,11 @@ steps:
       - id: input_catalog
         source: filter/source_catalog
       - id: input_skymodel
-        source: image/skymodel_pb
+        source: filter/filtered_skymodel_true_sky
       - id: output_root
         source: image_name
-      - id: beamMS
-        source: prepare_imaging_data/msimg
+      - id: obs_ms
+        source: obs_filename
       - id: diagnostics_file
         source: filter/diagnostics
     out:

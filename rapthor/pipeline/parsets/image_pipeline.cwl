@@ -372,14 +372,14 @@ inputs:
 
 
 outputs:
-  - id: filtered_skymodels
+  - id: filtered_skymodel_true_sky
     outputSource:
-      - image_sector/filtered_skymodels
-    type:
-      type: array
-      items:
-        type: array
-        items: File
+      - image_sector/filtered_skymodel_true_sky
+    type: File[]
+  - id: filtered_skymodel_apparent_sky
+    outputSource:
+      - image_sector/filtered_skymodel_apparent_sky
+    type: File[]
   - id: sector_diagnostics
     outputSource:
       - image_sector/sector_diagnostics

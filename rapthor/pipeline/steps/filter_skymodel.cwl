@@ -3,7 +3,9 @@ class: CommandLineTool
 baseCommand: [filter_skymodel.py]
 label: Filter a sky model
 doc: |
-  This tool uses PyBDSF to filter artifacts from the sky model
+  This tool uses PyBDSF to filter artifacts from the sky model and
+  to attenuate the source flux densities to make an apparent-sky
+  sky model.
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -51,9 +53,10 @@ inputs:
     inputBinding:
       position: 5
   - id: beamMS
-    label: Filename of MS file for beam
+    label: Filenames of MS files for beam
     doc: |
-      The filenames of the MS files to use for beam calculations.
+      The filenames of the MS files to use for beam calculations. These MS files
+      should have the original phase center of the observation.
     type: Directory[]
     inputBinding:
       position: 6
@@ -85,13 +88,20 @@ inputs:
       separate: false
 
 outputs:
-  - id: skymodels
-    label: Processed sky models, mask files, and images
+  - id: filtered_skymodel_true_sky
+    label: Processed true-sky sky model
     doc: |
-      The filenames of the filtered sky models, the generated mask files, and images.
-    type: File[]
+      The filename of the filtered true-sky sky model.
+    type: File
     outputBinding:
-      glob: ['$(inputs.output_root)-MFS-*.fits', '$(inputs.output_root)-MFS-*.mask', '$(inputs.output_root).*_sky.txt']
+      glob: '$(inputs.output_root).true_sky.txt'
+  - id: filtered_skymodel_apparent_sky
+    label: Processed apparent-sky sky model
+    doc: |
+      The filename of the filtered apparent-sky sky model.
+    type: File
+    outputBinding:
+      glob: '$(inputs.output_root).apparent_sky.txt'
   - id: diagnostics
     label: Image diagnostics
     doc: |

@@ -25,7 +25,7 @@ iers.conf.auto_download = False
 
 
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
-         input_catalog, input_skymodel, beamMS, diagnostics_file, output_root,
+         input_catalog, input_skymodel, obs_ms, diagnostics_file, output_root,
          comparison_skymodel=None):
     """
     Calculate various image diagnostics
@@ -44,8 +44,9 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         Filename of the input PyBDSF FITS catalog derived from the LOFAR image
     input_skymodel : str
         Filename of input sky model produced during imaging
-    beamMS : list of str
-        List of MS files to use to derive the theoretical image noise
+    obs_ms : list of str
+        List of MS files to use to derive the theoretical image noise and
+        other properties of the observation
     diagnostics_file : str
         Filename of the input JSON file containing image diagnostics derived
         by the sky model filtering script
@@ -56,11 +57,11 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         comparisons. If not given, a TGSS model is downloaded
     """
     # Select the best MS
-    if isinstance(beamMS, str):
-        beamMS = misc.string2list(beamMS)
-    if len(beamMS) > 1:
+    if isinstance(obs_ms, str):
+        obs_ms = misc.string2list(obs_ms)
+    if len(obs_ms) > 1:
         ms_times = []
-        for ms in beamMS:
+        for ms in obs_ms:
             tab = pt.table(ms, ack=False)
             ms_times.append(np.mean(tab.getcol('TIME')))
             tab.close()
@@ -80,7 +81,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
 
     # Collect some diagnostic numbers from the images. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
-    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(beamMS)  # Jy/beam
+    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(obs_ms)  # Jy/beam
     dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
     dynamic_range_local_true_sky = float(np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data))
     dynamic_range_global_flat_noise = float(img_flat_noise.max_value / rms_img_flat_noise.min_value)
@@ -129,7 +130,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     # only comparison sources within a radius of FWHM / 2 of phase center
     catalog = Table.read(input_catalog, format='fits')
     catalog_comp = Table.read(catalog_comp_filename, format='fits')
-    obs = Observation(beamMS[beam_ind])
+    obs = Observation(obs_ms[beam_ind])
     phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
     coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
     separation = phase_center.separation(coords_comp)

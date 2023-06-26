@@ -19,7 +19,8 @@ inputs:
   - id: flat_noise_rms_image
     label: Flat-noise RMS image
     doc: |
-      The filename of the input flat-noise background RMS FITS image.
+      The filename of the input flat-noise background RMS FITS image
+      (made by PyBDSF).
     type: File
     inputBinding:
       position: 2
@@ -33,28 +34,32 @@ inputs:
   - id: true_sky_rms_image
     label: True-sky RMS image
     doc: |
-      The filename of the input true-sky (primary-beam-corrected) RMS FITS image.
+      The filename of the input true-sky (primary-beam-corrected) RMS FITS
+      image (made by PyBDSF).
     type: File
     inputBinding:
       position: 4
   - id: input_catalog
     label: Input source FITS catalog
     doc: |
-      The filename of the input FITS catalog.
+      The filename of the input source FITS catalog (made by PyBDSF).
     type: File
     inputBinding:
       position: 5
   - id: input_skymodel
     label: Input sky model
     doc: |
-      The filename of the input sky model.
+      The filename of the input sky model (in makesourcedb format). This model
+      should be grouped into source patches.
     type: File
     inputBinding:
       position: 6
-  - id: beamMS
-    label: Filename of MS file for beam
+  - id: obs_ms
+    label: Filenames of MS files
     doc: |
-      The filenames of the MS files to use for beam calculations.
+      The filenames of the MS files to use for observation properties, such
+      as the theoretical noise. This MS should have the original phase center of
+      the observation.
     type: Directory[]
     inputBinding:
       position: 7
