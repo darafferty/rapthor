@@ -561,7 +561,8 @@ steps:
     scatterMethod: dotproduct
 
     out:
-      - id: filtered_skymodels
+      - id: filtered_skymodel_true_sky
+      - id: filtered_skymodel_apparent_sky
       - id: sector_images
       - id: sector_diagnostics
 {% if use_facets %}
