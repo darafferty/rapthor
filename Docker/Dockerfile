@@ -157,6 +157,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         casacore-tools \
+        git \
         libarmadillo9 \
         libatkmm-1.6-1v5 \
         libboost-date-time1.71.0 \
