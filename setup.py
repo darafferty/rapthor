@@ -51,7 +51,7 @@ setup(
              'bin/concat_linc_files',
              'rapthor/scripts/adjust_h5parm_sources.py',
              'rapthor/scripts/blank_image.py',
-             'rapthor/scripts/calculate_image_diagnositics.py',
+             'rapthor/scripts/calculate_image_diagnostics.py',
              'rapthor/scripts/combine_h5parms.py',
              'rapthor/scripts/concat_ms.py',
              'rapthor/scripts/filter_skymodel.py',
