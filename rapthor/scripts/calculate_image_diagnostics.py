@@ -143,7 +143,6 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     #
     # Note: we require at least 10 sources for the comparison, as using
     # fewer can give unreliable estimates
-    cwl_output = {}
     min_number = 10
     if len(catalog_comp) >= min_number:
         coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
