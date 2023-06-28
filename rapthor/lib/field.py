@@ -2,7 +2,6 @@
 Definition of the Field class
 """
 import os
-import sys
 import logging
 import numpy as np
 import lsmtool
@@ -14,6 +13,8 @@ from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
 import glob
+from astropy.coordinates import SkyCoord
+import astropy.units as u
 
 
 class Field(object):
@@ -606,6 +607,7 @@ class Field(object):
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
         self.num_patches = len(calibration_skymodel.getPatchNames())
+        self.calibrator_positions = calibration_skymodel.getPatchPositions()
         if self.num_patches > 1:
             infix = 'es'
         else:
@@ -812,6 +814,20 @@ class Field(object):
         if patch_dict is not None:
             to_skymodel.setPatchPositions(patchDict=patch_dict)
         return to_skymodel
+
+    def get_calibration_radius(self):
+        """
+        Returns the radius in degrees that encloses all calibrators
+        """
+        phase_center_coord = SkyCoord(ra=self.ra*u.degree, dec=self.dec*u.degree)
+        cal_ra = []
+        cal_dec = []
+        for cal, coord in self.calibrator_positions.items():
+            cal_ra.append(coord[0])
+            cal_dec.append(coord[1])
+        cal_coord = SkyCoord(ra=cal_ra, dec=cal_dec)
+        separation = phase_center_coord.separation(cal_coord)
+        return max(separation)
 
     def define_imaging_sectors(self):
         """
