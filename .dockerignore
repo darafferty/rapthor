@@ -1,3 +1,4 @@
+.git/
 .tox/
 build/
 ci/
