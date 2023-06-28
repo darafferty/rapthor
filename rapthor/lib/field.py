@@ -356,6 +356,7 @@ class Field(object):
             calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
             self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
             self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
+            self.calibrator_positions = self.calibration_skymodel.getPatchPositions()
             self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
             if self.peel_bright_sources:
@@ -827,7 +828,7 @@ class Field(object):
             cal_dec.append(coord[1])
         cal_coord = SkyCoord(ra=cal_ra, dec=cal_dec)
         separation = phase_center_coord.separation(cal_coord)
-        return max(separation)
+        return max(separation).value
 
     def define_imaging_sectors(self):
         """
