@@ -57,7 +57,7 @@ RUN cmake \
 RUN ninja -C /src/idg/build install
 
 # Install EveryBeam
-# Do not compile python bindings, they will interfere with the ones in the 
+# Do not compile python bindings, they will interfere with the ones in the
 # binary wheel on PyPI.
 RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
 RUN cmake \
@@ -210,6 +210,8 @@ RUN aoflagger --version && \
     wsclean --version
 
 # Install current version of Rapthor
+ARG VERSION=0.0.0
 COPY . /tmp/rapthor
-RUN python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
+    python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
 RUN rm -rf /tmp/*
