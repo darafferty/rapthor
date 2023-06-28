@@ -15,7 +15,7 @@ versioning:
   stage: .pre
   image: bitnami/git
   script:
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
+    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- Docker/Dockerfile) > versions.env
     - cat versions.env
   artifacts:
     reports:
@@ -31,7 +31,7 @@ build-docker-ubuntu-20.04:
   script:
     - |
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
-        docker build --tag $BASE_IMAGE -f ci/ubuntu_20_04-base .
+        docker build --tag $BASE_IMAGE -f Docker/Dockerfile .
         docker push $BASE_IMAGE
       fi
   before_script:

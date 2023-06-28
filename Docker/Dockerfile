@@ -157,7 +157,6 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         casacore-tools \
-        git \
         libarmadillo9 \
         libatkmm-1.6-1v5 \
         libboost-date-time1.71.0 \
@@ -209,7 +208,8 @@ RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version
 
-# Install current version of Rapthor
+# Install current version of Rapthor.
+# Note: VERSION should be provided as build argument.
 ARG VERSION=0.0.0
 COPY . /tmp/rapthor
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
