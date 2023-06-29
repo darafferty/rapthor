@@ -16,6 +16,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.coordinates import match_coordinates_sky
 from astropy.stats import sigma_clip
+from astropy.io.registry import IORegistryError
 import json
 
 
