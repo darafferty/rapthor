@@ -232,6 +232,12 @@ inputs:
       The number of WSClean deconvolution channels (length = 1).
     type: int
 
+  - id: fit_spectral_pol
+    label: Spectral poly order
+    doc: |
+      The order of WSClean spectral polynomial (length = 1).
+    type: int
+
   - id: wsclean_niter
     label: Number of iterations
     doc: |
@@ -568,6 +574,8 @@ steps:
         source: channels_out
       - id: deconvolution_channels
         source: deconvolution_channels
+      - id: fit_spectral_pol
+        source: fit_spectral_pol
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem
