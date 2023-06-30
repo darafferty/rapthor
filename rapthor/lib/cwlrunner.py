@@ -167,7 +167,7 @@ class ToilRunner(CWLRunner):
             # here we set it to the output directory
             prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
             self.args.extend(['--tmp-outdir-prefix', prefix])
-        self.args.extend(['--maxLocalJobs', str(self.operation.max_nodes)])
+        self.args.extend(['--maxJobs', str(self.operation.max_nodes)])
         self.args.extend(['--jobStore', self.operation.jobstore])
         if os.path.exists(self.operation.jobstore):
             self.args.extend(['--restart'])
