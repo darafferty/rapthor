@@ -178,6 +178,8 @@ class Image(Operation):
                     # corresponding regions in the facets region file. We ensure this
                     # requirement is met by extending the regions to cover the larger of
                     # the calibration region and the sector region, plus a 20% padding
+                    ra_mid.append(self.field.ra)
+                    dec_mid.append(self.field.dec)
                     width_ra.append(max(min_width, sector.width_ra*1.2))
                     width_dec.append(max(min_width, sector.width_dec*1.2))
                     facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
