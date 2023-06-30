@@ -646,8 +646,8 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
     unflagged_fraction = 0
     for ms in mslist:
         obs = Observation(ms)
-        total_time += obs.endtime - obs.starttime  # sec
-        total_bandwidth += obs.endfreq - obs.startfreq  # Hz
+        total_time += obs.numsamples * obs.timepersample  # sec
+        total_bandwidth += obs.numchannels * obs.channelwidth  # Hz
         ncore += len([stat for stat in obs.stations if stat.startswith('CS')])
         nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
         mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
@@ -696,20 +696,10 @@ def find_unflagged_fraction(ms_file):
     """
     # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
     # hanging/locking issues on some systems
-    if (sys.version_info.major, sys.version_info.minor) >= (3, 7):
-        # Note: the capture_output argument was added in Python 3.7
-        result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
-                                "sum([select nelements(FLAG) from {0}])'".format(ms_file),
-                                shell=True, capture_output=True, check=True)
-        unflagged_fraction = float(result.stdout)
-    else:
-        p = subprocess.Popen("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
-                             "sum([select nelements(FLAG) from {0}])'".format(ms_file),
-                             shell=True, stdout=subprocess.PIPE)
-        r = p.communicate()
-        if p.returncode != 0:
-            raise subprocess.CalledProcessError(p.returncode, p.args)
-        unflagged_fraction = float(r[0])
+    result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
+                            "sum([select nelements(FLAG) from {0}])'".format(ms_file),
+                            shell=True, capture_output=True, check=True)
+    unflagged_fraction = float(result.stdout)
 
     return unflagged_fraction
 
