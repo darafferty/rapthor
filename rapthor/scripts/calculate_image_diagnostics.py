@@ -112,7 +112,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         _, _, midRA, midDec = s_in._getXY()
         try:
             s_comp = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
-        except IORegistryError:
+        except ConnectionError:
             # Comparison catalog not downloaded successfully
             s_comp = None
     else:
