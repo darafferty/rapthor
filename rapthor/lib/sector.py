@@ -174,7 +174,7 @@ class Sector(object):
         # Set number of channels to use in spectral fitting. We set this to the
         # number of channels, up to a maximum of 4 (and the fit spectral order to
         # one less)
-        self.wsclean_deconvolution_channels = max(4, self.wsclean_nchannels)
+        self.wsclean_deconvolution_channels = min(4, self.wsclean_nchannels)
         self.wsclean_spectral_poly_order = max(1, self.wsclean_deconvolution_channels-1)
 
         # Set number of iterations. We scale the number of iterations depending on the
