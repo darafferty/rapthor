@@ -49,7 +49,7 @@ class FITSImage(object):
                     self.header['BMAJ'] = float(bmaj)
                     self.header['BMIN'] = float(bmin)
                     self.header['BPA'] = float(pa)
-        self.beam = [self.header['BMAJ'], self.header['BMIN'], self.header['BPA']]
+        self.beam = [float(self.header['BMAJ']), float(self.header['BMIN']), float(self.header['BPA'])]
 
     def find_freq(self):
         """
@@ -57,14 +57,14 @@ class FITSImage(object):
         """
         self.freq = None
         if not self.header.get('RESTFREQ') is None and not self.header.get('RESTFREQ') == 0:
-            self.freq = self.header.get('RESTFREQ')
+            self.freq = float(self.header.get('RESTFREQ'))
         elif not self.header.get('FREQ') is None and not self.header.get('FREQ') == 0:
-            self.freq = self.header.get('FREQ')
+            self.freq = float(self.header.get('FREQ'))
         else:
             for i in range(5):
                 type_s = self.header.get('CTYPE%i' % i)
                 if type_s is not None and type_s[0:4] == 'FREQ':
-                    self.freq = self.header.get('CRVAL%i' % i)
+                    self.freq = float(self.header.get('CRVAL%i' % i))
 
     def flatten(self):
         """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -109,6 +109,10 @@ class FITSImage(object):
                     dataslice.append(0)
             self.img_hdr = header
             self.img_data = f[0].data[tuple(dataslice)]
+        self.min_value = float(np.nanmin(self.img_data))
+        self.max_value = float(np.nanmax(self.img_data))
+        self.mean_value = float(np.nanmean(self.img_data))
+        self.median_value = float(np.nanmedian(self.img_data))
 
     def write(self, filename=None):
         if filename is None:
@@ -168,7 +172,7 @@ class FITSImage(object):
         for i in range(niter):
             rms = np.nanstd(data)
             if np.abs(oldrms-rms)/rms < eps:
-                self.noise = rms
+                self.noise = float(rms)
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
