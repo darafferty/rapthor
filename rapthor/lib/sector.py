@@ -165,7 +165,7 @@ class Sector(object):
         min_freq = np.min([obs.startfreq for obs in self.observations])
         target_bandwidth = 4e6 * min_freq / 120e6
         max_nchannels = np.max([obs.numchannels for obs in self.observations])
-        min_nchannels = 4  # we want at least 4 channels -- see below
+        min_nchannels = 1
         tot_bandwidth = 0.0
         for obs in self.observations:
             # Find observation with largest bandwidth
@@ -174,9 +174,11 @@ class Sector(object):
                 tot_bandwidth = obs_bandwidth
         self.wsclean_nchannels = max(min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth))))
 
-        # Set number of channels to use in spectral fitting. Since we always use
-        # -fit-spectral-pol = 3 in the WSClean calls, simply set this to 4 channels
-        self.wsclean_deconvolution_channels = 4
+        # Set number of channels to use in spectral fitting. We set this to the
+        # number of channels, up to a maximum of 4 (and the fit spectral order to
+        # one less)
+        self.wsclean_deconvolution_channels = min(4, self.wsclean_nchannels)
+        self.wsclean_spectral_poly_order = max(1, self.wsclean_deconvolution_channels-1)
 
         # Set number of iterations. We scale the number of iterations depending on the
         # integration time and the distance of the sector center to the phase center, to

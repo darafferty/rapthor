@@ -26,10 +26,6 @@ arguments:
     prefix: -mgain
   - valueFrom: '0.8'
     prefix: -multiscale-scale-bias
-  - valueFrom: '4'
-    prefix: -deconvolution-channels
-  - valueFrom: '3'
-    prefix: -fit-spectral-pol
   - valueFrom: '1.0'
     prefix: -auto-threshold
   - valueFrom: '50'
@@ -93,6 +89,14 @@ inputs:
     type: int
     inputBinding:
       prefix: -channels-out
+  - id: deconvolution_channels
+    type: int
+    inputBinding:
+      prefix: -deconvolution-channels
+  - id: fit_spectral_pol
+    type: int
+    inputBinding:
+      prefix: -fit-spectral-pol
   - id: taper_arcsec
     type: float
     inputBinding:
