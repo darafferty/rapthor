@@ -134,23 +134,26 @@ class Sector(object):
             self.imsize = [int(self.width_ra / self.cellsize_deg),
                            int(self.width_dec / self.cellsize_deg)]
 
-            # IDG does not yet support rectangular images, so ensure image is square
-            self.imsize = [max(self.imsize), max(self.imsize)]
+            if self.use_screens:
+                # IDG does not yet support rectangular images, so ensure image
+                # is square
+                self.imsize = [max(self.imsize), max(self.imsize)]
 
-            # IDG has problems with small images, so set minimum size to 500 pixels and adjust
-            # padded polygon
-            minsize = 500
-            if max(self.imsize) < minsize:
-                dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
-                padding_pix = dec_width_pix * (self.wsclean_image_padding - 1.0)
-                padding_pix *= minsize / max(self.imsize)  # scale padding to new imsize
-                self.poly_padded = self.poly.buffer(padding_pix)
-                self.imsize = [minsize, minsize]
+                # IDG has problems with small images, so set minimum size to 500 pixels
+                # and adjust padded polygon
+                minsize = 500
+                if max(self.imsize) < minsize:
+                    dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
+                    padding_pix = dec_width_pix * (self.wsclean_image_padding - 1.0)
+                    padding_pix *= minsize / max(self.imsize)  # scale padding to new imsize
+                    self.poly_padded = self.poly.buffer(padding_pix)
+                    self.imsize = [minsize, minsize]
 
             # Lastly, make sure the image size is an even number (odd sizes cause the
             # peak to lie not necessarily in the img center)
             if self.imsize[0] % 2:
                 self.imsize[0] += 1
+            if self.imsize[1] % 2:
                 self.imsize[1] += 1
 
         self.wsclean_imsize = "'{0} {1}'".format(self.imsize[0], self.imsize[1])

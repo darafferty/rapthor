@@ -4,7 +4,7 @@ Script to make a template image for mosaicking
 """
 import argparse
 from argparse import RawTextHelpFormatter
-from rapthor.lib.image import FITSImage
+from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib import miscellaneous as misc
 from astropy.io import fits as pyfits
 from astropy.wcs import WCS as pywcs

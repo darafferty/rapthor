@@ -217,19 +217,6 @@ class Image(Operation):
             sector.I_model_file_true_sky = image_root + '-MFS-model.fits'
             sector.I_residual_file_apparent_sky = image_root + '-MFS-residual.fits'
 
-            # Check to see if a clean mask image was made (only made when at least one
-            # island is found in the Stokes I image). The filename is defined
-            # in the rapthor/scripts/filter_skymodel.py file
-            #
-            # Note: for now, the clean mask is not used as it has not been found to
-            # be necessary (WSClean automasking is used on its own)
-            use_clean_mask = False
-            mask_filename = sector.I_image_file_apparent_sky + '.mask'
-            if use_clean_mask and os.path.exists(mask_filename):
-                sector.I_mask_file = mask_filename
-            else:
-                sector.I_mask_file = None
-
             # The sky models, both true sky and apparent sky (the filenames are defined
             # in the rapthor/scripts/filter_skymodel.py file)
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
@@ -260,9 +247,12 @@ class Image(Operation):
             sector.diagnostics.append(diagnostics_dict)
             try:
                 theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
-                min_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms']*1e6)
-                median_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms']*1e6)
-                dynr = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global'])
+                min_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_true_sky']*1e6)
+                median_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_true_sky']*1e6)
+                dynr_true_sky = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_true_sky'])
+                min_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_flat_noise']*1e6)
+                median_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_flat_noise']*1e6)
+                dynr_flat_noise = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_flat_noise'])
                 nsources = '{0}'.format(diagnostics_dict['nsources'])
                 freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
                 beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
@@ -270,47 +260,58 @@ class Image(Operation):
                                                                       diagnostics_dict['beam_fwhm'][2])
                 unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
                 self.log.info('Diagnostics for {}:'.format(sector.name))
-                self.log.info('    Min RMS noise = {0} (theoretical = {1})'.format(min_rms, theoretical_rms))
-                self.log.info('    Median RMS noise = {}'.format(median_rms))
-                self.log.info('    Dynamic range = {}'.format(dynr))
+                self.log.info('    Min RMS noise = {0} (non-PB-corrected), '
+                              '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
+                                                                             theoretical_rms))
+                self.log.info('    Median RMS noise = {0} (non-PB-corrected), '
+                              '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
+                self.log.info('    Dynamic range = {0} (non-PB-corrected), '
+                              '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
                 self.log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
                 self.log.info('    Reference frequency = {}'.format(freq))
                 self.log.info('    Beam = {}'.format(beam))
                 self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
-                if 'meanClippedRatio' in diagnostics_dict:
-                    # If 'meanClippedRatio' is present, assume all of the LSMTool-generated
-                    # comparison diagnostics are available (these are only generated if there
-                    # is a sufficient number of appropriate sources in the image to make the
-                    # comparison)
-                    #
-                    # Note: the reported error is not allowed to fall below
-                    # 10% for the flux ratio and 0.5" for the astrometry, as these
-                    # are the realistic minimum uncertainties in these values
-                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio'])
-                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio']
-                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio']))
-                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio'])
+
+                # Log the estimates of the global flux ratio and astrometry offsets.
+                # If the required keys are not present, then there were not enough
+                # sources for a reliable estimate to be made so report 'N/A' (not
+                # available)
+                #
+                # Note: the reported error is not allowed to fall below 10% for
+                # the flux ratio and 0.5" for the astrometry, as these are the
+                # realistic minimum uncertainties in these values
+                if 'meanClippedRatio_pybdsf' in diagnostics_dict and 'stdClippedRatio_pybdsf' in diagnostics_dict:
+                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
+                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio_pybdsf']
+                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
+                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
                     self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
-                    raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
-                    stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
-                    self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
-                    decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
-                    stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
-                    self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
                 else:
                     self.field.lofar_to_true_flux_ratio = 1.0
                     self.field.lofar_to_true_flux_std = 0.0
                     self.log.info('    LOFAR/TGSS flux ratio = N/A')
+                if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
+                    raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
+                    stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
+                    self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
+                else:
                     self.log.info('    LOFAR-TGSS RA offset = N/A')
+                if 'meanClippedDecOffsetDeg' in diagnostics_dict and 'stdClippedDecOffsetDeg' in diagnostics_dict:
+                    decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
+                    stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
+                    self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
+                else:
                     self.log.info('    LOFAR-TGSS Dec offset = N/A')
             except KeyError:
-                self.log.warn('One or more of the expected image diagnostics unavailable '
+                self.log.warn('One or more of the expected image diagnostics is unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
-                req_keys = ['theoretical_rms', 'min_rms', 'median_rms', 'dynamic_range_global',
+                req_keys = ['theoretical_rms', 'min_rms_flat_noise', 'median_rms_flat_noise',
+                            'dynamic_range_global_flat_noise', 'min_rms_true_sky',
+                            'median_rms_true_sky', 'dynamic_range_global_true_sky',
                             'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
-                            'meanClippedRatio', 'stdClippedRatio', 'meanClippedRAOffsetDeg',
-                            'stdClippedRAOffsetDeg', 'meanClippedDecOffsetDeg',
-                            'stdClippedDecOffsetDeg']
+                            'meanClippedRatio_pybdsf', 'stdClippedRatio_pybdsf',
+                            'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
+                            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
                 missing_keys = []
                 for key in req_keys:
                     if key not in diagnostics_dict:
