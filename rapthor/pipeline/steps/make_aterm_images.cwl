@@ -76,7 +76,7 @@ inputs:
     label: Number of CPUs
     doc: |
       The number of CPUs / cores to use.
-    type: string
+    type: int
     inputBinding:
       prefix: --ncpu=
       separate: false
