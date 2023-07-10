@@ -8,7 +8,7 @@ Rapthor requires that the input data be prepared using the LOFAR initial calibra
 Input measurement sets
 ----------------------
 
-The input data must have the direction-independent solutions applied to the DATA column (this is provided already by LINC) and be concatenated in frequency into a single MS file per observation [1]_. A script to perform this concatenation is included with Rapthor (``bin/concat_linc_files``). More that one input MS file can be supplied, but in this case each file must cover a different time range (e.g., interleaved observations or observations from multiple nights).
+The input data must have the direction-independent solutions applied to the DATA column (this is provided already by LINC) and be concatenated in frequency into a single MS file per observation [1]_. A script to perform this concatenation is included with Rapthor (``bin/concat_linc_files``). More than one input MS file can be supplied, but in this case each file must cover a different time range (e.g., interleaved observations or observations from multiple nights).
 
 Sky model
 ---------

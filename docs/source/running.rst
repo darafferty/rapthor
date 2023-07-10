@@ -1,11 +1,9 @@
-.. _rapthor:
+.. _running:
 
-Hardware requirements
----------------------
-The minimum recommended hardware is a 20-core machine with 192 GB of
-memory and 1 TB of disk space. Rapthor can also take advantage of multiple
-nodes of a compute cluster using slurm. In this mode, each node should have
-approximately 192 GB of memory, with a shared filesystem with 1 TB of disk space.
+Running Rapthor
+===============
+
+.. _starting_rapthor:
 
 Starting a Rapthor run
 ----------------------
@@ -41,6 +39,58 @@ operations that Rapthor performs and their relation to one another, and see
 :ref:`operations` for details of each operation and their primary data products.
 
 
+.. _using_containers:
+
+Using a (u)Docker/Singularity image
+-----------------------------------
+
+Rapthor can be run completely within a container (for use on a single machine) or by installing it locally and running only the pipelines within the container (for use with multiple nodes of a compute cluster).
+
+For runs on a single machine, the recommended method is to run everything within a container. To use this method, first obtain the container image as follows:
+
+For Docker:
+
+.. code-block:: console
+
+    $ docker pull astronrd/rapthor
+
+For uDocker:
+
+.. code-block:: console
+
+    $ udocker pull astronrd/rapthor
+
+For Singularity:
+
+.. code-block:: console
+
+    $ singularity pull docker://astronrd/rapthor
+
+
+Then start the run, making sure that all necessary volumes are accessible from inside the container, e.g.,:
+
+.. code-block:: console
+
+    $ singularity exec --bind <mount_points>:<mount_points> <rapthor.sif> rapthor rapthor.parset
+
+.. code-block:: console
+
+    $ docker run --rm <docker_options> -v <mount_points>:<mount_points> -w $PWD astronrd/rapthor rapthor rapthor.parset
+
+In this mode, since Rapthor is running fully inside a container, the :term:`use_container` parameter should *not* be set, as activating this option instructs Rapthor to run its pipelines inside another, additional container (resulting in it running a container inside a container).
+
+For runs that use multiple nodes of a cluster (i.e., when :term:`batch_system` = ``slurm``), only the jobs sent to each node can be run inside a container -- not the parent Rapthor process. The use of this mode requires a minimal local installation of Rapthor on the cluster head node (or compute node if it is run there). To use this mode, activate the :term:`use_container` parameter in the parset. No further configuration should be necessary.
+
+
+.. _troubleshooting:
+
+Troubleshooting a run
+---------------------
+See the :ref:`faq_installation` for tips on troubleshooting Rapthor.
+
+
+.. _resuming_rapthor:
+
 Resuming an interrupted run
 ---------------------------
 
@@ -51,6 +101,8 @@ were successfully completed previously. In this way, one can quickly resume a
 reduction that was halted (either by the user or due to some problem) by simply
 re-running Rapthor with the same parset.
 
+
+.. _resetting_rapthor:
 
 Resetting an operation
 ----------------------

@@ -384,6 +384,20 @@ The available options are described below under their respective sections.
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
               section and ``dir_local`` is not on a shared filesystem.
 
+    use_container
+        Run the pipelines inside a container (default = ``False``)? If ``True``, the pipeline
+        for each operation (such as calibrate or image) will be run inside a
+        container. The type of container can be specified with the :term:`container_type`
+        parameter.
+
+        .. note::
+
+            This option cannot currently be used with :term:`batch_system` = ``slurm``.
+
+    container_type
+        The type of container to use when :term:`use_container` = ``True``. The supported
+        types are: ``docker`` (the default), ``udocker``, or ``singularity``.
+
     cwl_runner
         CWL runner to use. Currently supported runners are: ``cwltool`` and ``toil``
         (default). Toil is the recommended runner, since it provides much more
