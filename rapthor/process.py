@@ -70,9 +70,16 @@ def run(parset_file, logging_level='info'):
 
         # Check for selfcal convergence/divergence
         if field.do_check:
+            log.info("Checking selfcal convergence...")
             has_converged, has_diverged = field.check_selfcal_progress()
-            if has_converged or has_diverged:
-                # Stop the cycle
+            if not has_converged and not has_diverged:
+                # Continue selfcal
+                log.info("Improvement in image noise, dynamic range, and/or number of "
+                         "sources exceeds that set by the convergence ratio of "
+                         "{0}.".format(field.convergence_ratio))
+                log.info("Continuing selfcal...")
+            else:
+                # Stop selfcal
                 if has_converged:
                     log.info("Selfcal has converged (improvement in image noise, dynamic "
                              "range, and number of sources does not exceed that set by the "
