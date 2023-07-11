@@ -123,6 +123,7 @@ class Image(Operation):
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
+                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.field.imaging_sectors],
                             'ra': [sector.ra for sector in self.field.imaging_sectors],
                             'dec': [sector.dec for sector in self.field.imaging_sectors],
                             'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],

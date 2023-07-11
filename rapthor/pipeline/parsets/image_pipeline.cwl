@@ -267,6 +267,12 @@ inputs:
       The number of WSClean deconvolution channels (length = n_sectors).
     type: int[]
 
+  - id: fit_spectral_pol
+    label: Spectral poly order
+    doc: |
+      The order of WSClean spectral polynomial (length = n_sectors).
+    type: int[]
+
   - id: wsclean_niter
     label: Number of iterations
     doc: |
@@ -486,6 +492,8 @@ steps:
         source: channels_out
       - id: deconvolution_channels
         source: deconvolution_channels
+      - id: fit_spectral_pol
+        source: fit_spectral_pol
       - id: wsclean_niter
         source: wsclean_niter
       - id: wsclean_nmiter
@@ -533,10 +541,10 @@ steps:
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
 {% endif %}
-              channels_out, deconvolution_channels, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix, dd_psf_grid]
+              channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
+              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
+              taper_arcsec, wsclean_mem, auto_mask, idg_mode, threshisl, threshpix,
+              dd_psf_grid]
 {% else %}
 # start not use_screens
     scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
@@ -551,10 +559,10 @@ steps:
 {% else %}
               central_patch_name,
 {% endif %}
-              channels_out, deconvolution_channels, wsclean_niter,
-              wsclean_nmiter, robust, min_uv_lambda,
-              max_uv_lambda, do_multiscale, taper_arcsec, wsclean_mem,
-              auto_mask, idg_mode, threshisl, threshpix, dd_psf_grid]
+              channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
+              wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
+              taper_arcsec, wsclean_mem, auto_mask, idg_mode, threshisl, threshpix,
+              dd_psf_grid]
 {% endif %}
 # end use_screens / not use_screens
 
