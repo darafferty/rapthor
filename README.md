@@ -36,6 +36,7 @@ ease of use):
 2. Install directly from the Rapthor git repository. This option is useful if you want to use one or more features that have not yet been released:
 
     ```
+    pip install --upgrade pip
     pip install git+https://git.astron.nl/RD/rapthor.git[@<branch|tag|hash>]
     ```
     If the optional `@<branch|tag|hash>` is omitted, `HEAD` of the `master` branch will used.
@@ -43,18 +44,17 @@ ease of use):
 3. Clone the git repository, and install from your working copy. This option is mostly used by developers who want to make local changes:
 
     ```
+    pip install --upgrade pip
     git clone https://git.astron.nl/RD/rapthor.git
     cd rapthor
     git checkout [<branch|tag|hash>]  #optionally
     pip install .
     ```
 
-#### Important note
+#### Note
 
-When installing Rapthor from source (options 2 and 3), you will need `pip` version 23 or later. Make sure you upgrade to the latest version of `pip` *before* you install from source, by executing the following command:
-```
-pip install --upgrade pip
-```
+When installing Rapthor from source (options 2 and 3), you will need `pip` version 23 or later. That is why you need to upgrade to the latest version of `pip` *before* you install from source.
+
 
 ## Usage
 
