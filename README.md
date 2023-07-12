@@ -25,7 +25,7 @@ Rapthor requires the following packages (beyond those installed automatically wi
 ### Downloading and Installing
 
 Installation can be done in a number of ways. In order of preference (read:
-easy of use):
+ease of use):
 
 1. Install the latest release from PyPI:
 
