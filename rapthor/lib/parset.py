@@ -100,7 +100,8 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     parset_dict['mss'] = sorted(ms_files)
     if len(parset_dict['mss']) == 0:
         raise FileNotFoundError('No input MS files were found (searched for files '
-                                'matching: {}).'.format(', '.join(ms_search_list)))
+                                'matching: {}).'.format(', '.join('"{0}"'.format(search_str)
+                                                                  for search_str in ms_search_list)))
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
     # Make sure the initial skymodel is present
