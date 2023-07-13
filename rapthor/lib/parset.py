@@ -1,7 +1,6 @@
 """
 Module that holds all parset-related functions
 """
-import sys
 import os
 import glob
 import logging
@@ -100,7 +99,8 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
         ms_files += glob.glob(os.path.join(search_str))
     parset_dict['mss'] = sorted(ms_files)
     if len(parset_dict['mss']) == 0:
-        raise FileNotFoundError('No input MS files were found!')
+        raise FileNotFoundError('No input MS files were found (searched for files '
+                                'matching: {}).'.format(', '.join(ms_search_list)))
     log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
 
     # Make sure the initial skymodel is present
@@ -246,7 +246,7 @@ def get_global_options(parset):
         for f in flag_list:
             if f not in parset_dict['flag_expr']:
                 raise ValueError('Flag selection "{}" was specified but does not '
-                          'appear in flag_expr'.format(f))
+                                 'appear in flag_expr'.format(f))
 
     # Check for invalid options
     given_options = parset.options('global')
@@ -504,8 +504,8 @@ def get_imaging_options(parset):
     # Check that all the above options have the same number of entries
     if len(set(len_list)) > 1:
         raise ValueError('The options sector_center_ra_list, sector_center_dec_list, '
-                  'sector_width_ra_deg_list, and sector_width_dec_deg_list '
-                  'must all have the same number of entries')
+                         'sector_width_ra_deg_list, and sector_width_dec_deg_list '
+                         'must all have the same number of entries')
 
     # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode can
     # be cpu, gpu, or hybrid.
@@ -730,7 +730,7 @@ def get_cluster_options(parset):
     supported_cwl_runners = ('cwltool', 'toil')
     if cwl_runner not in supported_cwl_runners:
         raise ValueError("CWL runner '%s' is not supported; select one of: %s",
-                     cwl_runner, ', '.join(supported_cwl_runners))
+                         cwl_runner, ', '.join(supported_cwl_runners))
 
     # Set Toil's coordination directory (only used when Toil is used as the CWL runner;
     # default = selected automatically by Toil). Note that this directory does not
