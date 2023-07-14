@@ -94,6 +94,8 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
             mslist = mslist[sorted_ind]
             # Determine frequency width, set to arbirary positive value if there's only one frequency
             freq_width = np.min(freqlist[1:] - freqlist[:-1]) if len(freqlist) > 1 else 1.0
+            if freq_width == 0.0:
+                raise ValueError("Cannot concatenate in frequency: all input files have the same frequency")
             dp3_mslist = []
             dp3_freqlist = np.arange(
                 np.min(freqlist), np.max(freqlist) + freq_width, freq_width
