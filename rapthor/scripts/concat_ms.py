@@ -139,7 +139,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
         # Single input file -- just copy to output
         cmd = [
             "cp",
-            "r",
+            "-r",
             "-L",
             "--no-preserve=mode",
             msfiles[0],
