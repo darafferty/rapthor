@@ -21,7 +21,7 @@ inputs:
     type: Directory[]
     inputBinding:
       position: 1
-      itemSeparator: ","
+      itemSeparator: " "
   - id: msout
     label: Output Measurement Set
     doc: |
@@ -29,6 +29,7 @@ inputs:
     type: string
     inputBinding:
       position: 2
+      prefix: --msout=
 
 outputs:
   - id: msconcat
