@@ -54,11 +54,11 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
         raise ValueError("At least one input Measurement Set must be provided")
     if concat_property.lower() not in ["frequency", "time"]:
         raise ValueError("concat_property must be one of 'time' or 'frequency'.")
-    for msfile in msfiles:
-        if os.path.samefile(msfile, output_file):
-            raise ValueError("Input Measurement Set '{0}' and output Measurement Set '{1}' "
-                             "are the same file".format(msfile, output_file))
     if os.path.exists(output_file):
+        for msfile in msfiles:
+            if os.path.samefile(msfile, output_file):
+                raise ValueError("Input Measurement Set '{0}' and output Measurement Set '{1}' "
+                                 "are the same file".format(msfile, output_file))
         if overwrite:
             misc.delete_directory(output_file)
         else:
