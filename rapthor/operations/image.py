@@ -173,15 +173,16 @@ class Image(Operation):
                 width_ra = []
                 width_dec = []
                 facet_region_file = []
+                min_width = 2 * self.field.get_calibration_radius() * 1.2
                 for sector in self.field.imaging_sectors:
                     # Note: WSClean requires that all sources in the h5parm must have
                     # corresponding regions in the facets region file. We ensure this
-                    # requirement is met by making the region file very large so that
-                    # it covers the full field (10x10 deg)
+                    # requirement is met by extending the regions to cover the larger of
+                    # the calibration region and the sector region, plus a 20% padding
                     ra_mid.append(self.field.ra)
                     dec_mid.append(self.field.dec)
-                    width_ra.append(10.0)
-                    width_dec.append(10.0)
+                    width_ra.append(max(min_width, sector.width_ra*1.2))
+                    width_dec.append(max(min_width, sector.width_dec*1.2))
                     facet_region_file.append('{}_facets_ds9.reg'.format(sector.name))
                 self.input_parms.update({'ra_mid': ra_mid})
                 self.input_parms.update({'dec_mid': dec_mid})
