@@ -9,6 +9,7 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
+  - class: ShellCommandRequirement
 
 arguments:
   - '--concat_property=time'
@@ -22,6 +23,7 @@ inputs:
     inputBinding:
       position: 1
       itemSeparator: " "
+      shellQuote: false
   - id: msout
     label: Output Measurement Set
     doc: |
