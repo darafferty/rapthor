@@ -733,9 +733,9 @@ class Field(object):
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging pipelines
-        self.calibrator_patch_names = self.calibration_skymodel.getPatchNames().tolist()
+        self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
         self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
-        self.calibrator_positions = self.calibration_skymodel.getPatchPositions()
+        self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
         self.num_patches = len(self.calibrator_patch_names)
         suffix = 'es' if self.num_patches > 1 else ''
         self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
