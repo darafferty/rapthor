@@ -35,6 +35,7 @@ class TestField(unittest.TestCase):
         self.field.update_skymodels(1, True, target_flux=0.2)
         self.field.set_obs_parameters()
         self.field.define_imaging_sectors()
+        self.field.define_outlier_sectors(1)
 
     @classmethod
     def tearDownClass(self):

@@ -761,7 +761,10 @@ class Field(object):
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
         self.nsectors = len(self.sectors)
 
-        # Clean up to minimize memory usage
+    def remove_skymodels(self):
+        """
+        Remove sky models to minimize memory usage
+        """
         self.calibration_skymodel = None
         self.source_skymodel = None
         self.calibrators_skymodel = None
@@ -1312,6 +1315,7 @@ class Field(object):
                               target_flux=target_flux,
                               target_number=step_dict['max_directions'],
                               final=final)
+        self.remove_skymodels()  # clean up sky models to reduce memory usage
 
         # Check whether outliers and bright sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
