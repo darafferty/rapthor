@@ -32,7 +32,7 @@ class TestField(unittest.TestCase):
         self.par = parset_read('resources/test.parset')
         self.field = Field(self.par)
         self.field.scan_observations()
-        self.field.make_skymodels('resources/test_true_sky.txt', skymodel_apparent_sky='resources/test_apparent_sky.txt', target_flux=0.1)
+        self.field.update_skymodels(1, True, target_flux=0.2)
         self.field.set_obs_parameters()
         self.field.define_imaging_sectors()
         self.field.define_outlier_sectors(1)
