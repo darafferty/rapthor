@@ -352,11 +352,7 @@ class Field(object):
         # to load them
         try:
             self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
-            self.num_patches = len(self.calibration_skymodel.getPatchNames())
-            calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
-            self.calibrator_patch_names = calibrators_skymodel.getPatchNames().tolist()
-            self.calibrator_fluxes = calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
-            self.calibrator_positions = self.calibration_skymodel.getPatchPositions()
+            self.calibrators_only_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
             self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
             if self.peel_bright_sources:
@@ -370,7 +366,7 @@ class Field(object):
                 else:
                     all_skymodels_loaded = False
             else:
-                self.bright_source_skymodel = calibrators_skymodel
+                self.bright_source_skymodel = self.calibrators_only_skymodel
                 all_skymodels_loaded = True
         except IOError:
             all_skymodels_loaded = False
@@ -378,7 +374,6 @@ class Field(object):
         if all_skymodels_loaded:
             # If all the required sky models were loaded from files, return; otherwise,
             # continue on to regenerate the sky models from scratch
-            self.log.info('Using {} calibration patches'.format(self.num_patches))
             return
 
         # If sky models do not already exist, make them
@@ -571,7 +566,9 @@ class Field(object):
             matching_ind.append(source_names.index(sn))
         bright_source_skymodel.select(np.array(matching_ind))
 
-        # Transfer patches to the bright-source model
+        # Transfer patches to the bright-source model. At this point, it is now the
+        # model of calibrator sources only, so copy and save it and write it out for
+        # later use
         if regroup:
             # Transfer from the apparent-flux sky model (regrouped above)
             self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
@@ -580,13 +577,8 @@ class Field(object):
             patch_dict = skymodel_true_sky.getPatchPositions()
             self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
-
-        # Save the bright-source (i.e., calibrator) flux densities (in Jy) for use
-        # in the calibration pipeline for weighting of the directions during screen
-        # fitting
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
-        self.calibrator_patch_names = bright_source_skymodel.getPatchNames().tolist()
-        self.calibrator_fluxes = bright_source_skymodel.getColValues('I', aggregate='sum').tolist()
+        self.calibrators_only_skymodel = bright_source_skymodel.copy()
 
         # Now remove any bright sources that lie outside the imaged area, as they
         # should not be peeled
@@ -607,13 +599,6 @@ class Field(object):
 
         # Write sky models to disk for use in calibration, etc.
         calibration_skymodel = skymodel_true_sky
-        self.num_patches = len(calibration_skymodel.getPatchNames())
-        self.calibrator_positions = calibration_skymodel.getPatchPositions()
-        if self.num_patches > 1:
-            infix = 'es'
-        else:
-            infix = ''
-        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, infix))
         calibration_skymodel.write(self.calibration_skymodel_file, clobber=True)
         self.calibration_skymodel = calibration_skymodel
         if len(bright_source_skymodel) > 0:
@@ -746,6 +731,15 @@ class Field(object):
                                 regroup=regroup, find_sources=False, target_flux=target_flux,
                                 target_number=target_number, index=index)
 
+        # Save the number of calibrators and their names, positions, and flux
+        # densities (in Jy) for use in the calibration and imaging pipelines
+        self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
+        self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
+        self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
+        self.num_patches = len(self.calibrator_patch_names)
+        suffix = 'es' if self.num_patches > 1 else ''
+        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+
         # Adjust sector boundaries to avoid known sources and update their sky models.
         self.adjust_sector_boundaries()
         self.log.info('Making sector sky models (for predicting)...')
@@ -767,9 +761,13 @@ class Field(object):
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
         self.nsectors = len(self.sectors)
 
-        # Clean up to minimize memory usage
+    def remove_skymodels(self):
+        """
+        Remove sky models to minimize memory usage
+        """
         self.calibration_skymodel = None
         self.source_skymodel = None
+        self.calibrators_only_skymodel = None
         for sector in self.sectors:
             sector.calibration_skymodel = None
             sector.predict_skymodel = None
@@ -1317,6 +1315,7 @@ class Field(object):
                               target_flux=target_flux,
                               target_number=step_dict['max_directions'],
                               final=final)
+        self.remove_skymodels()  # clean up sky models to reduce memory usage
 
         # Check whether outliers and bright sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
