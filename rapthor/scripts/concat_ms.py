@@ -20,8 +20,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
     msfiles : list of str
         List of paths to input Measurement Sets
     output_file : str
-        Path to output Measurement Set. If the file exists it will be
-        overwritten
+        Path to output Measurement Set
     concat_property : str, optional
         Property over which to concatenate: time or frequency. Note that,
         when concatenating over time, the metadata of the output MS file
