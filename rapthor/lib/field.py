@@ -352,7 +352,7 @@ class Field(object):
         # to load them
         try:
             self.calibration_skymodel = lsmtool.load(str(self.calibration_skymodel_file))
-            self.calibrators_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
+            self.calibrators_only_skymodel = lsmtool.load(str(self.calibrators_only_skymodel_file))
             self.source_skymodel = lsmtool.load(str(self.source_skymodel_file))
 
             if self.peel_bright_sources:
@@ -366,7 +366,7 @@ class Field(object):
                 else:
                     all_skymodels_loaded = False
             else:
-                self.bright_source_skymodel = self.calibrators_skymodel
+                self.bright_source_skymodel = self.calibrators_only_skymodel
                 all_skymodels_loaded = True
         except IOError:
             all_skymodels_loaded = False
@@ -578,7 +578,7 @@ class Field(object):
             self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
-        self.calibrators_skymodel = bright_source_skymodel.copy()
+        self.calibrators_only_skymodel = bright_source_skymodel.copy()
 
         # Now remove any bright sources that lie outside the imaged area, as they
         # should not be peeled
@@ -734,7 +734,7 @@ class Field(object):
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging pipelines
         self.calibrator_patch_names = self.calibration_skymodel.getPatchNames().tolist()
-        self.calibrator_fluxes = self.calibrators_skymodel.getColValues('I', aggregate='sum').tolist()
+        self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
         self.calibrator_positions = self.calibration_skymodel.getPatchPositions()
         self.num_patches = len(self.calibrator_patch_names)
         suffix = 'es' if self.num_patches > 1 else ''
@@ -767,7 +767,7 @@ class Field(object):
         """
         self.calibration_skymodel = None
         self.source_skymodel = None
-        self.calibrators_skymodel = None
+        self.calibrators_only_skymodel = None
         for sector in self.sectors:
             sector.calibration_skymodel = None
             sector.predict_skymodel = None
