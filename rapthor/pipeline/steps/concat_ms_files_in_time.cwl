@@ -30,6 +30,7 @@ inputs:
     inputBinding:
       position: 2
       prefix: --msout=
+      separate: false
 
 outputs:
   - id: msconcat
