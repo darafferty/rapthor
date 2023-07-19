@@ -310,7 +310,7 @@ class Field(object):
 
     def make_skymodels(self, skymodel_true_sky, skymodel_apparent_sky=None, regroup=True,
                        find_sources=False, target_flux=None, target_number=None,
-                       index=0):
+                       calibrator_max_dist_deg=None, index=0):
         """
         Groups a sky model into source and calibration patches
 
@@ -335,6 +335,8 @@ class Field(object):
             Target flux in Jy for grouping
         target_number : int, optional
             Target number of patches for grouping
+        calibrator_max_dist_deg : float, optional
+            Maximum distance in degrees from phase center for grouping
         index : index
             Iteration index
         """
@@ -618,7 +620,7 @@ class Field(object):
         self.bright_source_skymodel = bright_source_skymodel
 
     def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
-                         final=False):
+                         calibrator_max_dist_deg=None, final=False):
         """
         Updates the source and calibration sky models from the output sector sky model(s)
 
@@ -632,6 +634,8 @@ class Field(object):
             Target flux in Jy for grouping
         target_number : int, optional
             Target number of patches for grouping
+        calibrator_max_dist_deg : float, optional
+            Maximum distance in degrees from phase center for grouping
         final : bool, optional
             If True, process as the final pass (combine initial and new sky models)
         """
@@ -650,7 +654,8 @@ class Field(object):
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
                                 target_flux=target_flux, target_number=target_number,
-                                find_sources=True, index=index)
+                                find_sources=True, calibrator_max_dist_deg=calibrator_max_dist_deg,
+                                index=index)
         else:
             # Use the sector sky models from the previous iteration to update the master
             # sky model
@@ -741,7 +746,8 @@ class Field(object):
             # to False to preserve the source patches defined in the image pipeline by PyBDSF)
             self.make_skymodels(skymodel_true_sky, skymodel_apparent_sky=skymodel_apparent_sky,
                                 regroup=regroup, find_sources=False, target_flux=target_flux,
-                                target_number=target_number, index=index)
+                                target_number=target_number, calibrator_max_dist_deg=calibrator_max_dist_deg,
+                                index=index)
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging pipelines
@@ -1348,6 +1354,7 @@ class Field(object):
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=target_flux,
                               target_number=step_dict['max_directions'],
+                              calibrator_max_dist_deg=step_dict['max_distance'],
                               final=final)
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 

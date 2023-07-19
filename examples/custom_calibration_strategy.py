@@ -51,6 +51,7 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['max_nmiter'] = 12
     strategy_steps[i]['regroup_model'] = True
     strategy_steps[i]['max_directions'] = 30
+    strategy_steps[i]['max_distance'] = 3.0
 
     # Here we use the same settings as the default strategy
     if i == 0 or i == max_selfcal_loops - 1:

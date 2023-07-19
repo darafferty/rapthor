@@ -72,18 +72,22 @@ def set_strategy(field):
                 strategy_steps[i]['target_flux'] = 0.6
                 strategy_steps[i]['max_nmiter'] = 8
                 strategy_steps[i]['max_directions'] = 20
+                strategy_steps[i]['max_distance'] = 3.0
             elif i == 1:
                 strategy_steps[i]['target_flux'] = 0.4
                 strategy_steps[i]['max_nmiter'] = 9
                 strategy_steps[i]['max_directions'] = 30
+                strategy_steps[i]['max_distance'] = 3.0
             elif i == 2:
                 strategy_steps[i]['target_flux'] = 0.3
                 strategy_steps[i]['max_nmiter'] = 10
                 strategy_steps[i]['max_directions'] = 40
+                strategy_steps[i]['max_distance'] = 3.5
             else:
                 strategy_steps[i]['target_flux'] = 0.25
                 strategy_steps[i]['max_nmiter'] = 12
                 strategy_steps[i]['max_directions'] = 50
+                strategy_steps[i]['max_distance'] = 4.0
             strategy_steps[i]['regroup_model'] = True
 
             if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
