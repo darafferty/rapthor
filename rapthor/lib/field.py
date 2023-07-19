@@ -478,6 +478,25 @@ class Field(object):
             all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
             fluxes = all_fluxes[keep_ind]
 
+            # Check if target flux can be met in at least one direction
+            total_flux = np.sum(fluxes)
+            if total_flux < target_flux:
+                raise RuntimeError('No groups found that meet the target flux density. Please '
+                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
+                    'for problems, or lower the target flux density and/or increase the maximum '
+                    'calibrator distance.'.format(index))
+
+            # Weight the fluxes by source size (larger sources are down weighted)
+            sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
+                                                  applyBeam=applyBeam_group)
+            sizes = sizes[keep_ind]
+            sizes[sizes < 1.0] = 1.0
+            medianSize = np.median(sizes)
+            weights = medianSize / sizes
+            weights[weights > 1.0] = 1.0
+            weights[weights < 0.5] = 0.5
+            fluxes *= weights
+
             # Determine the flux cut to use to select the bright sources (calibrators)
             if target_number is not None:
                 # Set target_flux so that the target_number-brightest calibrators are
@@ -486,35 +505,7 @@ class Field(object):
                     target_number = len(fluxes)
                     target_flux_for_number = np.min(fluxes)
                 else:
-                    # Weight the fluxes by size to estimate the required target flux
-                    sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
-                                                          applyBeam=applyBeam_group)
-                    sizes = sizes[keep_ind]
-                    sizes[sizes < 1.0] = 1.0
-                    if target_flux is not None:
-                        trial_target_flux = target_flux
-                    else:
-                        trial_target_flux = 0.3
-                    trial_number = 0
-                    for _ in range(100):
-                        if trial_number == target_number:
-                            break
-                        trial_fluxes = fluxes.copy()
-                        bright_ind = np.where(trial_fluxes >= trial_target_flux)
-                        medianSize = np.median(sizes[bright_ind])
-                        weights = medianSize / sizes
-                        weights[weights > 1.0] = 1.0
-                        weights[weights < 0.5] = 0.5
-                        trial_fluxes *= weights
-                        trial_fluxes.sort()
-                        trial_number = len(trial_fluxes[trial_fluxes >= trial_target_flux])
-                        if trial_number < target_number:
-                            # Reduce the trial target flux to next fainter source
-                            trial_target_flux = trial_fluxes[-(trial_number+1)]
-                        elif trial_number > target_number:
-                            # Increase the trial flux to next brighter source
-                            trial_target_flux = trial_fluxes[-(trial_number-1)]
-                    target_flux_for_number = trial_target_flux
+                    target_flux_for_number = np.sort(fluxes)[-target_number]
 
                 if target_flux is None:
                     target_flux = target_flux_for_number
@@ -534,14 +525,6 @@ class Field(object):
                         self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
             else:
                 self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
-
-            # Check if target flux can be met
-            total_flux = np.sum(fluxes)
-            if total_flux < target_flux:
-                raise RuntimeError('No groups found that meet the target flux density. Please '
-                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
-                    'for problems, or lower the target flux density and/or increase the maximum '
-                    'calibrator distance.'.format(index))
 
             # Tesselate the model
             calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
