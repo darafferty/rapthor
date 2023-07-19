@@ -469,7 +469,7 @@ class Field(object):
             if calibrator_max_dist_deg is not None:
                 names, distances = self.get_source_distances(source_skymodel.getPatchPositions())
                 inside_ind = np.where(distances < calibrator_max_dist_deg)
-                calibrator_names = np.array(names)[inside_ind]
+                calibrator_names = names[inside_ind]
             else:
                 calibrator_names = source_skymodel.getPatchNames()
             all_names = source_skymodel.getPatchNames()
@@ -844,10 +844,10 @@ class Field(object):
 
         Returns
         -------
-        names : list
-            List of source names
-        distances : list
-            List of distances in degrees
+        names : numpy array
+            Array of source names
+        distances : numpy array
+            Array of distances from the phase center in degrees
         """
         phase_center_coord = SkyCoord(ra=self.ra*u.degree, dec=self.dec*u.degree)
         names = []
@@ -858,15 +858,16 @@ class Field(object):
             source_ra.append(coord[0])
             source_dec.append(coord[1])
         source_coord = SkyCoord(ra=source_ra, dec=source_dec)
-        distances = phase_center_coord.separation(source_coord)
-        return names, distances
+        separation = phase_center_coord.separation(source_coord)
+        distances = [sep.value for sep in separation]
+        return np.array(names), np.array(distances)
 
     def get_calibration_radius(self):
         """
         Returns the radius in degrees that encloses all calibrators
         """
         _, separation = self.get_source_distances(self.calibrator_positions)
-        return max(separation).value
+        return np.max(separation)
 
     def define_imaging_sectors(self):
         """
