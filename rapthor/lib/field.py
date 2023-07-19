@@ -462,21 +462,32 @@ class Field(object):
             if target_number is not None and target_number < 1:
                 raise ValueError('The target number of directions cannot be less than 1.')
 
+            # Apply the distance filter (if any), keeping only patches inside the
+            # maximum distance
+            if calibrator_max_dist_deg is not None:
+                names, distances = self.get_source_distances(source_skymodel.getPatchPositions())
+                inside_ind = np.where(distances < calibrator_max_dist_deg)
+                calibrator_names = np.array(names)[inside_ind]
+            else:
+                calibrator_names = source_skymodel.getPatchNames()
+            all_names = source_skymodel.getPatchNames()
+            keep_ind = np.array([i for i, name in enumerate(all_names) if name in calibrator_names])
+            calibrator_names = all_names[keep_ind]  # to ensure order matches that of fluxes
+            all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
+            fluxes = all_fluxes[keep_ind]
+
             # Determine the flux cut to use to select the bright sources (calibrators)
             if target_number is not None:
                 # Set target_flux so that the target_number-brightest calibrators are
                 # kept
-                fluxes = source_skymodel.getColValues('I', aggregate='sum',
-                                                      applyBeam=applyBeam_group)
                 if target_number >= len(fluxes):
                     target_number = len(fluxes)
                     target_flux_for_number = np.min(fluxes)
                 else:
                     # Weight the fluxes by size to estimate the required target flux
-                    # The same weighting scheme is used by LSMTool when performing
-                    # the 'voronoi' grouping later
                     sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
                                                           applyBeam=applyBeam_group)
+                    sizes = sizes[keep_ind]
                     sizes[sizes < 1.0] = 1.0
                     if target_flux is not None:
                         trial_target_flux = target_flux
@@ -522,17 +533,18 @@ class Field(object):
             else:
                 self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
 
-            # Tesselate the model using the target flux
-            source_skymodel.group('voronoi', targetFlux=target_flux, applyBeam=applyBeam_group,
-                                  weightBySize=True)
-            tesselation_patches = source_skymodel.getPatchNames()
-            if len(tesselation_patches) == 1 and tesselation_patches[0] == 'Patch':
-                # If there was insufficient flux in the sky model to meet the
-                # target flux, LSMTool will put all sources into a single patch
-                # with the name 'Patch'. So, check for this case and exit if found
+            # Check if target flux can be met
+            total_flux = np.sum(fluxes)
+            if total_flux < target_flux:
                 raise RuntimeError('No groups found that meet the target flux density. Please '
-                    'check the sky model (in working_dir/skymodels/calibrate_{}/) '
-                    'for problems or lower the target flux density.'.format(index))
+                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
+                    'for problems, or lower the target flux density and/or increase the maximum '
+                    'calibrator distance.'.format(index))
+
+            # Tesselate the model
+            calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
+            source_skymodel.group('voronoi', patchNames=calibrator_names, applyBeam=applyBeam_group,
+                                  weightBySize=True)
 
             # Update the patch positions after the tessellation to ensure they match the
             # ones from the meanshift grouping
@@ -814,18 +826,40 @@ class Field(object):
             to_skymodel.setPatchPositions(patchDict=patch_dict)
         return to_skymodel
 
+    def get_source_distances(self, source_dict):
+        """
+        Returns source distances in degrees from the phase center
+
+        Parameters
+        ----------
+        source_dict : dict
+            Dict of source patch names and coordinates in degrees
+            (e.g., {'name': [RA, Dec]})
+
+        Returns
+        -------
+        names : list
+            List of source names
+        distances : list
+            List of distances in degrees
+        """
+        phase_center_coord = SkyCoord(ra=self.ra*u.degree, dec=self.dec*u.degree)
+        names = []
+        source_ra = []
+        source_dec = []
+        for name, coord in source_dict.items():
+            names.append(name)
+            source_ra.append(coord[0])
+            source_dec.append(coord[1])
+        source_coord = SkyCoord(ra=source_ra, dec=source_dec)
+        distances = phase_center_coord.separation(source_coord)
+        return names, distances
+
     def get_calibration_radius(self):
         """
         Returns the radius in degrees that encloses all calibrators
         """
-        phase_center_coord = SkyCoord(ra=self.ra*u.degree, dec=self.dec*u.degree)
-        cal_ra = []
-        cal_dec = []
-        for cal, coord in self.calibrator_positions.items():
-            cal_ra.append(coord[0])
-            cal_dec.append(coord[1])
-        cal_coord = SkyCoord(ra=cal_ra, dec=cal_dec)
-        separation = phase_center_coord.separation(cal_coord)
+        _, separation = self.get_source_distances(self.calibrator_positions)
         return max(separation).value
 
     def define_imaging_sectors(self):
