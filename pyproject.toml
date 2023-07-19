@@ -45,9 +45,7 @@ dependencies = [
     "Rtree",
     "scipy",
     "shapely",
-    # toil[cwl]!=5.6 because of https://github.com/DataBiosphere/toil/issues/4101
-    # toil[cwl]!=5.8 because of https://gitter.im/bd2k-genomics-toil/Lobby?at=63d7f912ec2bfc62867d36e6
-    "toil[cwl]!=5.6,!=5.8",
+    "toil[cwl]>=5.10",
 ]
 dynamic = ["version"]
 
