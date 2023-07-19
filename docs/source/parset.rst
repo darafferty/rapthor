@@ -249,8 +249,8 @@ The available options are described below under their respective sections.
         IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``). The mode
         can be ``cpu`` or ``hybrid``.
 
-    mem_fraction
-        Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9).
+    mem_gb
+        Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%).
 
     apply_diagonal_solutions
         Apply separate XX and YY corrections during facet-based imaging (default =
