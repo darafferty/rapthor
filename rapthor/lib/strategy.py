@@ -134,7 +134,7 @@ def set_strategy(field):
     # parameter has a default defined or raise an error if not
     primary_parameters = ['do_calibrate', 'do_image', 'do_check']
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'target_flux',
-                                             'max_directions', 'regroup_model',
+                                             'max_directions', 'max_distance', 'regroup_model',
                                              'max_normalization_delta', 'solve_min_uv_lambda',
                                              'scale_normalization_delta'],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
