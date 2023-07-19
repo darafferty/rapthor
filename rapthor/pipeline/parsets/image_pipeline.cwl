@@ -26,9 +26,9 @@ inputs:
         items: Directory
 
   - id: prepare_filename
-    label: Filename of of preparatory MS
+    label: Filename of preparatory MS
     doc: |
-      The filenames of output MS files used as input to concatenation
+      The filenames of the preparatory MS files used as input to concatenation
       (length = n_obs * n_sectors).
     type:
       type: array
@@ -39,8 +39,8 @@ inputs:
   - id: concat_filename
     label: Filename of imaging MS
     doc: |
-      The filename of output concatenated MS file used for imaging
-      (length = n_sectors).
+      The filename of the MS file resulting from concatenation of the preparatory
+      files and used for imaging (length = n_sectors).
     type: string[]
 
   - id: starttime

@@ -51,7 +51,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
         raise TypeError("Input Measurement Sets must provided as a list of strings")
     if len(msfiles) == 0:
         raise ValueError("At least one input Measurement Set must be provided")
-    if concat_property.lower() not in ["frequency", "time"]:
+    if concat_property.lower() not in ("frequency", "time"):
         raise ValueError("concat_property must be one of 'time' or 'frequency'.")
     if os.path.exists(output_file):
         for msfile in msfiles:
@@ -67,75 +67,9 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
     # later
     if len(msfiles) > 1:
         if concat_property.lower() == "frequency":
-            # Run DP3 to concat in frequency
-            # Order the files by frequency, filling any gaps with dummy files
-            first = True
-            nchans = 0
-            freqs = []
-            for ms in msfiles:
-                # Get the frequency info
-                with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
-                    freq = sw.col("REF_FREQUENCY")[0]
-                    if first:
-                        file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
-                        nchans = sw.col("CHAN_WIDTH")[0].shape[0]
-                        chwidth = sw.col("CHAN_WIDTH")[0][0]
-                        first = False
-                    else:
-                        assert file_bandwidth == sw.col("TOTAL_BANDWIDTH")[0]
-                        assert nchans == sw.col("CHAN_WIDTH")[0].shape[0]
-                        assert chwidth == sw.col("CHAN_WIDTH")[0][0]
-                freqs.append(freq)
-            freqlist = np.array(freqs)
-            mslist = np.array(msfiles)
-            sorted_ind = np.argsort(freqlist)
-            freqlist = freqlist[sorted_ind]
-            mslist = mslist[sorted_ind]
-            # Determine frequency width, set to arbirary positive value if there's only one frequency
-            freq_width = np.min(freqlist[1:] - freqlist[:-1]) if len(freqlist) > 1 else 1.0
-            if freq_width == 0.0:
-                raise ValueError("Cannot concatenate in frequency: all input files have the same frequency")
-            dp3_mslist = []
-            dp3_freqlist = np.arange(
-                np.min(freqlist), np.max(freqlist) + freq_width, freq_width
-            )
-            j = -1
-            for freq, ms in zip(freqlist, mslist):
-                while j < len(dp3_freqlist) - 1:
-                    j += 1
-                    if np.isclose(freq, dp3_freqlist[j]):
-                        # Frequency of MS file matches output frequency
-                        # Add the MS file to the list; break to move to the next MS file
-                        dp3_mslist.append(ms)
-                        break
-                    else:
-                        # Gap in frequency detected
-                        # Add a dummy MS to the list; stay on the current MS file
-                        dp3_mslist.append("dummy.ms")
-
-            # Construct DP3 command
-            cmd = [
-                "DP3",
-                "msin=[{}]".format(",".join(dp3_mslist)),
-                "msout={}".format(output_file),
-                "steps=[]",
-                "msin.orderms=False",
-                "msin.missingdata=True",
-                "msout.writefullresflag=False",
-                "msout.storagemanager=Dysco",
-            ]
+            cmd = concat_freq_command(msfiles, output_file)
         elif concat_property.lower() == "time":
-            # Construct TAQL command
-            cmd = [
-                "taql",
-                "select",
-                "from",
-                "[{}]".format(",".join(msfiles)),
-                "giving",
-                "{}".format(output_file),
-                "AS",
-                "PLAIN"
-            ]
+            cmd = concat_time_command(msfiles, output_file)
     else:
         # Single input file -- just copy to output
         cmd = [
@@ -153,6 +87,110 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
     except subprocess.CalledProcessError as err:
         print(err, file=sys.stderr)
         return err.returncode
+
+
+def concat_freq_command(msfiles, output_file):
+    """
+    Construct command to concatenate files in frequency using DP3
+
+    Parameters
+    ----------
+    msfiles : list of str
+        List of MS filenames to be concatenated
+    output_file : str
+        Filename of output concatenated MS
+
+    Returns
+    -------
+    cmd : list of str
+        Command to be executed by subprocess.run()
+    """
+    # Order the files by frequency, filling any gaps with dummy files
+    first = True
+    nchans = 0
+    freqs = []
+    for ms in msfiles:
+        # Get the frequency info
+        with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
+            freq = sw.col("REF_FREQUENCY")[0]
+            if first:
+                file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
+                nchans = sw.col("CHAN_WIDTH")[0].shape[0]
+                chwidth = sw.col("CHAN_WIDTH")[0][0]
+                first = False
+            else:
+                assert file_bandwidth == sw.col("TOTAL_BANDWIDTH")[0]
+                assert nchans == sw.col("CHAN_WIDTH")[0].shape[0]
+                assert chwidth == sw.col("CHAN_WIDTH")[0][0]
+        freqs.append(freq)
+    freqlist = np.array(freqs)
+    mslist = np.array(msfiles)
+    sorted_ind = np.argsort(freqlist)
+    freqlist = freqlist[sorted_ind]
+    mslist = mslist[sorted_ind]
+    # Determine frequency width, set to arbirary positive value if there's only one frequency
+    freq_width = np.min(freqlist[1:] - freqlist[:-1]) if len(freqlist) > 1 else 1.0
+    if freq_width == 0.0:
+        raise ValueError("Cannot concatenate in frequency: all input files have the same frequency")
+    dp3_mslist = []
+    dp3_freqlist = np.arange(
+        np.min(freqlist), np.max(freqlist) + freq_width, freq_width
+    )
+    j = -1
+    for freq, ms in zip(freqlist, mslist):
+        while j < len(dp3_freqlist) - 1:
+            j += 1
+            if np.isclose(freq, dp3_freqlist[j]):
+                # Frequency of MS file matches output frequency
+                # Add the MS file to the list; break to move to the next MS file
+                dp3_mslist.append(ms)
+                break
+            else:
+                # Gap in frequency detected
+                # Add a dummy MS to the list; stay on the current MS file
+                dp3_mslist.append("dummy.ms")
+
+    # Construct DP3 command
+    cmd = [
+        "DP3",
+        "msin=[{}]".format(",".join(dp3_mslist)),
+        "msout={}".format(output_file),
+        "steps=[]",
+        "msin.orderms=False",
+        "msin.missingdata=True",
+        "msout.writefullresflag=False",
+        "msout.storagemanager=Dysco",
+    ]
+    return cmd
+
+
+def concat_time_command(msfiles, output_file):
+    """
+    Construct command to concatenate files in time using TAQL
+
+    Parameters
+    ----------
+    msfiles : list of str
+        List of MS filenames to be concatenated
+    output_file : str
+        Filename of output concatenated MS
+
+    Returns
+    -------
+    cmd : list of str
+        Command to be executed by subprocess.run()
+    """
+    cmd = [
+        "taql",
+        "select",
+        "from",
+        "[{}]".format(",".join(msfiles)),
+        "giving",
+        "{}".format(output_file),
+        "AS",
+        "PLAIN"
+    ]
+    return cmd
 
 
 def main():

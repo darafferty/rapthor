@@ -29,14 +29,15 @@ inputs:
   - id: prepare_filename
     label: Filenames of preparatory MSs
     doc: |
-      The filenames of output MS files used as input for concatenation
+      The filenames of the preparatory MS files used as input to concatenation
       (length = n_obs).
     type: string[]
 
   - id: concat_filename
     label: Filename of imaging MS
     doc: |
-      The filename of output concatenated MS file used for imaging (length = 1).
+      The filename of the MS file resulting from concatenation of the preparatory
+      files and used for imaging (length = 1).
     type: string
 
   - id: starttime
