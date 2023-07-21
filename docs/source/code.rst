@@ -19,7 +19,7 @@ Rapthor is mainly written in Python and CWL. The Rapthor code tree is organized 
 
 In the folder structure above:
 
-- ``rapthor-master/bin`` contains the ``rapthor`` executable used to run Rapthor (see :ref:`rapthor`).
+- ``rapthor-master/bin`` contains the ``rapthor`` executable used to run Rapthor (see :ref:`running`).
 - ``rapthor-master/docs`` contains this Sphinx documentation.
 - ``rapthor-master/examples`` contains an example parset and strategy file.
 - ``rapthor-master/rapthor`` contains the main Rapthor Python package and CWL files.
