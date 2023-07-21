@@ -8,7 +8,12 @@ Running Rapthor
 Starting a Rapthor run
 ----------------------
 
-Rapthor can be run with:
+.. note::
+    For runs on a single machine, the recommended method of running Rapthor is
+    to run everything within a container (see :ref:`using_containers` for
+    details).
+
+Rapthor can be run from the command line as follows:
 
 .. code-block:: console
 
@@ -44,9 +49,18 @@ operations that Rapthor performs and their relation to one another, and see
 Using a (u)Docker/Singularity image
 -----------------------------------
 
-Rapthor can be run completely within a container (for use on a single machine) or by installing it locally and running only the pipelines within the container (for use with multiple nodes of a compute cluster).
+Rapthor can use containers in two ways: by running it completely within a
+container (for use on a single machine) or by installing it locally and running
+only the pipelines within the container (for use with multiple nodes of a
+compute cluster).
 
-For runs on a single machine, the recommended method is to run everything within a container. To use this method, first obtain the container image as follows:
+
+Running everything in a container (single-machine mode)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For runs on a single machine, the recommended method of running Rapthor is to
+run everything within a container. To use this method, first obtain the
+container image as follows:
 
 For Docker:
 
@@ -67,19 +81,41 @@ For Singularity:
     $ singularity pull docker://astronrd/rapthor
 
 
-Then start the run, making sure that all necessary volumes are accessible from inside the container, e.g.,:
-
-.. code-block:: console
-
-    $ singularity exec --bind <mount_points>:<mount_points> <rapthor.sif> rapthor rapthor.parset
+Then start the run, making sure that all necessary volumes are accessible from
+inside the container, e.g.,:
 
 .. code-block:: console
 
     $ docker run --rm <docker_options> -v <mount_points>:<mount_points> -w $PWD astronrd/rapthor rapthor rapthor.parset
 
-In this mode, since Rapthor is running fully inside a container, the :term:`use_container` parameter should *not* be set, as activating this option instructs Rapthor to run its pipelines inside another, additional container (resulting in it running a container inside a container).
+.. code-block:: console
 
-For runs that use multiple nodes of a cluster (i.e., when :term:`batch_system` = ``slurm``), only the jobs sent to each node can be run inside a container -- not the parent Rapthor process. The use of this mode requires a minimal local installation of Rapthor on the cluster head node (or compute node if it is run there). To use this mode, activate the :term:`use_container` parameter in the parset. No further configuration should be necessary.
+    $ udocker run --rm <docker_options> -v <mount_points>:<mount_points> -w $PWD astronrd/rapthor rapthor rapthor.parset
+
+.. code-block:: console
+
+    $ singularity exec --bind <mount_points>:<mount_points> <rapthor.sif> rapthor rapthor.parset
+
+In this mode, since Rapthor is running fully inside a container, the
+:term:`use_container` parameter should *not* be set, as activating this option
+instructs Rapthor to run its pipelines inside another, additional container
+(resulting in it running a container inside a container).
+
+
+Running only the CWL pipelines in a container (multinode mode)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For runs that use multiple nodes of a compute cluster (i.e., when
+:term:`batch_system` = ``slurm``), the recommended method of running Rapthor is
+to run the CWL pipelines inside containers, with the parent Rapthor process,
+which controls the submission of Slurm jobs, running outside of a container.
+Therefore, the use of this mode requires a minimal local installation of Rapthor
+on the cluster head node (for details, see the installation instructions on the
+`Rapthor GitLab page <https://git.astron.nl/RD/rapthor>`_). Other, non-Python
+dependencies (such as DP3 and WSClean) do not need to be installed locally. To
+use this mode, activate the :term:`use_container` parameter in the parset. No
+further configuration should be necessary, as the CWL runner will handle the
+pulling and running of the containers.
 
 
 .. _troubleshooting:
@@ -113,7 +149,8 @@ Rapthor allows for the processing of an operation to be reset:
 
     $ rapthor -r rapthor.parset
 
-Upon running this command, a prompt will appear prompting the user to select an operation to reset:
+Upon running this command, a prompt will appear prompting the user to select an
+operation to reset:
 
 .. code-block:: console
 

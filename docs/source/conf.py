@@ -26,7 +26,7 @@ copyright = '2023, Team Rapthor'
 author = 'Team Rapthor'
 
 # The full version, including alpha/beta/rc tags.
-release = '1.0' #metadata.version('rapthor')
+release = metadata.version('rapthor')
 # The short X.Y version.
 version = '.'.join(release.split('.')[:2])
 

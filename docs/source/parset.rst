@@ -252,9 +252,15 @@ The available options are described below under their respective sections.
     mem_gb
         Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%).
 
+        .. note::
+
+            If the :term:`mem_per_node_gb` parameter is set, then the max memory
+            for WSClean jobs will be set to the smaller of ``mem_gb`` and
+            ``mem_per_node_gb``.
+
     apply_diagonal_solutions
         Apply separate XX and YY corrections during facet-based imaging (default =
-        ``False``). If ``False``, scalar solutions (the average of the XX and YY
+        ``True``). If ``False``, scalar solutions (the average of the XX and YY
         solutions) are applied instead. (Separate XX and YY corrections are always applied
         when using non-facet-based imaging methods.)
 
@@ -392,7 +398,8 @@ The available options are described below under their respective sections.
 
         .. note::
 
-            This option cannot currently be used with :term:`batch_system` = ``slurm``.
+            This option should not be used when Rapthor itself is being run inside a
+            container. See :ref:`using_containers` for details.
 
     container_type
         The type of container to use when :term:`use_container` = ``True``. The supported
