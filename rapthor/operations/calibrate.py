@@ -21,7 +21,7 @@ class Calibrate(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the pipeline parset template
+        Define parameters needed for the CWL workflow template
         """
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
@@ -48,12 +48,12 @@ class Calibrate(Operation):
 
     def set_input_parameters(self):
         """
-        Define the pipeline inputs
+        Define the CWL workflow inputs
         """
         # First set the calibration parameters for each observation
         self.field.set_obs_parameters()
 
-        # Next, get the various parameters needed by the pipeline
+        # Next, get the various parameters needed by the workflow
         #
         # Get the filenames of the input files for each time chunk
         timechunk_filename = self.field.get_obs_parameters('timechunk_filename')

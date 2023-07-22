@@ -28,9 +28,9 @@ How can I use containers (Docker or Singularity) with Rapthor?
         * by running it completely within the container (only for use on a
           single machine, no local installation of Rapthor or its dependencies is
           necessary)
-        * by installing Rapthor locally and running only the pipelines within the
-          container (for use on a single machine or on multiple nodes of a compute
-          cluster).
+        * by installing Rapthor locally and running only the operations (CWL workflows)
+          within the container (for use on a single machine or on multiple nodes of a
+          compute cluster).
 
     A Docker image with the latest release of Rapthor and all its dependencies
     is available `here <https://todo>`_.
@@ -43,7 +43,7 @@ How can I troubleshoot a Rapthor problem?
 
         CRITICAL - rapthor - Operation image_1 failed due to an error
 
-    then an error was encountered during the running of the CWL pipeline of the
+    then an error was encountered during the running of the CWL workflow of the
     ``image_1`` operation. In this situation, it usually helpful to check the
     log files for the failed operation, which, in the case above, should be
     located in ``dir_working/logs/image_1``. When Toil is used for the CWL

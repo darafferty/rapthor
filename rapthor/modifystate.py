@@ -1,5 +1,5 @@
 """
-Module that modifies the state of the pipelines
+Module that modifies the state of the pipeline
 """
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
@@ -15,7 +15,7 @@ log = logging.getLogger('rapthor:state')
 
 def run(parset_file):
     """
-    Modifies the state of one or more pipelines
+    Modifies the state of one or more operations
 
     Parameters
     ----------
@@ -38,7 +38,7 @@ def run(parset_file):
     # Get the processing strategy
     strategy_steps = set_strategy(field)
 
-    # Check each operation for started pipelines
+    # Check each operation for started pipelines (workflows)
     operation_list = ['calibrate', 'predict', 'image', 'mosaic']  # in order of execution
     while True:
         pipelines = []
@@ -48,9 +48,9 @@ def run(parset_file):
                 if os.path.exists(operation):
                     pipelines.append(os.path.basename(operation))
 
-        # List pipelines and query user
+        # List operations and query user
         print('\nCurrent strategy: {}'.format(field.parset['strategy']))
-        print('\nPipelines:')
+        print('\nOperations:')
         i = 0
         if len(pipelines) == 0:
             print('    None')
@@ -62,7 +62,7 @@ def run(parset_file):
                 print('    {0}) {1}'.format(i, p))
         try:
             while(True):
-                p_number_raw = input('Enter number of pipeline to reset or "q" to quit: ')
+                p_number_raw = input('Enter number of operation to reset or "q" to quit: ')
                 try:
                     if p_number_raw.lower() == "q":
                         sys.exit(0)
@@ -79,7 +79,7 @@ def run(parset_file):
         # Ask for confirmation
         try:
             while(True):
-                answer = input('Reset all pipelines from {} onwards (y/n)? '.format(pipeline))
+                answer = input('Reset all operations from {} onwards (y/n)? '.format(pipeline))
                 if (answer.lower() == "n" or answer.lower() == "no" or
                     answer.lower() == "y" or answer.lower() == "yes"):
                     break
@@ -88,11 +88,11 @@ def run(parset_file):
         except KeyboardInterrupt:
             sys.exit(0)
 
-        # Reset pipeline states as requested
+        # Reset operation states as requested
         if answer.lower() == "y" or answer.lower() == "yes":
             print('Reseting state...')
             for pipeline in pipelines[int(p_number_raw)-1:]:
-                # Remove the pipeline working directory to ensure files from previous
+                # Remove the operation working directory to ensure files from previous
                 # runs are not kept and used in subsequent ones (e.g., Toil does not
                 # seem to always overwrite existing files from previous runs). This
                 # also removes Toil's jobstore when present (where the state is tracked).
@@ -104,7 +104,7 @@ def run(parset_file):
             # are _not_ present in the 'pipelines' directory.
             for dirname in ('skymodels', 'solutions', 'logs', 'plots', 'regions', 'images'):
                 dcmp = filecmp.dircmp(
-                    os.path.join(parset['dir_working'], 'pipelines'), 
+                    os.path.join(parset['dir_working'], 'pipelines'),
                     os.path.join(parset['dir_working'], dirname)
                 )
                 for path in (os.path.join(dcmp.right, item) for item in dcmp.right_only):

@@ -12,7 +12,7 @@ Rapthor produces the following output inside the working directory:
     Directory containing the FITS images. See :ref:`image` for a detailed description of the images.
 
 ``pipelines/``
-    Directory containing intermediate files of each operation's pipeline. Once a run has finished successfully, this directory can be removed.
+    Directory containing intermediate files of each operation's CWL workflow. Once a run has finished successfully, this directory can be removed.
 
 ``regions/``
     Directory containing ds9 region files. These regions define the imaged areas and the facet layout (if used).

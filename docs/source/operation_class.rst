@@ -1,7 +1,7 @@
 The Operation class
 ===================
 
-The Operation class is used to define, set up, and run a operation's pipeline. A subclass of the Operation class is defined for each operation. See :ref:`operation_subclasses` for details of each Operation subclass.
+The Operation class is used to define, set up, and run a operation's CWL workflow. A subclass of the Operation class is defined for each operation. See :ref:`operation_subclasses` for details of each Operation subclass.
 
 .. autoclass:: rapthor.lib.operation.Operation
    :members:

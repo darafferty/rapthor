@@ -250,11 +250,12 @@ The available options are described below under their respective sections.
         can be ``cpu`` or ``hybrid``.
 
     mem_gb
-        Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = 100%).
+        Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = all
+        available memory).
 
         .. note::
 
-            If the :term:`mem_per_node_gb` parameter is set, then the max memory
+            If the :term:`mem_per_node_gb` parameter is set, then the maximum memory
             for WSClean jobs will be set to the smaller of ``mem_gb`` and
             ``mem_per_node_gb``.
 
@@ -391,8 +392,8 @@ The available options are described below under their respective sections.
               section and ``dir_local`` is not on a shared filesystem.
 
     use_container
-        Run the pipelines inside a container (default = ``False``)? If ``True``, the pipeline
-        for each operation (such as calibrate or image) will be run inside a
+        Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
+        workflow for each operation (such as calibrate or image) will be run inside a
         container. The type of container can be specified with the :term:`container_type`
         parameter.
 
