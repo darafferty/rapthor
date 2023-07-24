@@ -1,0 +1,98 @@
+# Default settings
+
+[global]
+dir_working = None
+input_ms = None
+download_initial_skymodel = True
+download_initial_skymodel_radius = 5.0
+download_initial_skymodel_server = "TGSS"
+download_overwrite_skymodel = False
+input_skymodel = None
+apparent_skymodel = None
+regroup_input_skymodel = True
+strategy = "selfcal"
+selfcal_data_fraction = 0.2
+final_data_fraction = 1.0
+flag_abstime = None
+flag_baseline = None
+flag_freqrange = None
+flag_expr = ""
+
+# The following items are missing in example parset
+input_h5parm = None
+solset = None
+tec_soltab = None
+scalarphase_soltab = None
+slow_phase_soltab = None
+slow_amplitude_soltab = None
+
+[calibration]
+use_included_skymodels = False
+onebeamperpatch = False
+fast_timestep_sec = 8.0
+fast_freqstep_hz = 1e6
+slow_timestep_joint_sec = 0.0
+slow_timestep_separate_sec = 600.0
+slow_freqstep_hz = 1e6
+fast_smoothnessconstraint = 3e6
+fast_smoothnessreffrequency = 0.0
+fast_smoothnessrefdistance = 0.0
+slow_smoothnessconstraint_joint = 3e6
+slow_smoothnessconstraint_separate = 3e6
+llssolver = 'qr'
+propagatesolutions = True
+solveralgorithm = 'hybrid'
+maxiter = 150
+stepsize = 0.02
+tolerance = 5e-3
+parallelbaselines = False
+
+# The following items are missing in example parset
+solverlbfgs_dof = 200.0
+solverlbfgs_iter = 4
+solverlbfgs_minibatches = 1
+
+[imaging]
+grid_width_ra_deg = None
+grid_width_dec_deg = None
+grid_nsectors_ra = 0
+grid_center_ra = None
+grid_center_dec = None
+sector_center_ra_list = []
+sector_center_dec_list = []
+sector_width_ra_deg_list = []
+sector_width_dec_deg_list = []
+idg_mode = 'cpu'
+dde_method = 'facets'
+screen_type = 'kl'
+mem_gb = 0
+apply_diagonal_solutions = True
+dd_psf_grid = [1, 1]
+use_mpi = False
+reweight = False
+max_peak_smearing = 0.15
+cellsize_arcsec = 1.25
+robust = -0.5
+min_uv_lambda = 0.0
+max_uv_lambda = 1e6
+taper_arcsec = 0.0
+do_multiscale_clean = True
+
+# The following items are missing in example parset
+skip_corner_sectors = False
+
+[cluster]
+cpus_per_task = 0
+mem_per_node_gb = 0
+batch_system = 'single_machine'
+max_nodes = 12
+max_cores = 0
+max_threads = 0
+deconvolution_threads = 0
+parallel_gridding_threads = 0
+dir_local = '/tmp'
+use_container = False
+container_type = 'docker'
+cwl_runner = 'toil'
+dir_coordination = '/tmp'
+debug_workflow = False
