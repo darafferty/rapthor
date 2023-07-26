@@ -1,6 +1,7 @@
 import unittest
 import os
 import ast
+import mock
 from rapthor.lib.parset import parset_read
 
 
@@ -96,14 +97,18 @@ class TestParset(unittest.TestCase):
                                          'given in the parset but is not a valid '
                                          'section name'])
 
-    def test_minimal_parset(self):
+    # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
+    @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
+    def test_minimal_parset(self, cpu_count):
         self.maxDiff = None
         parset = parset_read('resources/rapthor_minimal.parset')
         with open('resources/rapthor_minimal.parset.dict', 'r') as f:
             ref_parset = ast.literal_eval(f.read())
         self.assertEqual(parset, ref_parset)
 
-    def test_complete_parset(self):
+    # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
+    @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
+    def test_complete_parset(self, cpu_count):
         self.maxDiff = None
         parset = parset_read('resources/rapthor_complete.parset')
         with open('resources/rapthor_complete.parset.dict', 'r') as f:
