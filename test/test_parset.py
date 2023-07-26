@@ -97,12 +97,14 @@ class TestParset(unittest.TestCase):
                                          'section name'])
 
     def test_minimal_parset(self):
+        self.maxDiff = None
         parset = parset_read('resources/rapthor_minimal.parset')
         with open('resources/rapthor_minimal.parset.dict', 'r') as f:
             ref_parset = ast.literal_eval(f.read())
         self.assertEqual(parset, ref_parset)
 
     def test_complete_parset(self):
+        self.maxDiff = None
         parset = parset_read('resources/rapthor_complete.parset')
         with open('resources/rapthor_complete.parset.dict', 'r') as f:
             ref_parset = ast.literal_eval(f.read())
