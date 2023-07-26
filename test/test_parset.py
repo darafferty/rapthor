@@ -1,5 +1,7 @@
 import unittest
 import os
+import ast
+import pprint
 import requests
 from rapthor.lib.parset import parset_read
 
@@ -52,10 +54,12 @@ class TestParset(unittest.TestCase):
                     [imging]  # misspelled optional section
                     dde_method = facets
                     """)
+        os.mkdir('foo.ms')
 
     @classmethod
     def tearDownClass(self):
         os.system('rm *.txt')
+        os.system('rmdir foo.ms')
 
     def test_missing_parset_file(self):
         self.assertRaises(FileNotFoundError, parset_read, 'this.parset.file.does.not.exist')
@@ -96,16 +100,17 @@ class TestParset(unittest.TestCase):
                                          'given in the parset but is not a valid '
                                          'section name'])
 
+    def test_minimal_parset(self):
+        parset = parset_read('rapthor_minimal.parset')
+        with open('rapthor_minimal.parset.dict', 'r') as f:
+            ref_parset = ast.literal_eval(f.read())
+        self.assertEqual(parset, ref_parset)
 
-def suite():
-    suite = unittest.TestSuite()
-    suite.addTest(TestParset('test_missing_parset_file'))
-    suite.addTest(TestParset('test_empty_parset_raises'))
-    suite.addTest(TestParset('test_missing_parameter'))
-    suite.addTest(TestParset('test_misspelled_parameter'))
-    suite.addTest(TestParset('test_missing_section'))
-    suite.addTest(TestParset('test_misspelled_section'))
-    return suite
+    def test_complete_parset(self):
+        parset = parset_read('rapthor_complete.parset')
+        with open('rapthor_complete.parset.dict', 'r') as f:
+            ref_parset = ast.literal_eval(f.read())
+        self.assertEqual(parset, ref_parset)
 
 
 if __name__ == '__main__':
