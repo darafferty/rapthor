@@ -795,6 +795,10 @@ class Field(object):
         names_from = from_skymodel.getColValues('Name').tolist()
         names_to = to_skymodel.getColValues('Name').tolist()
 
+        if 'Patch' not in to_skymodel.table.colnames:
+            self.log.debug('to_skymodel does not have Patch column, adding it')
+            to_skymodel.group('single')
+
         if set(names_from) == set(names_to):
             # Both sky models have the same sources, so use indexing
             ind_ss = np.argsort(names_from)
