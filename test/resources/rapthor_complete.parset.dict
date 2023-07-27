@@ -9,6 +9,7 @@
                           'onebeamperpatch': True,
                           'parallelbaselines': True,
                           'propagatesolutions': False,
+                          'sagecalpredict': True,
                           'slow_freqstep_hz': 2000000.0,
                           'slow_smoothnessconstraint_joint': 4000000.0,
                           'slow_smoothnessconstraint_separate': 4000000.0,

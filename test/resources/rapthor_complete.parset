@@ -26,6 +26,7 @@ onebeamperpatch = True
 stepsize = 0.2
 tolerance = 1e-2
 parallelbaselines = True
+sagecalpredict = True
 fast_timestep_sec = 10.0
 fast_freqstep_hz = 1e5
 fast_smoothnessconstraint = 3e5
