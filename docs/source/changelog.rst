@@ -3,7 +3,7 @@
 Changelog
 =========
 
-Version 1.1 (2023/07/28)
+Version 1.1 (2023/07/27)
 ------------------------
 
 This minor release includes the following improvements:
