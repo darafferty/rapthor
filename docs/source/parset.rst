@@ -147,6 +147,9 @@ The available options are described below under their respective sections.
         Parallelize model calculation over baselines, instead of parallelizing over
         directions (default = ``False``).
 
+    sagecalpredict
+        Use SAGECal for model calculation, both in predict and calibration (default = ``False``).
+
     stepsize
         Size of steps used during calibration (default = 0.02). When using
         :term:`solveralgorithm` = ``lbfgs``, the stepsize should be set to a small value

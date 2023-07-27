@@ -172,6 +172,11 @@ inputs:
       Flag that enables parallelization of model computation over baselines.
     type: boolean
 
+  - id: sagecalpredict
+    doc: |
+      Flag that enables model computation using SAGECal.
+    type: boolean
+
   - id: stepsize
     label: Solver step size
     doc: |
@@ -504,6 +509,8 @@ steps:
         source: onebeamperpatch
       - id: parallelbaselines
         source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -614,6 +621,8 @@ steps:
         source: onebeamperpatch
       - id: parallelbaselines
         source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -757,6 +766,8 @@ steps:
         source: onebeamperpatch
       - id: parallelbaselines
         source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: stepsize
         source: stepsize
       - id: tolerance

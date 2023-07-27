@@ -51,6 +51,11 @@ inputs:
       source (length = 1).
     type: boolean
 
+  - id: sagecalpredict
+    doc: |
+      Flag that enables prediction using SAGECAl.
+    type: boolean
+
   - id: sector_patches
     label: Names of sector calibration patches
     doc: |
@@ -200,6 +205,8 @@ steps:
         source: sector_ntimes
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: h5parm
         source: h5parm
       - id: sourcedb
