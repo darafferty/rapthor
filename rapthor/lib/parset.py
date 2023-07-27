@@ -719,7 +719,7 @@ def get_cluster_options(parset):
     else:
         parset_dict['dir_local'] = parset_dict['dir_local']
 
-    # Run the pipelines inside a container (default = False)? If True, the pipeline
+    # Run the workflows inside a container (default = False)? If True, the CWL workflow
     # for each operation (such as calibrate or image) will be run inside a container.
     # The type of container can also be specified (one of docker, udocker, or
     # singularity; default = docker)

@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor imaging pipeline
+label: Rapthor imaging workflow
 doc: |
   This workflow performs imaging with direction-dependent corrections. The
   imaging data are generated (and averaged if possible) and WSClean is
@@ -420,7 +420,7 @@ steps:
   - id: image_sector
     label: Image a sector
     doc: |
-      This step is a subpipeline that performs the processing (imaging, etc) for
+      This step is a subworkflow that performs the processing (imaging, etc) for
       each sector.
     run: {{ pipeline_working_dir }}/subpipeline_parset.cwl
     in:

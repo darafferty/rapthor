@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor imaging subpipeline
+label: Rapthor imaging subworkflow
 doc: |
   This subworkflow performs imaging with direction-dependent corrections. The
   imaging data are generated (and averaged if possible) and WSClean is

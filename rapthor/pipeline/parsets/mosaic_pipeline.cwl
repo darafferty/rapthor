@@ -1,8 +1,8 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor mosaicking pipeline
+label: Rapthor mosaicking workflow
 doc: |
-  This workflow performs the mosaicking of images made with the imaging pipeline.
+  This workflow performs the mosaicking of images made with the imaging workflow.
   If only a single image was made, processing is (mostly) skipped.
 
 {% if not skip_processing %}
@@ -80,7 +80,7 @@ steps:
   - id: mosaic_by_type
     label: Mosiac an image type
     doc: |
-      This step is a subpipeline that performs the processing for each image
+      This step is a subworkflow that performs the processing for each image
       type.
     run: {{ pipeline_working_dir }}/subpipeline_parset.cwl
     in:

@@ -19,7 +19,7 @@ import copy
 class Sector(object):
     """
     The Sector object contains various parameters for a sector of the field. Sectors
-    are used only in image and predict pipelines
+    are used only in image and predict operations
 
     Parameters
     ----------
@@ -59,7 +59,7 @@ class Sector(object):
         self.is_outlier = False
         self.is_bright_source = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
-        self.wsclean_image_padding = 1.2  # the WSClean default value, used in the pipelines
+        self.wsclean_image_padding = 1.2  # the WSClean default value, used in the workflows
         self.diagnostics = []  # list to hold dicts of image diagnostics
 
         # Make copies of the observation objects, as each sector may have its own
@@ -85,7 +85,7 @@ class Sector(object):
 
     def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False):
         """
-        Sets the parameters needed for the imaging pipeline
+        Sets the parameters needed for the imaging operation
 
         Parameters
         ----------

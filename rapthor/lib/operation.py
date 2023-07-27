@@ -20,9 +20,9 @@ class Operation(object):
     """
     Generic operation class
 
-    An operation is simply a CWL pipeline that performs a part of the
-    processing. It holds the pipeline settings, populates the pipeline input and
-    parset templates, and runs the pipeline. The field object is passed between
+    An operation is simply a CWL workflow that performs a part of the
+    processing. It holds the workflow settings, populates the workflow input and
+    parset templates, and runs the workflow. The field object is passed between
     operations, each of which updates it with variables needed by other, subsequent,
     operations.
 
@@ -54,10 +54,10 @@ class Operation(object):
         self.toil_env_variables = {}
         self.toil_major_version = int(toil_version.version.split('.')[0])
 
-        # rapthor working directory
+        # Rapthor working directory
         self.rapthor_working_dir = self.parset['dir_working']
 
-        # Pipeline working dir
+        # Workflow working dir
         self.pipeline_working_dir = os.path.join(self.rapthor_working_dir,
                                                  'pipelines', self.name)
         misc.create_directory(self.pipeline_working_dir)
@@ -69,7 +69,7 @@ class Operation(object):
         # Maximum number of nodes to use
         self.max_nodes = self.parset['cluster_specific']['max_nodes']
 
-        # Directory that holds the pipeline logs in a convenient place
+        # Directory that holds the workflow logs in a convenient place
         self.log_dir = os.path.join(self.rapthor_working_dir, 'logs', self.name)
         misc.create_directory(self.log_dir)
 
@@ -78,10 +78,9 @@ class Operation(object):
         self.rapthor_pipeline_dir = os.path.join(self.rapthor_root_dir, 'pipeline')
         self.rapthor_script_dir = os.path.join(self.rapthor_root_dir, 'scripts')
 
-        # Input template name and output parset and inputs filenames for
-        # the pipeline. If the pipeline uses a subworkflow, its template filename must be
-        # defined in the subclass by self.subpipeline_parset_template to the right
-        # path
+        # Input template name and output parset and inputs filenames for the CWL workflow.
+        # If the workflow uses a subworkflow, its template filename must be defined in the
+        # subclass by self.subpipeline_parset_template to the right path
         self.pipeline_parset_template = '{0}_pipeline.cwl'.format(self.rootname)
         self.subpipeline_parset_template = None
         self.pipeline_parset_file = os.path.join(self.pipeline_working_dir,
@@ -142,10 +141,10 @@ class Operation(object):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the pipeline parset template
+        Define parameters needed for the CWL workflow template
 
         The dictionary keys must match the jinja template variables used in the
-        corresponding pipeline parset.
+        corresponding workflow parset.
 
         The entries are defined in the subclasses as needed
         """
@@ -153,10 +152,10 @@ class Operation(object):
 
     def set_input_parameters(self):
         """
-        Define parameters needed for the pipeline inputs
+        Define parameters needed for the CWL workflow inputs
 
         The dictionary keys must match the workflow inputs defined in the corresponding
-        pipeline parset.
+        workflow parset.
 
         The entries are defined in the subclasses as needed
         """
@@ -166,7 +165,7 @@ class Operation(object):
         """
         Set up this operation
 
-        This involves filling the pipeline parset template and writing the inputs file
+        This involves filling the workflow template and writing the inputs file
         """
         # Fill the parset template and save to a file
         self.set_parset_parameters()
@@ -180,7 +179,7 @@ class Operation(object):
             with open(self.subpipeline_parset_file, 'w') as f:
                 f.write(tmp)
 
-        # Save the pipeline inputs to a file
+        # Save the workflow inputs to a file
         self.set_input_parameters()
         with open(self.pipeline_inputs_file, 'w') as f:
             f.write(json.dumps(self.input_parms, cls=NpEncoder, indent=4, sort_keys=True))
@@ -204,7 +203,7 @@ class Operation(object):
         """
         Runs the operation
         """
-        # Set up pipeline and call CWL runner
+        # Set up CWL workflow and call CWL runner
         self.setup()
         self.log.info('<-- Operation {0} started'.format(self.name))
 
