@@ -63,6 +63,7 @@ class Field(object):
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
+        self.sagecalpredict= self.parset['calibration_specific']['sagecalpredict']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
@@ -193,7 +194,7 @@ class Field(object):
 
         - the specified data_fraction < 1 (so part of an observation is to be processed)
         - nobs * nsectors < nnodes (so all nodes can be used efficiently. In particular,
-          the predict pipeline parallelizes over sectors and observations, so we need
+          the predict operation parallelizes over sectors and observations, so we need
           enough observations to allow all nodes to be occupied.)
 
         Parameters
@@ -330,7 +331,7 @@ class Field(object):
         find_sources : bool, optional
             If True, group the sky model by thresholding to find sources. This is not
             needed if the input sky model was filtered by PyBDSF in the imaging
-            pipeline
+            operation
         target_flux : float, optional
             Target flux in Jy for grouping
         target_number : int, optional
@@ -357,7 +358,7 @@ class Field(object):
 
             if self.peel_bright_sources:
                 # The bright-source model file may not exist if there are no bright sources,
-                # but also if a reset of the imaging pipeline was done. Unfortunately, there
+                # but also if a reset of the imaging operation was done. Unfortunately, there
                 # is no way to determine which of these two possibilities is the case. So, if
                 # it does not exist, we have to regenerate the sky models
                 if os.path.exists(self.bright_source_skymodel_file):
@@ -726,13 +727,13 @@ class Field(object):
                 skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
-            # to False to preserve the source patches defined in the image pipeline by PyBDSF)
+            # to False to preserve the source patches defined in the image operation by PyBDSF)
             self.make_skymodels(skymodel_true_sky, skymodel_apparent_sky=skymodel_apparent_sky,
                                 regroup=regroup, find_sources=False, target_flux=target_flux,
                                 target_number=target_number, index=index)
 
         # Save the number of calibrators and their names, positions, and flux
-        # densities (in Jy) for use in the calibration and imaging pipelines
+        # densities (in Jy) for use in the calibration and imaging operations
         self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
         self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
         self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
@@ -793,6 +794,10 @@ class Field(object):
         """
         names_from = from_skymodel.getColValues('Name').tolist()
         names_to = to_skymodel.getColValues('Name').tolist()
+
+        if 'Patch' not in to_skymodel.table.colnames:
+            self.log.debug('to_skymodel does not have Patch column, adding it')
+            to_skymodel.group('single')
 
         if set(names_from) == set(names_to):
             # Both sky models have the same sources, so use indexing
@@ -923,7 +928,7 @@ class Field(object):
 
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
-        # colons as otherwise the pipeline parset parser will split the list). Also
+        # colons as otherwise the workflow parset parser will split the list). Also
         # store the midpoint as [midRA; midDec]. These values are needed for the aterm
         # image generation, so we use the padded polygons to ensure that the final
         # bounding box encloses all of the images *with* padding included.
@@ -1295,7 +1300,7 @@ class Field(object):
             sector.__dict__.update(step_dict)
 
         # Update the sky models. We adjust the target flux used for calibrator selection
-        # by the ratio of (LOFAR / true) fluxes determined in the image pipeline of the
+        # by the ratio of (LOFAR / true) fluxes determined in the image operation of the
         # previous selfcal cycle. This adjustment is only done if the fractional change
         # is significant (as measured by the standard deviation in the ratio)
         target_flux = step_dict['target_flux']

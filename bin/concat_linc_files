@@ -9,7 +9,7 @@ import sys
 from rapthor.scripts.concat_ms import concat_ms
 
 
-def main(input_path, output_file):
+def main(input_path, output_file, overwrite=False):
     """
     Concatenate MS files from Linc for input to Rapthor
 
@@ -19,11 +19,14 @@ def main(input_path, output_file):
         Full path to the directory with the Linc MS files
     output_file : str
         Filename of output file
+    overwrite : bool, optional
+        If True and output_file points to an existing file, the file is
+        overwritten
     """
     msfiles = []
     for pattern in ["*.ms", "*.MS"]:
         msfiles.extend(glob.glob(os.path.join(input_path, pattern)))
-    return concat_ms(msfiles, output_file)
+    return concat_ms(msfiles, output_file, overwrite=overwrite)
 
 
 if __name__ == "__main__":
@@ -35,6 +38,11 @@ if __name__ == "__main__":
         "input_path", help="Full path to the directory with the Linc MS files"
     )
     parser.add_argument("output_file", help="Output filename")
+    parser.add_argument('--overwrite', help='Overwrite existing output file', type=bool,
+                        default=False)
 
     args = parser.parse_args()
-    sys.exit(main(args.input_path, args.output_file))
+    try:
+        sys.exit(main(args.input_path, args.output_file, overwrite=args.overwrite))
+    except Exception as e:
+        print('Error: {}'.format(e))

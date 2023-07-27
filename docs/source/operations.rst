@@ -3,7 +3,7 @@
 Operations
 ==========
 
-Most of the processing performed by Rapthor is done in "operations," which are sets of steps that are grouped together into pipelines. The available operations and the primary data products of each are described in detail below.
+Most of the processing performed by Rapthor is done in "operations," which are sets of steps that are grouped together into CWL workflows. The available operations and the primary data products of each are described in detail below.
 
 
 .. _calibrate:

@@ -27,7 +27,7 @@ class Mosaic(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the pipeline parset template
+        Define parameters needed for the CWL workflow template
         """
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
@@ -43,7 +43,7 @@ class Mosaic(Operation):
 
     def set_input_parameters(self):
         """
-        Define the pipeline inputs
+        Define the CWL workflow inputs
         """
         # Define various input and output filenames
         sector_image_filename = []

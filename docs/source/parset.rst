@@ -147,6 +147,9 @@ The available options are described below under their respective sections.
         Parallelize model calculation over baselines, instead of parallelizing over
         directions (default = ``False``).
 
+    sagecalpredict
+        Use SAGECal for model calculation, both in predict and calibration (default = ``False``).
+
     stepsize
         Size of steps used during calibration (default = 0.02). When using
         :term:`solveralgorithm` = ``lbfgs``, the stepsize should be set to a small value
@@ -246,12 +249,19 @@ The available options are described below under their respective sections.
         IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``). The mode
         can be ``cpu`` or ``hybrid``.
 
-    mem_fraction
-        Fraction of the total memory (per node) to use for WSClean jobs (default = 0.9).
+    mem_gb
+        Maximum memory in GB (per node) to use for WSClean jobs (default = 0 = all
+        available memory).
+
+        .. note::
+
+            If the :term:`mem_per_node_gb` parameter is set, then the maximum memory
+            for WSClean jobs will be set to the smaller of ``mem_gb`` and
+            ``mem_per_node_gb``.
 
     apply_diagonal_solutions
         Apply separate XX and YY corrections during facet-based imaging (default =
-        ``False``). If ``False``, scalar solutions (the average of the XX and YY
+        ``True``). If ``False``, scalar solutions (the average of the XX and YY
         solutions) are applied instead. (Separate XX and YY corrections are always applied
         when using non-facet-based imaging methods.)
 
@@ -380,6 +390,21 @@ The available options are described below under their respective sections.
 
             - when :term:`use_mpi` = ``True`` under the :ref:`parset_imaging_options`
               section and ``dir_local`` is not on a shared filesystem.
+
+    use_container
+        Run the workflows inside a container (default = ``False``)? If ``True``, the CWL
+        workflow for each operation (such as calibrate or image) will be run inside a
+        container. The type of container can be specified with the :term:`container_type`
+        parameter.
+
+        .. note::
+
+            This option should not be used when Rapthor itself is being run inside a
+            container. See :ref:`using_containers` for details.
+
+    container_type
+        The type of container to use when :term:`use_container` = ``True``. The supported
+        types are: ``docker`` (the default), ``udocker``, or ``singularity``.
 
     cwl_runner
         CWL runner to use. Currently supported runners are: ``cwltool`` and ``toil``

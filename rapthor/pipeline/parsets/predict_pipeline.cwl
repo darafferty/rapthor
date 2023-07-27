@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor prediction pipeline
+label: Rapthor prediction workflow
 doc: |
   This workflow performs direction-dependent prediction of sector sky models and
   subracts the resulting model data from the input data, reweighting if desired.
@@ -51,6 +51,11 @@ inputs:
       source (length = 1).
     type: boolean
 
+  - id: sagecalpredict
+    doc: |
+      Flag that enables prediction using SAGECAl.
+    type: boolean
+
   - id: sector_patches
     label: Names of sector calibration patches
     doc: |
@@ -65,7 +70,7 @@ inputs:
   - id: h5parm
     label: Filename of solution table
     doc: |
-      The filename of the h5parm solution table from the calibration pipeline (length
+      The filename of the h5parm solution table from the calibration workflow (length
       = 1).
     type: File
 
@@ -200,6 +205,8 @@ steps:
         source: sector_ntimes
       - id: onebeamperpatch
         source: onebeamperpatch
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: h5parm
         source: h5parm
       - id: sourcedb
@@ -219,7 +226,7 @@ steps:
       This step subtracts the model uv data generated in the previous step from the
       input MS files. For each sector, all sources that lie outside of the sector are
       subtracted (or peeled), generating data suitable for use as input to the imaging
-      pipeline. Reweighting by the residuals can also be done, by generating data in
+      workflow. Reweighting by the residuals can also be done, by generating data in
       which all sources have been subtracted.
     run: {{ rapthor_pipeline_dir }}/steps/subtract_sector_models.cwl
 {% if max_cores is not none %}

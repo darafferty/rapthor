@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor imaging subpipeline
+label: Rapthor imaging subworkflow
 doc: |
   This subworkflow performs imaging with direction-dependent corrections. The
   imaging data are generated (and averaged if possible) and WSClean is
@@ -27,10 +27,18 @@ inputs:
     type: Directory[]
 
   - id: prepare_filename
-    label: Filenames of imaging MS
+    label: Filenames of preparatory MSs
     doc: |
-      The filenames of output MS files used for imaging (length = n_obs).
+      The filenames of the preparatory MS files used as input to concatenation
+      (length = n_obs).
     type: string[]
+
+  - id: concat_filename
+    label: Filename of imaging MS
+    doc: |
+      The filename of the MS file resulting from concatenation of the preparatory
+      files and used for imaging (length = 1).
+    type: string
 
   - id: starttime
     label: Start times of each obs
@@ -432,6 +440,19 @@ steps:
     out:
       - id: msimg
 
+  - id: concat_in_time
+    label: Concatenate MS file in time
+    doc: |
+      This step concatenates the imaging MS files in time.
+    run: {{ rapthor_pipeline_dir }}/steps/concat_ms_files_in_time.cwl
+    in:
+      - id: mslist
+        source: prepare_imaging_data/msimg
+      - id: msout
+        source: concat_filename
+    out:
+      - id: msconcat
+
   - id: premask
     label: Make an image mask
     doc: |
@@ -529,7 +550,7 @@ steps:
 {% endif %}
     in:
       - id: msin
-        source: prepare_imaging_data/msimg
+        source: concat_in_time/msconcat
       - id: name
         source: image_name
       - id: mask

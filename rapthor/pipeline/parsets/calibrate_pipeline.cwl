@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor calibration pipeline
+label: Rapthor calibration workflow
 doc: |
   This workflow performs direction-dependent calibration. In general,
   calibration is done in three steps: (1) a fast phase-only calibration (with
@@ -10,7 +10,7 @@ doc: |
   further unconstrained slow gain calibration to correct for station-to-station
   differences. Steps (2) and (3) are skipped if the calibration is phase-only.
   This calibration scheme works for both HBA and LBA data. The final products of
-  this pipeline are solution tables (h5parm files), plots, and a-term screens (FITS
+  this workflow are solution tables (h5parm files), plots, and a-term screens (FITS
   files).
 
 requirements:
@@ -170,6 +170,11 @@ inputs:
   - id: parallelbaselines
     doc: |
       Flag that enables parallelization of model computation over baselines.
+    type: boolean
+
+  - id: sagecalpredict
+    doc: |
+      Flag that enables model computation using SAGECal.
     type: boolean
 
   - id: stepsize
@@ -504,6 +509,8 @@ steps:
         source: onebeamperpatch
       - id: parallelbaselines
         source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -614,6 +621,8 @@ steps:
         source: onebeamperpatch
       - id: parallelbaselines
         source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: stepsize
         source: stepsize
       - id: tolerance
@@ -757,6 +766,8 @@ steps:
         source: onebeamperpatch
       - id: parallelbaselines
         source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
       - id: stepsize
         source: stepsize
       - id: tolerance

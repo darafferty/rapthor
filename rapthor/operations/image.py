@@ -24,7 +24,7 @@ class Image(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the pipeline parset template
+        Define parameters needed for the CWL workflow template
         """
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
@@ -48,11 +48,12 @@ class Image(Operation):
 
     def set_input_parameters(self):
         """
-        Define the pipeline inputs
+        Define the CWL workflow inputs
         """
         nsectors = len(self.field.imaging_sectors)
         obs_filename = []
         prepare_filename = []
+        concat_filename = []
         previous_mask_filename = []
         mask_filename = []
         starttime = []
@@ -84,6 +85,7 @@ class Image(Operation):
 
             # Set output MS filenames for step that prepares the data for WSClean
             prepare_filename.append(sector.get_obs_parameters('ms_prep_filename'))
+            concat_filename.append(image_root[-1] + '_concat.ms')
 
             # Set other parameters
             if sector.I_mask_file is not None:
@@ -111,6 +113,7 @@ class Image(Operation):
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
+                            'concat_filename': concat_filename,
                             'previous_mask_filename': [None if name is None else CWLFile(name).to_json() for name in previous_mask_filename],
                             'mask_filename': mask_filename,
                             'starttime': starttime,
@@ -149,7 +152,7 @@ class Image(Operation):
         if self.field.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
-            # Set number of nodes to allocate to each imaging subpipeline. We subtract
+            # Set number of nodes to allocate to each imaging subworkflow. We subtract
             # one node because Toil must use one node for its job, which in turn calls
             # salloc to reserve the nodes for the MPI job
             self.use_mpi = True
