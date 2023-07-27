@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-Script to concatenate the MS files from Linc for input to Rapthor
+Script to concatenate MS files
 """
 import argparse
 import sys
 import subprocess
 import casacore.tables as pt
 import numpy as np
+import os
+from rapthor.lib import miscellaneous as misc
 
 
-def concat_ms(msfiles, output_file):
+def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False):
     """
     Concatenate a number of Measurement Set files into one
 
@@ -19,6 +21,13 @@ def concat_ms(msfiles, output_file):
         List of paths to input Measurement Sets
     output_file : str
         Path to output Measurement Set
+    concat_property : str, optional
+        Property over which to concatenate: time or frequency. Note that,
+        when concatenating over time, the metadata of the output MS file
+        may not be correct. However, it will work correctly with WSClean
+    overwrite : bool, optional
+        If True and output_file points to an existing file, the file is
+        overwritten
 
     Returns
     -------
@@ -29,7 +38,8 @@ def concat_ms(msfiles, output_file):
     TypeError
         If input Measurement Sets are not provided as a list of strings.
     ValueError
-        If no input Measurement Sets are provided.
+        If no input Measurement Sets are provided or concat_property is
+        invalid.
     RuntimeError
         If one or more of the input Measurement Sets contain invalid data,
         or if DP3 encounters an error while concatenating.
@@ -41,7 +51,60 @@ def concat_ms(msfiles, output_file):
         raise TypeError("Input Measurement Sets must provided as a list of strings")
     if len(msfiles) == 0:
         raise ValueError("At least one input Measurement Set must be provided")
+    if concat_property.lower() not in ("frequency", "time"):
+        raise ValueError("concat_property must be one of 'time' or 'frequency'.")
+    if os.path.exists(output_file):
+        for msfile in msfiles:
+            if os.path.samefile(msfile, output_file):
+                raise ValueError("Input Measurement Set '{0}' and output Measurement Set '{1}' "
+                                 "are the same file".format(msfile, output_file))
+        if overwrite:
+            misc.delete_directory(output_file)
+        else:
+            raise FileExistsError("The output Measurement Set exists and overwrite=False")
 
+    # Construct the command to run depending on what's needed. It will be executed
+    # later
+    if len(msfiles) > 1:
+        if concat_property.lower() == "frequency":
+            cmd = concat_freq_command(msfiles, output_file)
+        elif concat_property.lower() == "time":
+            cmd = concat_time_command(msfiles, output_file)
+    else:
+        # Single input file -- just copy to output
+        cmd = [
+            "cp",
+            "-r",
+            "-L",
+            "--no-preserve=mode",
+            msfiles[0],
+            output_file
+        ]
+
+    # Run the command
+    try:
+        return subprocess.run(cmd, check=True).returncode
+    except subprocess.CalledProcessError as err:
+        print(err, file=sys.stderr)
+        return err.returncode
+
+
+def concat_freq_command(msfiles, output_file):
+    """
+    Construct command to concatenate files in frequency using DP3
+
+    Parameters
+    ----------
+    msfiles : list of str
+        List of MS filenames to be concatenated
+    output_file : str
+        Filename of output concatenated MS
+
+    Returns
+    -------
+    cmd : list of str
+        Command to be executed by subprocess.run()
+    """
     # Order the files by frequency, filling any gaps with dummy files
     first = True
     nchans = 0
@@ -67,6 +130,8 @@ def concat_ms(msfiles, output_file):
     mslist = mslist[sorted_ind]
     # Determine frequency width, set to arbirary positive value if there's only one frequency
     freq_width = np.min(freqlist[1:] - freqlist[:-1]) if len(freqlist) > 1 else 1.0
+    if freq_width == 0.0:
+        raise ValueError("Cannot concatenate in frequency: all input files have the same frequency")
     dp3_mslist = []
     dp3_freqlist = np.arange(
         np.min(freqlist), np.max(freqlist) + freq_width, freq_width
@@ -85,23 +150,47 @@ def concat_ms(msfiles, output_file):
                 # Add a dummy MS to the list; stay on the current MS file
                 dp3_mslist.append("dummy.ms")
 
-    # Call DP3
+    # Construct DP3 command
     cmd = [
         "DP3",
         "msin=[{}]".format(",".join(dp3_mslist)),
         "msout={}".format(output_file),
         "steps=[]",
-        "msout.overwrite=True",
         "msin.orderms=False",
         "msin.missingdata=True",
         "msout.writefullresflag=False",
         "msout.storagemanager=Dysco",
     ]
-    try:
-        return subprocess.run(cmd, check=True).returncode
-    except subprocess.CalledProcessError as err:
-        print(err, file=sys.stderr)
-        return err.returncode
+    return cmd
+
+
+def concat_time_command(msfiles, output_file):
+    """
+    Construct command to concatenate files in time using TAQL
+
+    Parameters
+    ----------
+    msfiles : list of str
+        List of MS filenames to be concatenated
+    output_file : str
+        Filename of output concatenated MS
+
+    Returns
+    -------
+    cmd : list of str
+        Command to be executed by subprocess.run()
+    """
+    cmd = [
+        "taql",
+        "select",
+        "from",
+        "[{}]".format(",".join(msfiles)),
+        "giving",
+        "{}".format(output_file),
+        "AS",
+        "PLAIN"
+    ]
+    return cmd
 
 
 def main():
@@ -117,10 +206,13 @@ def main():
         description=descriptiontext, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("msin", nargs="+", help="List of input Measurement Sets")
-    parser.add_argument("msout", help="Output Measurement Set")
+    parser.add_argument("--msout", help="Output Measurement Set", type=str, default='concat.ms')
+    parser.add_argument('--concat_property', help='Property over which to concatenate: time or frequency',
+                        type=str, default='frequency')
+    parser.add_argument('--overwrite', help='Overwrite existing output file', type=bool, default=False)
 
     args = parser.parse_args()
-    return concat_ms(args.msin, args.msout)
+    return concat_ms(args.msin, args.msout, concat_property=args.concat_property, overwrite=args.overwrite)
 
 
 if __name__ == "__main__":

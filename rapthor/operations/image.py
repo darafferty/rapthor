@@ -53,6 +53,7 @@ class Image(Operation):
         nsectors = len(self.field.imaging_sectors)
         obs_filename = []
         prepare_filename = []
+        concat_filename = []
         previous_mask_filename = []
         mask_filename = []
         starttime = []
@@ -84,6 +85,7 @@ class Image(Operation):
 
             # Set output MS filenames for step that prepares the data for WSClean
             prepare_filename.append(sector.get_obs_parameters('ms_prep_filename'))
+            concat_filename.append(image_root[-1] + '_concat.ms')
 
             # Set other parameters
             if sector.I_mask_file is not None:
@@ -111,6 +113,7 @@ class Image(Operation):
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
+                            'concat_filename': concat_filename,
                             'previous_mask_filename': [None if name is None else CWLFile(name).to_json() for name in previous_mask_filename],
                             'mask_filename': mask_filename,
                             'starttime': starttime,

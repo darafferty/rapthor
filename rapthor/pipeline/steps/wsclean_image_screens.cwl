@@ -60,10 +60,10 @@ arguments:
 
 inputs:
   - id: msin
-    label: Filenames of input MS
+    label: Filename of input MS
     doc: |
-      The filenames of input MS files for which imaging will be done.
-    type: Directory[]
+      The filename of input MS file for which imaging will be done.
+    type: Directory
     inputBinding:
       position: 3
   - id: name

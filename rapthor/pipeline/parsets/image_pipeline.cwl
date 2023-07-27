@@ -26,14 +26,22 @@ inputs:
         items: Directory
 
   - id: prepare_filename
-    label: Filename of imaging MS
+    label: Filename of preparatory MS
     doc: |
-      The filenames of output MS files used for imaging (length = n_obs * n_sectors).
+      The filenames of the preparatory MS files used as input to concatenation
+      (length = n_obs * n_sectors).
     type:
       type: array
       items:
         type: array
         items: string
+
+  - id: concat_filename
+    label: Filename of imaging MS
+    doc: |
+      The filename of the MS file resulting from concatenation of the preparatory
+      files and used for imaging (length = n_sectors).
+    type: string[]
 
   - id: starttime
     label: Start time of each obs
@@ -420,6 +428,8 @@ steps:
         source: obs_filename
       - id: prepare_filename
         source: prepare_filename
+      - id: concat_filename
+        source: concat_filename
       - id: starttime
         source: starttime
       - id: ntimes
@@ -534,8 +544,8 @@ steps:
 {% endif %}
 {% if use_screens %}
 # start use_screens
-    scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
-              image_timestep, previous_mask_filename, mask_filename,
+    scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
+              image_freqstep, image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file,
 {% if use_mpi %}
@@ -547,8 +557,8 @@ steps:
               dd_psf_grid]
 {% else %}
 # start not use_screens
-    scatter: [obs_filename, prepare_filename, starttime, ntimes, image_freqstep,
-              image_timestep, previous_mask_filename, mask_filename,
+    scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
+              image_freqstep, image_timestep, previous_mask_filename, mask_filename,
               phasecenter, ra, dec, image_name, cellsize_deg, wsclean_imsize,
               vertices_file, region_file,
 {% if use_mpi %}
