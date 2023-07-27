@@ -54,9 +54,13 @@ class TestParset(unittest.TestCase):
                     dde_method = facets
                     """)
 
+        os.mkdir('dummy.ms')
+
     @classmethod
     def tearDownClass(self):
         os.system('rm *.txt')
+        os.rmdir('dummy.ms')
+
 
     def test_missing_parset_file(self):
         self.assertRaises(FileNotFoundError, parset_read, 'this.parset.file.does.not.exist')
