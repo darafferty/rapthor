@@ -136,6 +136,7 @@ class Calibrate(Operation):
         tolerance = self.field.tolerance
         uvlambdamin = self.field.solve_min_uv_lambda
         parallelbaselines = self.field.parallelbaselines
+        sagecalpredict = self.field.sagecalpredict
         solverlbfgs_dof = self.field.solverlbfgs_dof
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
@@ -205,6 +206,7 @@ class Calibrate(Operation):
                             'tolerance': tolerance,
                             'uvlambdamin': uvlambdamin,
                             'parallelbaselines': parallelbaselines,
+                            'sagecalpredict': sagecalpredict,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'split_outh5parm': split_outh5parm,
