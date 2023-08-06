@@ -138,7 +138,6 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     sorted_ind = np.argsort(freqlist)
     freqlist = freqlist[sorted_ind]
     mslist = mslist[sorted_ind]
-    mslist = list(mslist)
     chfreqlist = sorted(chfreqlist)
 
     # Check for gaps in frequency coverage by looking for deviating channel widths.
