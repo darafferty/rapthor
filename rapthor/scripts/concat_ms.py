@@ -138,6 +138,7 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     sorted_ind = np.argsort(freqlist)
     freqlist = freqlist[sorted_ind]
     mslist = mslist[sorted_ind]
+    mslist = list(mslist)
     chfreqlist = sorted(chfreqlist)
 
     # Check for gaps in frequency coverage by looking for deviating channel widths.
@@ -149,7 +150,7 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
             print('Found frequency gap between '+str(mslist[idx-1])+' and '+str(mslist[idx]))
             if make_dummies:
                 print('dummy_'+str(n)+' between '+str(mslist[idx-1])+' and '+str(mslist[idx]))
-                mslist.insert(idx, 'dummy_'+str(n))
+                mslist = np.insert(mslist, idx, 'dummy_'+str(n))
 
     # Construct DP3 command
     cmd = [
