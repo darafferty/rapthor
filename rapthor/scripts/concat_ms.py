@@ -8,7 +8,7 @@ import subprocess
 import casacore.tables as pt
 import numpy as np
 import os
-from rapthor.lib import miscellaneous as misc
+import shutil
 
 
 def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False):
@@ -59,7 +59,11 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
                 raise ValueError("Input Measurement Set '{0}' and output Measurement Set '{1}' "
                                  "are the same file".format(msfile, output_file))
         if overwrite:
-            misc.delete_directory(output_file)
+            try:
+                shutil.rmtree(output_file)
+            except OSError as e:
+                if not e.errno == errno.ENOENT:
+                    raise e
         else:
             raise FileExistsError("The output Measurement Set exists and overwrite=False")
 
@@ -88,8 +92,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
         print(err, file=sys.stderr)
         return err.returncode
 
-
-def concat_freq_command(msfiles, output_file):
+def concat_freq_command(msfiles, output_file, make_dummies=True):
     """
     Construct command to concatenate files in frequency using DP3
 
@@ -99,6 +102,8 @@ def concat_freq_command(msfiles, output_file):
         List of MS filenames to be concatenated
     output_file : str
         Filename of output concatenated MS
+    make_dummies: bool
+        Insert dummy MSes when frequency gaps are detected.
 
     Returns
     -------
@@ -109,10 +114,12 @@ def concat_freq_command(msfiles, output_file):
     first = True
     nchans = 0
     freqs = []
+    chfreqs = []
     for ms in msfiles:
         # Get the frequency info
         with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
             freq = sw.col("REF_FREQUENCY")[0]
+            chfreq = sw.col("CHAN_FREQ")[0]
             if first:
                 file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
                 nchans = sw.col("CHAN_WIDTH")[0].shape[0]
@@ -122,38 +129,32 @@ def concat_freq_command(msfiles, output_file):
                 assert file_bandwidth == sw.col("TOTAL_BANDWIDTH")[0]
                 assert nchans == sw.col("CHAN_WIDTH")[0].shape[0]
                 assert chwidth == sw.col("CHAN_WIDTH")[0][0]
+            chfreqs.extend(chfreq)
         freqs.append(freq)
+
     freqlist = np.array(freqs)
+    chfreqlist = np.array(chfreqs)
     mslist = np.array(msfiles)
     sorted_ind = np.argsort(freqlist)
     freqlist = freqlist[sorted_ind]
     mslist = mslist[sorted_ind]
-    # Determine frequency width, set to arbirary positive value if there's only one frequency
-    freq_width = np.min(freqlist[1:] - freqlist[:-1]) if len(freqlist) > 1 else 1.0
-    if freq_width == 0.0:
-        raise ValueError("Cannot concatenate in frequency: all input files have the same frequency")
-    dp3_mslist = []
-    dp3_freqlist = np.arange(
-        np.min(freqlist), np.max(freqlist) + freq_width, freq_width
-    )
-    j = -1
-    for freq, ms in zip(freqlist, mslist):
-        while j < len(dp3_freqlist) - 1:
-            j += 1
-            if np.isclose(freq, dp3_freqlist[j]):
-                # Frequency of MS file matches output frequency
-                # Add the MS file to the list; break to move to the next MS file
-                dp3_mslist.append(ms)
-                break
-            else:
-                # Gap in frequency detected
-                # Add a dummy MS to the list; stay on the current MS file
-                dp3_mslist.append("dummy.ms")
+    chfreqlist = sorted(chfreqlist)
+
+    # Check for gaps in frequency coverage by looking for deviating channel widths.
+    # Borrowed from https://github.com/jurjen93/lofar_vlbi_helpers/blob/main/extra_scripts/check_missing_freqs_in_ms.py
+    chan_diff = np.abs(np.diff(chfreqlist, n=2))
+    if np.sum(chan_diff) != 0:
+        dummy_idx = set((np.ndarray.flatten(np.argwhere(chan_diff > 0))/len(chan_diff)*len(mslist)).round(0).astype(int))
+        for n, idx in enumerate(dummy_idx):
+            print('Found frequency gap between '+str(mslist[idx-1])+' and '+str(mslist[idx]))
+            if make_dummies:
+                print('dummy_'+str(n)+' between '+str(mslist[idx-1])+' and '+str(mslist[idx]))
+                mslist.insert(idx, 'dummy_'+str(n))
 
     # Construct DP3 command
     cmd = [
         "DP3",
-        "msin=[{}]".format(",".join(dp3_mslist)),
+        "msin=[{}]".format(",".join(mslist)),
         "msout={}".format(output_file),
         "steps=[]",
         "msin.orderms=False",
