@@ -141,6 +141,7 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     chfreqlist = sorted(chfreqlist)
 
     # Check for gaps in frequency coverage by looking for deviating channel widths.
+    # Originally by Jurjen de Jong.
     # Borrowed from https://github.com/jurjen93/lofar_vlbi_helpers/blob/main/extra_scripts/check_missing_freqs_in_ms.py
     chan_diff = np.abs(np.diff(chfreqlist, n=2))
     if np.sum(chan_diff) != 0:
