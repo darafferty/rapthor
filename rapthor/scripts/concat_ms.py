@@ -142,15 +142,34 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
 
     # Check for gaps in frequency coverage by looking for deviating channel widths.
     # Originally by Jurjen de Jong.
-    # Borrowed from https://github.com/jurjen93/lofar_vlbi_helpers/blob/main/extra_scripts/check_missing_freqs_in_ms.py
+    # Adapted from https://github.com/jurjen93/lofar_vlbi_helpers/blob/main/extra_scripts/check_missing_freqs_in_ms.py
     chan_diff = np.abs(np.diff(chfreqlist, n=2))
     if np.sum(chan_diff) != 0:
-        dummy_idx = set((np.ndarray.flatten(np.argwhere(chan_diff > 0))/len(chan_diff)*len(mslist)).round(0).astype(int))
-        for n, idx in enumerate(dummy_idx):
-            print('Found frequency gap between '+str(mslist[idx-1])+' and '+str(mslist[idx]))
-            if make_dummies:
-                print('dummy_'+str(n)+' between '+str(mslist[idx-1])+' and '+str(mslist[idx]))
-                mslist = np.insert(mslist, idx, 'dummy_'+str(n))
+        # Here we obtain the indices at which dummies should be inserted.
+        # The division maps this back from individual channels to MSes.
+        dummy_idx = (np.ndarray.flatten(np.argwhere(chan_diff > 0))/len(chan_diff)*len(mslist)).round(0).astype(int)
+        # Obtain a unique list of indices and the indices of their first occurence in the above original array.
+        dummy_idx_u, idx_idx_u = np.unique(dummy_idx, return_index=True)
+        # Express channel difference in data chunks (e.g. 2 MHz if from LINC).
+        # This has the same length as dummy_idx and will tell us how many dummies to insert.
+        # For example, if there is a 8 MHz gap between 2 MHz chunks we need 3 dummy entries,
+        # otherwise the output will not being regular.
+        dummy_multiplier = (chan_diff / file_bandwidth).astype(int)
+        # We only need dummies where the difference is non-zero.
+        # This will yield as many entries as in dummy_idx
+        dummy_multiplier = dummy_multiplier[dummy_multiplier > 0]
+        # Select entries corresponding to the gaps
+        dummy_multiplier = dummy_multiplier[idx_idx_u]
+        # dummy_multiplier now contains the number of dummies that need to be inserted.
+        # This list needs to be flat for NumPy's insert later on.
+        dummies = [['dummy.ms'] * x for x in dummy_multiplier]
+        dummies_flat = [i for l in dummies for i in l]
+        # Generate the indices at which each dummy needs to be inserted.
+        final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
+        final_idx_flat = [i for l in final_idx for i in l]
+        # Finally insert them all at once.
+        mslist = np.insert(mslist, final_idx_flat, dummies_flat)
+
 
     # Construct DP3 command
     cmd = [
