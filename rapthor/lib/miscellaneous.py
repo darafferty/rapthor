@@ -47,7 +47,8 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     SKY_SERVERS = {'TGSS': 'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?'
                            'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
                    'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?'
-                          'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y'}
+                          'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
+                    'LOTSS': ''} # Server is empty since we handle this through LSMTool.
     if source.upper() not in SKY_SERVERS.keys():
         raise ValueError('Unsupported sky model source specified! Please use TGSS or GSM.')
 
@@ -76,21 +77,24 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         os.remove(skymodel_path)
 
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
-
-    max_tries = 5
-    for tries in range(1, 1 + max_tries):
-        result = subprocess.run(['wget', '-O', skymodel_path,
-                                 SKY_SERVERS[source].format(ra=ra, dec=dec, radius=radius)])
-        if result.returncode != 0:
-            if tries == max_tries:
-                raise IOError('Download of sky model failed after {} '
-                              'attempts.'.format(max_tries))
+    if source.upper().strip() == 'LOTSS':
+        lotssmodel = lsmtool.skymodel.SkyModel('lotss', VOPosition=[ra, dec], VORadius=radius)
+        lotssmodel.write(skymodel_path)
+    elif (source.upper().strip() == 'TGSS') or (source.upper().strip() == 'GSM'):
+        max_tries = 5
+        for tries in range(1, 1 + max_tries):
+            result = subprocess.run(['wget', '-O', skymodel_path,
+                                    SKY_SERVERS[source].format(ra=ra, dec=dec, radius=radius)])
+            if result.returncode != 0:
+                if tries == max_tries:
+                    raise IOError('Download of sky model failed after {} '
+                                'attempts.'.format(max_tries))
+                else:
+                    logger.error('Attempt #{0:d} to download sky model failed. Attempting '
+                                '{1:d} more times.'.format(tries, max_tries - tries))
+                    time.sleep(5)
             else:
-                logger.error('Attempt #{0:d} to download sky model failed. Attempting '
-                             '{1:d} more times.'.format(tries, max_tries - tries))
-                time.sleep(5)
-        else:
-            break
+                break
 
     if not os.path.isfile(skymodel_path):
         raise IOError('Sky model file "{}" does not exist after trying to download the '
