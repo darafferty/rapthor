@@ -15,6 +15,7 @@ import rtree.index
 import glob
 from astropy.coordinates import SkyCoord
 import astropy.units as u
+from typing import List, Dict, Tuple
 
 
 class Field(object):
@@ -815,7 +816,7 @@ class Field(object):
             to_skymodel.setPatchPositions(patchDict=patch_dict)
         return to_skymodel
 
-    def get_source_distances(self, source_dict):
+    def get_source_distances(self, source_dict: Dict[str, List[float]]):
         """
         Returns source distances in degrees from the phase center
 

@@ -2,7 +2,7 @@ astropy
 bdsf
 jinja2
 losoto
-lsmtool @ git+https://git.astron.nl/RD/LSMTool.git@bc7a279f
+lsmtool
 numpy
 psutil>=5.6.6
 python-casacore
