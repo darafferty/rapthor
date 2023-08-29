@@ -127,6 +127,12 @@ inputs:
       prefix: solve.parallelbaselines=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
+  - id: sagecalpredict
+    type: boolean
+    inputBinding:
+      prefix: solve.sagecalpredict=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
   - id: stepsize
     type: float
     inputBinding:

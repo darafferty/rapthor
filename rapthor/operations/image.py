@@ -24,7 +24,7 @@ class Image(Operation):
 
     def set_parset_parameters(self):
         """
-        Define parameters needed for the pipeline parset template
+        Define parameters needed for the CWL workflow template
         """
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
@@ -48,7 +48,7 @@ class Image(Operation):
 
     def set_input_parameters(self):
         """
-        Define the pipeline inputs
+        Define the CWL workflow inputs
         """
         nsectors = len(self.field.imaging_sectors)
         obs_filename = []
@@ -152,7 +152,7 @@ class Image(Operation):
         if self.field.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
-            # Set number of nodes to allocate to each imaging subpipeline. We subtract
+            # Set number of nodes to allocate to each imaging subworkflow. We subtract
             # one node because Toil must use one node for its job, which in turn calls
             # salloc to reserve the nodes for the MPI job
             self.use_mpi = True

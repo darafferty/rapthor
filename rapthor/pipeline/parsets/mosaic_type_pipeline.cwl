@@ -1,9 +1,9 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor mosaicking subpipeline
+label: Rapthor mosaicking subworkflow
 doc: |
   This subworkflow performs the mosaicking of a single type of image made with the
-  imaging pipeline. If only a single image was made, processing is (mostly) skipped.
+  imaging workflow. If only a single image was made, processing is (mostly) skipped.
 
 requirements:
   ScatterFeatureRequirement: {}
