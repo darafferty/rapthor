@@ -3,13 +3,36 @@
 Script to concatenate MS files
 """
 import argparse
-import sys
-import subprocess
-import casacore.tables as pt
-import numpy as np
+import errno
 import os
 import shutil
+import subprocess
+import sys
 
+import casacore.tables as pt
+import numpy as np
+
+
+def delete_directory(directory):
+    """
+    Delete a directory.
+    
+    Parameters
+    ----------
+    directory : str
+        Directory to delete.
+
+    Raises
+    ------
+    OSError
+        If an error occurs other than the directory not existing.
+    """
+    try:
+        shutil.rmtree(directory)
+    except OSError as e:
+        if not e.errno == errno.ENOENT:
+            raise e
+        
 
 def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False):
     """
@@ -59,11 +82,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
                 raise ValueError("Input Measurement Set '{0}' and output Measurement Set '{1}' "
                                  "are the same file".format(msfile, output_file))
         if overwrite:
-            try:
-                shutil.rmtree(output_file)
-            except OSError as e:
-                if not e.errno == errno.ENOENT:
-                    raise e
+            delete_directory(output_file)
         else:
             raise FileExistsError("The output Measurement Set exists and overwrite=False")
 
