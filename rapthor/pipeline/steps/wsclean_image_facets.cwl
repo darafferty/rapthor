@@ -11,7 +11,6 @@ requirements:
 
 arguments:
   - -no-update-model-required
-  - -save-source-list
   - -local-rms
   - -join-channels
   - -apply-facet-beam
@@ -22,8 +21,6 @@ arguments:
     prefix: -temp-dir
   - valueFrom: '2048'
     prefix: -parallel-deconvolution
-  - valueFrom: 'I'
-    prefix: -pol
   - valueFrom: '0.85'
     prefix: -mgain
   - valueFrom: '0.8'
@@ -92,6 +89,18 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -diagonal-solutions
+  - id: save_source_list
+    type: boolean
+    inputBinding:
+      prefix: -save-source-list
+  - id: pol
+    type: string
+    inputBinding:
+      prefix: -pol
+  - id: join_polarizations
+    type: boolean
+    inputBinding:
+      prefix: -join-polarizations
   - id: cellsize_deg
     type: float
     inputBinding:

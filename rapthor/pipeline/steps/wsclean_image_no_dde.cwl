@@ -11,7 +11,6 @@ requirements:
 
 arguments:
   - -no-update-model-required
-  - -save-source-list
   - -local-rms
   - -join-channels
   - -use-idg
@@ -20,8 +19,6 @@ arguments:
   - -log-time
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
-  - valueFrom: 'I'
-    prefix: -pol
   - valueFrom: '0.85'
     prefix: -mgain
   - valueFrom: '0.8'
@@ -81,6 +78,18 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -multiscale
+  - id: save_source_list
+    type: boolean
+    inputBinding:
+      prefix: -save-source-list
+  - id: pol
+    type: string
+    inputBinding:
+      prefix: -pol
+  - id: join_polarizations
+    type: boolean
+    inputBinding:
+      prefix: -join-polarizations
   - id: cellsize_deg
     type: float
     inputBinding:

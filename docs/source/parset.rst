@@ -265,6 +265,11 @@ The available options are described below under their respective sections.
         solutions) are applied instead. (Separate XX and YY corrections are always applied
         when using non-facet-based imaging methods.)
 
+    make_quv_images
+        Make Stokes QUV images in addition to the Stokes I image (default = ``False``).
+        If ``True``, Stokes QUV images are made during the final imaging step, once self
+        calibration has been completed.
+
     dd_psf_grid
         The number of direction-dependent PSFs which should be fit horizontally and
         vertically in the image (default = ``[1, 1]`` = direction-independent PSF).

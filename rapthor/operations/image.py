@@ -110,6 +110,13 @@ class Image(Operation):
             else:
                 dir_local.append(self.scratch_dir)
             central_patch_name.append(sector.central_patch)
+        pol = self.field.image_pol
+        if pol.lower() == 'i':
+            save_source_list = True
+            join_polarizations = False
+        else:
+            save_source_list = False
+            join_polarizations = True
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
@@ -123,6 +130,9 @@ class Image(Operation):
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'dir_local': dir_local,
+                            'pol': pol,
+                            'save_source_list': save_source_list,
+                            'join_polarizations': join_polarizations,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
@@ -213,8 +223,6 @@ class Image(Operation):
         # Copy the output FITS image, the clean mask, sky models, and ds9 facet
         # region file for each sector. Also read the image diagnostics (rms noise,
         # etc.) derived by PyBDSF and print them to the log.
-        # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
-        # pols, copy them all
         for sector in self.field.imaging_sectors:
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
             sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'

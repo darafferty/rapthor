@@ -549,6 +549,14 @@ def get_imaging_options(parset):
     else:
         parset_dict['apply_diagonal_solutions'] = True
 
+    # Make Stokes QUV images in addition to the Stokes I image (default = False).
+    # If True, QUV images are made during the final imaging step, once self
+    # calibration has been completed
+    if 'make_quv_images' in parset_dict:
+        parset_dict['make_quv_images'] = parset.getboolean('imaging', 'make_quv_images')
+    else:
+        parset_dict['make_quv_images'] = False
+
     # The number of direction-dependent PSFs which should be fit horizontally and
     # vertically in the image (default = [1, 1] = direction-independent PSF).
     if 'dd_psf_grid' in parset_dict:
@@ -617,7 +625,7 @@ def get_imaging_options(parset):
                        'min_uv_lambda', 'max_uv_lambda', 'mem_gb', 'screen_type',
                        'robust', 'sector_center_ra_list', 'sector_center_dec_list',
                        'sector_width_ra_deg_list', 'sector_width_dec_deg_list',
-                       'idg_mode', 'do_multiscale_clean', 'use_mpi',
+                       'idg_mode', 'do_multiscale_clean', 'use_mpi', 'make_quv_images',
                        'dde_method', 'skip_corner_sectors', 'dd_psf_grid']
     for option in given_options:
         if option not in allowed_options:

@@ -67,6 +67,7 @@ class Field(object):
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
+        self.make_quv_images = self.parset['imaging_specific']['make_quv_images']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']

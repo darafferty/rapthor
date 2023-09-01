@@ -59,12 +59,13 @@ def run(parset_file, logging_level='info'):
             op.run()
 
         # Image the sectors
+        # Since we're doing selfcal, ensure that only Stokes I is imaged
+        field.image_pol = 'I'
         if field.do_image:
             op = Image(field, index+1)
             op.run()
 
-            # Mosaic the sectors, for now just Stokes I
-            # TODO: run mosaic ops for IQUV+residuals
+            # Mosaic the sectors
             op = Mosaic(field, index+1)
             op.run()
 
@@ -90,10 +91,13 @@ def run(parset_file, logging_level='info'):
                 log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
 
-    # Run with the final data fraction if needed
-    if not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']):
+    # Run a final pass if needed
+    if (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
+            field.make_quv_images):
         log.info("Starting final iteration with a data fraction of "
                  "{0:.2f}".format(parset['final_data_fraction']))
+        if field.make_quv_images:
+            log.info("Stokes I, Q, U, and V images will be made")
 
         # Set peel_outliers to that of initial iteration, since the observations
         # will be regenerated and outliers may need to be peeled
@@ -114,12 +118,16 @@ def run(parset_file, logging_level='info'):
             op.run()
 
         # Image the sectors
+        # Set whether all Stokes parameters should be imaged or just I
+        if field.make_quv_images:
+            field.image_pol = 'IQUV'
+        else:
+            field.image_pol = 'I'
         if field.do_image:
             op = Image(field, index+2)
             op.run()
 
-            # Mosaic the sectors, for now just Stokes I
-            # TODO: run mosaic ops for IQUV+residuals
+            # Mosaic the sectors
             op = Mosaic(field, index+2)
             op.run()
 

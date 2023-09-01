@@ -282,6 +282,24 @@ inputs:
       Activate multiscale clean (length = 1).
     type: boolean
 
+  - id: pol
+    label: Pol list
+    doc: |
+      List of polarizations to image; e.g. "i" or "iquv" (length = 1).
+    type: string
+
+  - id: save_source_list
+    label: Save source list
+    doc: |
+      Save list of clean components (length = 1).
+    type: boolean
+
+  - id: join_polarizations
+    label: Join polarizations
+    doc: |
+      Join polarizations during clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -593,6 +611,12 @@ steps:
         source: max_uv_lambda
       - id: multiscale
         source: do_multiscale
+      - id: pol
+        source: pol
+      - id: save_source_list
+        source: save_source_list
+      - id: join_polarizations
+        source: join_polarizations
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
