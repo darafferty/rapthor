@@ -33,7 +33,7 @@ class Calibrate(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
-        if self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
+        if self.field.do_slowgain_solve and self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
             do_fulljones_solve = True
         else:
             do_fulljones_solve = False
