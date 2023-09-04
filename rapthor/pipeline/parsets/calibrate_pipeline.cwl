@@ -427,6 +427,61 @@ inputs:
       second (separate) slow-gain solves (length = 1).
     type: string
 
+{% if do_fulljones_solve %}
+# start do_fulljones_solve
+  - id: directions_fulljones
+    label: Directions for full-Jones solve
+    doc: |
+      The calibrator patch names to use for the DDECal directions in the full-
+      Jones solve. All directions are solved for together to produce direction-
+      independent solutions (length = 1).
+    type: string
+
+  - id: freqchunk_filename_fulljones
+    label: Filename of input MS for full-Jones solve (frequency)
+    doc: |
+      The filenames of input MS files for which the full-Jones gain
+      calibration will be done (length = n_obs * n_freq_chunks).
+    type: Directory[]
+
+  - id: starttime_fulljones
+    label: Start time of each chunk for full-Jones solve
+    doc: |
+      The start time (in casacore MVTime) for each time chunk used in the full-
+      Jones gain calibration (length = n_obs * n_freq_chunks).
+    type: string[]
+
+  - id: ntimes_fulljones
+    label: Number of times of each chunk for full-Jones solve
+    doc: |
+      The number of timeslots for each time chunk used in the full-Jones
+      gain calibration (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: startchan_fulljones
+    label: Start channel of each chunk for full-Jones solve
+    doc: |
+      The start channel for each frequency chunk used in the full-Jones gain
+      calibration (length = n_obs * n_freq_chunks).
+    type: int[]
+
+   - id: nchan_fulljones
+    label: Number of channels of each chunk for full-Jones solve
+    doc: |
+      The number of channels for each frequency chunk used in the full-Jones
+      gain calibration (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: combined_h5parms_fast_slow_final
+    label: Combined output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the fast solve plus
+      all slow-gain solves (length = 1).
+    type: string
+
+{% endif %}
+# end do_fulljones_solve
+
 {% endif %}
 # end do_slowgain_solve
 
@@ -434,7 +489,11 @@ inputs:
 outputs:
   - id: combined_solutions
     outputSource:
+{% if do_fulljones_solve %}
+      - combine_dd_and_fulljones_h5parms/combinedh5parm
+{% else %}
       - adjust_h5parm_sources/adjustedh5parm
+{% endif %}
     type: File
   - id: fast_phase_plots
     outputSource:
@@ -468,7 +527,7 @@ steps:
 {% if use_scalarphase %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar.cwl
 {% endif %}
 {% if max_cores is not none %}
     hints:
@@ -570,12 +629,12 @@ steps:
   - id: solve_slow_gains_joint
     label: Joint solve for slow gains
     doc: |
-      This step uses DDECal (in DP3) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for diagonal gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same (joint) solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_joint.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_joint.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -706,16 +765,16 @@ steps:
   - id: solve_slow_gains_separate
     label: Separate solve for slow gains
     doc: |
-      This step uses DDECal (in DP3) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for diagonal gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions and first (joint) slow-gain solutions are preapplied
       and stations are solve for separately (so different stations are free
       to have different solutions).
 {% if do_joint_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_separate.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_separate_no_joint.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_no_joint.cwl
 {% endif %}
 {% if max_cores is not none %}
     hints:
@@ -920,7 +979,7 @@ steps:
       - id: inh5parm2
         source: normalize_slow_amplitudes/outh5parm
       - id: outh5parm
-        source: combined_h5parms
+        source: combined_h5parms_fast_slow_final
       - id: mode
 {% if use_screens %}
         valueFrom: 'p1p2a2'
@@ -958,6 +1017,107 @@ steps:
         source: combine_fast_and_full_slow_h5parms/combinedh5parm
     out:
       - id: adjustedh5parm
+
+{% if do_fulljones_solve %}
+
+  - id: solve_fulljones_gains
+    label: Solve for full-Jones gains
+    doc: |
+      This step uses DDECal (in DP3) to solve for full-Jones gain corrections,
+      using the input MS files and sourcedb. These corrections are used to
+      correct primarily for polarization errors. The direction-dependent
+      solutions are preapplied. All directions are solved for jointly, resulting
+      in direction-indedpendent solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_fulljones.cwl
+{% if max_cores is not none %}
+    hints:
+      ResourceRequirement:
+        coresMin: {{ max_cores }}
+        coresMax: {{ max_cores }}
+{% endif %}
+    in:
+      - id: msin
+        source: freqchunk_filename_fulljones
+      - id: starttime
+        source: starttime_fulljones
+      - id: ntimes
+        source: ntimes_fulljones
+      - id: startchan
+        source: startchan_fulljones
+      - id: nchan
+        source: nchan_fulljones
+      - id: directions
+        source: directions_fulljones
+      - id: combined_h5parm
+        source: adjust_h5parm_sources/combinedh5parm
+      - id: h5parm
+        source: output_h5parm_fulljones
+      - id: solint
+        source: solint_timestep_fulljones
+      - id: solve_nchan
+        source: solint_freqstep_fulljones
+      - id: sourcedb
+        source: calibration_skymodel_file
+      - id: llssolver
+        source: llssolver
+      - id: maxiter
+        source: maxiter
+      - id: propagatesolutions
+        source: propagatesolutions
+      - id: solveralgorithm
+        source: solveralgorithm
+      - id: solverlbfgs_dof
+        source: solverlbfgs_dof
+      - id: solverlbfgs_iter
+        source: solverlbfgs_iter
+      - id: solverlbfgs_minibatches
+        source: solverlbfgs_minibatches
+      - id: onebeamperpatch
+        source: onebeamperpatch
+      - id: parallelbaselines
+        source: parallelbaselines
+      - id: sagecalpredict
+        source: sagecalpredict
+      - id: stepsize
+        source: stepsize
+      - id: tolerance
+        source: tolerance
+      - id: uvlambdamin
+        source: uvlambdamin
+      - id: smoothnessconstraint
+        source: smoothnessconstraint_fulljones
+      - id: numthreads
+        source: max_threads
+    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
+    scatterMethod: dotproduct
+    out:
+      - id: fulljones_gains_h5parm
+
+  - id: combine_dd_and_fulljones_h5parms
+    label: Combine DD and full-Jones solutions
+    doc: |
+      This step combines the direction-dependent gain solutions and the direction-
+      independent full-Jones solutions into a single h5parm file. The direction-dependent
+      and direction-independent solutions are kept in separate solsets.
+    run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
+    in:
+      - id: inh5parm1
+        source: adjust_h5parm_sources/combinedh5parm
+      - id: inh5parm2
+        source: solve_fulljones_gains/fulljones_gains_h5parm
+      - id: outh5parm
+        source: combined_h5parms
+      - id: mode
+        valueFrom: 'separate'
+      - id: reweight
+        valueFrom: 'False'
+      - id: calibrator_names
+        source: calibrator_patch_names
+      - id: calibrator_fluxes
+        source: calibrator_fluxes
+    out:
+      - id: combinedh5parm
+{% endif %}
 
 {% if use_screens %}
 # start use_screens

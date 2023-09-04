@@ -90,6 +90,11 @@ input_ms = /data/ms/*.ms
 # slow_smoothnessconstraint_joint = 3e6
 # slow_smoothnessconstraint_separate = 3e6
 
+# Full-Jones solve parameters (defaults shown):
+# fulljones_timestep_sec = 300.0
+# fulljones_freqstep_hz = 1e6
+# fulljones_smoothnessconstraint = 3e6
+
 
 [imaging]
 # Imaging parameters: pixel size in arcsec (default = 1.25, suitable for HBA

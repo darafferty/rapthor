@@ -33,6 +33,10 @@ class Calibrate(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
+        if self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
+            do_fulljones_solve = True
+        else:
+            do_fulljones_solve = False
         if self.field.dde_method == 'facets':
             use_facets = True
         else:
@@ -42,6 +46,7 @@ class Calibrate(Operation):
                              'use_facets': use_facets,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
+                             'do_fulljones_solve': do_fulljones_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
@@ -81,9 +86,11 @@ class Calibrate(Operation):
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
         solint_slow_timestep_joint = self.field.get_obs_parameters('solint_slow_timestep_joint')
         solint_slow_timestep_separate = self.field.get_obs_parameters('solint_slow_timestep_separate')
+        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
         solint_slow_freqstep_joint = self.field.get_obs_parameters('solint_slow_freqstep_joint')
         solint_slow_freqstep_separate = self.field.get_obs_parameters('solint_slow_freqstep_separate')
+        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
@@ -99,12 +106,14 @@ class Calibrate(Operation):
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
+        combined_h5parms_fast_slow_final = 'combined_solutions_fast_slow_final.h5'
 
         # Define the input sky model
         calibration_skymodel_file = self.field.calibration_skymodel_file
 
-        # Get the calibrator names and fluxes (used in screen fitting)
+        # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
+        directions_fulljones = '[[{}]]'.format(','.join(calibrator_patch_names))
         calibrator_fluxes = self.field.calibrator_fluxes
 
         # Set the constraints used in the calibrations
@@ -165,6 +174,7 @@ class Calibrate(Operation):
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
                             'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
+                            'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_separate).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'slow_starttime_joint': slow_starttime_joint,
@@ -175,13 +185,20 @@ class Calibrate(Operation):
                             'startchan_separate': startchan_separate,
                             'nchan_joint': nchan_joint,
                             'nchan_separate': nchan_separate,
+                            'starttime_fulljones': slow_starttime_joint,
+                            'ntimes_fulljones': slow_ntimes_joint,
+                            'startchan_fulljones': startchan_joint,
+                            'nchan_fulljones': nchan_joint,
                             'solint_fast_timestep': solint_fast_timestep,
                             'solint_slow_timestep_joint': solint_slow_timestep_joint,
                             'solint_slow_timestep_separate': solint_slow_timestep_separate,
+                            'solint_fulljones_timestep': solint_fulljones_timestep,
                             'solint_fast_freqstep': solint_fast_freqstep,
                             'solint_slow_freqstep_joint': solint_slow_freqstep_joint,
                             'solint_slow_freqstep_separate': solint_slow_freqstep_separate,
+                            'solint_fulljones_freqstep': solint_fulljones_freqstep,
                             'calibrator_patch_names': calibrator_patch_names,
+                            'directions_fulljones': directions_fulljones,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,
                             'combined_fast_h5parm': self.combined_fast_h5parm,
@@ -219,6 +236,7 @@ class Calibrate(Operation):
                             'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
                             'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                             'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
+                            'combined_h5parms_fast_slow_final': combined_h5parms_fast_slow_final,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,

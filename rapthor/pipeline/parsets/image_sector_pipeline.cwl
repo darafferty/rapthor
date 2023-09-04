@@ -386,15 +386,23 @@ steps:
     doc: |
       This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
-      calibration solutions at the center.
+      calibration solutions.
 {% if use_screens or use_facets %}
 # start use_screens or use_facets
+{% if apply_fulljones %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_fulljones.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
+{% endif %}
 
 {% else %}
 # start not use_screens and not use_facets
 {% if do_slowgain_solve %}
+{% if apply_fulljones %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_fulljones.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
+{% endif %}
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_phase_only.cwl
 {% endif %}
@@ -428,6 +436,10 @@ steps:
       - id: numthreads
         source: max_threads
 {% if use_screens or use_facets %}
+{% if apply_fulljones %}
+      - id: h5parm
+        source: h5parm
+{% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
       - id: h5parm

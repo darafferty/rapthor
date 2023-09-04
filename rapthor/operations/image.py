@@ -32,6 +32,10 @@ class Image(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
+        if self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
+            apply_fulljones = True
+        else:
+            apply_fulljones = False
         if self.field.dde_method == 'facets':
             use_facets = True
         else:
@@ -40,6 +44,7 @@ class Image(Operation):
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
+                             'apply_fulljones': apply_fulljones,
                              'use_facets': use_facets,
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,

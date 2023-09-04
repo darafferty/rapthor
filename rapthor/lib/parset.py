@@ -328,6 +328,14 @@ def get_calibration_options(parset):
         parset_dict['slow_freqstep_hz'] = parset.getfloat('calibration', 'slow_freqstep_hz')
     else:
         parset_dict['slow_freqstep_hz'] = 1e6
+    if 'fulljones_timestep_sec' in parset_dict:
+        parset_dict['fulljones_timestep_sec'] = parset.getfloat('calibration', 'fulljones_timestep_sec')
+    else:
+        parset_dict['fulljones_timestep_sec'] = 300.0
+    if 'fulljones_freqstep_hz' in parset_dict:
+        parset_dict['fulljones_freqstep_hz'] = parset.getfloat('calibration', 'fulljones_freqstep_hz')
+    else:
+        parset_dict['fulljones_freqstep_hz'] = 1e6
 
     # Smoothness constraint
     if 'fast_smoothnessconstraint' in parset_dict:
@@ -350,6 +358,10 @@ def get_calibration_options(parset):
         parset_dict['slow_smoothnessconstraint_separate'] = parset.getfloat('calibration', 'slow_smoothnessconstraint_separate')
     else:
         parset_dict['slow_smoothnessconstraint_separate'] = 3e6
+    if 'fulljones_smoothnessconstraint' in parset_dict:
+        parset_dict['fulljones_smoothnessconstraint'] = parset.getfloat('calibration', 'fulljones_smoothnessconstraint')
+    else:
+        parset_dict['fulljones_smoothnessconstraint'] = 3e6
 
     # Solver parameters
     if 'llssolver' not in parset_dict:
@@ -402,10 +414,11 @@ def get_calibration_options(parset):
     # Check for invalid options
     allowed_options = ['fast_timestep_sec', 'fast_freqstep_hz', 'slow_timestep_joint_sec',
                        'slow_timestep_separate_sec', 'onebeamperpatch',
+                       'fulljones_timestep_sec', 'fulljones_freqstep_hz',
                        'slow_freqstep_hz', 'propagatesolutions', 'maxiter', 'stepsize',
                        'tolerance', 'llssolver', 'fast_smoothnessconstraint',
                        'fast_smoothnessreffrequency', 'fast_smoothnessrefdistance',
-                       'slow_smoothnessconstraint_joint',
+                       'slow_smoothnessconstraint_joint', 'fulljones_smoothnessconstraint',
                        'slow_smoothnessconstraint_separate', 'parallelbaselines',
                        'solveralgorithm', 'solverlbfgs_dof', 'solverlbfgs_iter',
                        'solverlbfgs_minibatches','sagecalpredict']

@@ -3,7 +3,7 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for complex gains in multiple directions simultaneously for
+  This tool solves for full-Jones gains over all direction together for
   the given MS file with fast-phase and slow-gain corrections preapplied, using
   the input sourcedb and h5parm. Output is the solution table in h5parm format.
   See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
@@ -17,7 +17,7 @@ arguments:
   - msout=
   - steps=[solve]
   - solve.type=ddecal
-  - solve.mode=complexgain
+  - solve.mode=fulljones
   - solve.usebeammodel=True
   - solve.beammode=array_factor
   - solve.applycal.steps=[fastphase,slowamp]
@@ -50,11 +50,20 @@ inputs:
     inputBinding:
       prefix: msin.nchan=
       separate: False
+  - id: directions
+    label: Directions for solve
+    doc: |
+      The directions used for the solve. All directions are solved for
+      together to produce direction-independent solutions.
+    type: string
+    inputBinding:
+      prefix: solve.directions=
+      separate: False
   - id: combined_h5parm
     label: Solution table
     doc: |
       The filename of the input solution table containing the combined fast-phase
-      and slow-gain1 solutions. These solutions are preapplied before the solve is done.
+      and slow-gain solutions. These solutions are preapplied before the solve is done.
     type: File
     inputBinding:
       prefix: solve.applycal.parmdb=

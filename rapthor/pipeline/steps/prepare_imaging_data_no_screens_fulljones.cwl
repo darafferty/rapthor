@@ -21,11 +21,14 @@ arguments:
   - avg.type=squash
   - applycal.type=applycal
   - applycal.correction=phase000
-  - applycal.steps=[slowamp,fastphase]
+  - applycal.steps=[slowamp,fastphase,fulljones]
   - applycal.slowamp.correction=amplitude000
   - applycal.slowamp.solset=sol000
   - applycal.fastphase.correction=phase000
   - applycal.fastphase.solset=sol000
+  - applycal.fulljones.correction=fulljones
+  - applycal.fulljones.solset=sol001
+  - applycal.fulljones.soltab=[phase000,amplitude000]
   - msout.storagemanager=Dysco
 
 inputs:
