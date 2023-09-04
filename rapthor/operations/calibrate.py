@@ -71,16 +71,21 @@ class Calibrate(Operation):
         slow_ntimes_joint = self.field.get_obs_parameters('slow_ntimes_joint')
         slow_starttime_separate = self.field.get_obs_parameters('slow_starttime_separate')
         slow_ntimes_separate = self.field.get_obs_parameters('slow_ntimes_separate')
+        starttime_fulljones = self.field.get_obs_parameters('starttime_fulljones')
+        ntimes_fulljones = self.field.get_obs_parameters('ntimes_fulljones')
 
         # Get the filenames of the input files for each frequency chunk
         freqchunk_filename_joint = self.field.get_obs_parameters('freqchunk_filename_joint')
         freqchunk_filename_separate = self.field.get_obs_parameters('freqchunk_filename_separate')
+        freqchunk_filename_fulljones = self.field.get_obs_parameters('freqchunk_filename_fulljones')
 
         # Get the start channel and number of channels for the frequency chunks
         startchan_joint = self.field.get_obs_parameters('startchan_joint')
         nchan_joint = self.field.get_obs_parameters('nchan_joint')
         startchan_separate = self.field.get_obs_parameters('startchan_separate')
         nchan_separate = self.field.get_obs_parameters('nchan_separate')
+        startchan_fulljones = self.field.get_obs_parameters('startchan_fulljones')
+        nchan_fulljones = self.field.get_obs_parameters('nchan_fulljones')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
@@ -174,7 +179,7 @@ class Calibrate(Operation):
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
                             'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
-                            'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_separate).to_json(),
+                            'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'slow_starttime_joint': slow_starttime_joint,
@@ -185,10 +190,10 @@ class Calibrate(Operation):
                             'startchan_separate': startchan_separate,
                             'nchan_joint': nchan_joint,
                             'nchan_separate': nchan_separate,
-                            'starttime_fulljones': slow_starttime_joint,
-                            'ntimes_fulljones': slow_ntimes_joint,
-                            'startchan_fulljones': startchan_joint,
-                            'nchan_fulljones': nchan_joint,
+                            'starttime_fulljones': starttime_fulljones,
+                            'ntimes_fulljones': ntimes_fulljones,
+                            'startchan_fulljones': startchan_fulljones,
+                            'nchan_fulljones': nchan_fulljones,
                             'solint_fast_timestep': solint_fast_timestep,
                             'solint_slow_timestep_joint': solint_slow_timestep_joint,
                             'solint_slow_timestep_separate': solint_slow_timestep_separate,

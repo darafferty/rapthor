@@ -294,8 +294,8 @@ class Observation(object):
         self.parameters['nchan_fulljones'][-1] = 0  # set last entry to extend until end
         self.parameters['starttime_fulljones'] = [self.convert_mjd(self.starttime)] * nchunks
         self.parameters['ntimes_fulljones'] = [self.numsamples] * nchunks
-        self.parameters['solint_timestep_fulljones'] = [solint_timestep_fulljones] * self.nfreqchunks_fulljones
-        self.parameters['solint_freqstep_fulljones'] = [solint_freqstep_fulljones] * self.nfreqchunks_fulljones
+        self.parameters['solint_fulljones_timestep'] = [solint_timestep_fulljones] * self.nfreqchunks_fulljones
+        self.parameters['solint_fulljones_freqstep'] = [solint_freqstep_fulljones] * self.nfreqchunks_fulljones
 
         # Set the number of segments to split the h5parm files into for screen fitting.
         # Try to split so that each file gets at least two solutions
