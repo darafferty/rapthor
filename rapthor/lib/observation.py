@@ -2,7 +2,6 @@
 Definition of the Observation class that holds parameters for each measurement set
 """
 import os
-import sys
 import logging
 import casacore.tables as pt
 import numpy as np
@@ -149,6 +148,8 @@ class Observation(object):
         target_slow_timestep_joint = parset['calibration_specific']['slow_timestep_joint_sec']
         target_slow_timestep_separate = parset['calibration_specific']['slow_timestep_separate_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
+        target_fulljones_timestep = parset['calibration_specific']['fulljones_timestep_sec']
+        target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
 
         # Find solution intervals for fast-phase solve
         timepersample = self.timepersample
@@ -263,6 +264,38 @@ class Observation(object):
         self.parameters['slow_ntimes_separate'] = [self.numsamples] * nchunks
         self.parameters['solint_slow_timestep_separate'] = [solint_slow_timestep] * self.nfreqchunks_separate
         self.parameters['solint_slow_freqstep_separate'] = [solint_slow_freqstep] * self.nfreqchunks_separate
+
+        # Set the parameters for the full-Jones solve
+        target_timestep_fulljones = max(1, int(round(target_fulljones_timestep / timepersample)))
+        solint_freqstep_fulljones = max(1, self.get_nearest_frequstep(target_fulljones_freqstep / channelwidth))
+        samplesperchunk, solint_timestep_fulljones = get_slow_solve_intervals(parset['cluster_specific'],
+                                                                              self.numchannels, nobs,
+                                                                              solint_freqstep_fulljones,
+                                                                              target_timestep_fulljones,
+                                                                              self.antenna, ndir)
+        chunksize = samplesperchunk * channelwidth
+        mystartfreq = self.startfreq
+        myendfreq = self.endfreq
+        if (myendfreq-mystartfreq) > chunksize:
+            # Divide up the bandwidth into chunks of chunksize or smaller
+            nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
+        else:
+            nchunks = 1
+        self.nfreqchunks_separate = nchunks
+        if self.nfreqchunks_separate > 1:
+            infix = 's'
+        else:
+            infix = ''
+        self.log.debug('Using {0} frequency chunk{1} for the full-Jones gain '
+                       'calibration'.format(self.nfreqchunks_separate, infix))
+        self.parameters['freqchunk_filename_fulljones'] = [self.ms_filename] * self.nfreqchunks_fulljones
+        self.parameters['startchan_fulljones'] = [samplesperchunk * i for i in range(nchunks)]
+        self.parameters['nchan_fulljones'] = [samplesperchunk] * nchunks
+        self.parameters['nchan_fulljones'][-1] = 0  # set last entry to extend until end
+        self.parameters['starttime_fulljones'] = [self.convert_mjd(self.starttime)] * nchunks
+        self.parameters['ntimes_fulljones'] = [self.numsamples] * nchunks
+        self.parameters['solint_timestep_fulljones'] = [solint_timestep_fulljones] * self.nfreqchunks_fulljones
+        self.parameters['solint_freqstep_fulljones'] = [solint_freqstep_fulljones] * self.nfreqchunks_fulljones
 
         # Set the number of segments to split the h5parm files into for screen fitting.
         # Try to split so that each file gets at least two solutions
