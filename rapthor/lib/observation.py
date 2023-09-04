@@ -281,8 +281,8 @@ class Observation(object):
             nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
         else:
             nchunks = 1
-        self.nfreqchunks_separate = nchunks
-        if self.nfreqchunks_separate > 1:
+        self.nfreqchunks_fulljones = nchunks
+        if self.nfreqchunks_fulljones > 1:
             infix = 's'
         else:
             infix = ''
