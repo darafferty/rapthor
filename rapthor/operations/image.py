@@ -32,7 +32,7 @@ class Image(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
-        if self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
+        if self.field.do_slowgain_solve and self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
             apply_fulljones = True
         else:
             apply_fulljones = False
