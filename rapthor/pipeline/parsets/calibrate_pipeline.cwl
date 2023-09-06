@@ -472,6 +472,20 @@ inputs:
       gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
+  - id: solint_fulljones_timestep
+    label: Full-Jones solution interval in time
+    doc: |
+      The solution interval in number of timeslots for the full-jones gain
+      solve (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: solint_fulljones_freqstep
+    label: Full-Jones solution interval in frequency
+    doc: |
+      The solution interval in number of frequency channels for the full-Jones
+      gain solve (length = n_obs * n_freq_chunks).
+    type: int[]
+
   - id: smoothnessconstraint_fulljones
     label: Full-jones smoothnessconstraint
     doc: |
@@ -1056,13 +1070,13 @@ steps:
       - id: directions
         source: directions_fulljones
       - id: combined_h5parm
-        source: adjust_h5parm_sources/combinedh5parm
+        source: adjust_h5parm_sources/adjustedh5parm
       - id: h5parm
         source: output_h5parm_fulljones
       - id: solint
-        source: solint_timestep_fulljones
+        source: solint_fulljones_timestep
       - id: solve_nchan
-        source: solint_freqstep_fulljones
+        source: solint_fulljones_freqstep
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver

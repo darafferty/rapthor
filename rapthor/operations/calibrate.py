@@ -107,6 +107,8 @@ class Calibrate(Operation):
         self.combined_h5parms = 'combined_solutions.h5'
         output_slow_h5parm_separate = ['slow_gain_separate_{}.h5parm'.format(i)
                                        for i in range(self.field.nfreqchunks_separate)]
+        output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
+                                   for i in range(self.field.nfreqchunks_separate)]
         combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
@@ -210,6 +212,7 @@ class Calibrate(Operation):
                             'combined_fast_h5parm': self.combined_fast_h5parm,
                             'output_slow_h5parm_joint': output_slow_h5parm_joint,
                             'output_slow_h5parm_separate': output_slow_h5parm_separate,
+                            'output_h5parm_fulljones': output_h5parm_fulljones,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,

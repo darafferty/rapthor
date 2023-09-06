@@ -285,14 +285,17 @@ class Field(object):
         ntimechunks = 0
         nfreqchunks_joint = 0
         nfreqchunks_separate = 0
+        nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate
+            nfreqchunks_fulljones += obs.nfreqchunks_fulljones
         self.ntimechunks = ntimechunks
         self.nfreqchunks_joint = nfreqchunks_joint
         self.nfreqchunks_separate = nfreqchunks_separate
+        self.nfreqchunks_fulljones = nfreqchunks_fulljones
 
     def get_obs_parameters(self, parameter):
         """
