@@ -169,10 +169,11 @@ inputs:
       separate: False
 
 outputs:
-  - id: slow_gains_h5parm
+  - id: fulljonesh5parm
     type: File
     outputBinding:
       glob: $(inputs.h5parm)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'astronrd/rapthor'
