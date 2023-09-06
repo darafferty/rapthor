@@ -472,6 +472,13 @@ inputs:
       gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
+  - id: smoothnessconstraint_fulljones
+    label: Full-jones smoothnessconstraint
+    doc: |
+      The smoothnessconstraint kernel size in Hz for the full-Jones gain
+      solve (length = 1).
+    type: float
+
   - id: combined_h5parms_fast_slow_final
     label: Combined output solution table
     doc: |

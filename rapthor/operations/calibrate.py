@@ -127,6 +127,7 @@ class Calibrate(Operation):
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
         slow_smoothnessconstraint_joint = self.field.slow_smoothnessconstraint_joint
         slow_smoothnessconstraint_separate = self.field.slow_smoothnessconstraint_separate
+        smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
@@ -215,6 +216,7 @@ class Calibrate(Operation):
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
+                            'smoothnessconstraint_fulljones': smoothnessconstraint_fulljones,
                             'max_normalization_delta': max_normalization_delta,
                             'scale_normalization_delta': scale_normalization_delta,
                             'phase_center_ra': self.field.ra,
