@@ -500,6 +500,13 @@ inputs:
       gain solve (length = n_obs * n_freq_chunks).
     type: string[]
 
+  - id: combined_h5parm_fulljones
+    label: Combined full-Jones output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the full-Jones
+      gain solve (length = 1).
+    type: string
+
   - id: combined_h5parms_fast_slow_final
     label: Combined output solution table
     doc: |
@@ -541,6 +548,14 @@ outputs:
   - id: slow_amp_plots
     outputSource:
       - plot_slow_amp_solutions/plots
+    type: File[]
+  - id: fulljones_phase_plots
+    outputSource:
+      - plot_fulljones_phase_solutions/plots
+    type: File[]
+  - id: fulljones_amp_plots
+    outputSource:
+      - plot_fulljones_amp_solutions/plots
     type: File[]
 {% endif %}
 
@@ -1120,6 +1135,46 @@ steps:
     scatterMethod: dotproduct
     out:
       - id: fulljonesh5parm
+
+  - id: combine_fulljones_gains
+    label: Combine full-Jones gain solutions
+    doc: |
+      This step combines all the gain solutions from the solve_fulljones_gains step
+      into a single solution table (h5parm file).
+    run: {{ rapthor_pipeline_dir }}/steps/collect_h5parms.cwl
+    in:
+      - id: inh5parms
+        source: solve_fulljones_gains/fulljonesh5parm
+      - id: outputh5parm
+        source: combined_h5parm_fulljones
+    out:
+      - id: outh5parm
+
+  - id: plot_fulljones_amp_solutions
+    label: Plot full-Jones amplitude solutions
+    doc: |
+      This step makes plots of the full-Jones amplitude solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
+    in:
+      - id: h5parm
+        source: combine_fulljones_gains/outh5parm
+      - id: soltype
+        valueFrom: 'amplitude'
+    out:
+      - id: plots
+
+  - id: plot_fulljones_phase_solutions
+    label: Plot full-Jones phase solutions
+    doc: |
+      This step makes plots of the full-Jones phase solutions.
+    run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
+    in:
+      - id: h5parm
+        source: combine_fulljones_gains/outh5parm
+      - id: soltype
+        valueFrom: 'phase'
+    out:
+      - id: plots
 
   - id: combine_dd_and_fulljones_h5parms
     label: Combine DD and full-Jones solutions

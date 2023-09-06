@@ -111,6 +111,7 @@ class Calibrate(Operation):
                                    for i in range(self.field.nfreqchunks_separate)]
         combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
+        combined_h5parm_fulljones = 'fulljones_gains.h5'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
         combined_h5parms_fast_slow_final = 'combined_solutions_fast_slow_final.h5'
@@ -244,6 +245,7 @@ class Calibrate(Operation):
                             'slow_antennaconstraint': slow_antennaconstraint,
                             'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
                             'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
+                            'combined_h5parm_fulljones': combined_h5parm_fulljones,
                             'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                             'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
                             'combined_h5parms_fast_slow_final': combined_h5parms_fast_slow_final,
