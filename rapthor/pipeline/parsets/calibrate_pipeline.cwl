@@ -1098,7 +1098,7 @@ steps:
     scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
     scatterMethod: dotproduct
     out:
-      - id: fulljones_gains_h5parm
+      - id: fulljonesh5parm
 
   - id: combine_dd_and_fulljones_h5parms
     label: Combine DD and full-Jones solutions
@@ -1109,9 +1109,9 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/combine_h5parms.cwl
     in:
       - id: inh5parm1
-        source: adjust_h5parm_sources/combinedh5parm
+        source: adjust_h5parm_sources/adjustedh5parm
       - id: inh5parm2
-        source: solve_fulljones_gains/fulljones_gains_h5parm
+        source: solve_fulljones_gains/fulljonesh5parm
       - id: outh5parm
         source: combined_h5parms
       - id: mode
