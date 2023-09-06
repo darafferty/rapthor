@@ -86,6 +86,11 @@ inputs:
     inputBinding:
       prefix: --threshpix=
       separate: false
+  - id: ncores
+    type: int
+    inputBinding:
+      prefix: --ncores=
+      separate: False
 
 outputs:
   - id: filtered_skymodel_true_sky

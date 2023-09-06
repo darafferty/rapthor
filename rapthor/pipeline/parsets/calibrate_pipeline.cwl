@@ -465,7 +465,7 @@ inputs:
       calibration (length = n_obs * n_freq_chunks).
     type: int[]
 
-   - id: nchan_fulljones
+  - id: nchan_fulljones
     label: Number of channels of each chunk for full-Jones solve
     doc: |
       The number of channels for each frequency chunk used in the full-Jones

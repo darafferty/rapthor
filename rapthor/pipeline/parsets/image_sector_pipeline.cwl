@@ -720,6 +720,8 @@ steps:
         source: threshpix
       - id: beamMS
         source: obs_filename
+      - id: ncores
+        source: max_cores
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
