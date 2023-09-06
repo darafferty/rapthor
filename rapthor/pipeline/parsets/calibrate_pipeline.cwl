@@ -493,6 +493,13 @@ inputs:
       solve (length = 1).
     type: float
 
+  - id: output_h5parm_fulljones
+    label: Full-Jones solve output solution table
+    doc: |
+      The filename of the output h5parm solution table for the full-Jones
+      gain solve (length = n_obs * n_freq_chunks).
+    type: string[]
+
   - id: combined_h5parms_fast_slow_final
     label: Combined output solution table
     doc: |
