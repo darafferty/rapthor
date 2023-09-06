@@ -761,7 +761,7 @@ steps:
     doc: |
       This step processes the joint slow-gain solutions, flagging, smoothing and
       renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow_gains_joint/outh5parm
@@ -904,7 +904,7 @@ steps:
     doc: |
       This step processes the gain solutions from the separate solve, flagging,
       smoothing and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: slowh5parm
         source: combine_slow_gains_separate/outh5parm
@@ -958,7 +958,7 @@ steps:
     doc: |
       This step processes the combined amplitude solutions from
       combine_joint_and_separate_slow_h5parms, flagging and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
       - id: slowh5parm
 {% if do_joint_solve %}
@@ -1150,6 +1150,30 @@ steps:
     out:
       - id: outh5parm
 
+  - id: process_fulljones_gains
+    label: Normalize full-Jones amplitudes
+    doc: |
+      This step processes the combined amplitude solutions from
+      combine_fulljones_gains, flagging and renormalizing them.
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
+    in:
+      - id: slowh5parm
+        source: combine_fulljones_gains/outh5parm
+      - id: flag
+        valueFrom: 'True'
+      - id: smooth
+        valueFrom: 'False'
+      - id: max_station_delta
+        source: max_normalization_delta
+      - id: scale_station_delta
+        source: scale_normalization_delta
+      - id: phase_center_ra
+        source: phase_center_ra
+      - id: phase_center_dec
+        source: phase_center_dec
+    out:
+      - id: outh5parm
+
   - id: plot_fulljones_amp_solutions
     label: Plot full-Jones amplitude solutions
     doc: |
@@ -1157,7 +1181,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: combine_fulljones_gains/outh5parm
+        source: process_fulljones_gains/outh5parm
       - id: soltype
         valueFrom: 'amplitude'
     out:
@@ -1170,7 +1194,7 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/plot_solutions.cwl
     in:
       - id: h5parm
-        source: combine_fulljones_gains/outh5parm
+        source: process_fulljones_gains/outh5parm
       - id: soltype
         valueFrom: 'phase'
     out:
@@ -1187,7 +1211,7 @@ steps:
       - id: inh5parm1
         source: adjust_h5parm_sources/adjustedh5parm
       - id: inh5parm2
-        source: solve_fulljones_gains/fulljonesh5parm
+        source: process_fulljones_gains/outh5parm
       - id: outh5parm
         source: combined_h5parms
       - id: mode

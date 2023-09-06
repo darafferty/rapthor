@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: CommandLineTool
-baseCommand: [process_slow_gains.py]
+baseCommand: [process_gains.py]
 label: Process slow gain solutions
 doc: |
   This tool processes the slow-gain solutions, smoothing, flagging, and normalizing
