@@ -1336,6 +1336,12 @@ class Field(object):
             self.peel_outliers = False
             self.imaged_sources_only = True  # No outliers means all sources are imaged
 
+        # Check whether full-Jones solve is to be done. It is only done if it has
+        # been activated in the strategy and the slow-gain solve has also been
+        # activated
+        if self.do_fulljones_solve and not self.do_slowgain_solve:
+            self.do_fulljones_solve = False
+
         # Determine whether a predict step is needed or not. It's needed when:
         # - there are two or more imaging sectors
         # - there are one or more outlier sectors (whether or not the outliers will

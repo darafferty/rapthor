@@ -33,10 +33,6 @@ class Calibrate(Operation):
             do_joint_solve = True
         else:
             do_joint_solve = False
-        if self.field.do_slowgain_solve and self.field.parset['calibration_specific']['fulljones_timestep_sec'] > 0:
-            do_fulljones_solve = True
-        else:
-            do_fulljones_solve = False
         if self.field.dde_method == 'facets':
             use_facets = True
         else:
@@ -46,7 +42,7 @@ class Calibrate(Operation):
                              'use_facets': use_facets,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
-                             'do_fulljones_solve': do_fulljones_solve,
+                             'do_fulljones_solve': self.field.do_fulljones_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
