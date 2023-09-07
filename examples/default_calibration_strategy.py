@@ -61,23 +61,28 @@ for i in range(max_selfcal_loops):
     # minimum flux density for sources to be used as calibrators as selfcal
     # proceeds. For each cycle, we set a maximum allowed number of calibrators
     # (directions) to ensure that the resource requirements and runtimes don't
-    # grow unnecessarily large
+    # grow unnecessarily large. We also limit the distance from the phase center
+    # that calibrators can have to exclude distant sources
     if i == 0:
         strategy_steps[i]['target_flux'] = 0.6
         strategy_steps[i]['max_nmiter'] = 8
         strategy_steps[i]['max_directions'] = 20
+        strategy_steps[i]['max_distance'] = 3.0
     elif i == 1:
         strategy_steps[i]['target_flux'] = 0.4
         strategy_steps[i]['max_nmiter'] = 9
         strategy_steps[i]['max_directions'] = 30
+        strategy_steps[i]['max_distance'] = 3.0
     elif i == 2:
         strategy_steps[i]['target_flux'] = 0.3
         strategy_steps[i]['max_nmiter'] = 10
         strategy_steps[i]['max_directions'] = 40
+        strategy_steps[i]['max_distance'] = 3.5
     else:
         strategy_steps[i]['target_flux'] = 0.25
         strategy_steps[i]['max_nmiter'] = 12
         strategy_steps[i]['max_directions'] = 50
+        strategy_steps[i]['max_distance'] = 4.0
     strategy_steps[i]['regroup_model'] = True
 
     # Here we specify that the convergence/divergence checks are done only when
