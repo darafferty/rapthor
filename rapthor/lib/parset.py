@@ -88,11 +88,6 @@ class Parset:
             assert self.required_options[section] <= self.allowed_options[section], \
             "%s <= %s" % (self.required_options[section], self.allowed_options[section])
 
-        print("allowed_options =", self.allowed_options)
-        print("allowed_sections =", self.allowed_sections)
-        print("required_options =", self.required_options)
-        print("required_sections =", self.required_sections)
-
         self.settings = Parset.__config_as_dict(self.__parser)
 
         if parset_file:
