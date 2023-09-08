@@ -48,6 +48,7 @@ tolerance = 5e-3
 parallelbaselines = False
 
 # The following items are missing in example parset
+sagecalpredict = False
 solverlbfgs_dof = 200.0
 solverlbfgs_iter = 4
 solverlbfgs_minibatches = 1
@@ -85,7 +86,7 @@ skip_corner_sectors = False
 cpus_per_task = 0
 mem_per_node_gb = 0
 batch_system = single_machine
-max_nodes = 12
+max_nodes = 0
 max_cores = 0
 max_threads = 0
 deconvolution_threads = 0
