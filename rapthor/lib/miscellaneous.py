@@ -50,7 +50,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
                           'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
                     'LOTSS': ''} # Server is empty since we handle this through LSMTool.
     if source.upper() not in SKY_SERVERS.keys():
-        raise ValueError('Unsupported sky model source specified! Please use TGSS or GSM.')
+        raise ValueError('Unsupported sky model source specified! Please use LOTSS, TGSS or GSM.')
 
     logger = logging.getLogger('rapthor:skymodel')
 
