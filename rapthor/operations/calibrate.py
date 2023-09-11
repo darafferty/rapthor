@@ -1,5 +1,5 @@
 """
-Module that holds the Calibrate class
+Module that holds the Calibrate classes
 """
 import os
 import logging
@@ -14,7 +14,7 @@ log = logging.getLogger('rapthor:calibrate')
 
 class Calibrate(Operation):
     """
-    Operation to calibrate the field
+    Operation to perform direction-dependent (DD) calibration of the field
     """
     def __init__(self, field, index):
         super(Calibrate, self).__init__(field, name='calibrate', index=index)
@@ -42,7 +42,6 @@ class Calibrate(Operation):
                              'use_facets': use_facets,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
-                             'do_fulljones_solve': self.field.do_fulljones_solve,
                              'use_scalarphase': self.field.use_scalarphase,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
@@ -67,31 +66,24 @@ class Calibrate(Operation):
         slow_ntimes_joint = self.field.get_obs_parameters('slow_ntimes_joint')
         slow_starttime_separate = self.field.get_obs_parameters('slow_starttime_separate')
         slow_ntimes_separate = self.field.get_obs_parameters('slow_ntimes_separate')
-        starttime_fulljones = self.field.get_obs_parameters('starttime_fulljones')
-        ntimes_fulljones = self.field.get_obs_parameters('ntimes_fulljones')
 
         # Get the filenames of the input files for each frequency chunk
         freqchunk_filename_joint = self.field.get_obs_parameters('freqchunk_filename_joint')
         freqchunk_filename_separate = self.field.get_obs_parameters('freqchunk_filename_separate')
-        freqchunk_filename_fulljones = self.field.get_obs_parameters('freqchunk_filename_fulljones')
 
         # Get the start channel and number of channels for the frequency chunks
         startchan_joint = self.field.get_obs_parameters('startchan_joint')
         nchan_joint = self.field.get_obs_parameters('nchan_joint')
         startchan_separate = self.field.get_obs_parameters('startchan_separate')
         nchan_separate = self.field.get_obs_parameters('nchan_separate')
-        startchan_fulljones = self.field.get_obs_parameters('startchan_fulljones')
-        nchan_fulljones = self.field.get_obs_parameters('nchan_fulljones')
 
         # Get the solution intervals for the calibrations
         solint_fast_timestep = self.field.get_obs_parameters('solint_fast_timestep')
         solint_slow_timestep_joint = self.field.get_obs_parameters('solint_slow_timestep_joint')
         solint_slow_timestep_separate = self.field.get_obs_parameters('solint_slow_timestep_separate')
-        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
         solint_fast_freqstep = self.field.get_obs_parameters('solint_fast_freqstep')
         solint_slow_freqstep_joint = self.field.get_obs_parameters('solint_slow_freqstep_joint')
         solint_slow_freqstep_separate = self.field.get_obs_parameters('solint_slow_freqstep_separate')
-        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
@@ -103,11 +95,8 @@ class Calibrate(Operation):
         self.combined_h5parms = 'combined_solutions.h5'
         output_slow_h5parm_separate = ['slow_gain_separate_{}.h5parm'.format(i)
                                        for i in range(self.field.nfreqchunks_separate)]
-        output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
-                                   for i in range(self.field.nfreqchunks_separate)]
         combined_slow_h5parm_joint = 'slow_gains_joint.h5parm'
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
-        combined_h5parm_fulljones = 'fulljones_gains.h5'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
         combined_h5parms_fast_slow_final = 'combined_solutions_fast_slow_final.h5'
@@ -117,7 +106,6 @@ class Calibrate(Operation):
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
-        directions_fulljones = '[[{}]]'.format(','.join(calibrator_patch_names))
         calibrator_fluxes = self.field.calibrator_fluxes
 
         # Set the constraints used in the calibrations
@@ -126,7 +114,6 @@ class Calibrate(Operation):
         fast_smoothnessrefdistance = self.field.fast_smoothnessrefdistance
         slow_smoothnessconstraint_joint = self.field.slow_smoothnessconstraint_joint
         slow_smoothnessconstraint_separate = self.field.slow_smoothnessconstraint_separate
-        smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
         if self.field.do_slowgain_solve or self.field.antenna == 'LBA':
             # Use the core stationconstraint if the slow solves will be done or if
             # we have LBA data (which has lower sensitivity than HBA data)
@@ -179,7 +166,6 @@ class Calibrate(Operation):
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
                             'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
-                            'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
                             'starttime': starttime,
                             'ntimes': ntimes,
                             'slow_starttime_joint': slow_starttime_joint,
@@ -190,33 +176,24 @@ class Calibrate(Operation):
                             'startchan_separate': startchan_separate,
                             'nchan_joint': nchan_joint,
                             'nchan_separate': nchan_separate,
-                            'starttime_fulljones': starttime_fulljones,
-                            'ntimes_fulljones': ntimes_fulljones,
-                            'startchan_fulljones': startchan_fulljones,
-                            'nchan_fulljones': nchan_fulljones,
                             'solint_fast_timestep': solint_fast_timestep,
                             'solint_slow_timestep_joint': solint_slow_timestep_joint,
                             'solint_slow_timestep_separate': solint_slow_timestep_separate,
-                            'solint_fulljones_timestep': solint_fulljones_timestep,
                             'solint_fast_freqstep': solint_fast_freqstep,
                             'solint_slow_freqstep_joint': solint_slow_freqstep_joint,
                             'solint_slow_freqstep_separate': solint_slow_freqstep_separate,
-                            'solint_fulljones_freqstep': solint_fulljones_freqstep,
                             'calibrator_patch_names': calibrator_patch_names,
-                            'directions_fulljones': directions_fulljones,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,
                             'combined_fast_h5parm': self.combined_fast_h5parm,
                             'output_slow_h5parm_joint': output_slow_h5parm_joint,
                             'output_slow_h5parm_separate': output_slow_h5parm_separate,
-                            'output_h5parm_fulljones': output_h5parm_fulljones,
                             'calibration_skymodel_file': CWLFile(calibration_skymodel_file).to_json(),
                             'fast_smoothnessconstraint': fast_smoothnessconstraint,
                             'fast_smoothnessreffrequency': fast_smoothnessreffrequency,
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
-                            'smoothnessconstraint_fulljones': smoothnessconstraint_fulljones,
                             'max_normalization_delta': max_normalization_delta,
                             'scale_normalization_delta': scale_normalization_delta,
                             'phase_center_ra': self.field.ra,
@@ -241,7 +218,6 @@ class Calibrate(Operation):
                             'slow_antennaconstraint': slow_antennaconstraint,
                             'combined_slow_h5parm_joint': combined_slow_h5parm_joint,
                             'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
-                            'combined_h5parm_fulljones': combined_h5parm_fulljones,
                             'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                             'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
                             'combined_h5parms_fast_slow_final': combined_h5parms_fast_slow_final,
@@ -333,6 +309,130 @@ class Calibrate(Operation):
                                                 for af in self.field.aterm_image_filenames]
 
         # Copy the solutions (h5parm files) and report the flagged fraction
+        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
+        misc.create_directory(dst_dir)
+        self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
+        if os.path.exists(self.field.h5parm_filename):
+            os.remove(self.field.h5parm_filename)
+        if self.field.do_slowgain_solve:
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
+                        os.path.join(dst_dir, self.field.h5parm_filename))
+        else:
+            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
+                        os.path.join(dst_dir, self.field.h5parm_filename))
+        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
+        self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
+
+        # Copy the plots (PNG files)
+        dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
+        misc.create_directory(dst_dir)
+        plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
+        for plot_filename in plot_filenames:
+            dst_filename = os.path.join(dst_dir, os.path.basename(plot_filename))
+            if os.path.exists(dst_filename):
+                os.remove(dst_filename)
+            shutil.copy(plot_filename, dst_filename)
+
+        # Finally call finalize() in the parent class
+        super().finalize()
+
+
+class CalibrateDI(Operation):
+    """
+    Operation to perform direction-independent (DI) calibration of the field
+    """
+    def __init__(self, field, index):
+        super(Calibrate, self).__init__(field, name='calibrate_di', index=index)
+
+    def set_parset_parameters(self):
+        """
+        Define parameters needed for the CWL workflow template
+        """
+        if self.batch_system == 'slurm':
+            # For some reason, setting coresMax ResourceRequirement hints does
+            # not work with SLURM
+            max_cores = None
+        else:
+            max_cores = self.field.parset['cluster_specific']['max_cores']
+        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'do_fulljones_solve': self.field.do_fulljones_solve,
+                             'max_cores': max_cores}
+
+    def set_input_parameters(self):
+        """
+        Define the CWL workflow inputs
+        """
+        # First set the calibration parameters for each observation
+        self.field.set_obs_parameters()
+
+        # Next, get the various parameters needed by the workflow
+        #
+        # Get the start times and number of times for the time chunks (fast and slow
+        # calibration)
+        starttime_fulljones = self.field.get_obs_parameters('starttime_fulljones')
+        ntimes_fulljones = self.field.get_obs_parameters('ntimes_fulljones')
+
+        # Get the filenames of the input files for each frequency chunk
+        freqchunk_filename_fulljones = self.field.get_obs_parameters('freqchunk_filename_fulljones')
+
+        # Get the start channel and number of channels for the frequency chunks
+        startchan_fulljones = self.field.get_obs_parameters('startchan_fulljones')
+        nchan_fulljones = self.field.get_obs_parameters('nchan_fulljones')
+
+        # Get the solution intervals for the calibrations
+        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
+        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
+
+        # Define various output filenames for the solution tables. We save some
+        # as attributes since they are needed in finalize()
+        output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
+                                   for i in range(self.field.nfreqchunks_separate)]
+        combined_h5parm_fulljones = 'fulljones_gains.h5'
+
+        # Set the constraints used in the calibrations
+        smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
+        max_normalization_delta = self.field.max_normalization_delta
+
+        # Get various DDECal solver parameters
+        llssolver = self.field.llssolver
+        maxiter = self.field.maxiter
+        propagatesolutions = self.field.propagatesolutions
+        solveralgorithm = self.field.solveralgorithm
+        stepsize = self.field.stepsize
+        tolerance = self.field.tolerance
+        uvlambdamin = self.field.solve_min_uv_lambda
+        solverlbfgs_dof = self.field.solverlbfgs_dof
+        solverlbfgs_iter = self.field.solverlbfgs_iter
+        solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
+
+        self.input_parms = {'freqchunk_filename_fulljones': CWLDir(freqchunk_filename_fulljones).to_json(),
+                            'starttime_fulljones': starttime_fulljones,
+                            'ntimes_fulljones': ntimes_fulljones,
+                            'startchan_fulljones': startchan_fulljones,
+                            'nchan_fulljones': nchan_fulljones,
+                            'solint_fulljones_timestep': solint_fulljones_timestep,
+                            'solint_fulljones_freqstep': solint_fulljones_freqstep,
+                            'output_h5parm_fulljones': output_h5parm_fulljones,
+                            'combined_h5parm_fulljones': combined_h5parm_fulljones,
+                            'smoothnessconstraint_fulljones': smoothnessconstraint_fulljones,
+                            'max_normalization_delta': max_normalization_delta,
+                            'llssolver': llssolver,
+                            'maxiter': maxiter,
+                            'propagatesolutions': propagatesolutions,
+                            'solveralgorithm': solveralgorithm,
+                            'stepsize': stepsize,
+                            'tolerance': tolerance,
+                            'uvlambdamin': uvlambdamin,
+                            'solverlbfgs_dof': solverlbfgs_dof,
+                            'solverlbfgs_iter': solverlbfgs_iter,
+                            'solverlbfgs_minibatches': solverlbfgs_minibatches,
+                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+
+    def finalize(self):
+        """
+        Finalize this operation
+        """
+        # Copy the solutions (h5parm file) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
         self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')

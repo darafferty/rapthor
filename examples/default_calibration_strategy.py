@@ -25,12 +25,15 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['do_calibrate'] = True
     if i == 0:
         strategy_steps[i]['do_slowgain_solve'] = False
+        strategy_steps[i]['do_fulljones_solve'] = False
         strategy_steps[i]['peel_outliers'] = True
     elif i == 1:
         strategy_steps[i]['do_slowgain_solve'] = False
+        strategy_steps[i]['do_fulljones_solve'] = False
         strategy_steps[i]['peel_outliers'] = False
     else:
         strategy_steps[i]['do_slowgain_solve'] = True
+        strategy_steps[i]['do_fulljones_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
     if i == 2:
         strategy_steps[i]['solve_min_uv_lambda'] = 2000

@@ -12,14 +12,15 @@ import time
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from astropy.io import fits as pyfits
+from astropy.time import Time
 from PIL import Image, ImageDraw
 import multiprocessing
 from math import modf, floor, ceil
 from losoto.h5parm import h5parm
 import lsmtool
-import sys
 from scipy.interpolate import interp1d
 from rapthor.lib.observation import Observation
+import dateutil.parser
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
@@ -552,6 +553,56 @@ def dec2ddmmss(deg):
     sa = x*60
 
     return (int(dd), int(ma), sa, sign)
+
+
+def convert_mjd2mvt(mjd_sec):
+    """
+    Converts MJD to casacore MVTime
+
+    Parameters
+    ----------
+    mjd_sec : float
+        MJD time in seconds
+
+    Returns
+    -------
+    mvtime : str
+        Casacore MVTime string
+    """
+    t = Time(mjd_sec / 3600 / 24, format='mjd', scale='utc')
+    date, hour = t.iso.split(' ')
+    year, month, day = date.split('-')
+    d = t.datetime
+    month = d.ctime().split(' ')[1]
+
+    return '{0}{1}{2}/{3}'.format(day, month, year, hour)
+
+
+def convert_mvt2mjd(mvt_str):
+    """
+    Converts casacore MVTime to MJD
+
+    Parameters
+    ----------
+    mvt_str : str
+        MVTime time
+
+    Returns
+    -------
+    mjdtime : float
+        MJD time in seconds
+    """
+    day_str = mvt_str.split('/')[0].lower()
+    months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+              'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
+    for m in months:
+        if m in day_str:
+            p = day_str.split(m)
+            day_str = '{0}.{1}.{2}'.format(p[1], months[m], p[0])
+    time_str = mvt_str.split('/')[1]
+    t = dateutil.parser.parse('{0}/{1}'.format(day_str, time_str))
+
+    return Time(t).mjd * 3600 * 24
 
 
 def get_reference_station(soltab, max_ind=None):

@@ -44,6 +44,9 @@ The following processing parameters must be set for each cycle:
     do_slowgain_solve
         Boolean flag that determines whether the slow-gain part of calibration should be done for this cycle.
 
+    do_fulljones_solve
+        Boolean flag that determines whether the direction-independent full-Jones part of calibration should be done for this cycle.
+
     peel_outliers
         Boolean flag that determines whether the outlier sources (sources that lie outside of any imaging sector region) should be peeled for this cycle. Outliers can only be peeled once (unlike bright sources, see below), as they are not added back for subsequent selfcal cycles. Note that, because they are not imaged, outlier source models do not change during self calibration: however, the solutions they receive may change. To include one or more outlier sources in self calibration, a small imaging sector can be placed on each outlier of interest. The outliers will than be imaging and its model updated with the rest of the field.
 

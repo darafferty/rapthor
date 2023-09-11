@@ -58,6 +58,7 @@ class Sector(object):
         self.image_skymodel_file_true_sky = None  # set by the Image operation
         self.is_outlier = False
         self.is_bright_source = False
+        self.is_predict = False
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the workflows
         self.diagnostics = []  # list to hold dicts of image diagnostics

@@ -15,7 +15,7 @@ import rtree.index
 import glob
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 
 class Field(object):
@@ -764,6 +764,10 @@ class Field(object):
         # not imaged; they are only used in prediction and subtraction
         self.define_outlier_sectors(index)
 
+        # Make predict sectors containing all calibration sources. These sectors are
+        # not imaged; they are only used in prediction for direction-independent solves
+        self.define_predict_sectors(index)
+
         # Finally, make a list containing all sectors
         self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
         self.nsectors = len(self.sectors)
@@ -1032,6 +1036,35 @@ class Field(object):
                     bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
                     bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
+
+    def define_predict_sectors(self, index):
+        """
+        Defines the predict sectors
+
+        Parameters
+        ----------
+        index : int
+            Iteration index
+        """
+        self.predict_sectors = []
+        predict_skymodel = self.calibration_skymodel
+        nsources = len(predict_skymodel)
+        if nsources > 0:
+            # Choose number of sectors to be the no more than ten, but don't allow
+            # fewer than 100 sources per sector if possible
+            nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+            for i in range(nnodes):
+                predict_sector = Sector('predict_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                predict_sector.is_predict = True
+                predict_sector.predict_skymodel = predict_skymodel.copy()
+                startind = i * int(nsources/nnodes)
+                if i == nnodes-1:
+                    endind = nsources
+                else:
+                    endind = startind + int(nsources/nnodes)
+                predict_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                predict_sector.make_skymodel(index)
+                self.predict_sectors.append(predict_sector)
 
     def find_intersecting_sources(self):
         """
@@ -1361,12 +1394,6 @@ class Field(object):
         if nr_outlier_sectors == 0:
             self.peel_outliers = False
             self.imaged_sources_only = True  # No outliers means all sources are imaged
-
-        # Check whether full-Jones solve is to be done. It is only done if it has
-        # been activated in the strategy and the slow-gain solve has also been
-        # activated
-        if self.do_fulljones_solve and not self.do_slowgain_solve:
-            self.do_fulljones_solve = False
 
         # Determine whether a predict step is needed or not. It's needed when:
         # - there are two or more imaging sectors

@@ -20,6 +20,7 @@ for i in range(max_selfcal_loops):
     # starting sky model is of high quality.
     strategy_steps[i]['do_calibrate'] = True
     strategy_steps[i]['do_slowgain_solve'] = True
+    strategy_steps[i]['do_fulljones_solve'] = True
     if i == 0:
         strategy_steps[i]['peel_outliers'] = True
     else:

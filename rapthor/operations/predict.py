@@ -1,5 +1,5 @@
 """
-Module that holds the Predict class
+Module that holds the Predict classes
 """
 import os
 import logging
@@ -103,7 +103,7 @@ class Predict(Operation):
                             'min_uv_lambda': min_uv_lambda,
                             'max_uv_lambda': max_uv_lambda,
                             'onebeamperpatch': onebeamperpatch,
-                            'sagecalpredict' : sagecalpredict,
+                            'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),
                             'obs_starttime': obs_starttime,
                             'obs_infix': obs_infix,
@@ -157,6 +157,98 @@ class Predict(Operation):
             for sector in self.field.sectors:
                 for obs in sector.observations:
                     obs.ms_imaging_filename = obs.ms_filename
+
+        # Finally call finalize() in the parent class
+        super().finalize()
+
+
+class PredictDI(Operation):
+    """
+    Operation to predict model data for direction-independent calibration
+    """
+    def __init__(self, field, index):
+        super(Predict, self).__init__(field, name='predict_di', index=index)
+
+    def set_parset_parameters(self):
+        """
+        Define parameters needed for the CWL workflow template
+        """
+        if self.batch_system == 'slurm':
+            # For some reason, setting coresMax ResourceRequirement hints does
+            # not work with SLURM
+            max_cores = None
+        else:
+            max_cores = self.field.parset['cluster_specific']['max_cores']
+        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'max_cores': max_cores,
+                             'do_slowgain_solve': self.field.do_slowgain_solve}
+
+    def set_input_parameters(self):
+        """
+        Define the CWL workflow inputs
+        """
+        # Make list of sectors for which prediction needs to be done. For the
+        # direction-independent calibration that will use these model data, all
+        # sources need to be predicted. We use the predict sectors for this
+        # purpose
+        sectors = self.field.predict_sectors
+
+        # Set sector-dependent parameters (input and output filenames, patch names, etc.)
+        sector_skymodel = []
+        sector_filename = []
+        sector_starttime = []
+        sector_ntimes = []
+        sector_model_filename = []
+        sector_patches = []
+        for sector in sectors:
+            sector.set_prediction_parameters()
+            sector_skymodel.extend(
+                [sector.predict_skymodel_file] * len(self.field.observations)
+            )
+            sector_filename.extend(sector.get_obs_parameters('ms_filename'))
+            sector_model_filename.extend(
+                [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
+            )
+            sector_patches.extend(sector.get_obs_parameters('patch_names'))
+            sector_starttime.extend(sector.get_obs_parameters('predict_starttime'))
+            sector_ntimes.extend(sector.get_obs_parameters('predict_ntimes'))
+
+        # Set observation-specific parameters (input filenames, solution intervals, etc.)
+        obs_filename = []
+        obs_starttime = []
+        obs_infix = []
+        for obs in self.field.observations:
+            obs_filename.append(obs.ms_filename)
+            obs_starttime.append(obs.convert_mjd(obs.starttime))
+            obs_infix.append(obs.infix)
+
+        # Set other parameters
+        onebeamperpatch = self.field.onebeamperpatch
+        sagecalpredict = self.field.sagecalpredict
+
+        self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
+                            'sector_starttime': sector_starttime,
+                            'sector_ntimes': sector_ntimes,
+                            'sector_model_filename': sector_model_filename,
+                            'sector_skymodel': CWLFile(sector_skymodel).to_json(),
+                            'sector_patches': sector_patches,
+                            'h5parm': CWLFile(self.field.h5parm_filename).to_json(),
+                            'onebeamperpatch': onebeamperpatch,
+                            'sagecalpredict': sagecalpredict,
+                            'obs_filename': CWLDir(obs_filename).to_json(),
+                            'obs_starttime': obs_starttime,
+                            'obs_infix': obs_infix,
+                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+
+    def finalize(self):
+        """
+        Finalize this operation
+        """
+        # Set the filenames of datasets used for direction-independent calibration
+        for sector in self.field.sectors:
+            for obs in sector.observations:
+                obs.ms_predict_di_filename = os.path.join(self.pipeline_working_dir,
+                                                          obs.ms_predict_di)
 
         # Finally call finalize() in the parent class
         super().finalize()

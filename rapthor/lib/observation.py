@@ -29,6 +29,7 @@ class Observation(object):
     """
     def __init__(self, ms_filename, starttime=None, endtime=None):
         self.ms_filename = str(ms_filename)
+        self.ms_predict_di_filename = None
         self.name = os.path.basename(self.ms_filename)
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.starttime = starttime
@@ -288,7 +289,7 @@ class Observation(object):
             infix = ''
         self.log.debug('Using {0} frequency chunk{1} for the full-Jones gain '
                        'calibration'.format(self.nfreqchunks_separate, infix))
-        self.parameters['freqchunk_filename_fulljones'] = [self.ms_filename] * self.nfreqchunks_fulljones
+        self.parameters['freqchunk_filename_fulljones'] = [self.ms_predict_di_filename] * self.nfreqchunks_fulljones
         self.parameters['startchan_fulljones'] = [samplesperchunk * i for i in range(nchunks)]
         self.parameters['nchan_fulljones'] = [samplesperchunk] * nchunks
         self.parameters['nchan_fulljones'][-1] = 0  # set last entry to extend until end
@@ -342,6 +343,9 @@ class Observation(object):
 
         # The filename of the field data (after subtraction of outlier sources)
         self.ms_field = '{0}{1}_field'.format(root_filename, self.infix)
+
+        # The filename of the model data for direction-independent calibration
+        self.ms_predict_di = self.ms_subtracted_filename + '_di'
 
         # The sky model patch names
         self.parameters['patch_names'] = patch_names
