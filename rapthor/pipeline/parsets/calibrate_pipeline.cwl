@@ -435,11 +435,7 @@ inputs:
 outputs:
   - id: combined_solutions
     outputSource:
-{% if do_fulljones_solve %}
-      - combine_dd_and_fulljones_h5parms/combinedh5parm
-{% else %}
       - adjust_h5parm_sources/adjustedh5parm
-{% endif %}
     type: File
   - id: fast_phase_plots
     outputSource:
@@ -459,14 +455,6 @@ outputs:
   - id: slow_amp_plots
     outputSource:
       - plot_slow_amp_solutions/plots
-    type: File[]
-  - id: fulljones_phase_plots
-    outputSource:
-      - plot_fulljones_phase_solutions/plots
-    type: File[]
-  - id: fulljones_amp_plots
-    outputSource:
-      - plot_fulljones_amp_solutions/plots
     type: File[]
 {% endif %}
 
