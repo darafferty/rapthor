@@ -427,6 +427,12 @@ inputs:
       second (separate) slow-gain solves (length = 1).
     type: string
 
+  - id: combined_h5parms_fast_slow_final
+    label: Combined output solution table
+    doc: |
+      The filename of the output combined h5parm solution table for the fast solve plus
+      all slow-gain solves (length = 1).
+    type: string
 
 {% endif %}
 # end do_slowgain_solve
