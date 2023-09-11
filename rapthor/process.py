@@ -54,7 +54,7 @@ def run(parset_file, logging_level='info'):
             op.run()
 
             # Calibrate (direction-independent)
-            if field.do_fulljones_sove:
+            if field.do_fulljones_solve:
                 op = PredictDI(field, index+1)
                 op.run()
                 op = CalibrateDI(field, index+1)
@@ -116,7 +116,7 @@ def run(parset_file, logging_level='info'):
             op.run()
 
             # Calibrate (direction-independent)
-            if field.do_fulljones_sove:
+            if field.do_fulljones_solve:
                 op = PredictDI(field, index+2)
                 op.run()
                 op = CalibrateDI(field, index+2)
