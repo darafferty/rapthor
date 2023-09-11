@@ -769,7 +769,8 @@ class Field(object):
         self.define_predict_sectors(index)
 
         # Finally, make a list containing all sectors
-        self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
+        self.sectors = (self.imaging_sectors + self.outlier_sectors +
+                        self.bright_source_sectors + self.predict_sectors)
         self.nsectors = len(self.sectors)
 
     def remove_skymodels(self):

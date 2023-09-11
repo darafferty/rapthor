@@ -267,9 +267,9 @@ class Sector(object):
             skymodel = lsmtool.load(str(self.predict_skymodel_file))
         else:
             # If sky model does not already exist, make it
-            if self.is_outlier or self.is_bright_source:
-                # For outlier and bright-source sectors, we use the sky model made earlier,
-                # with no filtering
+            if self.is_outlier or self.is_bright_source or self.is_predict:
+                # For outlier, bright-source, and predict sectors, we use the sky model
+                # made earlier, with no filtering
                 skymodel = self.predict_skymodel
             else:
                 # For imaging sectors, we use the full calibration sky model and filter it
@@ -279,7 +279,10 @@ class Sector(object):
 
             # Remove the bright sources from the sky model if they will be predicted and
             # subtracted separately (so that they aren't subtracted twice)
-            if self.field.peel_bright_sources and not self.is_outlier and not self.is_bright_source:
+            if (self.field.peel_bright_sources and
+                not self.is_outlier and
+                not self.is_bright_source and
+                not self.is_predict):
                 source_names = skymodel.getColValues('Name')
                 bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
                 matching_ind = []
@@ -314,7 +317,7 @@ class Sector(object):
         self.patches = ['[{}]'.format(p) for p in skymodel.getPatchNames()]
 
         # Find nearest patch to flux-weighted center of the sector sky model
-        if not self.is_outlier and not self.is_bright_source:
+        if not self.is_outlier and not self.is_bright_source and not self.is_predict:
             tmp_skymodel = skymodel.copy()
             tmp_skymodel.group('single')
             ra, dec = tmp_skymodel.getPatchPositions(method='wmean', asArray=True)
