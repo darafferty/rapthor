@@ -168,7 +168,7 @@ steps:
     label: Add the model uv data
     doc: |
       This step adds sector model uv data to the input MS files.
-    run: {{ rapthor_pipeline_dir }}/steps/subtract_sector_models.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/add_sector_models.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
