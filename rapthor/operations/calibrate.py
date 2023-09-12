@@ -220,7 +220,6 @@ class Calibrate(Operation):
                             'combined_slow_h5parm_separate': combined_slow_h5parm_separate,
                             'combined_h5parms_fast_slow_joint': combined_h5parms_fast_slow_joint,
                             'combined_h5parms_slow_joint_separate': combined_h5parms_slow_joint_separate,
-                            'combined_h5parms_fast_slow_final': combined_h5parms_fast_slow_final,
                             'solverlbfgs_dof': solverlbfgs_dof,
                             'solverlbfgs_iter': solverlbfgs_iter,
                             'solverlbfgs_minibatches': solverlbfgs_minibatches,
