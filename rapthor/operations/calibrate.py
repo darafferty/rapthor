@@ -341,7 +341,7 @@ class CalibrateDI(Operation):
     Operation to perform direction-independent (DI) calibration of the field
     """
     def __init__(self, field, index):
-        super(Calibrate, self).__init__(field, name='calibrate_di', index=index)
+        super(CalibrateDI, self).__init__(field, name='calibrate_di', index=index)
 
     def set_parset_parameters(self):
         """

@@ -167,7 +167,7 @@ class PredictDI(Operation):
     Operation to predict model data for direction-independent calibration
     """
     def __init__(self, field, index):
-        super(Predict, self).__init__(field, name='predict_di', index=index)
+        super(PredictDI, self).__init__(field, name='predict_di', index=index)
 
     def set_parset_parameters(self):
         """
