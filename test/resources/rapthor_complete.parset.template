@@ -1,6 +1,6 @@
 [global]
-dir_working = .
-input_ms = dummy.ms
+dir_working = ${dir_working}
+input_ms = ${input_ms}
 download_initial_skymodel = True
 download_initial_skymodel_radius = 3.0
 download_initial_skymodel_server = GSM

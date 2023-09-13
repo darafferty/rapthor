@@ -97,18 +97,18 @@ class Parset:
     def __config_as_dict(parser):
         """
         Return the current configuration as dictionary. The key is the section name,
-        and the value is a dictionary of the options in the given section. 
+        and the value is a dictionary of the options in the given section.
         Option values are cast to their proper type, if possible.
 
         Parameters
         ----------
         parser: configparser.ConfigParser
             Configuration parser used to read a parset-file.
-            
+
         Returns
         -------
         settings: dict
-            Dictionary of the configuration: key is the section name, value is a 
+            Dictionary of the configuration: key is the section name, value is a
             dictionary of the options in the given section.
         """
         settings = dict()
@@ -147,7 +147,7 @@ class Parset:
             sect: given_options[sect] - self.allowed_options[sect]
             for sect in self.allowed_sections
         }
-        
+
         # Check for missing required options.
         # NOTE: This will raise on the first section with missing required options.
         # Hence, if there are multiple sections with missing required options, not all
@@ -157,7 +157,7 @@ class Parset:
             if options:
                 raise ValueError(
                     "Missing required option(s) in section [{}]: {}".format(
-                        section, 
+                        section,
                         ", ".join("'{}'".format(opt) for opt in options)
                     )
                 )
@@ -166,14 +166,14 @@ class Parset:
         for section in invalid_sections:
             self.__parser.remove_section(section)
             log.warning("Section [%s] is invalid", section)
-            
+
         # Check for invalid options
         for section in invalid_options:
             for option in invalid_options[section]:
                 self.__parser.remove_option(section, option)
                 log.warning("Option '%s' in section [%s] is invalid", option, section)
-        
-                
+
+
     def __check_and_adjust(self, settings):
         """
         Check for specific constraints on the option values in `settings`.
@@ -232,7 +232,7 @@ class Parset:
                 "slow_timestep_joint_sec"
             )
             options["slow_timestep_separate_sec"] = options["slow_timestep_joint_sec"]
-            
+
         # Imaging options
         options = settings["imaging"]
 
@@ -264,7 +264,7 @@ class Parset:
             raise ValueError(
                 "The option 'dd_psf_grid' must be a list of length 2 (e.g. '[3, 3]')"
             )
-            
+
         # Cluster options
         options = settings["cluster"]
 
@@ -302,14 +302,14 @@ class Parset:
         """
         Read the contents of `parset_file`. The format of this file is often referred to
         as parset format in the context of Rapthor, but is actually in the well-known
-        Windows INI-format. A check is made for missing required sections and options. 
+        Windows INI-format. A check is made for missing required sections and options.
         Given options values are checked against possible constraints.
 
         Parameters
         ----------
         parset_file: str
             Name of the parset file
-            
+
         Returns
         -------
         settings: dict
@@ -348,11 +348,11 @@ class Parset:
         section names (like [imaging]), get a post-fix '_specific'.
         """
         parset = self.settings["global"]
-        for section in self.settings: 
-            if section != "global": 
+        for section in self.settings:
+            if section != "global":
                 parset[section + "_specific"] = self.settings[section]
         return parset
-    
+
 
 def parset_read(parset_file, use_log_file=True, skip_cluster=False):
     """

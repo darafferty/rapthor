@@ -2,116 +2,177 @@ import unittest
 import os
 import ast
 import mock
-from rapthor.lib.parset import parset_read
-
+import re
+import string
+import tempfile
+import textwrap
+from rapthor.lib.parset import Parset, parset_read
 
 class TestParset(unittest.TestCase):
+    """
+    """
 
     @classmethod
-    def setUpClass(self):
-        self.parset_missing_parameter = 'missing_parameter.txt'
-        with open(self.parset_missing_parameter, 'w') as f:
-            f.write("""
-                    [global]
-                    dir_working = .
-                    # input_ms = /data/ms/*.ms  # missing required parameter
-                    """)
+    def setUpClass(cls):
+        # Create dummy MS, an empty directory suffices
+        cls.input_ms = tempfile.TemporaryDirectory(suffix=".ms")
 
-        self.parset_misspelled_parameter = 'misspelled_parameter.txt'
-        with open(self.parset_misspelled_parameter, 'w') as f:
-            f.write("""
-                    [global]
-                    dir_working = .
-                    input_ms = /data/ms/*.ms
-
-                    [imaging]
-                    dd_method = facets  # misspelled optional parameter
-                    """)
-
-        self.parset_missing_section = 'missing_section.txt'
-        with open(self.parset_missing_section, 'w') as f:
-            f.write("""
-                    # [global]  # missing required section
-                    dir_working = .
-                    input_ms = /data/ms/*.ms
-
-                    [imaging]
-                    dde_method = facets
-                    """)
-
-        self.parset_misspelled_section = 'misspelled_section.txt'
-        with open(self.parset_misspelled_section, 'w') as f:
-            f.write("""
-                    [global]
-                    dir_working = .
-                    input_ms = /data/ms/*.ms
-
-                    [imging]  # misspelled optional section
-                    dde_method = facets
-                    """)
-
-        os.mkdir('dummy.ms')
+        # Create an empty working directory
+        cls.dir_working = tempfile.TemporaryDirectory()
 
     @classmethod
-    def tearDownClass(self):
-        os.system('rm *.txt')
-        os.rmdir('dummy.ms')
+    def tearDownClass(cls):
+        cls.input_ms.cleanup()
+        cls.dir_working.cleanup()
 
+    def setUp(self):
+        self.parset = tempfile.NamedTemporaryFile(
+            suffix=".parset",
+            dir=self.dir_working.name,
+            delete=False,
+        )
+        with open(self.parset.name, "w") as f:
+            f.write(
+                textwrap.dedent(
+                    f"""
+                    [global]
+                    input_ms = {self.input_ms.name}
+                    dir_working = {self.dir_working.name}
+                    """
+                )
+            )
 
     def test_missing_parset_file(self):
-        self.assertRaises(FileNotFoundError, parset_read, 'this.parset.file.does.not.exist')
+        os.unlink(self.parset.name)
+        with self.assertRaises(FileNotFoundError):
+            parset_read(self.parset.name)
 
-    def test_missing_parameter(self):
-        # self.assertRaises(KeyError, parset_read, self.parset_missing_parameter)
-        self.assertRaisesRegex(ValueError, 
-            r"Missing required option\(s\) in section \[global\]:", 
-            parset_read, self.parset_missing_parameter
+    def test_empty_parset_file(self):
+        with open(self.parset.name, "w") as f:
+            pass
+        self.assertRaisesRegex(
+            ValueError,r"Missing required option\(s\) in section \[global\]:",
+            parset_read, self.parset.name
         )
 
-    def test_misspelled_parameter(self):
-        with self.assertLogs(logger='rapthor:parset', level='WARN') as cm:
-            try:
-                parset_read(self.parset_misspelled_parameter)
-            except FileNotFoundError:
-                # This is expected because the input MS file does not exist. We
-                # ignore it as it happens after the check for misspelled parameters
-                pass
-            self.assertEqual(cm.output, ["WARNING:rapthor:parset:Option 'dd_method' "
-                                         "in section [imaging] is invalid"])
-
-    def test_missing_section(self):
-        self.assertRaisesRegex(ValueError,
-            f"Parset file '{self.parset_missing_section}' could not be parsed correctly.",
-            parset_read, self.parset_missing_section
-        )
+    def test_minimal_parset(self):
+        parset_dict = parset_read(self.parset.name)
+        self.assertEqual(parset_dict["dir_working"], self.dir_working.name)
+        self.assertEqual(parset_dict["input_ms"], self.input_ms.name)
 
     def test_misspelled_section(self):
-        with self.assertLogs(logger='rapthor:parset', level='WARN') as cm:
-            try:
-                parset_read(self.parset_misspelled_section)
-            except FileNotFoundError:
-                # This is expected because the input MS file does not exist. We
-                # ignore it as it happens after the check for misspelled sections
-                pass
-            self.assertEqual(cm.output, ["WARNING:rapthor:parset:Section [imging] "
-                                         "is invalid"])
+        section = "misspelled_section"
+        with open(self.parset.name, "a") as f:
+            f.write(f"[{section}]")
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            parset_read(self.parset.name)
+            self.assertEqual(
+                cm.output,
+                [f"WARNING:rapthor:parset:Section [{section}] is invalid"]
+            )
+
+    def test_misspelled_option(self):
+        option = "misspelled_option"
+        with open(self.parset.name, "a") as f:
+            f.write(f"{option} = some value")
+        with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
+            parset_read(self.parset.name)
+            self.assertEqual(
+                cm.output,
+                [f"WARNING:rapthor:parset:Option '{option}' in section [global] "
+                 "is invalid"]
+            )
+
+    def test_fraction_out_of_range(self):
+        option = "selfcal_data_fraction"
+        value = 1.1
+        with open(self.parset.name, "a") as f:
+            f.write(f"{option} = {value}")
+        self.assertRaisesRegex(
+            ValueError,
+            f"The {option} parameter is {value}; it must be > 0 and <= 1",
+            parset_read, self.parset.name
+        )
+
+    def test_flag_selection_not_specified(self):
+        flag = "flag_baseline"
+        value = "[CS002HBA*]"
+        with open(self.parset.name, "a") as f:
+            f.write(f"{flag} = {value}\n")
+            f.write("flag_expr = flag_freqrange")
+        self.assertRaisesRegex(
+            ValueError,
+            f"Flag selection '{flag}' was specified but does not appear in 'flag_expr'",
+            parset_read, self.parset.name
+        )
+
+    def test_invalid_idg_mode(self):
+        option = "idg_mode"
+        value = "invalid"
+        with open(self.parset.name, "a") as f:
+            f.write("[imaging]\n")
+            f.write(f"{option} = {value}")
+        self.assertRaisesRegex(
+            ValueError, f"The option '{option}' must be one of",
+            parset_read, self.parset.name
+        )
+
+    def test_unequal_sector_list_lengths(self):
+        with open(self.parset.name, "a") as f:
+            f.write("[imaging]\n")
+            f.write("sector_center_ra_list = [1]")
+        self.assertRaisesRegex(
+            ValueError,
+            "The options .* must all have the same number of entries",
+            parset_read, self.parset.name
+        )
 
     # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
     @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
-    def test_minimal_parset(self, cpu_count):
+    def test_default_parset_contents(self, cpu_count):
         self.maxDiff = None
-        parset = parset_read('resources/rapthor_minimal.parset')
-        with open('resources/rapthor_minimal.parset.dict', 'r') as f:
-            ref_parset = ast.literal_eval(f.read())
+        with open(self.parset.name, "w") as f:
+            f.write(
+                string.Template(
+                    open("resources/rapthor_minimal.parset.template").read()
+                ).substitute(
+                    dir_working=self.dir_working.name,
+                    input_ms=self.input_ms.name
+                )
+            )
+        parset = parset_read(self.parset.name)
+        ref_parset = ast.literal_eval(
+            string.Template(
+                open("resources/rapthor_minimal.parset_dict.template").read()
+            ).substitute(
+                dir_working=self.dir_working.name,
+                input_ms=self.input_ms.name
+            )
+        )
         self.assertEqual(parset, ref_parset)
 
     # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
     @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
-    def test_complete_parset(self, cpu_count):
+    def test_complete_parset_contents(self, cpu_count):
         self.maxDiff = None
-        parset = parset_read('resources/rapthor_complete.parset')
-        with open('resources/rapthor_complete.parset.dict', 'r') as f:
-            ref_parset = ast.literal_eval(f.read())
+        with open(self.parset.name, "w") as f:
+            f.write(
+                string.Template(
+                    open("resources/rapthor_complete.parset.template").read()
+                ).substitute(
+                    dir_working=self.dir_working.name,
+                    input_ms=self.input_ms.name
+                )
+            )
+        parset = parset_read(self.parset.name)
+        ref_parset = ast.literal_eval(
+            string.Template(
+                open("resources/rapthor_complete.parset_dict.template").read()
+            ).substitute(
+                dir_working=self.dir_working.name,
+                input_ms=self.input_ms.name
+            )
+        )
         self.assertEqual(parset, ref_parset)
 
 
