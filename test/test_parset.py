@@ -1,15 +1,22 @@
-import unittest
-import os
+"""
+This module contains tests for the module `rapthor.lib.parset`
+"""
+
 import ast
 import mock
-import re
+import os
 import string
 import tempfile
 import textwrap
-from rapthor.lib.parset import Parset, parset_read
+import unittest
+from rapthor.lib.parset import parset_read
+
 
 class TestParset(unittest.TestCase):
     """
+    This class contains tests for the public function `parset_read` in the module
+    `rapthor.lib.parset`, which implicitly tests much of the `Parset` class in the same
+    module.
     """
 
     @classmethod
@@ -50,10 +57,10 @@ class TestParset(unittest.TestCase):
     def test_empty_parset_file(self):
         with open(self.parset.name, "w") as f:
             pass
-        self.assertRaisesRegex(
-            ValueError,r"Missing required option\(s\) in section \[global\]:",
-            parset_read, self.parset.name
-        )
+        with self.assertRaisesRegex(
+            ValueError, r"Missing required option\(s\) in section \[global\]:"
+        ):
+            parset_read(self.parset.name)
 
     def test_minimal_parset(self):
         parset_dict = parset_read(self.parset.name)
@@ -67,8 +74,7 @@ class TestParset(unittest.TestCase):
         with self.assertLogs(logger="rapthor:parset", level="WARN") as cm:
             parset_read(self.parset.name)
             self.assertEqual(
-                cm.output,
-                [f"WARNING:rapthor:parset:Section [{section}] is invalid"]
+                cm.output, [f"WARNING:rapthor:parset:Section [{section}] is invalid"]
             )
 
     def test_misspelled_option(self):
@@ -79,8 +85,9 @@ class TestParset(unittest.TestCase):
             parset_read(self.parset.name)
             self.assertEqual(
                 cm.output,
-                [f"WARNING:rapthor:parset:Option '{option}' in section [global] "
-                 "is invalid"]
+                [
+                    f"WARNING:rapthor:parset:Option '{option}' in section [global] is invalid"
+                ],
             )
 
     def test_fraction_out_of_range(self):
@@ -88,11 +95,10 @@ class TestParset(unittest.TestCase):
         value = 1.1
         with open(self.parset.name, "a") as f:
             f.write(f"{option} = {value}")
-        self.assertRaisesRegex(
-            ValueError,
-            f"The {option} parameter is {value}; it must be > 0 and <= 1",
-            parset_read, self.parset.name
-        )
+        with self.assertRaisesRegex(
+            ValueError, f"The {option} parameter is {value}; it must be > 0 and <= 1"
+        ):
+            parset_read(self.parset.name)
 
     def test_flag_selection_not_specified(self):
         flag = "flag_baseline"
@@ -100,11 +106,11 @@ class TestParset(unittest.TestCase):
         with open(self.parset.name, "a") as f:
             f.write(f"{flag} = {value}\n")
             f.write("flag_expr = flag_freqrange")
-        self.assertRaisesRegex(
+        with self.assertRaisesRegex(
             ValueError,
             f"Flag selection '{flag}' was specified but does not appear in 'flag_expr'",
-            parset_read, self.parset.name
-        )
+        ):
+            parset_read(self.parset.name)
 
     def test_invalid_idg_mode(self):
         option = "idg_mode"
@@ -112,20 +118,19 @@ class TestParset(unittest.TestCase):
         with open(self.parset.name, "a") as f:
             f.write("[imaging]\n")
             f.write(f"{option} = {value}")
-        self.assertRaisesRegex(
-            ValueError, f"The option '{option}' must be one of",
-            parset_read, self.parset.name
-        )
+        with self.assertRaisesRegex(
+            ValueError, f"The option '{option}' must be one of"
+        ):
+            parset_read(self.parset.name)
 
     def test_unequal_sector_list_lengths(self):
         with open(self.parset.name, "a") as f:
             f.write("[imaging]\n")
             f.write("sector_center_ra_list = [1]")
-        self.assertRaisesRegex(
-            ValueError,
-            "The options .* must all have the same number of entries",
-            parset_read, self.parset.name
-        )
+        with self.assertRaisesRegex(
+            ValueError, "The options .* must all have the same number of entries"
+        ):
+            parset_read(self.parset.name)
 
     # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
     @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
@@ -136,18 +141,14 @@ class TestParset(unittest.TestCase):
                 string.Template(
                     open("resources/rapthor_minimal.parset.template").read()
                 ).substitute(
-                    dir_working=self.dir_working.name,
-                    input_ms=self.input_ms.name
+                    dir_working=self.dir_working.name, input_ms=self.input_ms.name
                 )
             )
         parset = parset_read(self.parset.name)
         ref_parset = ast.literal_eval(
             string.Template(
                 open("resources/rapthor_minimal.parset_dict.template").read()
-            ).substitute(
-                dir_working=self.dir_working.name,
-                input_ms=self.input_ms.name
-            )
+            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
         )
         self.assertEqual(parset, ref_parset)
 
@@ -160,21 +161,17 @@ class TestParset(unittest.TestCase):
                 string.Template(
                     open("resources/rapthor_complete.parset.template").read()
                 ).substitute(
-                    dir_working=self.dir_working.name,
-                    input_ms=self.input_ms.name
+                    dir_working=self.dir_working.name, input_ms=self.input_ms.name
                 )
             )
         parset = parset_read(self.parset.name)
         ref_parset = ast.literal_eval(
             string.Template(
                 open("resources/rapthor_complete.parset_dict.template").read()
-            ).substitute(
-                dir_working=self.dir_working.name,
-                input_ms=self.input_ms.name
-            )
+            ).substitute(dir_working=self.dir_working.name, input_ms=self.input_ms.name)
         )
         self.assertEqual(parset, ref_parset)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
