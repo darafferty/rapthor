@@ -21,7 +21,7 @@ else:
 log = logging.getLogger("rapthor:parset")
 
 
-def lexical_cast(string_value: str) -> any:
+def lexical_cast(string_value):
     """
     Try to cast `string_value` to a valid Python type, using `ast.literal_eval`. This
     will only work for simple expressions. If that fails, try if `string_value` can be
@@ -30,9 +30,11 @@ def lexical_cast(string_value: str) -> any:
     `lexical_cast` each item separately. If that also fails, return the input string.
     """
     try:
+        # Try to convert to simple Python types, like `int`, `float`, `list`, etc.
         return ast.literal_eval(string_value)
     except Exception:
         try:
+            # Try to convert to an angle, and return value in degrees
             return astropy.coordinates.Angle(string_value).to("deg").value
         except Exception:
             # Try to convert a more complex list by converting each item separately
@@ -376,6 +378,15 @@ def parset_read(parset_file, use_log_file=True):
     -------
     parset_dict : dict
         Dict of parset parameters
+
+    Raises
+    ------
+        RuntimeError
+            If the working directory cannot be created; or
+            if no input sky model file is given and download is not requested.
+        FileNotFoundError
+            If no input MS files can be found; or
+            if the sky model file cannot be found and download is not requested.
     """
 
     parset_dict = Parset(parset_file).as_parset_dict()
@@ -384,7 +395,7 @@ def parset_read(parset_file, use_log_file=True):
     try:
         if not os.path.isdir(parset_dict["dir_working"]):
             os.mkdir(parset_dict["dir_working"])
-        for subdir in [
+        for subdir in (
             "logs",
             "pipelines",
             "regions",
@@ -392,7 +403,7 @@ def parset_read(parset_file, use_log_file=True):
             "images",
             "solutions",
             "plots",
-        ]:
+        ):
             subdir_path = os.path.join(parset_dict["dir_working"], subdir)
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
@@ -426,7 +437,8 @@ def parset_read(parset_file, use_log_file=True):
     if not parset_dict["input_skymodel"]:
         if parset_dict["download_initial_skymodel"]:
             log.info(
-                "No input sky model file given and download requested. Will automatically download skymodel."
+                "No input sky model file given and download requested. "
+                "Will automatically download skymodel."
             )
             parset_dict.update(
                 {
@@ -437,7 +449,8 @@ def parset_read(parset_file, use_log_file=True):
             )
             if parset_dict["apparent_skymodel"]:
                 log.info(
-                    "Ignoring apparent_skymodel, because skymodel download has been requested."
+                    "Ignoring apparent_skymodel, "
+                    "because skymodel download has been requested."
                 )
                 parset_dict["apparent_skymodel"] = None
         else:
@@ -451,12 +464,14 @@ def parset_read(parset_file, use_log_file=True):
         if not parset_dict["download_overwrite_skymodel"]:
             # If download is requested, ignore the given skymodel.
             log.info(
-                "Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user."
+                "Skymodel download requested, but user-provided skymodel is present. "
+                "Disabling download and using skymodel provided by the user."
             )
             parset_dict["download_initial_skymodel"] = False
         else:
             log.info(
-                "User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one."
+                "User-provided skymodel is present, but download_overwrite_skymodel "
+                "is True. Overwriting user-supplied skymodel with downloaded one."
             )
             parset_dict["download_initial_skymodel"] = True
     elif not os.path.exists(parset_dict["input_skymodel"]):
