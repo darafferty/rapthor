@@ -147,13 +147,17 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
     print('add_sector_models: Using {} chunk(s)'.format(nchunks))
 
-    # Open output table
+    # Open output table and add output column if needed
     msout = os.path.basename(model_list[0]).rstrip('_modeldata') + '_di.ms'
     if os.path.exists(msout):
         # File may exist from a previous iteration; delete it if so
         misc.delete_directory(msout)
     subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
     tout = pt.table(msout, readonly=False, ack=False)
+    if out_column not in tout.colnames():
+        desc = tout.getcoldesc('DATA')
+        desc['name'] = out_column
+        tout.addcols(desc)
 
     # Process the data chunk by chunk
     for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
