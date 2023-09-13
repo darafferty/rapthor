@@ -18,7 +18,7 @@ else:
     import importlib.resources as resources
 
 
-log = logging.getLogger('rapthor:parset')
+log = logging.getLogger("rapthor:parset")
 
 
 def lexical_cast(string_value: str) -> any:
@@ -48,7 +48,8 @@ class Parset:
     This class can read a Rapthor parset file and convert its contents to a `dict` that
     can be used elsewhere.
     """
-    DEFAULT_PARSET = resources.files('rapthor') / 'settings' / 'defaults.parset'
+
+    DEFAULT_PARSET = resources.files("rapthor") / "settings" / "defaults.parset"
 
     def __init__(self, parset_file=None):
         """
@@ -75,18 +76,24 @@ class Parset:
         }
         self.allowed_sections = set(self.allowed_options)
         self.required_options = {
-            'global': {'dir_working', 'input_ms'},
+            "global": {"dir_working", "input_ms"},
             # 'calibration': {'use_included_skymodels'},  # FOR TESTING ONLY
             # 'burp': {'foo', 'bar'},  # FOR TESTING ONLY
         }
         self.required_sections = set(self.required_options)
 
         # Sanity check. Ensure that all required sections and options are also allowed.
-        assert self.required_sections <= self.allowed_sections, \
-            "%s <= %s" % (self.required_sections, self.allowed_sections)
+        assert self.required_sections <= self.allowed_sections, "%s <= %s" % (
+            self.required_sections,
+            self.allowed_sections,
+        )
         for section in self.required_options:
-            assert self.required_options[section] <= self.allowed_options[section], \
-            "%s <= %s" % (self.required_options[section], self.allowed_options[section])
+            assert (
+                self.required_options[section] <= self.allowed_options[section]
+            ), "%s <= %s" % (
+                self.required_options[section],
+                self.allowed_options[section],
+            )
 
         self.settings = Parset.__config_as_dict(self.__parser)
 
@@ -134,7 +141,8 @@ class Parset:
         given_options = dict()
         for section in given_sections:
             given_options[section] = set(
-                opt for opt in self.__parser.options(section)
+                opt
+                for opt in self.__parser.options(section)
                 if self.__parser.get(section, opt) not in ("None", "")
             )
         missing_sections = self.required_sections - given_sections
@@ -157,8 +165,7 @@ class Parset:
             if options:
                 raise ValueError(
                     "Missing required option(s) in section [{}]: {}".format(
-                        section,
-                        ", ".join("'{}'".format(opt) for opt in options)
+                        section, ", ".join("'{}'".format(opt) for opt in options)
                     )
                 )
 
@@ -172,7 +179,6 @@ class Parset:
             for option in invalid_options[section]:
                 self.__parser.remove_option(section, option)
                 log.warning("Option '%s' in section [%s] is invalid", option, section)
-
 
     def __check_and_adjust(self, settings):
         """
@@ -210,14 +216,15 @@ class Parset:
                 f"is less than selfcal_data_fraction ({selfcal_data_fraction})"
             )
         flag_list = [
-            key for key in ("flag_abstime", "flag_baseline", "flag_freqrange")
+            key
+            for key in ("flag_abstime", "flag_baseline", "flag_freqrange")
             if options[key]
         ]
         if not options["flag_expr"]:
             options["flag_expr"] = " and ".join(flag_list)
         else:
             for flag in flag_list:
-                if flag not in options['flag_expr']:
+                if flag not in options["flag_expr"]:
                     raise ValueError(
                         f"Flag selection '{flag}' was specified but does not "
                         f"appear in 'flag_expr'"
@@ -248,11 +255,11 @@ class Parset:
                     )
                 )
 
-        if not(
-            len(options["sector_center_ra_list"]) ==
-            len(options["sector_center_dec_list"]) ==
-            len(options["sector_width_ra_deg_list"]) ==
-            len(options["sector_width_dec_deg_list"])
+        if not (
+            len(options["sector_center_ra_list"])
+            == len(options["sector_center_dec_list"])
+            == len(options["sector_width_ra_deg_list"])
+            == len(options["sector_width_dec_deg_list"])
         ):
             raise ValueError(
                 "The options 'sector_center_ra_list', 'sector_center_dec_list', "
@@ -354,7 +361,7 @@ class Parset:
         return parset
 
 
-def parset_read(parset_file, use_log_file=True, skip_cluster=False):
+def parset_read(parset_file, use_log_file=True):
     """
     Read a rapthor-formatted parset file and return dict of parameters
 
@@ -375,54 +382,86 @@ def parset_read(parset_file, use_log_file=True, skip_cluster=False):
 
     # Set up working directory. All output will be placed in this directory
     try:
-        if not os.path.isdir(parset_dict['dir_working']):
-            os.mkdir(parset_dict['dir_working'])
-        for subdir in ['logs', 'pipelines', 'regions', 'skymodels', 'images',
-                       'solutions', 'plots']:
-            subdir_path = os.path.join(parset_dict['dir_working'], subdir)
+        if not os.path.isdir(parset_dict["dir_working"]):
+            os.mkdir(parset_dict["dir_working"])
+        for subdir in [
+            "logs",
+            "pipelines",
+            "regions",
+            "skymodels",
+            "images",
+            "solutions",
+            "plots",
+        ]:
+            subdir_path = os.path.join(parset_dict["dir_working"], subdir)
             if not os.path.isdir(subdir_path):
                 os.mkdir(subdir_path)
     except Exception as e:
-        raise RuntimeError("Cannot use the working dir {0}: {1}".format(parset_dict['dir_working'], e))
+        raise RuntimeError(
+            "Cannot use the working dir {0}: {1}".format(parset_dict["dir_working"], e)
+        )
     if use_log_file:
-        set_log_file(os.path.join(parset_dict['dir_working'], 'logs', 'rapthor.log'))
+        set_log_file(os.path.join(parset_dict["dir_working"], "logs", "rapthor.log"))
     log.info("=========================================================\n")
-    log.info("CWLRunner is %s", parset_dict['cluster_specific']['cwl_runner'])
-    log.info("Working directory is {}".format(parset_dict['dir_working']))
+    log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
+    log.info("Working directory is {}".format(parset_dict["dir_working"]))
 
     # Get the input MS files
-    ms_search_list = parset_dict['input_ms'].strip('[]').split(',')
+    ms_search_list = parset_dict["input_ms"].strip("[]").split(",")
     ms_search_list = [ms.strip() for ms in ms_search_list]
     ms_files = []
     for search_str in ms_search_list:
         ms_files += glob.glob(os.path.join(search_str))
-    parset_dict['mss'] = sorted(ms_files)
-    if len(parset_dict['mss']) == 0:
-        raise FileNotFoundError('No input MS files were found (searched for files '
-                                'matching: {}).'.format(', '.join('"{0}"'.format(search_str)
-                                                                  for search_str in ms_search_list)))
-    log.info("Working on {} input MS file(s)".format(len(parset_dict['mss'])))
+    parset_dict["mss"] = sorted(ms_files)
+    if len(parset_dict["mss"]) == 0:
+        raise FileNotFoundError(
+            "No input MS files were found (searched for files "
+            "matching: {}).".format(
+                ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
+            )
+        )
+    log.info("Working on {} input MS file(s)".format(len(parset_dict["mss"])))
 
     # Make sure the initial skymodel is present
-    if not parset_dict['input_skymodel']:
-        if parset_dict['download_initial_skymodel']:
-            log.info('No input sky model file given and download requested. Will automatically download skymodel.')
-            parset_dict.update({'input_skymodel': os.path.join(parset_dict['dir_working'], 'skymodels', 'initial_skymodel.txt')})
-            if parset_dict['apparent_skymodel']:
-                log.info('Ignoring apparent_skymodel, because skymodel download has been requested.')
-                parset_dict['apparent_skymodel'] = None
+    if not parset_dict["input_skymodel"]:
+        if parset_dict["download_initial_skymodel"]:
+            log.info(
+                "No input sky model file given and download requested. Will automatically download skymodel."
+            )
+            parset_dict.update(
+                {
+                    "input_skymodel": os.path.join(
+                        parset_dict["dir_working"], "skymodels", "initial_skymodel.txt"
+                    )
+                }
+            )
+            if parset_dict["apparent_skymodel"]:
+                log.info(
+                    "Ignoring apparent_skymodel, because skymodel download has been requested."
+                )
+                parset_dict["apparent_skymodel"] = None
         else:
-            log.error('No input sky model file given and no download requested. Exiting...')
-            raise RuntimeError('No input sky model file given and no download requested.')
-    elif (parset_dict['input_skymodel']) and parset_dict['download_initial_skymodel']:
-        if not parset_dict['download_overwrite_skymodel']:
+            log.error(
+                "No input sky model file given and no download requested. Exiting..."
+            )
+            raise RuntimeError(
+                "No input sky model file given and no download requested."
+            )
+    elif (parset_dict["input_skymodel"]) and parset_dict["download_initial_skymodel"]:
+        if not parset_dict["download_overwrite_skymodel"]:
             # If download is requested, ignore the given skymodel.
-            log.info('Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user.')
-            parset_dict['download_initial_skymodel'] = False
+            log.info(
+                "Skymodel download requested, but user-provided skymodel is present. Disabling download and using skymodel provided by the user."
+            )
+            parset_dict["download_initial_skymodel"] = False
         else:
-            log.info('User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one.')
-            parset_dict['download_initial_skymodel'] = True
-    elif not os.path.exists(parset_dict['input_skymodel']):
-        raise FileNotFoundError('Input sky model file "{}" not found.'.format(parset_dict['input_skymodel']))
+            log.info(
+                "User-provided skymodel is present, but download_overwrite_skymodel is True. Overwriting user-supplied skymodel with downloaded one."
+            )
+            parset_dict["download_initial_skymodel"] = True
+    elif not os.path.exists(parset_dict["input_skymodel"]):
+        raise FileNotFoundError(
+            'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
+        )
 
     return parset_dict
