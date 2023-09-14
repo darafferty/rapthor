@@ -169,7 +169,7 @@ class Image(Operation):
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            if self.field.apply_fulljones:
+            if self.field.do_fulljones_solve:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
