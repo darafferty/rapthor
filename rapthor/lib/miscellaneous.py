@@ -77,20 +77,28 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         os.remove(skymodel_path)
 
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
-    if source.upper().strip() == 'LOTSS':
-        lotssmodel = lsmtool.skymodel.SkyModel('lotss', VOPosition=[ra, dec], VORadius=radius)
-        lotssmodel.write(skymodel_path)
-    elif (source.upper().strip() == 'TGSS') or (source.upper().strip() == 'GSM'):
-        max_tries = 5
-        for tries in range(1, 1 + max_tries):
+    max_tries = 5
+    for tries in range(1, 1 + max_tries):
+        if source.upper().strip() == 'LOTSS':
+            try:
+                lotssmodel = lsmtool.skymodel.SkyModel('lotss', VOPosition=[ra, dec], VORadius=radius)
+                lotssmodel.write(skymodel_path)
+            except ConnectionError:
+                if tries == max_tries:
+                    raise IOError('Download of LoTSS sky model failed after {} attempts.'.format(max_tries))
+                else:
+                    logger.error('Attempt #{0:d} to download LoTSS sky model failed. Attempting '
+                                '{1:d} more times.'.format(tries, max_tries - tries))
+                    time.sleep(5)
+        elif (source.upper().strip() == 'TGSS') or (source.upper().strip() == 'GSM'):
             result = subprocess.run(['wget', '-O', skymodel_path,
                                     SKY_SERVERS[source].format(ra=ra, dec=dec, radius=radius)])
             if result.returncode != 0:
                 if tries == max_tries:
-                    raise IOError('Download of sky model failed after {} '
+                    raise IOError('Download of TGSS sky model failed after {} '
                                 'attempts.'.format(max_tries))
                 else:
-                    logger.error('Attempt #{0:d} to download sky model failed. Attempting '
+                    logger.error('Attempt #{0:d} to download TGSS sky model failed. Attempting '
                                 '{1:d} more times.'.format(tries, max_tries - tries))
                     time.sleep(5)
             else:
