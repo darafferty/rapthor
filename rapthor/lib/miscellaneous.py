@@ -83,6 +83,8 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
             try:
                 lotssmodel = lsmtool.skymodel.SkyModel('lotss', VOPosition=[ra, dec], VORadius=radius)
                 lotssmodel.write(skymodel_path)
+                if len(lotssmodel) > 0:
+                    break
             except ConnectionError:
                 if tries == max_tries:
                     raise IOError('Download of LoTSS sky model failed after {} attempts.'.format(max_tries))
