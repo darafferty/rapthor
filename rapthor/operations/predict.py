@@ -245,9 +245,13 @@ class PredictDI(Operation):
         Finalize this operation
         """
         # Set the filenames of datasets used for direction-independent calibration
-        for obs in self.field.observations:
-            obs.ms_predict_di_filename = os.path.join(self.pipeline_working_dir,
-                                                      obs.ms_predict_di)
+        for obs in self.field.predict_sectors[0].observations:
+            # Transfer the filenames from the first sector to the field. This is required
+            # because the sector's observations are distinct copies of the field ones
+            for field_obs in self.field.observations:
+                if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+                    field_obs.ms_predict_di_filename = os.path.join(self.pipeline_working_dir,
+                                                                    obs.ms_predict_di)
 
         # Finally call finalize() in the parent class
         super().finalize()
