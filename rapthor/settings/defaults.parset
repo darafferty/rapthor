@@ -59,10 +59,12 @@ final_data_fraction = 1.0
 flag_abstime = None
 flag_baseline = None
 flag_freqrange = None
-flag_expr = 
+flag_expr =
 
-##! The following items are missing in example parset !##
+##! Missing in example parset and the docs, but used in the code !##
 input_h5parm = None
+
+##! Missing in example parset and the docs, and not used in the code !##
 solset = None
 tec_soltab = None
 scalarphase_soltab = None
@@ -100,7 +102,7 @@ slow_freqstep_hz = 1e6
 slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
 
-##! The following items are missing in example parset !##
+##! Missing in example parset, but present in the docs, and used in the code !##
 # Parameters for the LBFGS solver
 solverlbfgs_dof = 200.0
 solverlbfgs_iter = 4
@@ -195,7 +197,7 @@ sector_width_dec_deg_list = []
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
 
-##! The following items are missing in example parset !##
+##! Missing in example parset and the docs, but used in the code !##
 skip_corner_sectors = False
 
 
