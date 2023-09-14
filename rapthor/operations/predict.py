@@ -245,10 +245,9 @@ class PredictDI(Operation):
         Finalize this operation
         """
         # Set the filenames of datasets used for direction-independent calibration
-        for sector in self.field.sectors:
-            for obs in sector.observations:
-                obs.ms_predict_di_filename = os.path.join(self.pipeline_working_dir,
-                                                          obs.ms_predict_di)
+        for obs in self.field.observations:
+            obs.ms_predict_di_filename = os.path.join(self.pipeline_working_dir,
+                                                      obs.ms_predict_di)
 
         # Finally call finalize() in the parent class
         super().finalize()

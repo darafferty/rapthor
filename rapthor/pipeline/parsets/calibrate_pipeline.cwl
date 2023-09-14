@@ -668,7 +668,9 @@ steps:
       - id: smooth
         valueFrom: 'True'
       - id: max_station_delta
-        valueFrom: 0.0
+        source: max_normalization_delta
+      - id: scale_station_delta
+        source: scale_normalization_delta
       - id: phase_center_ra
         source: phase_center_ra
       - id: phase_center_dec

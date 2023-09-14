@@ -63,7 +63,9 @@ inputs:
     label: Phase center RA
     doc: |
       The RA in degrees of the phase center.
-    type: float
+    type:
+      - float
+      - string
     inputBinding:
       prefix: --phase_center_ra=
       separate: false
@@ -71,7 +73,9 @@ inputs:
     label: Phase center Dec
     doc: |
       The Dec in degrees of the phase center.
-    type: float
+    type:
+      - float
+      - string
     inputBinding:
       prefix: --phase_center_dec=
       separate: false

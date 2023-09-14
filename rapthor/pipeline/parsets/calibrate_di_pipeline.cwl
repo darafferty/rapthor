@@ -273,9 +273,9 @@ steps:
       - id: scale_station_delta
         valueFrom: 'False'
       - id: phase_center_ra
-        valueFrom: 0.0
+        valueFrom: '0.0'
       - id: phase_center_dec
-        valueFrom: 0.0
+        valueFrom: '0.0'
     out:
       - id: outh5parm
 
