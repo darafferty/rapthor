@@ -152,9 +152,18 @@ inputs:
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions (length =
-      1).
+      The filename of the h5parm file with the direction-dependent calibration
+      solutions (length = 1).
     type: File
+
+{% if apply_fulljones %}
+  - id: fulljones_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the full-Jones calibration solutions
+      (length = 1).
+    type: File
+{% endif %}
 
 {% if use_facets %}
 # start use_facets
@@ -438,12 +447,16 @@ steps:
 {% if use_screens or use_facets %}
 {% if apply_fulljones %}
       - id: h5parm
-        source: h5parm
+        source: fulljones_h5parm
 {% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
       - id: h5parm
         source: h5parm
+{% if apply_fulljones %}
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
+{% endif %}
       - id: central_patch_name
         source: central_patch_name
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]

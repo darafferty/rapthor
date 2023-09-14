@@ -265,7 +265,7 @@ steps:
       - id: h5parm
         source: combine_fulljones_gains/outh5parm
       - id: flag
-        valueFrom: 'True'
+        valueFrom: 'False'
       - id: smooth
         valueFrom: 'False'
       - id: max_station_delta

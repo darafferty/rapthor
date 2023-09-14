@@ -27,7 +27,7 @@ arguments:
   - applycal.fastphase.correction=phase000
   - applycal.fastphase.solset=sol000
   - applycal.fulljones.correction=fulljones
-  - applycal.fulljones.solset=sol001
+  - applycal.fulljones.solset=sol000
   - applycal.fulljones.soltab=[phase000,amplitude000]
   - msout.storagemanager=Dysco
 
@@ -77,10 +77,18 @@ inputs:
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions.
+      The filename of the h5parm file with the direction-dependent calibration solutions.
     type: File
     inputBinding:
       prefix: applycal.parmdb=
+      separate: False
+  - id: h5parm_fulljones
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the full-Jones calibration solutions.
+    type: File
+    inputBinding:
+      prefix: applycal.fulljones.parmdb=
       separate: False
   - id: central_patch_name
     label: Name of central patch

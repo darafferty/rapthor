@@ -386,7 +386,7 @@ class CalibrateDI(Operation):
         # as attributes since they are needed in finalize()
         output_h5parm_fulljones = ['fulljones_gain_{}.h5parm'.format(i)
                                    for i in range(self.field.nfreqchunks_separate)]
-        combined_h5parm_fulljones = 'fulljones_gains.h5'
+        self.combined_h5parm_fulljones = 'fulljones_gains.h5'
 
         # Set the constraints used in the calibrations
         smoothnessconstraint_fulljones = self.field.smoothnessconstraint_fulljones
@@ -412,7 +412,7 @@ class CalibrateDI(Operation):
                             'solint_fulljones_timestep': solint_fulljones_timestep,
                             'solint_fulljones_freqstep': solint_fulljones_freqstep,
                             'output_h5parm_fulljones': output_h5parm_fulljones,
-                            'combined_h5parm_fulljones': combined_h5parm_fulljones,
+                            'combined_h5parm_fulljones': self.combined_h5parm_fulljones,
                             'smoothnessconstraint_fulljones': smoothnessconstraint_fulljones,
                             'max_normalization_delta': max_normalization_delta,
                             'llssolver': llssolver,
@@ -434,16 +434,12 @@ class CalibrateDI(Operation):
         # Copy the solutions (h5parm file) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
-        self.field.h5parm_filename = os.path.join(dst_dir, 'field-solutions.h5')
-        if os.path.exists(self.field.h5parm_filename):
-            os.remove(self.field.h5parm_filename)
-        if self.field.do_slowgain_solve:
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parms),
-                        os.path.join(dst_dir, self.field.h5parm_filename))
-        else:
-            shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
-                        os.path.join(dst_dir, self.field.h5parm_filename))
-        flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
+        self.field.fulljones_h5parm_filename = os.path.join(dst_dir, 'fulljones-solutions.h5')
+        if os.path.exists(self.field.fulljones_h5parm_filename):
+            os.remove(self.field.fulljones_h5parm_filename)
+        shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parm_fulljones),
+                    os.path.join(dst_dir, self.field.fulljones_h5parm_filename))
+        flagged_frac = misc.get_flagged_solution_fraction(self.field.fulljones_h5parm_filename)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
         # Copy the plots (PNG files)

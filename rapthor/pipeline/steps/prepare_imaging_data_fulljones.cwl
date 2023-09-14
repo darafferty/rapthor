@@ -17,7 +17,7 @@ arguments:
   - steps=[applybeam,applycal,shift,avg]
   - applycal.type=applycal
   - applycal.correction=fulljones
-  - applycal.solset=sol001
+  - applycal.solset=sol000
   - applycal.soltab=[phase000,amplitude000]
   - shift.type=phaseshifter
   - avg.type=squash
