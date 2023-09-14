@@ -39,7 +39,7 @@ def run(parset_file):
     strategy_steps = set_strategy(field)
 
     # Check each operation for started pipelines (workflows)
-    operation_list = ['calibrate', 'predict', 'image', 'mosaic']  # in order of execution
+    operation_list = ['calibrate', 'calibrate_di', 'predict', 'predict_di', 'image', 'mosaic']  # in order of execution
     while True:
         pipelines = []
         for index, step in enumerate(strategy_steps):

@@ -432,7 +432,7 @@ class CalibrateDI(Operation):
         Finalize this operation
         """
         # Copy the solutions (h5parm file) and report the flagged fraction
-        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
+        dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_di_{}'.format(self.index))
         misc.create_directory(dst_dir)
         self.field.fulljones_h5parm_filename = os.path.join(dst_dir, 'fulljones-solutions.h5')
         if os.path.exists(self.field.fulljones_h5parm_filename):
@@ -443,7 +443,7 @@ class CalibrateDI(Operation):
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
         # Copy the plots (PNG files)
-        dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_{}'.format(self.index))
+        dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'calibrate_di_{}'.format(self.index))
         misc.create_directory(dst_dir)
         plot_filenames = glob.glob(os.path.join(self.pipeline_working_dir, '*.png'))
         for plot_filename in plot_filenames:
