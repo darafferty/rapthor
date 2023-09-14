@@ -1,16 +1,16 @@
 """
 Module that holds all parset-related functions
 """
+import ast
+import configparser
+import glob
+import logging
+import multiprocessing
 import os
 import sys
-import glob
-import ast
-import logging
-import configparser
+
 import astropy.coordinates
 from rapthor._logging import set_log_file
-import multiprocessing
-
 
 if (sys.version_info.major, sys.version_info.minor) < (3, 9):
     import importlib_resources as resources
