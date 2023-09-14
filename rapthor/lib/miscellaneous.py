@@ -21,6 +21,9 @@ import sys
 from scipy.interpolate import interp1d
 from rapthor.lib.observation import Observation
 
+import astropy.units as u
+import mocpy
+
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
                       targetname='Patch'):
@@ -75,6 +78,23 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         logger.warning('Found existing sky model "{}" and overwrite is True. Deleting '
                        'existing sky model!'.format(skymodel_path))
         os.remove(skymodel_path)
+    
+    # Check if LoTSS has coverage.
+    if source.upper().strip() == 'LOTSS':
+        subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc'])
+        moc = mocpy.MOC.from_fits('dr2-moc.moc')
+        covers_centre = moc.contains(ra * u.deg, dec * u.deg)
+        # Checking single coordinates, so get rid of the array.
+        covers_left = moc.contains(ra * u.deg - radius * u.deg, dec * u.deg)[0]
+        covers_right = moc.contains(ra * u.deg + radius * u.deg, dec * u.deg)[0]
+        covers_bottom = moc.contains(ra * u.deg, dec * u.deg - radius * u.deg)[0]
+        covers_top = moc.contains(ra * u.deg, dec * u.deg + radius * u.deg)[0]
+        if covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
+            logger.warning('Incomplete LoTSS coverage for the requested centre and radius!')
+        elif not covers_centre and (covers_left or covers_right or covers_bottom or covers_top):
+            logger.warning('Incomplete LoTSS coverage for the requested centre and radius!')
+        elif not covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
+            raise ValueError('No LoTSS coverage for the requested centre and radius!')
 
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
     max_tries = 5
