@@ -16,12 +16,7 @@
         "flag_baseline": null,
         "flag_freqrange": null,
         "flag_expr": "",
-        "input_h5parm": null,
-        "solset": null,
-        "tec_soltab": null,
-        "scalarphase_soltab": null,
-        "slow_phase_soltab": null,
-        "slow_amplitude_soltab": null
+        "input_h5parm": null
     },
     "calibration": {
         "use_included_skymodels": false,
