@@ -345,7 +345,7 @@ class Observation(object):
         self.ms_field = '{0}{1}_field'.format(root_filename, self.infix)
 
         # The filename of the model data for direction-independent calibration
-        self.ms_predict_di = self.ms_subtracted_filename + '_di'
+        self.ms_predict_di = self.ms_subtracted_filename + '_di.ms'
 
         # The sky model patch names
         self.parameters['patch_names'] = patch_names
