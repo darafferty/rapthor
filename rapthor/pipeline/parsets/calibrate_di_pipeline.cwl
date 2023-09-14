@@ -169,7 +169,7 @@ inputs:
 outputs:
   - id: combined_solutions
     outputSource:
-      - combine_fulljones_gains/outh5parm
+      - process_fulljones_gains/outh5parm
     type: File
   - id: fulljones_phase_plots
     outputSource:
@@ -182,8 +182,6 @@ outputs:
 
 
 steps:
-  # need step to add model data column from predict pipeline to the input datasets
-
   - id: solve_fulljones_gains
     label: Solve for full-Jones gains
     doc: |
@@ -264,7 +262,7 @@ steps:
       combine_fulljones_gains, flagging and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
         source: combine_fulljones_gains/outh5parm
       - id: flag
         valueFrom: 'True'
@@ -273,11 +271,11 @@ steps:
       - id: max_station_delta
         source: max_normalization_delta
       - id: scale_station_delta
-        source: scale_normalization_delta
+        valueFrom: 'False'
       - id: phase_center_ra
-        source: phase_center_ra
+        valueFrom: 0.0
       - id: phase_center_dec
-        source: phase_center_dec
+        valueFrom: 0.0
     out:
       - id: outh5parm
 

@@ -661,7 +661,7 @@ steps:
       renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
         source: combine_slow_gains_joint/outh5parm
       - id: flag
         valueFrom: 'True'
@@ -804,7 +804,7 @@ steps:
       smoothing and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
         source: combine_slow_gains_separate/outh5parm
       - id: flag
         valueFrom: 'True'
@@ -858,7 +858,7 @@ steps:
       combine_joint_and_separate_slow_h5parms, flagging and renormalizing them.
     run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
 {% if do_joint_solve %}
         source: combine_joint_and_separate_slow_h5parms/combinedh5parm
 {% else %}

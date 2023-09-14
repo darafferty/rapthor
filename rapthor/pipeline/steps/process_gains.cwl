@@ -1,23 +1,23 @@
 cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [process_gains.py]
-label: Process slow gain solutions
+label: Process gain solutions
 doc: |
-  This tool processes the slow-gain solutions, smoothing, flagging, and normalizing
+  This tool processes gain solutions, smoothing, flagging, and normalizing
   them. Note: normalization is always done, but smoothing and flagging are optional
 
 requirements:
   - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
     listing:
-      - entry: $(inputs.slowh5parm)
+      - entry: $(inputs.h5parm)
         writable: true
 
 arguments:
   - '--normalize=True'
 
 inputs:
-  - id: slowh5parm
+  - id: h5parm
     label: Input solution table
     doc: |
       The filename of the input h5parm file.
@@ -81,10 +81,10 @@ outputs:
     label: Output solution table
     doc: |
       The filename of the output h5parm file. The value is taken from the input
-      parameter "slowh5parm".
+      parameter "h5parm".
     type: File
     outputBinding:
-      glob: $(inputs.slowh5parm.basename)
+      glob: $(inputs.h5parm.basename)
 
 hints:
   - class: DockerRequirement
