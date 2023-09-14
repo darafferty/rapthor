@@ -77,10 +77,5 @@
  'input_skymodel': '/my/data/skymodel.txt',
  'mss': ['${input_ms}'],
  'regroup_input_skymodel': False,
- 'scalarphase_soltab': None,
  'selfcal_data_fraction': 0.4,
- 'slow_amplitude_soltab': None,
- 'slow_phase_soltab': None,
- 'solset': None,
- 'strategy': 'selfcal',
- 'tec_soltab': None}
+ 'strategy': 'selfcal'}

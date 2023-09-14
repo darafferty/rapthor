@@ -64,13 +64,6 @@ flag_expr =
 ##! Missing in example parset and the docs, but used in the code !##
 input_h5parm = None
 
-##! Missing in example parset and the docs, and not used in the code !##
-solset = None
-tec_soltab = None
-scalarphase_soltab = None
-slow_phase_soltab = None
-slow_amplitude_soltab = None
-
 
 [calibration]
 # If one of the included sky models (see rapthor/skymodels) is within 2 *
