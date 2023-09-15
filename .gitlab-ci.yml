@@ -83,9 +83,9 @@ deploy-docker-image:
   image: $BASE_IMAGE
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-    - echo DH_REGISTRY_USER = $DH_REGISTRY_USER
-    - echo DH_REGISTRY_PASSWORD = $DH_REGISTRY_PASSWORD
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
+    - echo BASE_IMAGE=$BASE_IMAGE
+    - echo RAPTHOR_VERSION=$RAPTHOR_VERSION
     - docker tag $BASE_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
     - docker push astronrd/rapthor:$RAPTHOR_VERSION
