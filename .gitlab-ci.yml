@@ -1,5 +1,3 @@
-image: docker:stable
-
 # workflow:
 #   rules:
 #     # Don't create a pipeline if it's a commit pipeline on a branch and that branch has open merge requests
@@ -73,7 +71,7 @@ image: docker:stable
 # Build Docker image and upload to Docker Hub
 build-docker-hub-image:
   stage: deploy
-  image: bitnami/git
+  image: docker:stable
   # needs: ["versioning"]
   before_script:
     - apt-get -y update
