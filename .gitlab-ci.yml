@@ -82,9 +82,10 @@ versioning:
 # Build Docker image and upload to Docker Hub
 build-docker-hub-image:
   stage: deploy
-  image: docker:latest
-  services:
-    - docker:dind
+  image: bitnami/git
+  # image: docker:latest
+  # services:
+  #   - docker:dind
   needs: ["versioning"]
   before_script:
     - apt-get -y update
