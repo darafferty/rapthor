@@ -68,6 +68,17 @@ versioning:
 #     - changes:
 #         - docs/**/*
 
+# Docker login
+.prepare:
+  stage: build
+  needs: ["versioning"]
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo "Logging in as $CI_REGISTRY_USER @ $CI_REGISTRY"
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
 # Build Docker image and upload to Docker Hub
 build-docker-hub-image:
   stage: deploy
