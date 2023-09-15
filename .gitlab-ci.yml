@@ -21,8 +21,8 @@ versioning:
     - echo RAPTHOR_VERSION=$(git describe --tags --always) >> versions.env
     # - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) >> versions.env
     # Use hash of commits to determine version of base image (and rebuild if necessary)
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/integration_base:$(sha256sum commits.txt | cut -d " " -f 1) >> versions.env
-    - echo FULL_IMAGE=${CI_REGISTRY_IMAGE}/integration_full:$(git log -n 1 --pretty=format:%H) >> versions.env
+    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(sha256sum commits.txt | cut -d " " -f 1) >> versions.env
+    - echo FULL_IMAGE=${CI_REGISTRY_IMAGE}/full:$(git log -n 1 --pretty=format:%H) >> versions.env
     - cat versions.env
   artifacts:
     reports:
