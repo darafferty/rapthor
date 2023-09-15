@@ -73,6 +73,9 @@ build-docker-hub-image:
   stage: deploy
   image: bitnami/git
   # needs: ["versioning"]
+  before_script:
+    - apt-get -y update
+    - apt-get -y install python3
   script:
     - git ls-files
     - Docker/build.sh
