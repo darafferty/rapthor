@@ -9,9 +9,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y \
         bison \
         build-essential \
-        casacore-data \
         casacore-dev \
-        casacore-tools \
         cmake \
         flex \
         gfortran \
@@ -56,10 +54,12 @@ RUN cmake \
 RUN ninja -C /src/idg/build install
 
 # Install EveryBeam
+# Do not compile python bindings, they will interfere with the ones in the
+# binary wheel on PyPI.
 RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_WITH_PYTHON=ON \
+    -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -H/src/EveryBeam \
     -B/src/EveryBeam/build \
@@ -94,15 +94,35 @@ RUN cmake \
     -G Ninja
 RUN ninja -C /src/wsclean/build install
 
+# Install SAGECal libdirac
+RUN git shallow-clone https://github.com/nlesc-dirac/sagecal.git
+RUN cmake \
+    -DCMAKE_BUILD_TYPE:STRING=Release \
+    -DLIB_ONLY=1 \
+    -H/src/sagecal \
+    -B/src/sagecal/build \
+    -G Ninja
+RUN ninja -C /src/sagecal/build install
+
 # Install DP3
 RUN git shallow-clone https://git.astron.nl/RD/DP3.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
+    -DLIBDIRAC_PREFIX=/usr/ \
     -H/src/DP3 \
     -B/src/DP3/build \
     -G Ninja
 RUN ninja -C /src/DP3/build install
+
+# Generate file with one-liner package version descriptions
+RUN mkdir -p /usr/local/share/rapthor; \
+for p in $(find /src -type d -name .git | sort); \
+do \
+  d=$(dirname $p); b=$(basename $d); cd $d; l=$(git log -1 --oneline); \
+  echo "$b: $l"; \
+done \
+> /usr/local/share/rapthor/sw-versions.txt
 
 # Do not use `pip` from the Debian repository, but fetch it from PyPA.
 # This way, we are sure that the latest versions of `pip`, `setuptools`, and
@@ -131,9 +151,9 @@ COPY --from=builder /usr/local /usr/local
 # Only install run-time required packages
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
-    apt-get install -y \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
         casacore-tools \
-        git \
         libarmadillo9 \
         libatkmm-1.6-1v5 \
         libboost-date-time1.71.0 \
@@ -169,17 +189,15 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
 
 RUN rm -rf /var/lib/apt/lists/*
 
-# Install WSRT Measures (extra casacore data). We purposely do this in the
-# `runner` stage and not in the `builder` stage, because otherwise the
-# previous `apt-get install` would clobber the files we had installed in
-# in the `builder` stage (as `casacore-data` is installed as a dependency).
+# Install the casacore measures data. We purposely do not install these from
+# the Ubuntu repository, but download the latest version directly from the
+# ASTRON ftp site.
 # Note: The file on the ftp site is updated daily. When warnings regarding
 # leap seconds appear, ignore them or regenerate the docker image.
-RUN wget -q -O /WSRT_Measures.ztar \
-        ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar && \
-    cd /var/lib/casacore/data && \
-    tar xfz /WSRT_Measures.ztar && \
-    rm /WSRT_Measures.ztar
+RUN mkdir -p /usr/share/casacore/data && \
+    ln -s /usr/share/casacore /var/lib/casacore && \
+    wget -qO - ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar | \
+        tar -C /usr/share/casacore/data -xzf -
 
 # Try to run the compiled tools to make sure they run without
 # a problem (e.g. no missing libraries).
