@@ -71,7 +71,7 @@ versioning:
 # Build Docker image and upload to Docker Hub
 build-docker-hub-image:
   stage: deploy
-  # needs: ["test"]
+  needs: ["versioning"]
   script:
     - git ls-files
     - Docker/build.sh
