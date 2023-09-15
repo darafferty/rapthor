@@ -1,5 +1,3 @@
-image: docker:stable
-
 # workflow:
 #   rules:
 #     # Don't create a pipeline if it's a commit pipeline on a branch and that branch has open merge requests
@@ -91,7 +89,7 @@ build-docker-hub-image:
   needs: ["versioning"]
   before_script:
     - apt-get -y update
-    - apt-get -y install python3-venv
+    - apt-get -y install docker.io python3-venv
   script:
     - git ls-files
     - Docker/build.sh
