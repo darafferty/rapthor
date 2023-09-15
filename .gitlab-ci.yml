@@ -8,18 +8,18 @@
 # variables:
 #   BUILD_DOCKER_IMAGE: "0"
 
-# # This step determines the SHA1 of the Docker file used. It's stored in
-# # versions.env artifact. The environment variables are available for all steps
-# # depending on this step.
-# versioning:
-#   stage: .pre
-#   image: bitnami/git
-#   script:
-#     - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
-#     - cat versions.env
-#   artifacts:
-#     reports:
-#       dotenv: versions.env
+# This step determines the SHA1 of the Docker file used. It's stored in
+# versions.env artifact. The environment variables are available for all steps
+# depending on this step.
+versioning:
+  stage: .pre
+  image: bitnami/git
+  script:
+    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
+    - cat versions.env
+  artifacts:
+    reports:
+      dotenv: versions.env
 
 # # Builds the Docker image containing the dependencies of the Rapthor pipeline.
 # # This image is cached, as long as the Dockerfile isn't modified new jobs reuse
@@ -71,8 +71,10 @@
 # Build Docker image and upload to Docker Hub
 build-docker-hub-image:
   stage: deploy
-  image: docker:stable
-  # needs: ["versioning"]
+  image: docker:latest
+  services:
+    - docker:dind
+  needs: ["versioning"]
   before_script:
     - apt-get -y update
     - apt-get -y install python3-venv
