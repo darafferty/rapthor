@@ -7,6 +7,7 @@ workflow:
 
 variables:
   BUILD_DOCKER_IMAGE: "0"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 # This step determines the SHA1 of the Docker file used. It's stored in
 # versions.env artifact. The environment variables are available for all steps
@@ -19,7 +20,6 @@ versioning:
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
     - echo RAPTHOR_VERSION=$(git describe --tags --always) >> versions.env
-    # - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) >> versions.env
     # Use hash of commits to determine version of base image (and rebuild if necessary)
     - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(sha256sum commits.txt | cut -d " " -f 1) >> versions.env
     - echo FULL_IMAGE=${CI_REGISTRY_IMAGE}/full:$(git log -n 1 --pretty=format:%H) >> versions.env
@@ -38,7 +38,7 @@ build-docker-ubuntu-20.04:
   script:
     - |
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
-        docker build --tag $BASE_IMAGE -f ci/ubuntu_20_04-base .
+        docker build --tag $BASE_IMAGE -f Docker/Dockerfile .
         docker push $BASE_IMAGE
       fi
   before_script:
@@ -75,3 +75,15 @@ build-doc:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - changes:
         - docs/**/*
+
+# Deploy Docker image on Docker Hub
+deploy-docker-image:
+  stage: deploy
+  needs: ["build-docker-ubuntu-20.04"]
+  image: $BASE_IMAGE
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
+  script:
+    - docker tag $BASE_IMAGE astronrd/linc:$RAPTHOR_VERSION
+    - docker push astronrd/linc:$RAPTHOR_VERSION
