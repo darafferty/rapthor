@@ -70,7 +70,7 @@
 
 # Build Docker image and upload to Docker Hub
 build-docker-hub-image:
-  stage: publish
+  stage: deploy
   # needs: ["test"]
   script:
    - Docker/build.sh
