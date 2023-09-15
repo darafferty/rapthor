@@ -1,69 +1,76 @@
-workflow:
-  rules:
-    # Don't create a pipeline if it's a commit pipeline on a branch and that branch has open merge requests
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
-      when: never
-    - when: always
+# workflow:
+#   rules:
+#     # Don't create a pipeline if it's a commit pipeline on a branch and that branch has open merge requests
+#     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+#       when: never
+#     - when: always
 
-variables:
-  BUILD_DOCKER_IMAGE: "0"
+# variables:
+#   BUILD_DOCKER_IMAGE: "0"
 
-# This step determines the SHA1 of the Docker file used. It's stored in
-# versions.env artifact. The environment variables are available for all steps
-# depending on this step.
-versioning:
-  stage: .pre
-  image: bitnami/git
+# # This step determines the SHA1 of the Docker file used. It's stored in
+# # versions.env artifact. The environment variables are available for all steps
+# # depending on this step.
+# versioning:
+#   stage: .pre
+#   image: bitnami/git
+#   script:
+#     - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
+#     - cat versions.env
+#   artifacts:
+#     reports:
+#       dotenv: versions.env
+
+# # Builds the Docker image containing the dependencies of the Rapthor pipeline.
+# # This image is cached, as long as the Dockerfile isn't modified new jobs reuse
+# # this image.
+# build-docker-ubuntu-20.04:
+#   stage: .pre
+#   needs: ["versioning"]
+#   image: docker:latest
+#   script:
+#     - |
+#       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
+#         docker build --tag $BASE_IMAGE -f ci/ubuntu_20_04-base .
+#         docker push $BASE_IMAGE
+#       fi
+#   before_script:
+#     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+
+# # Executes the tests of the Rapthor pipeline.
+# build-ubuntu-20.04:
+#   stage: test
+#   needs: ["versioning", "build-docker-ubuntu-20.04"]
+#   image: $BASE_IMAGE
+#   script:
+#     - ci/run.sh
+
+# # Builds the documentation
+# build-doc:
+#   stage: build
+#   needs: ["versioning", "build-docker-ubuntu-20.04"]
+#   image: $BASE_IMAGE
+#   before_script:
+#     - apt-get -y update
+#     - apt-get -y install make
+#     - pip install sphinx numpydoc
+#     - pip install -e .
+#   script:
+#     - cd docs
+#     - make html
+#   artifacts:
+#     paths:
+#       - docs/build/html
+#   rules:
+#     # Only add job for commits to master or on merge request events
+#     - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "schedule"'
+#     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+#     - changes:
+#         - docs/**/*
+
+# Build Docker image and upload to Docker Hub
+build-docker-hub-image:
+  stage: publish
+  # needs: ["test"]
   script:
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
-    - cat versions.env
-  artifacts:
-    reports:
-      dotenv: versions.env
-
-# Builds the Docker image containing the dependencies of the Rapthor pipeline.
-# This image is cached, as long as the Dockerfile isn't modified new jobs reuse
-# this image.
-build-docker-ubuntu-20.04:
-  stage: .pre
-  needs: ["versioning"]
-  image: docker:latest
-  script:
-    - |
-      if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
-        docker build --tag $BASE_IMAGE -f ci/ubuntu_20_04-base .
-        docker push $BASE_IMAGE
-      fi
-  before_script:
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-
-# Executes the tests of the Rapthor pipeline.
-build-ubuntu-20.04:
-  stage: test
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
-  image: $BASE_IMAGE
-  script:
-    - ci/run.sh
-
-# Builds the documentation
-build-doc:
-  stage: build
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
-  image: $BASE_IMAGE
-  before_script:
-    - apt-get -y update
-    - apt-get -y install make
-    - pip install sphinx numpydoc
-    - pip install -e .
-  script:
-    - cd docs
-    - make html
-  artifacts:
-    paths:
-      - docs/build/html
-  rules:
-    # Only add job for commits to master or on merge request events
-    - if: '$CI_COMMIT_BRANCH == "master" && $CI_PIPELINE_SOURCE != "schedule"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-    - changes:
-        - docs/**/*
+   - Docker/build.sh
