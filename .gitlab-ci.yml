@@ -14,12 +14,12 @@
 versioning:
   stage: .pre
   image: bitnami/git
-#   script:
-#     - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
-#     - cat versions.env
-#   artifacts:
-#     reports:
-#       dotenv: versions.env
+  script:
+    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
+    - cat versions.env
+  artifacts:
+    reports:
+      dotenv: versions.env
 
 # # Builds the Docker image containing the dependencies of the Rapthor pipeline.
 # # This image is cached, as long as the Dockerfile isn't modified new jobs reuse
