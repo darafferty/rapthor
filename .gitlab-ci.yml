@@ -73,4 +73,5 @@ build-docker-hub-image:
   stage: deploy
   # needs: ["test"]
   script:
-   - Docker/build.sh
+    - git ls-files
+    - Docker/build.sh
