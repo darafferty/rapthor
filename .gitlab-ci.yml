@@ -38,7 +38,7 @@ build-docker-ubuntu-20.04:
   script:
     - |
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
-        docker build --tag $BASE_IMAGE -f Docker/Dockerfile .
+        docker build --build-arg VERSION="${RAPTHOR_VERSION}" --tag $BASE_IMAGE -f Docker/Dockerfile .
         docker push $BASE_IMAGE
       fi
   before_script:
@@ -60,7 +60,7 @@ build-doc:
   image: $BASE_IMAGE
   before_script:
     - apt-get -y update
-    - apt-get -y install make
+    - apt-get -y install make git
     - pip install sphinx numpydoc
     - pip install -e .
   script:
@@ -85,5 +85,5 @@ deploy-docker-image:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
-    - docker tag $BASE_IMAGE astronrd/linc:$RAPTHOR_VERSION
-    - docker push astronrd/linc:$RAPTHOR_VERSION
+    - docker tag $BASE_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
+    - docker push astronrd/rapthor:$RAPTHOR_VERSION
