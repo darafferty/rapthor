@@ -75,7 +75,7 @@ build-docker-hub-image:
   # needs: ["versioning"]
   before_script:
     - apt-get -y update
-    - apt-get -y install python3
+    - apt-get -y install python3-venv
   script:
     - git ls-files
     - Docker/build.sh
