@@ -117,7 +117,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                       adaptive_thresh=adaptive_thresh,
                                       rms_box_bright=rmsbox_bright, atrous_do=True,
                                       atrous_jmax=3, rms_map=True, quiet=True,
-                                      max_cores=ncores)
+                                      ncores=ncores)
     catalog_filename = output_root+'.source_catalog.fits'
     img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
                                clobber=True)
@@ -132,7 +132,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                         thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                                         adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                                         rms_map=True, stop_at='isl', quiet=True,
-                                        max_cores=ncores)
+                                        ncores=ncores)
     flat_noise_rms_filename = output_root+'.flat_noise_rms.fits'
     img_flat_noise.export_image(outfile=flat_noise_rms_filename, img_type='rms', clobber=True)
     del(img_flat_noise)  # helps reduce memory usage
