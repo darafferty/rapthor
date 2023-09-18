@@ -42,6 +42,8 @@ build-docker-base:
       if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
+        echo "DOCKER_CACHE=$DOCKER_CACHE"
+        echo "BASE_IMAGE=$BASE_IMAGE"
         docker build ${DOCKER_CACHE} --tag $BASE_IMAGE --file ci/ubuntu_20_04-base .
         docker push $BASE_IMAGE
       fi
