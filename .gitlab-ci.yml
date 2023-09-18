@@ -16,7 +16,7 @@ versioning:
   stage: .pre
   image: bitnami/git
   script:
-      # Unshallowing ensures that 'git describe' works
+    # Unshallowing ensures that 'git describe' works
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
     - echo RAPTHOR_VERSION=$(git describe --tags --always) >> versions.env
@@ -31,36 +31,40 @@ versioning:
 # Builds the Docker image containing the dependencies of the Rapthor pipeline.
 # This image is cached, as long as the Dockerfile isn't modified new jobs reuse
 # this image.
-build-docker-ubuntu-20.04:
-  stage: .pre
+build-docker-base:
+  stage: build
   needs: ["versioning"]
   image: docker:latest
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
     - |
-      if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
-        docker build --build-arg VERSION="${RAPTHOR_VERSION}" --tag $BASE_IMAGE -f Docker/Dockerfile .
+      if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
+      then
+        [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
+        docker build ${DOCKER_CACHE} --tag $BASE_IMAGE --file ci/ubuntu_20_04-base .
         docker push $BASE_IMAGE
       fi
-  before_script:
-    - echo "Logging in as $CI_REGISTRY_USER @ $CI_REGISTRY"
-    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
 
-# Executes the tests of the Rapthor pipeline.
-build-ubuntu-20.04:
-  stage: test
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
+build-docker-rapthor:
+  stage: build
+  needs: ["build-docker-base"]
   image: $BASE_IMAGE
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
-    - ci/run.sh
+    - docker build --build-arg BASE_TAG=$BASE_IMAGE --tag $FULL_IMAGE --file ci/ubuntu_20_04-rapthor .
+    - docker push $FULL_IMAGE
+
 
 # Builds the documentation
 build-doc:
   stage: build
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
+  needs: ["build-docker-base"]
   image: $BASE_IMAGE
   before_script:
     - apt-get -y update
-    - apt-get -y install make git
+    - apt-get -y install make
     - pip install sphinx numpydoc
     - pip install -e .
   script:
@@ -76,16 +80,29 @@ build-doc:
     - changes:
         - docs/**/*
 
-# Deploy Docker image on Docker Hub
-deploy-docker-image:
-  stage: deploy
-  needs: ["build-docker-ubuntu-20.04"]
+# Executes the tests of the Rapthor pipeline.
+rapthor-test:
+  stage: test
+  needs: ["versioning", "build-docker-base"]
   image: $BASE_IMAGE
+  script:
+    - ci/run.sh
+
+# Deploy to docker hub
+deploy-docker:
+  stage: deploy
+  needs: ["versioning", "download_data"]
+  image: docker:20.10
+  services:
+    - docker:20.10-dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
-    - echo BASE_IMAGE=$BASE_IMAGE
-    - echo RAPTHOR_VERSION=$RAPTHOR_VERSION
-    - docker tag $BASE_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
-    - docker push astronrd/rapthor:$RAPTHOR_VERSION
+    - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
+    # - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
+    # - docker push astronrd/rapthor:$RAPTHOR_VERSION
+  rules:
+    # Only run on master
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: always
