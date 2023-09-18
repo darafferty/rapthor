@@ -53,6 +53,8 @@ build-docker-rapthor:
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
+    - echo "BASE_IMAGE=$BASE_IMAGE"
+    - echo "FULL_IMAGE=$FULL_IMAGE"
     - docker build --build-arg BASE_TAG=$BASE_IMAGE --tag $FULL_IMAGE --file ci/ubuntu_20_04-rapthor .
     - docker push $FULL_IMAGE
 
