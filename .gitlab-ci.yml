@@ -52,7 +52,7 @@ build-docker-base:
 build-docker-rapthor:
   stage: build
   needs: ["versioning", "build-docker-base"]
-  image: $BASE_IMAGE
+  image: docker:stable
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -97,9 +97,10 @@ rapthor-test:
 deploy-docker:
   stage: deploy
   needs: ["versioning"]
-  image: docker:20.10
-  services:
-    - docker:20.10-dind
+  image: docker:stable
+  # image: docker:20.10
+  # services:
+  #   - docker:20.10-dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
