@@ -49,6 +49,19 @@ class Parset:
     """
     This class can read a Rapthor parset file and convert its contents to a `dict` that
     can be used elsewhere.
+
+    Notes
+    -----
+    If you want to add a new option, make sure that this option is added to the file
+    `defaults.parset`. Any option used by Rapthor _must_ be defined in that file with
+    its default value. If it is not in that file, a warning will be issued when it is
+    used in a user-supplied parset file, and its value will be ignored. Similarly for a
+    new section.
+    If you want to add extra constraint checks for an option, or want to adjust its
+    value, you need to add these checks to the method  `__check_and_adjust`.
+    If you want to add a new _required_ option, an extra entry must be added to
+    the attribute `self.required_options` in the method `__init__`. Similarly for a new
+    _required_ section.
     """
 
     DEFAULT_PARSET = resources.files("rapthor") / "settings" / "defaults.parset"
