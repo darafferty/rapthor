@@ -51,7 +51,7 @@ build-docker-base:
 
 build-docker-rapthor:
   stage: build
-  needs: ["build-docker-base"]
+  needs: ["versioning", "build-docker-base"]
   image: $BASE_IMAGE
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
@@ -65,7 +65,7 @@ build-docker-rapthor:
 # Builds the documentation
 build-doc:
   stage: build
-  needs: ["build-docker-base"]
+  needs: ["versioning", "build-docker-base"]
   image: $BASE_IMAGE
   before_script:
     - apt-get -y update
