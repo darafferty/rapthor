@@ -417,9 +417,9 @@ def parset_read(parset_file, use_log_file=True):
     log.info("CWLRunner is %s", parset_dict["cluster_specific"]["cwl_runner"])
     log.info("Working directory is {}".format(parset_dict["dir_working"]))
 
-    # Get the input MS files
-    ms_search_list = parset_dict["input_ms"].strip("[]").split(",")
-    ms_search_list = [ms.strip() for ms in ms_search_list]
+    # Get the input MS files; it can either be a string, or a list of strings
+    input_ms = parset_dict["input_ms"]
+    ms_search_list = [input_ms] if isinstance(input_ms, str) else input_ms
     ms_files = []
     for search_str in ms_search_list:
         ms_files += glob.glob(os.path.join(search_str))

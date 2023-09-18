@@ -73,7 +73,7 @@
                       'taper_arcsec': 2.0,
                       'use_mpi': True},
  'input_h5parm': None,
- 'input_ms': '${input_ms}',
+ 'input_ms': ['${input_ms}'],
  'input_skymodel': '/my/data/skymodel.txt',
  'mss': ['${input_ms}'],
  'regroup_input_skymodel': False,

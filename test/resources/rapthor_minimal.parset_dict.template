@@ -72,7 +72,7 @@
                       'taper_arcsec': 0.0,
                       'use_mpi': False},
  'input_h5parm': None,
- 'input_ms': '${input_ms}',
+ 'input_ms': ['${input_ms}'],
  'input_skymodel': '${dir_working}/skymodels/initial_skymodel.txt',
  'mss': ['${input_ms}'],
  'regroup_input_skymodel': True,
