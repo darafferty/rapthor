@@ -91,7 +91,7 @@ rapthor-test:
 # Deploy to docker hub
 deploy-docker:
   stage: deploy
-  needs: ["versioning", "download_data"]
+  needs: ["versioning"]
   image: docker:20.10
   services:
     - docker:20.10-dind
