@@ -61,8 +61,7 @@ build-docker-rapthor:
     - echo "BASE_NAME=$BASE_NAME"
     - echo "BASE_TAG=$BASE_TAG"
     - echo "FULL_IMAGE=$FULL_IMAGE"
-    - > 
-      echo 
+    - echo 
         docker build
         --build-arg BASE_NAME=$BASE_NAME
         --build-arg BASE_TAG=$BASE_TAG
