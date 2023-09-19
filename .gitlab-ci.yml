@@ -115,7 +115,7 @@ rapthor-test:
 # Deploy to docker hub
 deploy-docker:
   stage: deploy
-  needs: ["versioning"]
+  needs: ["versioning", "build-docker-rapthor"]
   # image: docker:stable
   # image: docker:20.10
   # services:
