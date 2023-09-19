@@ -29,14 +29,16 @@ def lexical_cast(string_value):
     fails, try if `string_value` represents a list of more complex items, and try to
     `lexical_cast` each item separately. If that also fails, return the input string.
     """
+    if not isinstance(string_value, str):
+        raise TypeError("lexical_cast requires a string argument")
     try:
         # Try to convert to simple Python types, like `int`, `float`, `list`, etc.
         return ast.literal_eval(string_value)
-    except Exception:
+    except (ValueError, TypeError, SyntaxError):
         try:
             # Try to convert to an angle, and return value in degrees
             return astropy.coordinates.Angle(string_value).to("deg").value
-        except Exception:
+        except (ValueError, TypeError):
             # Try to convert a more complex list by converting each item separately
             if string_value.startswith("[") and string_value.endswith("]"):
                 values = [val.strip() for val in string_value.strip("[]").split(",")]
