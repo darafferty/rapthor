@@ -9,6 +9,11 @@ variables:
   BUILD_DOCKER_IMAGE: "0"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
+stages:
+  - build
+  - test
+  - deploy
+
 # This step determines the SHA1 of the Docker file used. It's stored in
 # versions.env artifact. The environment variables are available for all steps
 # depending on this step.
