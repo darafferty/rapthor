@@ -9,11 +9,6 @@ variables:
   BUILD_DOCKER_IMAGE: "0"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
-stages:
-  - build
-  - test
-  - deploy
-
 # This step determines the SHA1 of the Docker file used. It's stored in
 # versions.env artifact. The environment variables are available for all steps
 # depending on this step.
@@ -132,7 +127,7 @@ deploy-docker:
     - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
     # - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
     # - docker push astronrd/rapthor:$RAPTHOR_VERSION
-  rules:
-    # Only run on master
-    - if: '$CI_COMMIT_BRANCH == "master"'
-      when: always
+  # rules:
+  #   # Only run on master
+  #   - if: '$CI_COMMIT_BRANCH == "master"'
+  #     when: always
