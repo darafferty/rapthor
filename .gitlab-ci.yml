@@ -19,7 +19,7 @@ versioning:
     # Unshallowing ensures that 'git describe' works
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
-    - echo RAPTHOR_VERSION=$(git describe --tags --always) >> versions.env
+    - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
     # Use hash of commits to determine version of base image (and rebuild if necessary)
     - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(sha256sum commits.txt | cut -d " " -f 1) >> versions.env
     - echo FULL_IMAGE=${CI_REGISTRY_IMAGE}/full:$(git log -n 1 --pretty=format:%H) >> versions.env
@@ -51,7 +51,7 @@ build-docker-base:
         docker push $BASE_IMAGE
       fi
 
-build-docker-rapthor:
+build-docker-full:
   stage: build
   needs: ["versioning", "build-docker-base"]
   # image: docker:latest
@@ -62,19 +62,10 @@ build-docker-rapthor:
   script:
     - BASE_NAME=${BASE_IMAGE%:*}
     - BASE_TAG=${BASE_IMAGE##*:}
-    - echo "BASE_NAME=$BASE_NAME"
-    - echo "BASE_TAG=$BASE_TAG"
-    - echo "FULL_IMAGE=$FULL_IMAGE"
-    # - echo 
-    #     docker build
-    #     --build-arg BASE_NAME=$BASE_NAME
-    #     --build-arg BASE_TAG=$BASE_TAG
-    #     --file ci/ubuntu_20_04-rapthor
-    #     --tag $FULL_IMAGE
-    #     .
     - docker build
         --build-arg BASE_NAME=$BASE_NAME
         --build-arg BASE_TAG=$BASE_TAG
+        --build-arg VERSION=$RAPTHOR_VERSION
         --file ci/ubuntu_20_04-rapthor
         --tag $FULL_IMAGE
         .
@@ -115,18 +106,14 @@ rapthor-test:
 # Deploy to docker hub
 deploy-docker:
   stage: deploy
-  needs: ["versioning", "build-docker-rapthor"]
-  # image: docker:stable
-  # image: docker:20.10
-  # services:
-  #   - docker:20.10-dind
+  needs: ["versioning", "build-docker-full"]
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
-    - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
-    - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
-    - docker push astronrd/rapthor:$RAPTHOR_VERSION
+    - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
+    - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
+    - docker push astronrd/rapthor:$TAG
   # rules:
   #   # Only run on master
   #   - if: '$CI_COMMIT_BRANCH == "master"'
