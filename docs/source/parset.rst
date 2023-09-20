@@ -114,6 +114,10 @@ The available options are described below under their respective sections.
         <https://dp3.readthedocs.io/en/latest/index.html>`_ for details of the syntax).
         E.g., ``flag_freqrange or flag_baseline``.
 
+    input_h5parm
+        Full path to an H5parm file with direction-dependent solutions (default = None).
+        This file is required if no calibration is to be done (not yet supported).
+
 
 .. _parset_calibration_options:
 
@@ -337,6 +341,10 @@ The available options are described below under their respective sections.
         reduction in peak flux). Higher values result in shorter run times but more
         smearing away from the image centers.
 
+    skip_corner_sectors
+        Skip corner sectors defined by the imaging grid (default = ``False``)? If ``True``
+        and a grid is used (defined by the ``grid_*`` parameters above), the four corner
+        sectors are not processed (if possible for the given grid).
 
 .. _parset_cluster_options:
 
