@@ -17,7 +17,7 @@ versioning:
   image: bitnami/git
   script:
     # Catch errors in pipelines as well
-    set -o pipefail
+    - set -o pipefail
     # Unshallowing ensures that 'git describe' works
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
