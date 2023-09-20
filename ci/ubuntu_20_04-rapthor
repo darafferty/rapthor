@@ -2,10 +2,6 @@ ARG BASE_NAME=rapthor-base
 ARG BASE_TAG=latest
 
 FROM $BASE_NAME:$BASE_TAG
-# FROM ubuntu:20.04
-
-RUN echo "BASE_NAME=$BASE_NAME"
-RUN echo "BASE_TAG=$BASE_TAG"
 
 # Install Rapthor
 COPY . /tmp/rapthor
