@@ -14,10 +14,8 @@ variables:
 # depending on this step.
 versioning:
   stage: .pre
-  image: bitnami/git
+  image: bitnami/python
   script:
-    # Catch errors in pipelines as well
-    - set -o pipefail
     # Unshallowing ensures that 'git describe' works
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
