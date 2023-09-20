@@ -125,8 +125,8 @@ deploy-docker:
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
     - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
-    # - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
-    # - docker push astronrd/rapthor:$RAPTHOR_VERSION
+    - docker tag $FULL_IMAGE astronrd/rapthor:$RAPTHOR_VERSION
+    - docker push astronrd/rapthor:$RAPTHOR_VERSION
   # rules:
   #   # Only run on master
   #   - if: '$CI_COMMIT_BRANCH == "master"'
