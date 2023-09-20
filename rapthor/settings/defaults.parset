@@ -95,6 +95,11 @@ slow_freqstep_hz = 1e6
 slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
 
+# Full-Jones solve parameters
+fulljones_timestep_sec = 600.0
+fulljones_freqstep_hz = 1e6
+fulljones_smoothnessconstraint = 0
+
 ##! Missing in example parset, but present in the docs, and used in the code !##
 # Parameters for the LBFGS solver
 solverlbfgs_dof = 200.0

@@ -198,14 +198,14 @@ The available options are described below under their respective sections.
         where separate solutions are found for each station, in Hz (default = 3e6).
 
     fulljones_timestep_sec
-        Time step used during the full-Jones gain calibration, in seconds (default = 300).
+        Time step used during the full-Jones gain calibration, in seconds (default = 600).
 
     fulljones_freqstep_hz
         Frequency step used during full-Jones amplitude calibration, in Hz (default = 1e6).
 
     fulljones_smoothnessconstraint
         Smoothness constraint bandwidth used during the full-Jones gain calibration,
-        in Hz (default = 3e6).
+        in Hz (default = 0).
 
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
