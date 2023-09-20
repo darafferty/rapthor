@@ -3,8 +3,9 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
-  This tool prepares the input data for imaging with screens, including applying
-  the beam model, phase shifting, and averaging.
+  This tool prepares the input data for imaging with direction-dependent corrections,
+  including applying the direction-independent full-Jones solutions and the beam model,
+  phase shifting, and averaging.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -18,7 +19,7 @@ arguments:
   - applycal.type=applycal
   - applycal.correction=fulljones
   - applycal.solset=sol000
-  - applycal.soltab=[phase000,amplitude000]
+  - applycal.soltab=[amplitude000,phase000]
   - shift.type=phaseshifter
   - avg.type=squash
   - msout.storagemanager=Dysco

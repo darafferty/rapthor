@@ -331,7 +331,7 @@ def get_calibration_options(parset):
     if 'fulljones_timestep_sec' in parset_dict:
         parset_dict['fulljones_timestep_sec'] = parset.getfloat('calibration', 'fulljones_timestep_sec')
     else:
-        parset_dict['fulljones_timestep_sec'] = 300.0
+        parset_dict['fulljones_timestep_sec'] = 600.0
     if 'fulljones_freqstep_hz' in parset_dict:
         parset_dict['fulljones_freqstep_hz'] = parset.getfloat('calibration', 'fulljones_freqstep_hz')
     else:
@@ -361,7 +361,7 @@ def get_calibration_options(parset):
     if 'fulljones_smoothnessconstraint' in parset_dict:
         parset_dict['fulljones_smoothnessconstraint'] = parset.getfloat('calibration', 'fulljones_smoothnessconstraint')
     else:
-        parset_dict['fulljones_smoothnessconstraint'] = 3e6
+        parset_dict['fulljones_smoothnessconstraint'] = 0
 
     # Solver parameters
     if 'llssolver' not in parset_dict:

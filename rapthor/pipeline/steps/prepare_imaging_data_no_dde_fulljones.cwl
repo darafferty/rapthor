@@ -3,10 +3,10 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
-  This tool prepares the input data for imaging without screens, including
-  applying the beam model, phase shifting, averaging, and applying all
-  solutions. See prepare_imaging_data.cwl for a detailed description of the
-  inputs and outputs
+  This tool prepares the input data for imaging without direction-dependent corrections,
+  including applying the direction-independent full-Jones solutions and all other
+  solutions, applying the beam model, phase shifting, and averaging. See
+  prepare_imaging_data.cwl for a detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -28,7 +28,7 @@ arguments:
   - applycal.fastphase.solset=sol000
   - applycal.fulljones.correction=fulljones
   - applycal.fulljones.solset=sol000
-  - applycal.fulljones.soltab=[phase000,amplitude000]
+  - applycal.fulljones.soltab=[amplitude000,phase000]
   - msout.storagemanager=Dysco
 
 inputs:

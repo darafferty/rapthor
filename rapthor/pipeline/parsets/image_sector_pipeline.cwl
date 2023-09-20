@@ -408,12 +408,12 @@ steps:
 # start not use_screens and not use_facets
 {% if do_slowgain_solve %}
 {% if apply_fulljones %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_fulljones.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_fulljones.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde.cwl
 {% endif %}
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_phase_only.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_phase_only.cwl
 {% endif %}
 
 {% endif %}

@@ -91,9 +91,9 @@ input_ms = /data/ms/*.ms
 # slow_smoothnessconstraint_separate = 3e6
 
 # Full-Jones solve parameters (defaults shown):
-# fulljones_timestep_sec = 300.0
+# fulljones_timestep_sec = 600.0
 # fulljones_freqstep_hz = 1e6
-# fulljones_smoothnessconstraint = 3e6
+# fulljones_smoothnessconstraint = 0
 
 
 [imaging]

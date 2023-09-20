@@ -3,8 +3,8 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
-  This tool prepares the input data for imaging with screens, including applying
-  the beam model, phase shifting, and averaging.
+  This tool prepares the input data for imaging with direction-dependent corrections,
+  including applying the beam model, phase shifting, and averaging.
 
 requirements:
   InlineJavascriptRequirement: {}
