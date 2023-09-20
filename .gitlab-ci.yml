@@ -62,6 +62,7 @@ build-docker-full:
   script:
     - BASE_NAME=${BASE_IMAGE%:*}
     - BASE_TAG=${BASE_IMAGE##*:}
+    - echo "BASE_IMAGE=$BASE_IMAGE"
     - echo "BASE_NAME=$BASE_NAME"
     - echo "BASE_TAG=$BASE_TAG"
     - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
