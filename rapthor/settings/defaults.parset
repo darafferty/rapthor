@@ -61,7 +61,9 @@ flag_baseline = None
 flag_freqrange = None
 flag_expr =
 
-##! Missing in example parset and the docs, but used in the code !##
+# Full path to an H5parm file with direction-dependent solutions (default =
+# None). This file is required if no calibration is to be done (not yet
+# supported)
 input_h5parm = None
 
 
@@ -100,7 +102,6 @@ fulljones_timestep_sec = 600.0
 fulljones_freqstep_hz = 1e6
 fulljones_smoothnessconstraint = 0
 
-##! Missing in example parset, but present in the docs, and used in the code !##
 # Parameters for the LBFGS solver
 solverlbfgs_dof = 200.0
 solverlbfgs_iter = 4
@@ -195,7 +196,9 @@ sector_width_dec_deg_list = []
 # more smearing away from the sector centers
 max_peak_smearing = 0.15
 
-##! Missing in example parset and the docs, but used in the code !##
+# Skip corner sectors defined by the imaging grid? If True and a grid is used
+# (defined by the grid_* parameters above), the four corner sectors are not
+# processed (if possible for the given grid)
 skip_corner_sectors = False
 
 
