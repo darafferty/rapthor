@@ -3,6 +3,7 @@ bdsf
 jinja2
 losoto
 lsmtool
+mocpy<0.12
 numpy
 psutil>=5.6.6
 python-casacore
