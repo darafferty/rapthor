@@ -47,11 +47,11 @@ build-docker-base:
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
         echo "DOCKER_CACHE=$DOCKER_CACHE"
-        docker build ${DOCKER_CACHE} 
-            --build-arg RAPTHOR_VERSION=$RAPTHOR_VERSION
-            --file ci/ubuntu_20_04-base 
-            --tag $BASE_IMAGE 
-            .
+        docker build ${DOCKER_CACHE} \
+          --build-arg RAPTHOR_VERSION=$RAPTHOR_VERSION \
+          --file ci/ubuntu_20_04-base \
+          --tag $BASE_IMAGE \
+          .
         docker push $BASE_IMAGE
       fi
 
