@@ -145,68 +145,68 @@ COPY . rapthor
 RUN python3 -m pip install --upgrade ./rapthor
 
 
-#---------------------------------------------------------------------------
-# The image will now be rebuilt without adding the sources, in order to
-# reduce the size of the image.
-#---------------------------------------------------------------------------
-FROM ubuntu:20.04 as runner
+# #---------------------------------------------------------------------------
+# # The image will now be rebuilt without adding the sources, in order to
+# # reduce the size of the image.
+# #---------------------------------------------------------------------------
+# FROM ubuntu:20.04 as runner
 
-COPY --from=builder /usr/local /usr/local
+# COPY --from=builder /usr/local /usr/local
 
-# Only install run-time required packages
-RUN export DEBIAN_FRONTEND=noninteractive && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-        ca-certificates \
-        casacore-tools \
-        git \
-        libarmadillo9 \
-        libatkmm-1.6-1v5 \
-        libboost-date-time1.71.0 \
-        libboost-filesystem1.71.0 \
-        libboost-program-options1.71.0 \
-        libcairomm-1.0-1v5 \
-        libcasa-casa4 \
-        libcasa-fits4 \
-        libcasa-measures4 \
-        libcasa-ms4 \
-        libcasa-scimath4 \
-        libcasa-tables4 \
-        libcfitsio8 \
-        libfftw3-double3 \
-        libfftw3-single3 \
-        libglibmm-2.4-1v5 \
-        libgomp1 \
-        libgsl23 \
-        libgtkmm-3.0-1v5 \
-        libhdf5-103 \
-        libhdf5-cpp-103 \
-        liblapack3 \
-        liblua5.3-0 \
-        libpangomm-1.4-1v5 \
-        libpng16-16 \
-        libpython3.8 \
-        libsigc++-2.0-0v5 \
-        libstdc++6 \
-        nodejs \
-        python3 \
-        python3-distutils \
-        wget
+# # Only install run-time required packages
+# RUN export DEBIAN_FRONTEND=noninteractive && \
+#     apt-get update && \
+#     apt-get install -y --no-install-recommends \
+#         ca-certificates \
+#         casacore-tools \
+#         git \
+#         libarmadillo9 \
+#         libatkmm-1.6-1v5 \
+#         libboost-date-time1.71.0 \
+#         libboost-filesystem1.71.0 \
+#         libboost-program-options1.71.0 \
+#         libcairomm-1.0-1v5 \
+#         libcasa-casa4 \
+#         libcasa-fits4 \
+#         libcasa-measures4 \
+#         libcasa-ms4 \
+#         libcasa-scimath4 \
+#         libcasa-tables4 \
+#         libcfitsio8 \
+#         libfftw3-double3 \
+#         libfftw3-single3 \
+#         libglibmm-2.4-1v5 \
+#         libgomp1 \
+#         libgsl23 \
+#         libgtkmm-3.0-1v5 \
+#         libhdf5-103 \
+#         libhdf5-cpp-103 \
+#         liblapack3 \
+#         liblua5.3-0 \
+#         libpangomm-1.4-1v5 \
+#         libpng16-16 \
+#         libpython3.8 \
+#         libsigc++-2.0-0v5 \
+#         libstdc++6 \
+#         nodejs \
+#         python3 \
+#         python3-distutils \
+#         wget
 
-RUN rm -rf /var/lib/apt/lists/*
+# RUN rm -rf /var/lib/apt/lists/*
 
-# Install the casacore measures data. We purposely do not install these from
-# the Ubuntu repository, but download the latest version directly from the
-# ASTRON ftp site.
-# Note: The file on the ftp site is updated daily. When warnings regarding
-# leap seconds appear, ignore them or regenerate the docker image.
-RUN mkdir -p /usr/share/casacore/data && \
-    ln -s /usr/share/casacore /var/lib/casacore && \
-    wget -qO - ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar | \
-        tar -C /usr/share/casacore/data -xzf -
+# # Install the casacore measures data. We purposely do not install these from
+# # the Ubuntu repository, but download the latest version directly from the
+# # ASTRON ftp site.
+# # Note: The file on the ftp site is updated daily. When warnings regarding
+# # leap seconds appear, ignore them or regenerate the docker image.
+# RUN mkdir -p /usr/share/casacore/data && \
+#     ln -s /usr/share/casacore /var/lib/casacore && \
+#     wget -qO - ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar | \
+#         tar -C /usr/share/casacore/data -xzf -
 
-# Try to run the compiled tools to make sure they run without
-# a problem (e.g. no missing libraries).
-RUN aoflagger --version && \
-    DP3 --version && \
-    wsclean --version
+# # Try to run the compiled tools to make sure they run without
+# # a problem (e.g. no missing libraries).
+# RUN aoflagger --version && \
+#     DP3 --version && \
+#     wsclean --version
