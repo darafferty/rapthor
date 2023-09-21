@@ -4,15 +4,15 @@ ARG RAPTHOR_VERSION=0.0.0
 
 FROM $BASE_NAME:$BASE_TAG
 
-# Install Rapthor
-COPY . /tmp/rapthor
-
 RUN echo "BASE_NAME=$BASE_NAME"
 RUN echo "BASE_TAG=$BASE_TAG"
 RUN echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
 
-# RUN python3 -m setuptools_scm
-# RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} python3 -m setuptools_scm
+RUN python3 -m setuptools_scm
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} python3 -m setuptools_scm
+
+# Install Rapthor
+COPY . /tmp/rapthor
 
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} \
     python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
