@@ -69,6 +69,7 @@ build-docker-full:
     - echo "BASE_TAG=$BASE_TAG"
     - echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
     - docker build
+        --no-cache
         --build-arg BASE_NAME=$BASE_NAME
         --build-arg BASE_TAG=$BASE_TAG
         --build-arg VERSION=$RAPTHOR_VERSION
