@@ -22,11 +22,15 @@ versioning:
     - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
     # Use hash of commits and CI build files to determine tag of base image
     - sha_files=".gitlab-ci.yml ci/ubuntu_20_04-* commits.txt"
-    - echo BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
-    - echo BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1) >> versions.env
+    - BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
+    - BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1)
+    - FULL_NAME=${CI_REGISTRY_IMAGE}/full
+    - FULL_TAG=$(git log -n 1 --pretty=format:%H)
+    - echo BASE_NAME=${BASE_NAME} >> versions.env
+    - echo BASE_TAG=${BASE_TAG} >> versions.env
     - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
-    - echo FULL_NAME=${CI_REGISTRY_IMAGE}/full >> versions.env
-    - echo FULL_TAG=$(git log -n 1 --pretty=format:%H) >> versions.env
+    - echo FULL_NAME=${FULL_NAME} >> versions.env
+    - echo FULL_TAG=${FULL_TAG} >> versions.env
     - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
     - cat versions.env
   artifacts:
