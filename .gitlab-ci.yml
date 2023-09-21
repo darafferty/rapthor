@@ -20,10 +20,14 @@ versioning:
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
     - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
-    # Use hash of commits and CI build files to determine version of base image
-    # - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(shasum commits.txt ci/ubuntu_20_04-* | shasum | cut -d" " -f1) >> versions.env
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(shasum commits.txt | cut -d" " -f1) >> versions.env
-    - echo FULL_IMAGE=${CI_REGISTRY_IMAGE}/full:$(git log -n 1 --pretty=format:%H) >> versions.env
+    # Use hash of commits and CI build files to determine tag of base image
+    - sha_files=".gitlab-ci.yml ci/ubuntu_20_04-* commits.txt"
+    - echo BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
+    - echo BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1) >> versions.env
+    - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
+    - echo FULL_NAME=${CI_REGISTRY_IMAGE}/full >> versions.env
+    - echo FULL_TAG=$(git log -n 1 --pretty=format:%H) >> versions.env
+    - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
     - cat versions.env
   artifacts:
     reports:
@@ -61,13 +65,10 @@ build-docker-full:
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
-    - BASE_NAME=${BASE_IMAGE%:*}
-    - BASE_TAG=${BASE_IMAGE##*:}
     - docker build
-        --no-cache
         --build-arg BASE_NAME=$BASE_NAME
         --build-arg BASE_TAG=$BASE_TAG
-        --build-arg RAPTHOR_VERSION=$RAPTHOR_VERSION
+        --build-arg VERSION=$RAPTHOR_VERSION
         --file ci/ubuntu_20_04-rapthor
         --tag $FULL_IMAGE
         .
