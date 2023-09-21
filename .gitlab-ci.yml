@@ -21,7 +21,8 @@ versioning:
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
     - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
     # Use hash of commits and CI build files to determine version of base image
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(shasum commits.txt ci/ubuntu_20_04-* | shasum | cut -d" " -f1) >> versions.env
+    # - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(shasum commits.txt ci/ubuntu_20_04-* | shasum | cut -d" " -f1) >> versions.env
+    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(shasum commits.txt | cut -d" " -f1) >> versions.env
     - echo FULL_IMAGE=${CI_REGISTRY_IMAGE}/full:$(git log -n 1 --pretty=format:%H) >> versions.env
     - cat versions.env
   artifacts:
