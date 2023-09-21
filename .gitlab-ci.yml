@@ -52,7 +52,8 @@ build-docker-base:
     #   fi
     - echo "BASE_IMAGE=$BASE_IMAGE"
     - echo "FULL_IMAGE=$FULL_IMAGE"
-    - if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
+    - |
+      if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
         echo "DOCKER_CACHE=$DOCKER_CACHE"
