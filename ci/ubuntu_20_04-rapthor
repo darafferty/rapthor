@@ -7,7 +7,7 @@ FROM $BASE_NAME:$BASE_TAG
 RUN echo "BASE_NAME=$BASE_NAME"
 RUN echo "BASE_TAG=$BASE_TAG"
 RUN echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
-RUN pip list -v
+RUN pip install --upgrade setuptools_scm setuptools
 
 RUN python3 -m setuptools_scm
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} python3 -m setuptools_scm
