@@ -3,7 +3,7 @@ FROM ubuntu:20.04 as builder
 # This Docker image builds the dependencies for the Rapthor pipeline.
 # It lives on the head of its dependencies.
 
-ARG RAPTHOR_VERSION=0.0.0
+# ARG RAPTHOR_VERSION=0.0.0
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -138,12 +138,10 @@ RUN wget https://bootstrap.pypa.io/get-pip.py && \
 # dependencies will have been installed already and (probably) don't need to
 # be updated.
 COPY . rapthor
-# RUN python3 -m pip install --upgrade ./rapthor && \
-#     python3 -m pip uninstall -y rapthor
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} \
-    python3 -m pip install --upgrade ./rapthor
-
-RUN echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
+RUN python3 -m pip install --upgrade ./rapthor && \
+    python3 -m pip uninstall -y rapthor
+# RUN SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} \
+#     python3 -m pip install --upgrade ./rapthor
 
 #---------------------------------------------------------------------------
 # The image will now be rebuilt without adding the sources, in order to
