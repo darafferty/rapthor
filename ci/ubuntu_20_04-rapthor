@@ -9,11 +9,11 @@ RUN echo "BASE_TAG=$BASE_TAG"
 RUN echo "RAPTHOR_VERSION=$RAPTHOR_VERSION"
 RUN pip install --upgrade setuptools_scm setuptools
 
-RUN python3 -m setuptools_scm
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} python3 -m setuptools_scm
-
 # Install Rapthor
 COPY . /tmp/rapthor
+
+RUN cd /tmp/rapthor && python3 -m setuptools_scm
+RUN cd /tmp/rapthor && SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} python3 -m setuptools_scm
 
 RUN SETUPTOOLS_SCM_PRETEND_VERSION=${RAPTHOR_VERSION} \
     python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
