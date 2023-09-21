@@ -72,7 +72,7 @@ build-docker-full:
         --no-cache
         --build-arg BASE_NAME=$BASE_NAME
         --build-arg BASE_TAG=$BASE_TAG
-        --build-arg VERSION=$RAPTHOR_VERSION
+        --build-arg RAPTHOR_VERSION=$RAPTHOR_VERSION
         --file ci/ubuntu_20_04-rapthor
         --tag $FULL_IMAGE
         .
