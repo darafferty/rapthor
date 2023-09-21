@@ -40,16 +40,6 @@ build-docker-base:
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
-    # - |
-    #   echo "BASE_IMAGE=$BASE_IMAGE"
-    #   echo "FULL_IMAGE=$FULL_IMAGE"
-    #   if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
-    #   then
-    #     [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
-    #     echo "DOCKER_CACHE=$DOCKER_CACHE"
-    #     docker build ${DOCKER_CACHE} --tag $BASE_IMAGE --file ci/ubuntu_20_04-base .
-    #     docker push $BASE_IMAGE
-    #   fi
     - echo "BASE_IMAGE=$BASE_IMAGE"
     - echo "FULL_IMAGE=$FULL_IMAGE"
     - |
@@ -57,7 +47,11 @@ build-docker-base:
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
         echo "DOCKER_CACHE=$DOCKER_CACHE"
-        docker build ${DOCKER_CACHE} --tag $BASE_IMAGE --file ci/ubuntu_20_04-base .
+        docker build ${DOCKER_CACHE} 
+            --build-arg RAPTHOR_VERSION=$RAPTHOR_VERSION
+            --file ci/ubuntu_20_04-base 
+            --tag $BASE_IMAGE 
+            .
         docker push $BASE_IMAGE
       fi
 
