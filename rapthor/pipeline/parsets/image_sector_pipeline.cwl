@@ -383,8 +383,8 @@ outputs:
       - restore_nonpb/restored_image
       - restore_pb/restored_image
 {% else %}
-      - image/image_nonpb_name
-      - image/image_pb_name
+      - image/image_I_nonpb_name
+      - image/image_I_pb_name
 {% endif %}
       - image/images_extra
       - image/skymodel_nonpb
