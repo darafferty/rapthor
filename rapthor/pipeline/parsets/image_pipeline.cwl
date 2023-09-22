@@ -329,10 +329,10 @@ inputs:
       Save list of clean components (length = 1).
     type: boolean
 
-  - id: join_polarizations
-    label: Join polarizations
+  - id: link_polarizations
+    label: Link polarizations
     doc: |
-      Join polarizations during clean (length = 1).
+      Link polarizations during clean (length = 1).
     type: boolean
 
   - id: taper_arcsec
@@ -538,8 +538,8 @@ steps:
         source: pol
       - id: save_source_list
         source: save_source_list
-      - id: join_polarizations
-        source: join_polarizations
+      - id: link_polarizations
+        source: link_polarizations
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem

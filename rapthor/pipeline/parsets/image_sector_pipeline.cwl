@@ -294,10 +294,10 @@ inputs:
       Save list of clean components (length = 1).
     type: boolean
 
-  - id: join_polarizations
-    label: Join polarizations
+  - id: link_polarizations
+    label: Link polarizations
     doc: |
-      Join polarizations during clean (length = 1).
+      Link polarizations during clean (length = 1).
     type: boolean
 
   - id: taper_arcsec
@@ -386,11 +386,11 @@ outputs:
       - image/image_nonpb_name
       - image/image_pb_name
 {% endif %}
-      - image/residual_name
-      - image/model_name
+      - image/images_extra
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
+    pickValue: all_non_null
 {% if use_facets %}
   - id: region_file
     outputSource:
@@ -615,8 +615,8 @@ steps:
         source: pol
       - id: save_source_list
         source: save_source_list
-      - id: join_polarizations
-        source: join_polarizations
+      - id: link_polarizations
+        source: link_polarizations
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
@@ -640,10 +640,9 @@ steps:
       - id: dd_psf_grid
         source: dd_psf_grid
     out:
-      - id: image_nonpb_name
-      - id: image_pb_name
-      - id: residual_name
-      - id: model_name
+      - id: image_I_nonpb_name
+      - id: image_I_pb_name
+      - id: images_extra
       - id: skymodel_nonpb
       - id: skymodel_pb
 
@@ -663,11 +662,11 @@ steps:
 {% endif %}
     in:
       - id: residual_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: source_list
         source: bright_skymodel_pb
       - id: output_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
@@ -688,11 +687,11 @@ steps:
 {% endif %}
     in:
       - id: residual_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
       - id: source_list
         source: bright_skymodel_pb
       - id: output_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
@@ -716,12 +715,16 @@ steps:
         source: bright_skymodel_pb
 {% else %}
       - id: true_sky_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: flat_noise_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
 {% endif %}
       - id: true_sky_skymodel
+{% if make_source_list %}
         source: image/skymodel_pb
+{% else %}
+        source: 'dummy.sky'
+{% endif %}
       - id: output_root
         source: image_name
       - id: vertices_file
@@ -747,11 +750,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/calculate_image_diagnostics.cwl
     in:
       - id: flat_noise_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
       - id: flat_noise_rms_image
         source: filter/flat_noise_rms_image
       - id: true_sky_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: true_sky_rms_image
         source: filter/true_sky_rms_image
       - id: input_catalog

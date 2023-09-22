@@ -15,8 +15,6 @@ from astropy import wcs
 from astropy.utils import iers
 import os
 import json
-from rapthor.lib.observation import Observation
-from scipy.interpolate import interp1d
 import subprocess
 import tempfile
 
@@ -30,7 +28,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
          vertices_file, beamMS, bright_true_sky_skymodel=None, threshisl=5.0,
          threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7),
          adaptive_rmsbox=True, adaptive_thresh=75.0, filter_by_mask=True,
-         remove_negative=False):
+         remove_negative=False, ncores=8):
     """
     Filter the input sky model
 
@@ -49,7 +47,10 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         Filename of input image to use to measure the flux densities sources. This
         should be a true-sky image (i.e., with primary-beam correction)
     true_sky_skymodel : str
-        Filename of input makesourcedb sky model, with primary-beam correction
+        Filename of input makesourcedb sky model, with primary-beam correction.
+        Note:
+            if this file does not exist, steps related to the input sky model are skipped
+            but all other processing is still done
     output_root : str
         Root of filenames of output makesourcedb sky models, images, and image diagnostics
         files. Output filenames will be:
@@ -85,6 +86,8 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         removing sources that lie in unmasked regions
     remove_negative : bool, optional
         If True, remove negative sky model components
+    ncores : int, optional
+        Maximum number of cores to use
     """
     if rmsbox is not None and isinstance(rmsbox, str):
         rmsbox = eval(rmsbox)
@@ -114,7 +117,8 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                       thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                                       adaptive_thresh=adaptive_thresh,
                                       rms_box_bright=rmsbox_bright, atrous_do=True,
-                                      atrous_jmax=3, rms_map=True, quiet=True)
+                                      atrous_jmax=3, rms_map=True, quiet=True,
+                                      ncores=ncores)
     catalog_filename = output_root+'.source_catalog.fits'
     img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
                                clobber=True)
@@ -128,13 +132,14 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                         thresh_pix=threshpix, thresh_isl=threshisl,
                                         thresh='hard', adaptive_rms_box=adaptive_rmsbox,
                                         adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
-                                        rms_map=True, stop_at='isl', quiet=True)
+                                        rms_map=True, stop_at='isl', quiet=True,
+                                        ncores=ncores)
     flat_noise_rms_filename = output_root+'.flat_noise_rms.fits'
     img_flat_noise.export_image(outfile=flat_noise_rms_filename, img_type='rms', clobber=True)
     del(img_flat_noise)  # helps reduce memory usage
 
     emptysky = False
-    if img_true_sky.nisl > 0:
+    if img_true_sky.nisl > 0 and os.path.exists(true_sky_skymodel):
         maskfile = true_sky_image + '.mask'
         img_true_sky.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
 
@@ -278,9 +283,11 @@ if __name__ == '__main__':
     parser.add_argument('--rmsbox_bright', help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
                         type=str, default='(35, 7)')
     parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='True')
+    parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel, args.output_root,
          args.vertices_file, args.beamMS, bright_true_sky_skymodel=args.bright_true_sky_skymodel,
          threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
-         rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox)
+         rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox,
+         ncores=args.ncores)

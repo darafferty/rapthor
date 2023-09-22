@@ -58,14 +58,14 @@ def run(parset_file, logging_level='info'):
             op = Predict(field, index+1)
             op.run()
 
-        # Image the sectors
-        # Since we're doing selfcal, ensure that only Stokes I is imaged
-        field.image_pol = 'I'
+        # Image and mosaic the sectors
         if field.do_image:
+            # Since we're doing selfcal, ensure that only Stokes I is imaged
+            field.image_pol = 'I'
+
             op = Image(field, index+1)
             op.run()
 
-            # Mosaic the sectors
             op = Mosaic(field, index+1)
             op.run()
 
@@ -117,17 +117,14 @@ def run(parset_file, logging_level='info'):
             op = Predict(field, index+2)
             op.run()
 
-        # Image the sectors
-        # Set whether all Stokes parameters should be imaged or just I
-        if field.make_quv_images:
-            field.image_pol = 'IQUV'
-        else:
-            field.image_pol = 'I'
+        # Image and mosaic the sectors
         if field.do_image:
+            # Set the Stokes polarizations for imaging
+            field.image_pol = 'IQUV' if field.make_quv_images else 'I'
+
             op = Image(field, index+2)
             op.run()
 
-            # Mosaic the sectors
             op = Mosaic(field, index+2)
             op.run()
 

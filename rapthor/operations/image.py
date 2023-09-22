@@ -113,10 +113,10 @@ class Image(Operation):
         pol = self.field.image_pol
         if pol.lower() == 'i':
             save_source_list = True
-            join_polarizations = False
+            link_polarizations = False
         else:
             save_source_list = False
-            join_polarizations = True
+            link_polarizations = True
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
@@ -132,7 +132,7 @@ class Image(Operation):
                             'dir_local': dir_local,
                             'pol': pol,
                             'save_source_list': save_source_list,
-                            'join_polarizations': join_polarizations,
+                            'link_polarizations': link_polarizations,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
@@ -220,18 +220,26 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Copy the output FITS image, the clean mask, sky models, and ds9 facet
+        # Save the output FITS image filenames, the clean mask, sky models, and ds9 facet
         # region file for each sector. Also read the image diagnostics (rms noise,
-        # etc.) derived by PyBDSF and print them to the log.
+        # etc.) derived by PyBDSF and print them to the log. The images are not copied
+        # to the final location here, as this is done after mosaicking (if needed) by the
+        # mosaic operation
         for sector in self.field.imaging_sectors:
+            # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
-            sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
-            sector.I_model_file_true_sky = image_root + '-MFS-model.fits'
-            sector.I_residual_file_apparent_sky = image_root + '-MFS-residual.fits'
+            for pol in self.field.image_pol:
+                setattr(sector, "{}_image_file_true_sky".format(pol.upper()),
+                        '{0}-MFS-{1}-image-pb.fits'.format(image_root, pol.upper()))
+                setattr(sector, "{}_image_file_apparent_sky".format(pol.upper()),
+                        '{0}-MFS-{1}-image.fits'.format(image_root, pol.upper()))
+                setattr(sector, "{}_model_file_true_sky".format(pol.upper()),
+                        '{0}-MFS-{1}-model-pb.fits'.format(image_root, pol.upper()))
+                setattr(sector, "{}_residual_file_apparent_sky".format(pol.upper()),
+                        '{0}-MFS-{1}-residual.fits'.format(image_root, pol.upper()))
 
-            # The sky models, both true sky and apparent sky (the filenames are defined
-            # in the rapthor/scripts/filter_skymodel.py file)
+            # The output sky models, both true sky and apparent sky (the filenames are
+            # defined in the rapthor/scripts/filter_skymodel.py file)
             sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
             sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
             dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
@@ -242,7 +250,7 @@ class Image(Operation):
                     os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
 
-            # The ds9 region file, if made
+            # The output ds9 region file, if made
             if self.field.dde_method == 'facets':
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 misc.create_directory(dst_dir)

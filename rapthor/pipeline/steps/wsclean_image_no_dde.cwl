@@ -86,10 +86,10 @@ inputs:
     type: string
     inputBinding:
       prefix: -pol
-  - id: join_polarizations
+  - id: link_polarizations
     type: boolean
     inputBinding:
-      prefix: -join-polarizations
+      prefix: -link-polarizations
   - id: cellsize_deg
     type: float
     inputBinding:
@@ -136,28 +136,24 @@ inputs:
       prefix: -dd-psf-grid
 
 outputs:
-  - id: image_nonpb_name
+  - id: image_I_nonpb_name
     type: File
     outputBinding:
-      glob: $(inputs.name)-MFS-image.fits
-  - id: image_pb_name
+      glob: [$(inputs.name)-MFS-image.fits, $(inputs.name)-MFS-I-image.fits]
+  - id: image_I_pb_name
     type: File
     outputBinding:
-      glob: $(inputs.name)-MFS-image-pb.fits
-  - id: residual_name
-    type: File
+      glob: [$(inputs.name)-MFS-image-pb.fits, $(inputs.name)-MFS-I-image-pb.fits]
+  - id: images_extra
+    type: File[]
     outputBinding:
-      glob: $(inputs.name)-MFS-residual.fits
-  - id: model_name
-    type: File
-    outputBinding:
-      glob: $(inputs.name)-MFS-model.fits
+      glob: [$(inputs.name)-MFS-Q-image.fits, $(inputs.name)-MFS-U-image.fits, $(inputs.name)-MFS-V-image.fits, $(inputs.name)-MFS-Q-image-pb.fits, $(inputs.name)-MFS-U-image-pb.fits, $(inputs.name)-MFS-V-image-pb.fits, $(inputs.name)-MFS-residual.fits, $(inputs.name)-MFS-I-residual.fits, $(inputs.name)-MFS-Q-residual.fits, $(inputs.name)-MFS-U-residual.fits, $(inputs.name)-MFS-V-residual.fits, $(inputs.name)-MFS-model-pb.fits, $(inputs.name)-MFS-I-model-pb.fits, $(inputs.name)-MFS-Q-model-pb.fits, $(inputs.name)-MFS-U-model-pb.fits, $(inputs.name)-MFS-V-model-pb.fits]
   - id: skymodel_nonpb
-    type: File
+    type: File?
     outputBinding:
       glob: $(inputs.name)-sources.txt
   - id: skymodel_pb
-    type: File
+    type: File?
     outputBinding:
       glob: $(inputs.name)-sources-pb.txt
 

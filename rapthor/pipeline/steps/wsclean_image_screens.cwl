@@ -150,13 +150,13 @@ inputs:
     type: string
     inputBinding:
       prefix: -pol
-  - id: join_polarizations
-    label: Join polarizations
+  - id: link_polarizations
+    label: Link polarizations
     doc: |
-      Join polarizations when making Stokes IQUV images.
+      Link polarizations when making Stokes IQUV images.
     type: boolean
     inputBinding:
-      prefix: -join-polarizations
+      prefix: -link-polarizations
   - id: cellsize_deg
     label: Pixel size
     doc: |
@@ -235,48 +235,49 @@ outputs:
     label: Output non-PB-corrected image
     doc: |
       The filename of the output non-primary-beam-corrected image. The value is
-      constructed from the input parameter "name"
+      constructed from the input parameter "name". The glob should match to a
+      single file, but because the filename differs depending on the mode used
+      (full polarization vs. Stokes I only), we use two wildcard expressions.
     type: File
     outputBinding:
-      glob: $(inputs.name)-MFS-image.fits
+      glob: [$(inputs.name)-MFS-image.fits, $(inputs.name)-MFS-I-image.fits]
   - id: image_pb_name
     label: Output PB-corrected image
     doc: |
       The filename of the output primary-beam-corrected image. The value is
-      constructed from the input parameter "name"
+      constructed from the input parameter "name". The glob should match to a
+      single file, but because the filename differs depending on the mode used
+      (full-polarization vs. Stokes-I-only), we use two wildcard expressions.
     type: File
     outputBinding:
-      glob: $(inputs.name)-MFS-image-pb.fits
-  - id: residual_name
-    label: Output residual image
+      glob: [$(inputs.name)-MFS-image-pb.fits, $(inputs.name)-MFS-I-image-pb.fits]
+  - id: images_extra
+    label: Extra output images
     doc: |
-      The filename of the output residual image. The value is constructed from
-      the input parameter "name"
-    type: File
+      The filenames of extra output images that need to be saved. The values are
+      constructed from the input parameter "name". These are the filenames of
+      all potential images that should be saved (for both full-polarization and
+      Stokes-I-only modes) but which are not needed by other steps in the
+      workflow.
+    type: File[]
     outputBinding:
-      glob: $(inputs.name)-MFS-residual.fits
-  - id: model_name
-    label: Output model image
-    doc: |
-      The filename of the output model image. The value is constructed from the
-      input parameter "name"
-    type: File
-    outputBinding:
-      glob: $(inputs.name)-MFS-model.fits
+      glob: [$(inputs.name)-MFS-Q-image.fits, $(inputs.name)-MFS-U-image.fits, $(inputs.name)-MFS-V-image.fits, $(inputs.name)-MFS-Q-image-pb.fits, $(inputs.name)-MFS-U-image-pb.fits, $(inputs.name)-MFS-V-image-pb.fits, $(inputs.name)-MFS-residual.fits, $(inputs.name)-MFS-I-residual.fits, $(inputs.name)-MFS-Q-residual.fits, $(inputs.name)-MFS-U-residual.fits, $(inputs.name)-MFS-V-residual.fits, $(inputs.name)-MFS-model-pb.fits, $(inputs.name)-MFS-I-model-pb.fits, $(inputs.name)-MFS-Q-model-pb.fits, $(inputs.name)-MFS-U-model-pb.fits, $(inputs.name)-MFS-V-model-pb.fits]
   - id: skymodel_nonpb
     label: Output non-PB-corrected sky model
     doc: |
       The filename of the output primary beam-corrected image. The value is
-      constructed from the input parameter "name"
-    type: File
+      constructed from the input parameter "name". It is not generated in the
+      full-polarization mode.
+    type: File?
     outputBinding:
       glob: $(inputs.name)-sources.txt
   - id: skymodel_pb
     label: Output PB-corrected image
     doc: |
       The filename of the output primary beam-corrected image. The value is
-      constructed from the input parameter "name"
-    type: File
+      constructed from the input parameter "name". It is not generated in the
+      full-polarization mode.
+    type: File?
     outputBinding:
       glob: $(inputs.name)-sources-pb.txt
 
