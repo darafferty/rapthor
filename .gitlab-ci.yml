@@ -20,9 +20,8 @@ versioning:
     - git fetch --unshallow
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
     - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
-    # Use hash of commits and CI build files to determine tag of base image
-    # - sha_files=".gitlab-ci.yml ci/ubuntu_20_04-* commits.txt"
-    - sha_files="commits.txt"
+    # Use hash of commits and CI/CD build files to determine tag of base image
+    - sha_files=".gitlab-ci.yml ci/ubuntu_20_04-* commits.txt"
     - BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
     - BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1)
     - FULL_NAME=${CI_REGISTRY_IMAGE}/full
@@ -116,7 +115,10 @@ deploy-docker:
     - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
     - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
     - docker push astronrd/rapthor:$TAG
-  # rules:
-  #   # Only run on master
-  #   - if: '$CI_COMMIT_BRANCH == "master"'
-  #     when: always
+  rules:
+    # Only run on master
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: always
+
+# TODO: stage for deploying a release; this will involve in-place updating
+#       *.cwl files that contain dockerPull. We can "learn" from LINC
