@@ -36,11 +36,16 @@ class Image(Operation):
             use_facets = True
         else:
             use_facets = False
+        if self.field.image_pol.lower() == 'i':
+            save_source_list = True
+        else:
+            save_source_list = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
                              'use_facets': use_facets,
+                             'save_source_list': save_source_list,
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,

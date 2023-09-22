@@ -391,12 +391,13 @@ outputs:
     outputSource:
       - image/images_extra
     type: File[]
+{% if save_source_list %}
   - id: sector_skymodels
     outputSource:
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
-    pickValue: all_non_null
+{% endif %}
 {% if use_facets %}
   - id: region_file
     outputSource:
@@ -649,8 +650,10 @@ steps:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
       - id: images_extra
+{% if save_source_list %}
       - id: skymodel_nonpb
       - id: skymodel_pb
+{% endif %}
 
 {% if peel_bright_sources %}
 # start peel_bright_sources
@@ -726,10 +729,10 @@ steps:
         source: image/image_I_nonpb_name
 {% endif %}
       - id: true_sky_skymodel
-{% if make_source_list %}
+{% if save_source_list %}
         source: image/skymodel_pb
 {% else %}
-        valueFrom: none
+        valueFrom: 'none'
 {% endif %}
       - id: output_root
         source: image_name

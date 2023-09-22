@@ -432,6 +432,7 @@ outputs:
       items:
         type: array
         items: File
+{% if save_source_list %}
   - id: sector_skymodels
     outputSource:
       - image_sector/sector_skymodels
@@ -440,6 +441,7 @@ outputs:
       items:
         type: array
         items: File
+{% endif %}
 {% if use_facets %}
   - id: region_file
     outputSource:
@@ -623,7 +625,9 @@ steps:
       - id: filtered_skymodel_apparent_sky
       - id: sector_I_images
       - id: sector_extra_images
+{% if save_source_list %}
       - id: sector_skymodels
+{% endif %}
       - id: sector_diagnostics
 {% if use_facets %}
       - id: region_file
