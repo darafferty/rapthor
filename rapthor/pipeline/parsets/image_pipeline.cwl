@@ -416,9 +416,25 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
-  - id: sector_images
+  - id: sector_I_images
     outputSource:
-      - image_sector/sector_images
+      - image_sector/sector_I_images
+    type:
+      type: array
+      items:
+        type: array
+        items: File
+  - id: sector_extra_images
+    outputSource:
+      - image_sector/sector_extra_images
+    type:
+      type: array
+      items:
+        type: array
+        items: File
+  - id: sector_skymodels
+    outputSource:
+      - image_sector/sector_skymodels
     type:
       type: array
       items:
