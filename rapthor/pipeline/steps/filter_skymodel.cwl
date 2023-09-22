@@ -35,7 +35,9 @@ inputs:
     label: PB-corrected model
     doc: |
       The filename of the input primary-beam-corrected sky model.
-    type: File
+    type:
+        - File
+        - string
     inputBinding:
       position: 3
   - id: output_root

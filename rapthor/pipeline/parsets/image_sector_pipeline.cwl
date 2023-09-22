@@ -723,7 +723,7 @@ steps:
 {% if make_source_list %}
         source: image/skymodel_pb
 {% else %}
-        source: 'dummy.sky'
+        valueFrom: none
 {% endif %}
       - id: output_root
         source: image_name
