@@ -377,7 +377,7 @@ outputs:
     outputSource:
       - find_diagnostics/diagnostics
     type: File
-  - id: sector_images
+  - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}
       - restore_nonpb/restored_image
@@ -386,7 +386,13 @@ outputs:
       - image/image_I_nonpb_name
       - image/image_I_pb_name
 {% endif %}
+    type: File[]
+  - id: sector_extra_images
+    outputSource:
       - image/images_extra
+    type: File[]
+  - id: sector_skymodels
+    outputSource:
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]

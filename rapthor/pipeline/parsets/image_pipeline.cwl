@@ -605,7 +605,9 @@ steps:
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
-      - id: sector_images
+      - id: sector_I_images
+      - id: sector_extra_images
+      - id: sector_skymodels
       - id: sector_diagnostics
 {% if use_facets %}
       - id: region_file
