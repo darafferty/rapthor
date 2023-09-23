@@ -127,6 +127,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -link-polarizations
+      valueFrom: 'I'
   - id: cellsize_deg
     type: float
     inputBinding:
