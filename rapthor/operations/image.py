@@ -215,10 +215,10 @@ class Image(Operation):
                 if (self.field.do_slowgain_solve and
                         self.field.apply_diagonal_solutions and
                         self.field.image_pol.lower() == 'i'):
-                    # Diagonal solutions generated and should be applied. Note that
-                    # this flag should not be activated when all polarization are
-                    # imaged (i.e., when pol = IQUV), as the application of diagonal
-                    # solutions is already activated in this mode
+                    # Diagonal solutions generated and should be applied.
+                    # Note: this flag should be activated only when Stokes I alone is
+                    # imaged, as the application of diagonal solutions is already
+                    # activated when imaging multiple polarizations
                     self.input_parms.update({'apply_diagonal_solutions': True})
                 else:
                     self.input_parms.update({'apply_diagonal_solutions': False})
@@ -229,11 +229,10 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save the output FITS image filenames, the clean mask, sky models, and ds9 facet
-        # region file for each sector. Also read the image diagnostics (rms noise,
-        # etc.) derived by PyBDSF and print them to the log. The images are not copied
-        # to the final location here, as this is done after mosaicking (if needed) by the
-        # mosaic operation
+        # Save the output FITS image filenames, sky models, and ds9 facet region file for
+        # each sector. Also read the image diagnostics (rms noise, etc.) derived by PyBDSF
+        # and print them to the log. The images are not copied to the final location here,
+        # as this is done after mosaicking (if needed) by the mosaic operation
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
