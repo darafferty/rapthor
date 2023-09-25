@@ -115,8 +115,7 @@ class Image(Operation):
             else:
                 dir_local.append(self.scratch_dir)
             central_patch_name.append(sector.central_patch)
-        pol = self.field.image_pol
-        if pol.lower() == 'i':
+        if self.field.image_pol.lower() == 'i':
             save_source_list = True
             link_polarizations = False
         else:
@@ -135,7 +134,7 @@ class Image(Operation):
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'dir_local': dir_local,
-                            'pol': pol,
+                            'pol': self.field.image_pol,
                             'save_source_list': save_source_list,
                             'link_polarizations': link_polarizations,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
@@ -213,8 +212,13 @@ class Image(Operation):
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if self.field.do_slowgain_solve and self.field.apply_diagonal_solutions:
-                    # Diagonal solutions generated and should be applied
+                if (self.field.do_slowgain_solve and
+                        self.field.apply_diagonal_solutions and
+                        self.field.image_pol.lower() == 'i'):
+                    # Diagonal solutions generated and should be applied. Note that
+                    # this flag should not be activated when all polarization are
+                    # imaged (i.e., when pol = IQUV), as the application of diagonal
+                    # solutions is already activated in this mode
                     self.input_parms.update({'apply_diagonal_solutions': True})
                 else:
                     self.input_parms.update({'apply_diagonal_solutions': False})
