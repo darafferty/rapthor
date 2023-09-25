@@ -79,7 +79,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         logger.warning('Found existing sky model "{}" and overwrite is True. Deleting '
                        'existing sky model!'.format(skymodel_path))
         os.remove(skymodel_path)
-    
+
     # Check if LoTSS has coverage.
     if source.upper().strip() == 'LOTSS':
         logger.info('Checking LoTSS coverage for the requested centre and radius.')
@@ -608,13 +608,8 @@ def convert_mjd2mvt(mjd_sec):
         Casacore MVTime string
     """
     t = Time(mjd_sec / 3600 / 24, format='mjd', scale='utc')
-    date, hour = t.iso.split(' ')
-    year, month, day = date.split('-')
-    d = t.datetime
-    month = d.ctime().split(' ')[1]
 
-    return '{0}{1}{2}/{3}'.format(day, month, year, hour)
-
+    return t.strftime("%d%b%Y/%H:%M:%S.%f")
 
 def convert_mvt2mjd(mvt_str):
     """
@@ -630,17 +625,9 @@ def convert_mvt2mjd(mvt_str):
     mjdtime : float
         MJD time in seconds
     """
-    day_str = mvt_str.split('/')[0].lower()
-    months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-              'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
-    for m in months:
-        if m in day_str:
-            p = day_str.split(m)
-            day_str = '{0}.{1}.{2}'.format(p[1], months[m], p[0])
-    time_str = mvt_str.split('/')[1]
-    t = dateutil.parser.parse('{0}/{1}'.format(day_str, time_str))
+    mjd = Time.strptime(mvt_str, "%d%b%Y/%H:%M:%S.%f", format="mjd")
 
-    return Time(t).mjd * 3600 * 24
+    return mjd * 3600 * 24
 
 
 def get_reference_station(soltab, max_ind=None):

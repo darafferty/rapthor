@@ -9,12 +9,13 @@ from rapthor.lib.cwl import CWLFile, CWLDir
 log = logging.getLogger('rapthor:predict')
 
 
-class Predict(Operation):
+class PredictDD(Operation):
     """
-    Operation to predict model data
+    Operation to predict model data for further direction-dependent (DD)
+    processing
     """
     def __init__(self, field, index):
-        super(Predict, self).__init__(field, name='predict', index=index)
+        super().__init__(field, name='predict', index=index)
 
     def set_parset_parameters(self):
         """
@@ -167,7 +168,7 @@ class PredictDI(Operation):
     Operation to predict model data for direction-independent calibration
     """
     def __init__(self, field, index):
-        super(PredictDI, self).__init__(field, name='predict_di', index=index)
+        super().__init__(field, name='predict_di', index=index)
 
     def set_parset_parameters(self):
         """

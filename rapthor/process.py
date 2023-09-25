@@ -5,10 +5,10 @@ import logging
 from rapthor import _logging
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
-from rapthor.operations.calibrate import Calibrate, CalibrateDI
+from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import Predict, PredictDI
+from rapthor.operations.predict import PredictDD, PredictDI
 from rapthor.lib.field import Field
 import numpy as np
 
@@ -50,7 +50,7 @@ def run(parset_file, logging_level='info'):
 
         # Calibrate (direction-dependent)
         if field.do_calibrate:
-            op = Calibrate(field, index+1)
+            op = CalibrateDD(field, index+1)
             op.run()
 
             # Calibrate (direction-independent)
@@ -62,7 +62,7 @@ def run(parset_file, logging_level='info'):
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = Predict(field, index+1)
+            op = PredictDD(field, index+1)
             op.run()
 
         # Image the sectors
@@ -110,9 +110,9 @@ def run(parset_file, logging_level='info'):
         # from that of the last selfcal iteration (so to index+2)
         field.update(step, index+2, final=True)
 
-        # Calibrate
+        # Calibrate (direction-dependent)
         if field.do_calibrate:
-            op = Calibrate(field, index+2)
+            op = CalibrateDD(field, index+2)
             op.run()
 
             # Calibrate (direction-independent)
@@ -124,7 +124,7 @@ def run(parset_file, logging_level='info'):
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = Predict(field, index+2)
+            op = PredictDD(field, index+2)
             op.run()
 
         # Image the sectors

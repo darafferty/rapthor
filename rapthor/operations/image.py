@@ -17,7 +17,7 @@ class Image(Operation):
     Operation to image a field sector
     """
     def __init__(self, field, index):
-        super(Image, self).__init__(field, name='image', index=index)
+        super().__init__(field, name='image', index=index)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)

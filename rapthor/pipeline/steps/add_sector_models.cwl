@@ -12,14 +12,14 @@ inputs:
   - id: msobs
     label: Filename of data MS
     doc: |
-      The filename of the input MS file for which subtraction will be done.
+      The filename of the input MS file for which addition will be done.
     type: Directory
     inputBinding:
       position: 0
   - id: msmod
     label: Filenames of model MS
     doc: |
-      The filenames of the input model MS files which will be subtracted.
+      The filenames of the input model MS files which will be added.
     type: Directory[]
     inputBinding:
       position: 1
@@ -27,7 +27,7 @@ inputs:
   - id: obs_starttime
     label: Start time
     doc: |
-      The start time (in casacore MVTime) for the time chunk for subtraction.
+      The start time (in casacore MVTime) for the time chunk for addition.
     type: string
     inputBinding:
       prefix: --starttime=
