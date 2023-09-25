@@ -101,7 +101,7 @@ class Image(Operation):
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
-                sector_starttime.append(obs.convert_mjd(obs.starttime))
+                sector_starttime.append(misc.convert_mjd2mvt(obs.starttime))
                 sector_ntimes.append(obs.numsamples)
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)

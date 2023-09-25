@@ -5,6 +5,7 @@ import os
 import logging
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
+from rapthor.lib import miscellaneous as misc
 
 log = logging.getLogger('rapthor:predict')
 
@@ -76,7 +77,7 @@ class PredictDD(Operation):
         obs_solint_hz = []
         for obs in self.field.observations:
             obs_filename.append(obs.ms_filename)
-            obs_starttime.append(obs.convert_mjd(obs.starttime))
+            obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
             obs_infix.append(obs.infix)
             obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
             obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
@@ -220,7 +221,7 @@ class PredictDI(Operation):
         obs_infix = []
         for obs in self.field.observations:
             obs_filename.append(obs.ms_filename)
-            obs_starttime.append(obs.convert_mjd(obs.starttime))
+            obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
             obs_infix.append(obs.infix)
 
         # Set other parameters
