@@ -41,10 +41,10 @@ build-docker-ubuntu-20.04:
 build-ubuntu-20.04:
   stage: test
   needs: ["versioning", "build-docker-ubuntu-20.04"]
-  # image: $BASE_IMAGE
+  image: $BASE_IMAGE
   # script:
   #   - ci/run.sh
-  image: python:3.8
+  # image: python:3.8
   before_script:
     - pip install --upgrade pip
     - pip install tox
