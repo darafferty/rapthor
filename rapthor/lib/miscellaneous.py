@@ -627,7 +627,7 @@ def convert_mvt2mjd(mvt_str):
     """
     mjd = Time.strptime(mvt_str, "%d%b%Y/%H:%M:%S.%f", format="mjd")
 
-    return mjd * 3600 * 24
+    return mjd.to_value('mjd') * 3600 * 24
 
 
 def get_reference_station(soltab, max_ind=None):
