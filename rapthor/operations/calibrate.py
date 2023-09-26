@@ -368,8 +368,8 @@ class CalibrateDI(Operation):
         #
         # Get the start times and number of times for the time chunks (fast and slow
         # calibration)
-        starttime_fulljones = self.field.get_obs_parameters('starttime_fulljones')
-        ntimes_fulljones = self.field.get_obs_parameters('ntimes_fulljones')
+        starttime_fulljones = self.field.get_obs_parameters('slow_starttime_fulljones')
+        ntimes_fulljones = self.field.get_obs_parameters('slow_ntimes_fulljones')
 
         # Get the filenames of the input files for each frequency chunk
         freqchunk_filename_fulljones = self.field.get_obs_parameters('freqchunk_filename_fulljones')
@@ -379,8 +379,8 @@ class CalibrateDI(Operation):
         nchan_fulljones = self.field.get_obs_parameters('nchan_fulljones')
 
         # Get the solution intervals for the calibrations
-        solint_fulljones_timestep = self.field.get_obs_parameters('solint_fulljones_timestep')
-        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_fulljones_freqstep')
+        solint_fulljones_timestep = self.field.get_obs_parameters('solint_slow_timestep_fulljones')
+        solint_fulljones_freqstep = self.field.get_obs_parameters('solint_slow_freqstep_fulljones')
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
