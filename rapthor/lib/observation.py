@@ -216,7 +216,12 @@ class Observation(object):
         for solve_type in ['joint', 'separate', 'fulljones']:
             solint_freqstep = solint_freqsteps[solve_type]
             target_timestep = target_timesteps[solve_type]
-            ndirections = 1 if solve_type == 'fulljones' else ndir
+            if solve_type == 'fulljones':
+                ndirections = 1
+                freqchunk_filename = self.ms_predict_di_filename
+            else:
+                ndirections = ndir
+                freqchunk_filename = self.ms_filename
             samplesperchunk, solint_timestep = get_slow_solve_intervals(parset['cluster_specific'],
                                                                         self.numchannels, nobs,
                                                                         solint_freqstep,
@@ -231,7 +236,7 @@ class Observation(object):
             setattr(self, f'nfreqchunks_{solve_type}', nfreqchunks)
             self.log.debug('Using {0} frequency chunk{1} for the {2} gain '
                            'calibration (if done)'.format(nfreqchunks, "s" if nfreqchunks > 1 else "", solve_type))
-            self.parameters[f'freqchunk_filename_{solve_type}'] = [self.ms_filename] * nfreqchunks
+            self.parameters[f'freqchunk_filename_{solve_type}'] = [freqchunk_filename] * nfreqchunks
             self.parameters[f'startchan_{solve_type}'] = [samplesperchunk * i for i in range(nfreqchunks)]
             self.parameters[f'nchan_{solve_type}'] = [samplesperchunk] * nfreqchunks
             self.parameters[f'nchan_{solve_type}'][-1] = 0  # set last entry to extend until end
