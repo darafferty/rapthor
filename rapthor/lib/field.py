@@ -29,7 +29,7 @@ class Field(object):
     minimal : bool
         If True, only initialize the minimal set of required parameters
     """
-    def __init__(self, parset, mininmal=False):
+    def __init__(self, parset, minimal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
         # values and/or the operations
         self.name = 'field'
@@ -88,7 +88,7 @@ class Field(object):
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
-        if not mininmal:
+        if not minimal:
             # Scan MS files to get observation info
             self.scan_observations()
 
