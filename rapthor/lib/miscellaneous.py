@@ -12,14 +12,15 @@ import time
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from astropy.io import fits as pyfits
+from astropy.time import Time
 from PIL import Image, ImageDraw
 import multiprocessing
 from math import modf, floor, ceil
 from losoto.h5parm import h5parm
 import lsmtool
-import sys
 from scipy.interpolate import interp1d
 from rapthor.lib.observation import Observation
+import dateutil.parser
 
 import astropy.units as u
 import mocpy
@@ -78,7 +79,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         logger.warning('Found existing sky model "{}" and overwrite is True. Deleting '
                        'existing sky model!'.format(skymodel_path))
         os.remove(skymodel_path)
-    
+
     # Check if LoTSS has coverage.
     if source.upper().strip() == 'LOTSS':
         logger.info('Checking LoTSS coverage for the requested centre and radius.')
@@ -590,6 +591,43 @@ def dec2ddmmss(deg):
     sa = x*60
 
     return (int(dd), int(ma), sa, sign)
+
+
+def convert_mjd2mvt(mjd_sec):
+    """
+    Converts MJD to casacore MVTime
+
+    Parameters
+    ----------
+    mjd_sec : float
+        MJD time in seconds
+
+    Returns
+    -------
+    mvtime : str
+        Casacore MVTime string
+    """
+    t = Time(mjd_sec / 3600 / 24, format='mjd', scale='utc')
+
+    return t.strftime("%d%b%Y/%H:%M:%S.%f")
+
+def convert_mvt2mjd(mvt_str):
+    """
+    Converts casacore MVTime to MJD
+
+    Parameters
+    ----------
+    mvt_str : str
+        MVTime time
+
+    Returns
+    -------
+    mjdtime : float
+        MJD time in seconds
+    """
+    mjd = Time.strptime(mvt_str, "%d%b%Y/%H:%M:%S.%f", format="mjd")
+
+    return mjd.to_value('mjd') * 3600 * 24
 
 
 def get_reference_station(soltab, max_ind=None):

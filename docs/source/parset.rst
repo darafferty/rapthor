@@ -201,17 +201,27 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the second slow gain calibration,
         where separate solutions are found for each station, in Hz (default = 3e6).
 
+    fulljones_timestep_sec
+        Time step used during the full-Jones gain calibration, in seconds (default = 600).
+
+    fulljones_freqstep_hz
+        Frequency step used during full-Jones amplitude calibration, in Hz (default = 1e6).
+
+    fulljones_smoothnessconstraint
+        Smoothness constraint bandwidth used during the full-Jones gain calibration,
+        in Hz (default = 0).
+
     solverlbfgs_dof
-       Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
-       ``lbfgs``; default 200.0).
+        Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
+        ``lbfgs``; default 200.0).
 
     solverlbfgs_minibatches
-       Number of minibatches for the LBFGS solver (only used when :term:`solveralgorithm`
-       = ``lbfgs``; default 1).
+        Number of minibatches for the LBFGS solver (only used when :term:`solveralgorithm`
+        = ``lbfgs``; default 1).
 
     solverlbfgs_iter
-       Number of iterations per minibatch in the LBFGS solver (only used when
-       :term:`solveralgorithm` = ``lbfgs``; default 4).
+        Number of iterations per minibatch in the LBFGS solver (only used when
+        :term:`solveralgorithm` = ``lbfgs``; default 4).
 
 .. _parset_imaging_options:
 

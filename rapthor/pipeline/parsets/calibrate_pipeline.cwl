@@ -1,6 +1,6 @@
 cwlVersion: v1.2
 class: Workflow
-label: Rapthor calibration workflow
+label: Rapthor DD calibration workflow
 doc: |
   This workflow performs direction-dependent calibration. In general,
   calibration is done in three steps: (1) a fast phase-only calibration (with
@@ -468,7 +468,7 @@ steps:
 {% if use_scalarphase %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarcomplexgain.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar.cwl
 {% endif %}
 {% if max_cores is not none %}
     hints:
@@ -570,12 +570,12 @@ steps:
   - id: solve_slow_gains_joint
     label: Joint solve for slow gains
     doc: |
-      This step uses DDECal (in DP3) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for diagonal gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same (joint) solutions.
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_joint.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_joint.cwl
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -659,16 +659,18 @@ steps:
     doc: |
       This step processes the joint slow-gain solutions, flagging, smoothing and
       renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
         source: combine_slow_gains_joint/outh5parm
       - id: flag
         valueFrom: 'True'
       - id: smooth
         valueFrom: 'True'
       - id: max_station_delta
-        valueFrom: 0.0
+        source: max_normalization_delta
+      - id: scale_station_delta
+        source: scale_normalization_delta
       - id: phase_center_ra
         source: phase_center_ra
       - id: phase_center_dec
@@ -706,16 +708,16 @@ steps:
   - id: solve_slow_gains_separate
     label: Separate solve for slow gains
     doc: |
-      This step uses DDECal (in DP3) to solve for gain corrections on long
+      This step uses DDECal (in DP3) to solve for diagonal gain corrections on long
       timescales (> 10 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions and first (joint) slow-gain solutions are preapplied
       and stations are solve for separately (so different stations are free
       to have different solutions).
 {% if do_joint_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_separate.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_complexgain_separate_no_joint.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_no_joint.cwl
 {% endif %}
 {% if max_cores is not none %}
     hints:
@@ -802,9 +804,9 @@ steps:
     doc: |
       This step processes the gain solutions from the separate solve, flagging,
       smoothing and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
         source: combine_slow_gains_separate/outh5parm
       - id: flag
         valueFrom: 'True'
@@ -856,9 +858,9 @@ steps:
     doc: |
       This step processes the combined amplitude solutions from
       combine_joint_and_separate_slow_h5parms, flagging and renormalizing them.
-    run: {{ rapthor_pipeline_dir }}/steps/process_slow_gains.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/process_gains.cwl
     in:
-      - id: slowh5parm
+      - id: h5parm
 {% if do_joint_solve %}
         source: combine_joint_and_separate_slow_h5parms/combinedh5parm
 {% else %}

@@ -3,10 +3,11 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for scalar complex gains in multiple directions
-  simultaneously for the given MS file, using the input sourcedb. Output is the
-  solution table in h5parm format. See ddecal_solve_scalarphase.cwl for a
-  detailed description of the inputs and outputs.
+  This tool solves for diagonal gains in multiple directions simultaneously for
+  the given MS file with fast-phase only corrections preapplied, using
+  the input sourcedb and h5parm. Output is the solution table in h5parm format.
+  See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
+  outputs not documented below.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -16,9 +17,11 @@ arguments:
   - msout=
   - steps=[solve]
   - solve.type=ddecal
-  - solve.mode=scalarcomplexgain
+  - solve.mode=diagonal
   - solve.usebeammodel=True
   - solve.beammode=array_factor
+  - solve.applycal.steps=[fastphase]
+  - solve.applycal.fastphase.correction=phase000
 
 inputs:
   - id: msin
@@ -36,6 +39,25 @@ inputs:
     inputBinding:
       prefix: msin.ntimes=
       separate: False
+  - id: startchan
+    type: int
+    inputBinding:
+      prefix: msin.startchan=
+      separate: False
+  - id: nchan
+    type: int
+    inputBinding:
+      prefix: msin.nchan=
+      separate: False
+  - id: combined_h5parm
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the fast-phase solutions.
+      These solutions are preapplied before the solve is done.
+    type: File
+    inputBinding:
+      prefix: solve.applycal.parmdb=
+      separate: False
   - id: h5parm
     type: string
     inputBinding:
@@ -46,13 +68,13 @@ inputs:
     inputBinding:
       prefix: solve.solint=
       separate: False
-  - id: nchan
+  - id: solve_nchan
     type: int
     inputBinding:
       prefix: solve.nchan=
       separate: False
   - id: sourcedb
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False
@@ -130,21 +152,6 @@ inputs:
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
-  - id: smoothnessreffrequency
-    type: float
-    inputBinding:
-      prefix: solve.smoothnessreffrequency=
-      separate: False
-  - id: smoothnessrefdistance
-    type: float
-    inputBinding:
-      prefix: solve.smoothnessrefdistance=
-      separate: False
-  - id: antennaconstraint
-    type: string
-    inputBinding:
-      prefix: solve.antennaconstraint=
-      separate: False
   - id: numthreads
     type: int
     inputBinding:
@@ -152,7 +159,7 @@ inputs:
       separate: False
 
 outputs:
-  - id: fast_phases_h5parm
+  - id: slow_gains_h5parm
     type: File
     outputBinding:
       glob: $(inputs.h5parm)

@@ -7,11 +7,8 @@ from argparse import RawTextHelpFormatter
 import casacore.tables as pt
 import logging
 import numpy as np
-import sys
 import os
 import subprocess
-from astropy.time import Time
-import dateutil.parser
 from rapthor.lib import miscellaneous as misc
 
 
@@ -38,66 +35,16 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
         Number of chunks
     """
     if reweight:
-        scale_rapthor = 10.0
+        scale_factor = 10.0
     else:
-        scale_rapthor = 4.0
+        scale_factor = 4.0
     if compressed:
-        scale_rapthor *= 5.0
+        scale_factor *= 5.0
     tot_m, used_m, free_m = list(map(int, os.popen('free -tm').readlines()[-1].split()[1:]))
     msin_m = float(subprocess.check_output(['du', '-smL', msin]).split()[0]) * fraction
-    tot_required_m = msin_m * nsectors * scale_rapthor * 2.0
+    tot_required_m = msin_m * nsectors * scale_factor * 2.0
     nchunks = max(1, int(np.ceil(tot_required_m / tot_m)))
     return nchunks
-
-
-def convert_mjd2mvt(mjd_sec):
-    """
-    Converts MJD to casacore MVTime
-
-    Parameters
-    ----------
-    mjd_sec : float
-        MJD time in seconds
-
-    Returns
-    -------
-    mvtime : str
-        Casacore MVTime string
-    """
-    t = Time(mjd_sec / 3600 / 24, format='mjd', scale='utc')
-    date, hour = t.iso.split(' ')
-    year, month, day = date.split('-')
-    d = t.datetime
-    month = d.ctime().split(' ')[1]
-
-    return '{0}{1}{2}/{3}'.format(day, month, year, hour)
-
-
-def convert_mvt2mjd(mvt_str):
-    """
-    Converts casacore MVTime to MJD
-
-    Parameters
-    ----------
-    mvt_str : str
-        MVTime time
-
-    Returns
-    -------
-    mjdtime : float
-        MJD time in seconds
-    """
-    day_str = mvt_str.split('/')[0].lower()
-    months = {'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
-              'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12}
-    for m in months:
-        if m in day_str:
-            p = day_str.split(m)
-            day_str = '{0}.{1}.{2}'.format(p[1], months[m], p[0])
-    time_str = mvt_str.split('/')[1]
-    t = dateutil.parser.parse('{0}/{1}'.format(day_str, time_str))
-
-    return Time(t).mjd * 3600 * 24
 
 
 def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
@@ -179,14 +126,14 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         for msmod in model_list[:]:
             tin = pt.table(msmod, readonly=True, ack=False)
             starttime_chunk = np.min(tin.getcol('TIME'))
-            if not misc.approx_equal(starttime_chunk, convert_mvt2mjd(starttime), tol=1.0):
+            if not misc.approx_equal(starttime_chunk, misc.convert_mvt2mjd(starttime), tol=1.0):
                 # Remove files with start times that are not within 1 sec of the
                 # specified starttime
                 i = model_list.index(msmod)
                 model_list.pop(i)
             else:
                 nrows_list.append(tin.nrows())
-                starttime_exact = convert_mjd2mvt(starttime_chunk)  # store exact value for use later
+                starttime_exact = misc.convert_mjd2mvt(starttime_chunk)  # store exact value for use later
             tin.close()
         if len(set(nrows_list)) > 1:
             raise RuntimeError('Model data files have differing number of rows...')
@@ -214,10 +161,10 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     nbl = np.where(tarray == tarray[0])[0].size
     tarray = None
     if starttime is not None:
-        tapprox = convert_mvt2mjd(starttime_exact) - 100.0
+        tapprox = misc.convert_mvt2mjd(starttime_exact) - 100.0
         approx_indx = np.where(tin.getcol('TIME') > tapprox)[0][0]
         for tind, t in enumerate(tin.getcol('TIME')[approx_indx:]):
-            if convert_mjd2mvt(t) == starttime_exact:
+            if misc.convert_mjd2mvt(t) == starttime_exact:
                 startrow_in = tind + approx_indx
                 break
         nrows_in = nrows_list[0]
@@ -755,15 +702,15 @@ if __name__ == '__main__':
 
     try:
         main(args.msin, args.msmod, msin_column=args.msin_column,
-            model_column=args.model_column, out_column=args.out_column,
-            nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
-            use_compression=args.use_compression, peel_outliers=args.peel_outliers,
-            peel_bright=args.peel_bright, reweight=args.reweight,
-            starttime=args.starttime, solint_sec=args.solint_sec,
-            solint_hz=args.solint_hz, weights_colname=args.weights_colname,
-            gainfile=args.gainfile, uvcut_min=args.uvcut_min,
-            uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
-            dirname=args.dirname, quiet=args.quiet, infix=args.infix)
+             model_column=args.model_column, out_column=args.out_column,
+             nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
+             use_compression=args.use_compression, peel_outliers=args.peel_outliers,
+             peel_bright=args.peel_bright, reweight=args.reweight,
+             starttime=args.starttime, solint_sec=args.solint_sec,
+             solint_hz=args.solint_hz, weights_colname=args.weights_colname,
+             gainfile=args.gainfile, uvcut_min=args.uvcut_min,
+             uvcut_max=args.uvcut_max, phaseonly=args.phaseonly,
+             dirname=args.dirname, quiet=args.quiet, infix=args.infix)
     except Exception as e:
         log = logging.getLogger('rapthor:subtract_sector_models')
         log.critical(e)

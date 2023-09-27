@@ -405,6 +405,11 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
         The phase center of the observation as (RA, Dec) in degrees. Required when
         scale_delta_with_dist = True
     """
+    smooth = misc.string2bool(smooth)
+    normalize = misc.string2bool(normalize)
+    flag = misc.string2bool(flag)
+    scale_delta_with_dist = misc.string2bool(scale_delta_with_dist)
+
     # Read in solutions
     H = h5parm(h5parmfile, readonly=False)
     solset = H.getSolset(solsetname)
@@ -435,14 +440,14 @@ if __name__ == '__main__':
     parser.add_argument('--ampsoltabname', help='Amplitude soltab name', type=str, default='amplitude000')
     parser.add_argument('--phasesoltabname', help='Phase soltab name', type=str, default='phase000')
     parser.add_argument('--ref_id', help='Reference station', type=int, default=0)
-    parser.add_argument('--normalize', help='Normalize amplitude solutions', type=bool, default=False)
-    parser.add_argument('--smooth', help='Smooth amplitude solutions', type=bool, default=False)
-    parser.add_argument('--flag', help='Flag amplitude solutions', type=bool, default=False)
+    parser.add_argument('--normalize', help='Normalize amplitude solutions', type=str, default='False')
+    parser.add_argument('--smooth', help='Smooth amplitude solutions', type=str, default='False')
+    parser.add_argument('--flag', help='Flag amplitude solutions', type=str, default='False')
     parser.add_argument('--lowampval', help='Low threshold for amplitude flagging', type=float, default=None)
     parser.add_argument('--highampval', help='High threshold for amplitude flagging', type=float, default=None)
     parser.add_argument('--max_station_delta', help='Max difference of median from unity allowed '
                         'for station normalizations', type=float, default=0.0)
-    parser.add_argument('--scale_delta_with_dist', help='Scale max difference with distance', type=bool, default=False)
+    parser.add_argument('--scale_delta_with_dist', help='Scale max difference with distance', type=str, default='False')
     parser.add_argument('--phase_center_ra', help='RA of phase center in degrees', type=float, default=0.0)
     parser.add_argument('--phase_center_dec', help='Dec of phase center in degrees', type=float, default=0.0)
     args = parser.parse_args()
