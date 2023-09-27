@@ -3,10 +3,10 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
-  This tool prepares the input data for imaging without screens, including
-  applying the beam model, phase shifting, averaging, and applying all
-  solutions. See prepare_imaging_data.cwl for a detailed description of the
-  inputs and outputs
+  This tool prepares the input data for imaging without direction-dependent corrections,
+  including applying the direction-independent full-Jones solutions and all other
+  solutions, applying the beam model, phase shifting, and averaging. See
+  prepare_imaging_data.cwl for a detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -21,9 +21,14 @@ arguments:
   - avg.type=squash
   - applycal.type=applycal
   - applycal.correction=phase000
-  - applycal.steps=[slowamp,fastphase]
+  - applycal.steps=[slowamp,fastphase,fulljones]
   - applycal.slowamp.correction=amplitude000
+  - applycal.slowamp.solset=sol000
   - applycal.fastphase.correction=phase000
+  - applycal.fastphase.solset=sol000
+  - applycal.fulljones.correction=fulljones
+  - applycal.fulljones.solset=sol000
+  - applycal.fulljones.soltab=[amplitude000,phase000]
   - msout.storagemanager=Dysco
 
 inputs:
@@ -72,10 +77,18 @@ inputs:
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions.
+      The filename of the h5parm file with the direction-dependent calibration solutions.
     type: File
     inputBinding:
       prefix: applycal.parmdb=
+      separate: False
+  - id: h5parm_fulljones
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the full-Jones calibration solutions.
+    type: File
+    inputBinding:
+      prefix: applycal.fulljones.parmdb=
       separate: False
   - id: central_patch_name
     label: Name of central patch

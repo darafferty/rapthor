@@ -6,5 +6,8 @@ FROM $BASE_NAME:$BASE_TAG
 # Install Rapthor
 COPY . /tmp/rapthor
 
-RUN python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
+ARG VERSION=0.0.0
+
+RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
+    python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
     rm -rf /tmp/rapthor

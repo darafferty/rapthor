@@ -152,9 +152,18 @@ inputs:
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions (length =
-      1).
+      The filename of the h5parm file with the direction-dependent calibration
+      solutions (length = 1).
     type: File
+
+{% if apply_fulljones %}
+  - id: fulljones_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the full-Jones calibration solutions
+      (length = 1).
+    type: File
+{% endif %}
 
 {% if use_facets %}
 # start use_facets
@@ -411,17 +420,25 @@ steps:
     doc: |
       This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
-      calibration solutions at the center.
+      calibration solutions.
 {% if use_screens or use_facets %}
 # start use_screens or use_facets
+{% if apply_fulljones %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_fulljones.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
+{% endif %}
 
 {% else %}
 # start not use_screens and not use_facets
 {% if do_slowgain_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
+{% if apply_fulljones %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_fulljones.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_phase_only.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde.cwl
+{% endif %}
+{% else %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_phase_only.cwl
 {% endif %}
 
 {% endif %}
@@ -453,10 +470,18 @@ steps:
       - id: numthreads
         source: max_threads
 {% if use_screens or use_facets %}
+{% if apply_fulljones %}
+      - id: h5parm
+        source: fulljones_h5parm
+{% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
       - id: h5parm
         source: h5parm
+{% if apply_fulljones %}
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
+{% endif %}
       - id: central_patch_name
         source: central_patch_name
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
@@ -744,6 +769,8 @@ steps:
         source: threshpix
       - id: beamMS
         source: obs_filename
+      - id: ncores
+        source: max_threads
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky

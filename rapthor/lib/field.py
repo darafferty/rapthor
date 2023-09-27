@@ -15,7 +15,7 @@ import rtree.index
 import glob
 from astropy.coordinates import SkyCoord
 import astropy.units as u
-from typing import List, Dict, Tuple
+from typing import List, Dict
 
 
 class Field(object):
@@ -49,6 +49,7 @@ class Field(object):
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
         self.slow_smoothnessconstraint_joint = self.parset['calibration_specific']['slow_smoothnessconstraint_joint']
         self.slow_smoothnessconstraint_separate = self.parset['calibration_specific']['slow_smoothnessconstraint_separate']
+        self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
         self.solveralgorithm = self.parset['calibration_specific']['solveralgorithm']
         self.onebeamperpatch = self.parset['calibration_specific']['onebeamperpatch']
@@ -207,14 +208,15 @@ class Field(object):
         if data_fraction < 1.0:
             self.observations = []
             for obs in self.full_observations:
-                mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
+                mintime = max(self.parset['calibration_specific']['slow_timestep_separate_sec'],
+                              self.parset['calibration_specific']['fulljones_timestep_sec'])
                 tottime = obs.endtime - obs.starttime
                 if data_fraction < min(1.0, mintime/tottime):
                     obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                                    'total time for this observation that is less than the '
-                                    'slow-gain timestep. The data fraction will be increased '
-                                    'to {1:0.3f} to ensure the slow-gain timestep requirement is '
-                                    'met.'.format(data_fraction, min(1.0, mintime/tottime)))
+                                    'total time for this observation that is less than the largest '
+                                    'specified calibration timestep ({1} s). The data fraction will be '
+                                    'increased to {2:0.3f} to ensure the timestep requirement is '
+                                    'met.'.format(data_fraction, mintime, min(1.0, mintime/tottime)))
                 nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
                 if nchunks == 1:
                     # Center the chunk around the midpoint (which is generally the most
@@ -286,14 +288,17 @@ class Field(object):
         ntimechunks = 0
         nfreqchunks_joint = 0
         nfreqchunks_separate = 0
+        nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate
+            nfreqchunks_fulljones += obs.nfreqchunks_fulljones
         self.ntimechunks = ntimechunks
         self.nfreqchunks_joint = nfreqchunks_joint
         self.nfreqchunks_separate = nfreqchunks_separate
+        self.nfreqchunks_fulljones = nfreqchunks_fulljones
 
     def get_obs_parameters(self, parameter):
         """
@@ -761,8 +766,13 @@ class Field(object):
         # not imaged; they are only used in prediction and subtraction
         self.define_outlier_sectors(index)
 
+        # Make predict sectors containing all calibration sources. These sectors are
+        # not imaged; they are only used in prediction for direction-independent solves
+        self.define_predict_sectors(index)
+
         # Finally, make a list containing all sectors
-        self.sectors = self.imaging_sectors + self.outlier_sectors + self.bright_source_sectors
+        self.sectors = (self.imaging_sectors + self.outlier_sectors +
+                        self.bright_source_sectors + self.predict_sectors)
         self.nsectors = len(self.sectors)
 
     def remove_skymodels(self):
@@ -1029,6 +1039,35 @@ class Field(object):
                     bright_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
                     bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
+
+    def define_predict_sectors(self, index):
+        """
+        Defines the predict sectors
+
+        Parameters
+        ----------
+        index : int
+            Iteration index
+        """
+        self.predict_sectors = []
+        predict_skymodel = self.calibration_skymodel
+        nsources = len(predict_skymodel)
+        if nsources > 0:
+            # Choose number of sectors to be the no more than ten, but don't allow
+            # fewer than 100 sources per sector if possible
+            nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+            for i in range(nnodes):
+                predict_sector = Sector('predict_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                predict_sector.is_predict = True
+                predict_sector.predict_skymodel = predict_skymodel.copy()
+                startind = i * int(nsources/nnodes)
+                if i == nnodes-1:
+                    endind = nsources
+                else:
+                    endind = startind + int(nsources/nnodes)
+                predict_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                predict_sector.make_skymodel(index)
+                self.predict_sectors.append(predict_sector)
 
     def find_intersecting_sources(self):
         """

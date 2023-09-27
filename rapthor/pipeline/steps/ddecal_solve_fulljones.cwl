@@ -3,11 +3,11 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for complex gains in multiple directions simultaneously for
-  the given MS file with fast-phase and slow-gain corrections preapplied, using
-  the input sourcedb and h5parm. Output is the solution table in h5parm format.
-  See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
-  outputs not documented below.
+  This tool solves for full-Jones gains over a single direction for the given MS file,
+  using the MODEL_DATA column with fast-phase and slow-gain corruptions (if available)
+  preapplied. Output is the solution table in h5parm format. See
+  ddecal_solve_scalarphase.cwl for a detailed description of any inputs and outputs not
+  documented below.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -17,12 +17,10 @@ arguments:
   - msout=
   - steps=[solve]
   - solve.type=ddecal
-  - solve.mode=complexgain
+  - solve.mode=fulljones
   - solve.usebeammodel=True
   - solve.beammode=array_factor
-  - solve.applycal.steps=[fastphase,slowamp]
-  - solve.applycal.fastphase.correction=phase000
-  - solve.applycal.slowamp.correction=amplitude000
+  - solve.modeldatacolumns=[MODEL_DATA]
 
 inputs:
   - id: msin
@@ -50,15 +48,6 @@ inputs:
     inputBinding:
       prefix: msin.nchan=
       separate: False
-  - id: combined_h5parm
-    label: Solution table
-    doc: |
-      The filename of the input solution table containing the combined fast-phase
-      and slow-gain1 solutions. These solutions are preapplied before the solve is done.
-    type: File
-    inputBinding:
-      prefix: solve.applycal.parmdb=
-      separate: False
   - id: h5parm
     type: string
     inputBinding:
@@ -73,11 +62,6 @@ inputs:
     type: int
     inputBinding:
       prefix: solve.nchan=
-      separate: False
-  - id: sourcedb
-    type: File
-    inputBinding:
-      prefix: solve.sourcedb=
       separate: False
   - id: llssolver
     type: string
@@ -115,24 +99,6 @@ inputs:
     inputBinding:
       prefix: solve.solverlbfgs.minibatches=
       separate: False
-  - id: onebeamperpatch
-    type: boolean
-    inputBinding:
-      prefix: solve.onebeamperpatch=
-      valueFrom: "$(self ? 'True': 'False')"
-      separate: False
-  - id: parallelbaselines
-    type: boolean
-    inputBinding:
-      prefix: solve.parallelbaselines=
-      valueFrom: "$(self ? 'True': 'False')"
-      separate: False
-  - id: sagecalpredict
-    type: boolean
-    inputBinding:
-      prefix: solve.sagecalpredict=
-      valueFrom: "$(self ? 'True': 'False')"
-      separate: False
   - id: stepsize
     type: float
     inputBinding:
@@ -160,10 +126,11 @@ inputs:
       separate: False
 
 outputs:
-  - id: slow_gains_h5parm
+  - id: fulljonesh5parm
     type: File
     outputBinding:
       glob: $(inputs.h5parm)
+
 hints:
   - class: DockerRequirement
     dockerPull: 'astronrd/rapthor'

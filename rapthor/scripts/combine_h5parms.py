@@ -436,6 +436,27 @@ def combine_phase1_phase2_amp2_scalar(ss1, ss2, sso):
     return sso
 
 
+def copy_solset(ss1, ss2):
+    """
+    Copies ss1 to ss2
+
+    Parameters
+    ----------
+    ss1 : solset
+        Solution set #1
+    ss2 : solset
+        Solution set #2
+
+    Returns
+    -------
+    ss2 : solset
+        Updated solution set
+    """
+    ss1.obj._f_copy_children(ss2.obj, recursive=True, overwrite=True)
+
+    return ss2
+
+
 def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
          reweight=False, cal_names=None, cal_fluxes=None):
     """
@@ -511,6 +532,13 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
         elif mode == 'p1p2a2_scalar':
             # Take phases from 1 and phases and amplitudes from 2, scalar
             sso = combine_phase1_phase2_amp2_scalar(ss1, ss2, sso)
+
+        elif mode == 'separate':
+            # No sum or multiplication is done. The solutions from 1 and 2 are copied
+            # to the output as separate solsets (named sol000 for 1 and sol001 for 2)
+            sso = copy_solset(ss1, sso)
+            sso2 = ho.makeSolset(solsetName='sol001', addTables=False)
+            sso2 = copy_solset(ss2, sso2)
 
         else:
             raise ValueError('Mode not understood')

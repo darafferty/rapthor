@@ -37,6 +37,9 @@ slow_timestep_separate_sec = 600.0
 slow_freqstep_hz = 2e6
 slow_smoothnessconstraint_joint = 4e6
 slow_smoothnessconstraint_separate = 4e6
+fulljones_timestep_sec = 600.0
+fulljones_freqstep_hz = 1e6
+fulljones_smoothnessconstraint = 0
 
 [imaging]
 cellsize_arcsec = 2.25

@@ -17,7 +17,7 @@ class Image(Operation):
     Operation to image a field sector
     """
     def __init__(self, field, index):
-        super(Image, self).__init__(field, name='image', index=index)
+        super().__init__(field, name='image', index=index)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
@@ -44,6 +44,7 @@ class Image(Operation):
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
+                             'apply_fulljones': self.field.do_fulljones_solve,
                              'use_facets': use_facets,
                              'save_source_list': save_source_list,
                              'peel_bright_sources': self.field.peel_bright_sources,
@@ -105,7 +106,7 @@ class Image(Operation):
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
-                sector_starttime.append(obs.convert_mjd(obs.starttime))
+                sector_starttime.append(misc.convert_mjd2mvt(obs.starttime))
                 sector_ntimes.append(obs.numsamples)
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
@@ -182,6 +183,8 @@ class Image(Operation):
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
+            if self.field.do_fulljones_solve:
+                self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})

@@ -35,8 +35,9 @@ for i in range(max_selfcal_loops):
     if i == 2:
         strategy_steps[i]['solve_min_uv_lambda'] = 2000
     else:
-        strategy_steps[i]['solve_min_uv_lambda'] = 350
+        strategy_steps[i]['solve_min_uv_lambda'] = 150
     strategy_steps[i]['peel_bright_sources'] = False
+    strategy_steps[i]['do_fulljones_solve'] = False
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
 

@@ -16,7 +16,7 @@ class Mosaic(Operation):
     Operation to mosaic sector images
     """
     def __init__(self, field, index):
-        super(Mosaic, self).__init__(field, name='mosaic', index=index)
+        super().__init__(field, name='mosaic', index=index)
 
         # For each image type we use a subworkflow, so we set the template filename
         # for that here
