@@ -344,6 +344,12 @@ inputs:
       Link polarizations during clean (length = 1).
     type: boolean
 
+  - id: join_polarizations
+    label: Join polarizations
+    doc: |
+      Join polarizations during clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -571,6 +577,8 @@ steps:
         source: save_source_list
       - id: link_polarizations
         source: link_polarizations
+      - id: join_polarizations
+        source: join_polarizations
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem

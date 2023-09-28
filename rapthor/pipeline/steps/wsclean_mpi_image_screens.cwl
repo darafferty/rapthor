@@ -128,6 +128,10 @@ inputs:
     inputBinding:
       prefix: -link-polarizations
       valueFrom: 'I'
+  - id: join_polarizations
+    type: boolean
+    inputBinding:
+      prefix: -join-polarizations
   - id: cellsize_deg
     type: float
     inputBinding:

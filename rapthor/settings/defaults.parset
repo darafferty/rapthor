@@ -149,8 +149,12 @@ dd_psf_grid = [1, 1]
 
 # Make Stokes QUV images in addition to the Stokes I image (default = False).
 # If True, QUV images are made during the final imaging step, once self
-# calibration has been completed
+# calibration has been completed. The method used to combine the polarizations
+# during deconvolution can also be specified. This method can be "link" to use
+# linked polarization cleaning or "join" to use joined polarization cleaning
+# (default = link)
 make_quv_images = False
+pol_combine_method = link
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,

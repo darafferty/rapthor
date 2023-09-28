@@ -116,12 +116,20 @@ class Image(Operation):
             else:
                 dir_local.append(self.scratch_dir)
             central_patch_name.append(sector.central_patch)
+
+        # Handle the polarization-related options
+        link_polarizations = False
+        join_polarizations = False
         if self.field.image_pol.lower() == 'i':
+            # Saving the source list (clean components) is supported only when imaging
+            # Stokes I alone
             save_source_list = True
-            link_polarizations = False
         else:
             save_source_list = False
-            link_polarizations = True
+            if self.field.pol_combine_method == 'link':
+                link_polarizations = True
+            else:
+                join_polarizations = True
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
@@ -138,6 +146,7 @@ class Image(Operation):
                             'pol': self.field.image_pol,
                             'save_source_list': save_source_list,
                             'link_polarizations': link_polarizations,
+                            'join_polarizations': join_polarizations,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],

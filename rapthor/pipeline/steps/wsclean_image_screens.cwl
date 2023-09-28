@@ -158,6 +158,13 @@ inputs:
     inputBinding:
       prefix: -link-polarizations
       valueFrom: 'I'
+  - id: join_polarizations
+    label: Join polarizations
+    doc: |
+      Join polarizations when making Stokes IQUV images.
+    type: boolean
+    inputBinding:
+      prefix: -join-polarizations
   - id: cellsize_deg
     label: Pixel size
     doc: |

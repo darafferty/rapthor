@@ -264,6 +264,7 @@ class Parset:
             "idg_mode": ("cpu", "gpu", "hybrid"),
             "dde_method": ("none", "screens", "facets"),
             "screen_type": ("kl", "tesselated"),
+            "pol_combine_method": ("link", "join"),
         }.items():
             if options[opt] not in valid_values:
                 raise ValueError(

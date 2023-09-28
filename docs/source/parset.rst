@@ -284,6 +284,13 @@ The available options are described below under their respective sections.
         If ``True``, Stokes QUV images are made during the final imaging step, once self
         calibration has been completed.
 
+    pol_combine_method
+        The method used to combine the polarizations during deconvolution can also be
+        specified. This method can be "link" to linked polarization cleaning or "join" to
+        use joined polarization cleaning (default = link). When using linked cleaning,
+        the Stokes I image is used for cleaning and its clean components are subtracted
+        from all polarizations.
+
     dd_psf_grid
         The number of direction-dependent PSFs which should be fit horizontally and
         vertically in the image (default = ``[1, 1]`` = direction-independent PSF).
