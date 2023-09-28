@@ -50,12 +50,13 @@ class Mosaic(Operation):
         sector_vertices_filename = []
         regridded_image_filename = []
         template_image_filename = []
-        self.image_names = []
+        self.image_names = []  # list of input image names
         for pol in self.field.image_pol:
-            self.image_names.extend(['{}_image_file_true_sky'.format(pol.upper()),
-                                     '{}_image_file_apparent_sky'.format(pol.upper()),
-                                     '{}_model_file_true_sky'.format(pol.upper()),
-                                     '{}_residual_file_apparent_sky'.format(pol.upper())])
+            polup = pol.upper()
+            self.image_names.extend([f'{polup}_image_file_true_sky',
+                                     f'{polup}_image_file_apparent_sky',
+                                     f'{polup}_model_file_true_sky',
+                                     f'{polup}_residual_file_apparent_sky'])
         for image_name in self.image_names:
             image_list = []
             vertices_list = []

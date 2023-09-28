@@ -307,7 +307,9 @@ inputs:
     label: Link polarizations
     doc: |
       Link polarizations during clean (length = 1).
-    type: boolean
+    type:
+      - boolean?
+      - string?
 
   - id: join_polarizations
     label: Join polarizations

@@ -127,7 +127,8 @@ class Image(Operation):
         else:
             save_source_list = False
             if self.field.pol_combine_method == 'link':
-                link_polarizations = True
+                # Note: link_polarizations can be of CWL type boolean or string
+                link_polarizations = 'I'
             else:
                 join_polarizations = True
 
@@ -248,15 +249,22 @@ class Image(Operation):
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            for pol in self.field.image_pol:
-                setattr(sector, "{}_image_file_true_sky".format(pol.upper()),
-                        '{0}-MFS-{1}-image-pb.fits'.format(image_root, pol.upper()))
-                setattr(sector, "{}_image_file_apparent_sky".format(pol.upper()),
-                        '{0}-MFS-{1}-image.fits'.format(image_root, pol.upper()))
-                setattr(sector, "{}_model_file_true_sky".format(pol.upper()),
-                        '{0}-MFS-{1}-model-pb.fits'.format(image_root, pol.upper()))
-                setattr(sector, "{}_residual_file_apparent_sky".format(pol.upper()),
-                        '{0}-MFS-{1}-residual.fits'.format(image_root, pol.upper()))
+            if self.field.image_pol.lower() == 'i':
+                # When making only Stokes I images, WSClean does not include the
+                # Stokes parameter name in the output filenames
+                setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.fits')
+                setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
+                setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
+                setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+            else:
+                # When making all Stokes images, WSClean includes the Stokes parameter
+                # name in the output filenames
+                for pol in self.field.image_pol:
+                    polup = pol.upper()
+                    setattr(sector, f"{polup}_image_file_true_sky", f'{image_root}-MFS-{polup}-image-pb.fits')
+                    setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.fits')
+                    setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.fits')
+                    setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.fits')
 
             # The output sky models, both true sky and apparent sky (the filenames are
             # defined in the rapthor/scripts/filter_skymodel.py file)

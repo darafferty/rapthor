@@ -87,10 +87,11 @@ inputs:
     inputBinding:
       prefix: -pol
   - id: link_polarizations
-    type: boolean
+    type:
+      - boolean?
+      - string?
     inputBinding:
       prefix: -link-polarizations
-      valueFrom: 'I'
   - id: join_polarizations
     type: boolean
     inputBinding:

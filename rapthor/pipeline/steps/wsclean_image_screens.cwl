@@ -154,10 +154,11 @@ inputs:
     label: Link polarizations
     doc: |
       Link polarizations when making Stokes IQUV images.
-    type: boolean
+    type:
+      - boolean?
+      - string?
     inputBinding:
       prefix: -link-polarizations
-      valueFrom: 'I'
   - id: join_polarizations
     label: Join polarizations
     doc: |
