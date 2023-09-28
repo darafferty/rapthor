@@ -732,6 +732,7 @@ class Field(object):
                 skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                               radius=matching_radius_deg,
                                               keep='from1', inheritPatches=True)
+                skymodel_true_sky.setPatchPositions()
                 skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources
