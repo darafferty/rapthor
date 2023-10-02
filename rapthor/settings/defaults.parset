@@ -138,7 +138,7 @@ idg_mode = cpu
 mem_gb = 0
 
 # Apply separate XX and YY corrections during facet-based imaging (default =
-# False). If False, scalar solutions (the average of the XX and YY solutions)
+# True). If False, scalar solutions (the average of the XX and YY solutions)
 # are applied instead. (Separate XX and YY corrections are always applied when
 # using non-facet-based imaging methods.)
 apply_diagonal_solutions = True
@@ -146,6 +146,15 @@ apply_diagonal_solutions = True
 # The number of direction-dependent PSFs which should be fit horizontally and
 # vertically in the image (default = [1, 1] = direction-independent PSF).
 dd_psf_grid = [1, 1]
+
+# Make Stokes QUV images in addition to the Stokes I image (default = False).
+# If True, QUV images are made during the final imaging step, once self
+# calibration has been completed. The method used to combine the polarizations
+# during deconvolution can also be specified. This method can be "link" to use
+# linked polarization cleaning or "join" to use joined polarization cleaning
+# (default = link)
+make_quv_images = False
+pol_combine_method = link
 
 # Use MPI to distribute WSClean jobs over multiple nodes (default = False)? If
 # True and more than one node can be allocated to each WSClean job (i.e.,

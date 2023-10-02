@@ -291,6 +291,32 @@ inputs:
       Activate multiscale clean (length = 1).
     type: boolean
 
+  - id: pol
+    label: Pol list
+    doc: |
+      List of polarizations to image; e.g. "i" or "iquv" (length = 1).
+    type: string
+
+  - id: save_source_list
+    label: Save source list
+    doc: |
+      Save list of clean components (length = 1).
+    type: boolean
+
+  - id: link_polarizations
+    label: Link polarizations
+    doc: |
+      Link polarizations during clean (length = 1).
+    type:
+      - boolean?
+      - string?
+
+  - id: join_polarizations
+    label: Join polarizations
+    doc: |
+      Join polarizations during clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -368,20 +394,27 @@ outputs:
     outputSource:
       - find_diagnostics/diagnostics
     type: File
-  - id: sector_images
+  - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}
       - restore_nonpb/restored_image
       - restore_pb/restored_image
 {% else %}
-      - image/image_nonpb_name
-      - image/image_pb_name
+      - image/image_I_nonpb_name
+      - image/image_I_pb_name
 {% endif %}
-      - image/residual_name
-      - image/model_name
+    type: File[]
+  - id: sector_extra_images
+    outputSource:
+      - image/images_extra
+    type: File[]
+{% if save_source_list %}
+  - id: sector_skymodels
+    outputSource:
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
+{% endif %}
 {% if use_facets %}
   - id: region_file
     outputSource:
@@ -618,6 +651,14 @@ steps:
         source: max_uv_lambda
       - id: multiscale
         source: do_multiscale
+      - id: pol
+        source: pol
+      - id: save_source_list
+        source: save_source_list
+      - id: link_polarizations
+        source: link_polarizations
+      - id: join_polarizations
+        source: join_polarizations
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
@@ -641,12 +682,13 @@ steps:
       - id: dd_psf_grid
         source: dd_psf_grid
     out:
-      - id: image_nonpb_name
-      - id: image_pb_name
-      - id: residual_name
-      - id: model_name
+      - id: image_I_nonpb_name
+      - id: image_I_pb_name
+      - id: images_extra
+{% if save_source_list %}
       - id: skymodel_nonpb
       - id: skymodel_pb
+{% endif %}
 
 {% if peel_bright_sources %}
 # start peel_bright_sources
@@ -664,11 +706,11 @@ steps:
 {% endif %}
     in:
       - id: residual_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: source_list
         source: bright_skymodel_pb
       - id: output_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
@@ -689,11 +731,11 @@ steps:
 {% endif %}
     in:
       - id: residual_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
       - id: source_list
         source: bright_skymodel_pb
       - id: output_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
@@ -717,12 +759,16 @@ steps:
         source: bright_skymodel_pb
 {% else %}
       - id: true_sky_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: flat_noise_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
 {% endif %}
       - id: true_sky_skymodel
+{% if save_source_list %}
         source: image/skymodel_pb
+{% else %}
+        valueFrom: 'none'
+{% endif %}
       - id: output_root
         source: image_name
       - id: vertices_file
@@ -750,11 +796,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/calculate_image_diagnostics.cwl
     in:
       - id: flat_noise_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
       - id: flat_noise_rms_image
         source: filter/flat_noise_rms_image
       - id: true_sky_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: true_sky_rms_image
         source: filter/true_sky_rms_image
       - id: input_catalog

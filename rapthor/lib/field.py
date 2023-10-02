@@ -69,6 +69,8 @@ class Field(object):
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
+        self.make_quv_images = self.parset['imaging_specific']['make_quv_images']
+        self.pol_combine_method = self.parset['imaging_specific']['pol_combine_method']
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
@@ -730,6 +732,7 @@ class Field(object):
                 skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
                                               radius=matching_radius_deg,
                                               keep='from1', inheritPatches=True)
+                skymodel_true_sky.setPatchPositions()
                 skymodel_apparent_sky = None
 
             # Use concatenated sky models to make new calibration model (we set find_sources

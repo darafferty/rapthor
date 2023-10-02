@@ -60,6 +60,8 @@
                       'grid_width_dec_deg': None,
                       'grid_width_ra_deg': None,
                       'idg_mode': 'cpu',
+                      'make_quv_images': False,
+                      'pol_combine_method': 'link',
                       'max_peak_smearing': 0.15,
                       'max_uv_lambda': 1000000.0,
                       'mem_gb': 0,

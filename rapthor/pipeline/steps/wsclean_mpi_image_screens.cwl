@@ -33,15 +33,12 @@ requirements:
 
 arguments:
   - -no-update-model-required
-  - -save-source-list
   - -local-rms
   - -join-channels
   - -use-idg
   - -log-time
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
-  - valueFrom: 'I'
-    prefix: -pol
   - valueFrom: '0.85'
     prefix: -mgain
   - valueFrom: '0.8'
@@ -118,6 +115,24 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -multiscale
+  - id: save_source_list
+    type: boolean
+    inputBinding:
+      prefix: -save-source-list
+  - id: pol
+    type: string
+    inputBinding:
+      prefix: -pol
+  - id: link_polarizations
+    type:
+      - boolean?
+      - string?
+    inputBinding:
+      prefix: -link-polarizations
+  - id: join_polarizations
+    type: boolean
+    inputBinding:
+      prefix: -join-polarizations
   - id: cellsize_deg
     type: float
     inputBinding:
@@ -169,28 +184,24 @@ inputs:
     type: int
 
 outputs:
-  - id: image_nonpb_name
+  - id: image_I_nonpb_name
     type: File
     outputBinding:
-      glob: $(inputs.name)-MFS-image.fits
-  - id: image_pb_name
+      glob: [$(inputs.name)-MFS-image.fits, $(inputs.name)-MFS-I-image.fits]
+  - id: image_I_pb_name
     type: File
     outputBinding:
-      glob: $(inputs.name)-MFS-image-pb.fits
-  - id: residual_name
-    type: File
+      glob: [$(inputs.name)-MFS-image-pb.fits, $(inputs.name)-MFS-I-image-pb.fits]
+  - id: images_extra
+    type: File[]
     outputBinding:
-      glob: $(inputs.name)-MFS-residual.fits
-  - id: model_name
-    type: File
-    outputBinding:
-      glob: $(inputs.name)-MFS-model.fits
+      glob: [$(inputs.name)-MFS-[QUV]-image.fits, $(inputs.name)-MFS-[QUV]-image-pb.fits, $(inputs.name)-MFS-*residual.fits, $(inputs.name)-MFS-*model-pb.fits]
   - id: skymodel_nonpb
-    type: File
+    type: File?
     outputBinding:
       glob: $(inputs.name)-sources.txt
   - id: skymodel_pb
-    type: File
+    type: File?
     outputBinding:
       glob: $(inputs.name)-sources-pb.txt
 
