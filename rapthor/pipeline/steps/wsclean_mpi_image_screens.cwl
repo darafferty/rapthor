@@ -195,7 +195,7 @@ outputs:
   - id: images_extra
     type: File[]
     outputBinding:
-      glob: [$(inputs.name)-MFS-Q-image.fits, $(inputs.name)-MFS-U-image.fits, $(inputs.name)-MFS-V-image.fits, $(inputs.name)-MFS-Q-image-pb.fits, $(inputs.name)-MFS-U-image-pb.fits, $(inputs.name)-MFS-V-image-pb.fits, $(inputs.name)-MFS-residual.fits, $(inputs.name)-MFS-I-residual.fits, $(inputs.name)-MFS-Q-residual.fits, $(inputs.name)-MFS-U-residual.fits, $(inputs.name)-MFS-V-residual.fits, $(inputs.name)-MFS-model-pb.fits, $(inputs.name)-MFS-I-model-pb.fits, $(inputs.name)-MFS-Q-model-pb.fits, $(inputs.name)-MFS-U-model-pb.fits, $(inputs.name)-MFS-V-model-pb.fits]
+      glob: [$(inputs.name)-MFS-Q-image.fits, $(inputs.name)-MFS-U-image.fits, $(inputs.name)-MFS-V-image.fits, $(inputs.name)-MFS-Q-image-pb.fits, $(inputs.name)-MFS-U-image-pb.fits, $(inputs.name)-MFS-V-image-pb.fits, $(inputs.name)-MFS-*residual.fits, $(inputs.name)-MFS-*model-pb.fits]
   - id: skymodel_nonpb
     type: File?
     outputBinding:
