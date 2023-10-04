@@ -723,14 +723,21 @@ class Field(object):
             # input MS files for which no subtraction has been done) or if all sources
             # (and not only the imaged sources) are to be used in calibration
             if final or not self.imaged_sources_only:
-                # Load starting sky model
+                # Load starting sky model and regroup to one patch per entry to ensure
+                # any existing patches are removed (otherwise they may propagate to
+                # the DDE direction determination, leading to unexpected results)
                 skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
+                skymodel_true_sky_start.group('every')
 
-                # Concatenate
+                # Concatenate by position. Any entries in the initial sky model that match
+                # to one or more entires in the new one will be removed. A fairly large
+                # matching radius is used to favor entries in the new model over those in
+                # the initial one (i.e., ones from the initial model are only included if
+                # they are far from any in the new model and thus not likely to be
+                # duplicates)
                 matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
                 skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
-                                              radius=matching_radius_deg,
-                                              keep='from1', inheritPatches=True)
+                                              radius=matching_radius_deg, keep='from1')
                 skymodel_true_sky.setPatchPositions()
                 skymodel_apparent_sky = None
 
