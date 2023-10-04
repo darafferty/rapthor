@@ -639,9 +639,17 @@ class Field(object):
                 # Assumes we only have a single pointing centre among all MSes.
                 # If download is requested and no skymodel given in the parset we download one.
                 if self.parset['download_overwrite_skymodel']:
-                    misc.download_skymodel(self.ra, self.dec, skymodel_path=os.path.join(self.working_dir, self.parset['input_skymodel']), radius=self.parset['download_initial_skymodel_radius'], source=self.parset['download_initial_skymodel_server'], overwrite=self.parset['download_overwrite_skymodel'])
+                    misc.download_skymodel(self.ra, self.dec,
+                                           skymodel_path=os.path.join(self.working_dir, self.parset['input_skymodel']),
+                                           radius=self.parset['download_initial_skymodel_radius'],
+                                           source=self.parset['download_initial_skymodel_server'],
+                                           overwrite=self.parset['download_overwrite_skymodel'])
                 else:
-                    misc.download_skymodel(self.ra, self.dec, skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt'), radius=self.parset['download_initial_skymodel_radius'], source=self.parset['download_initial_skymodel_server'], overwrite=self.parset['download_overwrite_skymodel'])
+                    misc.download_skymodel(self.ra, self.dec,
+                                           skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt'),
+                                           radius=self.parset['download_initial_skymodel_radius'],
+                                           source=self.parset['download_initial_skymodel_server'],
+                                           overwrite=self.parset['download_overwrite_skymodel'])
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -649,26 +657,14 @@ class Field(object):
                                 find_sources=True, calibrator_max_dist_deg=calibrator_max_dist_deg,
                                 index=index)
         else:
-            # Use the sector sky models from the previous iteration to update the master
-            # sky model
+            # Use the imaging sector sky models from the previous iteration to update
+            # the master sky model
             self.log.info('Updating sky model...')
-            if self.imaged_sources_only:
-                # Use new models from the imaged sectors only
-                sector_skymodels_apparent_sky = [sector.image_skymodel_file_apparent_sky for
-                                                 sector in self.imaging_sectors]
-                sector_skymodels_true_sky = [sector.image_skymodel_file_true_sky for
+            sector_skymodels_apparent_sky = [sector.image_skymodel_file_apparent_sky for
                                              sector in self.imaging_sectors]
-                sector_names = [sector.name for sector in self.imaging_sectors]
-            else:
-                # Use models from all sectors, whether imaged or not
-                sector_skymodels_true_sky = []
-                sector_skymodels_apparent_sky = None
-                for sector in self.imaging_sectors + self.outlier_sectors:
-                    if sector.is_outlier:
-                        sector_skymodels_true_sky.append(sector.predict_skymodel_file)
-                    else:
-                        sector_skymodels_true_sky.append(sector.image_skymodel_file_true_sky)
-                sector_names = [sector.name for sector in self.sectors]
+            sector_skymodels_true_sky = [sector.image_skymodel_file_true_sky for
+                                         sector in self.imaging_sectors]
+            sector_names = [sector.name for sector in self.imaging_sectors]
 
             # Concatenate the sky models from all sectors, being careful not to duplicate
             # source and patch names
@@ -721,17 +717,27 @@ class Field(object):
             else:
                 skymodel_apparent_sky = None
 
-            # If this is set as a final pass, concatenate the starting sky model with
-            # the new one (to allow subtraction of sources outside the imaged area)
-            if final:
-                # Load starting sky model
+            # Concatenate the starting sky model with the new one. This step needs to be
+            # done if this iteration is set as a final pass (so that sources outside of
+            # imaged areas can be subtracted, since we have to go back to the original
+            # input MS files for which no subtraction has been done) or if all sources
+            # (and not only the imaged sources) are to be used in calibration
+            if final or not self.imaged_sources_only:
+                # Load starting sky model and regroup to one patch per entry to ensure
+                # any existing patches are removed (otherwise they may propagate to
+                # the DDE direction determination, leading to unexpected results)
                 skymodel_true_sky_start = lsmtool.load(self.parset['input_skymodel'])
+                skymodel_true_sky_start.group('every')
 
-                # Concatenate
+                # Concatenate by position. Any entries in the initial sky model that match
+                # to one or more entires in the new one will be removed. A fairly large
+                # matching radius is used to favor entries in the new model over those in
+                # the initial one (i.e., ones from the initial model are only included if
+                # they are far from any in the new model and thus not likely to be
+                # duplicates)
                 matching_radius_deg = 30.0 / 3600.0  # => 30 arcsec
                 skymodel_true_sky.concatenate(skymodel_true_sky_start, matchBy='position',
-                                              radius=matching_radius_deg,
-                                              keep='from1', inheritPatches=True)
+                                              radius=matching_radius_deg, keep='from1')
                 skymodel_true_sky.setPatchPositions()
                 skymodel_apparent_sky = None
 
