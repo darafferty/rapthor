@@ -164,9 +164,10 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
     """
     # Make a copy of the input data to fill with smoothed values
     amps = ampsoltab.val[:]
+    nstat = amps.shape[2]
+    npol = amps.shape[4]
     if phasesoltab is not None:
         phases = phasesoltab.val[:]
-        nstat = phases.shape[2]
         for stat in range(nstat):
             phases[:, :, stat, :, :] = phases[:, :, stat, :, :] - phases[:, :, ref_id, :, :]
 
@@ -175,33 +176,35 @@ def smooth_solutions(ampsoltab, phasesoltab=None, ref_id=0):
         # not needed for this direction
         size = get_smooth_box_size(ampsoltab, direction)
         if size is not None:
-            # Process the amplitudes
-            vals = amps[:, :, :, direction, :]
-            vals = np.log10(vals)
-            weights = ampsoltab.weight[:, :, :, direction, :]
-            vals_bkp = vals[weights == 0]
-            np.putmask(vals, weights == 0, np.nan)
-            valsnew = generic_filter(vals, np.nanmedian, size=size, mode='constant', cval=np.nan)
-            valsnew[weights == 0] = vals_bkp
-            valsnew = 10**valsnew
-            amps[:, :, :, direction, :] = valsnew
+            # Smooth solutions for each direction, station, and polarization separately
+            for stat in range(nstat):
+                for pol in range(npol):
+                    vals = amps[:, :, stat, direction, pol]
+                    vals = np.log10(vals)
+                    weights = ampsoltab.weight[:, :, stat, direction, pol]
+                    vals_bkp = vals[weights == 0]
+                    np.putmask(vals, weights == 0, np.nan)
+                    valsnew = generic_filter(vals, np.nanmedian, size=size, mode='constant', cval=np.nan)
+                    valsnew[weights == 0] = vals_bkp
+                    valsnew = 10**valsnew
+                    amps[:, :, stat, direction, pol] = valsnew
 
-            # Process the phases
-            if phasesoltab is not None:
-                vals = phases[:, :, :, direction, :]
-                weights = phasesoltab.weight[:, :, :, direction, :]
-                vals_bkp = vals[weights == 0]
-                vals = np.exp(1j*vals)
-                valsreal = np.real(vals)
-                valsimag = np.imag(vals)
-                np.putmask(valsreal, weights == 0, np.nan)
-                np.putmask(valsimag, weights == 0, np.nan)
-                valsrealnew = generic_filter(valsreal, np.nanmedian, size=size, mode='constant', cval=np.nan)
-                valsimagnew = generic_filter(valsimag, np.nanmedian, size=size, mode='constant', cval=np.nan)
-                valsnew = valsrealnew + 1j*valsimagnew
-                valsnew = np.angle(valsnew)
-                valsnew[weights == 0] = vals_bkp
-                phases[:, :, :, direction, :] = valsnew
+                    # Process the phases
+                    if phasesoltab is not None:
+                        vals = phases[:, :, stat, direction, pol]
+                        weights = phasesoltab.weight[:, :, stat, direction, pol]
+                        vals_bkp = vals[weights == 0]
+                        vals = np.exp(1j*vals)
+                        valsreal = np.real(vals)
+                        valsimag = np.imag(vals)
+                        np.putmask(valsreal, weights == 0, np.nan)
+                        np.putmask(valsimag, weights == 0, np.nan)
+                        valsrealnew = generic_filter(valsreal, np.nanmedian, size=size, mode='constant', cval=np.nan)
+                        valsimagnew = generic_filter(valsimag, np.nanmedian, size=size, mode='constant', cval=np.nan)
+                        valsnew = valsrealnew + 1j*valsimagnew
+                        valsnew = np.angle(valsnew)
+                        valsnew[weights == 0] = vals_bkp
+                        phases[:, :, stat, direction, pol] = valsnew
 
     # Save the smoothed solutions
     ampsoltab.setValues(amps)
