@@ -4,7 +4,8 @@ baseCommand: [DP3]
 label: Prepares a dataset for imaging
 doc: |
   This tool prepares the input data for imaging with direction-dependent corrections,
-  including applying the beam model, phase shifting, and averaging.
+  including applying the direction-independent full-Jones solutions and the beam model,
+  phase shifting, and averaging.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -14,7 +15,11 @@ arguments:
   - msin.datacolumn=DATA
   - msout.overwrite=True
   - msout.writefullresflag=False
-  - steps=[applybeam,shift,avg]
+  - steps=[applybeam,applycal,shift,avg]
+  - applycal.type=applycal
+  - applycal.correction=fulljones
+  - applycal.solset=sol000
+  - applycal.soltab=[amplitude000,phase000]
   - shift.type=phaseshifter
   - avg.type=squash
   - msout.storagemanager=Dysco
@@ -93,6 +98,14 @@ inputs:
     type: int
     inputBinding:
       prefix: numthreads=
+      separate: False
+  - id: h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the calibration solutions.
+    type: File
+    inputBinding:
+      prefix: applycal.parmdb=
       separate: False
 
 outputs:

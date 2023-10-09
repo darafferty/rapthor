@@ -3,8 +3,8 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for complex gains in multiple directions simultaneously for
-  the given MS file with fast phase corrections preapplied, using the input
+  This tool solves for diagonal gains in multiple directions simultaneously for
+  the given MS file with fast-phase corrections preapplied, using the input
   sourcedb and h5parm. Output is the solution table in h5parm format. See
   ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
   outputs not documented below.
@@ -17,7 +17,7 @@ arguments:
   - msout=
   - steps=[solve]
   - solve.type=ddecal
-  - solve.mode=complexgain
+  - solve.mode=diagonal
   - solve.usebeammodel=True
   - solve.beammode=array_factor
   - solve.applycal.steps=[fastphase]
@@ -52,7 +52,7 @@ inputs:
   - id: fast_h5parm
     label: Solution table
     doc: |
-      The filename of the input solution table containing the fast phase solutions.
+      The filename of the input solution table containing the fast-phase solutions.
       These solutions are preapplied before the solve is done.
     type: File
     inputBinding:
@@ -151,6 +151,11 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.smoothnessconstraint=
+      separate: False
+  - id: antennaconstraint
+    type: string
+    inputBinding:
+      prefix: solve.antennaconstraint=
       separate: False
   - id: numthreads
     type: int

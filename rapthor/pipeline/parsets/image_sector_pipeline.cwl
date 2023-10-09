@@ -152,9 +152,18 @@ inputs:
   - id: h5parm
     label: Filename of h5parm
     doc: |
-      The filename of the h5parm file with the calibration solutions (length =
-      1).
+      The filename of the h5parm file with the direction-dependent calibration
+      solutions (length = 1).
     type: File
+
+{% if apply_fulljones %}
+  - id: fulljones_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the full-Jones calibration solutions
+      (length = 1).
+    type: File
+{% endif %}
 
 {% if use_facets %}
 # start use_facets
@@ -282,6 +291,32 @@ inputs:
       Activate multiscale clean (length = 1).
     type: boolean
 
+  - id: pol
+    label: Pol list
+    doc: |
+      List of polarizations to image; e.g. "i" or "iquv" (length = 1).
+    type: string
+
+  - id: save_source_list
+    label: Save source list
+    doc: |
+      Save list of clean components (length = 1).
+    type: boolean
+
+  - id: link_polarizations
+    label: Link polarizations
+    doc: |
+      Link polarizations during clean (length = 1).
+    type:
+      - boolean?
+      - string?
+
+  - id: join_polarizations
+    label: Join polarizations
+    doc: |
+      Join polarizations during clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -359,20 +394,27 @@ outputs:
     outputSource:
       - find_diagnostics/diagnostics
     type: File
-  - id: sector_images
+  - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}
       - restore_nonpb/restored_image
       - restore_pb/restored_image
 {% else %}
-      - image/image_nonpb_name
-      - image/image_pb_name
+      - image/image_I_nonpb_name
+      - image/image_I_pb_name
 {% endif %}
-      - image/residual_name
-      - image/model_name
+    type: File[]
+  - id: sector_extra_images
+    outputSource:
+      - image/images_extra
+    type: File[]
+{% if save_source_list %}
+  - id: sector_skymodels
+    outputSource:
       - image/skymodel_nonpb
       - image/skymodel_pb
     type: File[]
+{% endif %}
 {% if use_facets %}
   - id: region_file
     outputSource:
@@ -386,17 +428,25 @@ steps:
     doc: |
       This step uses DP3 to prepare the input data for imaging. This involves
       averaging, phase shifting, and optionally the application of the
-      calibration solutions at the center.
+      calibration solutions.
 {% if use_screens or use_facets %}
 # start use_screens or use_facets
+{% if apply_fulljones %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_fulljones.cwl
+{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data.cwl
+{% endif %}
 
 {% else %}
 # start not use_screens and not use_facets
 {% if do_slowgain_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens.cwl
+{% if apply_fulljones %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_fulljones.cwl
 {% else %}
-    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_screens_phase_only.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde.cwl
+{% endif %}
+{% else %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_phase_only.cwl
 {% endif %}
 
 {% endif %}
@@ -428,10 +478,18 @@ steps:
       - id: numthreads
         source: max_threads
 {% if use_screens or use_facets %}
+{% if apply_fulljones %}
+      - id: h5parm
+        source: fulljones_h5parm
+{% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
       - id: h5parm
         source: h5parm
+{% if apply_fulljones %}
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
+{% endif %}
       - id: central_patch_name
         source: central_patch_name
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
@@ -593,6 +651,14 @@ steps:
         source: max_uv_lambda
       - id: multiscale
         source: do_multiscale
+      - id: pol
+        source: pol
+      - id: save_source_list
+        source: save_source_list
+      - id: link_polarizations
+        source: link_polarizations
+      - id: join_polarizations
+        source: join_polarizations
       - id: cellsize_deg
         source: cellsize_deg
       - id: channels_out
@@ -616,12 +682,13 @@ steps:
       - id: dd_psf_grid
         source: dd_psf_grid
     out:
-      - id: image_nonpb_name
-      - id: image_pb_name
-      - id: residual_name
-      - id: model_name
+      - id: image_I_nonpb_name
+      - id: image_I_pb_name
+      - id: images_extra
+{% if save_source_list %}
       - id: skymodel_nonpb
       - id: skymodel_pb
+{% endif %}
 
 {% if peel_bright_sources %}
 # start peel_bright_sources
@@ -639,11 +706,11 @@ steps:
 {% endif %}
     in:
       - id: residual_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: source_list
         source: bright_skymodel_pb
       - id: output_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
@@ -664,11 +731,11 @@ steps:
 {% endif %}
     in:
       - id: residual_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
       - id: source_list
         source: bright_skymodel_pb
       - id: output_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
         valueFrom: $(self.basename)
       - id: numthreads
         source: max_threads
@@ -692,12 +759,16 @@ steps:
         source: bright_skymodel_pb
 {% else %}
       - id: true_sky_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: flat_noise_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
 {% endif %}
       - id: true_sky_skymodel
+{% if save_source_list %}
         source: image/skymodel_pb
+{% else %}
+        valueFrom: 'none'
+{% endif %}
       - id: output_root
         source: image_name
       - id: vertices_file
@@ -708,6 +779,8 @@ steps:
         source: threshpix
       - id: beamMS
         source: obs_filename
+      - id: ncores
+        source: max_threads
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
@@ -723,11 +796,11 @@ steps:
     run: {{ rapthor_pipeline_dir }}/steps/calculate_image_diagnostics.cwl
     in:
       - id: flat_noise_image
-        source: image/image_nonpb_name
+        source: image/image_I_nonpb_name
       - id: flat_noise_rms_image
         source: filter/flat_noise_rms_image
       - id: true_sky_image
-        source: image/image_pb_name
+        source: image/image_I_pb_name
       - id: true_sky_rms_image
         source: filter/true_sky_rms_image
       - id: input_catalog

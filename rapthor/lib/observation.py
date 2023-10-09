@@ -2,11 +2,9 @@
 Definition of the Observation class that holds parameters for each measurement set
 """
 import os
-import sys
 import logging
 import casacore.tables as pt
 import numpy as np
-from astropy.time import Time
 from rapthor.lib.cluster import get_fast_solve_intervals, get_slow_solve_intervals
 from scipy.special import erf
 from rapthor.lib import miscellaneous as misc
@@ -30,6 +28,7 @@ class Observation(object):
     """
     def __init__(self, ms_filename, starttime=None, endtime=None):
         self.ms_filename = str(ms_filename)
+        self.ms_predict_di_filename = None
         self.name = os.path.basename(self.ms_filename)
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.starttime = starttime
@@ -149,12 +148,14 @@ class Observation(object):
         target_slow_timestep_joint = parset['calibration_specific']['slow_timestep_joint_sec']
         target_slow_timestep_separate = parset['calibration_specific']['slow_timestep_separate_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
+        target_fulljones_timestep = parset['calibration_specific']['fulljones_timestep_sec']
+        target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
 
-        # Find solution intervals for fast-phase solve
-        timepersample = self.timepersample
-        channelwidth = self.channelwidth
-        solint_fast_timestep = max(1, int(round(target_fast_timestep / timepersample)))
-        solint_fast_freqstep = max(1, self.get_nearest_frequstep(target_fast_freqstep / channelwidth))
+        # Find solution intervals for fast-phase solve. The solve is split into time
+        # chunks instead of frequency chunks, since continuous frequency coverage is
+        # desirable to recover the expected smooth, TEC-like behavior (phase ~ nu^-1)
+        solint_fast_timestep = max(1, int(round(target_fast_timestep / self.timepersample)))
+        solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
 
         # Adjust the solution interval if needed to fit the fast solve into the
         # available memory and determine how many calibration chunks to make (to allow
@@ -163,12 +164,12 @@ class Observation(object):
                                                                          self.numsamples, nobs,
                                                                          solint_fast_timestep,
                                                                          self.antenna, ndir)
-        chunksize = samplesperchunk * timepersample
+        chunksize = samplesperchunk * self.timepersample
         mystarttime = self.starttime
         myendtime = self.endtime
         if (myendtime - mystarttime) > chunksize:
             # Divide up the total duration into chunks of chunksize or smaller
-            nchunks = int(np.ceil(float(self.numsamples) * timepersample / chunksize))
+            nchunks = int(np.ceil(float(self.numsamples) * self.timepersample / chunksize))
         else:
             nchunks = 1
         starttimes = [mystarttime+(chunksize * i) for i in range(nchunks)]
@@ -177,14 +178,10 @@ class Observation(object):
             starttimes.pop(-1)
             nchunks -= 1
         self.ntimechunks = nchunks
-        if self.ntimechunks > 1:
-            infix = 's'
-        else:
-            infix = ''
         self.log.debug('Using {0} time chunk{1} for fast-phase '
-                       'calibration'.format(self.ntimechunks, infix))
+                       'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
         self.parameters['timechunk_filename'] = [self.ms_filename] * self.ntimechunks
-        self.parameters['starttime'] = [self.convert_mjd(t) for t in starttimes]
+        self.parameters['starttime'] = [misc.convert_mjd2mvt(t) for t in starttimes]
         self.parameters['ntimes'] = [samplesperchunk] * self.ntimechunks
 
         # Set last entry in ntimes list to extend to end of observation
@@ -197,75 +194,61 @@ class Observation(object):
         self.parameters['solint_fast_timestep'] = [solint_fast_timestep] * self.ntimechunks
         self.parameters['solint_fast_freqstep'] = [solint_fast_freqstep] * self.ntimechunks
 
-        # Find solution intervals for slow-gain solve
-        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / timepersample)))
-        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / timepersample)))
-        solint_slow_freqstep = max(1, self.get_nearest_frequstep(target_slow_freqstep / channelwidth))
+        # Find solution intervals for the gain solves. In contrast to the fast-phase
+        # solve, the gain solves are split into frequency chunks, since continuous
+        # frequency coverage is not needed
+        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / self.timepersample)))
+        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / self.timepersample)))
+        solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
+        target_timestep_fulljones = max(1, int(round(target_fulljones_timestep / self.timepersample)))
+        solint_freqstep_fulljones = max(1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth))
 
-        # Adjust the solution intervals if needed to fit the slow solves into the
+        # Adjust the solution intervals if needed to fit the gain solves into the
         # available memory and determine how many calibration chunks to make (to allow
-        # parallel jobs)
-        samplesperchunk, solint_slow_timestep = get_slow_solve_intervals(parset['cluster_specific'],
-                                                                         self.numchannels, nobs,
-                                                                         solint_slow_freqstep,
-                                                                         target_slow_timestep_joint,
-                                                                         self.antenna, ndir)
-        chunksize = samplesperchunk * channelwidth
-        mystartfreq = self.startfreq
-        myendfreq = self.endfreq
-        if (myendfreq-mystartfreq) > chunksize:
-            # Divide up the bandwidth into chunks of chunksize or smaller
-            nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
-        else:
-            nchunks = 1
-        self.nfreqchunks_joint = nchunks
-        if self.nfreqchunks_joint > 1:
-            infix = 's'
-        else:
-            infix = ''
-        self.log.debug('Using {0} frequency chunk{1} for the joint slow-gain '
-                       'calibration'.format(self.nfreqchunks_joint, infix))
-        self.parameters['freqchunk_filename_joint'] = [self.ms_filename] * self.nfreqchunks_joint
-        self.parameters['startchan_joint'] = [samplesperchunk * i for i in range(nchunks)]
-        self.parameters['nchan_joint'] = [samplesperchunk] * nchunks
-        self.parameters['nchan_joint'][-1] = 0  # set last entry to extend until end
-        self.parameters['slow_starttime_joint'] = [self.convert_mjd(self.starttime)] * nchunks
-        self.parameters['slow_ntimes_joint'] = [self.numsamples] * nchunks
-        self.parameters['solint_slow_timestep_joint'] = [solint_slow_timestep] * self.nfreqchunks_joint
-        self.parameters['solint_slow_freqstep_joint'] = [solint_slow_freqstep] * self.nfreqchunks_joint
-
-        # Do the same for the separate slow solve
-        samplesperchunk, solint_slow_timestep = get_slow_solve_intervals(parset['cluster_specific'],
-                                                                         self.numchannels, nobs,
-                                                                         solint_slow_freqstep,
-                                                                         target_slow_timestep_separate,
-                                                                         self.antenna, ndir)
-        chunksize = samplesperchunk * channelwidth
-        mystartfreq = self.startfreq
-        myendfreq = self.endfreq
-        if (myendfreq-mystartfreq) > chunksize:
-            # Divide up the bandwidth into chunks of chunksize or smaller
-            nchunks = int(np.ceil(float(self.numchannels) * channelwidth / chunksize))
-        else:
-            nchunks = 1
-        self.nfreqchunks_separate = nchunks
-        if self.nfreqchunks_separate > 1:
-            infix = 's'
-        else:
-            infix = ''
-        self.log.debug('Using {0} frequency chunk{1} for the separate slow-gain '
-                       'calibration'.format(self.nfreqchunks_separate, infix))
-        self.parameters['freqchunk_filename_separate'] = [self.ms_filename] * self.nfreqchunks_separate
-        self.parameters['startchan_separate'] = [samplesperchunk * i for i in range(nchunks)]
-        self.parameters['nchan_separate'] = [samplesperchunk] * nchunks
-        self.parameters['nchan_separate'][-1] = 0  # set last entry to extend until end
-        self.parameters['slow_starttime_separate'] = [self.convert_mjd(self.starttime)] * nchunks
-        self.parameters['slow_ntimes_separate'] = [self.numsamples] * nchunks
-        self.parameters['solint_slow_timestep_separate'] = [solint_slow_timestep] * self.nfreqchunks_separate
-        self.parameters['solint_slow_freqstep_separate'] = [solint_slow_freqstep] * self.nfreqchunks_separate
+        # parallel jobs). For simplicity, we do this for all potential types of gain
+        # solve, even if they are not all required by the current strategy
+        target_timesteps = {'joint': target_slow_timestep_joint,
+                            'separate': target_slow_timestep_separate,
+                            'fulljones': target_timestep_fulljones}
+        solint_freqsteps = {'joint': solint_slow_freqstep,
+                            'separate': solint_slow_freqstep,
+                            'fulljones': solint_freqstep_fulljones}
+        for solve_type in ['joint', 'separate', 'fulljones']:
+            solint_freqstep = solint_freqsteps[solve_type]
+            target_timestep = target_timesteps[solve_type]
+            if solve_type == 'fulljones':
+                ndirections = 1
+                freqchunk_filename = self.ms_predict_di_filename
+            else:
+                ndirections = ndir
+                freqchunk_filename = self.ms_filename
+            samplesperchunk, solint_timestep = get_slow_solve_intervals(parset['cluster_specific'],
+                                                                        self.numchannels, nobs,
+                                                                        solint_freqstep,
+                                                                        target_timestep,
+                                                                        self.antenna, ndirections)
+            freqchunksize = samplesperchunk * self.channelwidth
+            if (self.endfreq-self.startfreq) > freqchunksize:
+                # Divide up the bandwidth into chunks of freqchunksize or smaller
+                nfreqchunks = int(np.ceil(float(self.numchannels) * self.channelwidth / freqchunksize))
+            else:
+                nfreqchunks = 1
+            setattr(self, f'nfreqchunks_{solve_type}', nfreqchunks)
+            self.log.debug('Using {0} frequency chunk{1} for the {2} gain '
+                           'calibration (if done)'.format(nfreqchunks, "s" if nfreqchunks > 1 else "", solve_type))
+            self.parameters[f'freqchunk_filename_{solve_type}'] = [freqchunk_filename] * nfreqchunks
+            self.parameters[f'startchan_{solve_type}'] = [samplesperchunk * i for i in range(nfreqchunks)]
+            self.parameters[f'nchan_{solve_type}'] = [samplesperchunk] * nfreqchunks
+            self.parameters[f'nchan_{solve_type}'][-1] = 0  # set last entry to extend until end
+            self.parameters[f'slow_starttime_{solve_type}'] = [misc.convert_mjd2mvt(self.starttime)] * nfreqchunks
+            self.parameters[f'slow_ntimes_{solve_type}'] = [self.numsamples] * nfreqchunks
+            self.parameters[f'solint_slow_timestep_{solve_type}'] = [solint_timestep] * nfreqchunks
+            self.parameters[f'solint_slow_freqstep_{solve_type}'] = [solint_freqstep] * nfreqchunks
 
         # Set the number of segments to split the h5parm files into for screen fitting.
         # Try to split so that each file gets at least two solutions
+        solint_slow_timestep = max(self.parameters['solint_slow_timestep_joint'][0],
+                                   self.parameters['solint_slow_timestep_separate'][0])
         self.parameters['nsplit_fast'] = [max(1, int(self.numsamples / solint_fast_timestep / 2))]
         self.parameters['nsplit_slow'] = [max(1, int(self.numsamples / solint_slow_timestep / 2))]
 
@@ -310,12 +293,15 @@ class Observation(object):
         # The filename of the field data (after subtraction of outlier sources)
         self.ms_field = '{0}{1}_field'.format(root_filename, self.infix)
 
+        # The filename of the model data for direction-independent calibration
+        self.ms_predict_di = self.ms_subtracted_filename + '_di.ms'
+
         # The sky model patch names
         self.parameters['patch_names'] = patch_names
 
         # The start time and number of times (since an observation can be a part of its
         # associated MS file)
-        self.parameters['predict_starttime'] = self.convert_mjd(self.starttime)
+        self.parameters['predict_starttime'] = misc.convert_mjd2mvt(self.starttime)
         if self.goesto_endofms:
             self.parameters['predict_ntimes'] = 0
         else:
@@ -386,37 +372,17 @@ class Observation(object):
 
         # Find averaging steps for above target values
         image_freqstep = max(1, min(int(round(target_bandwidth_mhz * 1e6 / chan_width_hz)), nchan))
-        self.parameters['image_freqstep'] = self.get_nearest_frequstep(image_freqstep)
+        self.parameters['image_freqstep'] = self.get_nearest_freqstep(image_freqstep)
         self.parameters['image_timestep'] = max(1, int(round(target_timewidth_sec / timestep_sec)))
-        self.log.debug('Using averaging steps of {0} channels and {1} time slots '
+        self.log.debug('Using averaging steps of {0} channel{1} and {2} time slot{3} '
                        'for imaging'.format(self.parameters['image_freqstep'],
-                                            self.parameters['image_timestep']))
+                                            "s" if self.parameters['image_freqstep'] > 1 else "",
+                                            self.parameters['image_timestep'],
+                                            "s" if self.parameters['image_timestep'] > 1 else ""))
 
-    def convert_mjd(self, mjd_sec):
+    def get_nearest_freqstep(self, freqstep):
         """
-        Converts MJD to casacore MVTime
-
-        Parameters
-        ----------
-        mjd_sec : float
-            MJD time in seconds
-
-        Returns
-        -------
-        mvtime : str
-            Casacore MVTime string
-        """
-        t = Time(mjd_sec / 3600 / 24, format='mjd', scale='utc')
-        date, hour = t.iso.split(' ')
-        year, month, day = date.split('-')
-        d = t.datetime
-        month = d.ctime().split(' ')[1]
-
-        return '{0}{1}{2}/{3}'.format(day, month, year, hour)
-
-    def get_nearest_frequstep(self, freqstep):
-        """
-        Gets the nearest frequstep
+        Gets the nearest frequency step to the target one
 
         Parameters
         ----------

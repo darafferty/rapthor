@@ -5,10 +5,10 @@ import logging
 from rapthor import _logging
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
-from rapthor.operations.calibrate import Calibrate
+from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import Predict
+from rapthor.operations.predict import PredictDD, PredictDI
 from rapthor.lib.field import Field
 import numpy as np
 
@@ -48,23 +48,31 @@ def run(parset_file, logging_level='info'):
         # Update the field object for the current step
         field.update(step, index+1)
 
-        # Calibrate
+        # Calibrate (direction-dependent)
         if field.do_calibrate:
-            op = Calibrate(field, index+1)
+            op = CalibrateDD(field, index+1)
             op.run()
+
+            # Calibrate (direction-independent)
+            if field.do_fulljones_solve:
+                op = PredictDI(field, index+1)
+                op.run()
+                op = CalibrateDI(field, index+1)
+                op.run()
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = Predict(field, index+1)
+            op = PredictDD(field, index+1)
             op.run()
 
-        # Image the sectors
+        # Image and mosaic the sectors
         if field.do_image:
+            # Since we're doing selfcal, ensure that only Stokes I is imaged
+            field.image_pol = 'I'
+
             op = Image(field, index+1)
             op.run()
 
-            # Mosaic the sectors, for now just Stokes I
-            # TODO: run mosaic ops for IQUV+residuals
             op = Mosaic(field, index+1)
             op.run()
 
@@ -90,10 +98,13 @@ def run(parset_file, logging_level='info'):
                 log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
 
-    # Run with the final data fraction if needed
-    if not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']):
+    # Run a final pass if needed
+    if (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
+            field.make_quv_images):
         log.info("Starting final iteration with a data fraction of "
                  "{0:.2f}".format(parset['final_data_fraction']))
+        if field.make_quv_images:
+            log.info("Stokes I, Q, U, and V images will be made")
 
         # Set peel_outliers to that of initial iteration, since the observations
         # will be regenerated and outliers may need to be peeled
@@ -103,23 +114,31 @@ def run(parset_file, logging_level='info'):
         # from that of the last selfcal iteration (so to index+2)
         field.update(step, index+2, final=True)
 
-        # Calibrate
+        # Calibrate (direction-dependent)
         if field.do_calibrate:
-            op = Calibrate(field, index+2)
+            op = CalibrateDD(field, index+2)
             op.run()
+
+            # Calibrate (direction-independent)
+            if field.do_fulljones_solve:
+                op = PredictDI(field, index+2)
+                op.run()
+                op = CalibrateDI(field, index+2)
+                op.run()
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = Predict(field, index+2)
+            op = PredictDD(field, index+2)
             op.run()
 
-        # Image the sectors
+        # Image and mosaic the sectors
         if field.do_image:
+            # Set the Stokes polarizations for imaging
+            field.image_pol = 'IQUV' if field.make_quv_images else 'I'
+
             op = Image(field, index+2)
             op.run()
 
-            # Mosaic the sectors, for now just Stokes I
-            # TODO: run mosaic ops for IQUV+residuals
             op = Mosaic(field, index+2)
             op.run()
 

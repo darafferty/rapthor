@@ -35,7 +35,9 @@ inputs:
     label: PB-corrected model
     doc: |
       The filename of the input primary-beam-corrected sky model.
-    type: File
+    type:
+        - File
+        - string
     inputBinding:
       position: 3
   - id: output_root
@@ -86,6 +88,11 @@ inputs:
     inputBinding:
       prefix: --threshpix=
       separate: false
+  - id: ncores
+    type: int
+    inputBinding:
+      prefix: --ncores=
+      separate: False
 
 outputs:
   - id: filtered_skymodel_true_sky

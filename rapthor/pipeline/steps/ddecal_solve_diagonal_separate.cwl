@@ -3,11 +3,11 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for complex gains in multiple directions simultaneously for
+  This tool solves for diagonal gains in multiple directions simultaneously for
   the given MS file with fast-phase and slow-gain corrections preapplied, using
   the input sourcedb and h5parm. Output is the solution table in h5parm format.
   See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
-  outputs not documented below. This tool is used for debugging purposes only.
+  outputs not documented below.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -17,13 +17,12 @@ arguments:
   - msout=
   - steps=[solve]
   - solve.type=ddecal
-  - solve.mode=complexgain
+  - solve.mode=diagonal
   - solve.usebeammodel=True
   - solve.beammode=array_factor
-  - solve.applycal.steps=[slowamp,slowphase,fastphase]
+  - solve.applycal.steps=[fastphase,slowamp]
+  - solve.applycal.fastphase.correction=phase000
   - solve.applycal.slowamp.correction=amplitude000
-  - solve.applycal.slowphase.correction=phase000
-  - solve.applycal.fastphase.correction=phase001
 
 inputs:
   - id: msin
@@ -52,7 +51,11 @@ inputs:
       prefix: msin.nchan=
       separate: False
   - id: combined_h5parm
-    type: string
+    label: Solution table
+    doc: |
+      The filename of the input solution table containing the combined fast-phase
+      and slow-gain1 solutions. These solutions are preapplied before the solve is done.
+    type: File
     inputBinding:
       prefix: solve.applycal.parmdb=
       separate: False
@@ -75,6 +78,11 @@ inputs:
     type: File
     inputBinding:
       prefix: solve.sourcedb=
+      separate: False
+  - id: llssolver
+    type: string
+    inputBinding:
+      prefix: solve.llssolver=
       separate: False
   - id: maxiter
     type: int
@@ -111,6 +119,18 @@ inputs:
     type: boolean
     inputBinding:
       prefix: solve.onebeamperpatch=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+  - id: parallelbaselines
+    type: boolean
+    inputBinding:
+      prefix: solve.parallelbaselines=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+  - id: sagecalpredict
+    type: boolean
+    inputBinding:
+      prefix: solve.sagecalpredict=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
   - id: stepsize

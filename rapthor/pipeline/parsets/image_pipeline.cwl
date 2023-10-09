@@ -188,6 +188,15 @@ inputs:
       1).
     type: File
 
+{% if apply_fulljones %}
+  - id: fulljones_h5parm
+    label: Filename of h5parm
+    doc: |
+      The filename of the h5parm file with the full-Jones calibration solutions
+      (length = 1).
+    type: File
+{% endif %}
+
 {% if use_facets %}
 # start use_facets
   - id: skymodel
@@ -317,6 +326,32 @@ inputs:
       Activate multiscale clean (length = n_sectors).
     type: boolean[]
 
+  - id: pol
+    label: Pol list
+    doc: |
+      List of polarizations to image; e.g. "i" or "iquv" (length = 1).
+    type: string
+
+  - id: save_source_list
+    label: Save source list
+    doc: |
+      Save list of clean components (length = 1).
+    type: boolean
+
+  - id: link_polarizations
+    label: Link polarizations
+    doc: |
+      Link polarizations during clean (length = 1).
+    type:
+      - boolean?
+      - string?
+
+  - id: join_polarizations
+    label: Join polarizations
+    doc: |
+      Join polarizations during clean (length = 1).
+    type: boolean
+
   - id: taper_arcsec
     label: Taper value
     doc: |
@@ -398,14 +433,32 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
-  - id: sector_images
+  - id: sector_I_images
     outputSource:
-      - image_sector/sector_images
+      - image_sector/sector_I_images
     type:
       type: array
       items:
         type: array
         items: File
+  - id: sector_extra_images
+    outputSource:
+      - image_sector/sector_extra_images
+    type:
+      type: array
+      items:
+        type: array
+        items: File
+{% if save_source_list %}
+  - id: sector_skymodels
+    outputSource:
+      - image_sector/sector_skymodels
+    type:
+      type: array
+      items:
+        type: array
+        items: File
+{% endif %}
 {% if use_facets %}
   - id: region_file
     outputSource:
@@ -472,6 +525,10 @@ steps:
 # start not use_screens
       - id: h5parm
         source: h5parm
+{% if apply_fulljones %}
+      - id: fulljones_h5parm
+        source: fulljones_h5parm
+{% endif %}
 {% if use_facets %}
 # start use_facets
       - id: skymodel
@@ -516,6 +573,14 @@ steps:
         source: max_uv_lambda
       - id: do_multiscale
         source: do_multiscale
+      - id: pol
+        source: pol
+      - id: save_source_list
+        source: save_source_list
+      - id: link_polarizations
+        source: link_polarizations
+      - id: join_polarizations
+        source: join_polarizations
       - id: taper_arcsec
         source: taper_arcsec
       - id: wsclean_mem
@@ -581,7 +646,11 @@ steps:
     out:
       - id: filtered_skymodel_true_sky
       - id: filtered_skymodel_apparent_sky
-      - id: sector_images
+      - id: sector_I_images
+      - id: sector_extra_images
+{% if save_source_list %}
+      - id: sector_skymodels
+{% endif %}
       - id: sector_diagnostics
 {% if use_facets %}
       - id: region_file

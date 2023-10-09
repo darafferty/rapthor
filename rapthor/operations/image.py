@@ -17,7 +17,7 @@ class Image(Operation):
     Operation to image a field sector
     """
     def __init__(self, field, index):
-        super(Image, self).__init__(field, name='image', index=index)
+        super().__init__(field, name='image', index=index)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
@@ -36,11 +36,17 @@ class Image(Operation):
             use_facets = True
         else:
             use_facets = False
+        if self.field.image_pol.lower() == 'i':
+            save_source_list = True
+        else:
+            save_source_list = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
+                             'apply_fulljones': self.field.do_fulljones_solve,
                              'use_facets': use_facets,
+                             'save_source_list': save_source_list,
                              'peel_bright_sources': self.field.peel_bright_sources,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
@@ -100,7 +106,7 @@ class Image(Operation):
             sector_starttime = []
             sector_ntimes = []
             for obs in self.field.observations:
-                sector_starttime.append(obs.convert_mjd(obs.starttime))
+                sector_starttime.append(misc.convert_mjd2mvt(obs.starttime))
                 sector_ntimes.append(obs.numsamples)
             starttime.append(sector_starttime)
             ntimes.append(sector_ntimes)
@@ -110,6 +116,21 @@ class Image(Operation):
             else:
                 dir_local.append(self.scratch_dir)
             central_patch_name.append(sector.central_patch)
+
+        # Handle the polarization-related options
+        link_polarizations = False
+        join_polarizations = False
+        if self.field.image_pol.lower() == 'i':
+            # Saving the source list (clean components) is supported only when imaging
+            # Stokes I alone
+            save_source_list = True
+        else:
+            save_source_list = False
+            if self.field.pol_combine_method == 'link':
+                # Note: link_polarizations can be of CWL type boolean or string
+                link_polarizations = 'I'
+            else:
+                join_polarizations = True
 
         self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
                             'prepare_filename': prepare_filename,
@@ -123,6 +144,10 @@ class Image(Operation):
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'dir_local': dir_local,
+                            'pol': self.field.image_pol,
+                            'save_source_list': save_source_list,
+                            'link_polarizations': link_polarizations,
+                            'join_polarizations': join_polarizations,
                             'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
@@ -168,6 +193,8 @@ class Image(Operation):
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
+            if self.field.do_fulljones_solve:
+                self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
@@ -198,8 +225,13 @@ class Image(Operation):
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if self.field.do_slowgain_solve and self.field.apply_diagonal_solutions:
-                    # Diagonal solutions generated and should be applied
+                if (self.field.do_slowgain_solve and
+                        self.field.apply_diagonal_solutions and
+                        self.field.image_pol.lower() == 'i'):
+                    # Diagonal solutions generated and should be applied.
+                    # Note: this flag should be activated only when Stokes I alone is
+                    # imaged, as the application of diagonal solutions is already
+                    # activated when imaging multiple polarizations
                     self.input_parms.update({'apply_diagonal_solutions': True})
                 else:
                     self.input_parms.update({'apply_diagonal_solutions': False})
@@ -210,31 +242,47 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Copy the output FITS image, the clean mask, sky models, and ds9 facet
-        # region file for each sector. Also read the image diagnostics (rms noise,
-        # etc.) derived by PyBDSF and print them to the log.
-        # NOTE: currently, -save-source-list only works with pol=I -- when it works with other
-        # pols, copy them all
+        # Save the output FITS image filenames, sky models, and ds9 facet region file for
+        # each sector. Also read the image diagnostics (rms noise, etc.) derived by PyBDSF
+        # and print them to the log. The images are not copied to the final location here,
+        # as this is done after mosaicking (if needed) by the mosaic operation
         for sector in self.field.imaging_sectors:
+            # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
-            sector.I_image_file_true_sky = image_root + '-MFS-image-pb.fits'
-            sector.I_image_file_apparent_sky = image_root + '-MFS-image.fits'
-            sector.I_model_file_true_sky = image_root + '-MFS-model.fits'
-            sector.I_residual_file_apparent_sky = image_root + '-MFS-residual.fits'
+            if self.field.image_pol.lower() == 'i':
+                # When making only Stokes I images, WSClean does not include the
+                # Stokes parameter name in the output filenames
+                setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.fits')
+                setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
+                setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
+                setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+            else:
+                # When making all Stokes images, WSClean includes the Stokes parameter
+                # name in the output filenames
+                for pol in self.field.image_pol:
+                    polup = pol.upper()
+                    setattr(sector, f"{polup}_image_file_true_sky", f'{image_root}-MFS-{polup}-image-pb.fits')
+                    setattr(sector, f"{polup}_image_file_apparent_sky", f'{image_root}-MFS-{polup}-image.fits')
+                    setattr(sector, f"{polup}_model_file_true_sky", f'{image_root}-MFS-{polup}-model-pb.fits')
+                    setattr(sector, f"{polup}_residual_file_apparent_sky", f'{image_root}-MFS-{polup}-residual.fits')
 
-            # The sky models, both true sky and apparent sky (the filenames are defined
-            # in the rapthor/scripts/filter_skymodel.py file)
-            sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
-            sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
-            dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
-            misc.create_directory(dst_dir)
-            for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
-                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                if os.path.exists(dst_filename):
-                    os.remove(dst_filename)
-                shutil.copy(src_filename, dst_filename)
+            # The output sky models, both true sky and apparent sky (the filenames are
+            # defined in the rapthor/scripts/filter_skymodel.py file)
+            #
+            # Note: these are not generated when QUV images are made (WSClean does not
+            # currently support writing a source list in this mode)
+            if self.field.image_pol.lower() == 'i':
+                sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
+                sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
+                dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', 'image_{}'.format(self.index))
+                misc.create_directory(dst_dir)
+                for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
+                    dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                    if os.path.exists(dst_filename):
+                        os.remove(dst_filename)
+                    shutil.copy(src_filename, dst_filename)
 
-            # The ds9 region file, if made
+            # The output ds9 region file, if made
             if self.field.dde_method == 'facets':
                 dst_dir = os.path.join(self.parset['dir_working'], 'regions', 'image_{}'.format(self.index))
                 misc.create_directory(dst_dir)

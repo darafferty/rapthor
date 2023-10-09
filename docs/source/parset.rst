@@ -201,17 +201,27 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the second slow gain calibration,
         where separate solutions are found for each station, in Hz (default = 3e6).
 
+    fulljones_timestep_sec
+        Time step used during the full-Jones gain calibration, in seconds (default = 600).
+
+    fulljones_freqstep_hz
+        Frequency step used during full-Jones amplitude calibration, in Hz (default = 1e6).
+
+    fulljones_smoothnessconstraint
+        Smoothness constraint bandwidth used during the full-Jones gain calibration,
+        in Hz (default = 0).
+
     solverlbfgs_dof
-       Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
-       ``lbfgs``; default 200.0).
+        Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
+        ``lbfgs``; default 200.0).
 
     solverlbfgs_minibatches
-       Number of minibatches for the LBFGS solver (only used when :term:`solveralgorithm`
-       = ``lbfgs``; default 1).
+        Number of minibatches for the LBFGS solver (only used when :term:`solveralgorithm`
+        = ``lbfgs``; default 1).
 
     solverlbfgs_iter
-       Number of iterations per minibatch in the LBFGS solver (only used when
-       :term:`solveralgorithm` = ``lbfgs``; default 4).
+        Number of iterations per minibatch in the LBFGS solver (only used when
+        :term:`solveralgorithm` = ``lbfgs``; default 4).
 
 .. _parset_imaging_options:
 
@@ -268,6 +278,18 @@ The available options are described below under their respective sections.
         ``True``). If ``False``, scalar solutions (the average of the XX and YY
         solutions) are applied instead. (Separate XX and YY corrections are always applied
         when using non-facet-based imaging methods.)
+
+    make_quv_images
+        Make Stokes QUV images in addition to the Stokes I image (default = ``False``).
+        If ``True``, Stokes QUV images are made during the final imaging step, once self
+        calibration has been completed.
+
+    pol_combine_method
+        The method used to combine the polarizations during deconvolution can also be
+        specified. This method can be "link" to linked polarization cleaning or "join" to
+        use joined polarization cleaning (default = link). When using linked cleaning,
+        the Stokes I image is used for cleaning and its clean components are subtracted
+        from all polarizations.
 
     dd_psf_grid
         The number of direction-dependent PSFs which should be fit horizontally and

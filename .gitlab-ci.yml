@@ -7,15 +7,31 @@ workflow:
 
 variables:
   BUILD_DOCKER_IMAGE: "0"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 # This step determines the SHA1 of the Docker file used. It's stored in
 # versions.env artifact. The environment variables are available for all steps
 # depending on this step.
 versioning:
   stage: .pre
-  image: bitnami/git
+  image: bitnami/python
   script:
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- ci/ubuntu_20_04-base) > versions.env
+    # Unshallowing ensures that 'git describe' works
+    - git fetch --unshallow
+    - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
+    - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
+    # Use hash of commits and CI/CD build files to determine tag of base image
+    - sha_files=".gitlab-ci.yml ci/ubuntu_20_04-* commits.txt"
+    - BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
+    - BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1)
+    - FULL_NAME=${CI_REGISTRY_IMAGE}/full
+    - FULL_TAG=$(git log -n 1 --pretty=format:%H)
+    - echo BASE_NAME=${BASE_NAME} >> versions.env
+    - echo BASE_TAG=${BASE_TAG} >> versions.env
+    - echo BASE_IMAGE=${BASE_NAME}:${BASE_TAG} >> versions.env
+    - echo FULL_NAME=${FULL_NAME} >> versions.env
+    - echo FULL_TAG=${FULL_TAG} >> versions.env
+    - echo FULL_IMAGE=${FULL_NAME}:${FULL_TAG} >> versions.env
     - cat versions.env
   artifacts:
     reports:
@@ -24,37 +40,42 @@ versioning:
 # Builds the Docker image containing the dependencies of the Rapthor pipeline.
 # This image is cached, as long as the Dockerfile isn't modified new jobs reuse
 # this image.
-build-docker-ubuntu-20.04:
-  stage: .pre
+build-docker-base:
+  stage: build
   needs: ["versioning"]
-  image: docker:latest
-  script:
-    - |
-      if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]; then
-        docker build --tag $BASE_IMAGE -f ci/ubuntu_20_04-base .
-        docker push $BASE_IMAGE
-      fi
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-
-# Executes the tests of the Rapthor pipeline.
-build-ubuntu-20.04:
-  stage: test
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
-  image: $BASE_IMAGE
-  # script:
-  #   - ci/run.sh
-  # image: python:3.8
-  before_script:
-    - pip install --upgrade pip
-    - pip install tox
   script:
-    - tox -e py38
+    - |
+      if ! docker manifest inspect $BASE_IMAGE > /dev/null || [ "$BUILD_DOCKER_IMAGE" = "1" ]
+      then
+        [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
+        docker build ${DOCKER_CACHE} \
+          --file ci/ubuntu_20_04-base \
+          --tag $BASE_IMAGE \
+          .
+        docker push $BASE_IMAGE
+      fi
+
+build-docker-full:
+  stage: build
+  needs: ["versioning", "build-docker-base"]
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+  script:
+    - docker build
+        --build-arg BASE_NAME=$BASE_NAME
+        --build-arg BASE_TAG=$BASE_TAG
+        --build-arg VERSION=$RAPTHOR_VERSION
+        --file ci/ubuntu_20_04-rapthor
+        --tag $FULL_IMAGE
+        .
+    - docker push $FULL_IMAGE
 
 # Builds the documentation
 build-doc:
   stage: build
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
+  needs: ["versioning", "build-docker-base"]
   image: $BASE_IMAGE
   before_script:
     - apt-get -y update
@@ -73,3 +94,36 @@ build-doc:
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     - changes:
         - docs/**/*
+
+# Executes the tests of the Rapthor pipeline.
+build-ubuntu-20.04:
+  stage: test
+  needs: ["versioning", "build-docker-ubuntu-20.04"]
+  image: $BASE_IMAGE
+  # script:
+  #   - ci/run.sh
+  # image: python:3.8
+  before_script:
+    - pip install --upgrade pip
+    - pip install tox
+  script:
+    - tox -e py38
+
+# Deploy to docker hub
+deploy-docker:
+  stage: deploy
+  needs: ["versioning", "build-docker-full"]
+  before_script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
+  script:
+    - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
+    - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
+    - docker push astronrd/rapthor:$TAG
+  rules:
+    # Only run on master
+    - if: '$CI_COMMIT_BRANCH == "master"'
+      when: always
+
+# TODO: stage for deploying a release; this will involve in-place updating
+#       *.cwl files that contain dockerPull. We can "learn" from LINC

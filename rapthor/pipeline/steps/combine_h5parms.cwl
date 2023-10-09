@@ -42,7 +42,9 @@ inputs:
       2; 'p1a1a2' - phases and amplitudes from 1 and amplitudes from 2
       (amplitudes 1 and 2 are multiplied to create combined amplitudes); 'p1p2a2'
       - phases from 1 and phases and amplitudes from 2 (phases 2 are averaged
-      over XX and YY, then interpolated to time grid of 1 and summed).
+      over XX and YY, then interpolated to time grid of 1 and summed); 'separate'
+      - solutions from 1 and 2 are kept completely separate, no combination by
+      addition or multiplication is done.
     type: string
     inputBinding:
       position: 3
