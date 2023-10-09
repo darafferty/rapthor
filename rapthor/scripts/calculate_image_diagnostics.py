@@ -16,7 +16,6 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 from astropy.coordinates import match_coordinates_sky
 from astropy.stats import sigma_clip
-from astropy.io.registry import IORegistryError
 import json
 
 
@@ -82,7 +81,8 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
 
     # Collect some diagnostic numbers from the images. Note: we ensure all
     # non-integer numbers are float, as, e.g., np.float32 is not supported by json.dump()
-    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(obs_ms)  # Jy/beam
+    obs_list = [Observation(ms) for ms in obs_ms]
+    theoretical_rms, unflagged_fraction = misc.calc_theoretical_noise(obs_list)  # Jy/beam
     dynamic_range_global_true_sky = float(img_true_sky.max_value / rms_img_true_sky.min_value)
     dynamic_range_local_true_sky = float(np.nanmax(rms_img_flat_noise.img_data / rms_img_true_sky.img_data))
     dynamic_range_global_flat_noise = float(img_flat_noise.max_value / rms_img_flat_noise.min_value)
@@ -135,7 +135,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         # only comparison sources within a radius of FWHM / 2 of phase center
         catalog = Table.read(input_catalog, format='fits')
         catalog_comp = Table.read(catalog_comp_filename, format='fits')
-        obs = Observation(obs_ms[beam_ind])
+        obs = obs_list[beam_ind]
         phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
         coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
         separation = phase_center.separation(coords_comp)
