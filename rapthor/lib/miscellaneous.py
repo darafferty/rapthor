@@ -706,7 +706,7 @@ def calc_theoretical_noise(obs_list, w_factor=1.5):
     """
     nobs = len(obs_list)
     if nobs == 0:
-        # If no Obervations, just return zero for the noise and unflagged
+        # If no Observations, just return zero for the noise and unflagged
         # fraction
         return (0.0, 0.0)
 
@@ -773,15 +773,11 @@ def find_unflagged_fraction(ms_file, start_time, end_time):
     unflagged_fraction : float
         Fraction of unflagged data
     """
-    # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
-    # hanging/locking issues on some systems
-    cmd = (
-           "taql 'CALC "
-           "sum([select nfalse(FLAG) from "
-           f"[select from {ms_file} where TIME in [{start_time} =:= {end_time}]]]) / "
-           "sum([select nelements(FLAG) from "
-           f"[select from {ms_file} where TIME in [{start_time} =:= {end_time}]]])'"
-    )
+    # Call taql
+    time_selection = f"[select from {ms_file} where TIME in [{start_time} =:= {end_time}]]"
+    sum_nfalse = "sum([select nfalse(FLAG) from {time_selection}])"
+    sum_nelements = "sum([select nelements(FLAG) from {time_selection}])"
+    cmd = f"taql 'CALC {sum_nfalse} / {sum_nelements}'"
     result = subprocess.run(cmd, shell=True, capture_output=True, check=True)
     unflagged_fraction = float(result.stdout)
 
