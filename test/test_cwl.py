@@ -15,6 +15,8 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
     the same way that `rapthor.lib.operation.Operation.setup()` does this.
     Validate the workflow file using `cwltool`.
     """
+    if parms.get("use_facets") and parms.get("use_screens"):
+        pytest.skip("'use_facets' and 'use_screens' cannot be enabled both")
     pipeline_working_dir = tmp_path / "pipelines" / operation
     pipeline_working_dir.mkdir(parents=True, exist_ok=True)
     parset = pipeline_working_dir / "pipeline_parset.cwl"
