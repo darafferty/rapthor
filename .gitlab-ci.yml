@@ -96,13 +96,10 @@ build-doc:
         - docs/**/*
 
 # Executes the tests of the Rapthor pipeline.
-build-ubuntu-20.04:
+rapthor-test:
   stage: test
-  needs: ["versioning", "build-docker-ubuntu-20.04"]
+  needs: ["versioning", "build-docker-base"]
   image: $BASE_IMAGE
-  # script:
-  #   - ci/run.sh
-  # image: python:3.8
   before_script:
     - pip install --upgrade pip
     - pip install tox
