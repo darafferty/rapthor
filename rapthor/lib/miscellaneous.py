@@ -19,9 +19,6 @@ from math import modf, floor, ceil
 from losoto.h5parm import h5parm
 import lsmtool
 from scipy.interpolate import interp1d
-from rapthor.lib.observation import Observation
-import dateutil.parser
-
 import astropy.units as u
 import mocpy
 
@@ -52,7 +49,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
                            'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
                    'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?'
                           'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                    'LOTSS': ''} # Server is empty since we handle this through LSMTool.
+                   'LOTSS': ''}  # Server is empty since we handle this through LSMTool.
     if source.upper() not in SKY_SERVERS.keys():
         raise ValueError('Unsupported sky model source specified! Please use LOTSS, TGSS or GSM.')
 
@@ -100,7 +97,6 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         else:
             logger.info('Complete LoTSS coverage for the requested centre and radius.')
 
-
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
     max_tries = 5
     for tries in range(1, 1 + max_tries):
@@ -115,7 +111,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
                     raise IOError('Download of LoTSS sky model failed after {} attempts.'.format(max_tries))
                 else:
                     logger.error('Attempt #{0:d} to download LoTSS sky model failed. Attempting '
-                                '{1:d} more times.'.format(tries, max_tries - tries))
+                                 '{1:d} more times.'.format(tries, max_tries - tries))
                     time.sleep(5)
         elif (source.upper().strip() == 'TGSS') or (source.upper().strip() == 'GSM'):
             result = subprocess.run(['wget', '-O', skymodel_path,
@@ -123,10 +119,10 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
             if result.returncode != 0:
                 if tries == max_tries:
                     raise IOError('Download of TGSS sky model failed after {} '
-                                'attempts.'.format(max_tries))
+                                  'attempts.'.format(max_tries))
                 else:
                     logger.error('Attempt #{0:d} to download TGSS sky model failed. Attempting '
-                                '{1:d} more times.'.format(tries, max_tries - tries))
+                                 '{1:d} more times.'.format(tries, max_tries - tries))
                     time.sleep(5)
             else:
                 break
@@ -611,6 +607,7 @@ def convert_mjd2mvt(mjd_sec):
 
     return t.strftime("%d%b%Y/%H:%M:%S.%f")
 
+
 def convert_mvt2mjd(mvt_str):
     """
     Converts casacore MVTime to MJD
@@ -683,9 +680,10 @@ def remove_soltabs(solset, soltabnames):
             print('Error: soltab "{}" could not be removed'.format(soltabname))
 
 
-def calc_theoretical_noise(mslist, w_factor=1.5):
+def calc_theoretical_noise(obs_list, w_factor=1.5):
     """
-    Return the expected theoretical image noise for a dataset
+    Return the expected theoretical image noise for a dataset. For convenience,
+    the total unflagged fraction is also returned.
 
     Note: the calculations follow those of SKA Memo 113 (see
     http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf) and
@@ -693,23 +691,24 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
 
     Parameters
     ----------
-    mslist : list of str
-        List of the filenames of the input MS files
+    obs_list : list of Observation objects
+        List of the Observation objects that make up the full dataset
     w_factor : float, optional
         Factor for increase of noise due to the weighting scheme used
         in imaging (typically ranges from 1.3 - 2)
 
     Returns
     -------
-    noise, unflagged_fraction : tuple of floats
-        Estimate of the expected theoretical noise in Jy/beam and the
-        unflagged fraction of the input data
+    noise : float
+        Estimate of the expected theoretical noise in Jy/beam
+    unflagged_fraction : float
+        The total unflagged fraction of the input data
     """
-    nobs = len(mslist)
+    nobs = len(obs_list)
     if nobs == 0:
-        # If no MS files, just return zero for the noise as we cannot
-        # estimate it
-        return 0.0
+        # If no Observations, just return zero for the noise and unflagged
+        # fraction
+        return (0.0, 0.0)
 
     # Find the total time and the average total bandwidth, average frequency,
     # average unflagged fraction, and average number of core and remote stations
@@ -720,14 +719,13 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
     nremote = 0
     mid_freq = 0
     unflagged_fraction = 0
-    for ms in mslist:
-        obs = Observation(ms)
+    for obs in obs_list:
         total_time += obs.numsamples * obs.timepersample  # sec
         total_bandwidth += obs.numchannels * obs.channelwidth  # Hz
         ncore += len([stat for stat in obs.stations if stat.startswith('CS')])
         nremote += len([stat for stat in obs.stations if stat.startswith('RS')])
         mid_freq += (obs.endfreq + obs.startfreq) / 2 / 1e6  # MHz
-        unflagged_fraction += find_unflagged_fraction(ms)
+        unflagged_fraction += find_unflagged_fraction(obs.ms_filename, obs.starttime, obs.endtime)
     total_bandwidth /= nobs
     ncore = int(np.round(ncore / nobs))
     nremote = int(np.round(nremote / nobs))
@@ -756,25 +754,31 @@ def calc_theoretical_noise(mslist, w_factor=1.5):
     return (noise, unflagged_fraction)
 
 
-def find_unflagged_fraction(ms_file):
+def find_unflagged_fraction(ms_file, start_time, end_time):
     """
-    Finds the fraction of data that is unflagged
+    Finds the fraction of data that is unflagged for an MS file in the given
+    time range
 
     Parameters
     ----------
     ms_file : str
         Filename of input MS
+    start_time : float
+        MJD time in seconds for start of time range
+    end_time : float
+        MJD time in seconds for end of time range
 
     Returns
     -------
     unflagged_fraction : float
         Fraction of unflagged data
     """
-    # Call taql. Note that we do not use pt.taql(), as pt.taql() can cause
-    # hanging/locking issues on some systems
-    result = subprocess.run("taql 'CALC sum([select nfalse(FLAG) from {0}]) / "
-                            "sum([select nelements(FLAG) from {0}])'".format(ms_file),
-                            shell=True, capture_output=True, check=True)
+    # Call taql
+    time_selection = f"[select from {ms_file} where TIME in [{start_time} =:= {end_time}]]"
+    sum_nfalse = f"sum([select nfalse(FLAG) from {time_selection}])"
+    sum_nelements = f"sum([select nelements(FLAG) from {time_selection}])"
+    cmd = f"taql 'CALC {sum_nfalse} / {sum_nelements}'"
+    result = subprocess.run(cmd, shell=True, capture_output=True, check=True)
     unflagged_fraction = float(result.stdout)
 
     return unflagged_fraction
