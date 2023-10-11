@@ -31,7 +31,7 @@ def run(parset_file):
     parset = parset_read(parset_file, use_log_file=False)
 
     # Initialize minimal field object
-    field = Field(parset, mininmal=True)
+    field = Field(parset, minimal=True)
     field.outlier_sectors = [None]
     field.imaging_sectors = [None]
 

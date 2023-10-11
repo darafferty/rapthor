@@ -416,7 +416,7 @@ outputs:
     type: File[]
 {% endif %}
 {% if use_facets %}
-  - id: region_file
+  - id: sector_region_file
     outputSource:
       - make_region_file/region_file
     type: File
@@ -614,8 +614,6 @@ steps:
       - id: mask
         source: premask/maskimg
 {% if use_mpi %}
-      - id: ntasks
-        source: mpi_cpus_per_task
       - id: nnodes
         source: mpi_nnodes
 {% endif %}

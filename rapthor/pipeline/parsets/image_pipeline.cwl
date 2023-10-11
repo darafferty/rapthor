@@ -460,9 +460,9 @@ outputs:
         items: File
 {% endif %}
 {% if use_facets %}
-  - id: region_file
+  - id: sector_region_file
     outputSource:
-      - image_sector/region_file
+      - image_sector/sector_region_file
     type:
       type: array
       items: File
@@ -653,5 +653,5 @@ steps:
 {% endif %}
       - id: sector_diagnostics
 {% if use_facets %}
-      - id: region_file
+      - id: sector_region_file
 {% endif %}
