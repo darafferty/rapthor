@@ -65,7 +65,7 @@ class Field(object):
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
-        self.sagecalpredict= self.parset['calibration_specific']['sagecalpredict']
+        self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
@@ -490,10 +490,11 @@ class Field(object):
             # Check if target flux can be met in at least one direction
             total_flux = np.sum(fluxes)
             if total_flux < target_flux:
-                raise RuntimeError('No groups found that meet the target flux density. Please '
-                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
-                    'for problems, or lower the target flux density and/or increase the maximum '
-                    'calibrator distance.'.format(index))
+                raise RuntimeError('There is insufficient flux density in the model to meet '
+                                   'the target flux density. Please check the sky model '
+                                   '(in dir_working/skymodels/calibrate_{}/) for problems, '
+                                   'or lower the target flux density and/or increase the '
+                                   'maximum calibrator distance.'.format(index))
 
             # Weight the fluxes by source size (larger sources are down weighted)
             sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
@@ -536,11 +537,14 @@ class Field(object):
                 self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
 
             # Check if target flux can be met for at least one source
+            #
+            # Note: the weighted fluxes are used here (with larger sources down-weighted)
             if np.max(fluxes) < target_flux:
-                raise RuntimeError('No sources found that meet the target flux density. Please '
-                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
-                    'for problems, or lower the target flux density and/or increase the maximum '
-                    'calibrator distance.'.format(index))
+                raise RuntimeError('No sources found that meet the target flux density (after '
+                                   'down-weighting larger sources by up to a factor of two). Please '
+                                   'check the sky model (in dir_working/skymodels/calibrate_{}/) '
+                                   'for problems, or lower the target flux density and/or increase '
+                                   'the maximum calibrator distance.'.format(index))
 
             # Tesselate the model
             calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
