@@ -535,6 +535,13 @@ class Field(object):
             else:
                 self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
 
+            # Check if target flux can be met for at least one source
+            if np.max(fluxes) < target_flux:
+                raise RuntimeError('No sources found that meet the target flux density. Please '
+                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
+                    'for problems, or lower the target flux density and/or increase the maximum '
+                    'calibrator distance.'.format(index))
+
             # Tesselate the model
             calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
             source_skymodel.group('voronoi', patchNames=calibrator_names, applyBeam=applyBeam_group,
