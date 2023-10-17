@@ -1477,11 +1477,10 @@ class Field(object):
             wcs = self.wcs
 
         ax = fig.add_subplot(111, projection=wcs)
-        ax.scatter(centre_ra, centre_dec, marker='o', transform=ax.get_transform('fk5'), label='Image centre')
 
         # If a MOC is provided, also plot that.
         if pmoc is not None:
-            pmoc.border(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='none', label='Skymodel MOC')
+            pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue', label='Skymodel MOC', alpha=0.5)
 
         # Indicate the region out to which the skymodel was queried.
         if skymodel_radius > 0: 
@@ -1495,13 +1494,16 @@ class Field(object):
         # Plot the observation's FWHM
         ra = centre_ra
         dec = centre_dec
-        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='none', linestyle=':', label='Pointing FWHM')
+        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='lightgray', linestyle=':', label='Pointing FWHM', linewidth=2, alpha=0.5)
         ax.add_patch(fwhm)
 
         # Set the plot FoV in case no MOC is given.
         if moc is None:
             fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size, transform=ax.get_transform('fk5'), edgecolor='none', facecolor='none', linewidth=0)
             ax.add_patch(fake_FoV_circle)
+
+        ax.scatter(centre_ra, centre_dec, marker='s', color='k', transform=ax.get_transform('fk5'), label='Image centre')
+        
         ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend()
         ax.grid()
