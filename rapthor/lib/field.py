@@ -17,6 +17,12 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from typing import List, Dict
 
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.pyplot import figure
+from astropy.visualization.wcsaxes import SphericalCircle
+from astropy.visualization.wcsaxes import Quadrangle
+import mocpy
 
 class Field(object):
     """
@@ -1432,3 +1438,39 @@ class Field(object):
             self.do_predict = True
         else:
             self.do_predict = False
+
+    def plot_field(self, skymodel_radius=0, moc=None):
+        self.log.info('Plotting field coverage')
+        if self.parset['download_overwrite_skymodel']:
+            skymodel_path=os.path.join(self.working_dir, self.parset['input_skymodel'])
+        else:
+            skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt')
+        size_ra = self.imaging_sectors[0].width_ra * u.deg
+        size_dec = self.imaging_sectors[0].width_dec * u.deg
+        centre_ra = self.imaging_sectors[0].ra * u.deg
+        centre_dec = self.imaging_sectors[0].dec * u.deg
+        print(centre_ra, centre_dec)
+        print(self.ra, self.dec)
+
+        size_skymodel = self.parset['download_initial_skymodel_radius'] * u.deg
+
+        fig = figure(figsize=(8, 8))
+        ax = fig.add_subplot(111, projection=self.wcs)
+
+        ax.scatter(centre_ra, centre_dec, marker='+', transform=ax.get_transform('fk5'), label='Image centre')
+        # Indicate the region out to which the skymodel was queried.
+        if skymodel_radius > 0: 
+            skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel, transform=ax.get_transform('fk5'), label='Skymodel query cone', edgecolor='r', facecolor='none', linewidth=2)
+            ax.add_patch(skymodel_region)
+
+        # Plot the part of the field being imaged.
+        field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2), size_ra, size_dec, transform=ax.get_transform('fk5'), label='Image borders', edgecolor='k', facecolor='none', linewidth=2)
+        ax.add_patch(field_region)
+
+        # If a MOC is provided, also plot that.
+        if moc is not None:
+            moc = mocpy.MOC.from_fits(moc)
+            moc.border(ax, label='Skymodel MOC')
+        ax.legend()
+        ax.grid()
+        fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))
