@@ -668,6 +668,7 @@ class Field(object):
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
+            self.plot_field(self.parset['download_initial_skymodel_radius'], moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -1441,33 +1442,46 @@ class Field(object):
             self.do_predict = False
 
     def plot_field(self, skymodel_radius=0, moc=None):
+        """ Plots an overview of how the imaged field compares against the skymodel used.
+        
+        Parameters
+        ----------
+        skymodel_radius : float
+            Radius out to which the skymodel catalogue was queried.
+        moc : str or None
+            If not None, the multi-order coverage map to plot alongside the usual quantiies.
+        """
         self.log.info('Plotting field coverage')
-        if self.parset['download_overwrite_skymodel']:
-            skymodel_path=os.path.join(self.working_dir, self.parset['input_skymodel'])
-        else:
-            skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt')
         size_ra = self.imaging_sectors[0].width_ra * u.deg
         size_dec = self.imaging_sectors[0].width_dec * u.deg
         centre_ra = self.imaging_sectors[0].ra * u.deg
         centre_dec = self.imaging_sectors[0].dec * u.deg
-        print(centre_ra, centre_dec)
-        print(self.ra, self.dec)
-        print(self.fwhm_ra_deg)
-        print(self.fwhm_dec_deg)
 
         size_skymodel = skymodel_radius * u.deg
+        
+        # Dealing with axes limits is difficult here.
+        # Find the biggest size we plot and then set teh FoV either through the MOC
+        # or by plotting an invisible circle.
+        fake_size = size_ra if size_ra > size_dec else size_dec
+        fake_size = skymodel_radius if size_skymodel > fake_size else fake_size
+        fake_size *= 1.2
 
-        wcs = self.wcs.celestial
-        print(wcs)
+        fig = figure(figsize=(8, 8), dpi=300)
+        # If a MOC is provided we need to deal with the WCS differently
+        pmoc = None
+        if moc is not None:
+            pmoc = mocpy.MOC.from_fits(moc)
+            mocwcs = mocpy.WCS(fig, fov=fake_size*2, center=SkyCoord(centre_ra, centre_dec, frame='fk5')).w
+            wcs = mocwcs
+        else:
+            wcs = self.wcs
 
-        fig = figure(figsize=(8, 8))
         ax = fig.add_subplot(111, projection=wcs)
         ax.scatter(centre_ra, centre_dec, marker='o', transform=ax.get_transform('fk5'), label='Image centre')
 
         # If a MOC is provided, also plot that.
-        if moc is not None:
-            moc = mocpy.MOC.from_fits(moc)
-            moc.border(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='none', label='Skymodel MOC')
+        if pmoc is not None:
+            pmoc.border(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='none', label='Skymodel MOC')
 
         # Indicate the region out to which the skymodel was queried.
         if skymodel_radius > 0: 
@@ -1481,16 +1495,14 @@ class Field(object):
         # Plot the observation's FWHM
         ra = centre_ra
         dec = centre_dec
-        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='none', linestyle=':')
+        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='none', linestyle=':', label='Pointing FWHM')
         ax.add_patch(fwhm)
 
-        # Set the plot FoV
-        fake_size = size_ra if size_ra > size_dec else size_dec
-        fake_size = skymodel_radius if size_skymodel > fake_size else fake_size
-        fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size * 5.2, transform=ax.get_transform('fk5'), edgecolor='none', facecolor='none', linewidth=0)
-        ax.add_patch(fake_FoV_circle)
-
+        # Set the plot FoV in case no MOC is given.
+        if moc is None:
+            fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size, transform=ax.get_transform('fk5'), edgecolor='none', facecolor='none', linewidth=0)
+            ax.add_patch(fake_FoV_circle)
+        ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend()
         ax.grid()
-        fig.show()
         fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))
