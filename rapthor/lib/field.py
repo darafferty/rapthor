@@ -19,6 +19,7 @@ from typing import List, Dict
 
 import matplotlib
 matplotlib.use('Agg')
+from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
 from astropy.visualization.wcsaxes import SphericalCircle
 from astropy.visualization.wcsaxes import Quadrangle
@@ -1451,13 +1452,23 @@ class Field(object):
         centre_dec = self.imaging_sectors[0].dec * u.deg
         print(centre_ra, centre_dec)
         print(self.ra, self.dec)
+        print(self.fwhm_ra_deg)
+        print(self.fwhm_dec_deg)
 
-        size_skymodel = self.parset['download_initial_skymodel_radius'] * u.deg
+        size_skymodel = skymodel_radius * u.deg
+
+        wcs = self.wcs.celestial
+        print(wcs)
 
         fig = figure(figsize=(8, 8))
-        ax = fig.add_subplot(111, projection=self.wcs)
+        ax = fig.add_subplot(111, projection=wcs)
+        ax.scatter(centre_ra, centre_dec, marker='o', transform=ax.get_transform('fk5'), label='Image centre')
 
-        ax.scatter(centre_ra, centre_dec, marker='+', transform=ax.get_transform('fk5'), label='Image centre')
+        # If a MOC is provided, also plot that.
+        if moc is not None:
+            moc = mocpy.MOC.from_fits(moc)
+            moc.border(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='none', label='Skymodel MOC')
+
         # Indicate the region out to which the skymodel was queried.
         if skymodel_radius > 0: 
             skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel, transform=ax.get_transform('fk5'), label='Skymodel query cone', edgecolor='r', facecolor='none', linewidth=2)
@@ -1467,10 +1478,19 @@ class Field(object):
         field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2), size_ra, size_dec, transform=ax.get_transform('fk5'), label='Image borders', edgecolor='k', facecolor='none', linewidth=2)
         ax.add_patch(field_region)
 
-        # If a MOC is provided, also plot that.
-        if moc is not None:
-            moc = mocpy.MOC.from_fits(moc)
-            moc.border(ax, label='Skymodel MOC')
+        # Plot the observation's FWHM
+        ra = centre_ra
+        dec = centre_dec
+        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='none', linestyle=':')
+        ax.add_patch(fwhm)
+
+        # Set the plot FoV
+        fake_size = size_ra if size_ra > size_dec else size_dec
+        fake_size = skymodel_radius if size_skymodel > fake_size else fake_size
+        fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size * 5.2, transform=ax.get_transform('fk5'), edgecolor='none', facecolor='none', linewidth=0)
+        ax.add_patch(fake_FoV_circle)
+
         ax.legend()
         ax.grid()
+        fig.show()
         fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))
