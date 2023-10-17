@@ -668,7 +668,10 @@ class Field(object):
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
-            self.plot_field(self.parset['download_initial_skymodel_radius'], moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+            if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
+                self.plot_field(self.parset['download_initial_skymodel_radius'], moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+            else:
+                self.plot_field(self.parset['download_initial_skymodel_radius'])
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
