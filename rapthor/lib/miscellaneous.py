@@ -83,12 +83,12 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
         mocpath = os.path.join(os.path.dirname(skymodel_path), 'dr2-moc.moc')
         subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc', '-O', mocpath])
         moc = mocpy.MOC.from_fits(mocpath)
-        covers_centre = moc.contains(ra * u.deg, dec * u.deg)
+        covers_centre = moc.contains([ra * u.deg], [dec * u.deg])
         # Checking single coordinates, so get rid of the array.
-        covers_left = moc.contains(ra * u.deg - radius * u.deg, dec * u.deg)[0]
-        covers_right = moc.contains(ra * u.deg + radius * u.deg, dec * u.deg)[0]
-        covers_bottom = moc.contains(ra * u.deg, dec * u.deg - radius * u.deg)[0]
-        covers_top = moc.contains(ra * u.deg, dec * u.deg + radius * u.deg)[0]
+        covers_left = moc.contains([ra * u.deg - radius * u.deg], [dec * u.deg])[0]
+        covers_right = moc.contains([ra * u.deg + radius * u.deg], [dec * u.deg])[0]
+        covers_bottom = moc.contains([ra * u.deg], [dec * u.deg - radius * u.deg])[0]
+        covers_top = moc.contains([ra * u.deg], [dec * u.deg + radius * u.deg])[0]
         if covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
             logger.critical('Incomplete LoTSS coverage for the requested centre and radius! Please check!')
         elif not covers_centre and (covers_left or covers_right or covers_bottom or covers_top):
