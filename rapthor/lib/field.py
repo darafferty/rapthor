@@ -1466,7 +1466,7 @@ class Field(object):
         # Find the biggest size we plot and then set teh FoV either through the MOC
         # or by plotting an invisible circle.
         fake_size = size_ra if size_ra > size_dec else size_dec
-        fake_size = skymodel_radius if size_skymodel > fake_size else fake_size
+        fake_size = size_skymodel if size_skymodel > fake_size else fake_size
         fake_size *= 1.2
 
         fig = figure(figsize=(8, 8), dpi=300)
