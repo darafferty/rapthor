@@ -1450,7 +1450,7 @@ class Field(object):
         Parameters
         ----------
         skymodel_radius : float
-            Radius out to which the skymodel catalogue was queried.
+            Radius in degrees out to which the skymodel catalogue was queried.
         moc : str or None
             If not None, the multi-order coverage map to plot alongside the usual quantiies.
         """
