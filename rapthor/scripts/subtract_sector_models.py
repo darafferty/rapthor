@@ -148,8 +148,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     if nsectors == 0:
         raise ValueError('No model data found.')
     print('subtract_sector_models: Found {} model data files'.format(nsectors))
-    for m in model_list:
-        print(m)
 
     # Define the template MS file. This file is copied to one or more files
     # to be filled with new data
