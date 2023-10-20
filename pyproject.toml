@@ -39,6 +39,7 @@ dependencies = [
     "jinja2",
     "losoto",
     "lsmtool>=1.5.0",
+    "matplotlib",
     "mocpy",
     "numpy",
     "python-casacore",
