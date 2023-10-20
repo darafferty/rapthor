@@ -81,7 +81,7 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     if source.upper().strip() == 'LOTSS':
         logger.info('Checking LoTSS coverage for the requested centre and radius.')
         mocpath = os.path.join(os.path.dirname(skymodel_path), 'dr2-moc.moc')
-        subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc', '-O', mocpath])
+        subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc', '-O', mocpath], capture_output=True, check=True)
         moc = mocpy.MOC.from_fits(mocpath)
         covers_centre = moc.contains([ra * u.deg], [dec * u.deg])
         # Checking single coordinates, so get rid of the array.
