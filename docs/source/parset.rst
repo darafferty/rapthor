@@ -53,8 +53,8 @@ The available options are described below under their respective sections.
 
     download_initial_skymodel_server
         Place to download the initial sky model from (default is ``TGSS``). This can
-        either be ``TGSS`` to use the TFIR GMRT Sky Survey or ``GSM`` to use the Global
-        Sky Model.
+        either be ``TGSS`` to use the TFIR GMRT Sky Survey, ``LOTSS`` to use the LOFAR
+        Two-metre Sky Survey, or ``GSM`` to use the Global Sky Model.
 
     download_overwrite_skymodel
         Overwrite any existing sky model with a downloaded one (default is ``False``).

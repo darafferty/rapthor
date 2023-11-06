@@ -72,7 +72,6 @@ build-docker-full:
         .
     - docker push $FULL_IMAGE
 
-
 # Builds the documentation
 build-doc:
   stage: build
@@ -101,8 +100,11 @@ rapthor-test:
   stage: test
   needs: ["versioning", "build-docker-base"]
   image: $BASE_IMAGE
+  before_script:
+    - pip install --upgrade pip
+    - pip install tox
   script:
-    - ci/run.sh
+    - tox -e py38
 
 # Deploy to docker hub
 deploy-docker:

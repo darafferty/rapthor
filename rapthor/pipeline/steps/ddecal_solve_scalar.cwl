@@ -52,7 +52,7 @@ inputs:
       prefix: solve.nchan=
       separate: False
   - id: sourcedb
-    type: string
+    type: File
     inputBinding:
       prefix: solve.sourcedb=
       separate: False

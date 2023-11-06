@@ -43,7 +43,7 @@ def get_nchunks(msin, nsectors, fraction=1.0, compressed=False):
 
 
 def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
-         out_column='DATA', use_compression=False,
+         out_column='MODEL_DATA', use_compression=False,
          starttime=None, quiet=True, infix=''):
     """
     Add sector model data
@@ -57,9 +57,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     msin_column : str, optional
         Name of input column
     model_column : str, optional
-        Name of model column
+        Name of input model column
     out_column : str, optional
-        Name of output column
+        Name of output column for summed model data
     use_compression : bool, optional
         If True, use Dysco compression on DATA column
     starttime : str, optional
@@ -101,8 +101,10 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     if nsectors == 0:
         raise ValueError('No model data found.')
     print('add_sector_models: Found {} model data files'.format(nsectors))
-    for m in model_list:
-        print(m)
+
+    # Define the template MS file. This file is copied to one or more files
+    # to be filled with new data
+    ms_template = model_list[0]
 
     # If starttime is given, figure out startrow and nrows for input MS file
     tin = pt.table(msin, readonly=True, ack=False)
@@ -120,11 +122,9 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     else:
         startrow_in = 0
         nrows_in = tin.nrows()
-    tin.close()
 
-    # Open input table and define chunks based on available memory, making sure each
+    # Define chunks based on available memory, making sure each
     # chunk gives a full timeslot (needed for reweighting)
-    tin = pt.table(msin, readonly=True, ack=False)
     fraction = float(nrows_in) / float(tin.nrows())
     nchunks = get_nchunks(msin, nsectors, fraction)
     nrows_per_chunk = int(nrows_in / nchunks)
@@ -134,7 +134,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
             nrows_per_chunk = nbl
             break
     nchunks = int(np.ceil(nrows_in / nrows_per_chunk))
-    startrows_tin = [startrow_in]
     startrows_tmod = [0]
     nrows = [nrows_per_chunk]
     for i in range(1, nchunks):
@@ -143,7 +142,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
         else:
             nrow = nrows_per_chunk
         nrows.append(nrow)
-        startrows_tin.append(startrows_tin[i-1] + nrows[i-1])
         startrows_tmod.append(startrows_tmod[i-1] + nrows[i-1])
     print('add_sector_models: Using {} chunk(s)'.format(nchunks))
 
@@ -152,15 +150,20 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     if os.path.exists(msout):
         # File may exist from a previous iteration; delete it if so
         misc.delete_directory(msout)
-    subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', msin, msout])
+    subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', ms_template, msout])
     tout = pt.table(msout, readonly=False, ack=False)
     if out_column not in tout.colnames():
         desc = tout.getcoldesc('DATA')
         desc['name'] = out_column
         tout.addcols(desc)
 
+    # Copy the DATA column from the input MS file to the output one
+    data = tin.getcol('DATA', startrow=startrow_in, nrow=nrows_in)
+    tout.putcol('DATA', data, startrow=0, nrow=nrows_in)
+    tout.flush()
+
     # Process the data chunk by chunk
-    for c, (startrow_tin, startrow_tmod, nrow) in enumerate(zip(startrows_tin, startrows_tmod, nrows)):
+    for c, (startrow_tmod, nrow) in enumerate(zip(startrows_tmod, nrows)):
         # For each chunk, load data
         datamod_list = []
         for i, msmodel in enumerate(model_list):

@@ -240,7 +240,7 @@ inputs:
       prefix: -dd-psf-grid
 
 outputs:
-  - id: image_nonpb_name
+  - id: image_I_nonpb_name
     label: Output non-PB-corrected image
     doc: |
       The filename of the output non-primary-beam-corrected image. The value is
@@ -250,7 +250,7 @@ outputs:
     type: File
     outputBinding:
       glob: [$(inputs.name)-MFS-image.fits, $(inputs.name)-MFS-I-image.fits]
-  - id: image_pb_name
+  - id: image_I_pb_name
     label: Output PB-corrected image
     doc: |
       The filename of the output primary-beam-corrected image. The value is

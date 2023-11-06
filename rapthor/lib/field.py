@@ -17,6 +17,13 @@ from astropy.coordinates import SkyCoord
 import astropy.units as u
 from typing import List, Dict
 
+import matplotlib
+matplotlib.use('Agg')
+from matplotlib.patches import Ellipse
+from matplotlib.pyplot import figure
+from astropy.visualization.wcsaxes import SphericalCircle
+from astropy.visualization.wcsaxes import Quadrangle
+import mocpy
 
 class Field(object):
     """
@@ -29,7 +36,7 @@ class Field(object):
     minimal : bool
         If True, only initialize the minimal set of required parameters
     """
-    def __init__(self, parset, mininmal=False):
+    def __init__(self, parset, minimal=False):
         # Initialize basic attributes. These can be overridden later by the strategy
         # values and/or the operations
         self.name = 'field'
@@ -65,7 +72,7 @@ class Field(object):
         self.screen_type = self.parset['imaging_specific']['screen_type']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
-        self.sagecalpredict= self.parset['calibration_specific']['sagecalpredict']
+        self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']
@@ -91,7 +98,7 @@ class Field(object):
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
-        if not mininmal:
+        if not minimal:
             # Scan MS files to get observation info
             self.scan_observations()
 
@@ -490,10 +497,11 @@ class Field(object):
             # Check if target flux can be met in at least one direction
             total_flux = np.sum(fluxes)
             if total_flux < target_flux:
-                raise RuntimeError('No groups found that meet the target flux density. Please '
-                    'check the sky model (in dir_working/skymodels/calibrate_{}/) '
-                    'for problems, or lower the target flux density and/or increase the maximum '
-                    'calibrator distance.'.format(index))
+                raise RuntimeError('There is insufficient flux density in the model to meet '
+                                   'the target flux density. Please check the sky model '
+                                   '(in dir_working/skymodels/calibrate_{}/) for problems, '
+                                   'or lower the target flux density and/or increase the '
+                                   'maximum calibrator distance.'.format(index))
 
             # Weight the fluxes by source size (larger sources are down weighted)
             sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
@@ -534,6 +542,16 @@ class Field(object):
                         self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
             else:
                 self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+
+            # Check if target flux can be met for at least one source
+            #
+            # Note: the weighted fluxes are used here (with larger sources down-weighted)
+            if np.max(fluxes) < target_flux:
+                raise RuntimeError('No sources found that meet the target flux density (after '
+                                   'down-weighting larger sources by up to a factor of two). Please '
+                                   'check the sky model (in dir_working/skymodels/calibrate_{}/) '
+                                   'for problems, or lower the target flux density and/or increase '
+                                   'the maximum calibrator distance.'.format(index))
 
             # Tesselate the model
             calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
@@ -650,6 +668,10 @@ class Field(object):
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
+            if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
+                self.plot_field(self.parset['download_initial_skymodel_radius'], moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+            else:
+                self.plot_field(self.parset['download_initial_skymodel_radius'])
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -1421,3 +1443,71 @@ class Field(object):
             self.do_predict = True
         else:
             self.do_predict = False
+
+    def plot_field(self, skymodel_radius=0, moc=None):
+        """ Plots an overview of how the imaged field compares against the skymodel used.
+        
+        Parameters
+        ----------
+        skymodel_radius : float
+            Radius in degrees out to which the skymodel catalogue was queried.
+        moc : str or None
+            If not None, the multi-order coverage map to plot alongside the usual quantiies.
+        """
+        self.log.info('Plotting field coverage')
+        size_ra = self.imaging_sectors[0].width_ra * u.deg
+        size_dec = self.imaging_sectors[0].width_dec * u.deg
+        centre_ra = self.imaging_sectors[0].ra * u.deg
+        centre_dec = self.imaging_sectors[0].dec * u.deg
+
+        size_skymodel = skymodel_radius * u.deg
+        
+        # Dealing with axes limits is difficult here.
+        # Find the biggest size we plot and then set teh FoV either through the MOC
+        # or by plotting an invisible circle.
+        fake_size = size_ra if size_ra > size_dec else size_dec
+        fake_size = size_skymodel if size_skymodel > fake_size else fake_size
+        fake_size *= 1.2
+
+        fig = figure(figsize=(8, 8), dpi=300)
+        # If a MOC is provided we need to deal with the WCS differently
+        pmoc = None
+        if moc is not None:
+            pmoc = mocpy.MOC.from_fits(moc)
+            mocwcs = mocpy.WCS(fig, fov=fake_size*2, center=SkyCoord(centre_ra, centre_dec, frame='fk5')).w
+            wcs = mocwcs
+        else:
+            wcs = self.wcs
+
+        ax = fig.add_subplot(111, projection=wcs)
+
+        # If a MOC is provided, also plot that.
+        if pmoc is not None:
+            pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue', label='Skymodel MOC', alpha=0.5)
+
+        # Indicate the region out to which the skymodel was queried.
+        if skymodel_radius > 0: 
+            skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel, transform=ax.get_transform('fk5'), label='Skymodel query cone', edgecolor='r', facecolor='none', linewidth=2)
+            ax.add_patch(skymodel_region)
+
+        # Plot the part of the field being imaged.
+        field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2), size_ra, size_dec, transform=ax.get_transform('fk5'), label='Image borders', edgecolor='k', facecolor='none', linewidth=2)
+        ax.add_patch(field_region)
+
+        # Plot the observation's FWHM
+        ra = centre_ra
+        dec = centre_dec
+        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='lightgray', linestyle=':', label='Pointing FWHM', linewidth=2, alpha=0.5)
+        ax.add_patch(fwhm)
+
+        # Set the plot FoV in case no MOC is given.
+        if moc is None:
+            fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size, transform=ax.get_transform('fk5'), edgecolor='none', facecolor='none', linewidth=0)
+            ax.add_patch(fake_FoV_circle)
+
+        ax.scatter(centre_ra, centre_dec, marker='s', color='k', transform=ax.get_transform('fk5'), label='Image centre')
+        
+        ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
+        ax.legend()
+        ax.grid()
+        fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))

@@ -180,35 +180,6 @@ class FITSImage(object):
             oldrms = rms
         raise Exception('Noise estimation failed to converge.')
 
-    def convolve(self, target_beam):
-        """
-        Convolve *to* this rsolution
-        beam = [bmaj, bmin, bpa]
-        """
-        from lib_beamdeconv import deconvolve_ell, EllipticalGaussian2DKernel
-        from astropy import convolution
-
-        # if difference between beam is negligible <1%, skip - it mostly happens when beams are exactly the same
-        beam = self.get_beam()
-        if (np.abs((target_beam[0]/beam[0])-1) < 1e-2) and (np.abs((target_beam[1]/beam[1])-1) < 1e-2) and (np.abs(target_beam[2] - beam[2]) < 1):
-            logging.debug('%s: do not convolve. Same beam.' % self.imagefile)
-            return
-        # first find beam to convolve with
-        convolve_beam = deconvolve_ell(target_beam[0], target_beam[1], target_beam[2], beam[0], beam[1], beam[2])
-        if convolve_beam[0] is None:
-            raise ValueError('Cannot deconvolve this beam.')
-        logging.debug('%s: Convolve beam: %.3f" %.3f" (pa %.1f deg)'
-                      % (self.imagefile, convolve_beam[0]*3600, convolve_beam[1]*3600, convolve_beam[2]))
-        # do convolution on data
-        bmaj, bmin, bpa = convolve_beam
-        assert abs(self.img_hdr['CDELT1']) == abs(self.img_hdr['CDELT2'])
-        pixsize = abs(self.img_hdr['CDELT1'])
-        fwhm2sigma = 1./np.sqrt(8.*np.log(2.))
-        gauss_kern = EllipticalGaussian2DKernel((bmaj*fwhm2sigma)/pixsize, (bmin*fwhm2sigma)/pixsize, (90+bpa)*np.pi/180.) # bmaj and bmin are in pixels
-        self.img_data = convolution.convolve(self.img_data, gauss_kern, boundary=None)
-        self.img_data *= (target_beam[0]*target_beam[1])/(beam[0]*beam[1]) # since we are in Jt/b we need to renormalise
-        self.set_beam(target_beam) # update beam
-
     def apply_shift(self, dra, ddec):
         """
         Shift header by dra/ddec
