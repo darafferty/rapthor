@@ -79,8 +79,8 @@ def run(parset_file, logging_level='info'):
         # Check for selfcal convergence/divergence
         if field.do_check:
             log.info("Checking selfcal convergence...")
-            has_converged, has_diverged = field.check_selfcal_progress()
-            if not has_converged and not has_diverged:
+            has_converged, has_diverged, has_failed = field.check_selfcal_progress()
+            if not has_converged and not has_diverged and not has_failed:
                 # Continue selfcal
                 log.info("Improvement in image noise, dynamic range, and/or number of "
                          "sources exceeds that set by the convergence ratio of "
@@ -95,12 +95,25 @@ def run(parset_file, logging_level='info'):
                 if has_diverged:
                     log.warning("Selfcal has diverged (ratio of current image noise "
                                 "to previous value is > {})".format(field.divergence_ratio))
+                if has_failed:
+                    log.warning("Selfcal has failed due to high noise (ratio of current image noise "
+                                "to theoretical value is > {})".format(field.failure_ratio))
                 log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
 
     # Run a final pass if needed
+    do_final_pass = False
     if (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
             field.make_quv_images):
+        do_final_pass = True
+        if field.do_check:
+            # If selfcal was found to have diverged or failed, don't do the final pass
+            if has_diverged or has_failed:
+                log.info("Selfcal diverged or failed, so skipping final iteration (with a data "
+                         "fraction of {0:.2f})".format(parset['final_data_fraction']))
+                do_final_pass = False
+
+    if do_final_pass:
         log.info("Starting final iteration with a data fraction of "
                  "{0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:

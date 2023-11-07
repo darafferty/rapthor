@@ -97,6 +97,7 @@ def set_strategy(field):
                 strategy_steps[i]['do_check'] = True
                 strategy_steps[i]['convergence_ratio'] = 0.95
                 strategy_steps[i]['divergence_ratio'] = 1.1
+                strategy_steps[i]['failure_ratio'] = 10.0
 
     elif field.parset['strategy'] == 'image':
         # Image one or more sectors:
@@ -140,7 +141,8 @@ def set_strategy(field):
                                              'scale_normalization_delta', 'max_directions'],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
                                          'peel_outliers', 'peel_bright_sources'],
-                            'do_check': ['convergence_ratio', 'divergence_ratio']}
+                            'do_check': ['convergence_ratio', 'divergence_ratio',
+                                         'failure_ratio']}
     for primary in primary_parameters:
         for i in range(len(strategy_steps)):
             if primary not in strategy_steps[i]:
