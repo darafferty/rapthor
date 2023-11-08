@@ -114,8 +114,6 @@ def set_strategy(field):
         strategy_steps[0]['threshpix'] = 5.0
         strategy_steps[0]['max_nmiter'] = 12
 
-        strategy_steps[0]['do_update'] = False
-
         strategy_steps[0]['do_check'] = False
 
     elif os.path.exists(field.parset['strategy']):

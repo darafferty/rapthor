@@ -109,8 +109,8 @@ def run(parset_file, logging_level='info'):
         if field.do_check:
             # If selfcal was found to have diverged or failed, don't do the final pass
             if has_diverged or has_failed:
-                log.info("Selfcal diverged or failed, so skipping final iteration (with a data "
-                         "fraction of {0:.2f})".format(parset['final_data_fraction']))
+                log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
+                            "fraction of {0:.2f})".format(parset['final_data_fraction']))
                 do_final_pass = False
 
     if do_final_pass:
