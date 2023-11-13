@@ -16,7 +16,7 @@ import glob
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from typing import List, Dict
-
+from collections import namedtuple
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.patches import Ellipse
@@ -1307,16 +1307,19 @@ class Field(object):
 
         Returns
         -------
-        converged, diverged : tuple of bools
-            The selfcal state, where (converged, diverged, failed) is one of:
-                (True, False, False) - if selfcal has converged
-                (False, False, False) - if selfcal has not yet converged (or diverged)
-                (False, True, False) - if selfcal has diverged
-                (*, *, True) - if selfcal has failed
+        selfcal_state : namedtuple
+            The selfcal state, with the following elements:
+                selfcal_state.converged - True if selfcal has converged in all
+                                          sectors
+                selfcal_state.diverged - True if selfcal has diverged in one or
+                                         more sectors
+                selfcal_state.failed - True if selfcal has failed in one or
+                                       more sectors
         """
         convergence_ratio = self.convergence_ratio
         divergence_ratio = self.divergence_ratio
         failure_ratio = self.failure_ratio
+        SelfcalState = namedtuple('SelfcalState', ['converged', 'diverged', 'failed'])
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
@@ -1341,7 +1344,7 @@ class Field(object):
                 len(self.imaging_sectors[0].diagnostics) <= 1):
             # Either no imaging sectors or no previous iteration, so report not yet
             # converged, diverged, or failed
-            return False, False, False
+            return SelfcalState(False, False, False)
 
         # Get noise, dynamic range, and number of sources from previous and current
         # images of each sector
@@ -1385,16 +1388,16 @@ class Field(object):
 
         if any(failed):
             # Report failed
-            return False, False, True
+            return SelfcalState(False, False, True)
         elif any(diverged):
             # Report diverged
-            return False, True, False
+            return SelfcalState(False, True, False)
         elif all(converged):
             # Report converged
-            return True, False, False
+            return SelfcalState(True, False, False)
         else:
             # Report not converged, not diverged, and not failed
-            return False, False, False
+            return SelfcalState(False, False, False)
 
     def update(self, step_dict, index, final=False):
         """
