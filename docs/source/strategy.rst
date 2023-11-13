@@ -95,3 +95,6 @@ The following processing parameters must be set for each cycle:
     divergence_ratio
         Float that sets the minimum ratio of the current image noise to the previous image noise above which selfcal is considered to have diverged (must be > 1).
 
+    failure_ratio
+        Float that sets the minimum ratio of the current image noise to the theoretical image noise above which selfcal is considered to have failed (must be > 1).
+

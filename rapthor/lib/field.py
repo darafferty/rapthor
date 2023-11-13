@@ -16,7 +16,7 @@ import glob
 from astropy.coordinates import SkyCoord
 import astropy.units as u
 from typing import List, Dict
-
+from collections import namedtuple
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib.patches import Ellipse
@@ -24,6 +24,7 @@ from matplotlib.pyplot import figure
 from astropy.visualization.wcsaxes import SphericalCircle
 from astropy.visualization.wcsaxes import Quadrangle
 import mocpy
+
 
 class Field(object):
     """
@@ -85,8 +86,10 @@ class Field(object):
         # Set strategy parameter defaults
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
+        self.failure_ratio = 10.0
+        self.max_distance = 3.0
         self.max_normalization_delta = 0.3
-        self.solve_min_uv_lambda = 350
+        self.solve_min_uv_lambda = 150
         self.scale_normalization_delta = True
         self.lofar_to_true_flux_ratio = 1.0
         self.lofar_to_true_flux_std = 0.0
@@ -1277,7 +1280,8 @@ class Field(object):
     def check_selfcal_progress(self):
         """
         Checks whether selfcal has converged or diverged by comparing the current
-        image noise to that of the previous cycle
+        image noise to that of the previous cycle. A check is also done on the
+        absolute value of the noise.
 
         Convergence is determined by comparing the noise and dynamic range ratios
         to self.convergence_ratio, which is the minimum ratio of the current noise
@@ -1294,49 +1298,67 @@ class Field(object):
         to the previous noise above which selfcal is considered to have diverged
         (must be >= 1). E.g., divergence_ratio = 1.1 means that, if image noise
         worsens by ~ 10% or more from the previous cycle, selfcal is considered
-        to have diverged
+        to have diverged.
+
+        Failure is determined by comparing the absolute value of the noise in
+        the current cycle with the theoretical noise. If the ratio of the current
+        median noise to the theoretical one is greater than failure_ratio, selfcal
+        is considered to have failed.
 
         Returns
         -------
-        converged, diverged : tuple of bools
-            The selfcal state, where (converged, diverged) is one of:
-                (True, False) - if selfcal has converged
-                (False, False) - if selfcal has not yet converged (or diverged)
-                (False, True) - if selfcal has diverged
+        selfcal_state : namedtuple
+            The selfcal state, with the following elements:
+                selfcal_state.converged - True if selfcal has converged in all
+                                          sectors
+                selfcal_state.diverged - True if selfcal has diverged in one or
+                                         more sectors
+                selfcal_state.failed - True if selfcal has failed in one or
+                                       more sectors
         """
         convergence_ratio = self.convergence_ratio
         divergence_ratio = self.divergence_ratio
+        failure_ratio = self.failure_ratio
+        SelfcalState = namedtuple('SelfcalState', ['converged', 'diverged', 'failed'])
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
-            self.log.info('The convergence ratio is set to {} but must be <= 2. '
-                          'Using 2.0 instead'.format(convergence_ratio))
+            self.log.warning('The convergence ratio is set to {} but must be <= 2. '
+                             'Using 2.0 instead'.format(convergence_ratio))
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
-            self.log.info('The convergence ratio is set to {} but must be >= 0.5. '
-                          'Using 0.5 instead'.format(convergence_ratio))
+            self.log.warning('The convergence ratio is set to {} but must be >= 0.5. '
+                             'Using 0.5 instead'.format(convergence_ratio))
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
-            self.log.info('The divergence ratio is set to {} but must be >= 1. '
-                          'Using 1.0 instead'.format(divergence_ratio))
+            self.log.warning('The divergence ratio is set to {} but must be >= 1. '
+                             'Using 1.0 instead'.format(divergence_ratio))
             divergence_ratio = 1.0
+        if failure_ratio < 1.0:
+            self.log.warning('The failure ratio is set to {} but must be >= 1. '
+                             'Using 1.0 instead'.format(failure_ratio))
+            failure_ratio = 1.0
 
         if (not hasattr(self, 'imaging_sectors') or
                 not self.imaging_sectors or
                 len(self.imaging_sectors[0].diagnostics) <= 1):
             # Either no imaging sectors or no previous iteration, so report not yet
-            # converged (or diverged)
-            return False, False
+            # converged, diverged, or failed
+            return SelfcalState(False, False, False)
 
         # Get noise, dynamic range, and number of sources from previous and current
         # images of each sector
         converged = []
         diverged = []
+        failed = []
         for sector in self.imaging_sectors:
             rmspre = sector.diagnostics[-2]['median_rms_flat_noise']
             rmspost = sector.diagnostics[-1]['median_rms_flat_noise']
+            rmsideal = sector.diagnostics[-1]['theoretical_rms']
             self.log.info('Ratio of current median image noise (non-PB-corrected) to previous image '
                           'noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmspre))
+            self.log.info('Ratio of current median image noise (non-PB-corrected) to theorectical '
+                          'minimum image noise for {0} = {1:.2f}'.format(sector.name, rmspost/rmsideal))
             dynrpre = sector.diagnostics[-2]['dynamic_range_global_flat_noise']
             dynrpost = sector.diagnostics[-1]['dynamic_range_global_flat_noise']
             self.log.info('Ratio of current image dynamic range (non-PB-corrected) to previous image '
@@ -1359,15 +1381,23 @@ class Field(object):
                 # Report converged (and not diverged)
                 converged.append(True)
                 diverged.append(False)
-        if any(diverged):
-            # Report diverged (and not converged)
-            return False, True
+            if rmspost > self.failure_ratio * rmsideal:
+                failed.append(True)
+            else:
+                failed.append(False)
+
+        if any(failed):
+            # Report failed
+            return SelfcalState(False, False, True)
+        elif any(diverged):
+            # Report diverged
+            return SelfcalState(False, True, False)
         elif all(converged):
-            # Report converged (and not diverged)
-            return True, False
+            # Report converged
+            return SelfcalState(True, False, False)
         else:
-            # Report not converged (and not diverged)
-            return False, False
+            # Report not converged, not diverged, and not failed
+            return SelfcalState(False, False, False)
 
     def update(self, step_dict, index, final=False):
         """
@@ -1446,7 +1476,7 @@ class Field(object):
 
     def plot_field(self, skymodel_radius=0, moc=None):
         """ Plots an overview of how the imaged field compares against the skymodel used.
-        
+
         Parameters
         ----------
         skymodel_radius : float
@@ -1461,7 +1491,7 @@ class Field(object):
         centre_dec = self.imaging_sectors[0].dec * u.deg
 
         size_skymodel = skymodel_radius * u.deg
-        
+
         # Dealing with axes limits is difficult here.
         # Find the biggest size we plot and then set teh FoV either through the MOC
         # or by plotting an invisible circle.
@@ -1486,7 +1516,7 @@ class Field(object):
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue', label='Skymodel MOC', alpha=0.5)
 
         # Indicate the region out to which the skymodel was queried.
-        if skymodel_radius > 0: 
+        if skymodel_radius > 0:
             skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel, transform=ax.get_transform('fk5'), label='Skymodel query cone', edgecolor='r', facecolor='none', linewidth=2)
             ax.add_patch(skymodel_region)
 
@@ -1506,7 +1536,7 @@ class Field(object):
             ax.add_patch(fake_FoV_circle)
 
         ax.scatter(centre_ra, centre_dec, marker='s', color='k', transform=ax.get_transform('fk5'), label='Image centre')
-        
+
         ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend()
         ax.grid()

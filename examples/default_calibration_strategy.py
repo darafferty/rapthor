@@ -95,3 +95,4 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['do_check'] = True
         strategy_steps[i]['convergence_ratio'] = 0.95
         strategy_steps[i]['divergence_ratio'] = 1.1
+        strategy_steps[i]['failure_ratio'] = 10.0

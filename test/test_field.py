@@ -4,6 +4,7 @@ import requests
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
 
+
 class TestField(unittest.TestCase):
     @classmethod
     def downloadms(self, filename):
@@ -44,20 +45,17 @@ class TestField(unittest.TestCase):
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
 
-
     def test_imaging_sectors(self):
         self.assertEqual(self.field.sector_bounds_deg, '[258.558431;57.961675;259.103519;56.885818]')
 
-
     def test_outlier_sectors(self):
         self.assertEqual(self.field.outlier_sectors, [])
-
 
     def test_radec2xy(self):
         self.assertEqual(self.field.radec2xy([0.0], [0.0]), ([12187.183569042127], [-12477.909993882473]))
 
     def test_xy2radec(self):
-        self.assertEqual(self.field.xy2radec([12187.183569042127], [-12477.909993882473]), ([1.4210854715202004e-14],[0.0]))
+        self.assertEqual(self.field.xy2radec([12187.183569042127], [-12477.909993882473]), ([1.4210854715202004e-14], [0.0]))
 
     def test_chunk_observations(self):
         self.field.chunk_observations(data_fraction=0.8)
@@ -84,7 +82,7 @@ class TestField(unittest.TestCase):
         self.assertAlmostEqual(iss[0].area, 18.37996802132365)
 
     def test_check_selfcal_progress(self):
-        self.assertEqual(self.field.check_selfcal_progress(), (False, False))
+        self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
 
 def suite():
@@ -102,6 +100,7 @@ def suite():
     suite.addTest(TestField('test_find_intersecting_sources'))
     suite.addTest(TestField('test_check_selfcal_progress'))
     return suite
+
 
 if __name__ == '__main__':
     unittest.main()
