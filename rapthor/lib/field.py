@@ -1320,20 +1320,20 @@ class Field(object):
 
         # Check that convergence and divergence limits are sensible
         if convergence_ratio > 2.0:
-            self.log.info('The convergence ratio is set to {} but must be <= 2. '
-                          'Using 2.0 instead'.format(convergence_ratio))
+            self.log.warning('The convergence ratio is set to {} but must be <= 2. '
+                             'Using 2.0 instead'.format(convergence_ratio))
             convergence_ratio = 2.0
         if convergence_ratio < 0.5:
-            self.log.info('The convergence ratio is set to {} but must be >= 0.5. '
-                          'Using 0.5 instead'.format(convergence_ratio))
+            self.log.warning('The convergence ratio is set to {} but must be >= 0.5. '
+                             'Using 0.5 instead'.format(convergence_ratio))
             convergence_ratio = 0.5
         if divergence_ratio < 1.0:
-            self.log.info('The divergence ratio is set to {} but must be >= 1. '
-                          'Using 1.0 instead'.format(divergence_ratio))
+            self.log.warning('The divergence ratio is set to {} but must be >= 1. '
+                             'Using 1.0 instead'.format(divergence_ratio))
             divergence_ratio = 1.0
         if failure_ratio < 1.0:
-            self.log.info('The failure ratio is set to {} but must be >= 1. '
-                          'Using 1.0 instead'.format(failure_ratio))
+            self.log.warning('The failure ratio is set to {} but must be >= 1. '
+                             'Using 1.0 instead'.format(failure_ratio))
             failure_ratio = 1.0
 
         if (not hasattr(self, 'imaging_sectors') or
