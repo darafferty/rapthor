@@ -34,16 +34,19 @@ class Concatenate(Operation):
         """
         Define the CWL workflow inputs
         """
-        # Divide the input observations into epochs and define the input and
-        # output filenames for each epoch
-        times = set([obs.starttime for obs in self.field.full_observations])
+        # Identify which epochs need concatenation and define the input and
+        # output filenames for each
         input_filenames = []
         output_filenames = []
-        for epoch, time in enumerate(times):
-            input_filenames.append([obs.ms_filename for obs in self.field.full_observations
-                                    if obs.starttime == time])
-            output_filenames.append(f'epoch_{epoch+1}_concatenated.ms')
-        self.output_filenames = output_filenames
+        self.final_filenames = []  # used to store the full paths for later
+        for starttime, obs_list in zip(self.field.epoch_starttimes, self.field.epoch_observations):
+            if len(obs_list) > 1:
+                input_filenames.append(obs_list)
+                output_filename = f'epoch_{starttime}_concatenated.ms'
+                output_filenames.append(output_filename)
+                self.final_filenames.append(os.path.join(self.pipeline_working_dir, output_filename))
+            else:
+                self.final_filenames.append(obs_list[0])
 
         self.input_parms = {'input_filenames': CWLDir(input_filenames).to_json(),
                             'output_filenames': output_filenames}
@@ -53,8 +56,7 @@ class Concatenate(Operation):
         Finalize this operation
         """
         # Update the field object to use the new, concatenated MS file(s)
-        self.field.ms_filenames = [os.path.join(self.pipeline_working_dir, filename)
-                                   for filename in self.output_filenames]
+        self.field.ms_filenames = self.final_filenames
         self.field.scan_observations()
         self.field.chunk_observations(self.field.parset['selfcal_data_fraction'])
 

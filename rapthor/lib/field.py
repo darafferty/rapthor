@@ -136,17 +136,23 @@ class Field(object):
                 raise ValueError('Antenna type for MS {0} differs from the one for MS '
                                  '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
-        # Check whether all observations have the same frequency axis. If not, then
-        # assume concatenation in frequency is needed
-        for obs in self.full_observations:
-            if (obs0.numchannels != obs.numchannels or
-                    obs0.startfreq != obs.startfreq or
-                    obs0.endfreq != obs.endfreq or
-                    obs0.channelwidth != obs.channelwidth):
-                self.input_is_concatenated = False
-                break
-            else:
-                self.input_is_concatenated = True
+        # Check for multiple epochs
+        self.epoch_starttimes = set([obs.starttime for obs in self.field.full_observations])
+        self.log.debug('Input data divided into {} epoch(s)'.format(len(self.epoch_starttimes)))
+        self.epoch_observations = []
+        for i, epoch_starttime in enumerate(self.epoch_starttimes):
+            epoch_observations = [obs for obs in self.full_observations if
+                                  obs.starttime == epoch_starttime]
+            self.epoch_observations.append(epoch_observations)
+            if len(epoch_observations) > 1:
+                # Multiple MS files per epoch implies differing frequencies. Check for
+                # overlapping coverage and raise error if found
+                startfreqs = [obs.startfreq for obs in epoch_observations]
+                endfreqs = [obs.endfreq for obs in epoch_observations]
+                for startfreq, endfreq in zip(startfreqs[1:], endfreqs[:-1]):
+                    if startfreq > endfreq:
+                        raise ValueError('Overlapping frequency coverage found for one or '
+                                         'more input MS files')
 
         # Check that all observations have the same pointing
         self.ra = obs0.ra

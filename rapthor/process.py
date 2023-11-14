@@ -39,9 +39,9 @@ def run(parset_file, logging_level='info'):
 
     # Initialize field object and do concatenation if needed
     field = Field(parset)
-    if not field.input_is_concatenated:
-        log.info("Multiple MS files found per epoch. Concatenation over frequency "
-                 "will be done.")
+    if any([len(obs) > 1 for obs in field.epoch_observations]):
+        log.info("Multiple MS files found for one or more epochs. Concatenation "
+                 "over frequency will be done.")
         op = Concatenate(field)
         op.run()
 
