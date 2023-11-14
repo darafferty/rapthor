@@ -52,7 +52,7 @@ steps:
       source: output_filenames
     - id: concat_property
       valueFrom: 'frequency'
-    scatter: [input_filenames, output_filenames]
+    scatter: [mslist, msout]
     scatterMethod: dotproduct
     out:
       - id: msconcat
