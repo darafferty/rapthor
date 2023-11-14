@@ -502,12 +502,14 @@ steps:
     label: Concatenate MS file in time
     doc: |
       This step concatenates the imaging MS files in time.
-    run: {{ rapthor_pipeline_dir }}/steps/concat_ms_files_in_time.cwl
+    run: {{ rapthor_pipeline_dir }}/steps/concat_ms_files.cwl
     in:
       - id: mslist
         source: prepare_imaging_data/msimg
       - id: msout
         source: concat_filename
+      - id: concat_property
+        valueFrom: 'time'
     out:
       - id: msconcat
 

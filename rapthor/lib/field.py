@@ -136,17 +136,17 @@ class Field(object):
                 raise ValueError('Antenna type for MS {0} differs from the one for MS '
                                  '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
-        # Check that all observations have the same frequency axis
-        # NOTE: this may not be necessary and is disabled for now
-        enforce_uniform_frequency_structure = False
-        if enforce_uniform_frequency_structure:
-            for obs in self.full_observations:
-                if (obs0.numchannels != obs.numchannels or
-                        obs0.startfreq != obs.startfreq or
-                        obs0.endfreq != obs.endfreq or
-                        obs0.channelwidth != obs.channelwidth):
-                    raise ValueError('Frequency axis for MS {0} differs from the one for MS '
-                                     '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
+        # Check whether all observations have the same frequency axis. If not, then
+        # assume concatenation in frequency is needed
+        for obs in self.full_observations:
+            if (obs0.numchannels != obs.numchannels or
+                    obs0.startfreq != obs.startfreq or
+                    obs0.endfreq != obs.endfreq or
+                    obs0.channelwidth != obs.channelwidth):
+                self.input_is_concatenated = False
+                break
+            else:
+                self.input_is_concatenated = True
 
         # Check that all observations have the same pointing
         self.ra = obs0.ra
