@@ -146,10 +146,11 @@ class Field(object):
             self.epoch_observations.append(epoch_observations)
             if len(epoch_observations) > 1:
                 # Multiple MS files per epoch implies differing frequencies. Check for
-                # overlapping coverage and raise error if found
-                startfreqs = [obs.startfreq for obs in epoch_observations]
-                endfreqs = [obs.endfreq for obs in epoch_observations]
-                for startfreq, endfreq in zip(startfreqs[1:], endfreqs[:-1]):
+                # overlapping frequency coverage and raise error if found
+                startfreqs = np.array([obs.startfreq-obs.channelwidth/2 for obs in epoch_observations])
+                endfreqs = np.array([obs.endfreq+obs.channelwidth/2 for obs in epoch_observations])
+                sort_ind = np.argsort(startfreqs)
+                for startfreq, endfreq in zip(startfreqs[sort_ind][1:], endfreqs[sort_ind][:-1]):
                     if startfreq > endfreq:
                         raise ValueError('Overlapping frequency coverage found for one or '
                                          'more input MS files')
