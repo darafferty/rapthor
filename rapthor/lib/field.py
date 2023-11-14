@@ -137,7 +137,7 @@ class Field(object):
                                  '{1}'.format(self.obs.ms_filename, self.obs0.ms_filename))
 
         # Check for multiple epochs
-        self.epoch_starttimes = set([obs.starttime for obs in self.field.full_observations])
+        self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
         self.log.debug('Input data divided into {} epoch(s)'.format(len(self.epoch_starttimes)))
         self.epoch_observations = []
         for i, epoch_starttime in enumerate(self.epoch_starttimes):
