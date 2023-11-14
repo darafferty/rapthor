@@ -7,6 +7,7 @@ doc: |
 requirements:
   MultipleInputFeatureRequirement: {}
   ScatterFeatureRequirement: {}
+  StepInputExpressionRequirement: {}
 
 {% if max_cores is not none %}
 hints:
