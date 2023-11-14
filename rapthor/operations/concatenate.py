@@ -41,12 +41,12 @@ class Concatenate(Operation):
         self.final_filenames = []  # used to store the full paths for later
         for starttime, obs_list in zip(self.field.epoch_starttimes, self.field.epoch_observations):
             if len(obs_list) > 1:
-                input_filenames.append(obs_list)
+                input_filenames.append([obs.ms_filename for obs in obs_list])
                 output_filename = f'epoch_{starttime}_concatenated.ms'
                 output_filenames.append(output_filename)
                 self.final_filenames.append(os.path.join(self.pipeline_working_dir, output_filename))
             else:
-                self.final_filenames.append(obs_list[0])
+                self.final_filenames.append(obs_list[0].ms_filename)
 
         self.input_parms = {'input_filenames': CWLDir(input_filenames).to_json(),
                             'output_filenames': output_filenames}
