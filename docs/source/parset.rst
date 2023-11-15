@@ -34,13 +34,17 @@ The available options are described below under their respective sections.
         placed in this directory. E.g., ``dir_working = /data/rapthor``.
 
     input_ms
-        Full path to directory containing the input MS files (required). Wildcards can be
-        used (e.g., ``input_ms = /path/to/data/*.ms``). Note that Rapthor works on a copy
-        of these files and does not modify the originals in any way. If multiple
-        measurement sets are provided, they should be split in time. This is (currently)
-        inconsistent with how `LINC <https://linc.readthedocs.io/>`_ outputs the
-        measurement sets, which are split in frequency. Processing LINC outputs requires
-        concatenating the measurement sets, see :doc:`preparation`.
+        Full path to the input MS files (required). Wildcards can be used (e.g.,
+        ``input_ms = /path/to/data/*.ms``). The paths can also be given as a list (e.g.,
+        ``input_ms = [/path/to/data1/*.ms, /path/to/data2/*.ms, /path/to/data3/obs3.ms]``).
+        Note that Rapthor works on a copy of these files and does not modify the originals
+        in any way.
+
+        .. note::
+
+            The MS files output by the `LINC
+            <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
+            See :doc:`preparation` for details.
 
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one

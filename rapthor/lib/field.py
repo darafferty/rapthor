@@ -116,11 +116,8 @@ class Field(object):
         """
         Checks input MS files and initializes the associated Observation objects
         """
-        if len(self.ms_filenames) > 1:
-            infix = 's'
-        else:
-            infix = ''
-        self.log.debug('Scanning input MS file{}...'.format(infix))
+        suffix = 's' if len(self.ms_filenames) > 1 else ''
+        self.log.debug('Scanning input MS file{}...'.format(suffix))
         self.full_observations = []
         for ms_filename in self.ms_filenames:
             self.full_observations.append(Observation(ms_filename))
@@ -138,7 +135,8 @@ class Field(object):
 
         # Check for multiple epochs
         self.epoch_starttimes = set([obs.starttime for obs in self.full_observations])
-        self.log.debug('Input data comprises {} epoch(s)'.format(len(self.epoch_starttimes)))
+        suffix = 's' if len(self.epoch_starttimes) > 1 else ''
+        self.log.debug('Input data comprises {0} epoch{1}'.format(len(self.epoch_starttimes), suffix))
         self.epoch_observations = []
         for i, epoch_starttime in enumerate(self.epoch_starttimes):
             epoch_observations = [obs for obs in self.full_observations if
@@ -668,18 +666,21 @@ class Field(object):
                 # If download is requested and no skymodel given in the parset we download one.
                 if self.parset['download_overwrite_skymodel']:
                     misc.download_skymodel(self.ra, self.dec,
-                                           skymodel_path=os.path.join(self.working_dir, self.parset['input_skymodel']),
+                                           skymodel_path=os.path.join(self.working_dir,
+                                                                      self.parset['input_skymodel']),
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
                 else:
                     misc.download_skymodel(self.ra, self.dec,
-                                           skymodel_path=os.path.join(self.working_dir, 'skymodels/initial_skymodel.txt'),
+                                           skymodel_path=os.path.join(self.working_dir,
+                                                                      'skymodels/initial_skymodel.txt'),
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
             if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
-                self.plot_field(self.parset['download_initial_skymodel_radius'], moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+                self.plot_field(self.parset['download_initial_skymodel_radius'],
+                                moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
             else:
                 self.plot_field(self.parset['download_initial_skymodel_radius'])
             self.make_skymodels(self.parset['input_skymodel'],
@@ -928,11 +929,8 @@ class Field(object):
                 name = 'sector_{0}'.format(n)
                 self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                 n += 1
-            if len(self.imaging_sectors) > 1:
-                infix = 's'
-            else:
-                infix = ''
-            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), infix))
+            suffix = 's' if len(self.imaging_sectors) > 1 else ''
+            self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), suffix))
             # TODO: check whether flux density in each sector meets minimum and warn if not?
         else:
             # Make a regular grid of sectors
@@ -1491,7 +1489,7 @@ class Field(object):
         moc : str or None
             If not None, the multi-order coverage map to plot alongside the usual quantiies.
         """
-        self.log.info('Plotting field coverage')
+        self.log.info('Plotting field coverage...')
         size_ra = self.imaging_sectors[0].width_ra * u.deg
         size_dec = self.imaging_sectors[0].width_dec * u.deg
         centre_ra = self.imaging_sectors[0].ra * u.deg
@@ -1511,7 +1509,8 @@ class Field(object):
         pmoc = None
         if moc is not None:
             pmoc = mocpy.MOC.from_fits(moc)
-            mocwcs = mocpy.WCS(fig, fov=fake_size*2, center=SkyCoord(centre_ra, centre_dec, frame='fk5')).w
+            mocwcs = mocpy.WCS(fig, fov=fake_size*2,
+                               center=SkyCoord(centre_ra, centre_dec, frame='fk5')).w
             wcs = mocwcs
         else:
             wcs = self.wcs
@@ -1520,29 +1519,42 @@ class Field(object):
 
         # If a MOC is provided, also plot that.
         if pmoc is not None:
-            pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue', label='Skymodel MOC', alpha=0.5)
+            pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
+                      label='Skymodel MOC', alpha=0.5)
 
         # Indicate the region out to which the skymodel was queried.
         if skymodel_radius > 0:
-            skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel, transform=ax.get_transform('fk5'), label='Skymodel query cone', edgecolor='r', facecolor='none', linewidth=2)
+            skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel,
+                                              transform=ax.get_transform('fk5'),
+                                              label='Skymodel query cone', edgecolor='r',
+                                              facecolor='none', linewidth=2)
             ax.add_patch(skymodel_region)
 
         # Plot the part of the field being imaged.
-        field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2), size_ra, size_dec, transform=ax.get_transform('fk5'), label='Image borders', edgecolor='k', facecolor='none', linewidth=2)
+        field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2),
+                                  size_ra, size_dec, transform=ax.get_transform('fk5'),
+                                  label='Image borders', edgecolor='k', facecolor='none',
+                                  linewidth=2)
         ax.add_patch(field_region)
 
         # Plot the observation's FWHM
         ra = centre_ra
         dec = centre_dec
-        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg, transform=ax.get_transform('fk5'), edgecolor='k', facecolor='lightgray', linestyle=':', label='Pointing FWHM', linewidth=2, alpha=0.5)
+        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg,
+                       transform=ax.get_transform('fk5'), edgecolor='k', facecolor='lightgray',
+                       linestyle=':', label='Pointing FWHM', linewidth=2, alpha=0.5)
         ax.add_patch(fwhm)
 
         # Set the plot FoV in case no MOC is given.
         if moc is None:
-            fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size, transform=ax.get_transform('fk5'), edgecolor='none', facecolor='none', linewidth=0)
+            fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size,
+                                              transform=ax.get_transform('fk5'),
+                                              edgecolor='none', facecolor='none',
+                                              linewidth=0)
             ax.add_patch(fake_FoV_circle)
 
-        ax.scatter(centre_ra, centre_dec, marker='s', color='k', transform=ax.get_transform('fk5'), label='Image centre')
+        ax.scatter(centre_ra, centre_dec, marker='s', color='k',
+                   transform=ax.get_transform('fk5'), label='Image centre')
 
         ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend()
