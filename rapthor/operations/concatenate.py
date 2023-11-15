@@ -11,7 +11,7 @@ log = logging.getLogger('rapthor:concatenate')
 
 class Concatenate(Operation):
     """
-    Operation to mosaic sector images
+    Operation to concatenate MS files
     """
     def __init__(self, field, index):
         super().__init__(field, name='concatenate', index=index)
