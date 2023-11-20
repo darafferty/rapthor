@@ -22,8 +22,8 @@ inputs:
   - id: input_filenames
     label: Filenames of input files
     doc: |
-      The filenames of the input MS files  (length = n_epochs, each of which has
-      n_files_per_epoch elements).
+      The filenames of the input MS files  (length = n_epochs; each entry is
+      a list of the filenames that belong to a given epoch).
     type:
       type: array
       items:
