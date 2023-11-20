@@ -147,7 +147,7 @@ class Field(object):
                 # overlapping frequency coverage and raise error if found
                 startfreqs = np.array([obs.startfreq-obs.channelwidth/2 for obs in epoch_observations])
                 endfreqs = np.array([obs.endfreq+obs.channelwidth/2 for obs in epoch_observations])
-                msfiles = [obs.ms_filename for obs in epoch_observations]
+                msfiles = np.array([obs.ms_filename for obs in epoch_observations])
                 sort_ind = np.argsort(startfreqs)
                 for j, (startfreq, endfreq) in enumerate(zip(startfreqs[sort_ind][1:],
                                                              endfreqs[sort_ind][:-1])):
