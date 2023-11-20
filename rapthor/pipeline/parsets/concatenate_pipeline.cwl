@@ -2,7 +2,9 @@ cwlVersion: v1.2
 class: Workflow
 label: Rapthor concatenation workflow
 doc: |
-  This workflow performs the frequency concatenation of MS files.
+  This workflow performs the frequency concatenation of MS files. The concatenation
+  is done per epoch, with all files from a given epoch concatenated into one output
+  file.
 
 requirements:
   MultipleInputFeatureRequirement: {}
@@ -20,7 +22,8 @@ inputs:
   - id: input_filenames
     label: Filenames of input files
     doc: |
-      The filenames of the input MS files (length = n_epochs * n_files_per_epoch).
+      The filenames of the input MS files  (length = n_epochs, each of which has
+      n_files_per_epoch elements).
     type:
       type: array
       items:
