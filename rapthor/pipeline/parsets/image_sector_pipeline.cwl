@@ -413,7 +413,9 @@ outputs:
     outputSource:
       - image/skymodel_nonpb
       - image/skymodel_pb
-    type: File[]
+    type:
+      - "null"
+      - File[]
 {% endif %}
 {% if use_facets %}
   - id: sector_region_file

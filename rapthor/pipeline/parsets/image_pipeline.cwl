@@ -456,8 +456,9 @@ outputs:
     type:
       type: array
       items:
-        type: array
-        items: File
+        - type: array
+          items: File
+        - "null"
 {% endif %}
 {% if use_facets %}
   - id: sector_region_file

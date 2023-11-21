@@ -36,8 +36,9 @@ inputs:
     doc: |
       The filename of the input primary-beam-corrected sky model.
     type:
-        - File
-        - string
+      - "null"
+      - File
+      - string
     inputBinding:
       position: 3
   - id: output_root
