@@ -151,7 +151,7 @@ class Field(object):
                 sort_ind = np.argsort(startfreqs)
                 for j, (startfreq, endfreq) in enumerate(zip(startfreqs[sort_ind][1:],
                                                              endfreqs[sort_ind][:-1])):
-                    if startfreq > endfreq:
+                    if startfreq < endfreq:
                         ms1 = msfiles[sort_ind][j]  # MS file from which endfreq is taken
                         ms2 = msfiles[sort_ind][j+1]  # MS file from which startfreq is taken
                         raise ValueError('Overlapping frequency coverage found for the '
