@@ -47,6 +47,24 @@ def generate_and_validate(tmp_path, operation, parms, templ, sub_templ=None):
         raise Exception(f"FAILED with parameters: {parms}")
 
 
+@pytest.mark.parametrize("max_cores", (None, 8))
+def test_concatenate_workflow(
+    tmp_path,
+    max_cores,
+):
+    """
+    Test the Concatenate workflow, using all possible combinations of parameters that
+    control the way the CWL workflow is generated from the template. Parameters were
+    taken from `Concatenate.set_parset_parameters()`.
+    """
+    operation = "concatenate"
+    templ = rapthor.lib.operation.env_parset.get_template("concatenate_pipeline.cwl")
+    parms = {
+        "max_cores": max_cores,
+    }
+    generate_and_validate(tmp_path, operation, parms, templ)
+
+
 @pytest.mark.parametrize("use_screens", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
@@ -67,7 +85,7 @@ def test_calibrate_workflow(
     """
     Test the Calibrate workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
-    taken from `Calibrate.set_parset_parameters()`.
+    taken from `CalibrateDD.set_parset_parameters()`.
     """
     operation = "calibrate"
     templ = rapthor.lib.operation.env_parset.get_template("calibrate_pipeline.cwl")
@@ -83,16 +101,54 @@ def test_calibrate_workflow(
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
+@pytest.mark.parametrize("do_fulljones_solve", (False, True))
+@pytest.mark.parametrize("max_cores", (None, 8))
+def test_calibrate_di_workflow(
+    tmp_path,
+    do_fulljones_solve,
+    max_cores,
+):
+    """
+    Test the Calibrate DI workflow, using all possible combinations of parameters
+    that control the way the CWL workflow is generated from the template. Parameters
+    were taken from `CalibrateDI.set_parset_parameters()`.
+    """
+    operation = "calibrate_di"
+    templ = rapthor.lib.operation.env_parset.get_template("calibrate_di_pipeline.cwl")
+    parms = {
+        "do_fulljones_solve": do_fulljones_solve,
+        "max_cores": max_cores,
+    }
+    generate_and_validate(tmp_path, operation, parms, templ)
+
+
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("do_slowgain_solve", (False, True))
 def test_predict_workflow(tmp_path, max_cores, do_slowgain_solve):
     """
     Test the Predict workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
-    taken from `Predict.set_parset_parameters()`.
+    taken from `PredictDD.set_parset_parameters()`.
     """
     operation = "predict"
     templ = rapthor.lib.operation.env_parset.get_template("predict_pipeline.cwl")
+    parms = {
+        "max_cores": max_cores,
+        "do_slowgain_solve": do_slowgain_solve,
+    }
+    generate_and_validate(tmp_path, operation, parms, templ)
+
+
+@pytest.mark.parametrize("max_cores", (None, 8))
+@pytest.mark.parametrize("do_slowgain_solve", (False, True))
+def test_predict_di_workflow(tmp_path, max_cores, do_slowgain_solve):
+    """
+    Test the Predict DI workflow, using all possible combinations of parameters that
+    control the way the CWL workflow is generated from the template. Parameters were
+    taken from `PredictDI.set_parset_parameters()`.
+    """
+    operation = "predict_di"
+    templ = rapthor.lib.operation.env_parset.get_template("predict_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
         "do_slowgain_solve": do_slowgain_solve,
