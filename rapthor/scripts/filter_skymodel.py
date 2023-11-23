@@ -170,24 +170,25 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         hdu.writeto(maskfile, overwrite=True)
 
         # Select the best MS for the beam attenuation
-        if len(beamMS) > 1:
-            ms_times = []
-            for ms in beamMS:
-                tab = pt.table(ms, ack=False)
-                ms_times.append(np.mean(tab.getcol('TIME')))
-                tab.close()
-            ms_times_sorted = sorted(ms_times)
-            mid_time = ms_times_sorted[int(len(ms_times)/2)]
-            beam_ind = ms_times.index(mid_time)
-        else:
-            beam_ind = 0
+        ms_times = []
+        for ms in beamMS:
+            tab = pt.table(ms, ack=False)
+            ms_times.append(np.mean(tab.getcol('TIME')))
+            tab.close()
+        ms_times_sorted = sorted(ms_times)
+        mid_time = ms_times_sorted[int(len(ms_times)/2)]
+        beam_ind = ms_times.index(mid_time)
         with tempfile.TemporaryDirectory() as temp_ms_dir:
             # Copy the beam MS file to TMPDIR, as this is likely to have faster
             # I/O (important for EveryBeam, which is used by LSMTool)
             # TODO: for now we copy the full file, but it may be possible to cache
             # just the parts of the MS that EveryBeam needs
             beam_ms = os.path.join(temp_ms_dir, os.path.basename(beamMS[beam_ind]))
-            subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', beamMS[beam_ind], beam_ms])
+            cmd = ['DP3', 'steps=[]', 'msin={}'.format(beamMS[beam_ind]),
+                   'msin.starttime={}'.format(mid_time), 'msin.ntimes=1',
+                   'msin.nchan=1', 'msout={}'.format(beam_ms)]
+            subprocess.check_call(cmd)
+#            subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', beamMS[beam_ind], beam_ms])
 
             # Load the sky model with the associated beam MS
             try:
