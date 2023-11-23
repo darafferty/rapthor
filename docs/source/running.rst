@@ -35,7 +35,7 @@ number of options are available and are described below:
                             they will be rerun
       -v                    enable verbose mode
 
-Rapthor begins a run by checking the input measurement set(s). Next, Rapthor
+Rapthor begins a run by checking the input measurement sets. Next, Rapthor
 will determine the DDE calibrators from the input sky model and begin self
 calibration and imaging. Rapthor uses Toil+CWL to handle the distribution of
 jobs and to keep track of the state of a reduction. Each Rapthor operation is

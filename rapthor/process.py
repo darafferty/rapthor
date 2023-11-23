@@ -5,6 +5,7 @@ import logging
 from rapthor import _logging
 from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
+from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
@@ -17,7 +18,7 @@ log = logging.getLogger('rapthor')
 
 def run(parset_file, logging_level='info'):
     """
-    Processes a dataset using DDE calibration and screens
+    Processes a dataset using direction-dependent calibration and imaging
 
     This function runs the operations in the correct order and handles all the
     bookkeeping for the processing
@@ -36,8 +37,13 @@ def run(parset_file, logging_level='info'):
     parset['logging_level'] = logging_level
     _logging.set_level(logging_level)
 
-    # Initialize field object
+    # Initialize field object and do concatenation if needed
     field = Field(parset)
+    if any([len(obs) > 1 for obs in field.epoch_observations]):
+        log.info("MS files with different frequencies found for one "
+                 "or more epochs. Concatenation over frequency will be done.")
+        op = Concatenate(field, 1)
+        op.run()
 
     # Set the processing strategy
     strategy_steps = set_strategy(field)

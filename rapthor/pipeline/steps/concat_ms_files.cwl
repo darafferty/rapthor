@@ -1,18 +1,13 @@
 cwlVersion: v1.2
 class: CommandLineTool
 baseCommand: [concat_ms.py]
-label: Concatenate multiple MS files in time
+label: Concatenate multiple MS files
 doc: |
-  This tool concatenates multiple MS files in time. Except for the time
-  coverage, the input MS files must all have the same structure (i.e.,
-  in frequency, pointing, etc.).
+  This tool concatenates multiple MS files in time or frequency.
 
 requirements:
   - class: InlineJavascriptRequirement
   - class: ShellCommandRequirement
-
-arguments:
-  - '--concat_property=time'
 
 inputs:
   - id: mslist
@@ -32,6 +27,16 @@ inputs:
     inputBinding:
       position: 2
       prefix: --msout=
+      separate: false
+  - id: concat_property
+    label: Property for concatenation
+    doc: |
+      The property over which concatenation is to be done ('time' or
+      'frequency').
+    type: string
+    inputBinding:
+      position: 3
+      prefix: --concat_property=
       separate: false
 
 outputs:

@@ -447,7 +447,8 @@ def parset_read(parset_file, use_log_file=True):
                 ", ".join('"{0}"'.format(search_str) for search_str in ms_search_list)
             )
         )
-    log.info("Working on {} input MS file(s)".format(len(parset_dict["mss"])))
+    suffix = 's' if len(parset_dict["mss"]) > 1 else ''
+    log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
 
     # Make sure the initial skymodel is present
     if not parset_dict["input_skymodel"]:
