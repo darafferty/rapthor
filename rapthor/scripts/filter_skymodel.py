@@ -98,8 +98,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         beamMS = misc.string2list(beamMS)
 
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
-    # limits for socket paths (used by the mulitprocessing module). We try a number of
-    # standard paths (the same ones used in the tempfile Python library)
+    # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
+    # We try a number of standard paths (the same ones used in the tempfile Python
+    # library)
     try:
         old_tmpdir = os.environ["TMPDIR"]
     except KeyError:
@@ -137,6 +138,10 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     flat_noise_rms_filename = output_root+'.flat_noise_rms.fits'
     img_flat_noise.export_image(outfile=flat_noise_rms_filename, img_type='rms', clobber=True)
     del(img_flat_noise)  # helps reduce memory usage
+
+    # Set the TMPDIR env var back to its original value
+    if old_tmpdir is not None:
+        os.environ["TMPDIR"] = old_tmpdir
 
     emptysky = False
     if img_true_sky.nisl > 0 and os.path.exists(true_sky_skymodel):
@@ -260,10 +265,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     cwl_output = {'nsources': nsources}
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
-
-    # Set the TMPDIR env var back to its original value
-    if old_tmpdir is not None:
-        os.environ["TMPDIR"] = old_tmpdir
 
 
 if __name__ == '__main__':
