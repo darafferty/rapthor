@@ -98,8 +98,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         beamMS = misc.string2list(beamMS)
 
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
-    # limits for socket paths (used by the mulitprocessing module). We try a number of
-    # standard paths (the same ones used in the tempfile Python library)
+    # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
+    # We try a number of standard paths (the same ones used in the tempfile Python
+    # library)
     try:
         old_tmpdir = os.environ["TMPDIR"]
     except KeyError:
@@ -138,6 +139,10 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     img_flat_noise.export_image(outfile=flat_noise_rms_filename, img_type='rms', clobber=True)
     del(img_flat_noise)  # helps reduce memory usage
 
+    # Set the TMPDIR env var back to its original value
+    if old_tmpdir is not None:
+        os.environ["TMPDIR"] = old_tmpdir
+
     emptysky = False
     if img_true_sky.nisl > 0 and os.path.exists(true_sky_skymodel):
         maskfile = true_sky_image + '.mask'
@@ -170,24 +175,26 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         hdu.writeto(maskfile, overwrite=True)
 
         # Select the best MS for the beam attenuation
-        if len(beamMS) > 1:
-            ms_times = []
-            for ms in beamMS:
-                tab = pt.table(ms, ack=False)
-                ms_times.append(np.mean(tab.getcol('TIME')))
-                tab.close()
-            ms_times_sorted = sorted(ms_times)
-            mid_time = ms_times_sorted[int(len(ms_times)/2)]
-            beam_ind = ms_times.index(mid_time)
-        else:
-            beam_ind = 0
+        ms_times = []
+        for ms in beamMS:
+            tab = pt.table(ms, ack=False)
+            ms_times.append(np.mean(tab.getcol('TIME')))
+            tab.close()
+        ms_times_sorted = sorted(ms_times)
+        mid_time = ms_times_sorted[int(len(ms_times)/2)]
+        beam_ind = ms_times.index(mid_time)
+        sw = pt.table(beamMS[beam_ind]+'::SPECTRAL_WINDOW', ack=False)
+        mid_chan = int(len(sw.col('CHAN_FREQ')[0])/2)
+        sw.close()
         with tempfile.TemporaryDirectory() as temp_ms_dir:
-            # Copy the beam MS file to TMPDIR, as this is likely to have faster
+            # Make a minimal beam MS file in TMPDIR, as this is likely to have faster
             # I/O (important for EveryBeam, which is used by LSMTool)
-            # TODO: for now we copy the full file, but it may be possible to cache
-            # just the parts of the MS that EveryBeam needs
             beam_ms = os.path.join(temp_ms_dir, os.path.basename(beamMS[beam_ind]))
-            subprocess.check_call(['cp', '-r', '-L', '--no-preserve=mode', beamMS[beam_ind], beam_ms])
+            cmd = ['DP3', 'steps=[]', 'msin={}'.format(beamMS[beam_ind]),
+                   'msin.starttime={}'.format(misc.convert_mjd2mvt(mid_time)), 'msin.ntimes=1',
+                   'msin.startchan={}'.format(mid_chan), 'msin.nchan=1',
+                   'msout={}'.format(beam_ms)]
+            subprocess.check_call(cmd)
 
             # Load the sky model with the associated beam MS
             try:
@@ -258,10 +265,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     cwl_output = {'nsources': nsources}
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
-
-    # Set the TMPDIR env var back to its original value
-    if old_tmpdir is not None:
-        os.environ["TMPDIR"] = old_tmpdir
 
 
 if __name__ == '__main__':
