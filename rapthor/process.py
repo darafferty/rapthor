@@ -47,9 +47,11 @@ def run(parset_file, logging_level='info'):
 
     # Set the processing strategy
     strategy_steps = set_strategy(field)
+    selfcal_steps = strategy_steps[:-1]
+    final_step = strategy_steps[-1]
 
-    # Run the strategy
-    for index, step in enumerate(strategy_steps):
+    # Run the self calibration part of the strategy (if any)
+    for index, step in enumerate(selfcal_steps):
 
         # Update the field object for the current step
         field.update(step, index+1)
@@ -107,47 +109,58 @@ def run(parset_file, logging_level='info'):
                 log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
                 break
 
-    # Run a final pass if needed
-    do_final_pass = False
-    if (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
-            field.make_quv_images):
+    # Run a final pass if needed. It is needed when:
+    #    - selfcal was not done
+    #    - selfcal was done, but:
+    #        - the final data fraction is different from the selfcal one, or
+    #        - QUV images are to be made
+    if not selfcal_steps:
         do_final_pass = True
-        if field.do_check:
+        index = 0
+    elif (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
+            field.make_quv_images):
+        if field.do_check and (selfcal_state.diverged or selfcal_state.failed):
             # If selfcal was found to have diverged or failed, don't do the final pass
-            if selfcal_state.diverged or selfcal_state.failed:
-                log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
-                            "fraction of {0:.2f})".format(parset['final_data_fraction']))
-                do_final_pass = False
+            # even if required otherwise
+            log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
+                        "fraction of {0:.2f})".format(parset['final_data_fraction']))
+            do_final_pass = False
+        else:
+            do_final_pass = True
+            index += 1  # increment index for final iteration
+    else:
+        do_final_pass = False
 
     if do_final_pass:
-        log.info("Starting final iteration with a data fraction of "
-                 "{0:.2f}".format(parset['final_data_fraction']))
+        if selfcal_steps:
+            # If selfcal was done, set peel_outliers to that of initial iteration, since the
+            # observations will be regenerated and outliers (if any) need to be peeled again
+            final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
+            log.info("Starting final iteration with a data fraction of "
+                     "{0:.2f}".format(parset['final_data_fraction']))
+        else:
+            log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
 
-        # Set peel_outliers to that of initial iteration, since the observations
-        # will be regenerated and outliers may need to be peeled
-        step['peel_outliers'] = strategy_steps[0]['peel_outliers']
-
-        # Now start the final processing pass, incrementing the iteration index
-        # from that of the last selfcal iteration (so to index+2)
-        field.update(step, index+2, final=True)
+        # Now start the final processing pass
+        field.update(final_step, index+1, final=True)
 
         # Calibrate (direction-dependent)
         if field.do_calibrate:
-            op = CalibrateDD(field, index+2)
+            op = CalibrateDD(field, index+1)
             op.run()
 
             # Calibrate (direction-independent)
             if field.do_fulljones_solve:
-                op = PredictDI(field, index+2)
+                op = PredictDI(field, index+1)
                 op.run()
-                op = CalibrateDI(field, index+2)
+                op = CalibrateDI(field, index+1)
                 op.run()
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = PredictDD(field, index+2)
+            op = PredictDD(field, index+1)
             op.run()
 
         # Image and mosaic the sectors
@@ -155,10 +168,10 @@ def run(parset_file, logging_level='info'):
             # Set the Stokes polarizations for imaging
             field.image_pol = 'IQUV' if field.make_quv_images else 'I'
 
-            op = Image(field, index+2)
+            op = Image(field, index+1)
             op.run()
 
-            op = Mosaic(field, index+2)
+            op = Mosaic(field, index+1)
             op.run()
 
     log.info("Rapthor has finished :)")

@@ -433,6 +433,14 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
+  - id: visibilities
+    outputSource:
+      - image_sector/visibilities
+    type:
+      type: array
+      items:
+        type: array
+        items: Directory
   - id: sector_I_images
     outputSource:
       - image_sector/sector_I_images

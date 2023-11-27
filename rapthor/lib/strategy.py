@@ -20,7 +20,9 @@ def set_strategy(field):
     Returns
     -------
     strategy_steps : list
-        List of strategy parameter dicts (one per step)
+        List of strategy parameter dicts (one per step), with selfcal steps first and
+        the final step as the last entry (so a list of length one has no selfcal steps,
+        only a final step)
     """
     strategy_steps = []
 
@@ -31,6 +33,9 @@ def set_strategy(field):
         #     - imaging of sectors
         #     - regrouping of resulting sky model to meet flux criteria
         #     - calibration on regrouped sources (calibration groups may span multiple sectors)
+        #
+        # The parameters of the final pass (if done) are set to those of the last
+        # cycle of selfcal
         min_selfcal_loops = 4
         max_selfcal_loops = 8
         for i in range(max_selfcal_loops):
@@ -99,22 +104,25 @@ def set_strategy(field):
                 strategy_steps[i]['divergence_ratio'] = 1.1
                 strategy_steps[i]['failure_ratio'] = 10.0
 
+        # Set a final step as a duplicate of the last selfcal one
+        strategy_steps.append(strategy_steps[-1])
+
     elif field.parset['strategy'] == 'image':
         # Image one or more sectors:
+        #     - no selfcal steps; final pass only
         #     - no calibration
+        #     - peel non-sector sources
+        #     - image sectors
+        #     - save calibrated visibilities
         strategy_steps.append({})
 
         strategy_steps[0]['do_calibrate'] = False
-
-        strategy_steps[0]['peel_outliers'] = False
-
+        strategy_steps[0]['peel_outliers'] = True
         strategy_steps[0]['do_image'] = True
-        strategy_steps[0]['auto_mask'] = 5.0
-        strategy_steps[0]['threshisl'] = 4.0
+        strategy_steps[0]['auto_mask'] = 3.0
+        strategy_steps[0]['threshisl'] = 3.0
         strategy_steps[0]['threshpix'] = 5.0
         strategy_steps[0]['max_nmiter'] = 12
-
-        strategy_steps[0]['do_check'] = False
 
     elif os.path.exists(field.parset['strategy']):
         # Load user-defined strategy
@@ -156,4 +164,5 @@ def set_strategy(field):
                         else:
                             raise ValueError('Required parameter "{0}" not defined in the '
                                              'strategy for cycle {1}.'.format(secondary, i+1))
+
     return strategy_steps

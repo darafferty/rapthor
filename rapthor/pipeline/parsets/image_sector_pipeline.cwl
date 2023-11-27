@@ -394,6 +394,10 @@ outputs:
     outputSource:
       - find_diagnostics/diagnostics
     type: File
+  - id: visibilities
+    outputSource:
+      - prepare_imaging_data/msimg
+    type: Directory[]
   - id: sector_I_images
     outputSource:
 {% if peel_bright_sources %}

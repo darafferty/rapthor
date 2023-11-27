@@ -62,9 +62,11 @@ flag_freqrange = None
 flag_expr =
 
 # Full path to an H5parm file with direction-dependent solutions (default =
-# None). This file is required if no calibration is to be done (not yet
-# supported)
+# None). This file is required if no calibration is to be done. Full-Jones
+# solutions can also be supplied. Note: the directions in the H5parm file must
+# match the patches in the input sky model
 input_h5parm = None
+input_fulljones_h5parm = None
 
 
 [calibration]
@@ -128,6 +130,13 @@ do_multiscale_clean = True
 # screens) or "kl" (Karhunen-Lo`eve screens) (default = kl)
 dde_method = facets
 screen_type = kl
+
+# Save visibilities used for imaging (default = False). If True, the imaging MS
+# files will be saved, with the the direction-independent full-Jones solutions,
+# if available, applied. Note, however, that the direction-dependent solutions
+# will not be applied unless dde_method = "none", in which case the solutions
+# closest to the image centers are used
+save_visibilities = False
 
 # IDG (image domain gridder) mode to use in WSClean (default = cpu). The mode
 # can be "cpu" or "hybrid". Note that IDG is only used when dde_method = "none"

@@ -242,10 +242,11 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save the output FITS image filenames, sky models, and ds9 facet region file for
-        # each sector. Also read the image diagnostics (rms noise, etc.) derived by PyBDSF
-        # and print them to the log. The images are not copied to the final location here,
-        # as this is done after mosaicking (if needed) by the mosaic operation
+        # Save the output FITS image filenames, sky models, ds9 facet region file, and
+        # visibilities (if desired) for each sector. Also read the image diagnostics (rms
+        # noise, etc.) derived by PyBDSF and print them to the log. The images are not
+        # copied to the final location here, as this is done after mosaicking (if needed)
+        # by the mosaic operation
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
@@ -292,6 +293,18 @@ class Image(Operation):
                 if os.path.exists(dst_filename):
                     os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
+
+            # The imaging visibilities
+            if self.field.save_visibilities:
+                dst_dir = os.path.join(self.parset['dir_working'], 'visibilities', 'image_{}'.format(self.index))
+                misc.create_directory(dst_dir)
+                ms_filenames = sector.get_obs_parameters('ms_prep_filename')
+                for ms_filename in ms_filenames:
+                    src_filename = os.path.join(self.pipeline_working_dir, ms_filename)
+                    dst_filename = os.path.join(dst_dir, ms_filename)
+                    if os.path.exists(dst_filename):
+                        shutil.rmtree(dst_filename)
+                    shutil.copytree(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = image_root + '.image_diagnostics.json'

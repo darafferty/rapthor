@@ -51,7 +51,8 @@ class Field(object):
         self.flag_baseline = self.parset['flag_baseline']
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
-        self.input_h5parm = self.parset['input_h5parm']
+        self.h5parm_filename = self.parset['input_h5parm']
+        self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
@@ -71,6 +72,7 @@ class Field(object):
         else:
             self.use_screens = False
         self.screen_type = self.parset['imaging_specific']['screen_type']
+        self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
