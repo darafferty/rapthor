@@ -16,7 +16,8 @@
         "flag_baseline": null,
         "flag_freqrange": null,
         "flag_expr": "",
-        "input_h5parm": null
+        "input_h5parm": null,
+        "input_fulljones_h5parm": null
     },
     "calibration": {
         "use_included_skymodels": false,
@@ -52,6 +53,7 @@
         "do_multiscale_clean": true,
         "dde_method": "facets",
         "screen_type": "kl",
+        "save_visibilities": false,
         "idg_mode": "cpu",
         "mem_gb": 0,
         "apply_diagonal_solutions": true,

@@ -15,6 +15,8 @@ flag_abstime = [12-May-2014/10:20:00.0..12-May-2014/10:40:00.0]
 flag_baseline = [CS002HBA*]
 flag_freqrange = [126.4..127.6MHz]
 flag_expr = flag_abstime and flag_baseline and flag_freqrange
+input_h5parm = /my/data/dirdependent.h5
+input_fulljones_h5parm = /my/data/fulljones.h5
 
 [calibration]
 use_included_skymodels = True
@@ -50,6 +52,7 @@ taper_arcsec = 2.0
 do_multiscale_clean = False
 dde_method = screens
 screen_type = kl
+save_visibilities = True
 idg_mode = gpu
 mem_gb = 128.0
 apply_diagonal_solutions = False
