@@ -32,7 +32,7 @@ regroup_input_skymodel = True
 
 # Processing strategy to use (default = selfcal):
 # - selfcal: standard self calibration
-# - image: (not yet supported) image using the input solutions (no calibration
+# - image: image using the input solutions and sky model (no calibration
 #   is done)
 # - user-supplied file: full path to Python file defining custom strategy
 strategy = selfcal
