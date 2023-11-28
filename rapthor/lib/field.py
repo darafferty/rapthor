@@ -1440,12 +1440,16 @@ class Field(object):
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
 
-        # Update the sky models. We adjust the target flux used for calibrator selection
-        # by the ratio of (LOFAR / true) fluxes determined in the image operation of the
-        # previous selfcal cycle. This adjustment is only done if the fractional change
-        # is significant (as measured by the standard deviation in the ratio)
-        if 'target_flux' in step_dict:
+        # Update the sky models
+        if step_dict['regroup_model']:
+            # If regrouping is to be done, we adjust the target flux used for calibrator
+            # selection by the ratio of (LOFAR / true) fluxes determined in the image
+            # operation of the previous selfcal cycle. This adjustment is only done if the
+            # fractional change is significant (as measured by the standard deviation in
+            # the ratio)
             target_flux = step_dict['target_flux']
+            target_number = step_dict['max_directions']
+            calibrator_max_dist_deg = step_dict['max_distance']
             if self.lofar_to_true_flux_ratio <= 0:
                 self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
             if self.lofar_to_true_flux_ratio <= 1:
@@ -1460,10 +1464,12 @@ class Field(object):
                                                                 target_flux))
         else:
             target_flux = None
+            target_number = None
+            calibrator_max_dist_deg = None
+
         self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=target_flux,
-                              target_number=step_dict['max_directions'],
-                              calibrator_max_dist_deg=step_dict['max_distance'],
+                              target_flux=target_flux, target_number=target_number,
+                              calibrator_max_dist_deg=calibrator_max_dist_deg,
                               final=final)
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
