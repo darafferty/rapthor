@@ -68,7 +68,7 @@
                       'min_uv_lambda': 0.0,
                       'reweight': False,
                       'robust': -0.5,
-                      'save_visibilities': True,
+                      'save_visibilities': False,
                       'screen_type': 'kl',
                       'sector_center_dec_list': [],
                       'sector_center_ra_list': [],

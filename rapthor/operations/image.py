@@ -296,7 +296,8 @@ class Image(Operation):
 
             # The imaging visibilities
             if self.field.save_visibilities:
-                dst_dir = os.path.join(self.parset['dir_working'], 'visibilities', 'image_{}'.format(self.index), sector.name)
+                dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
+                                       'image_{}'.format(self.index), sector.name)
                 misc.create_directory(dst_dir)
                 ms_filenames = sector.get_obs_parameters('ms_prep_filename')
                 for ms_filename in ms_filenames:
