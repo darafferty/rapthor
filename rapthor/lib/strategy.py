@@ -125,6 +125,7 @@ def set_strategy(field):
         strategy_steps[0]['threshpix'] = 5.0
         strategy_steps[0]['max_nmiter'] = 12
         strategy_steps[0]['do_check'] = False
+        strategy_steps[i]['regroup_model'] = False
 
     elif os.path.exists(field.parset['strategy']):
         # Load user-defined strategy

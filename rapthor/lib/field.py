@@ -653,7 +653,12 @@ class Field(object):
         index : int
             Iteration index (counts starting from 1)
         regroup : bool
-            Regroup sky model
+            Regroup sky model. This parameter is not used for the first cycle, as its
+            value is taken from the parset. For later cycles, it controls whether the
+            sky models that come from imaging are to be regrouped into calibration
+            patches. In almost all cases, regrouping should be done. The exception is
+            when using small imaging sectors when the sources in each sector should be
+            grouped into a single patch together.
         target_flux : float, optional
             Target flux in Jy for grouping
         target_number : int, optional
