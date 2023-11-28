@@ -1439,19 +1439,22 @@ class Field(object):
         # by the ratio of (LOFAR / true) fluxes determined in the image operation of the
         # previous selfcal cycle. This adjustment is only done if the fractional change
         # is significant (as measured by the standard deviation in the ratio)
-        target_flux = step_dict['target_flux']
-        if self.lofar_to_true_flux_ratio <= 0:
-            self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
-        if self.lofar_to_true_flux_ratio <= 1:
-            fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
+        if 'target_flux' in step_dict:
+            target_flux = step_dict['target_flux']
+            if self.lofar_to_true_flux_ratio <= 0:
+                self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
+            if self.lofar_to_true_flux_ratio <= 1:
+                fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
+            else:
+                fractional_change = self.lofar_to_true_flux_ratio - 1
+            if fractional_change > self.lofar_to_true_flux_std:
+                target_flux *= self.lofar_to_true_flux_ratio
+                self.log.info('Adjusting the target flux for calibrator selection '
+                              'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
+                              'in the global flux scale'.format(step_dict['target_flux'],
+                                                                target_flux))
         else:
-            fractional_change = self.lofar_to_true_flux_ratio - 1
-        if fractional_change > self.lofar_to_true_flux_std:
-            target_flux *= self.lofar_to_true_flux_ratio
-            self.log.info('Adjusting the target flux for calibrator selection '
-                          'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
-                          'in the global flux scale'.format(step_dict['target_flux'],
-                                                            target_flux))
+            target_flux = None
         self.update_skymodels(index, step_dict['regroup_model'],
                               target_flux=target_flux,
                               target_number=step_dict['max_directions'],
