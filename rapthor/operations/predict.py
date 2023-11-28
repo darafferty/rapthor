@@ -79,8 +79,14 @@ class PredictDD(Operation):
             obs_filename.append(obs.ms_filename)
             obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
             obs_infix.append(obs.infix)
-            obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
-            obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
+            if ('solint_fast_timestep' in obs.parameters and
+                    'solint_slow_freqstep_separate' in obs.parameters):
+                # If calibrate operation was done, get the solution intervals
+                obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
+                obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
+            else:
+                obs_solint_sec.append(0)
+                obs_solint_hz.append(0)
 
         # Set other parameters
         nr_outliers = len(self.field.outlier_sectors)
@@ -149,8 +155,8 @@ class PredictDD(Operation):
 
         # Update filenames of datasets used for imaging
         if (len(self.field.imaging_sectors) > 1 or self.field.reweight or
-            (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
-            (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
+                (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
+                (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
             for sector in self.field.sectors:
                 for obs in sector.observations:
                     obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
