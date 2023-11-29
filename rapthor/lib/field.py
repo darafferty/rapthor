@@ -942,7 +942,7 @@ class Field(object):
                 n += 1
             suffix = 's' if len(self.imaging_sectors) > 1 else ''
             self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), suffix))
-            # TODO: check whether flux density in each sector meets minimum and warn if not?
+            self.uses_sector_grid = False
         else:
             # Make a regular grid of sectors
             if self.parset['imaging_specific']['grid_center_ra'] is None:
@@ -1010,6 +1010,7 @@ class Field(object):
             else:
                 self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
                               len(self.imaging_sectors), nsectors_ra, nsectors_dec))
+            self.uses_sector_grid = True
 
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
@@ -1170,10 +1171,12 @@ class Field(object):
     def adjust_sector_boundaries(self):
         """
         Adjusts the imaging sector boundaries for overlaping sources
+
+        Note: this adjustment is only done when there are multiple sectors in a
+        grid, since its purpose is to ensure that sources don't get split
+        between two neighboring sectors
         """
-        # Note: this adjustment only needs to be done when there are multiple sectors,
-        # since its purpose is to ensure that sources don't fall in between sectors
-        if len(self.imaging_sectors) > 1:
+        if len(self.imaging_sectors) > 1 and self.uses_sector_grid:
             self.log.info('Adusting sector boundaries to avoid sources...')
             intersecting_source_polys = self.find_intersecting_sources()
             for sector in self.imaging_sectors:
