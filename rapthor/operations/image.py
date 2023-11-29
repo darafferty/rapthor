@@ -40,11 +40,15 @@ class Image(Operation):
             save_source_list = True
         else:
             save_source_list = False
+        if self.field.fulljones_h5parm_filename is not None:
+            apply_fulljones = True
+        else:
+            apply_fulljones = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'use_screens': self.field.use_screens,
-                             'apply_fulljones': self.field.do_fulljones_solve,
+                             'apply_fulljones': apply_fulljones,
                              'use_facets': use_facets,
                              'save_source_list': save_source_list,
                              'peel_bright_sources': self.field.peel_bright_sources,
@@ -193,7 +197,7 @@ class Image(Operation):
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            if self.field.do_fulljones_solve:
+            if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files

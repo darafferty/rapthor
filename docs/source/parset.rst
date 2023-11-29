@@ -121,7 +121,9 @@ The available options are described below under their respective sections.
     input_h5parm
         Full path to an H5parm file with direction-dependent solutions (default = None).
         This file is used if no calibration is to be done. Note: the directions in the
-        H5parm file must match the patches in the input sky model.
+        H5parm file must match the patches in the input sky model, and the time and
+        frequency coverage must be sufficient to cover the duration and bandwidth of
+        the input dataset.
 
     input_fulljones_h5parm
         Full path to an H5parm file with full-Jones solutions (default = None). This

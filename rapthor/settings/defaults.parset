@@ -64,7 +64,9 @@ flag_expr =
 # Full path to an H5parm file with direction-dependent solutions (default =
 # None). This file is required if no calibration is to be done. Full-Jones
 # solutions can also be supplied. Note: the directions in the H5parm file must
-# match the patches in the input sky model
+# match the patches in the input sky model, and the time and frequency coverage
+# of the solutions must be sufficient to cover the duration and bandwidth of
+# the input dataset
 input_h5parm = None
 input_fulljones_h5parm = None
 

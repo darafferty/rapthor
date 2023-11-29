@@ -53,7 +53,11 @@ Creating a dataset for further self calibration
 
         * Set the :term:`input_skymodel` and :term:`input_h5parm` parameters in the parset
           to the output of the full-field reduction. If a full-Jones solve was done,
-          :term:`input_fulljones_h5parm` can also be set.
+          :term:`input_fulljones_h5parm` can also be set. The time and frequency coverage
+          of the solution tables must be large enough to cover the duration and bandwidth
+          of the input dataset. The easiest way to ensure this requirement is met is to
+          use the solutions from a solve over the full dataset (i.e., those from the final
+          iteration of a run with :term:`final_data_fraction` = 1.0)
 
         * Set the :term:`regroup_input_skymodel` parameter to ``False`` to preserve the
           calibration patches that match the directions in the solutions file.
