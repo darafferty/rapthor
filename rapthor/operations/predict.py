@@ -30,7 +30,7 @@ class PredictDD(Operation):
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
-                             'do_slowgain_solve': self.field.do_slowgain_solve}
+                             'apply_amplitudes': self.field.apply_amplitudes}
 
     def set_input_parameters(self):
         """
@@ -189,7 +189,7 @@ class PredictDI(Operation):
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
-                             'do_slowgain_solve': self.field.do_slowgain_solve}
+                             'apply_amplitudes': self.field.apply_amplitudes}
 
     def set_input_parameters(self):
         """

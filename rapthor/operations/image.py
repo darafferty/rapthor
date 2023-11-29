@@ -40,15 +40,11 @@ class Image(Operation):
             save_source_list = True
         else:
             save_source_list = False
-        if self.field.fulljones_h5parm_filename is not None:
-            apply_fulljones = True
-        else:
-            apply_fulljones = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
-                             'do_slowgain_solve': self.field.do_slowgain_solve,
+                             'apply_amplitudes': self.field.apply_amplitudes,
                              'use_screens': self.field.use_screens,
-                             'apply_fulljones': apply_fulljones,
+                             'apply_fulljones': self.field.apply_fulljones,
                              'use_facets': use_facets,
                              'save_source_list': save_source_list,
                              'peel_bright_sources': self.field.peel_bright_sources,
@@ -152,7 +148,7 @@ class Image(Operation):
                             'save_source_list': save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
+                            'apply_amplitudes': [self.field.apply_amplitudes] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.field.imaging_sectors],
@@ -223,13 +219,13 @@ class Image(Operation):
                 self.input_parms.update({'width_ra': width_ra})
                 self.input_parms.update({'width_dec': width_dec})
                 self.input_parms.update({'facet_region_file': facet_region_file})
-                if self.field.do_slowgain_solve:
+                if self.field.apply_amplitudes:
                     self.input_parms.update({'soltabs': 'amplitude000,phase000'})
                 else:
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if (self.field.do_slowgain_solve and
+                if (self.field.apply_amplitudes and
                         self.field.apply_diagonal_solutions and
                         self.field.image_pol.lower() == 'i'):
                     # Diagonal solutions generated and should be applied.

@@ -445,7 +445,7 @@ steps:
 
 {% else %}
 # start not use_screens and not use_facets
-{% if do_slowgain_solve %}
+{% if apply_amplitudes %}
 {% if apply_fulljones %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_fulljones.cwl
 {% else %}
