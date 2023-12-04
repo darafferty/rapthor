@@ -107,5 +107,5 @@ Primary products:
           preapplied: a value of "none" will preapply all solutions, whereas values of
           "screens" or "facets" will preapply only the full-Jones solutions (if
           available), since the direction-dependent solutions in those cases are applied
-          by WSClean itself. These MS files can be useful for further self calibration
-          outside of Rapthor.
+          by WSClean itself. These MS files can be useful for further imaging or self
+          calibration outside of Rapthor.

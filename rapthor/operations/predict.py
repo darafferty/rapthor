@@ -44,7 +44,7 @@ class PredictDD(Operation):
             # If we have more than one imaging sector or reweighting is desired,
             # predict the imaging sector models. (If we have a single imaging
             # sector, we don't need to predict its model data, just that of any
-            # outlier or birght-source sectors)
+            # outlier or bright-source sectors)
             sectors.extend(self.field.imaging_sectors)
         sectors.extend(self.field.bright_source_sectors)
         sectors.extend(self.field.outlier_sectors)
