@@ -59,6 +59,15 @@ Creating a dataset for further self calibration
           use the solutions from a solve over the full dataset (i.e., those from the final
           iteration of a run with :term:`final_data_fraction` = 1.0)
 
+          .. note::
+
+              The sky model from a full-field reduction will contain only those sources
+              that lie in the regions imaged during that reduction. If it is important to
+              peel sources outside of these regions (e.g., there is a very bright source
+              that lies outside the field, but near enough to cause problems if not
+              peeled), then you need to add these sources to the input sky model before
+              running Rapthor in this mode.
+
         * Set the :term:`regroup_input_skymodel` parameter to ``False`` to preserve the
           calibration patches that match the directions in the solutions file.
 
