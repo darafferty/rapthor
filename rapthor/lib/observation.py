@@ -263,15 +263,16 @@ class Observation(object):
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
         for solve_type in ['fast', 'slow_joint', 'slow_separate']:
-            solint = self.parameters[input_solint_keys[solve_type]][0]
+            solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
             n_elements = len(self.parameters[input_solint_keys[solve_type]])
             solve_max_factor = max_factor
 
-            # Make sure that the product of the maximum factor and the time per sample
-            # is a multiple of the solution interval, as otherwise we cannot divide up
-            # the interval into smaller ones
-            while solint % (solve_max_factor * self.timepersample):
+            # Make sure that the maximum factor is a multiple of the solution interval, as
+            # otherwise we cannot divide up the interval into smaller ones
+            while solint % solve_max_factor:
                 solve_max_factor -= 1
+                if solve_max_factor == 1:
+                    break
 
             if solve_max_factor > 1:
                 # Find the solution interval factors (which are the ratios of target to
@@ -282,14 +283,12 @@ class Observation(object):
                 interval_factors = np.round(target_flux / np.array(calibrator_fluxes) * solve_max_factor)
                 n_solutions = [min(solve_max_factor, max(1, factor)) for factor in interval_factors]
 
-                # Adjust the base solution interval, to ensure that the base solint is a
-                # multiple of the time per sample, and the number of solution intervals
-                # for each direction. The base solint corresponds to that of the brightest
+                # Adjust the base solution interval (to ensure that it is a multiple of
+                # the time per sample) and the number of solution intervals for each
+                # direction. The base solint corresponds to that of the brightest
                 # directions (i.e., those for which the number of solution intervals = 1)
-                base_solint_sec = max(self.timepersample, solint / max(n_solutions))
-                base_solint_sec = self.timepersample * np.round(base_solint_sec / self.timepersample)
-                solutions_sec = np.array(n_solutions) * base_solint_sec
-                n_samples = np.round(solutions_sec / self.timepersample)
+                base_solint = max(1, int(np.round(solint / max(n_solutions))))
+                n_samples = np.round(np.array(n_solutions) * base_solint)
                 for i, n in enumerate(n_samples):
                     # Check whether some directions will result in very unequal solve
                     # intervals. This is important in practice only for the slow solves,
@@ -297,11 +296,11 @@ class Observation(object):
                     # input solint. If such cases are found, we increase their intervals
                     # to the maximum allowed
                     if n > self.numsamples * 2 / 3:
-                        n_samples[i] = solve_max_factor * base_solint_sec / self.timepersample
+                        n_samples[i] = solve_max_factor * base_solint
 
                 # Finally, calculate the number of solutions per direction and save the
                 # results
-                solutions_per_direction = n_samples / (base_solint_sec / self.timepersample)
+                solutions_per_direction = n_samples / base_solint
                 solutions_per_direction = [max(1, int(n)) for n in solutions_per_direction]
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [solutions_per_direction] * n_elements
                 self.parameters[input_solint_keys[solve_type]] = [base_solint_sec] * n_elements
