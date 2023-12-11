@@ -52,6 +52,7 @@ class Field(object):
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
         self.input_h5parm = self.parset['input_h5parm']
+        self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
@@ -272,7 +273,8 @@ class Field(object):
             # Note: Due to a limitation in Dysco, we make sure to have at least
             # 2 time slots per observation, otherwise the output MS cannot be
             # written with compression
-            mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
+            mintime = max(self.parset['calibration_specific']['slow_timestep_separate_sec'],
+                          self.parset['calibration_specific']['fulljones_timestep_sec'])
             prev_observations = self.observations[:]
             self.observations = []
             for obs in prev_observations:
@@ -310,7 +312,8 @@ class Field(object):
         nfreqchunks_separate = 0
         nfreqchunks_fulljones = 0
         for obs in self.observations:
-            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
+            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
+                                           self.calibrator_fluxes, self.target_flux)
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate
@@ -640,6 +643,9 @@ class Field(object):
         if len(bright_source_skymodel) > 0:
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
+
+        # Save the final target flux
+        self.target_flux = target_flux
 
     def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
                          calibrator_max_dist_deg=None, final=False):

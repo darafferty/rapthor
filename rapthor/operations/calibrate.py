@@ -85,6 +85,11 @@ class CalibrateDD(Operation):
         solint_slow_freqstep_joint = self.field.get_obs_parameters('solint_slow_freqstep_joint')
         solint_slow_freqstep_separate = self.field.get_obs_parameters('solint_slow_freqstep_separate')
 
+        # Get the number of solutions per direction
+        solutions_per_direction_fast = self.field.get_obs_parameters('solutions_per_direction_fast')
+        solutions_per_direction_slow_joint = self.field.get_obs_parameters('solutions_per_direction_slow_joint')
+        solutions_per_direction_slow_separate = self.field.get_obs_parameters('solutions_per_direction_slow_separate')
+
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
         output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
@@ -99,7 +104,6 @@ class CalibrateDD(Operation):
         combined_slow_h5parm_separate = 'slow_gains_separate.h5parm'
         combined_h5parms_fast_slow_joint = 'combined_solutions_fast_slow_joint.h5'
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
-        combined_h5parms_fast_slow_final = 'combined_solutions_fast_slow_final.h5'
 
         # Define the input sky model
         calibration_skymodel_file = self.field.calibration_skymodel_file
@@ -182,6 +186,9 @@ class CalibrateDD(Operation):
                             'solint_fast_freqstep': solint_fast_freqstep,
                             'solint_slow_freqstep_joint': solint_slow_freqstep_joint,
                             'solint_slow_freqstep_separate': solint_slow_freqstep_separate,
+                            'solutions_per_direction_fast': solutions_per_direction_fast,
+                            'solutions_per_direction_slow_joint': solutions_per_direction_slow_joint,
+                            'solutions_per_direction_slow_separate': solutions_per_direction_slow_separate,
                             'calibrator_patch_names': calibrator_patch_names,
                             'calibrator_fluxes': calibrator_fluxes,
                             'output_fast_h5parm': output_fast_h5parm,

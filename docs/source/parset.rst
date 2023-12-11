@@ -215,17 +215,46 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the full-Jones gain calibration,
         in Hz (default = 0).
 
+    dd_interval_factor
+        Maximum factor by which the direction-dependent solution intervals can be
+        adjusted, so that brighter calibrators get shorter intervals (in the fast and slow
+        solves only; default = 1 = disabled). The value determines the maximum allowed
+        adjustment factor by which the solution intervals are allowed to be reduced for
+        bright sources. For a given direction, the adjustment factor is calculated as
+        ratio of the apparent flux density of the calibrator to the target flux density of
+        the cycle (set in the strategy) or, if a target flux density is not defined, to
+        that of the faintest calibrator in the sky model. A value of 1 disables the use of
+        direction-dependent solution intervals; a value greater than 1 enables
+        direction-dependent solution intervals.
+
+        .. note::
+
+            For the best results, the solution intervals :term:`fast_timestep_sec`,
+            :term:`slow_timestep_joint_sec`, and :term:`slow_timestep_separate_sec` should
+            be a multiple of the product of the time per sample (typically 8 sec) and the
+            :term:`dd_interval_factor`, as otherwise some solutions may get very short
+            intervals due to the way the observations are chunked in time. For example, if
+            the time per sample is 8 sec and ``dd_interval_factor = 5``, then the solution
+            intervals should be set to a multiple of 8 * 5 = 40. A good choice in this
+            case would be ``fast_timestep_sec = 40`` (giving a maximum interval of 40 sec
+            for the faintest sources and a minimum interval of 40 / 5 = 8 sec for the
+            brightest) and ``slow_timestep_separate_sec = 2400`` (i.e., 40 * 60, giving a
+            maximum interval of 40 min and a minimum interval of 8 min). For
+            ``dd_interval_factor = 4``, good choices would be ``fast_timestep_sec = 32``
+            and ``slow_timestep_separate_sec = 2560``.
+
+
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
-        ``lbfgs``; default 200.0).
+        ``lbfgs``; default = 200.0).
 
     solverlbfgs_minibatches
         Number of minibatches for the LBFGS solver (only used when :term:`solveralgorithm`
-        = ``lbfgs``; default 1).
+        = ``lbfgs``; default = 1).
 
     solverlbfgs_iter
         Number of iterations per minibatch in the LBFGS solver (only used when
-        :term:`solveralgorithm` = ``lbfgs``; default 4).
+        :term:`solveralgorithm` = ``lbfgs``; default = 4).
 
 .. _parset_imaging_options:
 

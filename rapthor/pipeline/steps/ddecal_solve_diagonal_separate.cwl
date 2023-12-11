@@ -74,6 +74,11 @@ inputs:
     inputBinding:
       prefix: solve.nchan=
       separate: False
+  - id: solutions_per_direction
+    type: int[]
+    inputBinding:
+      prefix: solve.solutions_per_direction=
+      separate: False
   - id: sourcedb
     type: File
     inputBinding:

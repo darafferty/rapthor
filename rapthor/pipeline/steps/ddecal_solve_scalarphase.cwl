@@ -75,6 +75,15 @@ inputs:
       prefix: solve.nchan=
       separate: False
 
+  - id: solutions_per_direction
+    label: Solutions per directions
+    doc: |
+      The number of solution intervals (in time) per direction for the solve.
+    type: int[]
+    inputBinding:
+      prefix: solve.solutions_per_direction=
+      separate: False
+
   - id: sourcedb
     label: Sky model
     doc: |

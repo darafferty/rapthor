@@ -60,6 +60,17 @@ inputs:
       (length = n_obs * n_time_chunks).
     type: int[]
 
+  - id: solutions_per_direction_fast
+    label: Fast number of solutions per direction
+    doc: |
+      The number of solutions per direction for the fast phase solve (length =
+      n_obs * n_calibrators * n_time_chunks).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
   - id: calibrator_patch_names
     label: Names of calibrator patches
     doc: |
@@ -331,6 +342,28 @@ inputs:
       slow-gain solve (length = n_obs * n_freq_chunks).
     type: int[]
 
+  - id: solutions_per_direction_slow_joint
+    label: Joint slow number of solutions per direction
+    doc: |
+      The number of solutions per direction for the first (joint) slow-
+      gain  (length = n_obs * n_directions * n_freq_chunks).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
+  - id: solutions_per_direction_slow_separate
+    label: Separate slow number of solutions per direction
+    doc: |
+      The number of solutions per direction for the second (separate)
+      slow-gain solve (length = n_obs * n_directions * n_freq_chunks).
+    type:
+      type: array
+      items:
+        type: array
+        items: int
+
   - id: slow_smoothnessconstraint_joint
     label: Joint slow smoothnessconstraint
     doc: |
@@ -489,6 +522,8 @@ steps:
         source: solint_fast_timestep
       - id: nchan
         source: solint_fast_freqstep
+      - id: solutions_per_direction
+        source: solutions_per_direction_fast
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver
@@ -527,7 +562,7 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency]
+    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: fast_phases_h5parm
@@ -601,6 +636,8 @@ steps:
         source: solint_slow_timestep_joint
       - id: solve_nchan
         source: solint_slow_freqstep_joint
+      - id: solutions_per_direction
+        source: solutions_per_direction_slow_joint
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver
@@ -635,7 +672,7 @@ steps:
         source: slow_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
+    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm
@@ -748,6 +785,8 @@ steps:
         source: solint_slow_timestep_separate
       - id: solve_nchan
         source: solint_slow_freqstep_separate
+      - id: solutions_per_direction
+        source: solutions_per_direction_slow_separate
       - id: sourcedb
         source: calibration_skymodel_file
       - id: llssolver
@@ -780,7 +819,7 @@ steps:
         source: slow_smoothnessconstraint_separate
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan]
+    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm

@@ -256,6 +256,19 @@ class Parset:
                 "slow_timestep_joint_sec"
             )
             options["slow_timestep_separate_sec"] = options["slow_timestep_joint_sec"]
+        dd_interval_factor = options["dd_interval_factor"]
+        solveralgorithm = options["solveralgorithm"]
+        if dd_interval_factor < 1:
+            raise ValueError(
+                f"The dd_interval_factor parameter is {dd_interval_factor}; "
+                f"it must be >= 1"
+            )
+        elif dd_interval_factor > 1 and solveralgorithm != 'directioniterative':
+            raise ValueError(
+                "When dd_interval_factor > 1 (meaning that direction-dependent solution "
+                "intervals are to be used), then solveralgorithm must be set to "
+                f"'directioniterative' (currently it is set to '{solveralgorithm}')"
+            )
 
         # Imaging options
         options = settings["imaging"]
