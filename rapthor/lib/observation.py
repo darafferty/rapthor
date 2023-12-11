@@ -296,14 +296,14 @@ class Observation(object):
                     # input solint. If such cases are found, we increase their intervals
                     # to the maximum allowed
                     if n > self.numsamples * 2 / 3:
-                        n_samples[i] = solve_max_factor * base_solint
+                        n_samples[i] = solint
 
                 # Finally, calculate the number of solutions per direction and save the
                 # results
                 solutions_per_direction = n_samples / base_solint
                 solutions_per_direction = [max(1, int(n)) for n in solutions_per_direction]
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [solutions_per_direction] * n_elements
-                self.parameters[input_solint_keys[solve_type]] = [base_solint_sec] * n_elements
+                self.parameters[input_solint_keys[solve_type]] = [base_solint] * n_elements
             else:
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * n_elements
 
