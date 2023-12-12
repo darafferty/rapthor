@@ -522,6 +522,8 @@ steps:
         source: solint_fast_timestep
       - id: nchan
         source: solint_fast_freqstep
+      - id: directions
+        source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_fast
       - id: sourcedb
@@ -636,6 +638,8 @@ steps:
         source: solint_slow_timestep_joint
       - id: solve_nchan
         source: solint_slow_freqstep_joint
+      - id: directions
+        source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_slow_joint
       - id: sourcedb
@@ -785,6 +789,8 @@ steps:
         source: solint_slow_timestep_separate
       - id: solve_nchan
         source: solint_slow_freqstep_separate
+      - id: directions
+        source: calibrator_patch_names
       - id: solutions_per_direction
         source: solutions_per_direction_slow_separate
       - id: sourcedb
