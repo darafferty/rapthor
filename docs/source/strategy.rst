@@ -32,7 +32,7 @@ dictionary stores the processing parameters for that cycle.
 
     An example of a custom strategy file is available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.
-    py>`_. An example of the default self calibration strategy is available `here
+    py>`_. A file that duplicates the default self calibration strategy is available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.
     py>`_.
 

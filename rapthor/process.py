@@ -47,8 +47,13 @@ def run(parset_file, logging_level='info'):
 
     # Set the processing strategy
     strategy_steps = set_strategy(field)
-    selfcal_steps = strategy_steps[:-1]
-    final_step = strategy_steps[-1]
+    if strategy_steps:
+        selfcal_steps = strategy_steps[:-1]  # can be an empty list (i.e., no selfcal needed)
+        final_step = strategy_steps[-1]
+    else:
+        log.warning("The strategy '{}' does not define any processing steps. No "
+                    "processing can be done.".format(parset['strategy']))
+        return
 
     # Run the self calibration part of the strategy (if any)
     for index, step in enumerate(selfcal_steps):
@@ -117,8 +122,7 @@ def run(parset_file, logging_level='info'):
     if not selfcal_steps:
         do_final_pass = True
         index = 0
-    elif (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
-            field.make_quv_images):
+    elif not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or field.make_quv_images:
         if field.do_check and (selfcal_state.diverged or selfcal_state.failed):
             # If selfcal was found to have diverged or failed, don't do the final pass
             # even if required otherwise

@@ -105,7 +105,8 @@ def set_strategy(field):
                 strategy_steps[i]['failure_ratio'] = 10.0
 
         # Set a final step as a duplicate of the last selfcal one
-        strategy_steps.append(strategy_steps[-1])
+        if strategy_steps:
+            strategy_steps.append(strategy_steps[-1])
 
     elif field.parset['strategy'] == 'image':
         # Image one or more sectors:
@@ -113,7 +114,6 @@ def set_strategy(field):
         #     - no calibration
         #     - peel non-sector sources
         #     - image sectors
-        #     - save calibrated visibilities
         strategy_steps.append({})
 
         strategy_steps[0]['do_calibrate'] = False
