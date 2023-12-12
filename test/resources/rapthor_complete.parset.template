@@ -18,6 +18,7 @@ flag_expr = flag_abstime and flag_baseline and flag_freqrange
 
 [calibration]
 use_included_skymodels = True
+dd_interval_factor = 1
 llssolver = qr
 maxiter = 50
 propagatesolutions = False
