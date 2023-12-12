@@ -78,6 +78,7 @@ inputs:
     type: int[]
     inputBinding:
       prefix: solve.solutions_per_direction=
+      itemSeparator: ','
       separate: False
   - id: sourcedb
     type: File
