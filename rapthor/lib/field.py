@@ -85,6 +85,7 @@ class Field(object):
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.cycle_number = 1
 
         # Set strategy parameter defaults
         self.convergence_ratio = 0.95
