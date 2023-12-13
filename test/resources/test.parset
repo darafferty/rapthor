@@ -18,7 +18,7 @@ propagatesolutions = True
 maxiter = 50
 maxapproxiter = 25
 stepsize = 0.2
-stepsize = 0.1
+stepsigma = 0.1
 tolerance = 0.001
 
 [imaging]
