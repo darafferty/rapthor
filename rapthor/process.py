@@ -66,6 +66,7 @@ def run(parset_file, logging_level='info'):
             final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
             log.info("Starting final iteration with a data fraction of "
                      "{0:.2f}".format(parset['final_data_fraction']))
+            field.cycle_number += 1
         else:
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:
@@ -188,19 +189,18 @@ def do_final_pass(field, selfcal_steps, final_step):
         final_pass = True
     else:
         # Selfcal was done
-        field.cycle_number += 1  # increment index for potential final pass
-
         if field.do_check and (field.selfcal_state.diverged or field.selfcal_state.failed):
             # Selfcal was found to have diverged or failed, so don't do the final pass
             # even if required otherwise
             log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
                         "fraction of {0:.2f})".format(field.parset['final_data_fraction']))
             final_pass = False
-        elif final_step == selfcal_steps[-1]:
+        elif final_step == selfcal_steps[field.cycle_number-1]:
             # Selfcal successful, but the strategy parameters of the final pass are
             # identical to those of the last step of selfcal. Only do final pass if
             # required by other settings
-            if not np.isclose(field.parset['final_data_fraction'], field.parset['selfcal_data_fraction']) or field.make_quv_images:
+            if not np.isclose(field.parset['final_data_fraction'],
+                              field.parset['selfcal_data_fraction']) or field.make_quv_images:
                 # Parset parameters require final pass
                 final_pass = True
             else:

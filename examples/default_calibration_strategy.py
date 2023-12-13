@@ -89,7 +89,7 @@ for i in range(max_selfcal_loops):
     # Here we specify that the convergence/divergence checks are done only when
     # needed, to prevent the selfcal from stopping early (before
     # min_selfcal_loops)
-    if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
+    if i < min_selfcal_loops - 1:
         strategy_steps[i]['do_check'] = False
     else:
         strategy_steps[i]['do_check'] = True
