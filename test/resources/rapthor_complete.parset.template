@@ -27,7 +27,6 @@ propagatesolutions = False
 solveralgorithm = hybrid
 onebeamperpatch = True
 stepsize = 0.2
-stepsigma = 0.1
 tolerance = 1e-2
 parallelbaselines = True
 sagecalpredict = True
