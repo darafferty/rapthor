@@ -70,7 +70,7 @@ def run(parset_file, logging_level='info'):
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
-        run_steps(field, final_step, final=True)
+        run_steps(field, [final_step], final=True)
 
     log.info("Rapthor has finished :)")
 
