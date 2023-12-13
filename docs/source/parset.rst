@@ -227,23 +227,6 @@ The available options are described below under their respective sections.
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
 
-        .. note::
-
-            For the best results, the solution intervals :term:`fast_timestep_sec`,
-            :term:`slow_timestep_joint_sec`, and :term:`slow_timestep_separate_sec` should
-            be a multiple of the product of the time per sample (typically 8 sec) and the
-            :term:`dd_interval_factor`, as otherwise some solutions may get very short
-            intervals due to the way the observations are chunked in time. For example, if
-            the time per sample is 8 sec and ``dd_interval_factor = 5``, then the solution
-            intervals should be set to a multiple of 8 * 5 = 40. A good choice in this
-            case would be ``fast_timestep_sec = 40`` (giving a maximum interval of 40 sec
-            for the faintest sources and a minimum interval of 40 / 5 = 8 sec for the
-            brightest) and ``slow_timestep_separate_sec = 2400`` (i.e., 40 * 60, giving a
-            maximum interval of 40 min and a minimum interval of 8 min). For
-            ``dd_interval_factor = 4``, good choices would be ``fast_timestep_sec = 32``
-            and ``slow_timestep_separate_sec = 2560``.
-
-
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
         ``lbfgs``; default = 200.0).
