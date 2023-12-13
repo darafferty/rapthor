@@ -147,6 +147,13 @@ inputs:
       The solver step size used between iterations (length = 1).
     type: float
 
+  - id: stepsigma
+    label: Solver step size reduction factor
+    doc: |
+      If the solver step size mean is lower than its standard deviation by this
+      factor, stop iterations (length = 1).
+    type: float
+
   - id: tolerance
     label: Solver tolerance
     doc: |
@@ -228,6 +235,8 @@ steps:
         source: solverlbfgs_minibatches
       - id: stepsize
         source: stepsize
+      - id: stepsigma
+        source: stepsigma
       - id: tolerance
         source: tolerance
       - id: uvlambdamin

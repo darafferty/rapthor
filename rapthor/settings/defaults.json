@@ -27,6 +27,7 @@
         "solveralgorithm": "hybrid",
         "onebeamperpatch": false,
         "stepsize": 0.02,
+        "stepsigma": 0.1,
         "tolerance": 0.005,
         "parallelbaselines": false,
         "sagecalpredict": false,

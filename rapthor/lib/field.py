@@ -67,6 +67,7 @@ class Field(object):
         self.llssolver = self.parset['calibration_specific']['llssolver']
         self.maxiter = self.parset['calibration_specific']['maxiter']
         self.stepsize = self.parset['calibration_specific']['stepsize']
+        self.stepsigma = self.parset['calibration_specific']['stepsigma']
         self.tolerance = self.parset['calibration_specific']['tolerance']
         self.dde_method = self.parset['imaging_specific']['dde_method']
         if self.dde_method == 'screens':

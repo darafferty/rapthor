@@ -199,6 +199,16 @@ inputs:
       prefix: solve.stepsize=
       separate: False
 
+  - id: stepsigma
+    label: Solver step size standard deviation factor.
+    doc: |
+      If the solver step size mean is lower than its standard deviation by this
+      factor, stop iterations.
+    type: float
+    inputBinding:
+      prefix: solve.stepsigma=
+      separate: False
+
   - id: tolerance
     label: Solver tolerance
     doc: |
