@@ -264,10 +264,10 @@ class Observation(object):
             target_flux = min(calibrator_fluxes)
         for solve_type in ['fast', 'slow_joint', 'slow_separate']:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
-            n_elements = len(self.parameters[input_solint_keys[solve_type]])
+            nchunks = len(self.parameters[input_solint_keys[solve_type]])  # number of time or frequency chunks
             solve_max_factor = max_factor
 
-            # Make sure that the maximum factor is a multiple of the solution interval, as
+            # Make sure that the maximum factor is a divisor of the solution interval, as
             # otherwise we cannot divide up the interval into smaller ones
             while solint % solve_max_factor:
                 solve_max_factor -= 1
@@ -275,37 +275,27 @@ class Observation(object):
                     break
 
             if solve_max_factor > 1:
-                # Find the solution interval factors (which are the ratios of target to
-                # calibrator flux, one per direction, normalized to be at most
-                # solve_max_factor). These factors can be thought of as the number of
-                # solution intervals that each calibrator gets, with the fainter
-                # calibrators getting more intervals per solution
-                interval_factors = np.round(target_flux / np.array(calibrator_fluxes) * solve_max_factor)
+                # Find the initial estimate for the number of solutions, relative to that
+                # for a source with a flux equal to the target flux and at most
+                # solve_max_factor, with the brighter calibrators getting a larger number
+                # and the fainter ones a smaller number (smaller numbers give longer
+                # solution intervals)
+                interval_factors = np.round(np.array(calibrator_fluxes) / target_flux)
                 n_solutions = [min(solve_max_factor, max(1, factor)) for factor in interval_factors]
 
-                # Adjust the base solution interval (to ensure that it is a multiple of
-                # the time per sample) and the number of solution intervals for each
-                # direction. The base solint corresponds to that of the brightest
-                # directions (i.e., those for which the number of solution intervals = 1)
-                base_solint = max(1, int(np.round(solint / max(n_solutions))))
-                n_samples = np.round(np.array(n_solutions) * base_solint)
-                for i, n in enumerate(n_samples):
-                    # Check whether some directions will result in very unequal solve
-                    # intervals. This is important in practice only for the slow solves,
-                    # where the size of the chunked observation is often equal to the
-                    # input solint. If such cases are found, we increase their intervals
-                    # to the maximum allowed
-                    if n > self.numsamples * 2 / 3:
-                        n_samples[i] = solint
-
-                # Finally, calculate the number of solutions per direction and save the
-                # results
-                solutions_per_direction = n_samples / base_solint
-                solutions_per_direction = [max(1, int(n)) for n in solutions_per_direction]
-                self.parameters[f'solutions_per_direction_{solve_type}'] = [solutions_per_direction] * n_elements
-                self.parameters[input_solint_keys[solve_type]] = [base_solint] * n_elements
+                # Calculate the final number per direction, making sure each is a divisor
+                # of the input solution interval. We choose the lower number that
+                # satisfies this criterion, as it will result in a longer solution
+                # interval (and therefore a higher SNR) and so is generally better than
+                # going the other way
+                solutions_per_direction = []
+                for n_sols in n_solutions:
+                    while solint % n_sols:
+                        n_sols -= 1
+                    solutions_per_direction.append(int(n_sols))
+                self.parameters[f'solutions_per_direction_{solve_type}'] = [solutions_per_direction] * nchunks
             else:
-                self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * n_elements
+                self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * nchunks
 
         # Set the number of segments to split the h5parm files into for screen fitting.
         # Try to split so that each file gets at least two solutions
