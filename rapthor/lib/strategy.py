@@ -12,13 +12,16 @@ def set_strategy(field):
     """
     Sets up the processing strategy
 
-    I general, the processing strategy must define a strategy_steps list as follows:
+    In general, the processing strategy must define a strategy_steps list as follows:
         - strategy_steps is a list of dicts, with one entry per processing cycle
-        - multiple cycles are done under the assumption that self calibration
-          is done first, followed by a final cycle
-        - if selfcal is to be done, the dicts for selfcal must be the first
-          entries
-        - the dict for the final pass must be the last entry
+        - each dict defines the values of the strategy parameters for its cycle
+        - if only a single cycle is defined, no selfcal will be done, only the final
+          cycle
+        - if multiple cycles are defined, strategy_steps must be constructed so that
+          self calibration is done first, followed by a final cycle:
+          - if selfcal is to be done, the dicts for selfcal must be the first
+            entries
+          - the dict for the final pass must be the last entry
 
     Parameters
     ----------
@@ -85,7 +88,7 @@ def set_selfcal_strategy():
         - regrouping of the resulting sky model to meet the target flux criterion
         - calibration on the regrouped patches (calibration patches may span multiple
           sectors)
-        - processing is looped until convergence is obtained, after which a final
+        - looping of the processing until convergence is obtained, after which a final
           cycle may be done (depending on the values of various parset parameters)
 
     The parameters of the final cycle (if done) are set to those of the last
@@ -178,7 +181,7 @@ def set_image_strategy():
     """
     Sets up the standard imaging strategy
 
-    The standard imaging strategy includes:
+    The standard imaging strategy is a single cycle that includes:
         - no selfcal cycles
         - no calibration
         - peeling of any non-sector sources
@@ -187,8 +190,8 @@ def set_image_strategy():
     Returns
     -------
     strategy_steps : list of dicts
-        List of strategy parameter dicts. A single cycle only is included (no selfcal
-        cycles)
+        List of strategy parameter dicts. A single cycle only is defined (i.e., no
+        selfcal cycles)
     """
     strategy_steps = [{}]
 
