@@ -31,13 +31,13 @@ def set_strategy(field):
         List of strategy parameter dicts (one per processing cycle)
     """
     if field.parset['strategy'] == 'selfcal':
-        # Standard selfcal:
+        # Standard selfcal
         strategy_steps = set_selfcal_strategy()
     elif field.parset['strategy'] == 'image':
-        # Image one or more sectors
+        # Standard imaging
         strategy_steps = set_image_strategy()
     elif os.path.exists(field.parset['strategy']):
-        # Load user-defined strategy
+        # User-defined
         strategy_steps = set_user_strategy(field)
     else:
         raise ValueError('Strategy "{}" not understood.'.format(field.parset['strategy']))
