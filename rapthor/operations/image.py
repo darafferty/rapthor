@@ -42,9 +42,9 @@ class Image(Operation):
             save_source_list = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
-                             'do_slowgain_solve': self.field.do_slowgain_solve,
+                             'apply_amplitudes': self.field.apply_amplitudes,
                              'use_screens': self.field.use_screens,
-                             'apply_fulljones': self.field.do_fulljones_solve,
+                             'apply_fulljones': self.field.apply_fulljones,
                              'use_facets': use_facets,
                              'save_source_list': save_source_list,
                              'peel_bright_sources': self.field.peel_bright_sources,
@@ -148,7 +148,7 @@ class Image(Operation):
                             'save_source_list': save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'do_slowgain_solve': [self.field.do_slowgain_solve] * nsectors,
+                            'apply_amplitudes': [self.field.apply_amplitudes] * nsectors,
                             'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.field.imaging_sectors],
@@ -193,7 +193,7 @@ class Image(Operation):
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
         else:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
-            if self.field.do_fulljones_solve:
+            if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
             if self.field.dde_method == 'facets':
                 # For faceting, we need inputs for making the ds9 facet region files
@@ -219,13 +219,13 @@ class Image(Operation):
                 self.input_parms.update({'width_ra': width_ra})
                 self.input_parms.update({'width_dec': width_dec})
                 self.input_parms.update({'facet_region_file': facet_region_file})
-                if self.field.do_slowgain_solve:
+                if self.field.apply_amplitudes:
                     self.input_parms.update({'soltabs': 'amplitude000,phase000'})
                 else:
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if (self.field.do_slowgain_solve and
+                if (self.field.apply_amplitudes and
                         self.field.apply_diagonal_solutions and
                         self.field.image_pol.lower() == 'i'):
                     # Diagonal solutions generated and should be applied.
@@ -242,10 +242,11 @@ class Image(Operation):
         """
         Finalize this operation
         """
-        # Save the output FITS image filenames, sky models, and ds9 facet region file for
-        # each sector. Also read the image diagnostics (rms noise, etc.) derived by PyBDSF
-        # and print them to the log. The images are not copied to the final location here,
-        # as this is done after mosaicking (if needed) by the mosaic operation
+        # Save the output FITS image filenames, sky models, ds9 facet region file, and
+        # visibilities (if desired) for each sector. Also read the image diagnostics (rms
+        # noise, etc.) derived by PyBDSF and print them to the log. The images are not
+        # copied to the final location here, as this is done after mosaicking (if needed)
+        # by the mosaic operation
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
@@ -292,6 +293,19 @@ class Image(Operation):
                 if os.path.exists(dst_filename):
                     os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
+
+            # The imaging visibilities
+            if self.field.save_visibilities:
+                dst_dir = os.path.join(self.parset['dir_working'], 'visibilities',
+                                       'image_{}'.format(self.index), sector.name)
+                misc.create_directory(dst_dir)
+                ms_filenames = sector.get_obs_parameters('ms_prep_filename')
+                for ms_filename in ms_filenames:
+                    src_filename = os.path.join(self.pipeline_working_dir, ms_filename)
+                    dst_filename = os.path.join(dst_dir, ms_filename)
+                    if os.path.exists(dst_filename):
+                        shutil.rmtree(dst_filename)
+                    shutil.copytree(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = image_root + '.image_diagnostics.json'

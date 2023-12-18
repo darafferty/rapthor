@@ -120,7 +120,17 @@ The available options are described below under their respective sections.
 
     input_h5parm
         Full path to an H5parm file with direction-dependent solutions (default = None).
-        This file is required if no calibration is to be done (not yet supported).
+        This file is used if no calibration is to be done.
+
+        .. note::
+
+            The directions in the H5parm file must match the patches in the input sky
+            model, and the time and frequency coverage must be sufficient to cover the
+            duration and bandwidth of the input dataset.
+
+    input_fulljones_h5parm
+        Full path to an H5parm file with full-Jones solutions (default = None). This
+        file is used if no calibration is to be done.
 
 
 .. _parset_calibration_options:
@@ -274,6 +284,13 @@ The available options are described below under their respective sections.
         Type of screen to use (default = ``tessellated``), if :term:`dde_method` =
         ``screens``: ``tessellated`` (simple, smoothed Voronoi tessellated screens) or
         ``kl`` (Karhunen-Lo`eve screens).
+
+    save_visibilities
+        Save visibilities used for imaging (default = ``False``). If ``True``, the imaging
+        MS files will be saved, with the the direction-independent full-Jones solutions,
+        if available, applied. Note, however, that the direction-dependent solutions will
+        not be applied unless :term:`dde_method` = ``none``, in which case the solutions
+        closest to the image centers are used.
 
     idg_mode
         IDG (image domain gridder) mode to use in WSClean (default = ``hybrid``). The mode

@@ -326,6 +326,7 @@ class CalibrateDD(Operation):
         else:
             shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_fast_h5parm),
                         os.path.join(dst_dir, self.field.h5parm_filename))
+        self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.h5parm_filename)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 
@@ -361,7 +362,6 @@ class CalibrateDI(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'do_fulljones_solve': self.field.do_fulljones_solve,
                              'max_cores': max_cores}
 
     def set_input_parameters(self):
@@ -446,6 +446,7 @@ class CalibrateDI(Operation):
             os.remove(self.field.fulljones_h5parm_filename)
         shutil.copy(os.path.join(self.pipeline_working_dir, self.combined_h5parm_fulljones),
                     os.path.join(dst_dir, self.field.fulljones_h5parm_filename))
+        self.field.scan_h5parms()  # verify h5parm and update flags for predict/image operations
         flagged_frac = misc.get_flagged_solution_fraction(self.field.fulljones_h5parm_filename)
         self.log.info('Fraction of solutions that are flagged = {0:.2f}'.format(flagged_frac))
 

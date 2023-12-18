@@ -123,8 +123,8 @@ def test_calibrate_di_workflow(
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-@pytest.mark.parametrize("do_slowgain_solve", (False, True))
-def test_predict_workflow(tmp_path, max_cores, do_slowgain_solve):
+@pytest.mark.parametrize("apply_amplitudes", (False, True))
+def test_predict_workflow(tmp_path, max_cores, apply_amplitudes):
     """
     Test the Predict workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -134,14 +134,14 @@ def test_predict_workflow(tmp_path, max_cores, do_slowgain_solve):
     templ = rapthor.lib.operation.env_parset.get_template("predict_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
-        "do_slowgain_solve": do_slowgain_solve,
+        "apply_amplitudes": apply_amplitudes,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
 @pytest.mark.parametrize("max_cores", (None, 8))
-@pytest.mark.parametrize("do_slowgain_solve", (False, True))
-def test_predict_di_workflow(tmp_path, max_cores, do_slowgain_solve):
+@pytest.mark.parametrize("apply_amplitudes", (False, True))
+def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
     """
     Test the Predict DI workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -151,12 +151,12 @@ def test_predict_di_workflow(tmp_path, max_cores, do_slowgain_solve):
     templ = rapthor.lib.operation.env_parset.get_template("predict_di_pipeline.cwl")
     parms = {
         "max_cores": max_cores,
-        "do_slowgain_solve": do_slowgain_solve,
+        "apply_amplitudes": apply_amplitudes,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
-@pytest.mark.parametrize("do_slowgain_solve", (False, True))
+@pytest.mark.parametrize("apply_amplitudes", (False, True))
 @pytest.mark.parametrize("use_screens", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
 @pytest.mark.parametrize("peel_bright_sources", (False, True))
@@ -164,7 +164,7 @@ def test_predict_di_workflow(tmp_path, max_cores, do_slowgain_solve):
 @pytest.mark.parametrize("use_mpi", (False, True))
 def test_image_workflow(
     tmp_path,
-    do_slowgain_solve,
+    apply_amplitudes,
     use_screens,
     use_facets,
     peel_bright_sources,
@@ -182,7 +182,7 @@ def test_image_workflow(
         "image_sector_pipeline.cwl"
     )
     parms = {
-        "do_slowgain_solve": do_slowgain_solve,
+        "apply_amplitudes": apply_amplitudes,
         "use_screens": use_screens,
         "use_facets": use_facets,
         "peel_bright_sources": peel_bright_sources,
@@ -194,8 +194,7 @@ def test_image_workflow(
 
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("skip_processing", (False, True))
-@pytest.mark.parametrize("do_slowgain_solve", (False, True))
-def test_mosaic_workflow(tmp_path, max_cores, skip_processing, do_slowgain_solve):
+def test_mosaic_workflow(tmp_path, max_cores, skip_processing):
     """
     Test the Mosaic workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were
@@ -209,6 +208,5 @@ def test_mosaic_workflow(tmp_path, max_cores, skip_processing, do_slowgain_solve
     parms = {
         "max_cores": max_cores,
         "skip_processing": skip_processing,
-        "do_slowgain_solve": do_slowgain_solve,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
