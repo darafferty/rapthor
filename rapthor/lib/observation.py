@@ -160,7 +160,7 @@ class Observation(object):
         # Find solution intervals for fast-phase solve. The solve is split into time
         # chunks instead of frequency chunks, since continuous frequency coverage is
         # desirable to recover the expected smooth, TEC-like behavior (phase ~ nu^-1)
-        solint_fast_timestep = max(1, int(round(target_fast_timestep / self.timepersample)))
+        solint_fast_timestep = max(1, int(round(target_fast_timestep / round(self.timepersample))))
         solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
 
         # Adjust the solution interval if needed to fit the fast solve into the
@@ -203,10 +203,10 @@ class Observation(object):
         # Find solution intervals for the gain solves. In contrast to the fast-phase
         # solve, the gain solves are split into frequency chunks, since continuous
         # frequency coverage is not needed
-        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / self.timepersample)))
-        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / self.timepersample)))
+        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / round(self.timepersample))))
+        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / round(self.timepersample))))
         solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
-        target_timestep_fulljones = max(1, int(round(target_fulljones_timestep / self.timepersample)))
+        target_timestep_fulljones = max(1, int(round(target_fulljones_timestep / round(self.timepersample))))
         solint_freqstep_fulljones = max(1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth))
 
         # Adjust the solution intervals if needed to fit the gain solves into the
