@@ -238,7 +238,7 @@ class Field(object):
                                     'specified calibration timestep ({1} s). The data fraction will be '
                                     'increased to {2:0.3f} to ensure the timestep requirement is '
                                     'met.'.format(data_fraction, mintime, min(1.0, mintime/tottime)))
-                nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
+                nchunks = int(np.floor(data_fraction / (mintime / tottime)))
                 if nchunks == 1:
                     # Center the chunk around the midpoint (which is generally the most
                     # sensitive, near transit)
