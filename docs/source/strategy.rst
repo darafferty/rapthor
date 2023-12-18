@@ -27,11 +27,23 @@ The file basically defines the variable ``strategy_steps``, which is a list of
 dictionaries. There is one entry (dictionary) in the list per processing cycle. Each
 dictionary stores the processing parameters for that cycle.
 
+
 .. note::
 
-    An example of a custom strategy file is available `here <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.py>`_. An example of the default self calibration strategy is available `here <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.py>`_.
+    An example of a custom strategy file is available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.
+    py>`_. A file that duplicates the default self calibration strategy is available `here
+    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.
+    py>`_.
 
-The following processing parameters must be set for each cycle:
+.. note::
+
+    If the strategy performs self calibration, the last entry in ``strategy_steps`` can be
+    used to specify parameters specific to the final iteration (which is performed after
+    self calibration finishes). In the default self calibration strategy, the parameters
+    for the final iteration are set to those of the last cycle of selfcal.
+
+The following processing parameters can be set for each cycle:
 
 .. glossary::
 

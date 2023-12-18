@@ -433,6 +433,14 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
+  - id: visibilities
+    outputSource:
+      - image_sector/visibilities
+    type:
+      type: array
+      items:
+        type: array
+        items: Directory
   - id: sector_I_images
     outputSource:
       - image_sector/sector_I_images
@@ -649,6 +657,7 @@ steps:
       - id: filtered_skymodel_apparent_sky
       - id: sector_I_images
       - id: sector_extra_images
+      - id: visibilities
 {% if save_source_list %}
       - id: sector_skymodels
 {% endif %}

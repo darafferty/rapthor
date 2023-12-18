@@ -20,9 +20,6 @@ def run(parset_file, logging_level='info'):
     """
     Processes a dataset using direction-dependent calibration and imaging
 
-    This function runs the operations in the correct order and handles all the
-    bookkeeping for the processing
-
     Parameters
     ----------
     parset_file : str
@@ -47,43 +44,91 @@ def run(parset_file, logging_level='info'):
 
     # Set the processing strategy
     strategy_steps = set_strategy(field)
+    if strategy_steps:
+        selfcal_steps = strategy_steps[:-1]  # can be an empty list (when no selfcal needed)
+        final_step = strategy_steps[-1]
+    else:
+        log.warning("The strategy '{}' does not define any processing steps. No "
+                    "processing can be done.".format(parset['strategy']))
+        return
 
-    # Run the strategy
-    for index, step in enumerate(strategy_steps):
+    # Run the self calibration
+    if selfcal_steps:
+        log.info("Starting self calibration with a data fraction of "
+                 "{0:.2f}".format(parset['selfcal_data_fraction']))
+        run_steps(field, selfcal_steps)
+
+    # Run a final pass if needed
+    if do_final_pass(field, selfcal_steps, final_step):
+        if selfcal_steps:
+            # If selfcal was done, set peel_outliers to that of initial iteration, since the
+            # observations will be regenerated and outliers (if any) need to be peeled again
+            final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
+            log.info("Starting final iteration with a data fraction of "
+                     "{0:.2f}".format(parset['final_data_fraction']))
+            field.cycle_number += 1
+        else:
+            log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
+        if field.make_quv_images:
+            log.info("Stokes I, Q, U, and V images will be made")
+        run_steps(field, [final_step], final=True)
+
+    log.info("Rapthor has finished :)")
+
+
+def run_steps(field, steps, final=False):
+    """
+    Runs the steps in a reduction
+
+    This function runs the operations in the correct order and handles all the
+    bookkeeping for the processing
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    steps : list of dict
+        List of strategy step dicts containing the processing parameters
+    final : bool, optional
+        If True, process as the final pass
+    """
+    # Run the self calibration part of the strategy (if any)
+    for index, step in enumerate(steps):
 
         # Update the field object for the current step
-        field.update(step, index+1)
+        cycle_number = index + field.cycle_number
+        field.update(step, cycle_number, final=final)
 
         # Calibrate (direction-dependent)
         if field.do_calibrate:
-            op = CalibrateDD(field, index+1)
+            op = CalibrateDD(field, cycle_number)
             op.run()
 
             # Calibrate (direction-independent)
             if field.do_fulljones_solve:
-                op = PredictDI(field, index+1)
+                op = PredictDI(field, cycle_number)
                 op.run()
-                op = CalibrateDI(field, index+1)
+                op = CalibrateDI(field, cycle_number)
                 op.run()
 
         # Predict and subtract the sector models
         if field.do_predict:
-            op = PredictDD(field, index+1)
+            op = PredictDD(field, cycle_number)
             op.run()
 
         # Image and mosaic the sectors
         if field.do_image:
-            # Since we're doing selfcal, ensure that only Stokes I is imaged
-            field.image_pol = 'I'
+            # Set the Stokes polarizations for imaging
+            field.image_pol = 'IQUV' if (field.make_quv_images and final) else 'I'
 
-            op = Image(field, index+1)
+            op = Image(field, cycle_number)
             op.run()
 
-            op = Mosaic(field, index+1)
+            op = Mosaic(field, cycle_number)
             op.run()
 
         # Check for selfcal convergence/divergence
-        if field.do_check:
+        if field.do_check and not final:
             log.info("Checking selfcal convergence...")
             selfcal_state = field.check_selfcal_progress()
             if not any(selfcal_state):
@@ -104,61 +149,66 @@ def run(parset_file, logging_level='info'):
                 if selfcal_state.failed:
                     log.warning("Selfcal has failed due to high noise (ratio of current image noise "
                                 "to theoretical value is > {})".format(field.failure_ratio))
-                log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(strategy_steps)))
+                log.info("Stopping selfcal at iteration {0} of {1}".format(index+1, len(steps)))
                 break
+        else:
+            selfcal_state = None
 
-    # Run a final pass if needed
-    do_final_pass = False
-    if (not np.isclose(parset['final_data_fraction'], parset['selfcal_data_fraction']) or
-            field.make_quv_images):
-        do_final_pass = True
-        if field.do_check:
-            # If selfcal was found to have diverged or failed, don't do the final pass
-            if selfcal_state.diverged or selfcal_state.failed:
-                log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
-                            "fraction of {0:.2f})".format(parset['final_data_fraction']))
-                do_final_pass = False
+    field.selfcal_state = selfcal_state
+    field.cycle_number = cycle_number
 
-    if do_final_pass:
-        log.info("Starting final iteration with a data fraction of "
-                 "{0:.2f}".format(parset['final_data_fraction']))
-        if field.make_quv_images:
-            log.info("Stokes I, Q, U, and V images will be made")
 
-        # Set peel_outliers to that of initial iteration, since the observations
-        # will be regenerated and outliers may need to be peeled
-        step['peel_outliers'] = strategy_steps[0]['peel_outliers']
+def do_final_pass(field, selfcal_steps, final_step):
+    """
+    Check the processing state to determine whether a final pass is needed
 
-        # Now start the final processing pass, incrementing the iteration index
-        # from that of the last selfcal iteration (so to index+2)
-        field.update(step, index+2, final=True)
+    A final pass is needed when:
+        - selfcal was not done
+        - selfcal was done, but:
+            - the final data fraction is different from the selfcal one, or
+            - QUV images are to be made, or
+            - the parameters for the final pass differ from those of the last
+              cycle of selfcal
 
-        # Calibrate (direction-dependent)
-        if field.do_calibrate:
-            op = CalibrateDD(field, index+2)
-            op.run()
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    selfcal_steps : list of dicts
+        List of strategy step dicts containing the selfcal processing parameters
+    final_step : dict
+        Dict containing the processing parameters for the final pass
 
-            # Calibrate (direction-independent)
-            if field.do_fulljones_solve:
-                op = PredictDI(field, index+2)
-                op.run()
-                op = CalibrateDI(field, index+2)
-                op.run()
+    Returns
+    -------
+    final_pass : bool
+        True is a final pass is needed and False if not
+    """
+    if not selfcal_steps:
+        # No selfcal was done, final pass needed
+        final_pass = True
+    else:
+        # Selfcal was done
+        if field.do_check and (field.selfcal_state.diverged or field.selfcal_state.failed):
+            # Selfcal was found to have diverged or failed, so don't do the final pass
+            # even if required otherwise
+            log.warning("Selfcal diverged or failed, so skipping final iteration (with a data "
+                        "fraction of {0:.2f})".format(field.parset['final_data_fraction']))
+            final_pass = False
+        elif final_step == selfcal_steps[field.cycle_number-1]:
+            # Selfcal successful, but the strategy parameters of the final pass are
+            # identical to those of the last step of selfcal. Only do final pass if
+            # required by other settings
+            if not np.isclose(field.parset['final_data_fraction'],
+                              field.parset['selfcal_data_fraction']) or field.make_quv_images:
+                # Parset parameters require final pass
+                final_pass = True
+            else:
+                # Final pass not needed
+                final_pass = False
+        else:
+            # Selfcal successful, and the strategy parameters of the final pass differ
+            # from those of the last step of selfcal
+            final_pass = True
 
-        # Predict and subtract the sector models
-        if field.do_predict:
-            op = PredictDD(field, index+2)
-            op.run()
-
-        # Image and mosaic the sectors
-        if field.do_image:
-            # Set the Stokes polarizations for imaging
-            field.image_pol = 'IQUV' if field.make_quv_images else 'I'
-
-            op = Image(field, index+2)
-            op.run()
-
-            op = Mosaic(field, index+2)
-            op.run()
-
-    log.info("Rapthor has finished :)")
+    return final_pass

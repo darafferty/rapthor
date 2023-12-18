@@ -89,10 +89,13 @@ for i in range(max_selfcal_loops):
     # Here we specify that the convergence/divergence checks are done only when
     # needed, to prevent the selfcal from stopping early (before
     # min_selfcal_loops)
-    if i < min_selfcal_loops - 1 or i == max_selfcal_loops - 1:
+    if i < min_selfcal_loops - 1:
         strategy_steps[i]['do_check'] = False
     else:
         strategy_steps[i]['do_check'] = True
         strategy_steps[i]['convergence_ratio'] = 0.95
         strategy_steps[i]['divergence_ratio'] = 1.1
         strategy_steps[i]['failure_ratio'] = 10.0
+
+# Set the parameters for the final pass as duplicates of the last selfcal step
+strategy_steps.append(strategy_steps[-1])

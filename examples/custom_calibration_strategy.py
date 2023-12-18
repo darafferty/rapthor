@@ -62,3 +62,6 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['convergence_ratio'] = 0.95
         strategy_steps[i]['divergence_ratio'] = 1.1
         strategy_steps[i]['failure_ratio'] = 10.0
+
+# Set the parameters for the final pass as duplicates of the last selfcal step
+strategy_steps.append(strategy_steps[-1])

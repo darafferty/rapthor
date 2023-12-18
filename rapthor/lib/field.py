@@ -24,6 +24,7 @@ from matplotlib.pyplot import figure
 from astropy.visualization.wcsaxes import SphericalCircle
 from astropy.visualization.wcsaxes import Quadrangle
 import mocpy
+from losoto.h5parm import h5parm
 
 
 class Field(object):
@@ -51,7 +52,8 @@ class Field(object):
         self.flag_baseline = self.parset['flag_baseline']
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
-        self.input_h5parm = self.parset['input_h5parm']
+        self.h5parm_filename = self.parset['input_h5parm']
+        self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
@@ -71,6 +73,7 @@ class Field(object):
         else:
             self.use_screens = False
         self.screen_type = self.parset['imaging_specific']['screen_type']
+        self.save_visibilities = self.parset['imaging_specific']['save_visibilities']
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
@@ -82,6 +85,7 @@ class Field(object):
         self.solverlbfgs_dof = self.parset['calibration_specific']['solverlbfgs_dof']
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
+        self.cycle_number = 1
 
         # Set strategy parameter defaults
         self.convergence_ratio = 0.95
@@ -104,6 +108,9 @@ class Field(object):
         if not minimal:
             # Scan MS files to get observation info
             self.scan_observations()
+
+            # Scan calibration h5parm files (if any) to get solution info
+            self.scan_h5parms()
 
             # Set up imaging sectors
             self.makeWCS()
@@ -651,7 +658,12 @@ class Field(object):
         index : int
             Iteration index (counts starting from 1)
         regroup : bool
-            Regroup sky model
+            Regroup sky model. This parameter is not used for the first cycle, as its
+            value is taken from the parset. For later cycles, it controls whether the
+            sky models that come from imaging are to be regrouped into calibration
+            patches. In almost all cases, regrouping should be done. The exception is
+            when using small imaging sectors when the sources in each sector should be
+            grouped into a single patch together.
         target_flux : float, optional
             Target flux in Jy for grouping
         target_number : int, optional
@@ -935,7 +947,7 @@ class Field(object):
                 n += 1
             suffix = 's' if len(self.imaging_sectors) > 1 else ''
             self.log.info('Using {0} user-defined imaging sector{1}'.format(len(self.imaging_sectors), suffix))
-            # TODO: check whether flux density in each sector meets minimum and warn if not?
+            self.uses_sector_grid = False
         else:
             # Make a regular grid of sectors
             if self.parset['imaging_specific']['grid_center_ra'] is None:
@@ -1003,6 +1015,7 @@ class Field(object):
             else:
                 self.log.info('Using {0} imaging sectors ({1} in RA, {2} in Dec)'.format(
                               len(self.imaging_sectors), nsectors_ra, nsectors_dec))
+            self.uses_sector_grid = True
 
         # Compute bounding box for all imaging sectors and store as a
         # a semi-colon-separated list of [maxRA; minDec; minRA; maxDec] (we use semi-
@@ -1163,10 +1176,12 @@ class Field(object):
     def adjust_sector_boundaries(self):
         """
         Adjusts the imaging sector boundaries for overlaping sources
+
+        Note: this adjustment is only done when there are multiple sectors in a
+        grid, since its purpose is to ensure that sources don't get split
+        between two neighboring sectors
         """
-        # Note: this adjustment only needs to be done when there are multiple sectors,
-        # since its purpose is to ensure that sources don't fall in between sectors
-        if len(self.imaging_sectors) > 1:
+        if len(self.imaging_sectors) > 1 and self.uses_sector_grid:
             self.log.info('Adusting sector boundaries to avoid sources...')
             intersecting_source_polys = self.find_intersecting_sources()
             for sector in self.imaging_sectors:
@@ -1285,6 +1300,46 @@ class Field(object):
         w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
         w.wcs.set_pv([(2, 1, 45.0)])
         self.wcs = w
+
+    def scan_h5parms(self):
+        """
+        Scans the calibration h5parms
+
+        The basic structure is checked for correctness and for the presence of
+        amplitude solutions (which may require different processing steps).
+        """
+        if self.h5parm_filename is not None:
+            solutions = h5parm(self.h5parm_filename)
+            if 'sol000' not in solutions.getSolsetNames():
+                raise ValueError('The direction-dependent solutions file "{0}" must '
+                                 'have the solutions stored in the sol000 '
+                                 'solset.'.format(self.h5parm_filename))
+            solset = solutions.getSolset('sol000')
+            if 'phase000' not in solset.getSoltabNames():
+                raise ValueError('The direction-dependent solutions file "{0}" must '
+                                 'have a phase000 soltab.'.format(self.h5parm_filename))
+            if 'amplitude000' in solset.getSoltabNames():
+                self.apply_amplitudes = True
+            else:
+                self.apply_amplitudes = False
+        else:
+            self.apply_amplitudes = False
+
+        if self.fulljones_h5parm_filename is not None:
+            self.apply_fulljones = True
+            solutions = h5parm(self.fulljones_h5parm_filename)
+            if 'sol000' not in solutions.getSolsetNames():
+                raise ValueError('The full-Jones solution file "{0}" must have '
+                                 'the solutions stored in the sol000 '
+                                 'solset.'.format(self.fulljones_h5parm_filename))
+            solset = solutions.getSolset('sol000')
+            if ('phase000' not in solset.getSoltabNames() or
+                    'amplitude000' not in solset.getSoltabNames()):
+                raise ValueError('The full-Jones solution file "{0}" must have both '
+                                 'a phase000 soltab and a amplitude000 '
+                                 'soltab.'.format(self.fulljones_h5parm_filename))
+        else:
+            self.apply_fulljones = False
 
     def check_selfcal_progress(self):
         """
@@ -1433,27 +1488,36 @@ class Field(object):
         for sector in self.imaging_sectors:
             sector.__dict__.update(step_dict)
 
-        # Update the sky models. We adjust the target flux used for calibrator selection
-        # by the ratio of (LOFAR / true) fluxes determined in the image operation of the
-        # previous selfcal cycle. This adjustment is only done if the fractional change
-        # is significant (as measured by the standard deviation in the ratio)
-        target_flux = step_dict['target_flux']
-        if self.lofar_to_true_flux_ratio <= 0:
-            self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
-        if self.lofar_to_true_flux_ratio <= 1:
-            fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
+        # Update the sky models
+        if step_dict['regroup_model']:
+            # If regrouping is to be done, we adjust the target flux used for calibrator
+            # selection by the ratio of (LOFAR / true) fluxes determined in the image
+            # operation of the previous selfcal cycle. This adjustment is only done if the
+            # fractional change is significant (as measured by the standard deviation in
+            # the ratio)
+            target_flux = step_dict['target_flux']
+            target_number = step_dict['max_directions']
+            calibrator_max_dist_deg = step_dict['max_distance']
+            if self.lofar_to_true_flux_ratio <= 0:
+                self.lofar_to_true_flux_ratio = 1.0  # disable adjustment
+            if self.lofar_to_true_flux_ratio <= 1:
+                fractional_change = 1 / self.lofar_to_true_flux_ratio - 1
+            else:
+                fractional_change = self.lofar_to_true_flux_ratio - 1
+            if fractional_change > self.lofar_to_true_flux_std:
+                target_flux *= self.lofar_to_true_flux_ratio
+                self.log.info('Adjusting the target flux for calibrator selection '
+                              'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
+                              'in the global flux scale'.format(step_dict['target_flux'],
+                                                                target_flux))
         else:
-            fractional_change = self.lofar_to_true_flux_ratio - 1
-        if fractional_change > self.lofar_to_true_flux_std:
-            target_flux *= self.lofar_to_true_flux_ratio
-            self.log.info('Adjusting the target flux for calibrator selection '
-                          'from {0:.2f} Jy to {1:.2f} Jy to account for the offset found '
-                          'in the global flux scale'.format(step_dict['target_flux'],
-                                                            target_flux))
+            target_flux = None
+            target_number = None
+            calibrator_max_dist_deg = None
+
         self.update_skymodels(index, step_dict['regroup_model'],
-                              target_flux=target_flux,
-                              target_number=step_dict['max_directions'],
-                              calibrator_max_dist_deg=step_dict['max_distance'],
+                              target_flux=target_flux, target_number=target_number,
+                              calibrator_max_dist_deg=calibrator_max_dist_deg,
                               final=final)
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 

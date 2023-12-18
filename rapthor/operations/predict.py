@@ -30,7 +30,7 @@ class PredictDD(Operation):
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
-                             'do_slowgain_solve': self.field.do_slowgain_solve}
+                             'apply_amplitudes': self.field.apply_amplitudes}
 
     def set_input_parameters(self):
         """
@@ -44,7 +44,7 @@ class PredictDD(Operation):
             # If we have more than one imaging sector or reweighting is desired,
             # predict the imaging sector models. (If we have a single imaging
             # sector, we don't need to predict its model data, just that of any
-            # outlier or birght-source sectors)
+            # outlier or bright-source sectors)
             sectors.extend(self.field.imaging_sectors)
         sectors.extend(self.field.bright_source_sectors)
         sectors.extend(self.field.outlier_sectors)
@@ -79,8 +79,14 @@ class PredictDD(Operation):
             obs_filename.append(obs.ms_filename)
             obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
             obs_infix.append(obs.infix)
-            obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
-            obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
+            if ('solint_fast_timestep' in obs.parameters and
+                    'solint_slow_freqstep_separate' in obs.parameters):
+                # If calibrate operation was done, get the solution intervals
+                obs_solint_sec.append(obs.parameters['solint_fast_timestep'][0] * obs.timepersample)
+                obs_solint_hz.append(obs.parameters['solint_slow_freqstep_separate'][0] * obs.channelwidth)
+            else:
+                obs_solint_sec.append(0)
+                obs_solint_hz.append(0)
 
         # Set other parameters
         nr_outliers = len(self.field.outlier_sectors)
@@ -149,8 +155,8 @@ class PredictDD(Operation):
 
         # Update filenames of datasets used for imaging
         if (len(self.field.imaging_sectors) > 1 or self.field.reweight or
-            (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
-            (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
+                (len(self.field.outlier_sectors) > 0 and self.field.peel_outliers) or
+                (len(self.field.bright_source_sectors) > 0 and self.field.peel_bright_sources)):
             for sector in self.field.sectors:
                 for obs in sector.observations:
                     obs.ms_imaging_filename = os.path.join(self.pipeline_working_dir,
@@ -183,7 +189,7 @@ class PredictDI(Operation):
             max_cores = self.field.parset['cluster_specific']['max_cores']
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
-                             'do_slowgain_solve': self.field.do_slowgain_solve}
+                             'apply_amplitudes': self.field.apply_amplitudes}
 
     def set_input_parameters(self):
         """
