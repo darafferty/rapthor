@@ -253,26 +253,17 @@ class Observation(object):
 
         # Define the direction-dependent solution interval list for the fast and
         # slow solves (the full-Jones solve is direction-independent so is not included).
-        # The list is defined as the number of solutions to solve over per direction.
-        # We make sure that the numbers result in times that are multiples of a single
-        # time slot as well as divisors of the input solution intervals
+        # The list values are defined as the number of solutions that will be obtained for
+        # each base solution interval, with one entry per direction
         input_solint_keys = {'slow_joint': 'solint_slow_timestep_joint',
                              'slow_separate': 'solint_slow_timestep_separate',
                              'fast': 'solint_fast_timestep'}
-        max_factor = int(parset['calibration_specific']['dd_interval_factor'])
+        solve_max_factor = int(parset['calibration_specific']['dd_interval_factor'])
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
         for solve_type in ['fast', 'slow_joint', 'slow_separate']:
             solint = self.parameters[input_solint_keys[solve_type]][0]  # number of time slots
             nchunks = len(self.parameters[input_solint_keys[solve_type]])  # number of time or frequency chunks
-            solve_max_factor = max_factor
-
-            # Make sure that the maximum factor is a divisor of the solution interval, as
-            # otherwise we cannot divide up the interval into smaller ones
-            while solint % solve_max_factor:
-                solve_max_factor -= 1
-                if solve_max_factor == 1:
-                    break
 
             if solve_max_factor > 1:
                 # Find the initial estimate for the number of solutions, relative to that
@@ -281,19 +272,29 @@ class Observation(object):
                 # and the fainter ones a smaller number (smaller numbers give longer
                 # solution intervals)
                 interval_factors = np.round(np.array(calibrator_fluxes) / target_flux)
-                n_solutions = [min(solve_max_factor, max(1, factor)) for factor in interval_factors]
+                n_solutions = [min(solve_max_factor, max(1, int(factor))) for
+                               factor in interval_factors]
+
+                # Increase the base solution interval (passed to DDECal as solint). We use
+                # solve_max_factor (instead of, e.g., max(n_solutions)) because the length
+                # of the observation (if chunking was done) is tuned to this value (see
+                # the field.chunk_observations() method)
+                base_solint = solint * solve_max_factor
 
                 # Calculate the final number per direction, making sure each is a divisor
-                # of the input solution interval. We choose the lower number that
-                # satisfies this criterion, as it will result in a longer solution
-                # interval (and therefore a higher SNR) and so is generally better than
-                # going the other way
+                # of the new base solution interval. We choose the lower number that
+                # satisfies this requirement, as it will result in a longer solution
+                # interval (and therefore a higher SNR) and so is generally safer than
+                # going the other way (towards low SNRs)
                 solutions_per_direction = []
                 for n_sols in n_solutions:
-                    while solint % n_sols:
+                    while base_solint % n_sols:
                         n_sols -= 1
-                    solutions_per_direction.append(int(n_sols))
+                    solutions_per_direction.append(n_sols)
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [solutions_per_direction] * nchunks
+
+                # Update the solution interval to the new one
+                self.parameters[input_solint_keys[solve_type]] = [base_solint] * nchunks
             else:
                 self.parameters[f'solutions_per_direction_{solve_type}'] = [[1] * len(calibrator_fluxes)] * nchunks
 

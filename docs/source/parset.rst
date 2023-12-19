@@ -227,10 +227,10 @@ The available options are described below under their respective sections.
 
     dd_interval_factor
         Maximum factor by which the direction-dependent solution intervals can be
-        adjusted, so that brighter calibrators get shorter intervals (in the fast and slow
+        increased, so that fainter calibrators get longer intervals (in the fast and slow
         solves only; default = 1 = disabled). The value determines the maximum allowed
-        adjustment factor by which the solution intervals are allowed to be reduced for
-        bright sources. For a given direction, the adjustment factor is calculated as
+        adjustment factor by which the solution intervals are allowed to be increased for
+        faint sources. For a given direction, the adjustment is calculated from the
         ratio of the apparent flux density of the calibrator to the target flux density of
         the cycle (set in the strategy) or, if a target flux density is not defined, to
         that of the faintest calibrator in the sky model. A value of 1 disables the use of

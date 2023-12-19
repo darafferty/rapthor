@@ -76,8 +76,8 @@ input_fulljones_h5parm = None
 # PB_FWHM of the field center, include it in the calibration (default = False)
 use_included_skymodels = False
 
-# Maximum factor by which the direction-dependent solution intervals can be adjusted, so
-# that brighter calibrators get shorter intervals (in the fast and slow solves only;
+# Maximum factor by which the direction-dependent solution intervals can be increased,
+# so that fainter calibrators get longer intervals (in the fast and slow solves only;
 # default = 1 = disabled)
 dd_interval_factor = 1
 

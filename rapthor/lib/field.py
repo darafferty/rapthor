@@ -234,15 +234,24 @@ class Field(object):
             Fraction of data to use during processing
         """
         if data_fraction < 1.0:
+            # Determine the minimum time needed by the solves
+            #
+            # Note: slow_timestep_separate_sec is forced to be equal to or greater than
+            # slow_timestep_joint_sec, so we don't include slow_timestep_joint_sec in the
+            # calculation
+            max_dd_timestep = self.parset['calibration_specific']['slow_timestep_separate_sec']
+            max_di_timestep = self.parset['calibration_specific']['fulljones_timestep_sec']
+            dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
+            mintime = max(max_dd_timestep * dd_interval_factor, max_di_timestep)
+
+            # Set the chunk size so that it is at least mintime
             self.observations = []
             for obs in self.full_observations:
-                mintime = max(self.parset['calibration_specific']['slow_timestep_separate_sec'],
-                              self.parset['calibration_specific']['fulljones_timestep_sec'])
                 tottime = obs.endtime - obs.starttime
                 if data_fraction < min(1.0, mintime/tottime):
                     obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                     'total time for this observation that is less than the largest '
-                                    'specified calibration timestep ({1} s). The data fraction will be '
+                                    'possible calibration timestep ({1} s). The data fraction will be '
                                     'increased to {2:0.3f} to ensure the timestep requirement is '
                                     'met.'.format(data_fraction, mintime, min(1.0, mintime/tottime)))
                 nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
