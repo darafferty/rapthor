@@ -237,6 +237,11 @@ The available options are described below under their respective sections.
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
 
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using direction-dependent solution intervals.
+
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
         ``lbfgs``; default = 200.0).
