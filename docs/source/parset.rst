@@ -240,7 +240,11 @@ The available options are described below under their respective sections.
         .. note::
 
             Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
-            when using direction-dependent solution intervals.
+            when using direction-dependent solution intervals. The 'directioniterative'
+            solver is typically less accurate than the other directional solvers and
+            therefore may result in lower-quality solutions for a given solution interval.
+            However, the use of direction-dependent intervals will often outweight this
+            effect, depending on the field and the settings chosen.
 
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =

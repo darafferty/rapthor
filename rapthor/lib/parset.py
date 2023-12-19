@@ -267,7 +267,11 @@ class Parset:
             raise ValueError(
                 "When dd_interval_factor > 1 (meaning that direction-dependent solution "
                 "intervals are to be used), then solveralgorithm must be set to "
-                f"'directioniterative' (currently it is set to '{solveralgorithm}')"
+                f"'directioniterative' (currently it is set to '{solveralgorithm}'). "
+                "Note: the 'directioniterative' solver is typically less accurate than "
+                "the other directional solvers and therefore may result in lower-quality "
+                "solutions for a given solution interval (but the use of longer intervals "
+                "for fainter directions may outweight this effect)."
             )
 
         # Imaging options
