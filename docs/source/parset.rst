@@ -243,7 +243,7 @@ The available options are described below under their respective sections.
             when using direction-dependent solution intervals. The 'directioniterative'
             solver is typically less accurate than the other directional solvers and
             therefore may result in lower-quality solutions for a given solution interval.
-            However, the use of direction-dependent intervals will often outweight this
+            However, the use of direction-dependent intervals will often outweigh this
             effect, depending on the field and the settings chosen.
 
     solverlbfgs_dof
