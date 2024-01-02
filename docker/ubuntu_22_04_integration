@@ -1,0 +1,79 @@
+FROM ubuntu:22.04
+
+# Use specific versions of aoflagger and everybeam. When changing the version,
+# this docker file changes and CI will update the docker image.
+ENV AOFLAGGER_VERSION v3.4.0
+ENV EVERYBEAM_VERSION v0.4.0
+RUN export DEBIAN_FRONTEND="noninteractive" && \
+	apt-get update && \
+    apt-get install -y \
+		bison \
+		build-essential \
+		casacore-dev \
+		casacore-tools \
+		clang-format-14 \
+		cmake \
+		doxygen \
+		flex \
+		gcovr \
+		gfortran \
+		git \
+		libarmadillo-dev \
+		libboost-date-time-dev \
+		libboost-filesystem-dev \
+		libboost-program-options-dev \
+		libboost-python-dev \
+		libboost-system-dev \
+		libboost-test-dev \
+		libcfitsio-dev \
+		libfftw3-dev \
+		libgsl-dev \
+		libgtkmm-3.0-dev \
+		libhdf5-serial-dev \
+		liblua5.3-dev \
+		libpng-dev \
+		ninja-build \
+		pkg-config \
+		pybind11-dev \
+		python3-astropy \
+		python3-dev \
+		python3-h5py-serial \
+		python3-matplotlib \
+		python3-numpy \
+		python3-pip \
+		wcslib-dev \
+		wget \
+	&& \
+	rm -rf /var/lib/apt/lists/*
+# Build aoflagger3
+RUN mkdir /aoflagger && cd /aoflagger \
+    && git clone https://gitlab.com/aroffringa/aoflagger.git src \
+    && ( cd src/ && git checkout ${AOFLAGGER_VERSION} ) \
+    && mkdir build && cd build \
+    && cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr ../src \
+    && ninja install \
+    && cd / && rm -rf aoflagger
+# Build EveryBeam
+RUN mkdir /everybeam && cd /everybeam \
+    && git clone https://git.astron.nl/RD/EveryBeam.git src \
+    && ( cd src/ && git checkout ${EVERYBEAM_VERSION} ) \
+    && mkdir build && cd build \
+    && cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr ../src -DBUILD_WITH_PYTHON=1 -DPYTHON_EXECUTABLE=/usr/bin/python3 \
+    && ninja install \
+    && cd / && rm -rf everybeam
+# Install WSRT Measures (extra casacore data, for integration tests)
+# Note: The file on the ftp site is updated daily. When warnings regarding leap
+# seconds appear, ignore them or regenerate the docker image.
+RUN wget -nv -O /WSRT_Measures.ztar ftp://ftp.astron.nl/outgoing/Measures/WSRT_Measures.ztar \
+    && cd /var/lib/casacore/data \
+    && tar xfz /WSRT_Measures.ztar \
+    && rm /WSRT_Measures.ztar
+# Install pip dependencies
+RUN pip3 install \
+		black \
+		cmake-format \
+		pytest \
+		pytest-lazy-fixture \
+		sphinx \
+		sphinx-rtd-theme
+RUN ln -sf pytest-3 /usr/bin/pytest

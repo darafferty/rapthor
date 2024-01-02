@@ -1,12 +1,11 @@
-# Use version 11.3.1 from nvidia, since it is compatible with k8srunner-gpu
-ARG NVIDIA_VERSION=11.3.1
+ARG NVIDIA_VERSION=11.8.0
 
-FROM nvidia/cuda:${NVIDIA_VERSION}-devel-ubuntu20.04 AS build
+FROM nvidia/cuda:${NVIDIA_VERSION}-devel-ubuntu22.04 AS build
 
 RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
-    libboost-all-dev g++ cmake libfftw3-dev liblapacke-dev \
+    libboost-all-dev libboost-test-dev g++ cmake libfftw3-dev liblapacke-dev \
     python3 python3-pip git file ninja-build
 
 ADD . /idg
@@ -24,10 +23,7 @@ RUN cd /idg && \
     ninja package
 
 # IDG needs the 'devel' image, since the 'runtime' image does not have nvcc.
-FROM nvidia/cuda:${NVIDIA_VERSION}-devel-ubuntu20.04
-
-# Installing Boost in Ubuntu 20.04 requires the version number.
-ARG BOOST_VERSION=1.71.0
+FROM nvidia/cuda:${NVIDIA_VERSION}-devel-ubuntu22.04
 
 # The metadata should include the IDG version.
 ARG IDG_VERSION
@@ -49,7 +45,6 @@ LABEL \
 COPY --from=build /idg/build/idg-*.deb /idg/
 COPY --from=build /idg/build/bin/* /idg/bin/
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends libboost-test${BOOST_VERSION} && \
     apt install -y /idg/*.deb && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

@@ -3,4 +3,6 @@
 
 add_subdirectory(integration)
 add_subdirectory(pyproxies)
-add_subdirectory(cudakernels)
+if(BUILD_LIB_CUDA)
+  add_subdirectory(cudakernels)
+endif()
