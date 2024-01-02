@@ -1,4 +1,4 @@
-# Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
+# Copyright (C) 2023 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # This file contains the common parts of both the Astron and SKA pipelines of
@@ -34,8 +34,8 @@ versioning:
     # Unshallowing ensures that 'git describe' works
     - git fetch --unshallow
     - echo IDG_VERSION=$(git describe --tags --dirty) > versions.env
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_20_04_base) >> versions.env
-    - echo INTEGRATION_IMAGE=${CI_REGISTRY_IMAGE}/integration:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_20_04_integration) >> versions.env
+    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_22_04_base) >> versions.env
+    - echo INTEGRATION_IMAGE=${CI_REGISTRY_IMAGE}/integration:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_22_04_integration) >> versions.env
     - echo GPU_IMAGE=${CI_REGISTRY_IMAGE}/gpu:${CI_COMMIT_SHORT_SHA} >> versions.env
     - cat versions.env
   artifacts:
@@ -78,7 +78,7 @@ prepare-base:
   extends: .prepare
   variables:
     DOCKER_IMAGE: $BASE_IMAGE
-    DOCKER_FILE: ./docker/ubuntu_20_04_base
+    DOCKER_FILE: ./docker/ubuntu_22_04_base
 
 # Template for jobs that depend on the optional prepare-base job.
 .needs-base:
@@ -93,7 +93,7 @@ prepare-integration:
   extends: .prepare
   variables:
     DOCKER_IMAGE: $INTEGRATION_IMAGE
-    DOCKER_FILE: ./docker/ubuntu_20_04_integration
+    DOCKER_FILE: ./docker/ubuntu_22_04_integration
 
 format:
   extends: .needs-base
@@ -155,7 +155,7 @@ test-unit:
   extends: .needs-base
   stage: test
   before_script:
-    - pip3 install pytest h5py
+    - pip3 install pytest pytest-lazy-fixture h5py
   script:
     - mkdir -p build
     - cd build
@@ -200,6 +200,7 @@ test-integration:
     - cmake -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release -DBUILD_PACKAGES=On -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=/opt/idg ..
     - make install -j4
     # Install wsclean v3.3
+    - export OPENBLAS_NUM_THREADS=1
     - mkdir /wsclean && cd /wsclean
     - git clone --depth 1 --branch v3.3 https://gitlab.com/aroffringa/wsclean.git src
     - mkdir build && cd build
@@ -231,7 +232,7 @@ documentation-build:
   stage: documentation
   script:
     - apt update && apt install -y doxygen
-    - python3 -m pip install numpy sphinx breathe sphinx-rtd-theme myst-parser
+    - pip3 install numpy sphinx breathe sphinx-rtd-theme myst-parser
     - mkdir -p build && cd build
     - cmake -DBUILD_WITH_PYTHON=ON ..
     - make install -j4

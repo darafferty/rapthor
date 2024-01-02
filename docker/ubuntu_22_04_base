@@ -1,0 +1,11 @@
+FROM ubuntu:22.04
+
+RUN export DEBIAN_FRONTEND=noninteractive && apt-get update && \
+    apt-get install -y \
+    libboost-all-dev g++ cmake libfftw3-dev liblapacke-dev \
+    python3 python3-pip git clang-format-14 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+# The formatter needs a binary named 'clang-format', not 'clang-format-14'
+    ln -sf clang-format-14 /usr/bin/clang-format && \
+    pip3 install cmake-format gcovr

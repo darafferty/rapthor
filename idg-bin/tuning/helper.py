@@ -5,7 +5,7 @@ import pynvml
 import re
 
 import kernel_tuner
-from kernel_tuner.nvml import NVMLObserver
+from kernel_tuner.observers.nvml import NVMLObserver
 
 
 def get_default_parser():

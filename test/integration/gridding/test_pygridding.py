@@ -103,7 +103,7 @@ def run_degridding(
     nr_timesteps = interval_end - interval_start
 
     # Initialize empty buffers
-    rowid = np.zeros((nr_baselines, nr_timesteps), dtype=np.int)
+    rowid = np.zeros((nr_baselines, nr_timesteps), dtype=np.int32)
     (uvw, visibilities, _) = init_buffers(
         nr_baselines, nr_channels, nr_timesteps, nr_correlations
     )

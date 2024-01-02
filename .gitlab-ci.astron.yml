@@ -1,4 +1,4 @@
-# Copyright (C) 2021 ASTRON (Netherlands Institute for Radio Astronomy)
+# Copyright (C) 2023 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # This file contains the pipelines that run on the Astron repository of IDG,
@@ -13,29 +13,31 @@ test-integration-das:
   needs: []
   allow_failure: true
   tags:
-    - das6
+    - das6-gpu
   before_script:
     - source scripts/load_modules_das6.sh
-    - python3 -m pip install --user pytest-lazy-fixture
-    - python3 -m pip install --user cuda-python
-    - mkdir build && cd build
+    - virtualenv venv --system-site-packages
+    - source venv/bin/activate
+    - pip install pytest-lazy-fixture --force
+    - pip install cuda-python --force
+    - pip install everybeam --force
     # Build with GPU libs
-    - cmake -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=.. ..
-    - make install -j`nproc`
+    - cmake -S . -B build -DBUILD_LIB_CUDA=On -DBUILD_TESTING=On -DCMAKE_BUILD_TYPE=Release -DWRITE_OUT_SCALAR_BEAM=ON -DBUILD_WITH_PYTHON=ON -DCMAKE_INSTALL_PREFIX=install
+    - make -C build install -j`nproc`
     # Add IDG to environment
-    - module use ../share
+    - module use install/share
     - module load idg.env
     # Install WSclean (needs libgsl)
     - cd $CI_PROJECT_DIR
-    - mkdir wsclean && cd wsclean
-    - git clone --depth 1 --branch v3.3 https://gitlab.com/aroffringa/wsclean.git src
-    - mkdir build && cd build
+    - git clone --depth 1 --branch v3.3 https://gitlab.com/aroffringa/wsclean.git
+    - cd wsclean
     - export OPENBLAS_NUM_THREADS=1
-    - cmake -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT} -DCASACORE_ROOT_DIR=${CASACORE_ROOT} -DCMAKE_PREFIX_PATH="${CI_PROJECT_DIR};${EVERYBEAM_ROOT};${FFTW_ROOT}" -DCMAKE_INSTALL_PREFIX=.. ../src
-    - make install -j`nproc`
-    - export PATH=$PATH:$CI_PROJECT_DIR/wsclean/bin
+    - cmake -S . -B build -DCFITSIO_ROOT_DIR=${CFITSIO_ROOT} -DCASACORE_ROOT_DIR=${CASACORE_ROOT} -DCMAKE_PREFIX_PATH="${CI_PROJECT_DIR}/install;${EVERYBEAM_ROOT};${FFTW_ROOT}" -DCMAKE_INSTALL_PREFIX=install
+    - make -C build install -j`nproc`
+    - export PATH=$PATH:$CI_PROJECT_DIR/wsclean/install/bin
   script:
     - cd $CI_PROJECT_DIR/build
+    - export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CUDA_ROOT/lib64
     # Run unit tests (more precisely: the non-integration tests)
     - ctest -j16 --output-on-failure -LE integration
     - echo "Finished unit tests"
@@ -56,23 +58,12 @@ test-tuning-das:
   stage: test
   needs: []
   tags:
-    - das6
+    - das6-gpu
   before_script:
     # Prepare environment to run kernel_tuner
     - source idg-bin/tuning/load_modules_das6.sh
-    # Install the latest kernel_tuner directly from the repository.
-    # This is done in two steps, because the original one liner
-    #    python -m pip install --user --upgrade git+https://github.com/KernelTuner/kernel_tuner.git@master
-    # does not work, because pip and git disagree on the correct format 
-    # of the https_proxy variable. For pip https_proxy needs to start with
-    # 'https://', but that breaks git
-    # Furthermore it looks like pip can not install from local files when
-    # https_proxy is set.
-    - git clone https://github.com/KernelTuner/kernel_tuner.git
-    - cd kernel_tuner
-    - git checkout 0.4.3
-    - https_proxy= python3 -m pip install --user --upgrade .
-    - cd ..
+    - pip3 install pycuda
+    - pip3 install kernel_tuner
   script:
     # There is no need to install IDG, run the tests directly
     - idg-bin/tuning/tTuneCUDAGridder
