@@ -28,18 +28,3 @@ class Generic(CUDA):
             self.obj = self.lib.CUDA_Generic_create()
         except AttributeError:
             print("The chosen proxy was not built into the library")
-
-class Unified(CUDA):
-    """
-    idg.CUDA.Generic() creates a Proxy instance that provides access
-    to the implementation for NVIDIA GPU devices that support unified memory.
-    """
-
-    def __init__(self):
-        """Unified CUDA implementation"""
-        try:
-            self.lib.CUDA_Unified_create.restype = ctypes.c_void_p
-            self.lib.CUDA_Unified_create.argtypes = []
-            self.obj = self.lib.CUDA_Unified_create()
-        except AttributeError:
-            print("The chosen proxy was not built into the library")

@@ -29,7 +29,6 @@ CUDA::CUDA(ProxyInfo info)
 CUDA::~CUDA() {
   // CUDA memory should be free'ed before CUDA devices and
   // contexts are free'ed, hence the explicit calls here.
-  free_unified_grid();
   free_buffers_wtiling();
   free_memory();
 }
@@ -158,8 +157,6 @@ void CUDA::free_buffers_wtiling() {
   m_buffers_wtiling.h_tiles.reset();
   m_buffers_wtiling.d_patches.clear();
 }
-
-void CUDA::free_unified_grid() { unified_grid_.Reset(); }
 
 }  // end namespace cuda
 }  // end namespace proxy
