@@ -260,14 +260,8 @@ void Generic::run_imaging(
             nr_polarizations, subgrid_offset, nr_subgrids_current, subgrid_size,
             image_size, w_step, shift, wtile_set, d_subgrids, d_metadata);
       } else {
-        if (m_use_unified_memory) {
-          device.launch_adder_unified(nr_subgrids_current, grid_size,
-                                      subgrid_size, d_metadata, d_subgrids,
-                                      get_unified_grid_data());
-        } else {
-          device.launch_adder(nr_subgrids_current, nr_polarizations, grid_size,
-                              subgrid_size, d_metadata, d_subgrids, *d_grid_);
-        }
+        device.launch_adder(nr_subgrids_current, nr_polarizations, grid_size,
+                            subgrid_size, d_metadata, d_subgrids, *d_grid_);
       }
       executestream.record(gpuFinished[job_id]);
 
@@ -279,15 +273,8 @@ void Generic::run_imaging(
             nr_polarizations, subgrid_offset, nr_subgrids_current, subgrid_size,
             image_size, w_step, shift, wtile_set, d_subgrids, d_metadata);
       } else {
-        if (m_use_unified_memory) {
-          device.launch_splitter_unified(nr_subgrids_current, grid_size,
-                                         subgrid_size, d_metadata, d_subgrids,
-                                         get_unified_grid_data());
-        } else {
-          device.launch_splitter(nr_subgrids_current, nr_polarizations,
-                                 grid_size, subgrid_size, d_metadata,
-                                 d_subgrids, *d_grid_);
-        }
+        device.launch_splitter(nr_subgrids_current, nr_polarizations, grid_size,
+                               subgrid_size, d_metadata, d_subgrids, *d_grid_);
       }
 
       // Launch FFT

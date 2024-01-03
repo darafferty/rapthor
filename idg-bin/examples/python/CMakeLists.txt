@@ -6,7 +6,6 @@ install(
         cpu-reference.py
         cpu-optimized.py
         cuda-generic.py
-        cuda-unified.py
         hybrid-cuda-generic-optimized.py
         coverage.py
         tiles.py

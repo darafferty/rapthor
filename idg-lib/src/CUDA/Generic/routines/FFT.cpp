@@ -29,11 +29,7 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   if (!m_disable_wtiling) {
     assert(!d_grid_);
     d_grid_.reset(new cu::DeviceMemory(context, sizeof_grid));
-    if (m_use_unified_memory) {
-      stream.memcpyHtoDAsync(*d_grid_, get_unified_grid_data(), sizeof_grid);
-    } else {
-      stream.memcpyHtoDAsync(*d_grid_, get_grid().data(), sizeof_grid);
-    }
+    stream.memcpyHtoDAsync(*d_grid_, get_grid().data(), sizeof_grid);
   }
 
   // Performance measurements
@@ -58,11 +54,7 @@ void Generic::do_transform(DomainAtoDomainB direction) {
 
   // Copy grid back to the host
   if (!m_disable_wtiling) {
-    if (m_use_unified_memory) {
-      stream.memcpyDtoHAsync(get_unified_grid_data(), *d_grid_, sizeof_grid);
-    } else {
-      stream.memcpyDtoHAsync(get_grid().data(), *d_grid_, sizeof_grid);
-    }
+    stream.memcpyDtoHAsync(get_grid().data(), *d_grid_, sizeof_grid);
   }
 
   // End measurements

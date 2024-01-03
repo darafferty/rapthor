@@ -65,23 +65,6 @@ class CUDA : public Proxy {
   std::unique_ptr<pmt::Pmt> power_meter_;
 
   /*
-   * Options used internally by the CUDA proxies
-   */
-  // Fraction of device memory reserved
-  // for e.g. cuFFT. This memory is not taken
-  // into account when computing  in compute_jobsize.
-  float m_fraction_reserved = 0.15;
-
-  // Use Unified Memory to store the grid, instead of having
-  // a copy on the grid on the device.
-  bool m_use_unified_memory = false;
-
- public:
-  void set_fraction_reserved(float f) { m_fraction_reserved = f; }
-  void enable_unified_memory() { m_use_unified_memory = true; }
-
- protected:
-  /*
    * Gridding/degridding
    */
   enum ImagingMode { mode_gridding, mode_degridding };
@@ -165,20 +148,9 @@ class CUDA : public Proxy {
     std::vector<std::unique_ptr<cu::DeviceMemory>> d_patches;
   } m_buffers_wtiling;
 
- protected:
-  virtual std::complex<float>* get_unified_grid_data() {
-    return unified_grid_.Span().data();
-  }
-  void set_unified_grid(Tensor<std::complex<float>, 3>&& tensor) {
-    unified_grid_ = std::move(tensor);
-  }
-
  private:
-  void free_unified_grid();
-
   ProxyInfo& mInfo;
   std::vector<std::unique_ptr<kernel::cuda::InstanceCUDA>> devices;
-  Tensor<std::complex<float>, 3> unified_grid_;
 };
 }  // namespace cuda
 }  // end namespace proxy

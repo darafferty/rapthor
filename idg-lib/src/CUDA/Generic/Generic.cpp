@@ -19,34 +19,18 @@ Generic::Generic(ProxyInfo info) : CUDA(info) {
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
 
-  // This proxy supports three modes:
-  //  1) Legacy: no W-Tiling, no Unified Memory
-  //    This is the legacy mode, 'simple' GPU-only gridding/degridding.
-  //  2) CUDA W-Tiling v1: W-Tiling, Unified Memory
-  //    This is the first CUDA W-Tiling implementation. For simplicity,
-  //    Unified Memory is used to go from tiles to the grid or vice versa.
-  //  3) CUDA W-Tiling v2: W-Tiling, no Unified Memory
-  //    This is the latest CUDA W-Tiling code, with explicit copies of patches
-  //    between host and device for better use of PCIe bandwidth and therefore
-  //    higher overall throughput.
-  // All modes work correctly, but CUDA W-Tiling v2 is the best and therefore
-  // the default setting. This mode is identicial to W-Tiling in
-  // GenericOptimized.
+  // This proxy supports two modes:
+  //  1) Legacy
+  //    GPU-only gridding/degridding without W-Tiling
+  //  2) W-Tiling:
+  //    Gridding/degridding and W-Tiling on the GPU using the
+  //    same W-Tiling as in GenericOptimized.
 
   // Mode 1 (legacy)
   // m_disable_wtiling = true;
-  // m_use_unified_memory = false;
 
-  // Mode 2 (CUDA W-Tiling v1)
-  // m_disable_wtiling = false;
-  // m_use_unified_memory = true;
-
-  // Mode 3 (CUDA W-Tiling v2)
+  // Mode 2 (W-Tiling)
   m_disable_wtiling = false;
-  m_use_unified_memory = false;
-
-  // There exists another legacy mode, without W-Tiling but with Unified Memory,
-  // and another form of tiling. This mode is provided by the Unified proxy.
 }
 
 // Destructor
@@ -107,13 +91,6 @@ void Generic::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {
     d_grid_.reset(new cu::DeviceMemory(context, sizeof_grid));
     htodstream.memcpyHtoD(*d_grid_, grid.data(), sizeof_grid);
   }
-  if (m_use_unified_memory) {
-    Tensor<std::complex<float>, 3> unified_grid(
-        std::make_unique<cu::UnifiedMemory>(context, sizeof_grid),
-        {nr_polarizations, grid_size, grid_size});
-    std::copy_n(grid.data(), grid.size(), get_unified_grid_data());
-    set_unified_grid(std::move(unified_grid));
-  }
 }
 
 aocommon::xt::Span<std::complex<float>, 4>& Generic::get_final_grid() {
@@ -124,9 +101,7 @@ aocommon::xt::Span<std::complex<float>, 4>& Generic::get_final_grid() {
   const size_t grid_size = get_grid().shape(2);
   assert(get_grid().shape(3) == grid_size);
 
-  if (m_use_unified_memory) {
-    std::copy_n(get_unified_grid_data(), get_grid().size(), get_grid().data());
-  } else if (m_disable_wtiling) {
+  if (m_disable_wtiling) {
     InstanceCUDA& device = get_device(0);
     cu::Stream& dtohstream = device.get_dtoh_stream();
     const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
