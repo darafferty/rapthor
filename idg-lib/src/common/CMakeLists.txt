@@ -7,7 +7,6 @@ project(common)
 set(${PROJECT_NAME}_headers
     Exception.h
     ProxyInfo.h
-    RuntimeWrapper.h
     auxiliary.h
     Types.h
     KernelTypes.h
@@ -25,7 +24,6 @@ set(${PROJECT_NAME}_headers
 
 set(${PROJECT_NAME}_sources
     ProxyInfo.cpp
-    RuntimeWrapper.cpp
     auxiliary.cpp
     Types.cpp
     KernelsInstance.cpp

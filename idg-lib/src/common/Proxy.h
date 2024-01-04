@@ -12,7 +12,6 @@
 
 #include <aocommon/xt/span.h>
 
-#include "RuntimeWrapper.h"
 #include "ProxyInfo.h"
 #include "Types.h"
 #include "Plan.h"
