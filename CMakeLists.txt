@@ -15,7 +15,6 @@ endif()
 project(idg VERSION ${IDG_VERSION})
 
 option(WRITE_OUT_SCALAR_BEAM "Write scalar beam to scalar_beam.npy" OFF)
-option(BUILD_STATIC_LIBS "Build static libraries" OFF)
 option(BUILD_WITH_DEMOS "Build with demos" OFF)
 option(BUILD_WITH_MPI "Build with MPI" OFF)
 option(BUILD_PACKAGES "Build package(s)" OFF)
@@ -67,13 +66,9 @@ include_directories(${CMAKE_SOURCE_DIR}/external/aocommon/include/)
 include(external/aocommon/CMake/FetchXTensor.cmake)
 include_directories(SYSTEM "${xtensor_SOURCE_DIR}/include")
 include_directories(SYSTEM "${xtl_SOURCE_DIR}/include")
-
-# build shared or static libraries (default: shared)
-if(BUILD_STATIC_LIBS)
-  set(BUILD_SHARED_LIBS FALSE)
-else()
-  set(BUILD_SHARED_LIBS TRUE)
-endif()
+# build shared libraries
+set(BUILD_SHARED_LIBS TRUE)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Set rpath to install directory
 set(CMAKE_INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_BINARY_DIR}/lib)

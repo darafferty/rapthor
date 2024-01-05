@@ -13,14 +13,14 @@ endif()
 #########################################################
 # build libidg-util: init example data, ...
 #########################################################
-add_library(idg-util SHARED $<TARGET_OBJECTS:utility-initialize>
-                            $<TARGET_OBJECTS:utility-external>)
+add_library(idg-util $<TARGET_OBJECTS:utility-initialize>
+                     $<TARGET_OBJECTS:utility-external>)
 
 set(LINK_LIBRARIES idg-common idg-fft)
 
 target_link_libraries(idg-util ${LINK_LIBRARIES})
 
-set_target_properties(idg-util PROPERTIES PUBLIC_HEADER idg-util.h SOVERSION 0)
+set_target_properties(idg-util PROPERTIES PUBLIC_HEADER idg-util.h)
 
 install(
   TARGETS idg-util

@@ -5,6 +5,5 @@ project(cpu)
 
 # add subfolders
 add_subdirectory(common)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_subdirectory(Reference)
 add_subdirectory(Optimized)

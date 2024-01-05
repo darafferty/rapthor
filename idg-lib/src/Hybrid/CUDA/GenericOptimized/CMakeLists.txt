@@ -16,10 +16,6 @@ set(${PROJECT_NAME}_sources GenericOptimized.cpp GenericOptimizedC.cpp
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
-if(NOT BUILD_STATIC_LIBS)
-  set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS "-fPIC"
-                                                   SOVERSION 0)
-endif()
 
 # Set install
 install(FILES ${${PROJECT_NAME}_headers}
