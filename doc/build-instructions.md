@@ -12,7 +12,6 @@ make install
 ## Installation options:
 (Best: use `ccmake` or `cmake -i` to configure all options.)
 ```
-* BUILD_STATIC_LIBS: build static libraries, instead of shared ones
 * BUILD_LIB_CPU: build library 'libidg-cpu' for usage on CPU's
 * BUILD_LIB_CUDA: build library 'libidg-cuda' for usage on Nvidia GPU's
 * BUILD_WITH_PYTHON: build Python module 'idg' to use IDG from Python

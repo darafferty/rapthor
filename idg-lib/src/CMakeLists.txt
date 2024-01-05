@@ -35,8 +35,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 #########################################################
 add_library(idg-external $<TARGET_OBJECTS:external>)
 
-set_target_properties(idg-external PROPERTIES PUBLIC_HEADER idg-external.h
-                                              SOVERSION 0)
+set_target_properties(idg-external PROPERTIES PUBLIC_HEADER idg-external.h)
 
 install(
   TARGETS idg-external
@@ -61,8 +60,7 @@ endif()
 
 target_link_libraries(idg-common ${LINK_LIBRARIES})
 
-set_target_properties(idg-common PROPERTIES PUBLIC_HEADER idg-common.h SOVERSION
-                                                                       0)
+set_target_properties(idg-common PROPERTIES PUBLIC_HEADER idg-common.h)
 
 install(
   TARGETS idg-common
@@ -83,7 +81,7 @@ set(LINK_LIBRARIES ${FFTW3_LIBRARIES})
 
 target_link_libraries(idg-fft ${LINK_LIBRARIES})
 
-set_target_properties(idg-fft PROPERTIES PUBLIC_HEADER idg-fft.h SOVERSION 0)
+set_target_properties(idg-fft PROPERTIES PUBLIC_HEADER idg-fft.h)
 
 install(
   TARGETS idg-fft
@@ -113,7 +111,7 @@ if(BUILD_LIB_CPU)
   endif()
   target_link_libraries(idg-cpu ${LINK_LIBRARIES})
 
-  set_target_properties(idg-cpu PROPERTIES PUBLIC_HEADER idg-cpu.h SOVERSION 0)
+  set_target_properties(idg-cpu PROPERTIES PUBLIC_HEADER idg-cpu.h)
 
   install(
     TARGETS idg-cpu
@@ -138,8 +136,7 @@ if(BUILD_LIB_CUDA)
 
   target_link_libraries(idg-cuda ${LINK_LIBRARIES})
 
-  set_target_properties(idg-cuda PROPERTIES PUBLIC_HEADER idg-cuda.h SOVERSION
-                                                                     0)
+  set_target_properties(idg-cuda PROPERTIES PUBLIC_HEADER idg-cuda.h)
 
   install(
     TARGETS idg-cuda
@@ -163,8 +160,8 @@ if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
   target_link_libraries(idg-hybrid-cuda ${LINK_LIBRARIES})
 
-  set_target_properties(idg-hybrid-cuda
-                        PROPERTIES PUBLIC_HEADER idg-hybrid-cuda.h SOVERSION 0)
+  set_target_properties(idg-hybrid-cuda PROPERTIES PUBLIC_HEADER
+                                                   idg-hybrid-cuda.h)
 
   install(
     TARGETS idg-hybrid-cuda
@@ -196,7 +193,7 @@ endif()
 
 target_link_libraries(idg ${LINK_LIBRARIES})
 
-set_target_properties(idg PROPERTIES PUBLIC_HEADER idg.h SOVERSION 0)
+set_target_properties(idg PROPERTIES PUBLIC_HEADER idg.h)
 
 install(
   TARGETS idg
