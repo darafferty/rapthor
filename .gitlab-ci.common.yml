@@ -164,7 +164,7 @@ test-unit:
     - make install -j4
     - ctest -j8 --output-on-failure -L 'unit|bin_cxx'
     # Capture coverage
-    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' --json run-unit.json --xml coverage.xml
+    - gcovr -r .. -e '.*/tests/.*' -e '.*/CompilerIdCXX/.*' -e '.*/external/.*' -e '_deps/.*' --json run-unit.json --xml coverage.xml
     - gcovr --add-tracefile run-unit.json
   after_script:
     - mkdir -p build/reports
