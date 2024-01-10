@@ -64,8 +64,8 @@ endif()
 
 include_directories(${CMAKE_SOURCE_DIR}/external/aocommon/include/)
 include(external/aocommon/CMake/FetchXTensor.cmake)
-include_directories(SYSTEM "${xtensor_SOURCE_DIR}/include")
-include_directories(SYSTEM "${xtl_SOURCE_DIR}/include")
+link_libraries(xtensor xtl)
+
 # build shared libraries
 set(BUILD_SHARED_LIBS TRUE)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
