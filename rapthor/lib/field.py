@@ -52,6 +52,7 @@ class Field(object):
         self.flag_baseline = self.parset['flag_baseline']
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
+        self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
@@ -232,19 +233,28 @@ class Field(object):
         data_fraction : float, optional
             Fraction of data to use during processing
         """
+        # Determine the minimum time needed by the solves
+        #
+        # Note: slow_timestep_separate_sec is forced to be equal to or greater than
+        # slow_timestep_joint_sec, so we don't include slow_timestep_joint_sec in the
+        # calculation
+        max_dd_timestep = self.parset['calibration_specific']['slow_timestep_separate_sec']
+        max_di_timestep = self.parset['calibration_specific']['fulljones_timestep_sec']
+        dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
+        mintime = max(max_dd_timestep * dd_interval_factor, max_di_timestep)
+
         if data_fraction < 1.0:
+            # Set the chunk size so that it is at least mintime
             self.observations = []
             for obs in self.full_observations:
-                mintime = max(self.parset['calibration_specific']['slow_timestep_separate_sec'],
-                              self.parset['calibration_specific']['fulljones_timestep_sec'])
                 tottime = obs.endtime - obs.starttime
                 if data_fraction < min(1.0, mintime/tottime):
                     obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
                                     'total time for this observation that is less than the largest '
-                                    'specified calibration timestep ({1} s). The data fraction will be '
+                                    'possible calibration timestep ({1} s). The data fraction will be '
                                     'increased to {2:0.3f} to ensure the timestep requirement is '
                                     'met.'.format(data_fraction, mintime, min(1.0, mintime/tottime)))
-                nchunks = int(np.ceil(data_fraction / (mintime / tottime)))
+                nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
                 if nchunks == 1:
                     # Center the chunk around the midpoint (which is generally the most
                     # sensitive, near transit)
@@ -279,7 +289,6 @@ class Field(object):
             # Note: Due to a limitation in Dysco, we make sure to have at least
             # 2 time slots per observation, otherwise the output MS cannot be
             # written with compression
-            mintime = self.parset['calibration_specific']['slow_timestep_separate_sec']
             prev_observations = self.observations[:]
             self.observations = []
             for obs in prev_observations:
@@ -317,7 +326,8 @@ class Field(object):
         nfreqchunks_separate = 0
         nfreqchunks_fulljones = 0
         for obs in self.observations:
-            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations))
+            obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
+                                           self.calibrator_fluxes, self.target_flux)
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate
@@ -647,6 +657,9 @@ class Field(object):
         if len(bright_source_skymodel) > 0:
             bright_source_skymodel.write(self.bright_source_skymodel_file, clobber=True)
         self.bright_source_skymodel = bright_source_skymodel
+
+        # Save the final target flux
+        self.target_flux = target_flux
 
     def update_skymodels(self, index, regroup, target_flux=None, target_number=None,
                          calibrator_max_dist_deg=None, final=False):

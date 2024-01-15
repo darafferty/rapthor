@@ -13,6 +13,7 @@
                           'parallelbaselines': False,
                           'propagatesolutions': True,
                           'sagecalpredict': False,
+                          'dd_interval_factor': 1,
                           'slow_freqstep_hz': 1000000.0,
                           'slow_smoothnessconstraint_joint': 3000000.0,
                           'slow_smoothnessconstraint_separate': 3000000.0,

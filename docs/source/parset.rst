@@ -225,17 +225,38 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the full-Jones gain calibration,
         in Hz (default = 0).
 
+    dd_interval_factor
+        Maximum factor by which the direction-dependent solution intervals can be
+        increased, so that fainter calibrators get longer intervals (in the fast and slow
+        solves only; default = 1 = disabled). The value determines the maximum allowed
+        adjustment factor by which the solution intervals are allowed to be increased for
+        faint sources. For a given direction, the adjustment is calculated from the
+        ratio of the apparent flux density of the calibrator to the target flux density of
+        the cycle (set in the strategy) or, if a target flux density is not defined, to
+        that of the faintest calibrator in the sky model. A value of 1 disables the use of
+        direction-dependent solution intervals; a value greater than 1 enables
+        direction-dependent solution intervals.
+
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using direction-dependent solution intervals. The 'directioniterative'
+            solver is typically less accurate than the other directional solvers and
+            therefore may result in lower-quality solutions for a given solution interval.
+            However, the use of direction-dependent intervals will often outweigh this
+            effect, depending on the field and the settings chosen.
+
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
-        ``lbfgs``; default 200.0).
+        ``lbfgs``; default = 200.0).
 
     solverlbfgs_minibatches
         Number of minibatches for the LBFGS solver (only used when :term:`solveralgorithm`
-        = ``lbfgs``; default 1).
+        = ``lbfgs``; default = 1).
 
     solverlbfgs_iter
         Number of iterations per minibatch in the LBFGS solver (only used when
-        :term:`solveralgorithm` = ``lbfgs``; default 4).
+        :term:`solveralgorithm` = ``lbfgs``; default = 4).
 
 .. _parset_imaging_options:
 

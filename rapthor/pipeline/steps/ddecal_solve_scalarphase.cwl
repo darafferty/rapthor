@@ -75,6 +75,28 @@ inputs:
       prefix: solve.nchan=
       separate: False
 
+  - id: directions
+    label: Direction names
+    doc: |
+      The names of the directions for the solve.
+    type: string[]
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.directions=
+      itemSeparator: ','
+      separate: False
+
+  - id: solutions_per_direction
+    label: Solutions per directions
+    doc: |
+      The number of solution intervals (in time) per direction for the solve.
+    type: int[]
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.solutions_per_direction=
+      itemSeparator: ','
+      separate: False
+
   - id: sourcedb
     label: Sky model
     doc: |

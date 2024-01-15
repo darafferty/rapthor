@@ -73,6 +73,20 @@ inputs:
     inputBinding:
       prefix: solve.nchan=
       separate: False
+  - id: directions
+    type: string[]
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.directions=
+      itemSeparator: ','
+      separate: False
+  - id: solutions_per_direction
+    type: int[]
+    inputBinding:
+      valueFrom: $('['+self+']')
+      prefix: solve.solutions_per_direction=
+      itemSeparator: ','
+      separate: False
   - id: sourcedb
     type: File
     inputBinding:

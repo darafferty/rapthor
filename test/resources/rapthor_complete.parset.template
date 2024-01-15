@@ -20,6 +20,7 @@ input_fulljones_h5parm = /my/data/fulljones.h5
 
 [calibration]
 use_included_skymodels = True
+dd_interval_factor = 1
 llssolver = qr
 maxiter = 50
 propagatesolutions = False
