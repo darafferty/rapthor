@@ -151,6 +151,11 @@ inputs:
     inputBinding:
       prefix: solve.stepsize=
       separate: False
+  - id: stepsigma
+    type: float
+    inputBinding:
+      prefix: solve.stepsigma=
+      separate: False
   - id: tolerance
     type: float
     inputBinding:

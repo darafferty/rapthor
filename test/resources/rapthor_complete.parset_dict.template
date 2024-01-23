@@ -24,6 +24,7 @@
                           'solverlbfgs_iter': 4,
                           'solverlbfgs_minibatches': 1,
                           'stepsize': 0.2,
+                          'stepsigma': 0.1,
                           'tolerance': 0.01,
                           'use_included_skymodels': True},
  'cluster_specific': {'batch_system': 'slurm',

@@ -138,6 +138,7 @@ class CalibrateDD(Operation):
         solveralgorithm = self.field.solveralgorithm
         onebeamperpatch = self.field.onebeamperpatch
         stepsize = self.field.stepsize
+        stepsigma = self.field.stepsigma
         tolerance = self.field.tolerance
         uvlambdamin = self.field.solve_min_uv_lambda
         parallelbaselines = self.field.parallelbaselines
@@ -211,6 +212,7 @@ class CalibrateDD(Operation):
                             'solveralgorithm': solveralgorithm,
                             'onebeamperpatch': onebeamperpatch,
                             'stepsize': stepsize,
+                            'stepsigma': stepsigma,
                             'tolerance': tolerance,
                             'uvlambdamin': uvlambdamin,
                             'parallelbaselines': parallelbaselines,
@@ -405,6 +407,7 @@ class CalibrateDI(Operation):
         propagatesolutions = self.field.propagatesolutions
         solveralgorithm = self.field.solveralgorithm
         stepsize = self.field.stepsize
+        stepsigma = self.field.stepsigma
         tolerance = self.field.tolerance
         uvlambdamin = self.field.solve_min_uv_lambda
         solverlbfgs_dof = self.field.solverlbfgs_dof
@@ -427,6 +430,7 @@ class CalibrateDI(Operation):
                             'propagatesolutions': propagatesolutions,
                             'solveralgorithm': solveralgorithm,
                             'stepsize': stepsize,
+                            'stepsigma': stepsigma,
                             'tolerance': tolerance,
                             'uvlambdamin': uvlambdamin,
                             'solverlbfgs_dof': solverlbfgs_dof,

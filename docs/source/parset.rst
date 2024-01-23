@@ -173,6 +173,9 @@ The available options are described below under their respective sections.
         :term:`solveralgorithm` = ``lbfgs``, the stepsize should be set to a small value
         like 0.001.
 
+    stepsigma
+        In oder to stop solving iterations when no further improvement is seen, the mean of the step reduction is compared to the standard deviation multiplied by :term:`stepsigma` factor (default = 0.1). If mean of the step reduction is lower than this value (noise dominated), solver iterations are stopped since no possible improvement can be gained.
+
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
 
