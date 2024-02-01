@@ -7,7 +7,10 @@ import os
 import shutil
 import subprocess
 from typing import TYPE_CHECKING
-from importlib.metadata import version
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
 
 if TYPE_CHECKING:
     from rapthor.lib.operation import Operation
