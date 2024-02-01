@@ -20,7 +20,7 @@ authors = [
 ]
 description = "Rapthor: LOFAR DDE Pipeline"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.7"
 license = {file = "LICENSE"}
 classifiers=[
     "Development Status :: 4 - Beta",
@@ -34,7 +34,7 @@ classifiers=[
 dependencies = [
     "astropy",
     "bdsf",
-    "importlib-metadata",
+    "importlib-metadata; python_version<'3.8'",
     "importlib-resources; python_version<'3.9'",
     "jinja2",
     "losoto",
