@@ -203,8 +203,9 @@ class Observation(object):
         # Find solution intervals for the gain solves. In contrast to the fast-phase
         # solve, the gain solves are split into frequency chunks, since continuous
         # frequency coverage is not needed
-        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / round(self.timepersample))))
-        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / round(self.timepersample))))
+        solve_max_factor = int(parset['calibration_specific']['dd_interval_factor'])
+        target_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint * solve_max_factor / round(self.timepersample))))
+        target_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate * solve_max_factor / round(self.timepersample))))
         solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
         target_timestep_fulljones = max(1, int(round(target_fulljones_timestep / round(self.timepersample))))
         solint_freqstep_fulljones = max(1, self.get_nearest_freqstep(target_fulljones_freqstep / self.channelwidth))
@@ -258,7 +259,6 @@ class Observation(object):
         input_solint_keys = {'slow_joint': 'solint_slow_timestep_joint',
                              'slow_separate': 'solint_slow_timestep_separate',
                              'fast': 'solint_fast_timestep'}
-        solve_max_factor = int(parset['calibration_specific']['dd_interval_factor'])
         if target_flux is None:
             target_flux = min(calibrator_fluxes)
         for solve_type in ['fast', 'slow_joint', 'slow_separate']:
