@@ -44,10 +44,9 @@ versioning:
 
 .prepare:
   stage: prepare
+  extends: .dind-requester
   needs: ["versioning"]
   image: docker:20.10
-  services:
-    - docker:20.10-dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -155,7 +154,8 @@ test-unit:
   extends: .needs-base
   stage: test
   before_script:
-    - pip3 install pytest pytest-lazy-fixture h5py
+    # Use pytest versions <8 for compatibility with pytest-lazy-fixture.
+    - pip3 install pytest==7.4.4 pytest-lazy-fixture h5py
   script:
     - mkdir -p build
     - cd build

@@ -4,6 +4,10 @@
 # This file contains the pipelines that run on the Astron repository of IDG,
 # which is at https://git.astron.nl/RD/idg
 
+.dind-requester:
+  tags:
+    - dind
+
 include: .gitlab-ci.common.yml
 
 # See the idg-integration-docker job in .gitlab-ci.common.yml for notes about
