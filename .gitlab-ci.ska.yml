@@ -4,6 +4,10 @@
 # This file contains the pipelines that run on the SKAO repository of IDG, which
 # is at https://gitlab.com/ska-telescope/sdp/ska-sdp-func-idg
 
+.dind-requester:
+  services:
+    - docker:20.10-dind
+
 include:
   - local: .gitlab-ci.common.yml
 # Create Gitlab CI badges from CI metrics
