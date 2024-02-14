@@ -121,10 +121,10 @@ deploy-docker:
     - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
     - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
     - docker push astronrd/rapthor:$TAG
-  rules:
-    # Only run on master
-    - if: '$CI_COMMIT_BRANCH == "master"'
-      when: always
+  # rules:
+  #   # Only run on master
+  #   - if: '$CI_COMMIT_BRANCH == "master"'
+  #     when: always
   tags:
     - dind
 
