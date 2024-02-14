@@ -115,13 +115,12 @@ rapthor-test:
 deploy-docker:
   stage: deploy
   needs: ["versioning", "build-docker-full"]
-  image: $FULL_IMAGE
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
     - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
-    # - docker pull $FULL_IMAGE
+    - docker pull $FULL_IMAGE
     - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
     - docker push astronrd/rapthor:$TAG
   # rules:
