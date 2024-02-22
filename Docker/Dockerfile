@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 as builder
+FROM ubuntu:22.04 as builder
 
 # This Dockerfile builds a Docker image for the Rapthor pipeline
 # and all its dependencies.
@@ -45,10 +45,10 @@ WORKDIR /src
 # Install IDG
 # A shallow clone of IDG breaks its version number. This is an issue for DP3
 # since it has a minimal version requirement.
-RUN git clone --recurse-submodules https://git.astron.nl/RD/idg.git
+RUN git clone --recurse-submodules https://git.astron.nl/RD/idg.git --branch ast-1340-extend-idg-cal
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_WITH_PYTHON=OFF \
+    -DBUILD_WITH_PYTHON=ON \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -H/src/idg \
@@ -62,7 +62,7 @@ RUN ninja -C /src/idg/build install
 RUN git shallow-clone https://git.astron.nl/RD/EveryBeam.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
-    -DBUILD_WITH_PYTHON=OFF \
+    -DBUILD_WITH_PYTHON=ON \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
     -H/src/EveryBeam \
@@ -147,7 +147,7 @@ RUN python3 -m pip install -r requirements.txt
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:20.04 as runner
+FROM ubuntu:22.04 as runner
 
 COPY --from=builder /usr/local /usr/local
 
@@ -157,24 +157,24 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         casacore-tools \
-        libarmadillo9 \
+        libarmadillo10 \
         libatkmm-1.6-1v5 \
-        libboost-date-time1.71.0 \
-        libboost-filesystem1.71.0 \
-        libboost-program-options1.71.0 \
+        libboost-date-time1.74.0 \
+        libboost-filesystem1.74.0 \
+        libboost-program-options1.74.0 \
         libcairomm-1.0-1v5 \
-        libcasa-casa4 \
-        libcasa-fits4 \
-        libcasa-measures4 \
-        libcasa-ms4 \
-        libcasa-scimath4 \
-        libcasa-tables4 \
-        libcfitsio8 \
+        libcasa-casa6 \
+        libcasa-fits6 \
+        libcasa-measures6 \
+        libcasa-ms6 \
+        libcasa-scimath6 \
+        libcasa-tables6 \
+        libcfitsio9 \
         libfftw3-double3 \
         libfftw3-single3 \
         libglibmm-2.4-1v5 \
         libgomp1 \
-        libgsl23 \
+        libgsl27 \
         libgtkmm-3.0-1v5 \
         libhdf5-103 \
         libhdf5-cpp-103 \
@@ -182,7 +182,7 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         liblua5.3-0 \
         libpangomm-1.4-1v5 \
         libpng16-16 \
-        libpython3.8 \
+        libpython3.10 \
         libsigc++-2.0-0v5 \
         libstdc++6 \
         nodejs \
