@@ -14,4 +14,5 @@ requests
 Rtree
 scipy
 shapely
+h5py
 toil @ git+https://github.com/DataBiosphere/toil.git#egg=toil[cwl]
