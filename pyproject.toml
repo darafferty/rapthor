@@ -45,6 +45,7 @@ dependencies = [
     "python-casacore",
     "python-dateutil",
     "reproject",
+    "requests",
     "Rtree",
     "scipy",
     "shapely",

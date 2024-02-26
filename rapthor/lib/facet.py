@@ -4,6 +4,87 @@ Module that holds functions and classes related to faceting
 import numpy as np
 import scipy as sp
 import scipy.spatial
+from shapely.geometry import Point, Polygon
+from shapely.prepared import prep
+from PIL import Image, ImageDraw
+from astropy.coordinates import Angle
+import ast
+import logging
+from rapthor.lib import miscellaneous as misc
+
+
+class Facet(object):
+    """
+    Base Facet class
+
+    Parameters
+    ----------
+    name : str
+        Name of facet
+    ra : float
+        RA in degrees of facet reference coordinate
+    dec : float
+        Dec in degrees of facet reference coordinate
+    vertices : list of tuples
+        List of (RA, Dec) tuples of each vertex
+    """
+    def __init__(self, name, ra, dec, vertices):
+        self.name = name
+        self.log = logging.getLogger('rapthor:{0}'.format(self.name))
+        if type(ra) is str:
+            ra = Angle(ra).to('deg').value
+        if type(dec) is str:
+            dec = Angle(dec).to('deg').value
+        self.ra = misc.normalize_ra(ra)
+        self.dec = misc.normalize_dec(dec)
+        self.vertices = np.array(vertices)
+
+        # Convert input (RA, Dec) vertices to (x, y) polygon
+        self.wcs = make_wcs(self.ra, self.dec)
+        ra_values = self.vertices[:, 0]
+        dec_values = self.vertices[:, 1]
+        x_values, y_values = radec2xy(self.wcs, ra_values, dec_values)
+        polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
+        self.polygon = Polygon(polygon_vertices)
+
+        # Find the maximum size of the facet
+        xmin, ymin, xmax, ymax = self.polygon.bounds
+        self.size = min(0.5, 1.2 * max(xmax-xmin, ymax-ymin) *
+                        abs(self.wcs.wcs.cdelt[0]))  # degrees
+
+
+class SquareFacet(Facet):
+    """
+    Wrapper class for a square facet
+
+    Parameters
+    ----------
+    name : str
+        Name of facet
+    ra : float
+        RA in degrees of facet center coordinate
+    dec : float
+        Dec in degrees of facet center coordinate
+    width : float
+        Width in degrees of facet
+    """
+    def __init__(self, name, ra, dec, width):
+        if type(ra) is str:
+            ra = Angle(ra).to('deg').value
+        if type(dec) is str:
+            dec = Angle(dec).to('deg').value
+        ra = misc.normalize_ra(ra)
+        dec = misc.normalize_dec(dec)
+        wcs = make_wcs(ra, dec)
+
+        # Make the vertices
+        xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
+        xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
+        ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
+        ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
+        vertices = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
+
+        super().__init__(name, ra, dec, vertices)
 
 
 def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
@@ -38,7 +119,7 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     if width_ra <= 0.0 or width_dec <= 0.0:
         raise ValueError('The RA/Dec width cannot be zero or less')
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
-    wcs = makeWCS(ra_mid, dec_mid, wcs_pixel_scale)
+    wcs = make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
     x_cal, y_cal = radec2xy(wcs, ra_cal, dec_cal)
     x_mid, y_mid = radec2xy(wcs, [ra_mid], [dec_mid])
     width_x = width_ra / wcs_pixel_scale / 2.0
@@ -120,7 +201,7 @@ def xy2radec(wcs, x, y):
     return RA, Dec
 
 
-def makeWCS(ra, dec, wcs_pixel_scale=10.0/3600.0):
+def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
     """
     Makes simple WCS object
 
@@ -280,3 +361,114 @@ def make_ds9_region_file(center_coords, facet_polygons, outfile, names=None):
 
     with open(outfile, 'w') as f:
         f.writelines(lines)
+
+
+def read_ds9_region_file(region_file):
+    """
+    Read a ds9 facet region file and return facets
+
+    Parameters
+    ----------
+    region_file : str
+        Filename of input ds9 region file
+
+    Returns
+    -------
+    facets : list
+        List of Facet objects
+    """
+    facets = []
+    with open(region_file, 'r') as f:
+        lines = f.readlines()
+    for line in lines:
+        # Each facet in the region file is defined by two consecutive lines:
+        #   - the first starts with 'polygon' and gives the (RA, Dec) vertices
+        #   - the second starts with 'point' and gives the reference (RA, Dec)
+        #     and the facet name
+        if line.startswith('polygon'):
+            vertices = ast.literal_eval(line.split('polygon')[1])
+        if line.startswith('point'):
+            ra, dec = ast.literal_eval(line.split('point')[1])
+            if 'text' in line:
+                name = line.split('text=')[1].strip()
+            else:
+                name = f'facet_{ra}_{dec}'
+            facets.append(Facet(name, ra, dec, vertices))
+
+    return facets
+
+
+def filter_skymodel(polygon, skymodel, wcs):
+    """
+    Filters input skymodel to select only sources that lie inside the input facet
+
+    Parameters
+    ----------
+    polygon : Shapely polygon object
+        Polygon object to use for filtering
+    skymodel : LSMTool skymodel object
+        Input sky model to be filtered
+    wcs : WCS object
+        WCS object defining image to sky transformations
+
+    Returns
+    -------
+    filtered_skymodel : LSMTool skymodel object
+        Filtered sky model
+    """
+    # Make list of sources
+    RA = skymodel.getColValues('Ra')
+    Dec = skymodel.getColValues('Dec')
+    x, y = radec2xy(wcs, RA, Dec)
+    x = np.array(x)
+    y = np.array(y)
+
+    # Keep only those sources inside the bounding box
+    inside = np.zeros(len(skymodel), dtype=bool)
+    xmin, ymin, xmax, ymax = polygon.bounds
+    inside_ind = np.where((x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax))
+    inside[inside_ind] = True
+    skymodel.select(inside)
+    if len(skymodel) == 0:
+        return skymodel
+    RA = skymodel.getColValues('Ra')
+    Dec = skymodel.getColValues('Dec')
+    x, y = radec2xy(wcs, RA, Dec)
+    x = np.array(x)
+    y = np.array(y)
+
+    # Now check the actual boundary against filtered sky model
+    xpadding = max(int(0.1 * (max(x) - min(x))), 3)
+    ypadding = max(int(0.1 * (max(y) - min(y))), 3)
+    xshift = int(min(x)) - xpadding
+    yshift = int(min(y)) - ypadding
+    xsize = int(np.ceil(max(x) - min(x))) + 2*xpadding
+    ysize = int(np.ceil(max(y) - min(y))) + 2*ypadding
+    x -= xshift
+    y -= yshift
+    prepared_polygon = prep(polygon)
+
+    # Unmask everything outside of the polygon + its border (outline)
+    inside = np.zeros(len(skymodel), dtype=bool)
+    mask = Image.new('L', (xsize, ysize), 0)
+    verts = [(xv-xshift, yv-yshift) for xv, yv in zip(polygon.exterior.coords.xy[0],
+                                                      polygon.exterior.coords.xy[1])]
+    ImageDraw.Draw(mask).polygon(verts, outline=1, fill=1)
+    inside_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
+    inside[inside_ind] = True
+
+    # Now check sources in the border precisely
+    mask = Image.new('L', (xsize, ysize), 0)
+    ImageDraw.Draw(mask).polygon(verts, outline=1, fill=0)
+    border_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
+    points = [Point(xs, ys) for xs, ys in zip(x[border_ind], y[border_ind])]
+    indexes = []
+    for i in range(len(points)):
+        indexes.append(border_ind[0][i])
+    i_points = zip(indexes, points)
+    i_outside_points = [(i, p) for (i, p) in i_points if not prepared_polygon.contains(p)]
+    for idx, _ in i_outside_points:
+        inside[idx] = False
+    skymodel.select(inside)
+
+    return skymodel
