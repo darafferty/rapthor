@@ -7,16 +7,19 @@ from argparse import RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.facet import SquareFacet, filter_skymodel, read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 import casacore.tables as pt
 from astropy.utils import iers
 from astropy.table import Table
 import astropy.units as u
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle
 from astropy.coordinates import match_coordinates_sky
 from astropy.stats import sigma_clip
 import json
+import requests
+import time
 
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
@@ -24,9 +27,127 @@ import json
 iers.conf.auto_download = False
 
 
+def download_panstarrs(ra, dec, radius, output_filename, max_tries=5):
+    """
+    Downloads a catalog of Pan-STARRS sources around the given position
+
+    Parameters
+    ----------
+    ra : float
+        RA of cone search center in deg
+    dec : float
+        Dec of cone search center in deg
+    radius : float
+        Radius of cone in deg (must be <= 0.5)
+    output_filename : str
+        Filename for the output catalog
+    max_tries : int, optional
+        Maximum number of download tries to do if problems such as timeouts are
+        encountered
+
+    Returns
+    -------
+    output_catalog : str
+        Filename of the output makesourcedb catalog of Pan-STARRS matches
+    """
+    if radius > 0.5:
+        raise ValueError('The search radius must be <= 0.5 deg')
+
+    # Construct the URL and search parameters
+    baseurl = 'https://catalogs.mast.stsci.edu/api/v0.1/panstarrs'
+    release = 'dr1'  # the release with the mean data
+    table = 'mean'  # the main catalog, with the mean data
+    cat_format = 'csv'
+    url = f'{baseurl}/{release}/{table}.{cat_format}'
+    search_params = {'ra': ra,
+                     'dec': dec,
+                     'radius': radius,
+                     'nDetections.min': '5',  # require detection in at least 5 epochs
+                     'columns': ['objID', 'ramean', 'decmean']  # get only the info we need
+                     }
+
+    # Download the catalog
+    for tries in range(1, 1 + max_tries):
+        timedout = False
+        try:
+            result = requests.get(url, params=search_params, timeout=300)
+        except requests.exceptions.Timeout:
+            timedout = True
+        if timedout or not result.ok:
+            if tries == max_tries:
+                raise IOError('Download failed after {} attempts.'.format(max_tries))
+            else:
+                print('Attempt #{0:d} failed. Attempting {1:d} more times.'.format(tries, max_tries - tries))
+                time.sleep(5)
+
+    # Convert the catalog to makesourcedb format and write to the output file
+    lines = result.text.split('\n')[1:]  # split and remove header line
+    for line in lines:
+        # Add dummy entries for type and Stokes I flux density
+        line += ',POINT,0.0'
+    header = 'FORMAT = Name, Ra, Dec, Type, I'
+
+    with open(output_filename, 'w') as f:
+        f.writelines(header)
+        f.writelines(lines)
+
+
+def cross_match(coords_1, coords_2, radius=0.1):
+    """
+    Returns the matches of two coordinate arrays
+
+    Parameters
+    ----------
+    coords_1 : np.array
+        Array of [RA, Dec] values in deg
+    coords_2 : np.array
+        Array of [RA, Dec] values in deg
+    radius : float or str, optional
+        Radius in degrees (if float) or 'value unit' (if str; e.g., '30 arcsec')
+
+    Returns
+    -------
+    matches1, matches2 : np.array, np.array
+        matches1 is the array of indices of coords_1 that have matches in coords_2
+        within the specified radius. matches2 is the array of indices of coords_2
+        for the same sources.
+
+    """
+    # Do the cross matching
+    catalog1 = SkyCoord(coords_1[0], coords_1[1], unit=(u.degree, u.degree))
+    catalog2 = SkyCoord(coords_2[0], coords_2[1], unit=(u.degree, u.degree))
+    idx, d2d, d3d = match_coordinates_sky(catalog1, catalog2)
+
+    # Remove matches outside given radius
+    try:
+        radius = '{0} degree'.format(float(radius))
+    except ValueError:
+        pass
+    radius = Angle(radius).degree
+    matches1 = np.where(d2d.value <= radius)[0]
+    matches2 = idx[matches1]
+
+    # Select closest match only
+    filter = []
+    for i in range(len(matches1)):
+        mind = np.where(matches2 == matches2[i])[0]
+        nMatches = len(mind)
+        if nMatches > 1:
+            mradii = d2d.value[matches1][mind]
+            if d2d.value[matches1][i] == np.min(mradii):
+                filter.append(i)
+        else:
+            filter.append(i)
+    matches1 = matches1[filter]
+    matches2 = matches2[filter]
+
+    return matches1, matches2
+
+
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
          input_catalog, input_skymodel, obs_ms, diagnostics_file, output_root,
-         comparison_skymodel=None):
+         facet_region_file=None, photometry_comparison_skymodel=None,
+         astrometry_comparison_skymodel=None):
     """
     Calculate various image diagnostics
 
@@ -52,9 +173,16 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         by the sky model filtering script
     output_root : str
         Root of the filename for the output files
-    comparison_skymodel : str, optional
-        Filename of the sky model to use for flux scale and astrometry
-        comparisons. If not given, a TGSS model is downloaded
+    facet_region_file : str, optional
+        Filename of the facet region file (in ds9 format) that defines the
+        facets used in imaging
+    photometry_comparison_skymodel : str, optional
+        Filename of the sky model to use for the photometry (flux scale)
+        comparison (in makesourcedb format). If not given, a TGSS model is
+        downloaded
+    astrometry_comparison_skymodel : str, optional
+        Filename of the sky model to use for the astrometry comparison (in
+        makesourcedb format). If not given, a Pan-STARRS model is downloaded
     """
     # Select the best MS
     if isinstance(obs_ms, str):
@@ -104,32 +232,32 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
                        'freq': img_true_sky.freq,
                        'beam_fwhm': img_true_sky.beam})
 
-    # Load input sky model and comparison model
+    # Load input sky model and photometry comparison model
     s_in = lsmtool.load(input_skymodel)
-    if comparison_skymodel is None:
+    if photometry_comparison_skymodel is None:
         # Download a TGSS sky model around the midpoint of the input sky model,
         # using a 5-deg radius to ensure the field is fully covered
         _, _, midRA, midDec = s_in._getXY()
         try:
-            s_comp = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
+            s_comp_photometry = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
         except OSError:
             # Comparison catalog not downloaded successfully
-            s_comp = None
+            s_comp_photometry = None
     else:
-        s_comp = lsmtool.load(comparison_skymodel)
+        s_comp_photometry = lsmtool.load(photometry_comparison_skymodel)
 
-    # Do cross matching of the comparison model with the PyBDSF-derived one
-    if s_comp and s_in:
+    # Do the photometry check
+    if s_comp_photometry and s_in:
         # Write the comparison catalog to FITS file for use with astropy
-        catalog_comp_filename = output_root+'.comparison.fits'
-        s_comp.table.columns['Ra'].format = None
-        s_comp.table.columns['Dec'].format = None
-        s_comp.table.columns['I'].format = None
-        s_comp.write(catalog_comp_filename, format='fits', clobber=True)
-        if 'ReferenceFrequency' in s_comp.getColNames():
-            freq_comp = np.mean(s_comp.getColValues('ReferenceFrequency'))
+        catalog_comp_filename = output_root + '.comparison.fits'
+        s_comp_photometry.table.columns['Ra'].format = None
+        s_comp_photometry.table.columns['Dec'].format = None
+        s_comp_photometry.table.columns['I'].format = None
+        s_comp_photometry.write(catalog_comp_filename, format='fits', clobber=True)
+        if 'ReferenceFrequency' in s_comp_photometry.getColNames():
+            freq_comp = np.mean(s_comp_photometry.getColValues('ReferenceFrequency'))
         else:
-            freq_comp = s_comp.table.meta['ReferenceFrequency']
+            freq_comp = s_comp_photometry.table.meta['ReferenceFrequency']
 
         # Read in PyBDSF-derived and comparison catalogs and filter to keep
         # only comparison sources within a radius of FWHM / 2 of phase center
@@ -177,18 +305,33 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
                          'stdClippedRatio_pybdsf': stdClippedRatio}
                 cwl_output.update(stats)
 
-        # Group the comparison sky model into sources using a FWHM of 40 arcsec,
-        # the approximate TGSS resolution
-        s_comp.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
+    # Do the astrometry check by comparing to Pan-STARRS positions
+    max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
+    if facet_region_file is not None:
+        facets = read_ds9_region_file(facet_region_file)
+    else:
+        # Use a single rectangular facet centered on the image
+        ra = image_ra
+        dec = image_dec
+        width = min(max_search_cone_radius*2, image_width)
+        facets = [SquareFacet('field', ra, dec, width)]
 
-        # Keep POINT-only sources
-        source_type = s_comp.getColValues('Type')
-        patch_names = s_comp.getColValues('Patch')
-        non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
-        ind = []
-        for patch_name in non_point_patch_names:
-            ind.extend(s_comp.getRowIndex(patch_name))
-        s_comp.remove(np.array(ind))
+    # Loop over the facets, performing the astrometry checks for each
+    if astrometry_comparison_skymodel:
+        s_comp_astrometry = lsmtool.load(astrometry_comparison_skymodel)
+    else:
+        s_comp_astrometry = None
+    for facet in facets:
+        if s_comp_astrometry is None:
+            try:
+                output_filename = f'{facet.name}.panstarrs.txt'
+                download_panstarrs(facet.ra, facet.dec, min(max_search_cone_radius, facet.size/2),
+                                   output_filename)
+                s_comp_astrometry = lsmtool.load(output_filename)
+            except IOError:
+                # Comparison catalog not downloaded successfully
+                continue
+        facet_skymodel = filter_skymodel(facet.polygon, s_in.copy(), facet.wcs)
 
         # Check if there is a sufficient number of sources to do the comparison with.
         # If there is, do it and append the resulting diagnostics dict to the
@@ -197,11 +340,11 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         # Note: the various ratios are all calculated as (s_in / s_comp) and the
         # differences as (s_in - s_comp). If there are no successful matches,
         # the compare() method returns None
-        if (s_comp
-                and len(s_in.getPatchNames()) >= min_number
-                and len(s_comp.getPatchNames()) >= min_number):
-            flux_astrometry_diagnostics = s_in.compare(s_comp, radius='5 arcsec',
-                                                       excludeMultiple=True, make_plots=False)
+        if s_comp_astrometry and len(s_comp_astrometry) >= min_number:
+            flux_astrometry_diagnostics = facet_skymodel.compare(s_comp_astrometry,
+                                                                 radius='5 arcsec',
+                                                                 excludeMultiple=True,
+                                                                 make_plots=False)
             if flux_astrometry_diagnostics is not None:
                 cwl_output.update(flux_astrometry_diagnostics)
 
