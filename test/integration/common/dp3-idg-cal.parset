@@ -3,8 +3,8 @@ msout=
 steps=[idgcal]
 
 idgcal.type=python
-idgcal.python.module=idg.idgcaldpstep
-idgcal.python.class=IDGCalDPStep
+idgcal.python.module=idg.idgcaldpstep_scalar
+idgcal.python.class=IDGCalDPStepScalar
 idgcal.modelimage=wsclean-model-pb.fits
 idgcal.maxiter=200
 idgcal.nrcorrelations=4

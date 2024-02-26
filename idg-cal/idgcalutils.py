@@ -10,6 +10,83 @@ Script containing some utility functions for the idgcaldpstep class
 """
 
 
+def apply_beam(beam, aterms):
+    """
+    Apply a beam (Jones matrices) to aterms
+
+    Parameters
+    ----------
+    beam : np.ndarray
+        shape should be ...,2,2
+    aterms: np.ndarray
+        shape should be ...,4
+
+    Returns
+    -------
+    Array of the same shape as aterms, matrix multiplied by beam.
+    """
+    if beam is not None:
+        # reshape last axis (4,) to two axes (2,2)
+        aterms = np.reshape(aterms, aterms.shape[:-1] + (2, 2))
+
+        # Use Einstein summation to compute the matrix product over the last two axes
+        aterms[:] = np.einsum("...ij,...jk->...ik", beam, aterms)
+
+        # reshape two last axes (2,2) to one axis (4,)
+        aterms = np.reshape(aterms, aterms.shape[:-2] + (4,))
+
+    return aterms
+
+
+def expand_basis_functions(polynomial, subgrid_size, image_size, d1=1.0, d2=1.0):
+    """
+    Expand the (orthonormalized) Lagrange polynomial basis on a
+    given subgrid. Also returns the transformation matrix for the mapping
+
+
+    Parameters
+    ----------
+    polynomial : idg.basisfunctions.LagrangePolynomial
+        Polynomial to be used in the expansion
+    subgrid_size : int
+        Size of IDG subgrid (assumed to be square)
+    image_size : float
+        Size of image, i.e. nr_pixels x cell_size. Image is (assumed to be square)
+
+    Returns
+    -------
+    np.ndarray, np.ndarray
+        np.ndarray with evaluation of orthonormal basis functions and the transformation matrix
+        that maps the orthonormal basis onto the "regular" basis
+    """
+    s = image_size / subgrid_size * (subgrid_size - 1)
+    l = s * np.linspace(-0.5, 0.5, subgrid_size)
+    m = -s * np.linspace(-0.5, 0.5, subgrid_size)
+
+    basis_functions = polynomial.expand_basis(l, m)
+
+    # Casting dim 3 matrix into dim 2 matrix
+    basis_functions = basis_functions.reshape((-1, subgrid_size * subgrid_size)).T
+
+    (
+        U,
+        S,
+        V,
+    ) = np.linalg.svd(basis_functions)
+    basis_functions_orthonormal = U[:, : polynomial.nr_coeffs]
+    T = np.dot(np.linalg.pinv(basis_functions), basis_functions_orthonormal)
+    basis_functions_orthonormal = basis_functions_orthonormal.T.reshape(
+        (-1, subgrid_size, subgrid_size, 1)
+    )
+
+    # Kronecker product to expand scalar to length 4 vectors
+    # representing 2x2 identity (Jones) matrices accounting for polarization
+    basis_functions_orthonormal = np.kron(
+        basis_functions_orthonormal, np.array([d1, 0.0, 0.0, d2])
+    )
+    return basis_functions_orthonormal, T
+
+
 def next_composite(n):
     """
     Find smallest integer equal to or higher than n that is a composite of prime factors 2,3 and 5.
@@ -50,7 +127,7 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
         support in the Fourier domain (pixels)
     padding : float
         padding factor used for main grid.
-        taper will be optimized for unpadded region, 
+        taper will be optimized for unpadded region,
     offset : float, optional
         For even taper sizes N, an offset of 0.5 (the default) results in a symmetric taper.
     l_range : np.array(dtype=float), optional
@@ -91,7 +168,7 @@ def idgwindow(N, W, padding, offset=0.5, l_range=None):
         R2 = R1[: (N // 2), :] + R1[: (N // 2) - 1 : -1, :]
         U, S1, V = np.linalg.svd(R2)
         a = np.abs(np.concatenate([U[:, -1], U[::-1, -1]]))
-        taper = np.dot(B, a)
+        taper = B @ a
 
     if l_range is None:
         return a
@@ -121,6 +198,7 @@ def get_aterm_offsets(nr_timeslots, nr_time):
         aterm_offsets[i] = i * (nr_time // nr_timeslots)
 
     return aterm_offsets
+
 
 def init_h5parm_solution_table(
     h5parm_object,
@@ -165,7 +243,14 @@ def init_h5parm_solution_table(
     idg.h5parmwriter.H5ParmWriter
         Extended H5ParmWriter object
     """
-    soltab_info = {"amplitude": "amplitude_coefficients", "phase": "phase_coefficients"}
+    soltab_info = {
+        "amplitude": "amplitude_coefficients",
+        "amplitude1": "amplitude1_coefficients",
+        "amplitude2": "amplitude2_coefficients",
+        "slowphase1": "slowphase1_coefficients",
+        "slowphase2": "slowphase2_coefficients",
+        "phase": "phase_coefficients",
+    }
 
     assert soltab_type in soltab_info.keys()
     soltab_name = soltab_info[soltab_type]
