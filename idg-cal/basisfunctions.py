@@ -120,7 +120,7 @@ class LagrangePolynomial:
             for k in range(n + 1):
                 # Loop over unique entries per polynomial degree (columns in Pascal's triangle)
                 offset = np.sum(np.arange(1, n + 1, 1)) + k
-                basis_functions[offset, ...] = X ** (n - k) * Y ** k
+                basis_functions[offset, ...] = X ** (n - k) * Y**k
         return basis_functions
 
     @property

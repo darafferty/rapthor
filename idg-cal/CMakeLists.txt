@@ -2,9 +2,17 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Install Python modules.
-install(FILES #        __init__.py
-              h5parmwriter.py idgcaldpstep.py basisfunctions.py idgcalutils.py
-        DESTINATION ${PYTHON_INSTALL_DIR})
+install(
+  FILES #        __init__.py
+        h5parmwriter.py
+        idgcaldpstepbase.py
+        idgcaldpstep_scalar.py
+        idgcaldpstep_phase_only.py
+        idgcaldpstep_phase_only_bfgs.py
+        idgcaldpstep_rapthor.py
+        basisfunctions.py
+        idgcalutils.py
+  DESTINATION ${PYTHON_INSTALL_DIR})
 
 add_test(
   NAME idgcal
