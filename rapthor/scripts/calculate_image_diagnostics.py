@@ -15,10 +15,13 @@ from astropy.utils import iers
 from astropy.table import Table
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-from astropy.coordinates import match_coordinates_sky
-from astropy.stats import sigma_clip
 import json
 from astropy.visualization.wcsaxes import WCSAxes
+import tempfile
+import matplotlib
+if matplotlib.get_backend() != 'Agg':
+    matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
@@ -56,7 +59,7 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
         facet_names.append(facet.name)
 
     # Set up the figure
-    fig = plt.figure(1,figsize=(7.66,7))
+    fig = plt.figure(1, figsize=(7.66, 7))
     plt.clf()
     wcs = make_wcs(field_ra, field_dec)
     ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)
@@ -69,6 +72,37 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
     DecAxis.set_major_formatter('dd:mm:ss')
     ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
 
+
+def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux'):
+    """
+    Converts a PyBDSF catalog to a makesourcedb sky model
+
+    Note: the resulting makesourcedb catalog is a minimal catalog suitable for
+    use in photometry and astrometry comparisons and should not be used for
+    calibration
+
+    Parameters
+    ----------
+    catalog : astropy Table object
+        Input PyBDSF catalog
+
+    Returns
+    -------
+    skymodel : LSMTool skymodel object
+        The makesourcedb sky model
+    """
+    # Convert the result to makesourcedb format and write to a tempfile
+    out_lines = [f'FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n']
+    for (name, ra, dec, flux) in zip(catalog['Source_id'], catalog['RA'],
+                                     catalog['DEC'], catalog[flux_colname]):
+        out_lines.append(f'{name}, POINT, {ra}, {dec}, {flux}, \n')
+
+    skymodel_path = tempfile.NamedTemporaryFile()
+    with open(skymodel_path, 'w') as f:
+        f.writelines(out_lines)
+    skymodel = lsmtool.load(skymodel_path)
+
+    return skymodel
 
 
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
@@ -174,74 +208,64 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         s_comp_photometry = lsmtool.load(photometry_comparison_skymodel)
 
     # Do the photometry check
-    if s_comp_photometry and s_in:
-        # Write the comparison catalog to FITS file for use with astropy
-        catalog_comp_filename = output_root + '.comparison.fits'
-        s_comp_photometry.table.columns['Ra'].format = None
-        s_comp_photometry.table.columns['Dec'].format = None
-        s_comp_photometry.table.columns['I'].format = None
-        s_comp_photometry.write(catalog_comp_filename, format='fits', clobber=True)
-        if 'ReferenceFrequency' in s_comp_photometry.getColNames():
-            freq_comp = np.mean(s_comp_photometry.getColValues('ReferenceFrequency'))
-        else:
-            freq_comp = s_comp_photometry.table.meta['ReferenceFrequency']
-
-        # Read in PyBDSF-derived and comparison catalogs and filter to keep
-        # only comparison sources within a radius of FWHM / 2 of phase center
+    if s_comp_photometry:
+        # Filter the input PyBDSF FITS catalog as needed for the photometry check
+        # Sources are filtered to keep only those that:
+        #   - lie within 3 degrees of the phase center (to exclude sources with
+        #     uncertain primary beam corrections)
+        #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
+        #     that may be poorly modeled)
+        #   - have no neighboring sources within 30 arcsec (to exclude components
+        #     of complex sources)
         catalog = Table.read(input_catalog, format='fits')
-        catalog_comp = Table.read(catalog_comp_filename, format='fits')
         obs = obs_list[beam_ind]
         phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
-        coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
+        coords_comp = SkyCoord(ra=catalog['Ra'], dec=catalog['Dec'])
         separation = phase_center.separation(coords_comp)
         sec_el = 1.0 / np.sin(obs.mean_el_rad)
         fwhm_deg = 1.1 * ((3.0e8 / img_true_sky.freq) / obs.diam) * 180 / np.pi * sec_el
-        catalog_comp = catalog_comp[separation < fwhm_deg/2*u.degree]
+        catalog = catalog[separation < fwhm_deg/2*u.degree]
+        major_axis = catalog['DC_Maj']  # degrees
+        catalog = catalog[major_axis < 10/3600]
 
-        # Cross match the coordinates and keep only matches that have a
-        # separation of 5 arcsec or less
-        #
-        # Note: we require at least 10 sources for the comparison, as using
-        # fewer can give unreliable estimates
+        # Convert the filtered catalog to a minimal sky model for use with LSMTool
+        # and do the comparison
+        s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
         min_number = 10
-        if len(catalog_comp) >= min_number:
-            coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
-            coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
-            idx, sep2d, _ = match_coordinates_sky(coords_comp, coords)
-            constraint = sep2d < 5*u.arcsec
-            catalog_comp = catalog_comp[constraint]
-            catalog = catalog[idx[constraint]]
+        if len(s_pybdsf) >= min_number:
+            result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
+                                      excludeMultiple=True, make_plots=True)
+            cwl_output.update(result)
 
-            # Find the mean flux ratio (input / comparison). We use the total island
-            # flux density from PyBDSF as it gives less scatter than the Gaussian
-            # fluxes when comparing to a lower-resolution catalog (such as TGSS).
-            # Lastly, a correction factor is used to correct for the potentially
-            # different frequencies of the LOFAR image and the comparison catalog
-            if len(catalog_comp) >= min_number:
-                alpha = -0.7  # adopt a typical spectral index
-                freq_factor = (freq_comp / img_true_sky.freq)**alpha
-                ratio = catalog['Isl_Total_flux'] / catalog_comp['I'] * freq_factor
-                meanRatio = np.mean(ratio)
-                stdRatio = np.std(ratio)
-                clippedRatio = sigma_clip(ratio)
-                meanClippedRatio = np.mean(clippedRatio)
-                stdClippedRatio = np.std(clippedRatio)
-                stats = {'meanRatio_pybdsf': meanRatio,
-                         'stdRatio_pybdsf': stdRatio,
-                         'meanClippedRatio_pybdsf': meanClippedRatio,
-                         'stdClippedRatio_pybdsf': stdClippedRatio}
-                cwl_output.update(stats)
-
-    # Do the astrometry check by comparing to Pan-STARRS positions
+    # Do the astrometry check
     max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
     if facet_region_file is not None:
         facets = read_ds9_region_file(facet_region_file)
     else:
-        # Use a single rectangular facet centered on the image
-        ra = image_ra
-        dec = image_dec
+        # Use a single rectangular facet centered on the phase center
+        obs = obs_list[beam_ind]
+        ra = obs.ra
+        dec = obs.dec
+        image_width = max(img_true_sky.shape[-2:])
         width = min(max_search_cone_radius*2, image_width)
         facets = [SquareFacet('field', ra, dec, width)]
+
+    # Filter the input PyBDSF FITS catalog as needed for the astrometry check
+    # Sources are filtered to keep only those that:
+    #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
+    #     that may be poorly modeled)
+    #   - have errors on RA and Dec of < 2 arcsec (to exclude sources
+    #     with high positional uncertainties)
+    catalog = Table.read(input_catalog, format='fits')
+    major_axis = catalog['DC_Maj']  # degrees
+    catalog = catalog[major_axis < 10/3600]
+    ra_error = catalog['E_RA']  # degrees
+    catalog = catalog[ra_error < 2/3600]
+    dec_error = catalog['E_DEC']  # degrees
+    catalog = catalog[dec_error < 2/3600]
+
+    # Convert the filtered catalog into a minimal sky model for use with LSMTool
+    s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
 
     # Loop over the facets, performing the astrometry checks for each
     if astrometry_comparison_skymodel:
@@ -258,8 +282,8 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
                               'meanClippedDecOffsetDeg': [],
                               'stdClippedDecOffsetDeg': []}
     for facet in facets:
-        facet.set_skymodel(s_in.copy())
-        facet.find_astrometry(s_comp_astrometry)
+        facet.set_skymodel(s_pybdsf.copy())
+        facet.find_astrometry_offsets(s_comp_astrometry)
         if len(facet.astrometry_diagnostics):
             astrometry_diagnostics['facet_name'].append(facet.name)
             astrometry_diagnostics['meanRAOffsetDeg'].append(facet.astrometry_diagnostics['meanRAOffsetDeg'])
