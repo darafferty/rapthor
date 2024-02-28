@@ -11,6 +11,9 @@ from astropy.coordinates import Angle
 import ast
 import logging
 from rapthor.lib import miscellaneous as misc
+from matplotlib import patches
+import lsmtool
+import tempfile
 
 
 class Facet(object):
@@ -22,11 +25,11 @@ class Facet(object):
     name : str
         Name of facet
     ra : float
-        RA in degrees of facet reference coordinate
+        RA in degrees of reference coordinate
     dec : float
-        Dec in degrees of facet reference coordinate
+        Dec in degrees of reference coordinate
     vertices : list of tuples
-        List of (RA, Dec) tuples of each vertex
+        List of (RA, Dec) tuples, one for each vertex of the facet
     """
     def __init__(self, name, ra, dec, vertices):
         self.name = name
@@ -41,16 +44,133 @@ class Facet(object):
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
         self.wcs = make_wcs(self.ra, self.dec)
-        ra_values = self.vertices[:, 0]
-        dec_values = self.vertices[:, 1]
+        ra_values = [ra for ra in self.vertices[::2]]
+        dec_values = [dec for dec in vertices[1::2]]
         x_values, y_values = radec2xy(self.wcs, ra_values, dec_values)
         polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
         self.polygon = Polygon(polygon_vertices)
 
-        # Find the maximum size of the facet
+        # Find the size and center coordinates of the facet
         xmin, ymin, xmax, ymax = self.polygon.bounds
         self.size = min(0.5, 1.2 * max(xmax-xmin, ymax-ymin) *
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
+        self.x_center = xmin + (xmax - xmin)/2
+        self.y_center = ymin + (ymax - ymin)/2
+        ra_center, dec_center = xy2radec(self.wcs, [self.x_center], [self.y_center])
+        self.ra_center = ra_center[0]
+        self.dec_center = dec_center[0]
+
+    def set_skymodel(self, skymodel):
+        """
+        Sets the facet's sky model
+
+        The input sky model is filtered to contain only those sources that lie
+        inside the facet's polygon. The filtered sky model is stored in
+        self.skymodel
+
+        Parameters
+        ----------
+        skymodel : LSMTool skymodel object
+            Input sky model
+        """
+        self.skymodel = filter_skymodel(self.polygon, skymodel, self.wcs)
+
+    def download_panstarrs(self, max_search_cone_radius=0.5):
+        """
+        Returns a Pan-STARRS sky model for the area around the facet
+
+        Note: the resulting sky model may contain sources outside the facet's
+        polygon
+
+        Parameters
+        ----------
+        max_search_cone_radius : float, optional
+            The maximum radius in degrees to use in the cone search. The smaller
+            of this radius and the minimum radius that covers the facet is used
+
+        Returns
+        -------
+        skymodel : LSMTool skymodel object
+            The Pan-STARRS sky model
+        """
+        try:
+            with tempfile.TemporaryFile() as fp:
+                misc.download_skymodel(self.ra_center, self.ra_center, fp.name,
+                                       radius=min(max_search_cone_radius, self.size/2),
+                                       overwrite=True, source='PANSTARRS')
+                skymodel = lsmtool.load(fp.name)
+        except IOError:
+            # Comparison catalog not downloaded successfully
+            skymodel = lsmtool.makeEmptyTable()
+
+        return skymodel
+
+    def find_astrometry_offsets(self, comparison_skymodel=None, min_number=10):
+        """
+        Finds the astrometry offsets for sources in the facet
+
+        The offsets are stored in self.astrometry_diagnostics, a dict with
+        the following keys (see LSMTool's compare operation for details of the
+        diagnostics):
+
+            'meanRAOffsetDeg', 'stdRAOffsetDeg', 'meanClippedRAOffsetDeg',
+            'stdClippedRAOffsetDeg', 'meanDecOffsetDeg', 'stdDecOffsetDeg',
+            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg'
+
+        Note: if the comparison is unsuccessful, self.astrometry_diagnostics is
+        an empty dict
+
+        Parameters
+        ----------
+        comparison_skymodel : LSMTool skymodel object, optional
+            Comparison sky model
+        min_number : int, optional
+            Minimum number of sources required for comparison
+        """
+        self.astrometry_diagnostics = {}
+        if comparison_skymodel is None:
+            comparison_skymodel = self.download_panstarrs()
+
+        # Find the astrometry offsets between the facet's sky model and the
+        # comparison sky model
+        #
+        # Note: If there are no successful matches, the compare() method
+        # returns None
+        if comparison_skymodel and len(comparison_skymodel) >= min_number:
+            result = self.skymodel.compare(comparison_skymodel,
+                                           radius='5 arcsec',
+                                           excludeMultiple=True,
+                                           make_plots=False)
+            # Save offsets
+            if result is not None:
+                self.astrometry_diagnostics.update(result)
+
+    def get_matplotlib_patch(self, reference_pos=None):
+        """
+        Returns a matplotlib patch for the facet polygon
+
+        Parameters
+        ----------
+        reference_pos : list, optional
+            The reference [RA, Dec] of the parent field in degrees
+
+        Returns
+        -------
+        patch : matplotlib patch object
+            The patch for the facet polygon
+        """
+        if reference_pos is not None:
+            ref_x, ref_y = radec2xy(self.wcs, [reference_pos[0]], [reference_pos[1]])
+            ref_xy = [ref_x[0], ref_y[0]]
+        else:
+            ref_xy = [0, 0]
+
+        x = self.polygon.exterior.coords.xy[0] - ref_xy[0]
+        y = self.polygon.exterior.coords.xy[1] - ref_xy[1]
+        xy = np.vstack([x, y]).transpose()
+        patch = patches.Polygon(xy=xy)
+
+        return patch
 
 
 class SquareFacet(Facet):

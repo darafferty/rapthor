@@ -21,38 +21,34 @@ import lsmtool
 from scipy.interpolate import interp1d
 import astropy.units as u
 import mocpy
+import requests
 
 
 def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, source='TGSS',
                       targetname='Patch'):
     """
-    Download the skymodel for the target field
+    Downloads a skymodel for the given position and radius
 
     Parameters
     ----------
     ra : float
-        Right ascension of the skymodel centre.
+        Right ascension in degrees of the skymodel centre
     dec : float
-        Declination of the skymodel centre.
+        Declination in degrees of the skymodel centre
     skymodel_path : str
-        Full name (with path) to the skymodel.
+        Full name (with path) to the output skymodel
     radius : float, optional
-        Radius for the TGSS/GSM cone search in degrees.
+        Radius for the cone search in degrees. For Pan-STARRS, the radius must be
+        <= 0.5 degrees
     source : str, optional
-        Source where to obtain a skymodel from. Can be TGSS or GSM. Default is TGSS.
+        Source where to obtain a skymodel from. Can be one of: TGSS, GSM, LOTSS, or
+        PANSTARRS. Note: the PANSTARRS sky model is only suitable for use in
+        astrometry checks and should not be used for calibration
     overwrite : bool, optional
-        Overwrite the existing skymodel pointed to by skymodel_path.
+        Overwrite the existing skymodel pointed to by skymodel_path
     target_name : str, optional
-        Give the patch a certain name. Default is "Patch".
+        Give the patch a certain name
     """
-    SKY_SERVERS = {'TGSS': 'http://tgssadr.strw.leidenuniv.nl/cgi-bin/gsmv4.cgi?'
-                           'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                   'GSM': 'https://lcs165.lofar.eu/cgi-bin/gsmv1.cgi?'
-                          'coord={ra:f},{dec:f}&radius={radius:f}&unit=deg&deconv=y',
-                   'LOTSS': ''}  # Server is empty since we handle this through LSMTool.
-    if source.upper() not in SKY_SERVERS.keys():
-        raise ValueError('Unsupported sky model source specified! Please use LOTSS, TGSS or GSM.')
-
     logger = logging.getLogger('rapthor:skymodel')
 
     file_exists = os.path.isfile(skymodel_path)
@@ -77,22 +73,31 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
                        'existing sky model!'.format(skymodel_path))
         os.remove(skymodel_path)
 
-    # Check if LoTSS has coverage.
-    if source.upper().strip() == 'LOTSS':
+    # Check the radius for Pan-STARRS (it must be <= 0.5 degrees)
+    source = source.upper().strip()
+    if source == 'PANSTARRS' and radius > 0.5:
+        raise ValueError('The radius for Pan-STARRS must be <= 0.5 deg')
+
+    # Check if LoTSS has coverage
+    if source == 'LOTSS':
         logger.info('Checking LoTSS coverage for the requested centre and radius.')
         mocpath = os.path.join(os.path.dirname(skymodel_path), 'dr2-moc.moc')
-        subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc', '-O', mocpath], capture_output=True, check=True)
+        subprocess.run(['wget', 'https://lofar-surveys.org/public/DR2/catalogues/dr2-moc.moc',
+                        '-O', mocpath], capture_output=True, check=True)
         moc = mocpy.MOC.from_fits(mocpath)
         covers_centre = moc.contains(ra * u.deg, dec * u.deg)
-        # Checking single coordinates, so get rid of the array.
+
+        # Checking single coordinates, so get rid of the array
         covers_left = moc.contains(ra * u.deg - radius * u.deg, dec * u.deg)[0]
         covers_right = moc.contains(ra * u.deg + radius * u.deg, dec * u.deg)[0]
         covers_bottom = moc.contains(ra * u.deg, dec * u.deg - radius * u.deg)[0]
         covers_top = moc.contains(ra * u.deg, dec * u.deg + radius * u.deg)[0]
         if covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
-            logger.warning('Incomplete LoTSS coverage for the requested centre and radius! Please check the field coverage in plots/field_coverage.png!')
+            logger.warning('Incomplete LoTSS coverage for the requested centre and radius! '
+                           'Please check the field coverage in plots/field_coverage.png!')
         elif not covers_centre and (covers_left or covers_right or covers_bottom or covers_top):
-            logger.warning('Incomplete LoTSS coverage for the requested centre and radius! Please check the field coverage in plots/field_coverage.png!')
+            logger.warning('Incomplete LoTSS coverage for the requested centre and radius! '
+                           'Please check the field coverage in plots/field_coverage.png!')
         elif not covers_centre and not (covers_left and covers_right and covers_bottom and covers_top):
             raise ValueError('No LoTSS coverage for the requested centre and radius!')
         else:
@@ -101,32 +106,55 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
     logger.info('Downloading skymodel for the target into ' + skymodel_path)
     max_tries = 5
     for tries in range(1, 1 + max_tries):
-        if source.upper().strip() == 'LOTSS':
+        retry = False
+        if source == 'LOTSS' or source == 'TGSS' or source == 'GSM':
             try:
-                lotssmodel = lsmtool.skymodel.SkyModel('lotss', VOPosition=[ra, dec], VORadius=radius)
-                lotssmodel.write(skymodel_path)
-                if len(lotssmodel) > 0:
+                skymodel = lsmtool.skymodel.SkyModel(source, VOPosition=[ra, dec], VORadius=radius)
+                skymodel.write(skymodel_path)
+                if len(skymodel) > 0:
                     break
             except ConnectionError:
-                if tries == max_tries:
-                    raise IOError('Download of LoTSS sky model failed after {} attempts.'.format(max_tries))
+                retry = True
+        elif source == 'PANSTARRS':
+            baseurl = 'https://catalogs.mast.stsci.edu/api/v0.1/panstarrs'
+            release = 'dr1'  # the release with the mean data
+            table = 'mean'  # the main catalog, with the mean data
+            cat_format = 'csv'  # use csv format for the intermediate file
+            url = f'{baseurl}/{release}/{table}.{cat_format}'
+            search_params = {'ra': ra,
+                             'dec': dec,
+                             'radius': radius,
+                             'nDetections.min': '5',  # require detection in at least 5 epochs
+                             'columns': ['objID', 'ramean', 'decmean']  # get only the info we need
+                             }
+            try:
+                result = requests.get(url, params=search_params, timeout=300)
+                if result.ok:
+                    # Convert the result to makesourcedb format and write to the output file
+                    lines = result.text.split('\n')[1:]  # split and remove header line
+                    out_lines = ['FORMAT = Name, Ra, Dec, Type, I, ReferenceFrequency=1e6\n']
+                    for line in lines:
+                        # Add entries for type and Stokes I flux density
+                        if line.strip():
+                            out_lines.append(line.strip() + ',POINT,0.0,\n')
+                    with open(skymodel_path, 'w') as f:
+                        f.writelines(out_lines)
+                    break
                 else:
-                    logger.error('Attempt #{0:d} to download LoTSS sky model failed. Attempting '
-                                 '{1:d} more times.'.format(tries, max_tries - tries))
-                    time.sleep(5)
-        elif (source.upper().strip() == 'TGSS') or (source.upper().strip() == 'GSM'):
-            result = subprocess.run(['wget', '-O', skymodel_path,
-                                    SKY_SERVERS[source].format(ra=ra, dec=dec, radius=radius)])
-            if result.returncode != 0:
-                if tries == max_tries:
-                    raise IOError('Download of TGSS sky model failed after {} '
-                                  'attempts.'.format(max_tries))
-                else:
-                    logger.error('Attempt #{0:d} to download TGSS sky model failed. Attempting '
-                                 '{1:d} more times.'.format(tries, max_tries - tries))
-                    time.sleep(5)
+                    retry = True
+            except requests.exceptions.Timeout:
+                retry = True
+        else:
+            raise ValueError('Unsupported sky model source specified! Please use LOTSS, TGSS, '
+                             'GSM, or PANSTARRS.')
+
+        if retry:
+            if tries == max_tries:
+                raise IOError('Download of {0} sky model failed after {1} attempts.'.format(source, max_tries))
             else:
-                break
+                logger.error('Attempt #{0:d} to download {1} sky model failed. Attempting '
+                             '{2:d} more times.'.format(tries, source, max_tries - tries))
+                time.sleep(5)
 
     if not os.path.isfile(skymodel_path):
         raise IOError('Sky model file "{}" does not exist after trying to download the '

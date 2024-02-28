@@ -7,19 +7,18 @@ from argparse import RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, filter_skymodel, read_ds9_region_file
+from rapthor.lib.facet import SquareFacet, read_ds9_region_file, make_wcs
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 import casacore.tables as pt
 from astropy.utils import iers
 from astropy.table import Table
 import astropy.units as u
-from astropy.coordinates import SkyCoord, Angle
+from astropy.coordinates import SkyCoord
 from astropy.coordinates import match_coordinates_sky
 from astropy.stats import sigma_clip
 import json
-import requests
-import time
+from astropy.visualization.wcsaxes import WCSAxes
 
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
@@ -27,121 +26,49 @@ import time
 iers.conf.auto_download = False
 
 
-def download_panstarrs(ra, dec, radius, output_filename, max_tries=5):
+def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
     """
-    Downloads a catalog of Pan-STARRS sources around the given position
+    Plots the astrometry offsets across the field
 
     Parameters
     ----------
-    ra : float
-        RA of cone search center in deg
-    dec : float
-        Dec of cone search center in deg
-    radius : float
-        Radius of cone in deg (must be <= 0.5)
-    output_filename : str
-        Filename for the output catalog
-    max_tries : int, optional
-        Maximum number of download tries to do if problems such as timeouts are
-        encountered
-
-    Returns
-    -------
-    output_catalog : str
-        Filename of the output makesourcedb catalog of Pan-STARRS matches
+    facets : list
+        List of Facet objects
+    field_ra : float
+        RA in degrees of the field
+    field_dec : float
+        Dec in degrees of the field
+    output_file : str
+        Filename for the output plot
     """
-    if radius > 0.5:
-        raise ValueError('The search radius must be <= 0.5 deg')
+    patches = []
+    ra_offsets = []
+    dec_offsets = []
+    facet_ra = []
+    facet_dec = []
+    facet_names = []
+    for facet in facets:
+        patches.append(facet.get_matplotlib_patch(field_pos=(field_ra, field_dec)))
+        ra_offsets.append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
+        dec_offsets.append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
+        facet_ra.append(facet.ra)
+        facet_dec.append(facet.dec)
+        facet_names.append(facet.name)
 
-    # Construct the URL and search parameters
-    baseurl = 'https://catalogs.mast.stsci.edu/api/v0.1/panstarrs'
-    release = 'dr1'  # the release with the mean data
-    table = 'mean'  # the main catalog, with the mean data
-    cat_format = 'csv'
-    url = f'{baseurl}/{release}/{table}.{cat_format}'
-    search_params = {'ra': ra,
-                     'dec': dec,
-                     'radius': radius,
-                     'nDetections.min': '5',  # require detection in at least 5 epochs
-                     'columns': ['objID', 'ramean', 'decmean']  # get only the info we need
-                     }
+    # Set up the figure
+    fig = plt.figure(1,figsize=(7.66,7))
+    plt.clf()
+    wcs = make_wcs(field_ra, field_dec)
+    ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)
+    fig.add_axes(ax)
+    RAAxis = ax.coords['ra']
+    RAAxis.set_axislabel('RA', minpad=0.75)
+    RAAxis.set_major_formatter('hh:mm:ss')
+    DecAxis = ax.coords['dec']
+    DecAxis.set_axislabel('Dec', minpad=0.75)
+    DecAxis.set_major_formatter('dd:mm:ss')
+    ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
 
-    # Download the catalog
-    for tries in range(1, 1 + max_tries):
-        timedout = False
-        try:
-            result = requests.get(url, params=search_params, timeout=300)
-        except requests.exceptions.Timeout:
-            timedout = True
-        if timedout or not result.ok:
-            if tries == max_tries:
-                raise IOError('Download failed after {} attempts.'.format(max_tries))
-            else:
-                print('Attempt #{0:d} failed. Attempting {1:d} more times.'.format(tries, max_tries - tries))
-                time.sleep(5)
-
-    # Convert the catalog to makesourcedb format and write to the output file
-    lines = result.text.split('\n')[1:]  # split and remove header line
-    for line in lines:
-        # Add dummy entries for type and Stokes I flux density
-        line += ',POINT,0.0'
-    header = 'FORMAT = Name, Ra, Dec, Type, I'
-
-    with open(output_filename, 'w') as f:
-        f.writelines(header)
-        f.writelines(lines)
-
-
-def cross_match(coords_1, coords_2, radius=0.1):
-    """
-    Returns the matches of two coordinate arrays
-
-    Parameters
-    ----------
-    coords_1 : np.array
-        Array of [RA, Dec] values in deg
-    coords_2 : np.array
-        Array of [RA, Dec] values in deg
-    radius : float or str, optional
-        Radius in degrees (if float) or 'value unit' (if str; e.g., '30 arcsec')
-
-    Returns
-    -------
-    matches1, matches2 : np.array, np.array
-        matches1 is the array of indices of coords_1 that have matches in coords_2
-        within the specified radius. matches2 is the array of indices of coords_2
-        for the same sources.
-
-    """
-    # Do the cross matching
-    catalog1 = SkyCoord(coords_1[0], coords_1[1], unit=(u.degree, u.degree))
-    catalog2 = SkyCoord(coords_2[0], coords_2[1], unit=(u.degree, u.degree))
-    idx, d2d, d3d = match_coordinates_sky(catalog1, catalog2)
-
-    # Remove matches outside given radius
-    try:
-        radius = '{0} degree'.format(float(radius))
-    except ValueError:
-        pass
-    radius = Angle(radius).degree
-    matches1 = np.where(d2d.value <= radius)[0]
-    matches2 = idx[matches1]
-
-    # Select closest match only
-    filter = []
-    for i in range(len(matches1)):
-        mind = np.where(matches2 == matches2[i])[0]
-        nMatches = len(mind)
-        if nMatches > 1:
-            mradii = d2d.value[matches1][mind]
-            if d2d.value[matches1][i] == np.min(mradii):
-                filter.append(i)
-        else:
-            filter.append(i)
-    matches1 = matches1[filter]
-    matches2 = matches2[filter]
-
-    return matches1, matches2
 
 
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
@@ -321,34 +248,53 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         s_comp_astrometry = lsmtool.load(astrometry_comparison_skymodel)
     else:
         s_comp_astrometry = None
+    astrometry_diagnostics = {'facet_name': [],
+                              'meanRAOffsetDeg': [],
+                              'stdRAOffsetDeg': [],
+                              'meanClippedRAOffsetDeg': [],
+                              'stdClippedRAOffsetDeg': [],
+                              'meanDecOffsetDeg': [],
+                              'stdDecOffsetDeg': [],
+                              'meanClippedDecOffsetDeg': [],
+                              'stdClippedDecOffsetDeg': []}
     for facet in facets:
-        if s_comp_astrometry is None:
-            try:
-                output_filename = f'{facet.name}.panstarrs.txt'
-                download_panstarrs(facet.ra, facet.dec, min(max_search_cone_radius, facet.size/2),
-                                   output_filename)
-                s_comp_astrometry = lsmtool.load(output_filename)
-            except IOError:
-                # Comparison catalog not downloaded successfully
-                continue
-        facet_skymodel = filter_skymodel(facet.polygon, s_in.copy(), facet.wcs)
+        facet.set_skymodel(s_in.copy())
+        facet.find_astrometry(s_comp_astrometry)
+        if len(facet.astrometry_diagnostics):
+            astrometry_diagnostics['facet_name'].append(facet.name)
+            astrometry_diagnostics['meanRAOffsetDeg'].append(facet.astrometry_diagnostics['meanRAOffsetDeg'])
+            astrometry_diagnostics['stdRAOffsetDeg'].append(facet.astrometry_diagnostics['stdRAOffsetDeg'])
+            astrometry_diagnostics['meanClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
+            astrometry_diagnostics['stdClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedRAOffsetDeg'])
+            astrometry_diagnostics['meanDecOffsetDeg'].append(facet.astrometry_diagnostics['meanDecOffsetDeg'])
+            astrometry_diagnostics['stdDecOffsetDeg'].append(facet.astrometry_diagnostics['stdDecOffsetDeg'])
+            astrometry_diagnostics['meanClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
+            astrometry_diagnostics['stdClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedDecOffsetDeg'])
 
-        # Check if there is a sufficient number of sources to do the comparison with.
-        # If there is, do it and append the resulting diagnostics dict to the
-        # existing one
-        #
-        # Note: the various ratios are all calculated as (s_in / s_comp) and the
-        # differences as (s_in - s_comp). If there are no successful matches,
-        # the compare() method returns None
-        if s_comp_astrometry and len(s_comp_astrometry) >= min_number:
-            flux_astrometry_diagnostics = facet_skymodel.compare(s_comp_astrometry,
-                                                                 radius='5 arcsec',
-                                                                 excludeMultiple=True,
-                                                                 make_plots=False)
-            if flux_astrometry_diagnostics is not None:
-                cwl_output.update(flux_astrometry_diagnostics)
+    # Save and plot the per-facet offsets
+    if len(astrometry_diagnostics['facet_name']):
+        with open(output_root+'.astrometry_offsets.json', 'w') as fp:
+            json.dump(astrometry_diagnostics, fp)
+        plot_astrometry_offsets(astrometry_diagnostics, facet_region_file, output_root+'.astrometry_offsets.png')
 
-    # Write out the diagnostics
+        # Calculate mean offsets
+        mean_astrometry_diagnostics = {'meanRAOffsetDeg': np.mean(astrometry_diagnostics['meanRAOffsetDeg']),
+                                       'stdRAOffsetDeg': np.mean(astrometry_diagnostics['stdRAOffsetDeg']),
+                                       'meanClippedRAOffsetDeg': np.mean(astrometry_diagnostics['meanClippedRAOffsetDeg']),
+                                       'stdClippedRAOffsetDeg': np.mean(astrometry_diagnostics['stdClippedRAOffsetDeg']),
+                                       'meanDecOffsetDeg': np.mean(astrometry_diagnostics['meanDecOffsetDeg']),
+                                       'stdDecOffsetDeg': np.mean(astrometry_diagnostics['stdDecOffsetDeg']),
+                                       'meanClippedDecOffsetDeg': np.mean(astrometry_diagnostics['meanClippedDecOffsetDeg']),
+                                       'stdClippedDecOffsetDeg': np.mean(astrometry_diagnostics['stdClippedDecOffsetDeg'])}
+        cwl_output.update(mean_astrometry_diagnostics)
+    else:
+        # Write dummy files
+        with open(output_root+'.astrometry_offsets.json', 'w') as fp:
+            fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
+        with open(output_root+'.astrometry_offsets.png', 'w') as fp:
+            fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
+
+    # Write out the full diagnostics
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
 
@@ -365,8 +311,10 @@ if __name__ == '__main__':
     parser.add_argument('input_skymodel', help='Filename of input sky model')
     parser.add_argument('obs_ms', help='Filename of observation MS')
     parser.add_argument('diagnostics_file', help='Filename of diagnostics JSON file')
+    parser.add_argument('facet_region_file', help='Filename of ds9 facet region file')
     parser.add_argument('output_root', help='Root of output files')
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
-         args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root)
+         args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root,
+         facet_region_file=args.facet_region_file)
