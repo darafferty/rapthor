@@ -94,8 +94,8 @@ class Facet(object):
             The Pan-STARRS sky model
         """
         try:
-            with tempfile.TemporaryFile() as fp:
-                misc.download_skymodel(self.ra_center, self.ra_center, fp.name,
+            with tempfile.NamedTemporaryFile() as fp:
+                misc.download_skymodel(self.ra_center, self.dec_center, fp.name,
                                        radius=min(max_search_cone_radius, self.size/2),
                                        overwrite=True, source='PANSTARRS')
                 skymodel = lsmtool.load(fp.name)

@@ -161,9 +161,12 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
                       'sky model.'.format(skymodel_path))
 
     # Treat all sources as one group (direction)
-    skymodel = lsmtool.load(skymodel_path)
-    skymodel.group('single', root=targetname)
-    skymodel.write(clobber=True)
+    # Note: this is not done for Pan-STARRS catalogs as it is needed only for calibration
+    # sky models
+    if source != 'PANSTARRS':
+        skymodel = lsmtool.load(skymodel_path)
+        skymodel.group('single', root=targetname)
+        skymodel.write(clobber=True)
 
 
 def normalize_ra(num):
