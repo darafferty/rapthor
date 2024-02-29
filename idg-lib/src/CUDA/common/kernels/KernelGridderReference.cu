@@ -64,7 +64,6 @@ __global__ void kernel_gridder(
     const float2*       __restrict__ aterms,
     const unsigned int* __restrict__ aterm_indices,
     const Metadata*     __restrict__ metadata,
-    const float2*       __restrict__ avg_aterm,
           float2*       __restrict__ subgrid)
 {
   int s = blockIdx.x;

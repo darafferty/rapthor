@@ -3,7 +3,6 @@
 
 #include "math.cu"
 #include "Types.h"
-#include "KernelGridder.cuh"
 
 #define ALIGN(N,A) (((N)+(A)-1)/(A)*(A))
 
@@ -30,9 +29,6 @@
  *    -> setting BATCH_SIZE as a multiple of
  *       NUM_THREADS does not improve performance
 **/
-#ifndef BLOCK_SIZE_X
-#define BLOCK_SIZE_X KernelGridder::block_size_x
-#endif
 #define NUM_THREADS BLOCK_SIZE_X
 
 #ifndef NUM_BLOCKS
@@ -115,10 +111,10 @@ __device__ void update_subgrid(
     int i = y * subgrid_size + x;
 
     // Apply average aterm correction
-    if (avg_aterm) {
+#if ENABLE_AVG_ATERM
         apply_avg_aterm_correction_(
             avg_aterm + i*16, pixel);
-    }
+#endif
 
     // Load taper
     const float taper_ = taper[i];
@@ -370,7 +366,9 @@ void kernel_gridder(
         const float2*       __restrict__ aterms,
         const unsigned int* __restrict__ aterm_indices,
         const Metadata*     __restrict__ metadata,
+#if ENABLE_AVG_ATERM
         const float2*       __restrict__ avg_aterm,
+#endif
               float2*       __restrict__ subgrid)
 {
     int s                   = blockIdx.x;
@@ -380,6 +378,10 @@ void kernel_gridder(
 
     const int channel_offset      = channel_begin;
     const int current_nr_channels = channel_end - channel_begin;
+
+    #if !ENABLE_AVG_ATERM
+    const float2* avg_aterm = nullptr;
+    #endif
 
     if (nr_polarizations == 1) {
         kernel_gridder_<1>(

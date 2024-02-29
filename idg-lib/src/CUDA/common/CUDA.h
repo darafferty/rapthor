@@ -8,16 +8,11 @@
 #include <complex>
 
 #include "idg-common.h"
-namespace cu {
-class DeviceMemory;
-class HostMemory;
-class UnifiedMemory;
-class Context;
-};  // namespace cu
 
-namespace cufft {
-class C2C_2D;
-};  // namespace cufft
+namespace cu {
+class HostMemory;
+class DeviceMemory;
+}  // namespace cu
 
 namespace idg {
 namespace kernel {
@@ -30,21 +25,18 @@ namespace proxy {
 namespace cuda {
 class CUDA : public Proxy {
  public:
-  CUDA(ProxyInfo info);
+  CUDA();
 
   ~CUDA();
 
  public:
   std::unique_ptr<auxiliary::Memory> allocate_memory(size_t bytes) override;
 
-  void print_compiler_flags();
+  void print_device();
 
-  void print_devices();
+  idg::kernel::cuda::InstanceCUDA& get_device() const;
 
-  unsigned int get_num_devices() const;
-  idg::kernel::cuda::InstanceCUDA& get_device(unsigned int i) const;
-
-  static ProxyInfo default_info();
+  void set_context() const;
 
   /*
    * Beam
@@ -60,7 +52,7 @@ class CUDA : public Proxy {
       aocommon::xt::Span<std::complex<float>, 4>& average_beam) override;
 
  protected:
-  void init_devices();
+  void init_device();
 
   std::unique_ptr<pmt::Pmt> power_meter_;
 
@@ -92,13 +84,6 @@ class CUDA : public Proxy {
    */
   void init_buffers_wtiling(unsigned int subgrid_size);
   void free_buffers_wtiling();
-
-  unsigned int plan_tile_fft(unsigned int nr_polarizations,
-                             unsigned int nr_tiles_batch,
-                             const unsigned int w_padded_tile_size,
-                             const cu::Context& context,
-                             const size_t free_memory,
-                             std::unique_ptr<cufft::C2C_2D>& fft) const;
 
   size_t bytes_required_wtiling(const WTileUpdateSet& wtile_set,
                                 const int nr_polarizations,
@@ -149,8 +134,10 @@ class CUDA : public Proxy {
   } m_buffers_wtiling;
 
  private:
-  ProxyInfo& mInfo;
-  std::vector<std::unique_ptr<kernel::cuda::InstanceCUDA>> devices;
+  void free_host_memory();
+
+  std::unique_ptr<kernel::cuda::InstanceCUDA> device_;
+  std::vector<std::unique_ptr<cu::HostMemory>> h_memory_;
 };
 }  // namespace cuda
 }  // end namespace proxy

@@ -3,14 +3,15 @@
 
 #include "GenericOptimized.h"
 
-#include <cuda.h>
+#include <cudawrappers/cu.hpp>
 
 #include <algorithm>  // max_element
 #include <mutex>
 #include <csignal>
 
 #include "InstanceCUDA.h"
-#include "kernels/KernelGridder.cuh"
+
+#include "kernels/KernelGridder.h"
 
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
@@ -22,7 +23,7 @@ namespace proxy {
 namespace hybrid {
 
 // Constructor
-GenericOptimized::GenericOptimized() : CUDA(default_info()) {
+GenericOptimized::GenericOptimized() : CUDA() {
 #if defined(DEBUG)
   std::cout << "GenericOptimized::" << __func__ << std::endl;
 #endif
@@ -76,8 +77,8 @@ std::unique_ptr<Plan> GenericOptimized::make_plan(
     options.max_nr_channels_per_subgrid =
         options.max_nr_channels_per_subgrid
             ? min(options.max_nr_channels_per_subgrid,
-                  KernelGridder::block_size_x)
-            : KernelGridder::block_size_x;
+                  KernelGridder::kBlockSizeX)
+            : KernelGridder::kBlockSizeX;
     const size_t grid_size = get_grid().shape(2);
     assert(get_grid().shape(3) == grid_size);
     return std::unique_ptr<Plan>(

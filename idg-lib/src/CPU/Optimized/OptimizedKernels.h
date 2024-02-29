@@ -12,6 +12,7 @@ namespace kernel {
 namespace cpu {
 
 class OptimizedKernels : public InstanceCPU {
+ public:
   /*
    * Main
    */

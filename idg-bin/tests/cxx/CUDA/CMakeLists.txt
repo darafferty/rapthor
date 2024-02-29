@@ -3,7 +3,8 @@
 
 project(tests-cuda)
 
-set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cuda)
+set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-cuda cudawrappers::cu)
 
 add_subdirectory(Generic)
 add_subdirectory(wtiling)
+add_subdirectory(Kernels)

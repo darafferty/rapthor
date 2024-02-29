@@ -4,7 +4,8 @@
 project(hybrid-cuda-generic-optimized)
 
 # Set headers
-include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
+include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDAToolkit_INCLUDE_DIRS}
+                    ${FFTW3_INCLUDE_DIR})
 
 # Set headers
 set(${PROJECT_NAME}_headers GenericOptimized.h GenericOptimizedC.h)

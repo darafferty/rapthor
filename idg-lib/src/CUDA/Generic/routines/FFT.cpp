@@ -1,3 +1,5 @@
+#include <cudawrappers/cu.hpp>
+
 #include "../Generic.h"
 #include "InstanceCUDA.h"
 
@@ -21,14 +23,13 @@ void Generic::do_transform(DomainAtoDomainB direction) {
   const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
 
   // Load CUDA objects
-  InstanceCUDA& device = get_device(0);
+  InstanceCUDA& device = get_device();
   cu::Stream& stream = device.get_execute_stream();
-  const cu::Context& context = device.get_context();
 
   // In case W-Tiling is disabled, d_grid_ is not allocated yet
   if (!m_disable_wtiling) {
     assert(!d_grid_);
-    d_grid_.reset(new cu::DeviceMemory(context, sizeof_grid));
+    d_grid_.reset(new cu::DeviceMemory(sizeof_grid, CU_MEMORYTYPE_DEVICE));
     stream.memcpyHtoDAsync(*d_grid_, get_grid().data(), sizeof_grid);
   }
 

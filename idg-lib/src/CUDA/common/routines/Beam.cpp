@@ -1,3 +1,5 @@
+#include <cudawrappers/cu.hpp>
+
 #include "../CUDA.h"
 #include "../InstanceCUDA.h"
 
@@ -28,8 +30,7 @@ void CUDA::do_compute_avg_beam(
   assert(average_beam.shape(1) == subgrid_size);
   const size_t nr_polarizations = 4;
 
-  InstanceCUDA& device = get_device(0);
-  cu::Context& context = device.get_context();
+  InstanceCUDA& device = get_device();
 
   // Performance reporting
   get_report()->initialize();
@@ -40,14 +41,15 @@ void CUDA::do_compute_avg_beam(
   const size_t sizeof_baselines = baselines.size() * sizeof(*baselines.data());
   const size_t sizeof_aterm_offsets =
       aterm_offsets.size() * sizeof(*aterm_offsets.data());
-  cu::DeviceMemory d_aterms(context, sizeof_aterms);
-  cu::DeviceMemory d_baselines(context, sizeof_baselines);
-  cu::DeviceMemory d_aterm_offsets(context, sizeof_aterm_offsets);
+  const size_t sizeof_average_beam =
+      average_beam.size() * sizeof(std::complex<double>);
+  cu::DeviceMemory d_aterms(sizeof_aterms, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_baselines(sizeof_baselines, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_aterm_offsets(sizeof_aterm_offsets, CU_MEMORYTYPE_DEVICE);
   // The average beam is constructed in double-precision on the device.
   // After all baselines are processed (i.e. all contributions are added),
   // the data is copied to the host and there converted to single-precision.
-  cu::DeviceMemory d_average_beam(
-      context, average_beam.size() * sizeof(std::complex<double>));
+  cu::DeviceMemory d_average_beam(sizeof_average_beam, CU_MEMORYTYPE_DEVICE);
 
   // Find jobsize given the memory requirements for uvw and weights
   int jobsize = baselines.size() / 2;
@@ -73,9 +75,11 @@ void CUDA::do_compute_avg_beam(
 
   // Allocate device memory for uvw and weights
   std::array<cu::DeviceMemory, 2> d_uvw_{
-      {{context, sizeof_uvw}, {context, sizeof_uvw}}};
+      {cu::DeviceMemory(sizeof_uvw, CU_MEMORYTYPE_DEVICE),
+       cu::DeviceMemory(sizeof_uvw, CU_MEMORYTYPE_DEVICE)}};
   std::array<cu::DeviceMemory, 2> d_weights_{
-      {{context, sizeof_weights}, {context, sizeof_weights}}};
+      {cu::DeviceMemory(sizeof_weights, CU_MEMORYTYPE_DEVICE),
+       cu::DeviceMemory(sizeof_weights, CU_MEMORYTYPE_DEVICE)}};
 
   // Initialize job data
   struct JobData {
@@ -97,10 +101,7 @@ void CUDA::do_compute_avg_beam(
   }
 
   // Events
-  std::vector<std::unique_ptr<cu::Event>> inputCopied;
-  for (unsigned bl = 0; bl < nr_baselines; bl += jobsize) {
-    inputCopied.emplace_back(new cu::Event(context));
-  }
+  std::vector<cu::Event> inputCopied(nr_baselines / jobsize);
 
   // Load streams
   cu::Stream& htodstream = device.get_htod_stream();
@@ -114,13 +115,13 @@ void CUDA::do_compute_avg_beam(
                              sizeof_aterm_offsets);
 
   // Initialize average beam
-  d_average_beam.zero(htodstream);
+  htodstream.zero(d_average_beam, sizeof_average_beam);
 
   for (unsigned int job_id = 0; job_id < jobs.size(); job_id++) {
     // Id for double-buffering
-    unsigned local_id = job_id % 2;
-    unsigned job_id_next = job_id + 1;
-    unsigned local_id_next = (local_id + 1) % 2;
+    const unsigned local_id = job_id % 2;
+    const unsigned job_id_next = job_id + 1;
+    const unsigned local_id_next = (local_id + 1) % 2;
 
     auto& job = jobs[job_id];
     cu::DeviceMemory& d_uvw = d_uvw_[local_id];
@@ -134,7 +135,7 @@ void CUDA::do_compute_avg_beam(
           job.current_nr_baselines, nr_timesteps, nr_channels);
       htodstream.memcpyHtoDAsync(d_uvw, job.uvw_ptr, sizeof_uvw);
       htodstream.memcpyHtoDAsync(d_weights, job.weights_ptr, sizeof_weights);
-      htodstream.record(*inputCopied[job_id]);
+      htodstream.record(inputCopied[job_id]);
     }
 
     // Copy input for next job (if any)
@@ -149,11 +150,11 @@ void CUDA::do_compute_avg_beam(
       htodstream.memcpyHtoDAsync(d_uvw_next, job_next.uvw_ptr, sizeof_uvw);
       htodstream.memcpyHtoDAsync(d_weights_next, job_next.weights_ptr,
                                  sizeof_weights);
-      htodstream.record(*inputCopied[job_id_next]);
+      htodstream.record(inputCopied[job_id_next]);
     }
 
     // Wait for input to be copied
-    executestream.waitEvent(*inputCopied[job_id]);
+    executestream.wait(inputCopied[job_id]);
 
     // Launch kernel
     device.launch_average_beam(job.current_nr_baselines, nr_antennas,
@@ -169,9 +170,9 @@ void CUDA::do_compute_avg_beam(
   Tensor<std::complex<double>, 4> average_beam_double =
       allocate_tensor<std::complex<double>, 4>(
           {subgrid_size, subgrid_size, 4, 4});
-  dtohstream.memcpyDtoH(average_beam_double.Span().data(), d_average_beam,
-                        average_beam_double.Span().size() *
-                            sizeof(*average_beam_double.Span().data()));
+  dtohstream.memcpyDtoHAsync(average_beam_double.Span().data(), d_average_beam,
+                             average_beam_double.Span().size() *
+                                 sizeof(*average_beam_double.Span().data()));
 
 // Convert to floating-point
 #pragma omp parallel for

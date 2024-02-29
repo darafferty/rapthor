@@ -17,8 +17,7 @@ __global__ void kernel_splitter(
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     float2*         __restrict__ subgrid,
-    const float2*   __restrict__ grid,
-    const bool                   enable_tiling)
+    const float2*   __restrict__ grid)
 {
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -62,9 +61,7 @@ __global__ void kernel_splitter(
             #pragma unroll 4
             for (int pol = 0; pol < nr_polarizations; pol++) {
                 int pol_src = index_pol[pol];
-                long src_idx = enable_tiling ?
-                    index_grid_tiling(nr_polarizations, TILE_SIZE_GRID, grid_size, pol_src, y_src, x_src) :
-                    index_grid_3d(grid_size, pol_src, y_src, x_src);
+                long src_idx = index_grid_3d(grid_size, pol_src, y_src, x_src);
                 long dst_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_dst, x_dst);
                 float2 value = grid[src_idx];
                 value = negative_w ? conj(value) : value;

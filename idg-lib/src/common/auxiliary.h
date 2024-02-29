@@ -127,16 +127,16 @@ class Memory {
   virtual ~Memory() {}
   Memory(const Memory&) = delete;
   Memory(Memory&&) = delete;
+  Memory(void* ptr, size_t size) : ptr_(ptr), size_(size) {}
   Memory& operator=(const Memory&) = delete;
   Memory& operator=(Memory&&) = delete;
 
-  void* data() { return ptr_; };
+  virtual void* data() { return ptr_; };
   size_t size() { return size_; };
   virtual void zero() { std::fill_n(static_cast<char*>(data()), size(), 0); };
 
  protected:
   explicit Memory(size_t size) : size_(size) {}
-  Memory(void* ptr, size_t size) : ptr_(ptr) {}
   void set(void* ptr) { ptr_ = ptr; }
 
  private:
