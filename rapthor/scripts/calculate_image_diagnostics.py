@@ -7,7 +7,7 @@ from argparse import RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, read_ds9_region_file, make_wcs
+from rapthor.lib.facet import SquareFacet, read_ds9_region_file, make_wcs, radec2xy
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 import casacore.tables as pt
@@ -51,7 +51,7 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
     facet_dec = []
     facet_names = []
     for facet in facets:
-        patches.append(facet.get_matplotlib_patch(field_pos=(field_ra, field_dec)))
+        patches.append(facet.get_matplotlib_patch(reference_pos=(field_ra, field_dec)))
         ra_offsets.append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
         dec_offsets.append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
         facet_ra.append(facet.ra)
@@ -71,6 +71,13 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
     DecAxis.set_axislabel('Dec', minpad=0.75)
     DecAxis.set_major_formatter('dd:mm:ss')
     ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
+
+    # Plot the offsets
+    x, y = radec2xy(facet_ra, facet_dec, wcs)
+    x_offsets = np.array(ra_offsets) / wcs.wcs.cdelt[0]
+    y_offsets = np.array(dec_offsets) / wcs.wcs.cdelt[0]
+    plt.quiver(x, y, x_offsets, y_offsets, units='xy', angles='xy', scale=1.0, color='red')
+    plt.savefig(output_file, format='pdf')
 
 
 def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux'):
@@ -97,10 +104,10 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux')
                                      catalog['DEC'], catalog[flux_colname]):
         out_lines.append(f'{name}, POINT, {ra}, {dec}, {flux}, \n')
 
-    skymodel_path = tempfile.NamedTemporaryFile()
-    with open(skymodel_path, 'w') as f:
+    skymodel_file = tempfile.NamedTemporaryFile()
+    with open(skymodel_file.name, 'w') as f:
         f.writelines(out_lines)
-    skymodel = lsmtool.load(skymodel_path)
+    skymodel = lsmtool.load(skymodel_file.name)
 
     return skymodel
 
@@ -220,7 +227,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         catalog = Table.read(input_catalog, format='fits')
         obs = obs_list[beam_ind]
         phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
-        coords_comp = SkyCoord(ra=catalog['Ra'], dec=catalog['Dec'])
+        coords_comp = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
         separation = phase_center.separation(coords_comp)
         sec_el = 1.0 / np.sin(obs.mean_el_rad)
         fwhm_deg = 1.1 * ((3.0e8 / img_true_sky.freq) / obs.diam) * 180 / np.pi * sec_el
@@ -231,11 +238,13 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         # Convert the filtered catalog to a minimal sky model for use with LSMTool
         # and do the comparison
         s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
+        s_comp_photometry.group('every')
         min_number = 10
         if len(s_pybdsf) >= min_number:
             result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
                                       excludeMultiple=True, make_plots=True)
-            cwl_output.update(result)
+            if result is not None:
+                cwl_output.update(result)
 
     # Do the astrometry check
     max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
@@ -270,6 +279,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     # Loop over the facets, performing the astrometry checks for each
     if astrometry_comparison_skymodel:
         s_comp_astrometry = lsmtool.load(astrometry_comparison_skymodel)
+        s_comp_astrometry.group('every')
     else:
         s_comp_astrometry = None
     astrometry_diagnostics = {'facet_name': [],
@@ -299,7 +309,10 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     if len(astrometry_diagnostics['facet_name']):
         with open(output_root+'.astrometry_offsets.json', 'w') as fp:
             json.dump(astrometry_diagnostics, fp)
-        plot_astrometry_offsets(astrometry_diagnostics, facet_region_file, output_root+'.astrometry_offsets.png')
+        obs = obs_list[beam_ind]
+        ra = obs.ra
+        dec = obs.dec
+        plot_astrometry_offsets(facets, ra, dec, output_root+'.astrometry_offsets.pdf')
 
         # Calculate mean offsets
         mean_astrometry_diagnostics = {'meanRAOffsetDeg': np.mean(astrometry_diagnostics['meanRAOffsetDeg']),

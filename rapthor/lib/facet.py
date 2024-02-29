@@ -99,6 +99,7 @@ class Facet(object):
                                        radius=min(max_search_cone_radius, self.size/2),
                                        overwrite=True, source='PANSTARRS')
                 skymodel = lsmtool.load(fp.name)
+                skymodel.group('every')
         except IOError:
             # Comparison catalog not downloaded successfully
             skymodel = lsmtool.makeEmptyTable()
