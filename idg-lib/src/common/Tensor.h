@@ -15,6 +15,10 @@ class Tensor {
       : span_(aocommon::xt::CreateSpan<T, Dimensions>(
             nullptr, std::array<size_t, Dimensions>{})) {}
 
+  Tensor(T* ptr)
+      : span_(aocommon::xt::CreateSpan<T, Dimensions>(
+            ptr, std::array<size_t, Dimensions>{})) {}
+
   Tensor(std::unique_ptr<auxiliary::Memory> memory,
          const std::array<size_t, Dimensions>& shape)
       : memory_(std::move(memory)),

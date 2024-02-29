@@ -1,7 +1,7 @@
 # Copyright (C) 2020 ASTRON (Netherlands Institute for Radio Astronomy)
 # SPDX-License-Identifier: GPL-3.0-or-later
 
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.17)
 
 set(IDG_VERSION "1.2.0")
 if(IDG_VERSION MATCHES "^([0-9]+)\\.([0-9]+)\\.([0-9]+)")

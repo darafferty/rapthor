@@ -17,7 +17,7 @@ namespace cuda {
 class Generic : public CUDA {
  public:
   // Constructor
-  Generic(ProxyInfo info = default_info());
+  Generic();
 
   // Destructor
   ~Generic();

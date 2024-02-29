@@ -17,8 +17,7 @@ __global__ void kernel_adder(
     const int                    subgrid_size,
     const Metadata* __restrict__ metadata,
     const float2*   __restrict__ subgrid,
-          float2*   __restrict__ grid,
-    const bool                   enable_tiling)
+          float2*   __restrict__ grid)
 {
     int tidx = threadIdx.x;
     int tidy = threadIdx.y;
@@ -65,9 +64,7 @@ __global__ void kernel_adder(
             #pragma unroll 4
             for (int pol = 0; pol < nr_polarizations; pol++) {
                 int pol_dst = index_pol[pol];
-                long dst_idx = enable_tiling ?
-                    index_grid_tiling(nr_polarizations, TILE_SIZE_GRID, grid_size, pol_dst, y_dst, x_dst) :
-                    index_grid_3d(grid_size, pol_dst, y_dst, x_dst);
+                long dst_idx = index_grid_3d(grid_size, pol_dst, y_dst, x_dst);
                 long src_idx = index_subgrid(nr_polarizations, subgrid_size, s, pol, y_src, x_src);
                 float2 value = phasor * subgrid[src_idx];
                 value = negative_w ? conj(value) : value;

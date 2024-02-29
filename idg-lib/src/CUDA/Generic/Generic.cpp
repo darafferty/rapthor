@@ -3,9 +3,11 @@
 
 #include <algorithm>  // max_element
 
+#include <cudawrappers/cu.hpp>
+
 #include "Generic.h"
 #include "InstanceCUDA.h"
-#include "kernels/KernelGridder.cuh"
+#include "kernels/KernelGridder.h"
 
 using namespace idg::kernel::cuda;
 
@@ -14,7 +16,7 @@ namespace proxy {
 namespace cuda {
 
 // Constructor
-Generic::Generic(ProxyInfo info) : CUDA(info) {
+Generic::Generic() : CUDA() {
 #if defined(DEBUG)
   std::cout << "Generic::" << __func__ << std::endl;
 #endif
@@ -78,18 +80,16 @@ void Generic::do_degridding(
 void Generic::set_grid(aocommon::xt::Span<std::complex<float>, 4>& grid) {
   const size_t nr_w_layers = grid.shape(0);
   assert(nr_w_layers == 1);
-  const size_t nr_polarizations = grid.shape(1);
   const size_t grid_size = grid.shape(2);
   assert(grid.shape(3) == grid_size);
   const size_t sizeof_grid = grid.size() * sizeof(*grid.data());
 
   CUDA::set_grid(grid);
-  cu::Context& context = get_device(0).get_context();
   if (m_disable_wtiling) {
-    InstanceCUDA& device = get_device(0);
+    InstanceCUDA& device = get_device();
     cu::Stream& htodstream = device.get_htod_stream();
-    d_grid_.reset(new cu::DeviceMemory(context, sizeof_grid));
-    htodstream.memcpyHtoD(*d_grid_, grid.data(), sizeof_grid);
+    d_grid_.reset(new cu::DeviceMemory(sizeof_grid, CU_MEMORYTYPE_DEVICE));
+    htodstream.memcpyHtoDAsync(*d_grid_, grid.data(), sizeof_grid);
   }
 }
 
@@ -102,10 +102,10 @@ aocommon::xt::Span<std::complex<float>, 4>& Generic::get_final_grid() {
   assert(get_grid().shape(3) == grid_size);
 
   if (m_disable_wtiling) {
-    InstanceCUDA& device = get_device(0);
+    InstanceCUDA& device = get_device();
     cu::Stream& dtohstream = device.get_dtoh_stream();
     const size_t sizeof_grid = get_grid().size() * sizeof(*get_grid().data());
-    dtohstream.memcpyDtoH(get_grid().data(), *d_grid_, sizeof_grid);
+    dtohstream.memcpyDtoHAsync(get_grid().data(), *d_grid_, sizeof_grid);
   }
   return get_grid();
 }
@@ -125,8 +125,8 @@ std::unique_ptr<Plan> Generic::make_plan(
     options.max_nr_channels_per_subgrid =
         options.max_nr_channels_per_subgrid
             ? min(options.max_nr_channels_per_subgrid,
-                  KernelGridder::block_size_x)
-            : KernelGridder::block_size_x;
+                  KernelGridder::kBlockSizeX)
+            : KernelGridder::kBlockSizeX;
     return std::unique_ptr<Plan>(
         new Plan(kernel_size, m_cache_state.subgrid_size, grid_size,
                  m_cache_state.cell_size, m_cache_state.shift, frequencies, uvw,

@@ -110,7 +110,6 @@ def tune():
         aterms,
         aterm_indices,
         metadata,
-        avg_aterm,
         subgrids,
     ]
 

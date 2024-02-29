@@ -3,10 +3,9 @@
 
 #include <string>
 
-#include <cuda.h>
+#include <cudawrappers/cu.hpp>
 
 #include "CUDA.h"
-
 #include "InstanceCUDA.h"
 
 using namespace idg::kernel::cuda;
@@ -14,16 +13,14 @@ using namespace idg::kernel::cuda;
 namespace idg {
 namespace proxy {
 namespace cuda {
-CUDA::CUDA(ProxyInfo info)
-    : power_meter_(pmt::get_power_meter(pmt::sensor_host)), mInfo(info) {
+CUDA::CUDA() : power_meter_(pmt::get_power_meter(pmt::sensor_host)) {
 #if defined(DEBUG)
   std::cout << "CUDA::" << __func__ << std::endl;
 #endif
 
   cu::init();
-  init_devices();
-  print_devices();
-  print_compiler_flags();
+  init_device();
+  print_device();
 };
 
 CUDA::~CUDA() {
@@ -31,74 +28,30 @@ CUDA::~CUDA() {
   // contexts are free'ed, hence the explicit calls here.
   free_buffers_wtiling();
   free_memory();
+  free_host_memory();
 }
 
-void CUDA::init_devices() {
-  // Get list of all device numbers
+void CUDA::init_device() {
   char* char_cuda_device = getenv("CUDA_DEVICE");
-  std::vector<int> device_numbers;
-  if (!char_cuda_device) {
-    // Use device 0 if no CUDA devices were specified
-    device_numbers.push_back(0);
-  } else {
-    device_numbers = idg::auxiliary::split_int(char_cuda_device, ",");
-  }
-
-  // Create a device instance for every device
-  for (unsigned i = 0; i < device_numbers.size(); i++) {
-    devices.emplace_back(new InstanceCUDA(mInfo, device_numbers[i]));
-  }
+  int cuda_device = char_cuda_device ? atoi(char_cuda_device) : 0;
+  device_ = std::make_unique<InstanceCUDA>(cuda_device);
 }
 
-void CUDA::print_devices() {
-  std::cout << "Devices: " << std::endl;
-  for (std::unique_ptr<InstanceCUDA>& device : devices) {
-    std::cout << *device;
-  }
-  std::cout << std::endl;
+void CUDA::print_device() {
+  std::cout << "Device: " << std::endl << *device_ << std::endl;
 }
 
-void CUDA::print_compiler_flags() {
-  std::cout << "Compiler flags: " << std::endl;
-  for (std::unique_ptr<InstanceCUDA>& device : devices) {
-    std::cout << device->get_compiler_flags() << std::endl;
-  }
-  std::cout << std::endl;
+InstanceCUDA& CUDA::get_device() const {
+  set_context();
+  return *device_;
 }
 
-unsigned int CUDA::get_num_devices() const { return devices.size(); }
-
-InstanceCUDA& CUDA::get_device(unsigned int i) const { return *(devices[i]); }
-
-ProxyInfo CUDA::default_info() {
-#if defined(DEBUG)
-  std::cout << "CUDA::" << __func__ << std::endl;
-#endif
-
-  std::string srcdir = auxiliary::get_lib_dir() + "/idg-cuda";
-
-#if defined(DEBUG)
-  std::cout << "Searching for source files in: " << srcdir << std::endl;
-#endif
-
-  // Create temp directory
-  char _tmpdir[] = "/tmp/idg-XXXXXX";
-  char* tmpdir = mkdtemp(_tmpdir);
-#if defined(DEBUG)
-  std::cout << "Temporary files will be stored in: " << tmpdir << std::endl;
-#endif
-
-  // Create proxy info
-  ProxyInfo p;
-  p.set_path_to_src(srcdir);
-  p.set_path_to_lib(tmpdir);
-
-  return p;
-}  // end default_info
+void CUDA::set_context() const { device_->get_context().setCurrent(); }
 
 std::unique_ptr<auxiliary::Memory> CUDA::allocate_memory(size_t bytes) {
-  const cu::Context& context = get_device(0).get_context();
-  return std::unique_ptr<auxiliary::Memory>(new cu::HostMemory(context, bytes));
+  set_context();
+  h_memory_.emplace_back(new cu::HostMemory(bytes));
+  return std::make_unique<auxiliary::Memory>(*h_memory_.back(), bytes);
 }
 
 int CUDA::initialize_jobs(
@@ -157,6 +110,8 @@ void CUDA::free_buffers_wtiling() {
   m_buffers_wtiling.h_tiles.reset();
   m_buffers_wtiling.d_patches.clear();
 }
+
+void CUDA::free_host_memory() { h_memory_.clear(); }
 
 }  // end namespace cuda
 }  // end namespace proxy

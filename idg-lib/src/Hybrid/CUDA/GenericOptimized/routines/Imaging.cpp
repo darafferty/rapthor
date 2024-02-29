@@ -1,3 +1,6 @@
+#include <cudawrappers/cu.hpp>
+#include <cudawrappers/nvtx.hpp>
+
 #include "../GenericOptimized.h"
 #include "InstanceCUDA.h"
 
@@ -20,8 +23,7 @@ void GenericOptimized::run_imaging(
     const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 4>& aterms,
     const aocommon::xt::Span<unsigned int, 1>& aterm_offsets,
     const aocommon::xt::Span<float, 2>& taper, ImagingMode mode) {
-  InstanceCUDA& device = get_device(0);
-  const cu::Context& context = device.get_context();
+  InstanceCUDA& device = get_device();
 
   auto cpuKernels = cpuProxy->get_kernels();
 
@@ -55,11 +57,11 @@ void GenericOptimized::run_imaging(
   const size_t sizeof_aterms = aterms.size() * sizeof(*aterms.data());
   const size_t sizeof_aterm_indices =
       auxiliary::sizeof_aterm_indices(nr_baselines, nr_timesteps);
-  const unsigned int* aterm_indices = plan.get_aterm_indices_ptr();
+  const unsigned int* aterm_indices_ptr = plan.get_aterm_indices_ptr();
 
   // Configuration
-  const unsigned nr_devices = get_num_devices();
-  int device_id = 0;  // only one GPU is used
+  const unsigned nr_devices = 1;
+  const int device_id = 0;
 
   // Performance measurements
   get_report()->initialize(nr_channels, subgrid_size, grid_size);
@@ -74,17 +76,17 @@ void GenericOptimized::run_imaging(
   cu::Stream& dtohstream = device.get_dtoh_stream();
 
   // Allocate device memory
-  cu::DeviceMemory d_wavenumbers(context, sizeof_wavenumbers);
-  cu::DeviceMemory d_taper(context, sizeof_taper);
-  cu::DeviceMemory d_aterms(context, sizeof_aterms);
-  cu::DeviceMemory d_aterm_indices(context, sizeof_aterm_indices);
+  cu::DeviceMemory d_wavenumbers(sizeof_wavenumbers, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_taper(sizeof_taper, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_aterms(sizeof_aterms, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_aterm_indices(sizeof_aterm_indices, CU_MEMORYTYPE_DEVICE);
 
   // Initialize device memory
   htodstream.memcpyHtoDAsync(d_wavenumbers, wavenumbers.Span().data(),
                              sizeof_wavenumbers);
   htodstream.memcpyHtoDAsync(d_taper, taper.data(), sizeof_taper);
   htodstream.memcpyHtoDAsync(d_aterms, aterms.data(), sizeof_aterms);
-  htodstream.memcpyHtoDAsync(d_aterm_indices, aterm_indices,
+  htodstream.memcpyHtoDAsync(d_aterm_indices, aterm_indices_ptr,
                              sizeof_aterm_indices);
 
   // When degridding, d_avg_aterm is not used and remains a null pointer.
@@ -96,14 +98,11 @@ void GenericOptimized::run_imaging(
   if (mode == ImagingMode::mode_gridding) {
     size_t sizeof_avg_aterm_correction =
         m_avg_aterm_correction.size() * sizeof(std::complex<float>);
-    d_avg_aterm.reset(
-        new cu::DeviceMemory(context, sizeof_avg_aterm_correction));
+    d_avg_aterm.reset(new cu::DeviceMemory(sizeof_avg_aterm_correction,
+                                           CU_MEMORYTYPE_DEVICE));
     htodstream.memcpyHtoDAsync(*d_avg_aterm, m_avg_aterm_correction.data(),
                                sizeof_avg_aterm_correction);
   }
-
-  // Plan subgrid fft
-  device.plan_subgrid_fft(subgrid_size, nr_polarizations);
 
   // Get the available device memory, reserving some
   // space for the w-padded tile FFT plan which is allocated
@@ -122,7 +121,7 @@ void GenericOptimized::run_imaging(
                       bytes_free, plan, visibilities, uvw, jobs);
 
   // Allocate device memory for jobs
-  int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
+  const int max_nr_subgrids = plan.get_max_nr_subgrids(jobsize);
   size_t sizeof_visibilities = auxiliary::sizeof_visibilities(
       jobsize, nr_timesteps, nr_channels, nr_correlations);
   size_t sizeof_uvw = auxiliary::sizeof_uvw(jobsize, nr_timesteps);
@@ -131,35 +130,37 @@ void GenericOptimized::run_imaging(
   size_t sizeof_metadata = auxiliary::sizeof_metadata(max_nr_subgrids);
 
   std::array<cu::DeviceMemory, 2> d_visibilities_{
-      {{context, sizeof_visibilities}, {context, sizeof_visibilities}}};
+      cu::DeviceMemory(sizeof_visibilities, CU_MEMORYTYPE_DEVICE),
+      cu::DeviceMemory(sizeof_visibilities, CU_MEMORYTYPE_DEVICE)};
   std::array<cu::DeviceMemory, 2> d_uvw_{
-      {{context, sizeof_uvw}, {context, sizeof_uvw}}};
+      cu::DeviceMemory(sizeof_uvw, CU_MEMORYTYPE_DEVICE),
+      cu::DeviceMemory(sizeof_uvw, CU_MEMORYTYPE_DEVICE)};
   std::array<cu::DeviceMemory, 2> d_subgrids_{
-      {{context, sizeof_subgrids}, {context, sizeof_subgrids}}};
+      cu::DeviceMemory(sizeof_subgrids, CU_MEMORYTYPE_DEVICE),
+      cu::DeviceMemory(sizeof_subgrids, CU_MEMORYTYPE_DEVICE)};
   std::array<cu::DeviceMemory, 2> d_metadata_{
-      {{context, sizeof_metadata}, {context, sizeof_metadata}}};
+      cu::DeviceMemory(sizeof_metadata, CU_MEMORYTYPE_DEVICE),
+      cu::DeviceMemory(sizeof_metadata, CU_MEMORYTYPE_DEVICE)};
+
+  // Plan subgrid fft
+  std::unique_ptr<KernelFFT> fft_kernel =
+      device.plan_batched_fft(subgrid_size, max_nr_subgrids * nr_polarizations);
 
   // Page-locked host memory
-  cu::RegisteredMemory h_metadata(context, (void*)plan.get_metadata_ptr(),
-                                  plan.get_sizeof_metadata());
-  if (!m_disable_wtiling && !m_disable_wtiling_gpu) {
-    sizeof_subgrids = 0;
-  }
-  cu::HostMemory h_subgrids(context, sizeof_subgrids);
+  cu::HostMemory h_metadata(
+      const_cast<void*>(reinterpret_cast<const void*>(plan.get_metadata_ptr())),
+      plan.get_sizeof_metadata());
+  cu::HostMemory h_subgrids(!m_disable_wtiling && !m_disable_wtiling_gpu
+                                ? 0
+                                : auxiliary::sizeof_subgrids(max_nr_subgrids,
+                                                             subgrid_size,
+                                                             nr_correlations));
 
   // Events
-  std::vector<cu::Event> inputCopied;
-  std::vector<cu::Event> gpuFinished;
-  std::vector<cu::Event> outputCopied;  // Only used when degridding.
-  unsigned int nr_jobs = (nr_baselines + jobsize - 1) / jobsize;
-  inputCopied.reserve(nr_jobs);
-  gpuFinished.reserve(nr_jobs);
-  outputCopied.reserve(nr_jobs);
-  for (unsigned int i = 0; i < nr_jobs; i++) {
-    inputCopied.emplace_back(context);
-    gpuFinished.emplace_back(context);
-    outputCopied.emplace_back(context);
-  }
+  const unsigned int nr_jobs = (nr_baselines + jobsize - 1) / jobsize;
+  std::vector<cu::Event> inputCopied(nr_jobs);
+  std::vector<cu::Event> gpuFinished(nr_jobs);
+  std::vector<cu::Event> outputCopied(nr_jobs);  // Only used when degridding.
 
   // Start performance measurement
   startStates[device_id] = device.measure();
@@ -168,18 +169,18 @@ void GenericOptimized::run_imaging(
   // Iterate all jobs
   for (unsigned job_id = 0; job_id < jobs.size(); job_id++) {
     // Id for double-buffering
-    unsigned local_id = job_id % 2;
-    unsigned job_id_next = job_id + 1;
-    unsigned local_id_next = (local_id + 1) % 2;
+    const unsigned local_id = job_id % 2;
+    const unsigned job_id_next = job_id + 1;
+    const unsigned local_id_next = (local_id + 1) % 2;
 
     // Get parameters for current job
     unsigned int time_offset_current = jobs[job_id].current_time_offset;
     unsigned int nr_baselines_current = jobs[job_id].current_nr_baselines;
     unsigned int nr_subgrids_current = jobs[job_id].current_nr_subgrids;
-    auto metadata_ptr = jobs[job_id].metadata_ptr;
-    auto uvw_ptr = jobs[job_id].uvw_ptr;
-    auto visibilities_ptr = jobs[job_id].visibilities_ptr;
-    auto subgrids_ptr = static_cast<std::complex<float>*>(h_subgrids.data());
+    const Metadata* metadata_ptr = jobs[job_id].metadata_ptr;
+    const UVW<float>* uvw_ptr = jobs[job_id].uvw_ptr;
+    std::complex<float>* visibilities_ptr = jobs[job_id].visibilities_ptr;
+    std::complex<float>* subgrids_ptr = h_subgrids;
 
     // Load memory objects
     cu::DeviceMemory& d_visibilities = d_visibilities_[local_id];
@@ -209,7 +210,7 @@ void GenericOptimized::run_imaging(
       // Wait for previous job to finish before
       // overwriting its input buffers.
       if (job_id_next > 1) {
-        htodstream.waitEvent(gpuFinished[job_id_next - 2]);
+        htodstream.wait(gpuFinished[job_id_next - 2]);
       }
 
       // Load memory objects
@@ -220,9 +221,10 @@ void GenericOptimized::run_imaging(
       // Get parameters for next job
       unsigned int nr_baselines_next = jobs[job_id_next].current_nr_baselines;
       unsigned int nr_subgrids_next = jobs[job_id_next].current_nr_subgrids;
-      auto metadata_ptr_next = jobs[job_id_next].metadata_ptr;
-      auto uvw_ptr_next = jobs[job_id_next].uvw_ptr;
-      auto visibilities_ptr_next = jobs[job_id_next].visibilities_ptr;
+      const Metadata* metadata_ptr_next = jobs[job_id_next].metadata_ptr;
+      const UVW<float>* uvw_ptr_next = jobs[job_id_next].uvw_ptr;
+      std::complex<float>* visibilities_ptr_next =
+          jobs[job_id_next].visibilities_ptr;
 
       // Copy input data to device
       if (mode == ImagingMode::mode_gridding) {
@@ -240,17 +242,19 @@ void GenericOptimized::run_imaging(
     }
 
     // Initialize output buffer to zero
+    const size_t sizeof_subgrids = auxiliary::sizeof_subgrids(
+        nr_subgrids_current, subgrid_size, nr_correlations);
     if (mode == ImagingMode::mode_gridding) {
-      d_subgrids.zero(executestream);
+      executestream.zero(d_subgrids, sizeof_subgrids);
     } else if (mode == ImagingMode::mode_degridding) {
       if (job_id > 1) {
-        executestream.waitEvent(outputCopied[job_id - 2]);
+        executestream.wait(outputCopied[job_id - 2]);
       }
-      d_visibilities.zero(executestream);
+      executestream.zero(d_visibilities, sizeof_visibilities);
     }
 
     // Wait for input to be copied
-    executestream.waitEvent(inputCopied[job_id]);
+    executestream.wait(inputCopied[job_id]);
 
     if (mode == ImagingMode::mode_gridding) {
       // Launch gridder kernel
@@ -261,8 +265,9 @@ void GenericOptimized::run_imaging(
           d_aterm_indices, d_metadata, *d_avg_aterm, d_subgrids);
 
       // Launch FFT
-      device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
-                                nr_polarizations, FourierDomainToImageDomain);
+      device.launch_batched_fft(*fft_kernel, d_subgrids,
+                                nr_subgrids_current * nr_polarizations,
+                                FourierDomainToImageDomain);
 
       // In case of W-Tiling, adder_subgrids_to_wtiles performs scaling of the
       // subgrids, otherwise the scaler kernel needs to be called here.
@@ -274,15 +279,13 @@ void GenericOptimized::run_imaging(
 
       // Copy subgrid to host
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
-        dtohstream.waitEvent(gpuFinished[job_id]);
-        dtohstream.memcpyDtoH(
-            h_subgrids.data(), d_subgrids,
-            auxiliary::sizeof_subgrids(nr_subgrids_current, subgrid_size,
-                                       nr_polarizations));
+        dtohstream.wait(gpuFinished[job_id]);
+        dtohstream.memcpyDtoHAsync(h_subgrids, d_subgrids, sizeof_subgrids);
+        dtohstream.synchronize();
       }
 
       // Run adder kernel
-      cu::Marker marker_adder("run_adder", cu::Marker::blue);
+      nvtx::Marker marker_adder("run_adder", nvtx::Marker::blue);
       marker_adder.start();
 
       if (plan.get_use_wtiles()) {
@@ -312,7 +315,7 @@ void GenericOptimized::run_imaging(
       marker_adder.end();
     } else if (mode == ImagingMode::mode_degridding) {
       // Run splitter kernel
-      cu::Marker marker_splitter("run_splitter", cu::Marker::blue);
+      nvtx::Marker marker_splitter("run_splitter", nvtx::Marker::blue);
       marker_splitter.start();
 
       if (plan.get_use_wtiles()) {
@@ -341,17 +344,15 @@ void GenericOptimized::run_imaging(
 
       if (m_disable_wtiling || m_disable_wtiling_gpu) {
         // Copy subgrids to device
-        htodstream.memcpyHtoD(
-            d_subgrids, subgrids_ptr,
-            auxiliary::sizeof_subgrids(nr_subgrids_current, subgrid_size,
-                                       nr_polarizations));
+        htodstream.memcpyHtoDAsync(d_subgrids, subgrids_ptr, sizeof_subgrids);
       }
 
       marker_splitter.end();
 
       // Launch FFT
-      device.launch_subgrid_fft(d_subgrids, nr_subgrids_current,
-                                nr_polarizations, ImageDomainToFourierDomain);
+      device.launch_batched_fft(*fft_kernel, d_subgrids,
+                                nr_subgrids_current * nr_polarizations,
+                                ImageDomainToFourierDomain);
 
       // Launch degridder kernel
       device.launch_degridder(
@@ -362,7 +363,7 @@ void GenericOptimized::run_imaging(
       executestream.record(gpuFinished[job_id]);
 
       // Copy visibilities to host
-      dtohstream.waitEvent(gpuFinished[job_id]);
+      dtohstream.wait(gpuFinished[job_id]);
       dtohstream.memcpyDtoHAsync(
           visibilities_ptr, d_visibilities,
           auxiliary::sizeof_visibilities(nr_baselines_current, nr_timesteps,
@@ -405,9 +406,6 @@ void GenericOptimized::run_imaging(
     name = &auxiliary::name_degridding;
   }
   get_report()->print_visibilities(*name, total_nr_visibilities);
-
-  // Cleanup
-  device.free_subgrid_fft();
 }
 
 }  // end namespace hybrid

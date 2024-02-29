@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <cstdint>
 #include <cstdlib>
+#include <memory>
 #include <omp.h>
 #include <sys/resource.h>
 #include <unistd.h>

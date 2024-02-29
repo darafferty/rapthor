@@ -1,7 +1,12 @@
 #include <algorithm>
 
+#include <cudawrappers/cu.hpp>
+#include <cudawrappers/nvtx.hpp>
+
 #include "../GenericOptimized.h"
 #include "InstanceCUDA.h"
+
+#include "fftw3.h"
 
 using namespace idg::proxy::cuda;
 using namespace idg::proxy::cpu;
@@ -57,9 +62,8 @@ void GenericOptimized::do_calibrate_init(
   states[0] = power_meter_->Read();
 
   // Load device
-  InstanceCUDA& device = get_device(0);
+  InstanceCUDA& device = get_device();
   device.set_report(get_report());
-  const cu::Context& context = device.get_context();
 
   // Load stream
   cu::Stream& htodstream = device.get_htod_stream();
@@ -101,17 +105,17 @@ void GenericOptimized::do_calibrate_init(
       auxiliary::sizeof_wavenumbers(nr_channels_per_block);
 
   m_calibrate_state.d_metadata.emplace_back(
-      new cu::DeviceMemory(context, sizeof_metadata));
+      new cu::DeviceMemory(sizeof_metadata, CU_MEMORYTYPE_DEVICE));
   m_calibrate_state.d_subgrids.emplace_back(
-      new cu::DeviceMemory(context, sizeof_subgrids));
+      new cu::DeviceMemory(sizeof_subgrids, CU_MEMORYTYPE_DEVICE));
   m_calibrate_state.d_visibilities.emplace_back(
-      new cu::DeviceMemory(context, sizeof_visibilities));
+      new cu::DeviceMemory(sizeof_visibilities, CU_MEMORYTYPE_DEVICE));
   m_calibrate_state.d_weights.emplace_back(
-      new cu::DeviceMemory(context, sizeof_weights));
+      new cu::DeviceMemory(sizeof_weights, CU_MEMORYTYPE_DEVICE));
   m_calibrate_state.d_uvw.emplace_back(
-      new cu::DeviceMemory(context, sizeof_uvw));
+      new cu::DeviceMemory(sizeof_uvw, CU_MEMORYTYPE_DEVICE));
   m_calibrate_state.d_aterm_indices.emplace_back(
-      new cu::DeviceMemory(context, sizeof_aterm_idx));
+      new cu::DeviceMemory(sizeof_aterm_idx, CU_MEMORYTYPE_DEVICE));
 
   const size_t buffer_nr = 0;
   cu::DeviceMemory& d_metadata = *m_calibrate_state.d_metadata[buffer_nr];
@@ -149,9 +153,6 @@ void GenericOptimized::do_calibrate_init(
         WTileUpdateSet wtile_initialize_set =
             plans[antenna_nr][channel_block]->get_wtile_initialize_set();
         if (!m_disable_wtiling_gpu) {
-          // Initialize subgrid FFT
-          // device.plan_subgrid_fft(subgrid_size, nr_polarizations);
-
           // Wait for metadata to be copied
           htodstream.synchronize();
 
@@ -183,7 +184,7 @@ void GenericOptimized::do_calibrate_init(
       // FFT kernel
       cpuKernels->run_subgrid_fft(grid_size, subgrid_size,
                                   nr_subgrids * nr_polarizations, subgrids_ptr,
-                                  CUFFT_FORWARD);
+                                  FFTW_FORWARD);
 
       // Apply taper
       for (size_t i = 0; i < nr_subgrids; i++) {
@@ -223,20 +224,23 @@ void GenericOptimized::do_calibrate_init(
 
   // Initialize wavenumbers
   m_calibrate_state.d_wavenumbers.reset(
-      new cu::DeviceMemory(context, sizeof_wavenumbers));
+      new cu::DeviceMemory(sizeof_wavenumbers, CU_MEMORYTYPE_DEVICE));
 
   // Allocate device memory for l,m,n and phase offset
   const size_t sizeof_lmnp =
       max_nr_subgrids * subgrid_size * subgrid_size * 4 * sizeof(float);
-  m_calibrate_state.d_lmnp.reset(new cu::DeviceMemory(context, sizeof_lmnp));
+  m_calibrate_state.d_lmnp.reset(
+      new cu::DeviceMemory(sizeof_lmnp, CU_MEMORYTYPE_DEVICE));
 
   // Allocate memory for sums (horizontal and vertical)
   const size_t total_nr_timesteps = nr_baselines * nr_timesteps;
   const size_t sizeof_sums = max_nr_terms * nr_correlations *
                              total_nr_timesteps * nr_channels_per_block *
                              sizeof(std::complex<float>);
-  m_calibrate_state.d_sums_x.reset(new cu::DeviceMemory(context, sizeof_sums));
-  m_calibrate_state.d_sums_y.reset(new cu::DeviceMemory(context, sizeof_sums));
+  m_calibrate_state.d_sums_x.reset(
+      new cu::DeviceMemory(sizeof_sums, CU_MEMORYTYPE_DEVICE));
+  m_calibrate_state.d_sums_y.reset(
+      new cu::DeviceMemory(sizeof_sums, CU_MEMORYTYPE_DEVICE));
 }
 
 void GenericOptimized::do_calibrate_update(
@@ -277,12 +281,11 @@ void GenericOptimized::do_calibrate_update(
     get_report()->initialize(nr_channels_per_block, subgrid_size, 0, nr_terms);
   }
 
-  cu::Marker marker("do_calibrate_update");
+  nvtx::Marker marker("do_calibrate_update");
   marker.start();
 
   // Load device
-  InstanceCUDA& device = get_device(0);
-  const cu::Context& context = device.get_context();
+  InstanceCUDA& device = get_device();
 
   // Load streams
   cu::Stream& executestream = device.get_execute_stream();
@@ -310,18 +313,20 @@ void GenericOptimized::do_calibrate_update(
       aterm_derivatives.size() * sizeof(*aterm_derivatives.data());
   const size_t sizeof_hessian = hessian.size() * sizeof(*hessian.data());
   const size_t sizeof_gradient = gradient.size() * sizeof(*gradient.data());
-  cu::DeviceMemory d_aterms(context, sizeof_aterms);
-  cu::DeviceMemory d_aterm_derivatives(context, sizeof_aterm_derivatives);
-  cu::DeviceMemory d_hessian(context, sizeof_hessian);
-  cu::DeviceMemory d_gradient(context, sizeof_gradient);
-  cu::DeviceMemory d_residual(context, sizeof(double));
-  cu::HostMemory h_hessian(context, sizeof_hessian);
-  cu::HostMemory h_gradient(context, sizeof_gradient);
-  cu::HostMemory h_residual(context, sizeof(double));
+  cu::DeviceMemory d_aterms(sizeof_aterms, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_aterm_derivatives(sizeof_aterm_derivatives,
+                                       CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_hessian(sizeof_hessian, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_gradient(sizeof_gradient, CU_MEMORYTYPE_DEVICE);
+  cu::DeviceMemory d_residual(sizeof(double), CU_MEMORYTYPE_DEVICE);
+  cu::HostMemory h_hessian(sizeof_hessian);
+  cu::HostMemory h_gradient(sizeof_gradient);
+  cu::HostMemory h_residual(sizeof(double));
 
   // Events
-  cu::Event inputCopied(context), executeFinished(context),
-      outputCopied(context);
+  cu::Event inputCopied;
+  cu::Event executeFinished;
+  cu::Event outputCopied;
 
   UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
   htodstream.memcpyHtoDAsync(d_uvw, uvw_ptr, sizeof_uvw);
@@ -406,7 +411,7 @@ void GenericOptimized::do_calibrate_update(
     htodstream.record(inputCopied);
 
     // Run calibration update step
-    executestream.waitEvent(inputCopied);
+    executestream.wait(inputCopied);
     const size_t total_nr_timesteps = nr_baselines * nr_timesteps;
     device.launch_calibrate(
         nr_subgrids, grid_size, subgrid_size, image_size, w_step,
@@ -417,26 +422,23 @@ void GenericOptimized::do_calibrate_update(
     executestream.record(executeFinished);
 
     // Copy output to host
-    dtohstream.waitEvent(executeFinished);
-    dtohstream.memcpyDtoHAsync(h_hessian.data(), d_hessian, d_hessian.size());
-    dtohstream.memcpyDtoHAsync(h_gradient.data(), d_gradient,
-                               d_gradient.size());
-    dtohstream.memcpyDtoHAsync(h_residual.data(), d_residual,
-                               d_residual.size());
+    dtohstream.wait(executeFinished);
+    dtohstream.memcpyDtoHAsync(h_hessian, d_hessian, sizeof_hessian);
+    dtohstream.memcpyDtoHAsync(h_gradient, d_gradient, sizeof_gradient);
+    dtohstream.memcpyDtoHAsync(h_residual, d_residual, sizeof(double));
     dtohstream.record(outputCopied);
 
     // Wait for output to finish
     outputCopied.synchronize();
 
     // Copy output on host
-    std::copy_n(static_cast<double*>(h_hessian.data()),
+    std::copy_n(static_cast<double*>(h_hessian),
                 hessian.size() / nr_channel_blocks,
                 &hessian(channel_block, 0, 0, 0));
-    std::copy_n(static_cast<double*>(h_gradient.data()),
+    std::copy_n(static_cast<double*>(h_gradient),
                 gradient.size() / nr_channel_blocks,
                 &gradient(channel_block, 0, 0));
-    std::copy_n(static_cast<double*>(h_residual.data()), 1,
-                &residual(channel_block));
+    std::copy_n(static_cast<double*>(h_residual), 1, &residual(channel_block));
 
     // Performance reporting
     auto nr_visibilities = nr_timesteps * nr_channels_per_block;
@@ -474,7 +476,6 @@ void GenericOptimized::do_calibrate_finish() {
   m_calibrate_state.d_weights.clear();
   m_calibrate_state.d_uvw.clear();
   m_calibrate_state.d_aterm_indices.clear();
-  get_device(0).free_subgrid_fft();
 }
 
 }  // namespace hybrid

@@ -66,8 +66,7 @@ def compare_gridder(device, kernel1, kernel2, stokes_i_only):
         d_aterms,
         d_aterm_indices,
         d_metadata,
-        0,  # average aterm is not used
-        d_subgrids,
+        d_subgrids
     )
 
     arg_types = (
@@ -88,8 +87,7 @@ def compare_gridder(device, kernel1, kernel2, stokes_i_only):
         None,  # aterms
         None,  # aterm_indices
         None,  # metadata
-        ctypes.c_int,  # avg_aterm
-        None,  # subgrid
+        None   # subgrid
     )
 
     # Helper
@@ -105,7 +103,7 @@ def compare_gridder(device, kernel1, kernel2, stokes_i_only):
             0,  # dynamic shared memory
             stream,  # stream
             (arg_values, arg_types),  # kernel arguments
-            0,  # extra (ignore)
+            0  # extra (ignore)
         )
         cuda_check(err)
 
@@ -146,14 +144,16 @@ def test_gridder_default(stokes_i_only):
     print(f"test gridder default {'(Stokes I only)' if stokes_i_only else ''}")
     device, context = cuda_initialize()
     k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
-    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder")
+    compile_options = ["-DBLOCK_SIZE_X=256"]
+    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder", compile_options)
     compare_gridder(device, k1, k2, stokes_i_only)
 
 @pytest.mark.parametrize("stokes_i_only", [False, True])
 def test_gridder_extrapolate(stokes_i_only):
     device, context = cuda_initialize()
     k1 = compile_kernel(device, "KernelGridderReference.cu", "kernel_gridder")
-    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder", ["-DUSE_EXTRAPOLATE"])
+    compile_options = ["-DBLOCK_SIZE_X=256", "-DUSE_EXTRAPOLATE"]
+    k2 = compile_kernel(device, "KernelGridder.cu", "kernel_gridder", compile_options)
     compare_gridder(device, k1, k2, stokes_i_only)
 
 

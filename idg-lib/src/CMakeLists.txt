@@ -132,7 +132,8 @@ if(BUILD_LIB_CUDA)
   add_library(idg-cuda $<TARGET_OBJECTS:common> $<TARGET_OBJECTS:cuda-common>
                        $<TARGET_OBJECTS:cuda-generic>)
 
-  set(LINK_LIBRARIES idg-common CUDA::cuda_driver CUDA::cufft CUDA::nvToolsExt)
+  set(LINK_LIBRARIES idg-common CUDA::cuda_driver CUDA::cufft CUDA::nvToolsExt
+                     CUDA::nvrtc)
 
   target_link_libraries(idg-cuda ${LINK_LIBRARIES})
 

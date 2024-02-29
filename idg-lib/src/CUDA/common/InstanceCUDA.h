@@ -6,39 +6,26 @@
 
 #include <memory>
 
-#include "CU.h"
-#include "CUFFT.h"
+#include "KernelFactory.h"
+#include "kernels/KernelAdder.h"
+#include "kernels/KernelAverageBeam.h"
+#include "kernels/KernelCalibrate.h"
+#include "kernels/KernelDegridder.h"
+#include "kernels/KernelFFT.h"
+#include "kernels/KernelFFTShift.h"
+#include "kernels/KernelGridder.h"
+#include "kernels/KernelScaler.h"
+#include "kernels/KernelSplitter.h"
+#include "kernels/KernelWTiling.h"
 #include "PowerRecord.h"
 
 namespace idg::kernel::cuda {
 
 class InstanceCUDA : public KernelsInstance {
  public:
-  const size_t kTileSizeGrid = 128;
-  const size_t kFftSubgridBatch = 1024;
+  static constexpr size_t kFftBatch = 1024;
 
-  const std::string kNameGridder = "kernel_gridder";
-  const std::string kNameDegridder = "kernel_degridder";
-  const std::string kNameAdder = "kernel_adder";
-  const std::string kNameSplitter = "kernel_splitter";
-  const std::string kNameFft = "kernel_fft";
-  const std::string kNameScaler = "kernel_scaler";
-  const std::string kNnameCalibrateLMNP = "kernel_calibrate_lmnp";
-  const std::string kNameCalibrateSums = "kernel_calibrate_sums";
-  const std::string kNameCalibrateGradient = "kernel_calibrate_gradient";
-  const std::string kNameCalibrateHessian = "kernel_calibrate_hessian";
-  const std::string kNameAverageBeam = "kernel_average_beam";
-  const std::string kNameFftShift = "kernel_fft_shift";
-  const std::string kNameCopyTiles = "kernel_copy_tiles";
-  const std::string kNameApplyPhasor = "kernel_apply_phasor";
-  const std::string kNameSubgridsToWtiles = "kernel_subgrids_to_wtiles";
-  const std::string kNameWtilesToGrid = "kernel_wtiles_to_grid";
-  const std::string kNameSubgridsFromWtiles = "kernel_subgrids_from_wtiles";
-  const std::string kNameWtilesFromGrid = "kernel_wtiles_from_grid";
-  const std::string kNameWtilesToPatch = "kernel_wtiles_to_patch";
-  const std::string kNameWtilesFromPatch = "kernel_wtiles_from_patch";
-
-  InstanceCUDA(ProxyInfo& info, size_t device_id = 0);
+  InstanceCUDA(size_t device_id = 0);
 
   ~InstanceCUDA();
 
@@ -47,8 +34,6 @@ class InstanceCUDA : public KernelsInstance {
   cu::Stream& get_execute_stream() const { return *stream_execute_; };
   cu::Stream& get_htod_stream() const { return *stream_htod_; };
   cu::Stream& get_dtoh_stream() const { return *stream_dtoh_; };
-
-  std::string get_compiler_flags();
 
   pmt::State measure();
   void measure(PowerRecord& record, cu::Stream& stream);
@@ -97,11 +82,10 @@ class InstanceCUDA : public KernelsInstance {
   void launch_grid_fft(cu::DeviceMemory& d_data, int batch, long size,
                        DomainAtoDomainB direction);
 
-  void plan_subgrid_fft(size_t size, size_t nr_polarizations);
+  std::unique_ptr<KernelFFT> plan_batched_fft(size_t size, size_t batch);
 
-  void launch_subgrid_fft(cu::DeviceMemory& d_data, unsigned nr_subgrids,
-                          unsigned nr_polarizations,
-                          DomainAtoDomainB direction);
+  void launch_batched_fft(KernelFFT& kernel, cu::DeviceMemory& d_data,
+                          size_t batch, DomainAtoDomainB direction);
 
   void launch_fft_shift(cu::DeviceMemory& d_data, int batch, long size,
                         std::complex<float> scale = {1.0, 1.0});
@@ -110,22 +94,12 @@ class InstanceCUDA : public KernelsInstance {
                     int subgrid_size, cu::DeviceMemory& d_metadata,
                     cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_grid);
 
-  void launch_adder_unified(int nr_subgrids, long grid_size, int subgrid_size,
-                            cu::DeviceMemory& d_metadata,
-                            cu::DeviceMemory& d_subgrid, void* u_grid);
-
   void launch_splitter(int nr_subgrids, int nr_polarizations, long grid_size,
                        int subgrid_size, cu::DeviceMemory& d_metadata,
                        cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_grid);
 
-  void launch_splitter_unified(int nr_subgrids, long grid_size,
-                               int subgrid_size, cu::DeviceMemory& d_metadata,
-                               cu::DeviceMemory& d_subgrid, void* u_grid);
-
   void launch_scaler(int nr_subgrids, int nr_polarizations, int subgrid_size,
                      cu::DeviceMemory& d_subgrid);
-
-  void launch_scaler(int nr_subgrids, int subgrid_size, void* u_subgrid);
 
   void launch_copy_tiles(unsigned int nr_polarizations, unsigned int nr_tiles,
                          unsigned int src_tile_size, unsigned int dst_tile_size,
@@ -155,7 +129,8 @@ class InstanceCUDA : public KernelsInstance {
                                    int padded_tile_size,
                                    cu::DeviceMemory& d_tile_ids,
                                    cu::DeviceMemory& d_tile_coordinates,
-                                   cu::DeviceMemory& d_tiles, void* u_grid);
+                                   cu::DeviceMemory& d_tiles,
+                                   cu::DeviceMemory& d_grid);
 
   void launch_splitter_subgrids_from_wtiles(
       int nr_subgrids, int nr_polarizations, long grid_size, int subgrid_size,
@@ -168,7 +143,7 @@ class InstanceCUDA : public KernelsInstance {
                                         cu::DeviceMemory& d_tile_ids,
                                         cu::DeviceMemory& d_tile_coordinates,
                                         cu::DeviceMemory& d_tiles,
-                                        void* u_grid);
+                                        cu::DeviceMemory& d_grid);
 
   void launch_adder_wtiles_to_patch(
       int nr_polarizations, int nr_tiles, long grid_size, int tile_size,
@@ -182,36 +157,20 @@ class InstanceCUDA : public KernelsInstance {
       cu::DeviceMemory& d_tile_ids, cu::DeviceMemory& d_tile_coordinates,
       cu::DeviceMemory& d_tiles, cu::DeviceMemory& d_patch);
 
-  void free_subgrid_fft();
-  int get_tile_size_grid() const { return kTileSizeGrid; };
   void free_events();
 
-  void print_device_memory_info() const;
   size_t get_free_memory() const;
   size_t get_total_memory() const;
-  template <CUdevice_attribute attribute>
-  int get_attribute() const;
 
   void enqueue_report(cu::Stream& stream, int nr_polarizations,
                       int nr_timesteps, int nr_subgrids);
 
  private:
-  void reset();
-
   // Since no CUDA calls are allowed from a callback, we have to
   // keep track of the cu::Events used in the UpdateData and
   // free them explicitely using the free_events() method.
   cu::Event& get_event();
   std::vector<std::unique_ptr<cu::Event>> events;
-
-  // Runtime compilation
-  cu::Module* compile_kernel(std::string& flags, std::string& src,
-                             std::string& bin);
-  void compile_kernels();
-  void load_kernels();
-
-  void set_parameters();
-  void set_parameters_default();
 
   std::unique_ptr<cu::Context> context_;
   std::unique_ptr<cu::Device> device_;
@@ -221,25 +180,84 @@ class InstanceCUDA : public KernelsInstance {
       stream_htod_;  ///< Stream for host to device memory copies.
   std::unique_ptr<cu::Stream>
       stream_dtoh_;  ///< Stream for device to host memory copies.
-  std::unique_ptr<cu::Profiler> profiler_;
-  std::unique_ptr<cu::Function> function_gridder_;
-  std::unique_ptr<cu::Function> function_degridder_;
-  std::unique_ptr<cu::Function> function_adder_;
-  std::unique_ptr<cu::Function> function_splitter_;
-  std::unique_ptr<cu::Function> function_scaler_;
-  std::unique_ptr<cu::Function> function_average_beam_;
-  std::unique_ptr<cu::Function> function_fft_shift_;
-  std::vector<std::unique_ptr<cu::Function>> functions_calibrate_;
-  std::vector<std::unique_ptr<cu::Function>> functions_wtiling_;
-  std::vector<std::unique_ptr<cu::Module>> modules_;
 
-  ProxyInfo& proxy_info_;
+  void compile_gridder(bool enable_avg_aterm);
+  void compile_degridder();
+  void compile_scaler();
+  void compile_adder();
+  void compile_splitter();
+  void compile_calibrate();
+  void compile_fft_shift();
+  void compile_average_beam();
+  void compile_wtiling();
 
-  // Subgrid FFT
-  size_t fft_subgrid_batch_ = kFftSubgridBatch;
-  size_t fft_subgrid_size_ = 0;
-  std::unique_ptr<cufft::C2C_2D> fft_plan_subgrid_;
-  std::unique_ptr<cu::DeviceMemory> device_subgrid_fft_;
+  std::unique_ptr<KernelFactory<KernelGridder>> factory_gridder_;
+  std::unique_ptr<KernelGridder> kernel_gridder_;
+
+  std::unique_ptr<KernelFactory<KernelDegridder>> factory_degridder_;
+  std::unique_ptr<KernelDegridder> kernel_degridder_;
+
+  std::unique_ptr<KernelFactory<KernelScaler>> factory_scaler_;
+  std::unique_ptr<KernelScaler> kernel_scaler_;
+
+  std::unique_ptr<KernelFactory<KernelAdder>> factory_adder_;
+  std::unique_ptr<KernelAdder> kernel_adder_;
+
+  std::unique_ptr<KernelFactory<KernelSplitter>> factory_splitter_;
+  std::unique_ptr<KernelSplitter> kernel_splitter_;
+
+  std::unique_ptr<KernelFactory<KernelCalibrateLMNP>> factory_calibrate_lmnp_;
+  std::unique_ptr<KernelCalibrateLMNP> kernel_calibrate_lmnp_;
+
+  std::unique_ptr<KernelFactory<KernelCalibrateSums>> factory_calibrate_sums_;
+  std::unique_ptr<KernelCalibrateSums> kernel_calibrate_sums_;
+
+  std::unique_ptr<KernelFactory<KernelCalibrateGradient>>
+      factory_calibrate_gradient_;
+  std::unique_ptr<KernelCalibrateGradient> kernel_calibrate_gradient_;
+
+  std::unique_ptr<KernelFactory<KernelCalibrateHessian>>
+      factory_calibrate_hessian_;
+  std::unique_ptr<KernelCalibrateHessian> kernel_calibrate_hessian_;
+
+  std::unique_ptr<KernelFactory<KernelFFTShift>> factory_fft_shift_;
+  std::unique_ptr<KernelFFTShift> kernel_fft_shift_;
+
+  std::unique_ptr<KernelFactory<KernelAverageBeam>> factory_average_beam_;
+  std::unique_ptr<KernelAverageBeam> kernel_average_beam_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingCopy>> factory_wtiling_copy_;
+  std::unique_ptr<KernelWTilingCopy> kernel_wtiling_copy_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingPhasor>> factory_wtiling_phasor_;
+  std::unique_ptr<KernelWTilingPhasor> kernel_wtiling_phasor_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingSubgridsFromWtiles>>
+      factory_wtiling_subgrids_from_wtiles_;
+  std::unique_ptr<KernelWTilingSubgridsFromWtiles>
+      kernel_wtiling_subgrids_from_wtiles_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingSubgridsToWtiles>>
+      factory_wtiling_subgrids_to_wtiles_;
+  std::unique_ptr<KernelWTilingSubgridsToWtiles>
+      kernel_wtiling_subgrids_to_wtiles_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingWTilesFromPatch>>
+      factory_wtiling_wtiles_from_patch_;
+  std::unique_ptr<KernelWTilingWTilesFromPatch>
+      kernel_wtiling_wtiles_from_patch_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingWtilesToPatch>>
+      factory_wtiling_wtiles_to_patch_;
+  std::unique_ptr<KernelWTilingWtilesToPatch> kernel_wtiling_wtiles_to_patch_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingWtilesFromGrid>>
+      factory_wtiling_wtiles_from_grid_;
+  std::unique_ptr<KernelWTilingWtilesFromGrid> kernel_wtiling_wtiles_from_grid_;
+
+  std::unique_ptr<KernelFactory<KernelWTilingWtilesToGrid>>
+      factory_wtiling_wtiles_to_grid_;
+  std::unique_ptr<KernelWTilingWtilesToGrid> kernel_wtiling_wtiles_to_grid_;
 
   void start_measurement(void* data);
   void end_measurement(void* data);
