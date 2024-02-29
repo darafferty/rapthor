@@ -101,7 +101,7 @@ void CUDA::do_compute_avg_beam(
   }
 
   // Events
-  std::vector<cu::Event> inputCopied(nr_baselines / jobsize);
+  std::vector<cu::Event> inputCopied((nr_baselines + jobsize - 1) / jobsize);
 
   // Load streams
   cu::Stream& htodstream = device.get_htod_stream();
@@ -173,6 +173,7 @@ void CUDA::do_compute_avg_beam(
   dtohstream.memcpyDtoHAsync(average_beam_double.Span().data(), d_average_beam,
                              average_beam_double.Span().size() *
                                  sizeof(*average_beam_double.Span().data()));
+  dtohstream.synchronize();
 
 // Convert to floating-point
 #pragma omp parallel for
