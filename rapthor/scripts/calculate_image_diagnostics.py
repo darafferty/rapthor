@@ -29,9 +29,13 @@ import matplotlib.pyplot as plt
 iers.conf.auto_download = False
 
 
-def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
+def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_labels=False):
     """
     Plots the astrometry offsets across the field
+
+    Note: The arrows indicate the direction and magnitude of the
+    corrections that should be applied to the LOFAR positions in
+    each facet to obtain a mean offset of zero
 
     Parameters
     ----------
@@ -43,25 +47,32 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
         Dec in degrees of the field
     output_file : str
         Filename for the output plot
+    plot_labels : bool, optional
+        If True, plot the facet labels
     """
-    patches = []
+    wcs = make_wcs(field_ra, field_dec)
     ra_offsets = []
     dec_offsets = []
+    facet_patches = []
     facet_ra = []
     facet_dec = []
     facet_names = []
     for facet in facets:
-        patches.append(facet.get_matplotlib_patch(reference_pos=(field_ra, field_dec)))
-        ra_offsets.append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
-        dec_offsets.append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
-        facet_ra.append(facet.ra)
-        facet_dec.append(facet.dec)
-        facet_names.append(facet.name)
+        # Note: the offsets are calculated as (LOFAR model value) - (comparison model
+        # value); e.g., a positive Dec offset indicates that the LOFAR sources
+        # lie on average to the North of the comparison source positions. Therefore, we
+        # multiply by -1 to obtain the correct arrow directions in the quiver plot
+        if facet.astrometry_diagnostics:
+            ra_offsets.append(-1 * facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
+            dec_offsets.append(-1 * facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
+            facet_ra.append(facet.ra)
+            facet_dec.append(facet.dec)
+            facet_names.append(facet.name)
+            facet_patches.append(facet.get_matplotlib_patch(wcs=wcs))
 
     # Set up the figure
     fig = plt.figure(1, figsize=(7.66, 7))
     plt.clf()
-    wcs = make_wcs(field_ra, field_dec)
     ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)
     fig.add_axes(ax)
     RAAxis = ax.coords['ra']
@@ -71,12 +82,23 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file):
     DecAxis.set_axislabel('Dec', minpad=0.75)
     DecAxis.set_major_formatter('dd:mm:ss')
     ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
+    ax.set_title('Positional Offsets (arrows indicate direction and magnitude of correction)')
 
-    # Plot the offsets
-    x, y = radec2xy(facet_ra, facet_dec, wcs)
+    # Plot the facet polygons
+    x, y = radec2xy(wcs, facet_ra, facet_dec)
+    for i, patch in enumerate(facet_patches):
+        ax.add_patch(patch)
+        if plot_labels:
+            ax.annotate(facet_names[i], (x[i], y[i]), va='top', ha='center')
+
+    # Plot the offsets. The arrows indicate the direction and magnitude of the
+    # correction that should be applied to the LOFAR positions
     x_offsets = np.array(ra_offsets) / wcs.wcs.cdelt[0]
-    y_offsets = np.array(dec_offsets) / wcs.wcs.cdelt[0]
-    plt.quiver(x, y, x_offsets, y_offsets, units='xy', angles='xy', scale=1.0, color='red')
+    y_offsets = np.array(dec_offsets) / wcs.wcs.cdelt[1]
+    quiver_plot = plt.quiver(x, y, x_offsets, y_offsets, units='xy', angles='xy',
+                             scale=2/3600, color='blue')
+    plt.quiverkey(quiver_plot, 0.1, 0.95, 1/3600/wcs.wcs.cdelt[0], '1 arcsec',
+                  labelpos='N', coordinates='figure')
     plt.savefig(output_file, format='pdf')
 
 
@@ -115,7 +137,7 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux')
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
          input_catalog, input_skymodel, obs_ms, diagnostics_file, output_root,
          facet_region_file=None, photometry_comparison_skymodel=None,
-         astrometry_comparison_skymodel=None):
+         astrometry_comparison_skymodel=None, min_number=5):
     """
     Calculate various image diagnostics
 
@@ -208,22 +230,22 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         _, _, midRA, midDec = s_in._getXY()
         try:
             s_comp_photometry = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
+            name_comp_photometry = 'TGSS'
         except OSError:
             # Comparison catalog not downloaded successfully
             s_comp_photometry = None
     else:
         s_comp_photometry = lsmtool.load(photometry_comparison_skymodel)
+        name_comp_photometry = 'User supplied catalog'
 
     # Do the photometry check
     if s_comp_photometry:
         # Filter the input PyBDSF FITS catalog as needed for the photometry check
         # Sources are filtered to keep only those that:
-        #   - lie within 3 degrees of the phase center (to exclude sources with
+        #   - lie within the FWHM of the primary beam (to exclude sources with
         #     uncertain primary beam corrections)
         #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
         #     that may be poorly modeled)
-        #   - have no neighboring sources within 30 arcsec (to exclude components
-        #     of complex sources)
         catalog = Table.read(input_catalog, format='fits')
         obs = obs_list[beam_ind]
         phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
@@ -239,25 +261,16 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         # and do the comparison
         s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
         s_comp_photometry.group('every')
-        min_number = 10
         if len(s_pybdsf) >= min_number:
             result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
-                                      excludeMultiple=True, make_plots=True)
+                                      excludeMultiple=True, make_plots=True,
+                                      name1='LOFAR', name2=name_comp_photometry)
             if result is not None:
                 cwl_output.update(result)
-
-    # Do the astrometry check
-    max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
-    if facet_region_file is not None:
-        facets = read_ds9_region_file(facet_region_file)
-    else:
-        # Use a single rectangular facet centered on the phase center
-        obs = obs_list[beam_ind]
-        ra = obs.ra
-        dec = obs.dec
-        image_width = max(img_true_sky.shape[-2:])
-        width = min(max_search_cone_radius*2, image_width)
-        facets = [SquareFacet('field', ra, dec, width)]
+        else:
+            print(f'Fewer than {min_number} sources found in the LOFAR image meet '
+                  'the photometry cuts (major axis < 10" and located inside the FWHM '
+                  'of the primary beam"). Skipping astromety check...')
 
     # Filter the input PyBDSF FITS catalog as needed for the astrometry check
     # Sources are filtered to keep only those that:
@@ -273,63 +286,81 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     dec_error = catalog['E_DEC']  # degrees
     catalog = catalog[dec_error < 2/3600]
 
-    # Convert the filtered catalog into a minimal sky model for use with LSMTool
-    s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
+    # Do the astrometry check
+    if len(catalog) >= min_number:
+        max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
+        if facet_region_file is not None:
+            facets = read_ds9_region_file(facet_region_file)
+        else:
+            # Use a single rectangular facet centered on the phase center
+            obs = obs_list[beam_ind]
+            ra = obs.ra
+            dec = obs.dec
+            image_width = max(img_true_sky.shape[-2:])
+            width = min(max_search_cone_radius*2, image_width)
+            facets = [SquareFacet('field', ra, dec, width)]
 
-    # Loop over the facets, performing the astrometry checks for each
-    if astrometry_comparison_skymodel:
-        s_comp_astrometry = lsmtool.load(astrometry_comparison_skymodel)
-        s_comp_astrometry.group('every')
+        # Convert the filtered catalog into a minimal sky model for use with LSMTool
+        s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
+
+        # Loop over the facets, performing the astrometry checks for each
+        if astrometry_comparison_skymodel:
+            s_comp_astrometry = lsmtool.load(astrometry_comparison_skymodel)
+            s_comp_astrometry.group('every')
+        else:
+            s_comp_astrometry = None
+        astrometry_diagnostics = {'facet_name': [],
+                                  'meanRAOffsetDeg': [],
+                                  'stdRAOffsetDeg': [],
+                                  'meanClippedRAOffsetDeg': [],
+                                  'stdClippedRAOffsetDeg': [],
+                                  'meanDecOffsetDeg': [],
+                                  'stdDecOffsetDeg': [],
+                                  'meanClippedDecOffsetDeg': [],
+                                  'stdClippedDecOffsetDeg': []}
+        for facet in facets:
+            facet.set_skymodel(s_pybdsf.copy())
+            facet.find_astrometry_offsets(s_comp_astrometry, min_number=min_number)
+            if len(facet.astrometry_diagnostics):
+                astrometry_diagnostics['facet_name'].append(facet.name)
+                astrometry_diagnostics['meanRAOffsetDeg'].append(facet.astrometry_diagnostics['meanRAOffsetDeg'])
+                astrometry_diagnostics['stdRAOffsetDeg'].append(facet.astrometry_diagnostics['stdRAOffsetDeg'])
+                astrometry_diagnostics['meanClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
+                astrometry_diagnostics['stdClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedRAOffsetDeg'])
+                astrometry_diagnostics['meanDecOffsetDeg'].append(facet.astrometry_diagnostics['meanDecOffsetDeg'])
+                astrometry_diagnostics['stdDecOffsetDeg'].append(facet.astrometry_diagnostics['stdDecOffsetDeg'])
+                astrometry_diagnostics['meanClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
+                astrometry_diagnostics['stdClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedDecOffsetDeg'])
+
+        # Save and plot the per-facet offsets
+        if len(astrometry_diagnostics['facet_name']):
+            with open(output_root+'.astrometry_offsets.json', 'w') as fp:
+                json.dump(astrometry_diagnostics, fp)
+            obs = obs_list[beam_ind]
+            ra = obs.ra
+            dec = obs.dec
+            plot_astrometry_offsets(facets, ra, dec, output_root+'.astrometry_offsets.pdf')
+
+            # Calculate mean offsets
+            mean_astrometry_diagnostics = {'meanRAOffsetDeg': np.mean(astrometry_diagnostics['meanRAOffsetDeg']),
+                                           'stdRAOffsetDeg': np.mean(astrometry_diagnostics['stdRAOffsetDeg']),
+                                           'meanClippedRAOffsetDeg': np.mean(astrometry_diagnostics['meanClippedRAOffsetDeg']),
+                                           'stdClippedRAOffsetDeg': np.mean(astrometry_diagnostics['stdClippedRAOffsetDeg']),
+                                           'meanDecOffsetDeg': np.mean(astrometry_diagnostics['meanDecOffsetDeg']),
+                                           'stdDecOffsetDeg': np.mean(astrometry_diagnostics['stdDecOffsetDeg']),
+                                           'meanClippedDecOffsetDeg': np.mean(astrometry_diagnostics['meanClippedDecOffsetDeg']),
+                                           'stdClippedDecOffsetDeg': np.mean(astrometry_diagnostics['stdClippedDecOffsetDeg'])}
+            cwl_output.update(mean_astrometry_diagnostics)
+        else:
+            # Write dummy files
+            with open(output_root+'.astrometry_offsets.json', 'w') as fp:
+                fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
+            with open(output_root+'.astrometry_offsets.png', 'w') as fp:
+                fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
     else:
-        s_comp_astrometry = None
-    astrometry_diagnostics = {'facet_name': [],
-                              'meanRAOffsetDeg': [],
-                              'stdRAOffsetDeg': [],
-                              'meanClippedRAOffsetDeg': [],
-                              'stdClippedRAOffsetDeg': [],
-                              'meanDecOffsetDeg': [],
-                              'stdDecOffsetDeg': [],
-                              'meanClippedDecOffsetDeg': [],
-                              'stdClippedDecOffsetDeg': []}
-    for facet in facets:
-        facet.set_skymodel(s_pybdsf.copy())
-        facet.find_astrometry_offsets(s_comp_astrometry)
-        if len(facet.astrometry_diagnostics):
-            astrometry_diagnostics['facet_name'].append(facet.name)
-            astrometry_diagnostics['meanRAOffsetDeg'].append(facet.astrometry_diagnostics['meanRAOffsetDeg'])
-            astrometry_diagnostics['stdRAOffsetDeg'].append(facet.astrometry_diagnostics['stdRAOffsetDeg'])
-            astrometry_diagnostics['meanClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
-            astrometry_diagnostics['stdClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedRAOffsetDeg'])
-            astrometry_diagnostics['meanDecOffsetDeg'].append(facet.astrometry_diagnostics['meanDecOffsetDeg'])
-            astrometry_diagnostics['stdDecOffsetDeg'].append(facet.astrometry_diagnostics['stdDecOffsetDeg'])
-            astrometry_diagnostics['meanClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
-            astrometry_diagnostics['stdClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedDecOffsetDeg'])
-
-    # Save and plot the per-facet offsets
-    if len(astrometry_diagnostics['facet_name']):
-        with open(output_root+'.astrometry_offsets.json', 'w') as fp:
-            json.dump(astrometry_diagnostics, fp)
-        obs = obs_list[beam_ind]
-        ra = obs.ra
-        dec = obs.dec
-        plot_astrometry_offsets(facets, ra, dec, output_root+'.astrometry_offsets.pdf')
-
-        # Calculate mean offsets
-        mean_astrometry_diagnostics = {'meanRAOffsetDeg': np.mean(astrometry_diagnostics['meanRAOffsetDeg']),
-                                       'stdRAOffsetDeg': np.mean(astrometry_diagnostics['stdRAOffsetDeg']),
-                                       'meanClippedRAOffsetDeg': np.mean(astrometry_diagnostics['meanClippedRAOffsetDeg']),
-                                       'stdClippedRAOffsetDeg': np.mean(astrometry_diagnostics['stdClippedRAOffsetDeg']),
-                                       'meanDecOffsetDeg': np.mean(astrometry_diagnostics['meanDecOffsetDeg']),
-                                       'stdDecOffsetDeg': np.mean(astrometry_diagnostics['stdDecOffsetDeg']),
-                                       'meanClippedDecOffsetDeg': np.mean(astrometry_diagnostics['meanClippedDecOffsetDeg']),
-                                       'stdClippedDecOffsetDeg': np.mean(astrometry_diagnostics['stdClippedDecOffsetDeg'])}
-        cwl_output.update(mean_astrometry_diagnostics)
-    else:
-        # Write dummy files
-        with open(output_root+'.astrometry_offsets.json', 'w') as fp:
-            fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
-        with open(output_root+'.astrometry_offsets.png', 'w') as fp:
-            fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
+        print(f'Fewer than {min_number} sources found in the LOFAR image meet the '
+              'astrometry cuts (major axis < 10" with positional errors < 2"). '
+              'Skipping the astromety check...')
 
     # Write out the full diagnostics
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
