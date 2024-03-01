@@ -44,9 +44,9 @@ class Facet(object):
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
         self.wcs = make_wcs(self.ra, self.dec)
-        ra_values = [ra for ra in self.vertices[::2]]
-        dec_values = [dec for dec in vertices[1::2]]
-        x_values, y_values = radec2xy(self.wcs, ra_values, dec_values)
+        self.polygon_ras = [ra for ra in self.vertices[::2]]
+        self.polygon_decs = [dec for dec in vertices[1::2]]
+        x_values, y_values = radec2xy(self.wcs, self.polygon_ras, self.polygon_decs)
         polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
         self.polygon = Polygon(polygon_vertices)
 
@@ -106,9 +106,13 @@ class Facet(object):
 
         return skymodel
 
-    def find_astrometry_offsets(self, comparison_skymodel=None, min_number=10):
+    def find_astrometry_offsets(self, comparison_skymodel=None, min_number=5):
         """
         Finds the astrometry offsets for sources in the facet
+
+        The offsets are calculated as (LOFAR model value) - (comparison model
+        value); e.g., a positive Dec offset indicates that the LOFAR sources
+        are on average North of the comparison source positions.
 
         The offsets are stored in self.astrometry_diagnostics, a dict with
         the following keys (see LSMTool's compare operation for details of the
@@ -146,30 +150,28 @@ class Facet(object):
             if result is not None:
                 self.astrometry_diagnostics.update(result)
 
-    def get_matplotlib_patch(self, reference_pos=None):
+    def get_matplotlib_patch(self, wcs=None):
         """
         Returns a matplotlib patch for the facet polygon
 
         Parameters
         ----------
-        reference_pos : list, optional
-            The reference [RA, Dec] of the parent field in degrees
+        wcs : WCS object, optional
+            WCS object defining (RA, Dec) <-> (x, y) transformation. If not given,
+            the facet's transformation is used
 
         Returns
         -------
         patch : matplotlib patch object
             The patch for the facet polygon
         """
-        if reference_pos is not None:
-            ref_x, ref_y = radec2xy(self.wcs, [reference_pos[0]], [reference_pos[1]])
-            ref_xy = [ref_x[0], ref_y[0]]
+        if wcs is not None:
+            x, y = radec2xy(wcs, self.polygon_ras, self.polygon_decs)
         else:
-            ref_xy = [0, 0]
-
-        x = self.polygon.exterior.coords.xy[0] - ref_xy[0]
-        y = self.polygon.exterior.coords.xy[1] - ref_xy[1]
+            x = self.polygon.exterior.coords.xy[0]
+            y = self.polygon.exterior.coords.xy[1]
         xy = np.vstack([x, y]).transpose()
-        patch = patches.Polygon(xy=xy)
+        patch = patches.Polygon(xy=xy, edgecolor='black', facecolor='white')
 
         return patch
 
