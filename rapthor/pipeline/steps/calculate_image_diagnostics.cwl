@@ -87,6 +87,20 @@ outputs:
     type: File
     outputBinding:
       glob: '$(inputs.output_root).image_diagnostics.json'
+  - id: offsets
+    label: Astrometry offsets
+    doc: |
+      The astrometry offsets in RA and Dec, per facet.
+    type: File
+    outputBinding:
+      glob: '$(inputs.output_root).astrometry_offsets.json'
+  - id: plots
+    label: Diagnostic plots
+    doc: |
+      Various diagnostic plots of the photometry and astrometry.
+    type: File[]
+    outputBinding:
+      glob: '*.pdf'
 
 
 hints:
