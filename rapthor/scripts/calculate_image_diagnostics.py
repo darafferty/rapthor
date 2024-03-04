@@ -289,7 +289,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     # Do the astrometry check
     if len(catalog) >= min_number:
         max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
-        if facet_region_file is not None:
+        if facet_region_file is not None and os.path.isfile(facet_region_file):
             facets = read_ds9_region_file(facet_region_file)
         else:
             # Use a single rectangular facet centered on the phase center
@@ -380,10 +380,10 @@ if __name__ == '__main__':
     parser.add_argument('obs_ms', help='Filename of observation MS')
     parser.add_argument('diagnostics_file', help='Filename of diagnostics JSON file')
     parser.add_argument('output_root', help='Root of output files')
-    parser.add_argument('facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
-    parser.add_argument('photometry_comparison_skymodel', help='Filename of photometry sky model', type=str, default=None)
-    parser.add_argument('astrometry_comparison_skymodel', help='Filename of astrometry sky model', type=str, default=None)
-    parser.add_argument('min_number', help='Minimum number of sources for diagnostics', type=int, default=5)
+    parser.add_argument('--facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
+    parser.add_argument('--photometry_comparison_skymodel', help='Filename of photometry sky model', type=str, default=None)
+    parser.add_argument('--astrometry_comparison_skymodel', help='Filename of astrometry sky model', type=str, default=None)
+    parser.add_argument('--min_number', help='Minimum number of sources for diagnostics', type=int, default=5)
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
