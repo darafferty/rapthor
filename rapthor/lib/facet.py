@@ -56,9 +56,7 @@ class Facet(object):
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
         self.x_center = xmin + (xmax - xmin)/2
         self.y_center = ymin + (ymax - ymin)/2
-        ra_center, dec_center = xy2radec(self.wcs, [self.x_center], [self.y_center])
-        self.ra_center = ra_center[0]
-        self.dec_center = dec_center[0]
+        self.ra_center, self.dec_center = xy2radec(self.wcs, self.x_center, self.y_center)
 
     def set_skymodel(self, skymodel):
         """
@@ -205,7 +203,11 @@ class SquareFacet(Facet):
         xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
         ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
         ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
-        vertices = [(xmin, ymin), (xmin, ymax), (xmax, ymax), (xmax, ymin)]
+        ra_llc, dec_llc = xy2radec(wcs, xmin, ymin)  # (RA, Dec) of lower-left corner
+        ra_tlc, dec_tlc = xy2radec(wcs, xmin, ymax)  # (RA, Dec) of top-left corner
+        ra_trc, dec_trc = xy2radec(wcs, xmax, ymax)  # (RA, Dec) of top-right corner
+        ra_lrc, dec_lrc = xy2radec(wcs, xmax, ymin)  # (RA, Dec) of lower-right corner
+        vertices = [(ra_llc, dec_llc), (ra_tlc, dec_tlc), (ra_trc, dec_trc), (ra_lrc, dec_lrc)]
 
         super().__init__(name, ra, dec, vertices)
 
@@ -244,11 +246,11 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
     wcs = make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
     x_cal, y_cal = radec2xy(wcs, ra_cal, dec_cal)
-    x_mid, y_mid = radec2xy(wcs, [ra_mid], [dec_mid])
+    x_mid, y_mid = radec2xy(wcs, ra_mid, dec_mid)
     width_x = width_ra / wcs_pixel_scale / 2.0
     width_y = width_dec / wcs_pixel_scale / 2.0
-    bounding_box = np.array([x_mid[0] - width_x, x_mid[0] + width_x,
-                             y_mid[0] - width_y, y_mid[0] + width_y])
+    bounding_box = np.array([x_mid - width_x, x_mid + width_x,
+                             y_mid - width_y, y_mid + width_y])
 
     # Tessellate and convert resulting facet polygons from (x, y) to (RA, Dec)
     vor = voronoi(np.stack((x_cal, y_cal)).T, bounding_box)
@@ -260,8 +262,8 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
         facet_polys.append(vertices)
     facet_points = []
     for point in vor.filtered_points:
-        ra, dec = xy2radec(wcs, [point[0]], [point[1]])
-        facet_points.append((ra[0], dec[0]))
+        ra, dec = xy2radec(wcs, point[0], point[1])
+        facet_points.append((ra, dec))
 
     return facet_points, facet_polys
 
@@ -274,53 +276,93 @@ def radec2xy(wcs, RA, Dec):
     ----------
     wcs : WCS object
         WCS object defining transformation
-    RA : list
-        List of RA values in degrees
-    Dec : list
-        List of Dec values in degrees
+    RA : float or list
+        RA value(s) in degrees
+    Dec : float or list
+        Dec value(s) in degrees
 
     Returns
     -------
-    x, y : list, list
-        Lists of x and y pixel values corresponding to the input RA and Dec
+    x, y : float or list
+        x and y pixel values corresponding to the input RA and Dec
         values
     """
-    x = []
-    y = []
+    x_list = []
+    y_list = []
+    if type(RA) is list:
+        RA_list = RA
+    else:
+        RA_list = [float(RA)]
+    if type(Dec) is list:
+        Dec_list = Dec
+    else:
+        Dec_list = [float(Dec)]
+    if len(RA_list) != len(Dec_list):
+        raise ValueError('RA and Dec must be of equal length')
 
-    for ra_deg, dec_deg in zip(RA, Dec):
+    for ra_deg, dec_deg in zip(RA_list, Dec_list):
         ra_dec = np.array([[ra_deg, dec_deg]])
-        x.append(wcs.wcs_world2pix(ra_dec, 0)[0][0])
-        y.append(wcs.wcs_world2pix(ra_dec, 0)[0][1])
+        x_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][0])
+        y_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][1])
+
+    # Return the same type as the input
+    if type(RA) is list:
+        x = x_list
+    else:
+        x = x_list[0]
+    if type(Dec) is list:
+        y = y_list
+    else:
+        y = y_list[0]
     return x, y
 
 
 def xy2radec(wcs, x, y):
     """
-    Returns input RA, Dec for input x, y
+    Returns RA, Dec for input x, y
 
     Parameters
     ----------
     wcs : WCS object
         WCS object defining transformation
-    x : list
-        List of x values in pixels
-    y : list
-        List of y values in pixels
+    x : float or list
+        x value(s) in pixels
+    y : float or list
+        y value(s) in pixels
 
     Returns
     -------
-    RA, Dec : list, list
-        Lists of RA and Dec values corresponding to the input x and y pixel
+    RA, Dec : float or list
+        RA and Dec values corresponding to the input x and y pixel
         values
     """
-    RA = []
-    Dec = []
+    RA_list = []
+    Dec_list = []
+    if type(x) is list:
+        x_list = x
+    else:
+        x_list = [float(x)]
+    if type(y) is list:
+        y_list = y
+    else:
+        y_list = [float(y)]
+    if len(x_list) != len(y_list):
+        raise ValueError('x and y must be of equal length')
 
-    for xp, yp in zip(x, y):
+    for xp, yp in zip(x_list, y_list):
         x_y = np.array([[xp, yp]])
-        RA.append(wcs.wcs_pix2world(x_y, 0)[0][0])
-        Dec.append(wcs.wcs_pix2world(x_y, 0)[0][1])
+        RA_list.append(wcs.wcs_pix2world(x_y, 0)[0][0])
+        Dec_list.append(wcs.wcs_pix2world(x_y, 0)[0][1])
+
+    # Return the same type as the input
+    if type(x) is list:
+        RA = RA_list
+    else:
+        RA = RA_list[0]
+    if type(y) is float:
+        Dec = Dec_list
+    else:
+        Dec = Dec_list[0]
     return RA, Dec
 
 
