@@ -268,7 +268,7 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     return facet_points, facet_polys
 
 
-def radec2xy(wcs, RA, Dec):
+def radec2xy(wcs, ra, dec):
     """
     Returns x, y for input RA, Dec
 
@@ -276,41 +276,41 @@ def radec2xy(wcs, RA, Dec):
     ----------
     wcs : WCS object
         WCS object defining transformation
-    RA : float or list
+    ra : float, list, or numpy array
         RA value(s) in degrees
-    Dec : float or list
+    dec : float, list, or numpy array
         Dec value(s) in degrees
 
     Returns
     -------
-    x, y : float or list
+    x, y : float, list, or numpy array
         x and y pixel values corresponding to the input RA and Dec
         values
     """
     x_list = []
     y_list = []
-    if type(RA) is list:
-        RA_list = RA
+    if type(ra) is list or type(ra) is np.ndarray:
+        ra_list = ra
     else:
-        RA_list = [float(RA)]
-    if type(Dec) is list:
-        Dec_list = Dec
+        ra_list = [float(ra)]
+    if type(dec) is list or type(dec) is np.ndarray:
+        dec_list = dec
     else:
-        Dec_list = [float(Dec)]
-    if len(RA_list) != len(Dec_list):
+        dec_list = [float(dec)]
+    if len(ra_list) != len(dec_list):
         raise ValueError('RA and Dec must be of equal length')
 
-    for ra_deg, dec_deg in zip(RA_list, Dec_list):
+    for ra_deg, dec_deg in zip(ra_list, dec_list):
         ra_dec = np.array([[ra_deg, dec_deg]])
         x_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][0])
         y_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][1])
 
     # Return the same type as the input
-    if type(RA) is list:
+    if type(ra) is list or type(ra) is np.ndarray:
         x = x_list
     else:
         x = x_list[0]
-    if type(Dec) is list:
+    if type(dec) is list or type(dec) is np.ndarray:
         y = y_list
     else:
         y = y_list[0]
@@ -325,24 +325,24 @@ def xy2radec(wcs, x, y):
     ----------
     wcs : WCS object
         WCS object defining transformation
-    x : float or list
+    x : float, list, or numpy array
         x value(s) in pixels
-    y : float or list
+    y : float, list, or numpy array
         y value(s) in pixels
 
     Returns
     -------
-    RA, Dec : float or list
+    RA, Dec : float, list, or numpy array
         RA and Dec values corresponding to the input x and y pixel
         values
     """
-    RA_list = []
-    Dec_list = []
-    if type(x) is list:
+    ra_list = []
+    dec_list = []
+    if type(x) is list or type(x) is np.ndarray:
         x_list = x
     else:
         x_list = [float(x)]
-    if type(y) is list:
+    if type(y) is list or type(y) is np.ndarray:
         y_list = y
     else:
         y_list = [float(y)]
@@ -351,19 +351,19 @@ def xy2radec(wcs, x, y):
 
     for xp, yp in zip(x_list, y_list):
         x_y = np.array([[xp, yp]])
-        RA_list.append(wcs.wcs_pix2world(x_y, 0)[0][0])
-        Dec_list.append(wcs.wcs_pix2world(x_y, 0)[0][1])
+        ra_list.append(wcs.wcs_pix2world(x_y, 0)[0][0])
+        dec_list.append(wcs.wcs_pix2world(x_y, 0)[0][1])
 
     # Return the same type as the input
-    if type(x) is list:
-        RA = RA_list
+    if type(x) is list or type(x) is np.ndarray:
+        ra = ra_list
     else:
-        RA = RA_list[0]
-    if type(y) is float:
-        Dec = Dec_list
+        ra = ra_list[0]
+    if type(y) is float or type(y) is np.ndarray:
+        dec = dec_list
     else:
-        Dec = Dec_list[0]
-    return RA, Dec
+        dec = dec_list[0]
+    return ra, dec
 
 
 def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
@@ -475,8 +475,8 @@ def voronoi(cal_coords, bounding_box):
             else:
                 x = vor.vertices[index, 0]
                 y = vor.vertices[index, 1]
-                if not(bounding_box[0] - eps <= x and x <= bounding_box[1] + eps and
-                       bounding_box[2] - eps <= y and y <= bounding_box[3] + eps):
+                if not (bounding_box[0] - eps <= x and x <= bounding_box[1] + eps and
+                        bounding_box[2] - eps <= y and y <= bounding_box[3] + eps):
                     flag = False
                     break
         if region and flag:
