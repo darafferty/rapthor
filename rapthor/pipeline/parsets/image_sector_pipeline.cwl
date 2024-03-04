@@ -821,6 +821,12 @@ steps:
         source: obs_filename
       - id: diagnostics_file
         source: filter/diagnostics
+      - id: facet_region_file
+{% if use_facets %}
+        source: make_region_file/region_file
+{% else %}
+        valueFrom: 'none'
+{% endif %}
     out:
       - id: diagnostics
       - id: offsets

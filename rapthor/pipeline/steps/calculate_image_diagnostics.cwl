@@ -78,6 +78,16 @@ inputs:
     type: string
     inputBinding:
       position: 9
+  - id: facet_region_file
+    label: Input ds9 region file
+    doc: |
+      The filename of the input ds9 region file that defines the facets.
+    type:
+      - string?
+      - File?
+    inputBinding:
+      prefix: --facet_region_file=
+      separate: false
 
 outputs:
   - id: diagnostics

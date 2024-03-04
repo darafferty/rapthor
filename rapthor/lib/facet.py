@@ -44,8 +44,8 @@ class Facet(object):
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
         self.wcs = make_wcs(self.ra, self.dec)
-        self.polygon_ras = [ra for ra in self.vertices[::2]]
-        self.polygon_decs = [dec for dec in vertices[1::2]]
+        self.polygon_ras = [radec[0] for radec in self.vertices]
+        self.polygon_decs = [radec[1] for radec in self.vertices]
         x_values, y_values = radec2xy(self.wcs, self.polygon_ras, self.polygon_decs)
         polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
         self.polygon = Polygon(polygon_vertices)
@@ -510,6 +510,9 @@ def read_ds9_region_file(region_file):
         #     and the facet name
         if line.startswith('polygon'):
             vertices = ast.literal_eval(line.split('polygon')[1])
+            polygon_ras = [ra for ra in vertices[::2]]
+            polygon_decs = [dec for dec in vertices[1::2]]
+            vertices = [(ra, dec) for ra, dec in zip(polygon_ras, polygon_decs)]
         if line.startswith('point'):
             ra, dec = ast.literal_eval(line.split('point')[1])
             if 'text' in line:
