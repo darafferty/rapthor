@@ -393,7 +393,9 @@ outputs:
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics
-    type: File
+      - find_diagnostics/offsets
+      - find_diagnostics/plots
+    type: File[]
   - id: visibilities
     outputSource:
       - prepare_imaging_data/msimg
@@ -821,3 +823,5 @@ steps:
         source: filter/diagnostics
     out:
       - id: diagnostics
+      - id: offsets
+      - id: plots

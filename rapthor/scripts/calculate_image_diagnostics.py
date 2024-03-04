@@ -355,7 +355,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
             # Write dummy files
             with open(output_root+'.astrometry_offsets.json', 'w') as fp:
                 fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
-            with open(output_root+'.astrometry_offsets.png', 'w') as fp:
+            with open(output_root+'.astrometry_offsets.pdf', 'w') as fp:
                 fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
     else:
         print(f'Fewer than {min_number} sources found in the LOFAR image meet the '
@@ -368,7 +368,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
 
 
 if __name__ == '__main__':
-    descriptiontext = "Analyze source catalogs.\n"
+    descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('flat_noise_image', help='Filename of flat-noise FITS image')
@@ -379,10 +379,14 @@ if __name__ == '__main__':
     parser.add_argument('input_skymodel', help='Filename of input sky model')
     parser.add_argument('obs_ms', help='Filename of observation MS')
     parser.add_argument('diagnostics_file', help='Filename of diagnostics JSON file')
-    parser.add_argument('facet_region_file', help='Filename of ds9 facet region file')
     parser.add_argument('output_root', help='Root of output files')
+    parser.add_argument('facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
+    parser.add_argument('photometry_comparison_skymodel', help='Filename of photometry sky model', type=str, default=None)
+    parser.add_argument('astrometry_comparison_skymodel', help='Filename of astrometry sky model', type=str, default=None)
+    parser.add_argument('min_number', help='Minimum number of sources for diagnostics', type=int, default=5)
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
          args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root,
-         facet_region_file=args.facet_region_file)
+         facet_region_file=args.facet_region_file, photometry_comparison_skymodel=args.photometry_comparison_skymodel,
+         astrometry_comparison_skymodel=args.astrometry_comparison_skymodel, min_number=args.min_number)
