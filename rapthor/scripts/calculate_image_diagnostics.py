@@ -296,7 +296,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
             obs = obs_list[beam_ind]
             ra = obs.ra
             dec = obs.dec
-            image_width = max(img_true_sky.shape[-2:])
+            image_width = max(img_true_sky.img_data.shape[-2:]) * abs(img_true_sky.img_hdr['CDELT1'])
             width = min(max_search_cone_radius*2, image_width)
             facets = [SquareFacet('field', ra, dec, width)]
 
