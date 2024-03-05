@@ -22,6 +22,7 @@ import matplotlib
 if matplotlib.get_backend() != 'Agg':
     matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import os
 
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
