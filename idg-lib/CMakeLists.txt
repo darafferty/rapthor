@@ -92,10 +92,9 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Intel" OR ${BUILD_WITH_MKL})
   # assume MKL is present when using Intel compiler
   find_package(MKL REQUIRED)
   set(HAVE_MKL TRUE)
-  set(FFTW3_LIBRARIES ${MKL_LIBRARIES})
-  set(FFTW3_INCLUDE_DIR "${MKL_INCLUDE_DIRS}/fftw")
 else()
-  find_package(FFTW3 REQUIRED COMPONENTS single)
+  find_package(PkgConfig REQUIRED)
+  pkg_search_module(FFTW REQUIRED fftw3f IMPORTED_TARGET)
 endif()
 
 # CUDA
