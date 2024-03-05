@@ -106,8 +106,10 @@ if(BUILD_LIB_CPU)
   set(LINK_LIBRARIES idg-common)
   if(BUILD_WITH_MKL)
     set(LINK_LIBRARIES ${LINK_LIBRARIES} ${MKL_LIBRARIES})
+  else()
+    target_link_libraries(idg-cpu PUBLIC PkgConfig::FFTW)
   endif()
-  target_link_libraries(idg-cpu ${LINK_LIBRARIES})
+  target_link_libraries(idg-cpu PUBLIC ${LINK_LIBRARIES})
 
   set_target_properties(idg-cpu PROPERTIES PUBLIC_HEADER idg-cpu.h)
 
@@ -133,7 +135,8 @@ if(BUILD_LIB_CUDA)
   set(LINK_LIBRARIES idg-common CUDA::cuda_driver CUDA::cufft CUDA::nvToolsExt
                      CUDA::nvrtc)
 
-  target_link_libraries(idg-cuda ${LINK_LIBRARIES})
+  target_link_libraries(idg-cuda PUBLIC ${LINK_LIBRARIES})
+  target_link_libraries(idg-cuda PUBLIC PkgConfig::FFTW)
 
   set_target_properties(idg-cuda PROPERTIES PUBLIC_HEADER idg-cuda.h)
 
@@ -157,7 +160,8 @@ if(BUILD_LIB_CPU AND BUILD_LIB_CUDA)
 
   set(LINK_LIBRARIES idg-cpu idg-cuda)
 
-  target_link_libraries(idg-hybrid-cuda ${LINK_LIBRARIES})
+  target_link_libraries(idg-hybrid-cuda PUBLIC ${LINK_LIBRARIES})
+  target_link_libraries(idg-hybrid-cuda PUBLIC PkgConfig::FFTW)
 
   set_target_properties(idg-hybrid-cuda PROPERTIES PUBLIC_HEADER
                                                    idg-hybrid-cuda.h)
