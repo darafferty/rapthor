@@ -77,9 +77,7 @@ install(
 #########################################################
 add_library(idg-fft $<TARGET_OBJECTS:fft>)
 
-set(LINK_LIBRARIES ${FFTW3_LIBRARIES})
-
-target_link_libraries(idg-fft ${LINK_LIBRARIES})
+target_link_libraries(idg-fft PUBLIC PkgConfig::FFTW)
 
 set_target_properties(idg-fft PROPERTIES PUBLIC_HEADER idg-fft.h)
 
@@ -105,7 +103,7 @@ if(BUILD_LIB_CPU)
     $<TARGET_OBJECTS:cpu-reference-kernels>
     $<TARGET_OBJECTS:cpu-optimized-kernels>)
 
-  set(LINK_LIBRARIES idg-common ${FFTW3_LIBRARIES})
+  set(LINK_LIBRARIES idg-common)
   if(BUILD_WITH_MKL)
     set(LINK_LIBRARIES ${LINK_LIBRARIES} ${MKL_LIBRARIES})
   endif()

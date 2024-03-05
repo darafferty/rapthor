@@ -37,9 +37,6 @@ else()
     add_compile_options("-DUSE_VML")
     link_libraries(${MKL_LIBRARIES})
     include_directories(${MKL_INCLUDE_DIRS})
-  else()
-    link_libraries(${FFTW3_LIBRARIES})
-    include_directories(${FFTW3_INCLUDE_DIR})
   endif()
 endif()
 
@@ -63,3 +60,7 @@ add_library(
   KernelAdderWStack.cpp
   KernelSplitterWStack.cpp
   KernelWtiling.cpp)
+
+if(NOT BUILD_WITH_MKL)
+  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
+endif()

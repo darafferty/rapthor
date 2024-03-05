@@ -4,8 +4,6 @@
 project(cpu-common)
 
 # sources and header files
-include_directories(${FFTW3_INCLUDE_DIR})
-
 set(${PROJECT_NAME}_headers CPU.h InstanceCPU.h)
 
 set(${PROJECT_NAME}_sources CPU.cpp InstanceCPU.cpp)
@@ -13,6 +11,7 @@ set(${PROJECT_NAME}_sources CPU.cpp InstanceCPU.cpp)
 # create library
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
 
 # Copy header files
 install(FILES ${${PROJECT_NAME}_headers} DESTINATION include/CPU/common)

@@ -3,9 +3,6 @@
 
 project(fft)
 
-# external header files
-include_directories(${FFTW3_INCLUDE_DIR})
-
 # sources and header files
 set(${PROJECT_NAME}_headers FFT.h FFTC.h)
 
@@ -17,6 +14,7 @@ add_compile_options("-O3")
 # create library
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
 
 # Copy header files
 install(FILES ${${PROJECT_NAME}_headers} DESTINATION include/fft)

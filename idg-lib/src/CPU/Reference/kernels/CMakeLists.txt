@@ -3,9 +3,6 @@
 
 project(cpu-reference-kernels)
 
-# Include directories
-include_directories(${FFTW3_INCLUDE_DIR})
-
 # Build type options
 if(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
   add_compile_options("-Wall")
@@ -22,13 +19,12 @@ else()
   add_compile_options("-fopenmp")
   if(BUILD_WITH_MKL)
     link_libraries(${MKL_LIBRARIES})
-  else()
-    link_libraries(${FFTW3_LIBRARIES})
   endif()
 endif()
 
 # Miscellaneous options
 add_compile_options("-DNR_CORRELATIONS=4")
+
 add_library(
   ${PROJECT_NAME} OBJECT
   Kernels.h
@@ -38,3 +34,7 @@ add_library(
   KernelSplitter.cpp
   KernelFFT.cpp
   KernelAverageBeam.cpp)
+
+if(NOT BUILD_WITH_MKL)
+  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
+endif()

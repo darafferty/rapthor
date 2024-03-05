@@ -15,7 +15,7 @@ add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
 if(BUILD_WITH_MKL)
   target_include_directories(${PROJECT_NAME} PRIVATE ${MKL_INCLUDE_DIRS})
 else()
-  target_include_directories(${PROJECT_NAME} PRIVATE ${FFTW3_INCLUDE_DIR})
+  target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
 endif()
 
 # Copy header files

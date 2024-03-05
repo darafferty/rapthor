@@ -4,8 +4,7 @@
 project(hybrid-cuda-generic-optimized)
 
 # Set headers
-include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDAToolkit_INCLUDE_DIRS}
-                    ${FFTW3_INCLUDE_DIR})
+include_directories(${IDG_CUDA_INCLUDE_DIR} ${CUDAToolkit_INCLUDE_DIRS})
 
 # Set headers
 set(${PROJECT_NAME}_headers GenericOptimized.h GenericOptimizedC.h)
@@ -17,6 +16,7 @@ set(${PROJECT_NAME}_sources GenericOptimized.cpp GenericOptimizedC.cpp
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
 
 # Set install
 install(FILES ${${PROJECT_NAME}_headers}

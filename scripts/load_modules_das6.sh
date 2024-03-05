@@ -3,6 +3,7 @@
 
 module load spack/9.4.0
 module load cmake
+module load pkg-config
 module load openblas
 module load hdf5
 module load cfitsio
