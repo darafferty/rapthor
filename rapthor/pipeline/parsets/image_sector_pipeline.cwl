@@ -394,6 +394,9 @@ outputs:
     outputSource:
       - find_diagnostics/diagnostics
       - find_diagnostics/offsets
+    type: File[]
+  - id: sector_diagnostic_plots
+    outputSource:
       - find_diagnostics/plots
     type: File[]
   - id: visibilities

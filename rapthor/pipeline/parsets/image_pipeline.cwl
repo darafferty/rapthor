@@ -433,6 +433,10 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
+  - id: sector_diagnostic_plots
+    outputSource:
+      - image_sector/sector_diagnostic_plots
+    type: File[]
   - id: visibilities
     outputSource:
       - image_sector/visibilities

@@ -5,6 +5,7 @@ import os
 import json
 import logging
 import shutil
+import glob
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
@@ -306,6 +307,17 @@ class Image(Operation):
                     if os.path.exists(dst_filename):
                         shutil.rmtree(dst_filename)
                     shutil.copytree(src_filename, dst_filename)
+
+            # The astrometry and photometry plots
+            dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
+            misc.create_directory(dst_dir)
+            diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, '*.pdf'))
+            for plot_filename in diagnostic_plots:
+                src_filename = os.path.join(self.pipeline_working_dir, plot_filename)
+                dst_filename = os.path.join(dst_dir, plot_filename)
+                if os.path.exists(dst_filename):
+                    os.remove(dst_filename)
+                shutil.copy(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
             diagnostics_file = image_root + '.image_diagnostics.json'
