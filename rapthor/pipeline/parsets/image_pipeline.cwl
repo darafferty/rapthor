@@ -433,10 +433,18 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
+  - id: sector_offsets
+    outputSource:
+      - image_sector/sector_offsets
+    type: File[]
   - id: sector_diagnostic_plots
     outputSource:
       - image_sector/sector_diagnostic_plots
-    type: File[]
+    type:
+      type: array
+      items:
+        type: array
+        items: File
   - id: visibilities
     outputSource:
       - image_sector/visibilities
