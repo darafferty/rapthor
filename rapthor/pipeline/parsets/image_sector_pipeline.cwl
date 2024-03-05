@@ -393,8 +393,11 @@ outputs:
   - id: sector_diagnostics
     outputSource:
       - find_diagnostics/diagnostics
+    type: File
+  - id: sector_offsets
+    outputSource:
       - find_diagnostics/offsets
-    type: File[]
+    type: File
   - id: sector_diagnostic_plots
     outputSource:
       - find_diagnostics/plots
