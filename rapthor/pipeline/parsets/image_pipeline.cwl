@@ -674,6 +674,8 @@ steps:
       - id: sector_skymodels
 {% endif %}
       - id: sector_diagnostics
+      - id: sector_offsets
+      - id: sector_diagnostic_plots
 {% if use_facets %}
       - id: sector_region_file
 {% endif %}
