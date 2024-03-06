@@ -56,6 +56,8 @@ build-docker-base:
           .
         docker push $BASE_IMAGE
       fi
+  tags:
+    - dind
 
 build-docker-full:
   stage: build
@@ -71,6 +73,8 @@ build-docker-full:
         --tag $FULL_IMAGE
         .
     - docker push $FULL_IMAGE
+  tags:
+    - dind
 
 # Builds the documentation
 build-doc:
@@ -109,18 +113,21 @@ rapthor-test:
 # Deploy to docker hub
 deploy-docker:
   stage: deploy
-  needs: ["versioning", "build-docker-full"]
+  needs: ["versioning", "build-docker-full", "rapthor-test"]
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
   script:
     - TAG=${RAPTHOR_VERSION//[^[:alnum:]_.-]/-}
+    - docker pull $FULL_IMAGE
     - docker tag $FULL_IMAGE astronrd/rapthor:$TAG
     - docker push astronrd/rapthor:$TAG
   rules:
     # Only run on master
     - if: '$CI_COMMIT_BRANCH == "master"'
       when: always
+  tags:
+    - dind
 
 # TODO: stage for deploying a release; this will involve in-place updating
 #       *.cwl files that contain dockerPull. We can "learn" from LINC
