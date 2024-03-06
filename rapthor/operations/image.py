@@ -312,9 +312,8 @@ class Image(Operation):
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             misc.create_directory(dst_dir)
             diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, '*.pdf'))
-            for plot_filename in diagnostic_plots:
-                src_filename = os.path.join(self.pipeline_working_dir, plot_filename)
-                dst_filename = os.path.join(dst_dir, plot_filename)
+            for src_filename in diagnostic_plots:
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 if os.path.exists(dst_filename):
                     os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
