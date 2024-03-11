@@ -358,11 +358,11 @@ class Image(Operation):
                 # Note: the reported error is not allowed to fall below 10% for
                 # the flux ratio and 0.5" for the astrometry, as these are the
                 # realistic minimum uncertainties in these values
-                if 'meanClippedRatio_pybdsf' in diagnostics_dict and 'stdClippedRatio_pybdsf' in diagnostics_dict:
-                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_pybdsf'])
-                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio_pybdsf']
-                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_pybdsf']))
-                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio_pybdsf'])
+                if 'meanClippedRatio_TGSS' in diagnostics_dict and 'stdClippedRatio_TGSS' in diagnostics_dict:
+                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_TGSS'])
+                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio_TGSS']
+                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_TGSS']))
+                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio_TGSS'])
                     self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
                 else:
                     self.field.lofar_to_true_flux_ratio = 1.0
@@ -371,15 +371,15 @@ class Image(Operation):
                 if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
                     stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
-                    self.log.info('    LOFAR-TGSS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
+                    self.log.info('    LOFAR-PanSTARRS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
                 else:
-                    self.log.info('    LOFAR-TGSS RA offset = N/A')
+                    self.log.info('    LOFAR-PanSTARRS RA offset = N/A')
                 if 'meanClippedDecOffsetDeg' in diagnostics_dict and 'stdClippedDecOffsetDeg' in diagnostics_dict:
                     decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
                     stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
-                    self.log.info('    LOFAR-TGSS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
+                    self.log.info('    LOFAR-PanSTARRS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
                 else:
-                    self.log.info('    LOFAR-TGSS Dec offset = N/A')
+                    self.log.info('    LOFAR-PanSTARRS Dec offset = N/A')
             except KeyError:
                 self.log.warn('One or more of the expected image diagnostics is unavailable '
                               'for {}. Logging of diagnostics skipped.'.format(sector.name))
@@ -387,7 +387,7 @@ class Image(Operation):
                             'dynamic_range_global_flat_noise', 'min_rms_true_sky',
                             'median_rms_true_sky', 'dynamic_range_global_true_sky',
                             'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
-                            'meanClippedRatio_pybdsf', 'stdClippedRatio_pybdsf',
+                            'meanClippedRatio_TGSS', 'stdClippedRatio_TGSS',
                             'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
                             'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
                 missing_keys = []
