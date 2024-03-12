@@ -358,18 +358,19 @@ class Image(Operation):
                 # Note: the reported error is not allowed to fall below 10% for
                 # the flux ratio and 0.5" for the astrometry, as these are the
                 # realistic minimum uncertainties in these values
+                self.field.lofar_to_true_flux_ratio = 1.0
+                self.field.lofar_to_true_flux_std = 0.0
                 for survey in ['TGSS', 'NVSS', 'LOTSS']:
                     if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
                         ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
                         stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
                         self.log.info(f'    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}')
-                        if survey == 'TGSS':
-                            # Save the TGSS values for later use
+                        if (self.field.lofar_to_true_flux_std == 0.0 or
+                                diagnostics_dict[f'stdClippedRatio_{survey}'] < self.field.lofar_to_true_flux_std):
+                            # Save the ratio with the lowest scatter for later use
                             self.field.lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
                             self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
                     else:
-                        self.field.lofar_to_true_flux_ratio = 1.0
-                        self.field.lofar_to_true_flux_std = 0.0
                         self.log.info(f'    LOFAR/{survey} flux ratio = N/A')
                 if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
