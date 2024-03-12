@@ -361,10 +361,12 @@ class Image(Operation):
                 for survey in ['TGSS', 'NVSS', 'LOTSS']:
                     if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
                         ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
-                        self.field.lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
                         stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
-                        self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
-                        self.log.info(f'    LOFAR/{survey} flux ratio = {0} +/- {1}'.format(ratio, stdratio))
+                        self.log.info(f'    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}')
+                        if survey == 'TGSS':
+                            # Save the TGSS values for later use
+                            self.field.lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
+                            self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
                     else:
                         self.field.lofar_to_true_flux_ratio = 1.0
                         self.field.lofar_to_true_flux_std = 0.0
