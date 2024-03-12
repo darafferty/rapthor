@@ -358,16 +358,17 @@ class Image(Operation):
                 # Note: the reported error is not allowed to fall below 10% for
                 # the flux ratio and 0.5" for the astrometry, as these are the
                 # realistic minimum uncertainties in these values
-                if 'meanClippedRatio_TGSS' in diagnostics_dict and 'stdClippedRatio_TGSS' in diagnostics_dict:
-                    ratio = '{0:.1f}'.format(diagnostics_dict['meanClippedRatio_TGSS'])
-                    self.field.lofar_to_true_flux_ratio = diagnostics_dict['meanClippedRatio_TGSS']
-                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict['stdClippedRatio_TGSS']))
-                    self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict['stdClippedRatio_TGSS'])
-                    self.log.info('    LOFAR/TGSS flux ratio = {0} +/- {1}'.format(ratio, stdratio))
-                else:
-                    self.field.lofar_to_true_flux_ratio = 1.0
-                    self.field.lofar_to_true_flux_std = 0.0
-                    self.log.info('    LOFAR/TGSS flux ratio = N/A')
+                for survey in ['TGSS', 'NVSS', 'LOTSS']:
+                    if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
+                        ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
+                        self.field.lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
+                        stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
+                        self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
+                        self.log.info(f'    LOFAR/{survey} flux ratio = {0} +/- {1}'.format(ratio, stdratio))
+                    else:
+                        self.field.lofar_to_true_flux_ratio = 1.0
+                        self.field.lofar_to_true_flux_std = 0.0
+                        self.log.info(f'    LOFAR/{survey} flux ratio = N/A')
                 if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
                     raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
                     stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))

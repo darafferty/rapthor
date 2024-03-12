@@ -117,6 +117,11 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux')
     ----------
     catalog : astropy Table object
         Input PyBDSF catalog
+    reference_freq : float
+        Reference frequency in Hz for the catalog
+    flux_colname : str, optional
+        Name of the column of the input catalog to use for the Stokes-I flux density
+        output column
 
     Returns
     -------
@@ -253,7 +258,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
                       'for use in the photometry check. Skipping this survey...')
     else:
         photometry_comparison_skymodels = [lsmtool.load(photometry_comparison_skymodel)]
-        photometry_comparison_surveys = ['User supplied catalog']
+        photometry_comparison_surveys = ['USER_SUPPLIED']
 
     # Do the photometry check
     if photometry_comparison_skymodels:
@@ -277,13 +282,25 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         if len(catalog) >= min_number:
             # Convert the filtered catalog to a minimal sky model for use with LSMTool
             # and do the comparison for each survey
-            s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq)
             for i, s_comp_photometry in enumerate(photometry_comparison_skymodels):
+                survey = photometry_comparison_surveys[i].strip().upper()
+                if survey == 'LOTSS':
+                    # For LoTSS catalog, use total flux from Gaussian fits as it
+                    # matches the method used for the LoTSS catalog (and the resolution
+                    # of LoTSS is close to that of our LOFAR image)
+                    flux_colname = 'Total_flux'
+                else:
+                    # For TGSS and NVSS catalogs, use total island flux as it works
+                    # better for the low resolutions they have then using the total
+                    # flux from the Gaussian fits
+                    flux_colname = 'Isl_Total_flux'
+                s_pybdsf = fits_to_makesourcedb(catalog, img_true_sky.freq,
+                                                flux_colname=flux_colname)
                 s_comp_photometry.group('every')
                 result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
                                           excludeMultiple=True, make_plots=True,
                                           name1='LOFAR',
-                                          name2=photometry_comparison_surveys[i])
+                                          name2=survey)
                 if result is not None:
                     # Save the diagnostics
                     photometry_diagnostics = {f'meanRatio_{survey}': result['meanRatio'],
