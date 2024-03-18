@@ -222,7 +222,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
 
 
 def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
-                     output_root, astrometry_comparison_skymodel=None):
+                     output_root, comparison_skymodel=None):
     """
     Calculate and plot various astrometry diagnostics
 
@@ -282,9 +282,9 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
         s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
 
         # Loop over the facets, performing the astrometry checks for each
-        if astrometry_comparison_skymodel:
+        if comparison_skymodel:
             try:
-                s_comp_astrometry = lsmtool.load(astrometry_comparison_skymodel)
+                s_comp_astrometry = lsmtool.load(comparison_skymodel)
                 s_comp_astrometry.group('every')
             except OSError as e:
                 # Comparison catalog not loaded successfully
