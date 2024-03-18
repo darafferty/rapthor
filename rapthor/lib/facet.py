@@ -2,7 +2,6 @@
 Module that holds functions and classes related to faceting
 """
 import numpy as np
-import scipy as sp
 import scipy.spatial
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
@@ -13,6 +12,7 @@ import logging
 from rapthor.lib import miscellaneous as misc
 from matplotlib import patches
 import lsmtool
+from lsmtool import tableio
 import tempfile
 
 
@@ -24,10 +24,12 @@ class Facet(object):
     ----------
     name : str
         Name of facet
-    ra : float
-        RA in degrees of reference coordinate
-    dec : float
-        Dec in degrees of reference coordinate
+    ra : float or str
+        RA of reference coordinate in degrees (if float) or as a string in a
+        format supported by astropy.coordinates.Angle
+    dec : float or str
+        Dec of reference coordinate in degrees (if float) or as a string in a
+        format supported by astropy.coordinates.Angle
     vertices : list of tuples
         List of (RA, Dec) tuples, one for each vertex of the facet
     """
@@ -52,7 +54,7 @@ class Facet(object):
 
         # Find the size and center coordinates of the facet
         xmin, ymin, xmax, ymax = self.polygon.bounds
-        self.size = min(0.5, 1.2 * max(xmax-xmin, ymax-ymin) *
+        self.size = min(0.5, max(xmax-xmin, ymax-ymin) *
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
         self.x_center = xmin + (xmax - xmin)/2
         self.y_center = ymin + (ymax - ymin)/2
@@ -100,7 +102,9 @@ class Facet(object):
                 skymodel.group('every')
         except IOError:
             # Comparison catalog not downloaded successfully
-            skymodel = lsmtool.makeEmptyTable()
+            self.log.warning('The Pan-STARRS catalog could not be successfully '
+                             'downloaded')
+            skymodel = tableio.makeEmptyTable()
 
         return skymodel
 
@@ -126,7 +130,8 @@ class Facet(object):
         Parameters
         ----------
         comparison_skymodel : LSMTool skymodel object, optional
-            Comparison sky model
+            Comparison sky model. If not given, the Pan-STARRS catalog is
+            used
         min_number : int, optional
             Minimum number of sources required for comparison
         """
@@ -139,7 +144,7 @@ class Facet(object):
         #
         # Note: If there are no successful matches, the compare() method
         # returns None
-        if comparison_skymodel and len(comparison_skymodel) >= min_number:
+        if len(comparison_skymodel) >= min_number:
             result = self.skymodel.compare(comparison_skymodel,
                                            radius='5 arcsec',
                                            excludeMultiple=True,
@@ -147,6 +152,10 @@ class Facet(object):
             # Save offsets
             if result is not None:
                 self.astrometry_diagnostics.update(result)
+        else:
+            self.log.warning('Too few matches to determine astrometry offsets '
+                             '(min_number = {0} but number of matches '
+                             '= {1})'.format(min_number, len(comparison_skymodel)))
 
     def get_matplotlib_patch(self, wcs=None):
         """
@@ -182,10 +191,12 @@ class SquareFacet(Facet):
     ----------
     name : str
         Name of facet
-    ra : float
-        RA in degrees of facet center coordinate
-    dec : float
-        Dec in degrees of facet center coordinate
+    ra : float or str
+        RA of reference coordinate in degrees (if float) or as a string in a
+        format supported by astropy.coordinates.Angle
+    dec : float or str
+        Dec of reference coordinate in degrees (if float) or as a string in a
+        format supported by astropy.coordinates.Angle
     width : float
         Width in degrees of facet
     """
@@ -460,7 +471,7 @@ def voronoi(cal_coords, bounding_box):
 
     # Compute Voronoi, sorting the output regions to match the order of the
     # input coordinates
-    vor = sp.spatial.Voronoi(points)
+    vor = scipy.spatial.Voronoi(points)
     sorted_regions = np.array(vor.regions, dtype=object)[np.array(vor.point_region)]
     vor.regions = sorted_regions.tolist()
 
