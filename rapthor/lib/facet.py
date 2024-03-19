@@ -616,7 +616,10 @@ def filter_skymodel(polygon, skymodel, wcs):
     x = np.array(x)
     y = np.array(y)
 
-    # Now check the actual boundary against filtered sky model
+    # Now check the actual boundary against filtered sky model. We first do a quick (but
+    # coarse) check using ImageDraw with a padding of at least a few pixels to ensure the
+    # quick check does not remove sources spuriously. We then do a slow (but precise)
+    # check using Shapely
     xpadding = max(int(0.1 * (max(x) - min(x))), 3)
     ypadding = max(int(0.1 * (max(y) - min(y))), 3)
     xshift = int(min(x)) - xpadding
