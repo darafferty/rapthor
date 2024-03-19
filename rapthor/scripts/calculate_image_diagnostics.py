@@ -144,7 +144,8 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux')
     return skymodel
 
 
-def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=None):
+def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=None,
+                     comparison_surveys=['TGSS', 'NVSS', 'LOTSS']):
     """
     Calculate and plot various photometry diagnostics
 
@@ -160,70 +161,106 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         Minimum number of matched sources required for the comparisons
     comparison_skymodel : str, optional
         Filename of the sky model to use for the photometry (flux scale)
-        comparison (in makesourcedb format). If not given, a TGSS model is
-        downloaded
+        comparison (in makesourcedb format). If not given (or if it cannot be loaded),
+        models are downloaded from the surveys defined by comparison_surveys
+    comparison_surveys : list, optional
+        A list giving the names of surveys to use for the photometry comparison
+        (each must be one of the VO services supported by LSMTool: see
+        https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
+        the supported services)
 
     Returns
     -------
     photometry_diagnostics : dict
-        Photometry diagnositcs
+        Photometry diagnostics. An empty dict is returned if the comparison could
+        not be done successfully
     """
-    # Load photometry comparison model
-    if comparison_skymodel:
-        try:
-            s_comp_photometry = lsmtool.load(comparison_skymodel)
-            name_comp_photometry = 'User supplied catalog'
-        except OSError as e:
-            # Comparison catalog not loaded successfully
-            s_comp_photometry = None
-            print('Comparison sky model could not be loaded. Error was: {}. Trying default '
-                  'sky model instead...'.format(e))
-    else:
-        s_comp_photometry = None
-    if s_comp_photometry is None:
-        try:
-            # Download a TGSS sky model around the phase center, using a 5-deg radius
-            # to ensure the field is fully covered
-            s_comp_photometry = lsmtool.load('tgss', VOPosition=[obs.ra, obs.dec], VORadius=5.0)
-            name_comp_photometry = 'TGSS'
-        except OSError as e:
-            # Comparison catalog not loaded successfully
-            print('Comparison sky model could not be loaded. Error was: {}. Skipping photometry '
-                  'check...'.format(e))
-            s_comp_photometry = None
-            photometry_diagnostics = None
+    # Load and filter the input PyBDSF FITS catalog as needed for the photometry check
+    # Sources are filtered to keep only those that:
+    #   - lie within the FWHM of the primary beam (to exclude sources with
+    #     uncertain primary beam corrections)
+    #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
+    #     that may be poorly modeled)
+    catalog = Table.read(input_catalog, format='fits')
+    phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
+    coords_comp = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
+    separation = phase_center.separation(coords_comp)
+    sec_el = 1.0 / np.sin(obs.mean_el_rad)
+    fwhm_deg = 1.1 * ((3.0e8 / freq) / obs.diam) * 180 / np.pi * sec_el
+    catalog = catalog[separation < fwhm_deg/2*u.degree]
+    major_axis = catalog['DC_Maj']  # degrees
+    catalog = catalog[major_axis < 10/3600]
 
-    # Do the photometry check
-    if s_comp_photometry:
-        # Filter the input PyBDSF FITS catalog as needed for the photometry check
-        # Sources are filtered to keep only those that:
-        #   - lie within the FWHM of the primary beam (to exclude sources with
-        #     uncertain primary beam corrections)
-        #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
-        #     that may be poorly modeled)
-        catalog = Table.read(input_catalog, format='fits')
-        phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
-        coords_comp = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
-        separation = phase_center.separation(coords_comp)
-        sec_el = 1.0 / np.sin(obs.mean_el_rad)
-        fwhm_deg = 1.1 * ((3.0e8 / freq) / obs.diam) * 180 / np.pi * sec_el
-        catalog = catalog[separation < fwhm_deg/2*u.degree]
-        major_axis = catalog['DC_Maj']  # degrees
-        catalog = catalog[major_axis < 10/3600]
+    if len(catalog) >= min_number:
+        # Load photometry comparison model
+        comparison_skymodels = []
+        if comparison_skymodel:
+            try:
+                comparison_skymodels = [lsmtool.load(comparison_skymodel)]
+                comparison_surveys = ['USER_SUPPLIED']
+            except OSError as e:
+                # Comparison catalog not loaded successfully
+                print('Comparison sky model could not be loaded. Error was: {}. Trying to '
+                      'download sky model(s) instead...'.format(e))
+        if not comparison_skymodels:
+            # Download sky model(s) given by comparison_surveys around the
+            # phase center, using a 5-deg radius to ensure the field is fully covered
+            for survey in comparison_surveys:
+                try:
+                    comparison_skymodels.append(lsmtool.load(survey, VOPosition=[obs.ra, obs.dec],
+                                                             VORadius=5.0))
+                except OSError:
+                    # Comparison catalog not downloaded successfully
+                    print(f'A problem occurred when downloading the {survey} catalog '
+                          'for use in the photometry check. Skipping this survey...')
 
         # Convert the filtered catalog to a minimal sky model for use with LSMTool
-        # and do the comparison
-        s_pybdsf = fits_to_makesourcedb(catalog, freq)
-        s_comp_photometry.group('every')
-        if len(s_pybdsf) >= min_number:
-            photometry_diagnostics = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
-                                                      excludeMultiple=True, make_plots=True,
-                                                      name1='LOFAR', name2=name_comp_photometry)
-        else:
-            photometry_diagnostics = None
-            print(f'Fewer than {min_number} sources found in the LOFAR image meet '
-                  'the photometry cuts (major axis < 10" and located inside the FWHM '
-                  'of the primary beam"). Skipping photometry check...')
+        # and do the comparison for each survey
+        photometry_diagnostics = {}
+        for i, s_comp_photometry in enumerate(comparison_skymodels):
+            survey = comparison_surveys[i].strip().upper()
+            if survey == 'LOTSS':
+                # For LoTSS catalog, use total flux from Gaussian fits as it
+                # matches the method used for the LoTSS catalog (and the resolution
+                # of LoTSS is close to that of our LOFAR image)
+                flux_colname = 'Total_flux'
+            else:
+                # For TGSS and NVSS catalogs, use total island flux as it works
+                # better for the low resolutions they have then using the total
+                # flux from the Gaussian fits
+                flux_colname = 'Isl_Total_flux'
+            s_pybdsf = fits_to_makesourcedb(catalog, freq,
+                                            flux_colname=flux_colname)
+            s_comp_photometry.group('every')
+            result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
+                                      excludeMultiple=True, make_plots=True,
+                                      name1='LOFAR',
+                                      name2=survey)
+            if result is not None:
+                # Save the diagnostics
+                photometry_diagnostics.update({f'meanRatio_{survey}': result['meanRatio'],
+                                               f'stdRatio_{survey}': result['stdRatio'],
+                                               f'meanClippedRatio_{survey}': result['meanClippedRatio'],
+                                               f'stdClippedRatio_{survey}': result['stdClippedRatio']})
+
+                # Append survey name to the diagnostic plots generated by LSMTool
+                photometry_plots = ['flux_ratio_vs_distance', 'flux_ratio_vs_flux',
+                                    'flux_ratio_sky']
+                for plot in photometry_plots:
+                    src_filename = plot + '.pdf'
+                    dst_filename = plot + f'_{survey}.pdf'
+                    if os.path.exists(dst_filename):
+                        os.remove(dst_filename)
+                    shutil.copy(src_filename, dst_filename)
+            else:
+                # Comparison failed due to insufficient matches
+                print(f'The photometry check with the {survey} catalog could not '
+                      'be done due to insufficient matches. Skipping this survey...')
+    else:
+        photometry_diagnostics = {}
+        print(f'Fewer than {min_number} sources found in the LOFAR image that meet '
+              'the photometry cuts (major axis < 10" and located inside the FWHM '
+              'of the primary beam"). Skipping photometry check...')
 
     return photometry_diagnostics
 
@@ -255,8 +292,9 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
 
     Returns
     -------
-    astrometry_diagnostics : dict
-        Astrometry diagnositcs
+    mean_astrometry_diagnostics : dict
+        Mean astrometry diagnostics. An empty dict is returned if the comparison could
+        not be done successfully
     """
     # Load and filter the input PyBDSF FITS catalog as needed for the astrometry check
     # Sources are filtered to keep only those that:
@@ -343,13 +381,13 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
                                            'stdClippedDecOffsetDeg': np.mean(astrometry_diagnostics['stdClippedDecOffsetDeg'])}
         else:
             # Write dummy files
-            mean_astrometry_diagnostics = None
+            mean_astrometry_diagnostics = {}
             with open(output_root+'.astrometry_offsets.json', 'w') as fp:
                 fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
             with open(output_root+'.astrometry_offsets.pdf', 'w') as fp:
                 fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
     else:
-        mean_astrometry_diagnostics = None
+        mean_astrometry_diagnostics = {}
         print(f'Fewer than {min_number} sources found in the LOFAR image meet the '
               'astrometry cuts (major axis < 10" with positional errors < 2"). '
               'Skipping the astromety check...')
@@ -455,15 +493,14 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
 
     # Do the photometry check and update the ouput dict
     result = check_photometry(obs_list[beam_ind], input_catalog, img_true_sky.freq,
-                              min_number, comparison_skymodel=photometry_comparison_skymodel)
-    if result is not None:
-        cwl_output.update(result)
+                              min_number, comparison_skymodel=photometry_comparison_skymodel,
+                              comparison_surveys=photometry_comparison_surveys)
+    cwl_output.update(result)
 
     # Do the astrometry check and update the ouput dict
     result = check_astrometry(obs_list[beam_ind], input_catalog, img_true_sky, facet_region_file,
                               min_number, output_root, comparison_skymodel=astrometry_comparison_skymodel)
-    if result is not None:
-        cwl_output.update(result)
+    cwl_output.update(result)
 
     # Write out the full diagnostics
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
@@ -495,6 +532,8 @@ if __name__ == '__main__':
     parser.add_argument('output_root', help='Root of output files')
     parser.add_argument('--facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
     parser.add_argument('--photometry_comparison_skymodel', help='Filename of photometry sky model', type=str, default=None)
+    parser.add_argument('--photometry_comparison_surveys', help='List of photometry surveys to use when '
+                        'photometry_comparison_skymodel is not given', type=list, default=['TGSS', 'NVSS', 'LOTSS'])
     parser.add_argument('--astrometry_comparison_skymodel', help='Filename of astrometry sky model', type=str, default=None)
     parser.add_argument('--min_number', help='Minimum number of sources for diagnostics', type=int, default=5)
 
@@ -502,4 +541,5 @@ if __name__ == '__main__':
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
          args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root,
          facet_region_file=args.facet_region_file, photometry_comparison_skymodel=args.photometry_comparison_skymodel,
+         photometry_comparison_surveys=args.photometry_comparison_surveys,
          astrometry_comparison_skymodel=args.astrometry_comparison_skymodel, min_number=args.min_number)
