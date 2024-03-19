@@ -73,7 +73,8 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
             facet_names.append(facet.name)
             facet_patches.append(facet.get_matplotlib_patch(wcs=wcs))
 
-    # Set up the figure
+    # Set up the figure. We use various values that should produce a reasonably
+    # sized figure with readable labels in most cases
     fig = plt.figure(1, figsize=(7.66, 7))
     plt.clf()
     ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)
@@ -117,6 +118,12 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux')
     ----------
     catalog : astropy Table object
         Input PyBDSF catalog
+    reference_freq : float
+        The reference frequency in Hz for the input catalog at which the flux
+        densities were measured
+    flux_colname : str, optional
+        The name of the column in the input catalog that contains the flux
+        density values
 
     Returns
     -------
