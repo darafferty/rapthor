@@ -5,3 +5,4 @@
 # See .readthedocs.yaml in the root of this repository.
 breathe
 myst-parser
+sphinx_rtd_theme
