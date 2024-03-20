@@ -226,7 +226,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
                 flux_colname = 'Total_flux'
             else:
                 # For TGSS and NVSS catalogs, use total island flux as it works
-                # better for the low resolutions they have then using the total
+                # better for the low resolutions they have than using the total
                 # flux from the Gaussian fits
                 flux_colname = 'Isl_Total_flux'
             s_pybdsf = fits_to_makesourcedb(catalog, freq,
@@ -234,8 +234,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
             s_comp_photometry.group('every')
             result = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
                                       excludeMultiple=True, make_plots=True,
-                                      name1='LOFAR',
-                                      name2=survey)
+                                      name1='LOFAR', name2=survey)
             if result is not None:
                 # Save the diagnostics
                 photometry_diagnostics.update({f'meanRatio_{survey}': result['meanRatio'],
