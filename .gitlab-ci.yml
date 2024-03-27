@@ -114,6 +114,7 @@ rapthor-test:
 deploy-docker:
   stage: deploy
   needs: ["versioning", "build-docker-full", "rapthor-test"]
+  environment: "rapthor"
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
