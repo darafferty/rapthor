@@ -81,7 +81,9 @@ inputs:
   - id: facet_region_file
     label: Input ds9 region file
     doc: |
-      The filename of the input ds9 region file that defines the facets.
+      The filename of the input ds9 region file that defines the facets. Note
+      that when this file is unavailable, the filename can be set to a dummy
+      string, in which case it is then ignored by the script
     type:
       - string?
       - File?
