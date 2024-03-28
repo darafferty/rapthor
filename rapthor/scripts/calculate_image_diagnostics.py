@@ -7,6 +7,7 @@ from argparse import RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
+from rapthor.lib.facet import SquareFacet, read_ds9_region_file, make_wcs, radec2xy
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 import casacore.tables as pt
@@ -14,9 +15,16 @@ from astropy.utils import iers
 from astropy.table import Table
 import astropy.units as u
 from astropy.coordinates import SkyCoord
-from astropy.coordinates import match_coordinates_sky
-from astropy.stats import sigma_clip
 import json
+from astropy.visualization.wcsaxes import WCSAxes
+import tempfile
+import matplotlib
+if matplotlib.get_backend() != 'Agg':
+    matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import os
+import glob
+import shutil
 
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
@@ -24,9 +32,335 @@ import json
 iers.conf.auto_download = False
 
 
+def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_labels=False):
+    """
+    Plots the astrometry offsets across the field
+
+    Note: The arrows indicate the direction and magnitude of the
+    corrections that should be applied to the LOFAR positions in
+    each facet to obtain a mean offset of zero
+
+    Parameters
+    ----------
+    facets : list
+        List of Facet objects
+    field_ra : float
+        RA in degrees of the field
+    field_dec : float
+        Dec in degrees of the field
+    output_file : str
+        Filename for the output plot
+    plot_labels : bool, optional
+        If True, plot the facet labels
+    """
+    wcs = make_wcs(field_ra, field_dec)
+    ra_offsets = []
+    dec_offsets = []
+    facet_patches = []
+    facet_ra = []
+    facet_dec = []
+    facet_names = []
+    for facet in facets:
+        # Note: the offsets are calculated as (LOFAR model value) - (comparison model
+        # value); e.g., a positive Dec offset indicates that the LOFAR sources
+        # lie on average to the North of the comparison source positions. Therefore, we
+        # multiply by -1 to obtain the correct arrow directions in the quiver plot
+        if facet.astrometry_diagnostics:
+            ra_offsets.append(-1 * facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
+            dec_offsets.append(-1 * facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
+            facet_ra.append(facet.ra)
+            facet_dec.append(facet.dec)
+            facet_names.append(facet.name)
+            facet_patches.append(facet.get_matplotlib_patch(wcs=wcs))
+
+    # Set up the figure. We use various values that should produce a reasonably
+    # sized figure with readable labels in most cases
+    fig = plt.figure(1, figsize=(7.66, 7))  # increase x size to ensure room for Dec label
+    plt.clf()
+    ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)  # set start x to give room for Dec label
+    fig.add_axes(ax)
+    RAAxis = ax.coords['ra']
+    RAAxis.set_axislabel('RA', minpad=0.75)
+    RAAxis.set_major_formatter('hh:mm:ss')
+    DecAxis = ax.coords['dec']
+    DecAxis.set_axislabel('Dec', minpad=0.75)
+    DecAxis.set_major_formatter('dd:mm:ss')
+    ax.coords.grid(color='black', alpha=0.5, linestyle='solid')
+    ax.set_title('Positional Offsets (arrows indicate direction and magnitude of correction)')
+
+    # Plot the facet polygons
+    x, y = radec2xy(wcs, facet_ra, facet_dec)
+    for i, patch in enumerate(facet_patches):
+        ax.add_patch(patch)
+        if plot_labels:
+            ax.annotate(facet_names[i], (x[i], y[i]), va='top', ha='center')
+
+    # Plot the offsets. The arrows indicate the direction and magnitude of the
+    # correction that should be applied to the LOFAR positions
+    x_offsets = np.array(ra_offsets) / wcs.wcs.cdelt[0]
+    y_offsets = np.array(dec_offsets) / wcs.wcs.cdelt[1]
+    quiver_plot = plt.quiver(x, y, x_offsets, y_offsets, units='xy', angles='xy',
+                             scale=2/3600, color='blue')
+    plt.quiverkey(quiver_plot, 0.1, 0.95, 1/3600/wcs.wcs.cdelt[0], '1 arcsec',
+                  labelpos='N', coordinates='figure')
+    plt.savefig(output_file, format='pdf')
+
+
+def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux'):
+    """
+    Converts a PyBDSF catalog to a makesourcedb sky model
+
+    Note: the resulting makesourcedb catalog is a minimal catalog suitable for
+    use in photometry and astrometry comparisons and should not be used for
+    calibration
+
+    Parameters
+    ----------
+    catalog : astropy Table object
+        Input PyBDSF catalog
+    reference_freq : float
+        The reference frequency in Hz for the input catalog at which the flux
+        densities were measured
+    flux_colname : str, optional
+        The name of the column in the input catalog that contains the flux
+        density values
+
+    Returns
+    -------
+    skymodel : LSMTool skymodel object
+        The makesourcedb sky model
+    """
+    # Convert the result to makesourcedb format and write to a tempfile
+    out_lines = [f'FORMAT = Name, Type, Ra, Dec, I, ReferenceFrequency={reference_freq}\n']
+    for (name, ra, dec, flux) in zip(catalog['Source_id'], catalog['RA'],
+                                     catalog['DEC'], catalog[flux_colname]):
+        out_lines.append(f'{name}, POINT, {ra}, {dec}, {flux}, \n')
+
+    skymodel_file = tempfile.NamedTemporaryFile()
+    with open(skymodel_file.name, 'w') as f:
+        f.writelines(out_lines)
+    skymodel = lsmtool.load(skymodel_file.name)
+
+    return skymodel
+
+
+def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=None):
+    """
+    Calculate and plot various photometry diagnostics
+
+    Parameters
+    ----------
+    obs : Observation object
+        Representative observation, used to derive pointing, etc.
+    input_catalog : str
+        Filename of the input PyBDSF FITS catalog derived from the LOFAR image
+    freq : float
+        Frequency in Hz of the LOFAR image
+    min_number : int
+        Minimum number of matched sources required for the comparisons
+    comparison_skymodel : str, optional
+        Filename of the sky model to use for the photometry (flux scale)
+        comparison (in makesourcedb format). If not given, a TGSS model is
+        downloaded
+
+    Returns
+    -------
+    photometry_diagnostics : dict
+        Photometry diagnositcs
+    """
+    # Load photometry comparison model
+    if comparison_skymodel:
+        try:
+            s_comp_photometry = lsmtool.load(comparison_skymodel)
+            name_comp_photometry = 'User supplied catalog'
+        except OSError as e:
+            # Comparison catalog not loaded successfully
+            s_comp_photometry = None
+            print('Comparison sky model could not be loaded. Error was: {}. Trying default '
+                  'sky model instead...'.format(e))
+    else:
+        s_comp_photometry = None
+    if s_comp_photometry is None:
+        try:
+            # Download a TGSS sky model around the phase center, using a 5-deg radius
+            # to ensure the field is fully covered
+            s_comp_photometry = lsmtool.load('tgss', VOPosition=[obs.ra, obs.dec], VORadius=5.0)
+            name_comp_photometry = 'TGSS'
+        except OSError as e:
+            # Comparison catalog not loaded successfully
+            print('Comparison sky model could not be loaded. Error was: {}. Skipping photometry '
+                  'check...'.format(e))
+            s_comp_photometry = None
+            photometry_diagnostics = None
+
+    # Do the photometry check
+    if s_comp_photometry:
+        # Filter the input PyBDSF FITS catalog as needed for the photometry check
+        # Sources are filtered to keep only those that:
+        #   - lie within the FWHM of the primary beam (to exclude sources with
+        #     uncertain primary beam corrections)
+        #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
+        #     that may be poorly modeled)
+        catalog = Table.read(input_catalog, format='fits')
+        phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
+        coords_comp = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
+        separation = phase_center.separation(coords_comp)
+        sec_el = 1.0 / np.sin(obs.mean_el_rad)
+        fwhm_deg = 1.1 * ((3.0e8 / freq) / obs.diam) * 180 / np.pi * sec_el
+        catalog = catalog[separation < fwhm_deg/2*u.degree]
+        major_axis = catalog['DC_Maj']  # degrees
+        catalog = catalog[major_axis < 10/3600]
+
+        # Convert the filtered catalog to a minimal sky model for use with LSMTool
+        # and do the comparison
+        s_pybdsf = fits_to_makesourcedb(catalog, freq)
+        s_comp_photometry.group('every')
+        if len(s_pybdsf) >= min_number:
+            photometry_diagnostics = s_pybdsf.compare(s_comp_photometry, radius='5 arcsec',
+                                                      excludeMultiple=True, make_plots=True,
+                                                      name1='LOFAR', name2=name_comp_photometry)
+        else:
+            photometry_diagnostics = None
+            print(f'Fewer than {min_number} sources found in the LOFAR image meet '
+                  'the photometry cuts (major axis < 10" and located inside the FWHM '
+                  'of the primary beam"). Skipping photometry check...')
+
+    return photometry_diagnostics
+
+
+def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
+                     output_root, comparison_skymodel=None):
+    """
+    Calculate and plot various astrometry diagnostics
+
+    Parameters
+    ----------
+    obs : Observation object
+        Representative observation, used to derive pointing, etc.
+    input_catalog : str
+        Filename of the input PyBDSF FITS catalog derived from the LOFAR image
+    image : FITSImage object
+        The LOFAR image, used to derive frequency, coverage, etc.
+    facet_region_file : str, optional
+        Filename of the facet region file (in ds9 format) that defines the
+        facets used in imaging
+    min_number : int
+        Minimum number of matched sources required for the comparisons
+    output_root : str
+        Root of the filename for the output files
+    comparison_skymodel : str, optional
+        Filename of the sky model to use for the photometry (flux scale)
+        comparison (in makesourcedb format). If not given, a Pan-STARRS model is
+        downloaded
+
+    Returns
+    -------
+    astrometry_diagnostics : dict
+        Astrometry diagnositcs
+    """
+    # Load and filter the input PyBDSF FITS catalog as needed for the astrometry check
+    # Sources are filtered to keep only those that:
+    #   - have deconvolved major axis < 10 arcsec (to exclude extended sources
+    #     that may be poorly modeled)
+    #   - have errors on RA and Dec of < 2 arcsec (to exclude sources
+    #     with high positional uncertainties)
+    catalog = Table.read(input_catalog, format='fits')
+    major_axis = catalog['DC_Maj']  # degrees
+    catalog = catalog[major_axis < 10/3600]
+    ra_error = catalog['E_RA']  # degrees
+    catalog = catalog[ra_error < 2/3600]
+    dec_error = catalog['E_DEC']  # degrees
+    catalog = catalog[dec_error < 2/3600]
+
+    # Do the astrometry check
+    if len(catalog) >= min_number:
+        max_search_cone_radius = 0.5  # deg; Pan-STARRS search limit
+        if facet_region_file is not None and os.path.isfile(facet_region_file):
+            facets = read_ds9_region_file(facet_region_file)
+        else:
+            # Use a single rectangular facet centered on the phase center
+            ra = obs.ra
+            dec = obs.dec
+            image_width = max(image.img_data.shape[-2:]) * abs(image.img_hdr['CDELT1'])
+            width = min(max_search_cone_radius*2, image_width)
+            facets = [SquareFacet('field', ra, dec, width)]
+
+        # Convert the filtered catalog into a minimal sky model for use with LSMTool
+        s_pybdsf = fits_to_makesourcedb(catalog, image.freq)
+
+        # Loop over the facets, performing the astrometry checks for each
+        if comparison_skymodel:
+            try:
+                s_comp_astrometry = lsmtool.load(comparison_skymodel)
+                s_comp_astrometry.group('every')
+            except OSError as e:
+                # Comparison catalog not loaded successfully
+                s_comp_astrometry = None
+                print('Comparison sky model could not be loaded. Error was: {}. Trying default '
+                      'sky model instead...'.format(e))
+        else:
+            s_comp_astrometry = None
+
+        astrometry_diagnostics = {'facet_name': [],
+                                  'meanRAOffsetDeg': [],
+                                  'stdRAOffsetDeg': [],
+                                  'meanClippedRAOffsetDeg': [],
+                                  'stdClippedRAOffsetDeg': [],
+                                  'meanDecOffsetDeg': [],
+                                  'stdDecOffsetDeg': [],
+                                  'meanClippedDecOffsetDeg': [],
+                                  'stdClippedDecOffsetDeg': []}
+        for facet in facets:
+            facet.set_skymodel(s_pybdsf.copy())
+            facet.find_astrometry_offsets(s_comp_astrometry, min_number=min_number)
+            if len(facet.astrometry_diagnostics):
+                astrometry_diagnostics['facet_name'].append(facet.name)
+                astrometry_diagnostics['meanRAOffsetDeg'].append(facet.astrometry_diagnostics['meanRAOffsetDeg'])
+                astrometry_diagnostics['stdRAOffsetDeg'].append(facet.astrometry_diagnostics['stdRAOffsetDeg'])
+                astrometry_diagnostics['meanClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedRAOffsetDeg'])
+                astrometry_diagnostics['stdClippedRAOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedRAOffsetDeg'])
+                astrometry_diagnostics['meanDecOffsetDeg'].append(facet.astrometry_diagnostics['meanDecOffsetDeg'])
+                astrometry_diagnostics['stdDecOffsetDeg'].append(facet.astrometry_diagnostics['stdDecOffsetDeg'])
+                astrometry_diagnostics['meanClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['meanClippedDecOffsetDeg'])
+                astrometry_diagnostics['stdClippedDecOffsetDeg'].append(facet.astrometry_diagnostics['stdClippedDecOffsetDeg'])
+
+        # Save and plot the per-facet offsets
+        if len(astrometry_diagnostics['facet_name']):
+            with open(output_root+'.astrometry_offsets.json', 'w') as fp:
+                json.dump(astrometry_diagnostics, fp)
+            ra = obs.ra
+            dec = obs.dec
+            plot_astrometry_offsets(facets, ra, dec, output_root+'.astrometry_offsets.pdf')
+
+            # Calculate mean offsets
+            mean_astrometry_diagnostics = {'meanRAOffsetDeg': np.mean(astrometry_diagnostics['meanRAOffsetDeg']),
+                                           'stdRAOffsetDeg': np.mean(astrometry_diagnostics['stdRAOffsetDeg']),
+                                           'meanClippedRAOffsetDeg': np.mean(astrometry_diagnostics['meanClippedRAOffsetDeg']),
+                                           'stdClippedRAOffsetDeg': np.mean(astrometry_diagnostics['stdClippedRAOffsetDeg']),
+                                           'meanDecOffsetDeg': np.mean(astrometry_diagnostics['meanDecOffsetDeg']),
+                                           'stdDecOffsetDeg': np.mean(astrometry_diagnostics['stdDecOffsetDeg']),
+                                           'meanClippedDecOffsetDeg': np.mean(astrometry_diagnostics['meanClippedDecOffsetDeg']),
+                                           'stdClippedDecOffsetDeg': np.mean(astrometry_diagnostics['stdClippedDecOffsetDeg'])}
+        else:
+            # Write dummy files
+            mean_astrometry_diagnostics = None
+            with open(output_root+'.astrometry_offsets.json', 'w') as fp:
+                fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
+            with open(output_root+'.astrometry_offsets.pdf', 'w') as fp:
+                fp.writelines('Astrometry diagnostics could not be determined. Please see the logs for details')
+    else:
+        mean_astrometry_diagnostics = None
+        print(f'Fewer than {min_number} sources found in the LOFAR image meet the '
+              'astrometry cuts (major axis < 10" with positional errors < 2"). '
+              'Skipping the astromety check...')
+
+    return mean_astrometry_diagnostics
+
+
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
          input_catalog, input_skymodel, obs_ms, diagnostics_file, output_root,
-         comparison_skymodel=None):
+         facet_region_file=None, photometry_comparison_skymodel=None,
+         astrometry_comparison_skymodel=None, min_number=5):
     """
     Calculate various image diagnostics
 
@@ -52,9 +386,18 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         by the sky model filtering script
     output_root : str
         Root of the filename for the output files
-    comparison_skymodel : str, optional
-        Filename of the sky model to use for flux scale and astrometry
-        comparisons. If not given, a TGSS model is downloaded
+    facet_region_file : str, optional
+        Filename of the facet region file (in ds9 format) that defines the
+        facets used in imaging
+    photometry_comparison_skymodel : str, optional
+        Filename of the sky model to use for the photometry (flux scale)
+        comparison (in makesourcedb format). If not given, a TGSS model is
+        downloaded
+    astrometry_comparison_skymodel : str, optional
+        Filename of the sky model to use for the astrometry comparison (in
+        makesourcedb format). If not given, a Pan-STARRS model is downloaded
+    min_number : int, optional
+        Minimum number of matched sources required for the comparisons
     """
     # Select the best MS
     if isinstance(obs_ms, str):
@@ -104,114 +447,35 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
                        'freq': img_true_sky.freq,
                        'beam_fwhm': img_true_sky.beam})
 
-    # Load input sky model and comparison model
-    s_in = lsmtool.load(input_skymodel)
-    if comparison_skymodel is None:
-        # Download a TGSS sky model around the midpoint of the input sky model,
-        # using a 5-deg radius to ensure the field is fully covered
-        _, _, midRA, midDec = s_in._getXY()
-        try:
-            s_comp = lsmtool.load('tgss', VOPosition=[midRA, midDec], VORadius=5.0)
-        except OSError:
-            # Comparison catalog not downloaded successfully
-            s_comp = None
-    else:
-        s_comp = lsmtool.load(comparison_skymodel)
+    # Do the photometry check and update the ouput dict
+    result = check_photometry(obs_list[beam_ind], input_catalog, img_true_sky.freq,
+                              min_number, comparison_skymodel=photometry_comparison_skymodel)
+    if result is not None:
+        cwl_output.update(result)
 
-    # Do cross matching of the comparison model with the PyBDSF-derived one
-    if s_comp and s_in:
-        # Write the comparison catalog to FITS file for use with astropy
-        catalog_comp_filename = output_root+'.comparison.fits'
-        s_comp.table.columns['Ra'].format = None
-        s_comp.table.columns['Dec'].format = None
-        s_comp.table.columns['I'].format = None
-        s_comp.write(catalog_comp_filename, format='fits', clobber=True)
-        if 'ReferenceFrequency' in s_comp.getColNames():
-            freq_comp = np.mean(s_comp.getColValues('ReferenceFrequency'))
-        else:
-            freq_comp = s_comp.table.meta['ReferenceFrequency']
+    # Do the astrometry check and update the ouput dict
+    result = check_astrometry(obs_list[beam_ind], input_catalog, img_true_sky, facet_region_file,
+                              min_number, output_root, comparison_skymodel=astrometry_comparison_skymodel)
+    if result is not None:
+        cwl_output.update(result)
 
-        # Read in PyBDSF-derived and comparison catalogs and filter to keep
-        # only comparison sources within a radius of FWHM / 2 of phase center
-        catalog = Table.read(input_catalog, format='fits')
-        catalog_comp = Table.read(catalog_comp_filename, format='fits')
-        obs = obs_list[beam_ind]
-        phase_center = SkyCoord(ra=obs.ra*u.degree, dec=obs.dec*u.degree)
-        coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
-        separation = phase_center.separation(coords_comp)
-        sec_el = 1.0 / np.sin(obs.mean_el_rad)
-        fwhm_deg = 1.1 * ((3.0e8 / img_true_sky.freq) / obs.diam) * 180 / np.pi * sec_el
-        catalog_comp = catalog_comp[separation < fwhm_deg/2*u.degree]
-
-        # Cross match the coordinates and keep only matches that have a
-        # separation of 5 arcsec or less
-        #
-        # Note: we require at least 10 sources for the comparison, as using
-        # fewer can give unreliable estimates
-        min_number = 10
-        if len(catalog_comp) >= min_number:
-            coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'])
-            coords_comp = SkyCoord(ra=catalog_comp['Ra'], dec=catalog_comp['Dec'])
-            idx, sep2d, _ = match_coordinates_sky(coords_comp, coords)
-            constraint = sep2d < 5*u.arcsec
-            catalog_comp = catalog_comp[constraint]
-            catalog = catalog[idx[constraint]]
-
-            # Find the mean flux ratio (input / comparison). We use the total island
-            # flux density from PyBDSF as it gives less scatter than the Gaussian
-            # fluxes when comparing to a lower-resolution catalog (such as TGSS).
-            # Lastly, a correction factor is used to correct for the potentially
-            # different frequencies of the LOFAR image and the comparison catalog
-            if len(catalog_comp) >= min_number:
-                alpha = -0.7  # adopt a typical spectral index
-                freq_factor = (freq_comp / img_true_sky.freq)**alpha
-                ratio = catalog['Isl_Total_flux'] / catalog_comp['I'] * freq_factor
-                meanRatio = np.mean(ratio)
-                stdRatio = np.std(ratio)
-                clippedRatio = sigma_clip(ratio)
-                meanClippedRatio = np.mean(clippedRatio)
-                stdClippedRatio = np.std(clippedRatio)
-                stats = {'meanRatio_pybdsf': meanRatio,
-                         'stdRatio_pybdsf': stdRatio,
-                         'meanClippedRatio_pybdsf': meanClippedRatio,
-                         'stdClippedRatio_pybdsf': stdClippedRatio}
-                cwl_output.update(stats)
-
-        # Group the comparison sky model into sources using a FWHM of 40 arcsec,
-        # the approximate TGSS resolution
-        s_comp.group('threshold', FWHM='40.0 arcsec', threshold=0.05)
-
-        # Keep POINT-only sources
-        source_type = s_comp.getColValues('Type')
-        patch_names = s_comp.getColValues('Patch')
-        non_point_patch_names = set(patch_names[np.where(source_type != 'POINT')])
-        ind = []
-        for patch_name in non_point_patch_names:
-            ind.extend(s_comp.getRowIndex(patch_name))
-        s_comp.remove(np.array(ind))
-
-        # Check if there is a sufficient number of sources to do the comparison with.
-        # If there is, do it and append the resulting diagnostics dict to the
-        # existing one
-        #
-        # Note: the various ratios are all calculated as (s_in / s_comp) and the
-        # differences as (s_in - s_comp). If there are no successful matches,
-        # the compare() method returns None
-        if (s_comp
-                and len(s_in.getPatchNames()) >= min_number
-                and len(s_comp.getPatchNames()) >= min_number):
-            flux_astrometry_diagnostics = s_in.compare(s_comp, radius='5 arcsec',
-                                                       excludeMultiple=True, make_plots=False)
-            if flux_astrometry_diagnostics is not None:
-                cwl_output.update(flux_astrometry_diagnostics)
-
-    # Write out the diagnostics
+    # Write out the full diagnostics
     with open(output_root+'.image_diagnostics.json', 'w') as fp:
         json.dump(cwl_output, fp)
 
+    # Adjust plot filenames as needed to include output_root (those generated by LSMTool
+    # lack it)
+    diagnostic_plots = glob.glob(os.path.join('.', '*.pdf'))
+    for src_filename in diagnostic_plots:
+        if not os.path.basename(src_filename).startswith(output_root):
+            dst_filename = os.path.join('.', f'{output_root}.' + os.path.basename(src_filename))
+            if os.path.exists(dst_filename):
+                os.remove(dst_filename)
+            shutil.copy(src_filename, dst_filename)
+
 
 if __name__ == '__main__':
-    descriptiontext = "Analyze source catalogs.\n"
+    descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
     parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('flat_noise_image', help='Filename of flat-noise FITS image')
@@ -223,7 +487,13 @@ if __name__ == '__main__':
     parser.add_argument('obs_ms', help='Filename of observation MS')
     parser.add_argument('diagnostics_file', help='Filename of diagnostics JSON file')
     parser.add_argument('output_root', help='Root of output files')
+    parser.add_argument('--facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
+    parser.add_argument('--photometry_comparison_skymodel', help='Filename of photometry sky model', type=str, default=None)
+    parser.add_argument('--astrometry_comparison_skymodel', help='Filename of astrometry sky model', type=str, default=None)
+    parser.add_argument('--min_number', help='Minimum number of sources for diagnostics', type=int, default=5)
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
-         args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root)
+         args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root,
+         facet_region_file=args.facet_region_file, photometry_comparison_skymodel=args.photometry_comparison_skymodel,
+         astrometry_comparison_skymodel=args.astrometry_comparison_skymodel, min_number=args.min_number)

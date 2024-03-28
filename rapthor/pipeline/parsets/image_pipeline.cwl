@@ -433,6 +433,18 @@ outputs:
     outputSource:
       - image_sector/sector_diagnostics
     type: File[]
+  - id: sector_offsets
+    outputSource:
+      - image_sector/sector_offsets
+    type: File[]
+  - id: sector_diagnostic_plots
+    outputSource:
+      - image_sector/sector_diagnostic_plots
+    type:
+      type: array
+      items:
+        type: array
+        items: File
   - id: visibilities
     outputSource:
       - image_sector/visibilities
@@ -662,6 +674,8 @@ steps:
       - id: sector_skymodels
 {% endif %}
       - id: sector_diagnostics
+      - id: sector_offsets
+      - id: sector_diagnostic_plots
 {% if use_facets %}
       - id: sector_region_file
 {% endif %}

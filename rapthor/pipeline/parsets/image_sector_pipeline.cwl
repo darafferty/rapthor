@@ -394,6 +394,14 @@ outputs:
     outputSource:
       - find_diagnostics/diagnostics
     type: File
+  - id: sector_offsets
+    outputSource:
+      - find_diagnostics/offsets
+    type: File
+  - id: sector_diagnostic_plots
+    outputSource:
+      - find_diagnostics/plots
+    type: File[]
   - id: visibilities
     outputSource:
       - prepare_imaging_data/msimg
@@ -819,5 +827,13 @@ steps:
         source: obs_filename
       - id: diagnostics_file
         source: filter/diagnostics
+      - id: facet_region_file
+{% if use_facets %}
+        source: make_region_file/region_file
+{% else %}
+        valueFrom: 'none'
+{% endif %}
     out:
       - id: diagnostics
+      - id: offsets
+      - id: plots

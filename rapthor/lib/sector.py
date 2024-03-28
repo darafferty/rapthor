@@ -4,13 +4,11 @@ Definition of the Sector class that holds parameters for an image or predict sec
 import logging
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib import cluster
+from rapthor.lib import cluster, facet
 import lsmtool
 from astropy.coordinates import Angle,  SkyCoord
 import astropy.units as u
-from shapely.geometry import Point, Polygon
-from shapely.prepared import prep
-from PIL import Image, ImageDraw
+from shapely.geometry import Polygon
 import pickle
 import os
 import copy
@@ -62,6 +60,8 @@ class Sector(object):
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the workflows
         self.diagnostics = []  # list to hold dicts of image diagnostics
+        self.calibration_skymodel = None  # set by Field.update_skymodel()
+        self.max_nmiter = None  # set by the strategy
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
@@ -358,61 +358,7 @@ class Sector(object):
         filtered_skymodel : LSMTool skymodel object
             Filtered sky model
         """
-        # Make list of sources
-        RA = skymodel.getColValues('Ra')
-        Dec = skymodel.getColValues('Dec')
-        x, y = self.field.radec2xy(RA, Dec)
-        x = np.array(x)
-        y = np.array(y)
-
-        # Keep only those sources inside the sector bounding box
-        inside = np.zeros(len(skymodel), dtype=bool)
-        xmin, ymin, xmax, ymax = self.poly.bounds
-        inside_ind = np.where((x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax))
-        inside[inside_ind] = True
-        skymodel.select(inside)
-        if len(skymodel) == 0:
-            return skymodel
-        RA = skymodel.getColValues('Ra')
-        Dec = skymodel.getColValues('Dec')
-        x, y = self.field.radec2xy(RA, Dec)
-        x = np.array(x)
-        y = np.array(y)
-
-        # Now check the actual sector boundary against filtered sky model
-        xpadding = max(int(0.1 * (max(x) - min(x))), 3)
-        ypadding = max(int(0.1 * (max(y) - min(y))), 3)
-        xshift = int(min(x)) - xpadding
-        yshift = int(min(y)) - ypadding
-        xsize = int(np.ceil(max(x) - min(x))) + 2*xpadding
-        ysize = int(np.ceil(max(y) - min(y))) + 2*ypadding
-        x -= xshift
-        y -= yshift
-        prepared_polygon = prep(self.poly)
-
-        # Unmask everything outside of the polygon + its border (outline)
-        inside = np.zeros(len(skymodel), dtype=bool)
-        mask = Image.new('L', (xsize, ysize), 0)
-        verts = [(xv-xshift, yv-yshift) for xv, yv in zip(self.poly.exterior.coords.xy[0],
-                                                          self.poly.exterior.coords.xy[1])]
-        ImageDraw.Draw(mask).polygon(verts, outline=1, fill=1)
-        inside_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
-        inside[inside_ind] = True
-
-        # Now check sources in the border precisely
-        mask = Image.new('L', (xsize, ysize), 0)
-        ImageDraw.Draw(mask).polygon(verts, outline=1, fill=0)
-        border_ind = np.where(np.array(mask).transpose()[(x.astype(int), y.astype(int))])
-        points = [Point(xs, ys) for xs, ys in zip(x[border_ind], y[border_ind])]
-        indexes = []
-        for i in range(len(points)):
-            indexes.append(border_ind[0][i])
-        i_points = zip(indexes, points)
-        i_outside_points = [(i, p) for (i, p) in i_points if not prepared_polygon.contains(p)]
-        for idx, _ in i_outside_points:
-            inside[idx] = False
-        skymodel.select(inside)
-        return skymodel
+        return facet.filter_skymodel(self.poly, skymodel, self.field.wcs)
 
     def get_obs_parameters(self, parameter):
         """

@@ -78,6 +78,18 @@ inputs:
     type: string
     inputBinding:
       position: 9
+  - id: facet_region_file
+    label: Input ds9 region file
+    doc: |
+      The filename of the input ds9 region file that defines the facets. Note
+      that when this file is unavailable, the filename can be set to a dummy
+      string, in which case it is then ignored by the script
+    type:
+      - string?
+      - File?
+    inputBinding:
+      prefix: --facet_region_file=
+      separate: false
 
 outputs:
   - id: diagnostics
@@ -87,6 +99,20 @@ outputs:
     type: File
     outputBinding:
       glob: '$(inputs.output_root).image_diagnostics.json'
+  - id: offsets
+    label: Astrometry offsets
+    doc: |
+      The astrometry offsets in RA and Dec, per facet.
+    type: File
+    outputBinding:
+      glob: '$(inputs.output_root).astrometry_offsets.json'
+  - id: plots
+    label: Diagnostic plots
+    doc: |
+      Various diagnostic plots of the photometry and astrometry.
+    type: File[]
+    outputBinding:
+      glob: '*.pdf'
 
 
 hints:
