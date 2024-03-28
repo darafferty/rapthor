@@ -75,9 +75,9 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
 
     # Set up the figure. We use various values that should produce a reasonably
     # sized figure with readable labels in most cases
-    fig = plt.figure(1, figsize=(7.66, 7))
+    fig = plt.figure(1, figsize=(7.66, 7))  # increase x size to ensure room for Dec label
     plt.clf()
-    ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)
+    ax = WCSAxes(fig, [0.16, 0.1, 0.8, 0.8], wcs=wcs)  # set start x to give room for Dec label
     fig.add_axes(ax)
     RAAxis = ax.coords['ra']
     RAAxis.set_axislabel('RA', minpad=0.75)
