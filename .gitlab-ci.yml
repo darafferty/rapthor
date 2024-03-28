@@ -108,7 +108,7 @@ rapthor-test:
     - pip install --upgrade pip
     - pip install tox
   script:
-    - tox -e py38
+    - tox -e py310
 
 # Deploy to docker hub
 deploy-docker:
