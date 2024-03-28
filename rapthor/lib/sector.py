@@ -60,6 +60,8 @@ class Sector(object):
         self.imsize = None  # set to None to force calculation in set_imaging_parameters()
         self.wsclean_image_padding = 1.2  # the WSClean default value, used in the workflows
         self.diagnostics = []  # list to hold dicts of image diagnostics
+        self.calibration_skymodel = None  # set by Field.update_skymodel()
+        self.max_nmiter = None  # set by the strategy
 
         # Make copies of the observation objects, as each sector may have its own
         # observation-specific settings
