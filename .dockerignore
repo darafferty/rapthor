@@ -6,3 +6,4 @@ docs/build/
 test/
 venv/
 *.egg-info/
+*.sif
