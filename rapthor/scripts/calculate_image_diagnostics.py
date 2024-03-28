@@ -161,6 +161,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         Minimum number of matched sources required for the comparisons
     comparison_skymodel : str, optional
         Filename of the sky model to use for the photometry (flux scale)
+<<<<<<< HEAD
         comparison (in makesourcedb format). If not given (or if it cannot be loaded),
         models are downloaded from the surveys defined by comparison_surveys
     comparison_surveys : list, optional
@@ -168,10 +169,15 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         (each must be one of the VO services supported by LSMTool: see
         https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
         the supported services)
+=======
+        comparison (in makesourcedb format). If not given, a TGSS model is
+        downloaded
+>>>>>>> master
 
     Returns
     -------
     photometry_diagnostics : dict
+<<<<<<< HEAD
         Photometry diagnostics. An empty dict is returned if the comparison could
         not be done successfully
     """
