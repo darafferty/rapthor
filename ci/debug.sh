@@ -14,5 +14,5 @@ else
     cd ${ROOT}
 fi
 
-docker build --tag rapthor/ubuntu_20_04-base  -f "${ROOT}/ci/ubuntu_20_04-base" .
-docker run -it --volume "${ROOT}:/rapthor" --workdir "/rapthor" rapthor/ubuntu_20_04-base bash
+docker build --tag rapthor/ubuntu_22_04-base  -f "${ROOT}/ci/ubuntu_22_04-base" .
+docker run -it --volume "${ROOT}:/rapthor" --workdir "/rapthor" rapthor/ubuntu_22_04-base bash

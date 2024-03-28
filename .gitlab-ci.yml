@@ -21,7 +21,7 @@ versioning:
     - ./Docker/fetch_latest_commits.sh | tee commits.txt > versions.env
     - echo RAPTHOR_VERSION=$(./Docker/get_scm_version.sh) >> versions.env
     # Use hash of commits and CI/CD build files to determine tag of base image
-    - sha_files=".gitlab-ci.yml ci/ubuntu_20_04-* commits.txt"
+    - sha_files=".gitlab-ci.yml ci/ubuntu_22_04-* commits.txt"
     - BASE_NAME=${CI_REGISTRY_IMAGE}/base >> versions.env
     - BASE_TAG=$(shasum ${sha_files} | shasum | cut -d" " -f1)
     - FULL_NAME=${CI_REGISTRY_IMAGE}/full
@@ -51,7 +51,7 @@ build-docker-base:
       then
         [ "$BUILD_DOCKER_IMAGE" = "1" ] && DOCKER_CACHE="--no-cache" || DOCKER_CACHE=""
         docker build ${DOCKER_CACHE} \
-          --file ci/ubuntu_20_04-base \
+          --file ci/ubuntu_22_04-base \
           --tag $BASE_IMAGE \
           .
         docker push $BASE_IMAGE
@@ -69,7 +69,7 @@ build-docker-full:
         --build-arg BASE_NAME=$BASE_NAME
         --build-arg BASE_TAG=$BASE_TAG
         --build-arg VERSION=$RAPTHOR_VERSION
-        --file ci/ubuntu_20_04-rapthor
+        --file ci/ubuntu_22_04-rapthor
         --tag $FULL_IMAGE
         .
     - docker push $FULL_IMAGE
