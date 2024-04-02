@@ -103,14 +103,14 @@ outputs:
     label: Astrometry offsets
     doc: |
       The astrometry offsets in RA and Dec, per facet.
-    type: File
+    type: File?
     outputBinding:
       glob: '$(inputs.output_root).astrometry_offsets.json'
   - id: plots
     label: Diagnostic plots
     doc: |
       Various diagnostic plots of the photometry and astrometry.
-    type: File[]
+    type: File[]?
     outputBinding:
       glob: '*.pdf'
 
