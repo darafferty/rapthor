@@ -114,7 +114,6 @@ rapthor-test:
 deploy-docker:
   stage: deploy
   needs: ["versioning", "build-docker-full", "rapthor-test"]
-  environment: "rapthor"
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
@@ -125,7 +124,7 @@ deploy-docker:
     - docker push astronrd/rapthor:$TAG
   rules:
     # Only run on master
-    - if: '$CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_BRANCH == "master" && $CI_COMMIT_REF_PROTECTED == "true"'
       when: always
   tags:
     - dind
