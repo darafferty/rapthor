@@ -130,7 +130,9 @@ class Observation(object):
         self.mean_el_rad = np.mean(el_values)
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
-                                   target_flux=None):
+                                   target_fast_timestep, target_slow_timestep_joint,
+                                   target_slow_timestep_separate,
+                                   target_fulljones_timestep, target_flux=None):
         """
         Sets the calibration parameters
 
@@ -144,17 +146,21 @@ class Observation(object):
             Number of observations in total
         calibrator_fluxes : list
             List of calibrator apparent flux densities in Jy
+        target_fast_timestep : float
+            Target solution interval for fast solves in sec
+        target_slow_timestep_joint : float
+            Target solution interval for joint slow solves in sec
+        target_slow_timestep_separate : float
+            Target solution interval for separate slow solves in sec
+        target_fulljones_timestep : float
+            Target solution interval for full-Jones solves in sec
         target_flux: float, optional
             Target calibrator flux in Jy. If None, the lowest calibrator flux density
             is used.
         """
         # Get the target solution intervals
-        target_fast_timestep = parset['calibration_specific']['fast_timestep_sec']
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
-        target_slow_timestep_joint = parset['calibration_specific']['slow_timestep_joint_sec']
-        target_slow_timestep_separate = parset['calibration_specific']['slow_timestep_separate_sec']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
-        target_fulljones_timestep = parset['calibration_specific']['fulljones_timestep_sec']
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
 
         # Find solution intervals for fast-phase solve. The solve is split into time

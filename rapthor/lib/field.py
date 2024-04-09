@@ -55,11 +55,15 @@ class Field(object):
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
+        self.fast_timestep_sec = self.parset['calibration_specific']['fast_timestep_sec']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
+        self.slow_timestep_joint_sec = self.parset['calibration_specific']['slow_timestep_joint_sec']
         self.slow_smoothnessconstraint_joint = self.parset['calibration_specific']['slow_smoothnessconstraint_joint']
+        self.slow_timestep_separate_sec = self.parset['calibration_specific']['slow_timestep_separate_sec']
         self.slow_smoothnessconstraint_separate = self.parset['calibration_specific']['slow_smoothnessconstraint_separate']
+        self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
         self.propagatesolutions = self.parset['calibration_specific']['propagatesolutions']
         self.solveralgorithm = self.parset['calibration_specific']['solveralgorithm']
@@ -239,9 +243,9 @@ class Field(object):
         # Note: slow_timestep_separate_sec is forced to be equal to or greater than
         # slow_timestep_joint_sec, so we don't include slow_timestep_joint_sec in the
         # calculation
-        max_dd_timestep = self.parset['calibration_specific']['slow_timestep_separate_sec']
-        max_di_timestep = self.parset['calibration_specific']['fulljones_timestep_sec']
-        dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
+        max_dd_timestep = self.slow_timestep_separate_sec
+        max_di_timestep = self.fulljones_timestep_sec
+        dd_interval_factor = self.dd_interval_factor
         mintime = max(max_dd_timestep * dd_interval_factor, max_di_timestep)
 
         if data_fraction < 1.0:
@@ -328,7 +332,9 @@ class Field(object):
         nfreqchunks_fulljones = 0
         for obs in self.observations:
             obs.set_calibration_parameters(self.parset, self.num_patches, len(self.observations),
-                                           self.calibrator_fluxes, self.target_flux)
+                                           self.calibrator_fluxes, self.fast_timestep_sec,
+                                           self.slow_timestep_joint_sec, self.slow_timestep_separate_sec,
+                                           self.fulljones_timestep_sec, self.target_flux)
             ntimechunks += obs.ntimechunks
             nfreqchunks_joint += obs.nfreqchunks_joint
             nfreqchunks_separate += obs.nfreqchunks_separate

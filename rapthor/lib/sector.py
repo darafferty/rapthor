@@ -122,7 +122,7 @@ class Sector(object):
         self.flag_baseline = self.field.parset['flag_baseline']
         self.flag_freqrange = self.field.parset['flag_freqrange']
         self.flag_expr = self.field.parset['flag_expr']
-        self.target_fast_timestep = self.field.parset['calibration_specific']['fast_timestep_sec']
+        self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
         self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
