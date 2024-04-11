@@ -321,7 +321,7 @@ class Observation(object):
                 fast_smoothnessreffrequency = (self.startfreq + self.endfreq) / 2.0
         self.parameters['fast_smoothnessreffrequency'] = [fast_smoothnessreffrequency] * self.ntimechunks
 
-    def set_prediction_parameters(self, sector_name, patch_names, scratch_dir):
+    def set_prediction_parameters(self, sector_name, patch_names):
         """
         Sets the prediction parameters
 
@@ -331,8 +331,6 @@ class Observation(object):
             Name of sector for which predict is to be done
         patch_names : list
             List of patch names to predict
-        scratch_dir : str
-            Scratch directory path
         """
         self.parameters['ms_filename'] = self.ms_filename
 

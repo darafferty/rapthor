@@ -81,8 +81,7 @@ class Sector(object):
         Sets the predict parameters
         """
         for obs in self.observations:
-            obs.set_prediction_parameters(self.name, self.patches,
-                                          os.path.join(self.field.working_dir, 'scratch'))
+            obs.set_prediction_parameters(self.name, self.patches)
 
     def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False):
         """
