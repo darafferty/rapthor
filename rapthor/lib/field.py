@@ -239,11 +239,7 @@ class Field(object):
             Fraction of data to use during processing
         """
         # Determine the minimum time needed by the solves
-        #
-        # Note: slow_timestep_separate_sec is forced to be equal to or greater than
-        # slow_timestep_joint_sec, so we don't include slow_timestep_joint_sec in the
-        # calculation
-        max_dd_timestep = self.slow_timestep_separate_sec
+        max_dd_timestep = max(self.slow_timestep_joint_sec, self.slow_timestep_separate_sec)
         max_di_timestep = self.fulljones_timestep_sec
         dd_interval_factor = self.dd_interval_factor
         mintime = max(max_dd_timestep * dd_interval_factor, max_di_timestep)
