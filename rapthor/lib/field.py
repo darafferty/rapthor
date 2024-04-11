@@ -55,13 +55,10 @@ class Field(object):
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
-        self.fast_timestep_sec = self.parset['calibration_specific']['fast_timestep_sec']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
         self.fast_smoothnessrefdistance = self.parset['calibration_specific']['fast_smoothnessrefdistance']
-        self.slow_timestep_joint_sec = self.parset['calibration_specific']['slow_timestep_joint_sec']
         self.slow_smoothnessconstraint_joint = self.parset['calibration_specific']['slow_smoothnessconstraint_joint']
-        self.slow_timestep_separate_sec = self.parset['calibration_specific']['slow_timestep_separate_sec']
         self.slow_smoothnessconstraint_separate = self.parset['calibration_specific']['slow_smoothnessconstraint_separate']
         self.fulljones_timestep_sec = self.parset['calibration_specific']['fulljones_timestep_sec']
         self.smoothnessconstraint_fulljones = self.parset['calibration_specific']['fulljones_smoothnessconstraint']
@@ -94,6 +91,9 @@ class Field(object):
         self.cycle_number = 1
 
         # Set strategy parameter defaults
+        self.fast_timestep_sec = 8.0
+        self.slow_timestep_joint_sec = 0
+        self.slow_timestep_separate_sec = 600.0
         self.convergence_ratio = 0.95
         self.divergence_ratio = 1.1
         self.failure_ratio = 10.0

@@ -179,9 +179,6 @@ The available options are described below under their respective sections.
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
 
-    fast_timestep_sec
-        Time step used during fast phase calibration, in seconds (default = 8).
-
     fast_freqstep_hz
         Frequency step used during fast phase calibration, in Hz (default = 1e6).
 
@@ -197,15 +194,6 @@ The available options are described below under their respective sections.
     fast_smoothnessrefdistance
         Smoothness constraint reference distance used during fast phase calibration, in
         m (default = 0).
-
-    slow_timestep_joint_sec
-        Time step used during the first slow gain calibration, where a joint solution is
-        found for all stations, in seconds (default = 0). Set to 0 to disable this part of
-        the slow-gain calibration.
-
-    slow_timestep_separate_sec
-        Time step used during the second slow gain calibration, where separate solutions
-        are found for each station, in seconds (default = 600).
 
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).

@@ -16,7 +16,7 @@ for i in range(max_selfcal_loops):
 
     # Here we adjust the calibration strategy from the default so that slow-gain
     # calibration is done from the start and the minimum uv distance used in the
-    # all solves is set to 350 lambda. This approach could be useful if the
+    # all solves is set to 150 lambda. This approach could be useful if the
     # starting sky model is of high quality.
     strategy_steps[i]['do_calibrate'] = True
     strategy_steps[i]['do_slowgain_solve'] = True
@@ -28,7 +28,10 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['peel_bright_sources'] = False
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
-    strategy_steps[i]['solve_min_uv_lambda'] = 350
+    strategy_steps[i]['solve_min_uv_lambda'] = 150
+    strategy_steps[i]['fast_timestep_sec'] = 8.0
+    strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+    strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
     # Here we set adjust the imaging strategy from the default, using fixed
     # thresholds for source finding and higher thresholds for calibrator

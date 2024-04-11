@@ -159,37 +159,36 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['auto_mask'] = 5.0
             strategy_steps[i]['threshisl'] = 4.0
             strategy_steps[i]['threshpix'] = 5.0
+            strategy_steps[i]['max_nmiter'] = 8
         elif i == 2:
             strategy_steps[i]['auto_mask'] = 4.0
             strategy_steps[i]['threshisl'] = 3.0
             strategy_steps[i]['threshpix'] = 5.0
+            strategy_steps[i]['max_nmiter'] = 10
         else:
             strategy_steps[i]['auto_mask'] = 3.0
             strategy_steps[i]['threshisl'] = 3.0
             strategy_steps[i]['threshpix'] = 5.0
+            strategy_steps[i]['max_nmiter'] = 12
 
         if i == 0:
             strategy_steps[i]['target_flux'] = 0.6
-            strategy_steps[i]['max_nmiter'] = 8
             strategy_steps[i]['max_directions'] = 20
             strategy_steps[i]['max_distance'] = 3.0
         elif i == 1:
             strategy_steps[i]['target_flux'] = 0.4
-            strategy_steps[i]['max_nmiter'] = 9
             strategy_steps[i]['max_directions'] = 30
             strategy_steps[i]['max_distance'] = 3.0
         elif i == 2:
             strategy_steps[i]['target_flux'] = 0.3
-            strategy_steps[i]['max_nmiter'] = 10
             strategy_steps[i]['max_directions'] = 40
             strategy_steps[i]['max_distance'] = 3.5
         else:
             strategy_steps[i]['target_flux'] = 0.25
-            strategy_steps[i]['max_nmiter'] = 12
             strategy_steps[i]['max_directions'] = 50
             strategy_steps[i]['max_distance'] = 4.0
         if field.antenna == 'LBA':
-            strategy_steps[i]['target_flux'] *= 2.5
+            strategy_steps[i]['max_directions'] //= 2
             strategy_steps[i]['max_nmiter'] = int(strategy_steps[i]['max_nmiter'] / 1.5)
         strategy_steps[i]['regroup_model'] = True
 

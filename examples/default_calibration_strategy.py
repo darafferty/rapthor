@@ -41,22 +41,51 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
 
+    # For LBA data, we use longer solution intervals for the early cycles to
+    # compensate for the generally lower signal-to-noise ratios of the solves
+    if field.antenna == 'LBA':
+        if i == 0:
+            strategy_steps[i]['fast_timestep_sec'] = 64.0
+        elif i == 1:
+            strategy_steps[i]['fast_timestep_sec'] = 32.0
+        elif i == 2:
+            strategy_steps[i]['fast_timestep_sec'] = 8.0
+            strategy_steps[i]['slow_timestep_joint_sec'] = 240.0
+            strategy_steps[i]['slow_timestep_separate_sec'] = 960.0
+        elif i == 3:
+            strategy_steps[i]['fast_timestep_sec'] = 8.0
+            strategy_steps[i]['slow_timestep_joint_sec'] = 160.0
+            strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
+        else:
+            strategy_steps[i]['fast_timestep_sec'] = 8.0
+            strategy_steps[i]['slow_timestep_joint_sec'] = 80.0
+            strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
+    elif field.antenna == 'HBA':
+        strategy_steps[i]['fast_timestep_sec'] = 8.0
+        strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+        strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
-    # if any, are excluded from the resulting sky models
+    # if any, are excluded from the resulting sky models. Conversely, the number
+    # of major iterations allowed during imaging is raised to allow deeper
+    # cleaning in the later cycles
     strategy_steps[i]['do_image'] = True
     if i < 2:
         strategy_steps[i]['auto_mask'] = 5.0
         strategy_steps[i]['threshisl'] = 4.0
         strategy_steps[i]['threshpix'] = 5.0
+        strategy_steps[i]['max_nmiter'] = 8
     elif i == 2:
         strategy_steps[i]['auto_mask'] = 4.0
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
+        strategy_steps[i]['max_nmiter'] = 10
     else:
         strategy_steps[i]['auto_mask'] = 3.0
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
+        strategy_steps[i]['max_nmiter'] = 12
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
@@ -66,25 +95,28 @@ for i in range(max_selfcal_loops):
     # that calibrators can have to exclude distant sources
     if i == 0:
         strategy_steps[i]['target_flux'] = 0.6
-        strategy_steps[i]['max_nmiter'] = 8
         strategy_steps[i]['max_directions'] = 20
         strategy_steps[i]['max_distance'] = 3.0
     elif i == 1:
         strategy_steps[i]['target_flux'] = 0.4
-        strategy_steps[i]['max_nmiter'] = 9
         strategy_steps[i]['max_directions'] = 30
         strategy_steps[i]['max_distance'] = 3.0
     elif i == 2:
         strategy_steps[i]['target_flux'] = 0.3
-        strategy_steps[i]['max_nmiter'] = 10
         strategy_steps[i]['max_directions'] = 40
         strategy_steps[i]['max_distance'] = 3.5
     else:
         strategy_steps[i]['target_flux'] = 0.25
-        strategy_steps[i]['max_nmiter'] = 12
         strategy_steps[i]['max_directions'] = 50
         strategy_steps[i]['max_distance'] = 4.0
     strategy_steps[i]['regroup_model'] = True
+
+    # For LBA data, we allow fewer directions (due to the lower signal-to-noise
+    # ratios of the solves) and fewer major iterations during imaging (since we
+    # cannot clean as deeply)
+    if field.antenna == 'LBA':
+        strategy_steps[i]['max_directions'] //= 2
+        strategy_steps[i]['max_nmiter'] = int(strategy_steps[i]['max_nmiter'] / 1.5)
 
     # Here we specify that the convergence/divergence checks are done only when
     # needed, to prevent the selfcal from stopping early (before
