@@ -17,7 +17,7 @@ for i in range(max_selfcal_loops):
     # calibration are done (outliers -- sources that lie outside of imaged
     # regions -- are peeled in the first cycle). Starting with the third cycle,
     # slow-gain calibration is also done. The minimum uv distance used in the
-    # solves is set to 350 lambda, except for the first slow-gain cycle where it
+    # solves is set to 150 lambda, except for the first slow-gain cycle where it
     # is often beneficial to exclude short baselines. Lastly, the maximum
     # allowed difference from unity in the normalized amplitude solutions (per
     # station) is set to 0.3, to allow for small adjustments to the station
@@ -32,7 +32,7 @@ for i in range(max_selfcal_loops):
     else:
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
-    if i == 2:
+    if i == 2 and field.antenna == 'HBA':
         strategy_steps[i]['solve_min_uv_lambda'] = 2000
     else:
         strategy_steps[i]['solve_min_uv_lambda'] = 150
