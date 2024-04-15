@@ -192,7 +192,12 @@ class Observation(object):
         self.ntimechunks = nchunks
         self.log.debug('Using {0} time chunk{1} for fast-phase '
                        'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
-        self.parameters['timechunk_filename'] = [self.ms_filename] * self.ntimechunks
+        if self.field.antenna == 'LBA':
+            # For LBA, use the MS files with non-calibrator sources subtracted
+            self.parameters['timechunk_filename'] = [self.ms_predict_nc_filename] * self.ntimechunks
+        else:
+            # For other data, use the primary MS files
+            self.parameters['timechunk_filename'] = [self.ms_filename] * self.ntimechunks
         self.parameters['starttime'] = [misc.convert_mjd2mvt(t) for t in starttimes]
         self.parameters['ntimes'] = [samplesperchunk] * self.ntimechunks
 
@@ -234,7 +239,12 @@ class Observation(object):
                 freqchunk_filename = self.ms_predict_di_filename
             else:
                 ndirections = ndir
-                freqchunk_filename = self.ms_filename
+                if self.field.antenna == 'LBA':
+                    # For LBA, use the MS files with non-calibrator sources subtracted
+                    freqchunk_filename = self.ms_predict_nc_filename
+                else:
+                    # For other data, use the primary MS files
+                    freqchunk_filename = self.ms_filename
             samplesperchunk, solint_timestep = get_slow_solve_intervals(parset['cluster_specific'],
                                                                         self.numchannels, nobs,
                                                                         solint_freqstep,

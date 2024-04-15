@@ -99,8 +99,14 @@ def run_steps(field, steps, final=False):
         cycle_number = index + field.cycle_number
         field.update(step, cycle_number, final=final)
 
-        # Calibrate (direction-dependent)
+        # Calibrate
         if field.do_calibrate:
+            if field.peel_non_calibrator_sources:
+                # Predict and subtract non-calibrator sources before calibration
+                op = PredictNC(field, cycle_number)
+                op.run()
+
+            # Calibrate (direction-dependent)
             op = CalibrateDD(field, cycle_number)
             op.run()
 

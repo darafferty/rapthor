@@ -316,6 +316,14 @@ class CalibrateDD(Operation):
             self.field.aterm_image_filenames = [os.path.join(self.pipeline_working_dir, af.strip())
                                                 for af in self.field.aterm_image_filenames]
 
+        # Save the filename of the solutions file from the previous cycle
+        # (needed for some operations), if available
+        if index > 1:
+            dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index-1))
+            self.field.h5parm_filename_prev_cycle = os.path.join(dst_dir, 'field-solutions.h5')
+        else:
+            self.field.h5parm_filename_prev_cycle = None
+
         # Copy the solutions (h5parm files) and report the flagged fraction
         dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index))
         misc.create_directory(dst_dir)
