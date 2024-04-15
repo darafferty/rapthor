@@ -75,7 +75,7 @@ inputs:
     type: boolean
     inputBinding:
       prefix: predict.type=
-      valueFrom: "$(self ? 'sagecalpredict': 'h5parmpredict')"
+      valueFrom: "$(self ? 'sagecalpredict': 'predict')"
       separate: False
 
   - id: sourcedb
@@ -85,18 +85,6 @@ inputs:
     type: File
     inputBinding:
       prefix: predict.sourcedb=
-      separate: False
-
-  - id: directions
-    label: Direction names
-    doc: |
-      The list of direction names (matching those in the sky model)
-      used in the calibration.
-    type: string[]
-    inputBinding:
-      valueFrom: $('['+self+']')
-      prefix: predict.directions=
-      itemSeparator: ','
       separate: False
 
   - id: numthreads

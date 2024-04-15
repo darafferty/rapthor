@@ -859,9 +859,15 @@ class Field(object):
         # not imaged; they are only used in prediction for direction-independent solves
         self.define_predict_sectors(index)
 
+        # Make non-calibrator-source sectors containing non-calibrator sources
+        # that may be subtracted before calibration. These sectors are not
+        # imaged
+        self.define_non_calibrator_source_sectors(index)
+
         # Finally, make a list containing all sectors
         self.sectors = (self.imaging_sectors + self.outlier_sectors +
-                        self.bright_source_sectors + self.predict_sectors)
+                        self.bright_source_sectors + self.predict_sectors +
+                        self.non_calibrator_source_sectors)
         self.nsectors = len(self.sectors)
 
     def remove_skymodels(self):
@@ -1157,6 +1163,7 @@ class Field(object):
                 nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
                 for i in range(nnodes):
                     non_calibrator_source_sector = Sector('non_calibrator_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    non_calibrator_source_sector.is_predict = True
                     non_calibrator_source_sector.predict_skymodel = non_calibrator_skymodel.copy()
                     startind = i * int(nsources/nnodes)
                     if i == nnodes-1:
@@ -1615,7 +1622,12 @@ class Field(object):
                               final=final)
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
-        # Check whether outliers and bright sources need to be peeled
+        # Always try to peel non-calibrator sources if LBA (we check below whether
+        # or not there are sources that need to be peeled)
+        if self.antenna == 'LBA':
+            self.peel_non_calibrator_sources = True
+
+        # Check whether any sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
         nr_imaging_sectors = len(self.imaging_sectors)
         nr_bright_source_sectors = len(self.bright_source_sectors)
@@ -1628,7 +1640,9 @@ class Field(object):
         if nr_non_calibrator_source_sectors == 0:
             self.peel_non_calibrator_sources = False
 
-        # Determine whether a predict step is needed or not. It's needed when:
+        # Determine whether the main predict operation is needed or not (note:
+        # this does not apply to direction-independent or non-calibrator predict
+        # operations). It's needed when:
         # - there are two or more imaging sectors
         # - there are one or more outlier sectors (whether or not the outliers will
         #   be peeled for calibration, which is set by self.peel_outliers, they must

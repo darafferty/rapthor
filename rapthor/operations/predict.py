@@ -274,11 +274,13 @@ class PredictNC(Operation):
         Finalize this operation
         """
         # Update filenames of datasets used for (calibrator-only) calibration
-        if len(self.field.non_bright_source_sectors) > 0:
-            for sector in self.field.sectors:
-                for obs in sector.observations:
-                    obs.ms_predict_nc_filename = os.path.join(self.pipeline_working_dir,
-                                                              obs.ms_field)
+        for obs in self.field.non_calibrator_source_sectors[0].observations:
+            # Transfer the filenames from the first sector to the field. This is required
+            # because the sector's observations are distinct copies of the field ones
+            for field_obs in self.field.observations:
+                if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+                    field_obs.ms_predict_nc_filename = os.path.join(self.pipeline_working_dir,
+                                                                    obs.ms_field)
 
         # Finally call finalize() in the parent class
         super().finalize()

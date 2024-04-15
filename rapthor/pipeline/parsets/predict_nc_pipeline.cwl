@@ -169,14 +169,18 @@ steps:
 {% if apply_solutions %}
       - id: h5parm
         source: h5parm
+      - id: directions
+        source: sector_patches
 {% endif %}
       - id: sourcedb
         source: sector_skymodel
-      - id: directions
-        source: sector_patches
       - id: numthreads
         source: max_threads
+{% if apply_solutions %}
     scatter: [msin, msout, starttime, ntimes, sourcedb, directions]
+{% else %}
+    scatter: [msin, msout, starttime, ntimes, sourcedb]
+{% endif %}
     scatterMethod: dotproduct
     out:
       - id: msmod
@@ -214,13 +218,13 @@ steps:
       - id: nr_outliers
         source: nr_sectors
       - id: peel_outliers
-        valueFrom: 'True'
+        default: true
       - id: nr_bright
         default: 0
       - id: peel_bright
-        valueFrom: 'False'
+        default: false
       - id: reweight
-        valueFrom: 'False'
+        default: false
     scatter: [msobs, obs_starttime, infix]
     scatterMethod: dotproduct
     out:

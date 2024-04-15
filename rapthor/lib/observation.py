@@ -29,6 +29,7 @@ class Observation(object):
     def __init__(self, ms_filename, starttime=None, endtime=None):
         self.ms_filename = str(ms_filename)
         self.ms_predict_di_filename = None
+        self.ms_predict_nc_filename = None
         self.name = os.path.basename(self.ms_filename)
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.starttime = starttime
@@ -192,7 +193,7 @@ class Observation(object):
         self.ntimechunks = nchunks
         self.log.debug('Using {0} time chunk{1} for fast-phase '
                        'calibration'.format(self.ntimechunks, "s" if self.ntimechunks > 1 else ""))
-        if self.field.antenna == 'LBA':
+        if self.antenna == 'LBA':
             # For LBA, use the MS files with non-calibrator sources subtracted
             self.parameters['timechunk_filename'] = [self.ms_predict_nc_filename] * self.ntimechunks
         else:
@@ -239,7 +240,7 @@ class Observation(object):
                 freqchunk_filename = self.ms_predict_di_filename
             else:
                 ndirections = ndir
-                if self.field.antenna == 'LBA':
+                if self.antenna == 'LBA':
                     # For LBA, use the MS files with non-calibrator sources subtracted
                     freqchunk_filename = self.ms_predict_nc_filename
                 else:

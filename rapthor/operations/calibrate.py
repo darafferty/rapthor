@@ -318,7 +318,7 @@ class CalibrateDD(Operation):
 
         # Save the filename of the solutions file from the previous cycle
         # (needed for some operations), if available
-        if index > 1:
+        if self.index > 1:
             dst_dir = os.path.join(self.parset['dir_working'], 'solutions', 'calibrate_{}'.format(self.index-1))
             self.field.h5parm_filename_prev_cycle = os.path.join(dst_dir, 'field-solutions.h5')
         else:

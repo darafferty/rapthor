@@ -156,6 +156,24 @@ def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
+@pytest.mark.parametrize("apply_solutions", (False, True))
+@pytest.mark.parametrize("apply_amplitudes", (False, True))
+def test_predict_nc_workflow(tmp_path, max_cores, apply_amplitudes):
+    """
+    Test the Predict NC workflow, using all possible combinations of parameters that
+    control the way the CWL workflow is generated from the template. Parameters were
+    taken from `PredictNC.set_parset_parameters()`.
+    """
+    operation = "predict_nc"
+    templ = rapthor.lib.operation.env_parset.get_template("predict_nc_pipeline.cwl")
+    parms = {
+        "max_cores": max_cores,
+        "apply_solutions": apply_solutions,
+        "apply_amplitudes": apply_amplitudes,
+    }
+    generate_and_validate(tmp_path, operation, parms, templ)
+
+
 @pytest.mark.parametrize("apply_amplitudes", (False, True))
 @pytest.mark.parametrize("use_screens", (False, True))
 @pytest.mark.parametrize("use_facets", (False, True))
