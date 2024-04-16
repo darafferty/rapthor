@@ -46,8 +46,12 @@ for i in range(max_selfcal_loops):
     if field.antenna == 'LBA':
         if i == 0:
             strategy_steps[i]['fast_timestep_sec'] = 64.0
+            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+            strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
         elif i == 1:
             strategy_steps[i]['fast_timestep_sec'] = 32.0
+            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+            strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
         elif i == 2:
             strategy_steps[i]['fast_timestep_sec'] = 8.0
             strategy_steps[i]['slow_timestep_joint_sec'] = 240.0
