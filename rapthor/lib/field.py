@@ -389,20 +389,14 @@ class Field(object):
         index : index
             Iteration index
         """
-        # Save the filenames of the sky models from the previous cycle (needed
+        # Save the filename of the calibrator-only sky model from the previous cycle (needed
         # for some operations), if available
         if index > 1:
             dst_dir_prev_cycle = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index-1))
-            self.calibration_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle, 'calibration_skymodel.txt')
-            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle, 'calibrators_only_skymodel.txt')
-            self.source_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle, 'source_skymodel.txt')
-            dst_dir_prev_cycle = os.path.join(self.working_dir, 'skymodels', 'image_{}'.format(index-1))
-            self.bright_source_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle, 'bright_source_skymodel.txt')
+            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle,
+                                                                          'calibrators_only_skymodel.txt')
         else:
-            self.calibration_skymodel_file_prev_cycle = None
             self.calibrators_only_skymodel_file_prev_cycle = None
-            self.source_skymodel_file_prev_cycle = None
-            self.bright_source_skymodel_file_prev_cycle = None
 
         # Make output directories for new sky models and define filenames
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
@@ -603,8 +597,7 @@ class Field(object):
 
             # Tesselate the model
             calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
-            source_skymodel.group('voronoi', patchNames=calibrator_names, applyBeam=applyBeam_group,
-                                  weightBySize=True)
+            source_skymodel.group('voronoi', patchNames=calibrator_names)
 
             # Update the patch positions after the tessellation to ensure they match the
             # ones from the meanshift grouping
@@ -1146,13 +1139,6 @@ class Field(object):
         index : int
             Iteration index
         """
-        # Save the sectors from the previous cycle (needed for some operations),
-        # if available
-        if index > 1:
-            self.non_calibrator_source_sectors_prev_cycle = self.non_calibrator_source_sectors[:]
-        else:
-            self.non_calibrator_source_sectors_prev_cycle = None
-
         self.non_calibrator_source_sectors = []
         if self.peel_non_calibrator_sources or self.antenna == 'LBA':
             non_calibrator_skymodel = self.make_non_calibrator_skymodel()
@@ -1311,17 +1297,33 @@ class Field(object):
     def make_non_calibrator_skymodel(self):
         """
         Make a sky model of any non-calibrator sources
-        """
-        all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
-        remove_source_names = []
-        if len(self.bright_source_skymodel) > 0:
-            # The bright sources are the calibrator sources, so remove them to get
-            # only the non-calibrator ones
-            remove_source_names.extend(self.bright_source_skymodel.getColValues('Name').tolist())
 
+        Since the peeling of non-calibrator sources uses the calibration
+        solutions from the previous cycle (if any), the calibration patches from
+        that cycle are applied to the current sky model to ensure agreement
+        between the sky model patches and the calibration patches.
+
+        Note: if a previous model does not exist, the peeling is done without
+        using calibration solutions (and therefore the patches are ignored)
+        """
+        non_calibrator_skymodel = self.calibration_skymodel.copy()
+
+        # Transfer the patches from the previous sky model (if any) to the
+        # current one
+        if self.calibrators_only_skymodel_file_prev_cycle is not None:
+            calibrators_only_skymodel = lsmtool.load(self.calibrators_only_skymodel_file_prev_cycle)
+            calibrator_names = calibrators_only_skymodel.getPatchNames()
+            patch_dict = calibrators_only_skymodel.getPatchPositions()
+            non_calibrator_skymodel.transfer(calibrators_only_skymodel,
+                                             matchBy='position', radius='30 arcsec')
+            non_calibrator_skymodel.setPatchPositions(patchDict=patch_dict)
+            non_calibrator_skymodel.group('voronoi', patchNames=calibrator_names)
+
+        # Remove the calibrator (bright) sources
+        remove_source_names = self.bright_source_skymodel.getColValues('Name').tolist()
+        all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
         keep_ind = np.array([all_source_names.index(sn) for sn in all_source_names
                             if sn not in remove_source_names])
-        non_calibrator_skymodel = self.calibration_skymodel.copy()
         non_calibrator_skymodel.select(keep_ind, force=True)
         return non_calibrator_skymodel
 

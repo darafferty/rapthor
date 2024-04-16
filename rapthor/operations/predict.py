@@ -202,17 +202,13 @@ class PredictNC(Operation):
         """
         Define the CWL workflow inputs
         """
-        # Make list of sectors for which prediction needs to be done. The sectors
-        # from the previous cycle are used if available, as the prediction must
-        # be done before the calibration of the current cycle is done
-        if self.index > 1:
-            sectors = self.field.non_calibrator_source_sectors_prev_cycle
-        else:
-            sectors = self.field.non_calibrator_source_sectors
+        # Make list of sectors for which prediction needs to be done
+        sectors = self.field.non_calibrator_source_sectors
 
-        # Set the solutions file to use for prediction. As with the list of sectors, we
-        # use the one from the previous cycle if available. If unavailable, prediction
-        # is done without using solutions (indicated to the script by 'none')
+        # Set the solutions file to use for prediction. Because prediction is
+        # done before calibration, we use the solutions from the previous cycle if
+        # available. If unavailable, prediction is done without using solutions
+        # (indicated to the script with a value of 'none')
         if self.index > 1:
             h5parm_filename = CWLFile(self.field.h5parm_filename_prev_cycle).to_json()
         else:
