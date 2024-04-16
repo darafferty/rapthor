@@ -1,8 +1,8 @@
 """
-Script that defines the default user processing strategy. Specifying this file
-as the calibration strategy in the Rapthor parset causes default Rapthor to use
-the default calibration behaviour, which is equal to specifying no specific
-calibration strategy.
+Script that defines the default user processing strategy for HBA data.
+Specifying this file as the calibration strategy in the Rapthor parset causes
+default Rapthor to use the default calibration behaviour, which is equal to
+specifying no specific calibration strategy.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
@@ -41,33 +41,12 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
 
-    # For LBA data, we use longer solution intervals for the early cycles to
+    # For HBA data, we use the same solution intervals for every cycle, but if
+    # LBA data were to be used, the intervals for the early cycles can be longer to
     # compensate for the generally lower signal-to-noise ratios of the solves
-    if field.antenna == 'LBA':
-        if i == 0:
-            strategy_steps[i]['fast_timestep_sec'] = 64.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
-        elif i == 1:
-            strategy_steps[i]['fast_timestep_sec'] = 32.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
-        elif i == 2:
-            strategy_steps[i]['fast_timestep_sec'] = 8.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 240.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 960.0
-        elif i == 3:
-            strategy_steps[i]['fast_timestep_sec'] = 8.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 160.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
-        else:
-            strategy_steps[i]['fast_timestep_sec'] = 8.0
-            strategy_steps[i]['slow_timestep_joint_sec'] = 80.0
-            strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
-    elif field.antenna == 'HBA':
-        strategy_steps[i]['fast_timestep_sec'] = 8.0
-        strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
-        strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+    strategy_steps[i]['fast_timestep_sec'] = 8.0
+    strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+    strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
@@ -114,13 +93,6 @@ for i in range(max_selfcal_loops):
         strategy_steps[i]['max_directions'] = 50
         strategy_steps[i]['max_distance'] = 4.0
     strategy_steps[i]['regroup_model'] = True
-
-    # For LBA data, we allow fewer directions (due to the lower signal-to-noise
-    # ratios of the solves) and fewer major iterations during imaging (since we
-    # cannot clean as deeply)
-    if field.antenna == 'LBA':
-        strategy_steps[i]['max_directions'] //= 2
-        strategy_steps[i]['max_nmiter'] = int(strategy_steps[i]['max_nmiter'] / 1.5)
 
     # Here we specify that the convergence/divergence checks are done only when
     # needed, to prevent the selfcal from stopping early (before
