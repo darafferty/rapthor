@@ -54,6 +54,7 @@ class Field(object):
         self.flag_expr = self.parset['flag_expr']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
+        self.h5parm_filename_prev_cycle = None
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
