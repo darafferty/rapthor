@@ -1423,6 +1423,18 @@ class Field(object):
         else:
             self.apply_amplitudes = False
 
+        if self.h5parm_filename_prev_cycle is not None:
+            # We don't do a full check of the structure, as this file cannot be
+            # supplied by the user
+            solutions = h5parm(self.h5parm_filename_prev_cycle)
+            solset = solutions.getSolset('sol000')
+            if 'amplitude000' in solset.getSoltabNames():
+                self.apply_amplitudes_prev_cycle = True
+            else:
+                self.apply_amplitudes_prev_cycle = False
+        else:
+            self.apply_amplitudes_prev_cycle = False
+
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
             solutions = h5parm(self.fulljones_h5parm_filename)

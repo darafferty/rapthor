@@ -156,9 +156,10 @@ def test_predict_di_workflow(tmp_path, max_cores, apply_amplitudes):
     generate_and_validate(tmp_path, operation, parms, templ)
 
 
+@pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("apply_solutions", (False, True))
 @pytest.mark.parametrize("apply_amplitudes", (False, True))
-def test_predict_nc_workflow(tmp_path, max_cores, apply_amplitudes):
+def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitudes):
     """
     Test the Predict NC workflow, using all possible combinations of parameters that
     control the way the CWL workflow is generated from the template. Parameters were

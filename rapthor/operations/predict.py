@@ -196,7 +196,7 @@ class PredictNC(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
                              'apply_solutions': apply_solutions,
-                             'apply_amplitudes': self.field.apply_amplitudes}
+                             'apply_amplitudes': self.field.apply_amplitudes_prev_cycle}
 
     def set_input_parameters(self):
         """
