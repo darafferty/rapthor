@@ -1304,8 +1304,12 @@ class Field(object):
         that cycle are applied to the current sky model to ensure agreement
         between the sky model patches and the calibration patches.
 
-        Note: if a previous model does not exist, the peeling is done without
-        using calibration solutions (and therefore the patches are ignored)
+        Note: if a previous cycle was not done (and therefore a model from it
+        does not exist), then either peeling will be done without using
+        calibration solutions (and therefore the patches are ignored) or a
+        solutions file and sky model have been provided by the user, in which
+        case the patches in the model and solutions must already agree with each
+        other.
         """
         non_calibrator_skymodel = self.calibration_skymodel.copy()
 
@@ -1322,9 +1326,9 @@ class Field(object):
 
         # Remove the calibrator (bright) sources
         remove_source_names = self.bright_source_skymodel.getColValues('Name').tolist()
-        all_source_names = self.calibration_skymodel.getColValues('Name').tolist()
+        all_source_names = non_calibrator_skymodel.getColValues('Name').tolist()
         keep_ind = np.array([all_source_names.index(sn) for sn in all_source_names
-                            if sn not in remove_source_names])
+                             if sn not in remove_source_names])
         non_calibrator_skymodel.select(keep_ind, force=True)
         return non_calibrator_skymodel
 
