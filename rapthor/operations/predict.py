@@ -188,29 +188,30 @@ class PredictNC(Operation):
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
 
-        if self.index > 1:
-            # Apply calibration solutions during predict when available
+        if self.field.h5parm_filename is not None:
+            # Apply calibration solutions during predict when available (e.g., from
+            # calibration done in the previous cycle)
             apply_solutions = True
         else:
             apply_solutions = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'max_cores': max_cores,
                              'apply_solutions': apply_solutions,
-                             'apply_amplitudes': self.field.apply_amplitudes_prev_cycle}
+                             'apply_amplitudes': self.field.apply_amplitudes}
 
     def set_input_parameters(self):
         """
         Define the CWL workflow inputs
         """
-        # Make list of sectors for which prediction needs to be done
+        # Set list of sectors for which prediction needs to be done
         sectors = self.field.non_calibrator_source_sectors
 
         # Set the solutions file to use for prediction. Because prediction is
-        # done before calibration, we use the solutions from the previous cycle if
-        # available. If unavailable, prediction is done without using solutions
-        # (indicated to the script with a value of 'none')
-        if self.index > 1:
-            h5parm_filename = CWLFile(self.field.h5parm_filename_prev_cycle).to_json()
+        # done before calibration, we use the solutions from the previous
+        # calibration if available. If unavailable, prediction is done without
+        # using solutions (indicated to the script with a value of 'none')
+        if self.field.h5parm_filename is not None:
+            h5parm_filename = CWLFile(self.field.h5parm_filename).to_json()
         else:
             h5parm_filename = 'none'
 

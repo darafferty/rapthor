@@ -54,7 +54,6 @@ class Field(object):
         self.flag_expr = self.parset['flag_expr']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
-        self.h5parm_filename_prev_cycle = None
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
         self.fast_smoothnessconstraint = self.parset['calibration_specific']['fast_smoothnessconstraint']
         self.fast_smoothnessreffrequency = self.parset['calibration_specific']['fast_smoothnessreffrequency']
@@ -90,6 +89,7 @@ class Field(object):
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
         self.cycle_number = 1
+        self.apply_amplitudes = False
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
@@ -1424,18 +1424,6 @@ class Field(object):
         else:
             self.apply_amplitudes = False
 
-        if self.h5parm_filename_prev_cycle is not None:
-            # We don't do a full check of the structure, as this file cannot be
-            # supplied by the user
-            solutions = h5parm(self.h5parm_filename_prev_cycle)
-            solset = solutions.getSolset('sol000')
-            if 'amplitude000' in solset.getSoltabNames():
-                self.apply_amplitudes_prev_cycle = True
-            else:
-                self.apply_amplitudes_prev_cycle = False
-        else:
-            self.apply_amplitudes_prev_cycle = False
-
         if self.fulljones_h5parm_filename is not None:
             self.apply_fulljones = True
             solutions = h5parm(self.fulljones_h5parm_filename)
@@ -1593,11 +1581,6 @@ class Field(object):
         if final:
             self.chunk_observations(self.parset['final_data_fraction'])
             self.imaged_sources_only = False
-            if not self.parset['final_data_fraction'] == self.parset['selfcal_data_fraction']:
-                # If the final data fraction differs from the selfcal one, we
-                # cannot use the solutions from the previous cycle (needed for
-                # some operations) as there would be incomplete coverage
-                self.h5parm_filename_prev_cycle = None
 
         # Update field and sector dicts with the parameters for this iteration
         self.__dict__.update(step_dict)
