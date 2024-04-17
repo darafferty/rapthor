@@ -29,7 +29,7 @@ class CalibrateDD(Operation):
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
-        if self.field.parset['calibration_specific']['slow_timestep_joint_sec'] > 0:
+        if self.field.slow_timestep_joint_sec > 0:
             do_joint_solve = True
         else:
             do_joint_solve = False

@@ -1,8 +1,8 @@
 """
-Script that defines the default user processing strategy. Specifying this file
-as the calibration strategy in the Rapthor parset causes default Rapthor to use
-the default calibration behaviour, which is equal to specifying no specific
-calibration strategy.
+Script that defines the default user processing strategy for HBA data.
+Specifying this file as the calibration strategy in the Rapthor parset causes
+default Rapthor to use the default calibration behaviour, which is equal to
+specifying no specific calibration strategy.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
@@ -17,7 +17,7 @@ for i in range(max_selfcal_loops):
     # calibration are done (outliers -- sources that lie outside of imaged
     # regions -- are peeled in the first cycle). Starting with the third cycle,
     # slow-gain calibration is also done. The minimum uv distance used in the
-    # solves is set to 350 lambda, except for the first slow-gain cycle where it
+    # solves is set to 150 lambda, except for the first slow-gain cycle where it
     # is often beneficial to exclude short baselines. Lastly, the maximum
     # allowed difference from unity in the normalized amplitude solutions (per
     # station) is set to 0.3, to allow for small adjustments to the station
@@ -32,7 +32,7 @@ for i in range(max_selfcal_loops):
     else:
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
-    if i == 2:
+    if i == 2 and field.antenna == 'HBA':
         strategy_steps[i]['solve_min_uv_lambda'] = 2000
     else:
         strategy_steps[i]['solve_min_uv_lambda'] = 150
@@ -41,22 +41,34 @@ for i in range(max_selfcal_loops):
     strategy_steps[i]['max_normalization_delta'] = 0.3
     strategy_steps[i]['scale_normalization_delta'] = True
 
+    # For HBA data, we use the same solution intervals for every cycle, but if
+    # LBA data were to be used, the intervals for the early cycles can be longer to
+    # compensate for the generally lower signal-to-noise ratios of the solves
+    strategy_steps[i]['fast_timestep_sec'] = 8.0
+    strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+    strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
+
     # Here we set the imaging strategy, lowering the masking thresholds as
     # selfcal proceeds to ensure all emission is properly cleaned and artifacts,
-    # if any, are excluded from the resulting sky models
+    # if any, are excluded from the resulting sky models. Conversely, the number
+    # of major iterations allowed during imaging is raised to allow deeper
+    # cleaning in the later cycles
     strategy_steps[i]['do_image'] = True
     if i < 2:
         strategy_steps[i]['auto_mask'] = 5.0
         strategy_steps[i]['threshisl'] = 4.0
         strategy_steps[i]['threshpix'] = 5.0
+        strategy_steps[i]['max_nmiter'] = 8
     elif i == 2:
         strategy_steps[i]['auto_mask'] = 4.0
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
+        strategy_steps[i]['max_nmiter'] = 10
     else:
         strategy_steps[i]['auto_mask'] = 3.0
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
+        strategy_steps[i]['max_nmiter'] = 12
 
     # Here we set the calibrator selection strategy, decreasing the target
     # minimum flux density for sources to be used as calibrators as selfcal
@@ -66,22 +78,18 @@ for i in range(max_selfcal_loops):
     # that calibrators can have to exclude distant sources
     if i == 0:
         strategy_steps[i]['target_flux'] = 0.6
-        strategy_steps[i]['max_nmiter'] = 8
         strategy_steps[i]['max_directions'] = 20
         strategy_steps[i]['max_distance'] = 3.0
     elif i == 1:
         strategy_steps[i]['target_flux'] = 0.4
-        strategy_steps[i]['max_nmiter'] = 9
         strategy_steps[i]['max_directions'] = 30
         strategy_steps[i]['max_distance'] = 3.0
     elif i == 2:
         strategy_steps[i]['target_flux'] = 0.3
-        strategy_steps[i]['max_nmiter'] = 10
         strategy_steps[i]['max_directions'] = 40
         strategy_steps[i]['max_distance'] = 3.5
     else:
         strategy_steps[i]['target_flux'] = 0.25
-        strategy_steps[i]['max_nmiter'] = 12
         strategy_steps[i]['max_directions'] = 50
         strategy_steps[i]['max_distance'] = 4.0
     strategy_steps[i]['regroup_model'] = True

@@ -249,13 +249,6 @@ class Parset:
 
         # Calibration options
         options = settings["calibration"]
-        if options["slow_timestep_separate_sec"] < options["slow_timestep_joint_sec"]:
-            log.warning(
-                "The slow_timestep_separate_sec cannot be less than the "
-                "slow_timestep_joint_sec. Setting slow_timestep_separate_sec = "
-                "slow_timestep_joint_sec"
-            )
-            options["slow_timestep_separate_sec"] = options["slow_timestep_joint_sec"]
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
         if dd_interval_factor < 1:

@@ -35,10 +35,10 @@ def set_strategy(field):
     """
     if field.parset['strategy'] == 'selfcal':
         # Standard selfcal
-        strategy_steps = set_selfcal_strategy()
+        strategy_steps = set_selfcal_strategy(field)
     elif field.parset['strategy'] == 'image':
         # Standard imaging
-        strategy_steps = set_image_strategy()
+        strategy_steps = set_image_strategy(field)
     elif os.path.exists(field.parset['strategy']):
         # User-defined
         strategy_steps = set_user_strategy(field)
@@ -53,6 +53,8 @@ def set_strategy(field):
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
                                              'target_flux', 'max_directions', 'regroup_model',
                                              'max_normalization_delta', 'solve_min_uv_lambda',
+                                             'fast_timestep_sec', 'slow_timestep_joint_sec',
+                                             'slow_timestep_separate_sec',
                                              'scale_normalization_delta', 'max_directions'],
                             'do_image': ['auto_mask', 'threshisl', 'threshpix', 'max_nmiter',
                                          'peel_outliers', 'peel_bright_sources'],
@@ -77,7 +79,7 @@ def set_strategy(field):
     return strategy_steps
 
 
-def set_selfcal_strategy():
+def set_selfcal_strategy(field):
     """
     Sets up the standard selfcal strategy
 
@@ -93,6 +95,11 @@ def set_selfcal_strategy():
 
     The parameters of the final cycle (if done) are set to those of the last
     cycle of selfcal.
+
+    Parameters
+    ----------
+    field : Field object
+        Field object
 
     Returns
     -------
@@ -117,7 +124,7 @@ def set_selfcal_strategy():
         else:
             strategy_steps[i]['do_slowgain_solve'] = True
             strategy_steps[i]['peel_outliers'] = False
-        if i == 2:
+        if i == 2 and field.antenna == 'HBA':
             strategy_steps[i]['solve_min_uv_lambda'] = 2000
         else:
             strategy_steps[i]['solve_min_uv_lambda'] = 150
@@ -125,41 +132,68 @@ def set_selfcal_strategy():
         strategy_steps[i]['peel_bright_sources'] = False
         strategy_steps[i]['max_normalization_delta'] = 0.3
         strategy_steps[i]['scale_normalization_delta'] = True
+        if field.antenna == 'LBA':
+            if i == 0:
+                strategy_steps[i]['fast_timestep_sec'] = 64.0
+                strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+                strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
+            elif i == 1:
+                strategy_steps[i]['fast_timestep_sec'] = 32.0
+                strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+                strategy_steps[i]['slow_timestep_separate_sec'] = 0.0
+            elif i == 2:
+                strategy_steps[i]['fast_timestep_sec'] = 8.0
+                strategy_steps[i]['slow_timestep_joint_sec'] = 240.0
+                strategy_steps[i]['slow_timestep_separate_sec'] = 960.0
+            elif i == 3:
+                strategy_steps[i]['fast_timestep_sec'] = 8.0
+                strategy_steps[i]['slow_timestep_joint_sec'] = 160.0
+                strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
+            else:
+                strategy_steps[i]['fast_timestep_sec'] = 8.0
+                strategy_steps[i]['slow_timestep_joint_sec'] = 80.0
+                strategy_steps[i]['slow_timestep_separate_sec'] = 480.0
+        elif field.antenna == 'HBA':
+            strategy_steps[i]['fast_timestep_sec'] = 8.0
+            strategy_steps[i]['slow_timestep_joint_sec'] = 0.0
+            strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
         strategy_steps[i]['do_image'] = True
         if i < 2:
             strategy_steps[i]['auto_mask'] = 5.0
             strategy_steps[i]['threshisl'] = 4.0
             strategy_steps[i]['threshpix'] = 5.0
+            strategy_steps[i]['max_nmiter'] = 8
         elif i == 2:
             strategy_steps[i]['auto_mask'] = 4.0
             strategy_steps[i]['threshisl'] = 3.0
             strategy_steps[i]['threshpix'] = 5.0
+            strategy_steps[i]['max_nmiter'] = 10
         else:
             strategy_steps[i]['auto_mask'] = 3.0
             strategy_steps[i]['threshisl'] = 3.0
             strategy_steps[i]['threshpix'] = 5.0
+            strategy_steps[i]['max_nmiter'] = 12
 
         if i == 0:
             strategy_steps[i]['target_flux'] = 0.6
-            strategy_steps[i]['max_nmiter'] = 8
             strategy_steps[i]['max_directions'] = 20
             strategy_steps[i]['max_distance'] = 3.0
         elif i == 1:
             strategy_steps[i]['target_flux'] = 0.4
-            strategy_steps[i]['max_nmiter'] = 9
             strategy_steps[i]['max_directions'] = 30
             strategy_steps[i]['max_distance'] = 3.0
         elif i == 2:
             strategy_steps[i]['target_flux'] = 0.3
-            strategy_steps[i]['max_nmiter'] = 10
             strategy_steps[i]['max_directions'] = 40
             strategy_steps[i]['max_distance'] = 3.5
         else:
             strategy_steps[i]['target_flux'] = 0.25
-            strategy_steps[i]['max_nmiter'] = 12
             strategy_steps[i]['max_directions'] = 50
             strategy_steps[i]['max_distance'] = 4.0
+        if field.antenna == 'LBA':
+            strategy_steps[i]['max_directions'] //= 2
+            strategy_steps[i]['max_nmiter'] = int(strategy_steps[i]['max_nmiter'] / 1.5)
         strategy_steps[i]['regroup_model'] = True
 
         if i < min_selfcal_loops - 1:
@@ -177,7 +211,7 @@ def set_selfcal_strategy():
     return strategy_steps
 
 
-def set_image_strategy():
+def set_image_strategy(field):
     """
     Sets up the standard imaging strategy
 
@@ -202,7 +236,10 @@ def set_image_strategy():
     strategy_steps[0]['auto_mask'] = 3.0
     strategy_steps[0]['threshisl'] = 3.0
     strategy_steps[0]['threshpix'] = 5.0
-    strategy_steps[0]['max_nmiter'] = 12
+    if field.antenna == 'LBA':
+        strategy_steps[0]['max_nmiter'] = 8
+    else:
+        strategy_steps[0]['max_nmiter'] = 12
     strategy_steps[0]['do_check'] = False
     strategy_steps[0]['regroup_model'] = False
 

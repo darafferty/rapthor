@@ -32,6 +32,7 @@ class TestField(unittest.TestCase):
 
         self.par = parset_read('resources/test.parset')
         self.field = Field(self.par)
+        self.field.fast_timestep_sec = 32.0  # needed for test_get_obs_parameters() below
         self.field.scan_observations()
         self.field.update_skymodels(1, True, target_flux=0.2)
         self.field.set_obs_parameters()
