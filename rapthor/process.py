@@ -54,6 +54,17 @@ def run(parset_file, logging_level='info'):
 
     # Run the self calibration
     if selfcal_steps:
+        if field.antenna == 'LBA' and not np.isclose(parset['final_data_fraction'],
+                                                     parset['selfcal_data_fraction']):
+            # This check ensures that the solutions derived during selfcal can
+            # be used to peel non-calibrator sources before the final
+            # calibration is done (i.e., they must have the same time coverage).
+            # This peeling is done only for LBA data
+            log.error("When processing LBA data, the selfcal_data_fraction (currently "
+                      "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
+                      "must be identical.".format(parset['selfcal_data_fraction'],
+                                                  parset['final_data_fraction']))
+            return
         log.info("Starting self calibration with a data fraction of "
                  "{0:.2f}".format(parset['selfcal_data_fraction']))
         run_steps(field, selfcal_steps)
