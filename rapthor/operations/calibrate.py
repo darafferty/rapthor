@@ -106,7 +106,10 @@ class CalibrateDD(Operation):
         combined_h5parms_slow_joint_separate = 'combined_solutions_slow_joint_separate.h5'
 
         # Define the input sky model
-        calibration_skymodel_file = self.field.calibration_skymodel_file
+        if self.field.peel_non_calibrator_sources:
+            calibration_skymodel_file = self.field.calibrators_only_skymodel_file
+        else:
+            calibration_skymodel_file = self.field.calibration_skymodel_file
 
         # Get the calibrator names and fluxes
         calibrator_patch_names = self.field.calibrator_patch_names
