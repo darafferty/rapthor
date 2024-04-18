@@ -70,6 +70,14 @@ flag_expr =
 input_h5parm = None
 input_fulljones_h5parm = None
 
+# Full path to an text file (in ds9 format) that defines the facet layout
+# (default = None). If a facet file is supplied, calibration patches and imaging
+# facets will be set to those specified in the file, and the calibrator
+# selection parameters specified in the strategy (e.g., target_flux) will be
+# ignored (and therefore the patch and facet layout will be held constant
+# between cycles)
+facet_layout = None
+
 
 [calibration]
 # If one of the included sky models (see rapthor/skymodels) is within 2 *
