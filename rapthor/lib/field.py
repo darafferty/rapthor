@@ -122,9 +122,6 @@ class Field(object):
             self.makeWCS()
             self.define_imaging_sectors()
 
-            # Chunk the observations into smaller parts if needed
-            self.chunk_observations(self.parset['selfcal_data_fraction'])
-
     def scan_observations(self):
         """
         Checks input MS files and initializes the associated Observation objects
@@ -222,63 +219,48 @@ class Field(object):
         mid_index = np.argmin(np.abs(np.array(times)-mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
-    def chunk_observations(self, data_fraction=1.0):
+    def chunk_observations(self, mintime):
         """
         Break observations into smaller time chunks if desired
 
         Chunking is done if:
 
-        - the specified data_fraction < 1 (so part of an observation is to be processed)
+        - obs.data_fraction < 1 (so part of an observation is to be processed)
         - nobs * nsectors < nnodes (so all nodes can be used efficiently. In particular,
           the predict operation parallelizes over sectors and observations, so we need
           enough observations to allow all nodes to be occupied.)
 
         Parameters
         ----------
-        data_fraction : float, optional
-            Fraction of data to use during processing
+        mintime : float
+            Minimum time in sec for a chunk
         """
-        # Determine the minimum time needed by the solves
-        max_dd_timestep = max(self.slow_timestep_joint_sec, self.slow_timestep_separate_sec)
-        max_di_timestep = self.fulljones_timestep_sec
-        dd_interval_factor = self.dd_interval_factor
-        mintime = max(max_dd_timestep * dd_interval_factor, max_di_timestep)
-
-        if data_fraction < 1.0:
-            # Set the chunk size so that it is at least mintime
-            self.observations = []
-            for obs in self.full_observations:
-                tottime = obs.endtime - obs.starttime
-                if data_fraction < min(1.0, mintime/tottime):
-                    obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                                    'total time for this observation that is less than the largest '
-                                    'possible calibration timestep ({1} s). The data fraction will be '
-                                    'increased to {2:0.3f} to ensure the timestep requirement is '
-                                    'met.'.format(data_fraction, mintime, min(1.0, mintime/tottime)))
-                nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
-                if nchunks == 1:
-                    # Center the chunk around the midpoint (which is generally the most
-                    # sensitive, near transit)
-                    midpoint = obs.starttime + tottime / 2
-                    chunktime = min(tottime, max(mintime, data_fraction*tottime))
-                    if chunktime < tottime:
-                        self.observations.append(Observation(obs.ms_filename,
-                                                             starttime=midpoint-chunktime/2,
-                                                             endtime=midpoint+chunktime/2))
-                    else:
-                        self.observations.append(obs)
+        # Set the chunk size so that it is at least mintime
+        self.observations = []
+        for obs in self.full_observations:
+            tottime = obs.endtime - obs.starttime
+            nchunks = max(1, int(np.floor(obs.data_fraction / (mintime / tottime))))
+            if nchunks == 1:
+                # Center the chunk around the midpoint (which is generally the most
+                # sensitive, near transit)
+                midpoint = obs.starttime + tottime / 2
+                chunktime = min(tottime, max(mintime, obs.data_fraction*tottime))
+                if chunktime < tottime:
+                    self.observations.append(Observation(obs.ms_filename,
+                                                         starttime=midpoint-chunktime/2,
+                                                         endtime=midpoint+chunktime/2))
                 else:
-                    steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
-                    starttimes = np.arange(obs.starttime, obs.endtime, steptime)
-                    endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
-                    for starttime, endtime in zip(starttimes, endtimes):
-                        if endtime > obs.endtime:
-                            starttime = obs.endtime - mintime
-                            endtime = obs.endtime
-                        self.observations.append(Observation(obs.ms_filename, starttime=starttime,
-                                                             endtime=endtime))
-        else:
-            self.observations = self.full_observations[:]
+                    self.observations.append(obs)
+            else:
+                steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
+                starttimes = np.arange(obs.starttime, obs.endtime, steptime)
+                endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
+                for starttime, endtime in zip(starttimes, endtimes):
+                    if endtime > obs.endtime:
+                        starttime = obs.endtime - mintime
+                        endtime = obs.endtime
+                    self.observations.append(Observation(obs.ms_filename, starttime=starttime,
+                                                         endtime=endtime))
 
         minnobs = self.parset['cluster_specific']['max_nodes']
         if len(self.imaging_sectors)*len(self.observations) < minnobs:
@@ -1490,13 +1472,12 @@ class Field(object):
         index : int
             Index of iteration
         final : bool, optional
-            If True, process as the final pass (combine initial and new sky models and
-            rechunk the input datasets)
+            If True, process as the final pass (needed for correct processing of
+            the sky models)
         """
-        # If this is set as a final pass, rechunk the input datasets
-        # and set some peeling/calibration options to the defaults
+        # If this is set as a final pass, set some peeling/calibration options to
+        # the defaults
         if final:
-            self.chunk_observations(self.parset['final_data_fraction'])
             self.imaged_sources_only = False
 
         # Update field and sector dicts with the parameters for this iteration
