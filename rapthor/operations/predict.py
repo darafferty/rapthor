@@ -206,15 +206,6 @@ class PredictNC(Operation):
         # Set list of sectors for which prediction needs to be done
         sectors = self.field.non_calibrator_source_sectors
 
-        # Set the solutions file to use for prediction. Because prediction is
-        # done before calibration, we use the solutions from the previous
-        # calibration if available. If unavailable, prediction is done without
-        # using solutions (indicated to the script with a value of 'none')
-        if self.field.h5parm_filename is not None:
-            h5parm_filename = CWLFile(self.field.h5parm_filename).to_json()
-        else:
-            h5parm_filename = 'none'
-
         # Set sector-dependent parameters (input and output filenames, patch names, etc.)
         sector_skymodel = []
         sector_filename = []
@@ -256,8 +247,6 @@ class PredictNC(Operation):
                             'sector_ntimes': sector_ntimes,
                             'sector_model_filename': sector_model_filename,
                             'sector_skymodel': CWLFile(sector_skymodel).to_json(),
-                            'sector_patches': sector_patches,
-                            'h5parm': h5parm_filename,
                             'onebeamperpatch': onebeamperpatch,
                             'sagecalpredict': sagecalpredict,
                             'obs_filename': CWLDir(obs_filename).to_json(),
@@ -265,6 +254,12 @@ class PredictNC(Operation):
                             'obs_infix': obs_infix,
                             'nr_sectors': nr_sectors,
                             'max_threads': self.field.parset['cluster_specific']['max_threads']}
+
+        if self.field.h5parm_filename is not None:
+            # If calibration solutions are available to use during prediction,
+            # set the sector calibration patches and the solutions file
+            self.input_parms.update({'sector_patches': sector_patches})
+            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
 
     def finalize(self):
         """

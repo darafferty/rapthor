@@ -57,6 +57,7 @@ inputs:
       Flag that enables prediction using SAGECAl.
     type: boolean
 
+{% if apply_solutions %}
   - id: sector_patches
     label: Names of sector calibration patches
     doc: |
@@ -72,11 +73,10 @@ inputs:
     label: Filename of solution table
     doc: |
       The filename of the h5parm solution table from the calibration workflow
-      (length = 1). Note that when this file is unavailable, the filename can be
-      set to a dummy string, in which case it is then ignored by the script
+      (length = 1).
     type:
-      - string?
-      - File?
+      - File
+{% endif %}
 
   - id: sector_skymodel
     label: Filename of sky model
