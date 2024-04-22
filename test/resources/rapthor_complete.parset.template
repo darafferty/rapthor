@@ -17,6 +17,7 @@ flag_freqrange = [126.4..127.6MHz]
 flag_expr = flag_abstime and flag_baseline and flag_freqrange
 input_h5parm = /my/data/dirdependent.h5
 input_fulljones_h5parm = /my/data/fulljones.h5
+facet_layout = /my/data/facets.reg
 
 [calibration]
 use_included_skymodels = True

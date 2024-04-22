@@ -72,7 +72,7 @@ input_fulljones_h5parm = None
 
 # Full path to an text file (in ds9 format) that defines the facet layout
 # (default = None). If a facet file is supplied, calibration patches and imaging
-# facets will be set to those specified in the file, and the calibrator
+# facets will be set to those specified in the file, if possible, and the calibrator
 # selection parameters specified in the strategy (e.g., target_flux) will be
 # ignored (and therefore the patch and facet layout will be held constant
 # between cycles)

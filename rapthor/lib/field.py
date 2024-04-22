@@ -9,6 +9,7 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
+from rapthor.lib.facet import read_ds9_region_file
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
@@ -509,8 +510,23 @@ class Field(object):
                     facet_names.append(facet.name)
                     facet_patches_dict.update({facet.name: [facet.ra, facet.dec]})
 
+                if len(facet_names) > len(skymodel_true_sky):
+                    raise ValueError('The sky model has {0} sources but the input facet '
+                                     'layout file has {1} facets. There must be at least '
+                                     'as many sources in the sky model as facets in the '
+                                     'facet layout file.'.format(len(skymodel_true_sky),
+                                                                 len(facet_names)))
+
                 # Update the sky models with the new patches and group using the
-                # Voronoi algorithm
+                # Voronoi algorithm. We do this by setting the "Patch" column
+                # values to a list of the patch names we want (here a simple
+                # repeating list is sufficient; it's only necessary that each
+                # patch name appear at least once) and the patch positions to
+                # those from the facet file. Grouping will then use the new
+                # patches
+                skymodel_true_sky.group('single')  # reset any existing patches
+                patch_names = facet_names * (len(skymodel_true_sky) // len(facet_names) + 1)
+                skymodel_true_sky.setColValues('Patch', patch_names[:len(skymodel_true_sky)])
                 skymodel_true_sky.setPatchPositions(patchDict=facet_patches_dict)
                 skymodel_true_sky.group('voronoi', patchNames=facet_names)
 
