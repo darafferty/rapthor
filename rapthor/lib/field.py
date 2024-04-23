@@ -524,11 +524,12 @@ class Field(object):
                 # patch name appear at least once) and the patch positions to
                 # those from the facet file. Grouping will then use the new
                 # patches
-                skymodel_true_sky.group('single')  # reset any existing patches
-                patch_names = facet_names * (len(skymodel_true_sky) // len(facet_names) + 1)
-                skymodel_true_sky.setColValues('Patch', patch_names[:len(skymodel_true_sky)])
-                skymodel_true_sky.setPatchPositions(patchDict=facet_patches_dict)
-                skymodel_true_sky.group('voronoi', patchNames=facet_names)
+                for skymodel in [skymodel_true_sky, bright_source_skymodel_apparent_sky]:
+                    skymodel.group('single')  # reset any existing patches
+                    patch_names = facet_names * (len(skymodel) // len(facet_names) + 1)
+                    skymodel.setColValues('Patch', patch_names[:len(skymodel)])
+                    skymodel.setPatchPositions(patchDict=facet_patches_dict)
+                    skymodel.group('voronoi', patchNames=facet_names)
 
                 # debug
                 dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
