@@ -112,10 +112,10 @@ class Field(object):
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
-        if not minimal:
-            # Scan MS files to get observation info
-            self.scan_observations()
+        # Scan MS files to get observation info
+        self.scan_observations()
 
+        if not minimal:
             # Scan calibration h5parm files (if any) to get solution info
             self.scan_h5parms()
 
