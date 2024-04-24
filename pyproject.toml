@@ -38,7 +38,7 @@ dependencies = [
     "importlib-resources; python_version<'3.9'",
     "jinja2",
     "losoto",
-    "lsmtool>=1.5.0",
+    "lsmtool @ git+https://git.astron.nl/RD/LSMTool@5635971c249915984a80f0e0a634a1d932273a5d",
     "matplotlib",
     "mocpy",
     "numpy",
