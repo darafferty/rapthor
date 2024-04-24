@@ -17,7 +17,8 @@
         "flag_freqrange": null,
         "flag_expr": "",
         "input_h5parm": null,
-        "input_fulljones_h5parm": null
+        "input_fulljones_h5parm": null,
+        "facet_layout": null
     },
     "calibration": {
         "use_included_skymodels": false,
