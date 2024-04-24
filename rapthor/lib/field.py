@@ -14,7 +14,7 @@ from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
 import glob
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle
 import astropy.units as u
 from typing import List, Dict
 from collections import namedtuple
@@ -525,11 +525,20 @@ class Field(object):
                 # those from the facet file. Grouping will then use the new
                 # patches
                 for skymodel in [skymodel_true_sky, bright_source_skymodel_apparent_sky]:
-                    skymodel.group('single')  # reset any existing patches
                     patch_names = facet_names * (len(skymodel) // len(facet_names) + 1)
                     skymodel.setColValues('Patch', patch_names[:len(skymodel)])
-                    skymodel.setPatchPositions(patchDict=facet_patches_dict)
+                    for patch, pos in facet_patches_dict.items():
+                        pos[0] = Angle(pos[0], unit=u.deg)
+                        pos[1] = Angle(pos[1], unit=u.deg)
+                        skymodel.table.meta[patch] = pos
                     skymodel.group('voronoi', patchNames=facet_names)
+
+                    # Update the patch positions again after the tessellation
+                    # to ensure they match the ones from the facet layout file
+                    for patch, pos in facet_patches_dict.items():
+                        pos[0] = Angle(pos[0], unit=u.deg)
+                        pos[1] = Angle(pos[1], unit=u.deg)
+                        skymodel.table.meta[patch] = pos
 
                 # debug
                 dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
