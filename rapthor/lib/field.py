@@ -504,6 +504,9 @@ class Field(object):
             if self.parset['facet_layout'] is not None:
                 # Regroup using the supplied ds9 region file of the facets
                 facets = read_ds9_region_file(self.parset['facet_layout'])
+                suffix = 'es' if len(facets) > 1 else ''
+                self.log.info(f'Read {len(facets)} patch{suffix} from supplied facet '
+                              'layout file')
                 facet_names = []
                 facet_patches_dict = {}
                 for facet in facets:
@@ -539,6 +542,13 @@ class Field(object):
                         pos[0] = Angle(pos[0], unit=u.deg)
                         pos[1] = Angle(pos[1], unit=u.deg)
                         skymodel.table.meta[patch] = pos
+
+                n_removed = len(facet_names) - len(skymodel_true_sky.getPatchNames().tolist())
+                if n_removed > 0:
+                    # One or more empty facets removed during grouping, so
+                    # report this to user
+                    suffix = 'es' if n_removed > 1 else ''
+                    self.log.info(f'Removed {n_removed} empty patch{suffix}')
 
                 # debug
                 dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
