@@ -133,13 +133,16 @@ The available options are described below under their respective sections.
         file is used if no calibration is to be done.
 
     facet_layout
-        Full path to an text file (in ds9/WSClean format, specified in the `WSClean
-        documentation <https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html>`_)
-        that defines the facet layout (default = None). If a facet file is supplied,
+        Full path to a text file that defines the facet layout (default = None). This file
+        must use the WSClean facet format, specified in the `WSClean documentation
+        <https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html>`_. Also note that
+        the facet centroids (the `facet point of interest
+        <https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html#adding-a-facet-point
+        -of-interest>`_) must be defined in the file as well. If a facet file is supplied,
         calibration patches and imaging facets will be set to those specified in the file,
         if possible, and the calibrator selection parameters specified in the strategy
-        (e.g., target_flux) will be ignored (and therefore the patch and facet layout will
-        be held constant between cycles)
+        (e.g., :term:`target_flux`) will be ignored (and therefore the patch and facet
+        layout will be held constant between cycles)
 
         .. note::
 
