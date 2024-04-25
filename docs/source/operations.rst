@@ -48,6 +48,10 @@ Primary products:
     * In ``pipelines/predict_X``, where ``X`` is the cycle number:
         * Temporary measurement sets used for subsequent operations.
 
+If LBA data are processed, then a predict operation is done before the calibration operation to subtract off non-calibrator sources, with the following output:
+    * In ``pipelines/predict_nc_X``, where ``X`` is the cycle number:
+        * Temporary measurement sets used for the calibration.
+
 If a full-Jones solve was done for a given iteration, then a number of further products are created:
     * In ``skymodels/predict_X``, where ``X`` is the cycle number:
         * ``predict_*_predict_skymodel.txt`` - sky models used for the prediction needed for the full-Jones solve
@@ -71,13 +75,13 @@ Diagnostics for each image are written to the main log (``dir_working/logs/rapth
     * The reference (central) frequency of the image.
     * The restoring beam size and position angle.
     * The fraction of unflagged data.
-    * An estimate of the LOFAR-to-TGSS flux ratio (calculated as the mean of the measured LOFAR flux densities divided by the TGSS flux densities, after sigma clipping). This ratio gives an indication of the accuracy of the overall flux scale of the image. When the reference frequency of the LOFAR image differs from that of the TGSS catalog, the ratio is corrected assuming a mean source spectral index of -0.7.
+    * An estimate of the LOFAR-to-TGSS/NVSS/LoTSS flux ratio (calculated as the mean of the measured LOFAR flux densities divided by the TGSS/NVSS/LoTSS flux densities, after sigma clipping). This ratio gives an indication of the accuracy of the overall flux scale of the image. When the reference frequency of the LOFAR image differs from that of the reference catalogs, the ratio is corrected assuming a mean source spectral index of -0.7.
 
         .. note::
 
             This ratio should be considered as a rough estimate only. A careful analysis of the overall flux calibration of the field should be done outside of Rapthor.
 
-    * Estimates of the LOFAR-to-TGSS RA and Dec offsets (calculated as the mean of the LOFAR values minus the TGSS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
+    * Estimates of the LOFAR-to-Pan-STARRS RA and Dec offsets (calculated as the mean of the LOFAR values minus the Pan-STARRS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
 
 Primary products:
     * In ``images/image_X``, where ``X`` is the cycle number:
@@ -89,6 +93,17 @@ Primary products:
         .. note::
 
             If Stokes QUV images are also made (see :term:`make_quv_images`), then there will be a set of output images for each Stokes parameter, The image names will include the Stokes parameter. E.g., the apparent-sky, "flat-noise" images will be named ``field-MFS-I-image.fits``, ``field-MFS-Q-image.fits``, etc.
+
+    * In ``plots/image_X``, where ``X`` is the cycle number:
+
+        .. note::
+
+            In the following, the "flux ratio" is calculated (per source) as the Rapthor-derived LOFAR flux density divided by the reference catalog flux density, where the reference catalog is one of TGSS, NVSS, or LoTSS. The "positional offsets" are calculated (per source) as the Rapthor-derived RA or Dec value minus the Pan-STARRS value.
+
+        * ``sector_Y.flux_ratio_vs_distance_TGSS/NVSS/LoTSS.pdf``, where ``Y`` is the image sector number - plots of the flux ratio vs. distance from the phase center.
+        * ``sector_Y.flux_ratio_vs_flux_TGSS/NVSS/LoTSS.pdf``, where ``Y`` is the image sector number - plots of the flux ratio vs. Rapthor-derived LOFAR flux density.
+        * ``sector_Y.positional_offsets_sky.pdf``, where ``Y`` is the image sector number -  scatter plot of the RA and Dec positional offsets.
+        * ``sector_Y.astrometry_offsets.pdf``, where ``Y`` is the image sector number -  plot showing the mean RA and Dec positional offsets for each facet covered by the sector. Arrows indicate the magnitude and direction of the mean offsets.
 
     * In ``skymodels/image_X``, where ``X`` is the cycle number:
         * ``bright_source_skymodel.txt`` - sky model used to restore bright sources after imaging (present only if bright sources were subtracted in the preceding predict operation).

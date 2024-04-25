@@ -170,6 +170,114 @@ class PredictDD(Operation):
         super().finalize()
 
 
+class PredictNC(Operation):
+    """
+    Operation to predict model data for non-calibrator sources
+    """
+    def __init__(self, field, index):
+        super().__init__(field, name='predict_nc', index=index)
+
+    def set_parset_parameters(self):
+        """
+        Define parameters needed for the CWL workflow template
+        """
+        if self.batch_system == 'slurm':
+            # For some reason, setting coresMax ResourceRequirement hints does
+            # not work with SLURM
+            max_cores = None
+        else:
+            max_cores = self.field.parset['cluster_specific']['max_cores']
+
+        if self.field.h5parm_filename is not None:
+            # Apply calibration solutions during predict when available (e.g., from
+            # calibration done in the previous cycle)
+            apply_solutions = True
+        else:
+            apply_solutions = False
+        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'max_cores': max_cores,
+                             'apply_solutions': apply_solutions,
+                             'apply_amplitudes': self.field.apply_amplitudes}
+
+    def set_input_parameters(self):
+        """
+        Define the CWL workflow inputs
+        """
+        # Set list of sectors for which prediction needs to be done
+        sectors = self.field.non_calibrator_source_sectors
+
+        # Set sector-dependent parameters (input and output filenames, patch names, etc.)
+        sector_skymodel = []
+        sector_filename = []
+        sector_starttime = []
+        sector_ntimes = []
+        sector_model_filename = []
+        sector_patches = []
+        for sector in sectors:
+            sector.set_prediction_parameters()
+            sector_skymodel.extend(
+                [sector.predict_skymodel_file] * len(self.field.observations)
+            )
+            sector_filename.extend(sector.get_obs_parameters('ms_filename'))
+            sector_model_filename.extend(
+                [os.path.basename(f) for f in sector.get_obs_parameters('ms_model_filename')]
+            )
+            sector_patches.extend(sector.get_obs_parameters('patch_names'))
+            sector_starttime.extend(sector.get_obs_parameters('predict_starttime'))
+            sector_ntimes.extend(sector.get_obs_parameters('predict_ntimes'))
+
+        # Set observation-specific parameters (input filenames, solution intervals, etc.)
+        obs_filename = []
+        obs_starttime = []
+        obs_infix = []
+        obs_solint_sec = []
+        obs_solint_hz = []
+        for obs in self.field.observations:
+            obs_filename.append(obs.ms_filename)
+            obs_starttime.append(misc.convert_mjd2mvt(obs.starttime))
+            obs_infix.append(obs.infix)
+
+        # Set other parameters
+        nr_sectors = len(self.field.non_calibrator_source_sectors)
+        onebeamperpatch = self.field.onebeamperpatch
+        sagecalpredict = self.field.sagecalpredict
+
+        self.input_parms = {'sector_filename': CWLDir(sector_filename).to_json(),
+                            'sector_starttime': sector_starttime,
+                            'sector_ntimes': sector_ntimes,
+                            'sector_model_filename': sector_model_filename,
+                            'sector_skymodel': CWLFile(sector_skymodel).to_json(),
+                            'onebeamperpatch': onebeamperpatch,
+                            'sagecalpredict': sagecalpredict,
+                            'obs_filename': CWLDir(obs_filename).to_json(),
+                            'obs_starttime': obs_starttime,
+                            'obs_infix': obs_infix,
+                            'nr_sectors': nr_sectors,
+                            'max_threads': self.field.parset['cluster_specific']['max_threads']}
+
+        if self.field.h5parm_filename is not None:
+            # If calibration solutions are available to use during prediction,
+            # set the sector calibration patches and the solutions file
+            self.input_parms.update({'sector_patches': sector_patches})
+            self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
+
+    def finalize(self):
+        """
+        Finalize this operation
+        """
+        # Update filenames of datasets used for (calibrator-only) calibration
+        for obs in self.field.non_calibrator_source_sectors[0].observations:
+            # Transfer the filenames from the first sector to the field. This is required
+            # because the sector's observations are distinct copies of the field ones
+            for field_obs in self.field.observations:
+                if (field_obs.name == obs.name) and (field_obs.starttime == obs.starttime):
+                    field_obs.ms_predict_nc_filename = os.path.join(self.pipeline_working_dir,
+                                                                    obs.ms_field)
+
+        # Finally call finalize() in the parent class
+        super().finalize()
+
+
 class PredictDI(Operation):
     """
     Operation to predict model data for direction-independent calibration
