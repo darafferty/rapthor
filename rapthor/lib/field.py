@@ -90,6 +90,7 @@ class Field(object):
         self.solverlbfgs_iter = self.parset['calibration_specific']['solverlbfgs_iter']
         self.solverlbfgs_minibatches = self.parset['calibration_specific']['solverlbfgs_minibatches']
         self.cycle_number = 1
+        self.apply_amplitudes = False
 
         # Set strategy parameter defaults
         self.fast_timestep_sec = 8.0
@@ -107,6 +108,7 @@ class Field(object):
         self.peel_outliers = False
         self.imaged_sources_only = False
         self.peel_bright_sources = False
+        self.peel_non_calibrator_sources = False
         self.do_slowgain_solve = False
         self.use_scalarphase = True
         self.field_image_filename_prev = None
@@ -389,7 +391,16 @@ class Field(object):
         index : index
             Iteration index
         """
-        # Make output directories for sky models and define filenames
+        # Save the filename of the calibrator-only sky model from the previous cycle (needed
+        # for some operations), if available
+        if index > 1:
+            dst_dir_prev_cycle = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index-1))
+            self.calibrators_only_skymodel_file_prev_cycle = os.path.join(dst_dir_prev_cycle,
+                                                                          'calibrators_only_skymodel.txt')
+        else:
+            self.calibrators_only_skymodel_file_prev_cycle = None
+
+        # Make output directories for new sky models and define filenames
         dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
         misc.create_directory(dst_dir)
         self.calibration_skymodel_file = os.path.join(dst_dir, 'calibration_skymodel.txt')
@@ -901,9 +912,15 @@ class Field(object):
         # not imaged; they are only used in prediction for direction-independent solves
         self.define_predict_sectors(index)
 
+        # Make non-calibrator-source sectors containing non-calibrator sources
+        # that may be subtracted before calibration. These sectors are not
+        # imaged
+        self.define_non_calibrator_source_sectors(index)
+
         # Finally, make a list containing all sectors
         self.sectors = (self.imaging_sectors + self.outlier_sectors +
-                        self.bright_source_sectors + self.predict_sectors)
+                        self.bright_source_sectors + self.predict_sectors +
+                        self.non_calibrator_source_sectors)
         self.nsectors = len(self.sectors)
 
     def remove_skymodels(self):
@@ -1169,6 +1186,40 @@ class Field(object):
                     bright_source_sector.make_skymodel(index)
                     self.bright_source_sectors.append(bright_source_sector)
 
+    def define_non_calibrator_source_sectors(self, index):
+        """
+        Defines the non-calibrator source sectors
+
+        These sectors are defined if peeling of non-calibrator sources is
+        explicitly enabled or if the antenna is LBA (where it's always
+        needed)
+
+        Parameters
+        ----------
+        index : int
+            Iteration index
+        """
+        self.non_calibrator_source_sectors = []
+        if self.peel_non_calibrator_sources or self.antenna == 'LBA':
+            non_calibrator_skymodel = self.make_non_calibrator_skymodel()
+            nsources = len(non_calibrator_skymodel)
+            if nsources > 0:
+                # Choose number of sectors to be the no more than ten, but don't allow
+                # fewer than 100 sources per sector if possible
+                nnodes = max(min(10, round(nsources/100)), 1)  # TODO: tune to number of available nodes and/or memory?
+                for i in range(nnodes):
+                    non_calibrator_source_sector = Sector('non_calibrator_source_{0}'.format(i+1), self.ra, self.dec, 1.0, 1.0, self)
+                    non_calibrator_source_sector.is_predict = True
+                    non_calibrator_source_sector.predict_skymodel = non_calibrator_skymodel.copy()
+                    startind = i * int(nsources/nnodes)
+                    if i == nnodes-1:
+                        endind = nsources
+                    else:
+                        endind = startind + int(nsources/nnodes)
+                    non_calibrator_source_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
+                    non_calibrator_source_sector.make_skymodel(index)
+                    self.non_calibrator_source_sectors.append(non_calibrator_source_sector)
+
     def define_predict_sectors(self, index):
         """
         Defines the predict sectors
@@ -1302,6 +1353,43 @@ class Field(object):
         outlier_skymodel = self.calibration_skymodel.copy()
         outlier_skymodel.select(outlier_ind, force=True)
         return outlier_skymodel
+
+    def make_non_calibrator_skymodel(self):
+        """
+        Make a sky model of any non-calibrator sources
+
+        Since the peeling of non-calibrator sources uses the calibration
+        solutions from the previous cycle (if any), the calibration patches from
+        that cycle are applied to the current sky model to ensure agreement
+        between the sky model patches and the calibration patches.
+
+        Note: if a previous cycle was not done (and therefore a model from it
+        does not exist), then either peeling will be done without using
+        calibration solutions (and therefore the patches are ignored) or a
+        solutions file and sky model have been provided by the user, in which
+        case the patches in the model and solutions must already agree with each
+        other.
+        """
+        non_calibrator_skymodel = self.calibration_skymodel.copy()
+
+        # Transfer the patches from the previous sky model (if any) to the
+        # current one
+        if self.calibrators_only_skymodel_file_prev_cycle is not None:
+            calibrators_only_skymodel = lsmtool.load(self.calibrators_only_skymodel_file_prev_cycle)
+            calibrator_names = calibrators_only_skymodel.getPatchNames()
+            patch_dict = calibrators_only_skymodel.getPatchPositions()
+            non_calibrator_skymodel.transfer(calibrators_only_skymodel,
+                                             matchBy='position', radius='30 arcsec')
+            non_calibrator_skymodel.setPatchPositions(patchDict=patch_dict)
+            non_calibrator_skymodel.group('voronoi', patchNames=calibrator_names)
+
+        # Remove the calibrator (bright) sources
+        remove_source_names = self.bright_source_skymodel.getColValues('Name').tolist()
+        all_source_names = non_calibrator_skymodel.getColValues('Name').tolist()
+        keep_ind = np.array([all_source_names.index(sn) for sn in all_source_names
+                             if sn not in remove_source_names])
+        non_calibrator_skymodel.select(keep_ind, force=True)
+        return non_calibrator_skymodel
 
     def radec2xy(self, RA, Dec):
         """
@@ -1595,17 +1683,27 @@ class Field(object):
                               final=final)
         self.remove_skymodels()  # clean up sky models to reduce memory usage
 
-        # Check whether outliers and bright sources need to be peeled
+        # Always try to peel non-calibrator sources if LBA (we check below whether
+        # or not there are sources that need to be peeled)
+        if self.antenna == 'LBA':
+            self.peel_non_calibrator_sources = True
+
+        # Check whether any sources need to be peeled
         nr_outlier_sectors = len(self.outlier_sectors)
         nr_imaging_sectors = len(self.imaging_sectors)
         nr_bright_source_sectors = len(self.bright_source_sectors)
+        nr_non_calibrator_source_sectors = len(self.non_calibrator_source_sectors)
         if nr_bright_source_sectors == 0:
             self.peel_bright_sources = False
         if nr_outlier_sectors == 0:
             self.peel_outliers = False
             self.imaged_sources_only = True  # No outliers means all sources are imaged
+        if nr_non_calibrator_source_sectors == 0:
+            self.peel_non_calibrator_sources = False
 
-        # Determine whether a predict step is needed or not. It's needed when:
+        # Determine whether the main predict operation is needed or not (note:
+        # this does not apply to direction-independent or non-calibrator predict
+        # operations). It's needed when:
         # - there are two or more imaging sectors
         # - there are one or more outlier sectors (whether or not the outliers will
         #   be peeled for calibration, which is set by self.peel_outliers, they must
