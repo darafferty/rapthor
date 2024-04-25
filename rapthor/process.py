@@ -277,9 +277,8 @@ def chunk_observations(field, steps, data_fraction):
     joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
     separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
     max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
-    max_di_timestep = field.parset['fulljones_timestep_sec']
-    dd_interval_factor = field.parset['dd_interval_factor']
-    min_time = max(max_dd_timestep * dd_interval_factor, max_di_timestep)
+    max_di_timestep = field.fulljones_timestep_sec
+    min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
 
     for obs in field.full_observations:
         tot_time = obs.endtime - obs.starttime
