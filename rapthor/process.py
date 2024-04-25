@@ -9,7 +9,7 @@ from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
 from rapthor.operations.image import Image
 from rapthor.operations.mosaic import Mosaic
-from rapthor.operations.predict import PredictDD, PredictDI
+from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
 from rapthor.lib.field import Field
 import numpy as np
 
@@ -54,6 +54,17 @@ def run(parset_file, logging_level='info'):
 
     # Run the self calibration
     if selfcal_steps:
+        if field.antenna == 'LBA' and not np.isclose(parset['final_data_fraction'],
+                                                     parset['selfcal_data_fraction']):
+            # This check ensures that the solutions derived during selfcal can
+            # be used to peel non-calibrator sources before the final
+            # calibration is done (i.e., they must have the same time coverage).
+            # This peeling is done only for LBA data
+            log.error("When processing LBA data, the selfcal_data_fraction (currently "
+                      "set to {0:.2f}) and final_data_fraction (currently set to {1:.2f}) "
+                      "must be identical.".format(parset['selfcal_data_fraction'],
+                                                  parset['final_data_fraction']))
+            return
         log.info("Starting self calibration with a data fraction of "
                  "{0:.2f}".format(parset['selfcal_data_fraction']))
 
@@ -123,8 +134,14 @@ def run_steps(field, steps, final=False):
         cycle_number = index + field.cycle_number
         field.update(step, cycle_number, final=final)
 
-        # Calibrate (direction-dependent)
+        # Calibrate
         if field.do_calibrate:
+            if field.peel_non_calibrator_sources:
+                # Predict and subtract non-calibrator sources before calibration
+                op = PredictNC(field, cycle_number)
+                op.run()
+
+            # Calibrate (direction-dependent)
             op = CalibrateDD(field, cycle_number)
             op.run()
 
