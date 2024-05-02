@@ -479,13 +479,6 @@ class Field(object):
         source_skymodel.setPatchPositions(method='wmean')
         patch_dict = source_skymodel.getPatchPositions()
 
-        # debug
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-        misc.create_directory(dst_dir)
-        skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
-        source_skymodel.write(skymodel_true_sky_file, clobber=True)
-        # debug
-
         # Save the model of the bright sources only, for later subtraction before
         # imaging if needed. Note that the bright-source model (like the other predict
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
@@ -523,18 +516,15 @@ class Field(object):
                 for skymodel in [skymodel_true_sky, bright_source_skymodel_apparent_sky]:
                     patch_names = facet_names * (len(skymodel) // len(facet_names) + 1)
                     skymodel.setColValues('Patch', patch_names[:len(skymodel)])
-                    for patch, pos in facet_patches_dict.items():
-                        pos[0] = Angle(pos[0], unit=u.deg)
-                        pos[1] = Angle(pos[1], unit=u.deg)
-                        skymodel.table.meta[patch] = pos
-                    skymodel.group('voronoi', patchNames=facet_names)
-
-                    # Update the patch positions again after the tessellation
-                    # to ensure they match the ones from the facet layout file
-                    for patch, pos in facet_patches_dict.items():
-                        pos[0] = Angle(pos[0], unit=u.deg)
-                        pos[1] = Angle(pos[1], unit=u.deg)
-                        skymodel.table.meta[patch] = pos
+                    for i in range(2):
+                        # Update the patch positions twice (before and after grouping). We
+                        # need to do it after as well since group() changes the positions
+                        for patch, pos in facet_patches_dict.items():
+                            pos[0] = Angle(pos[0], unit=u.deg)
+                            pos[1] = Angle(pos[1], unit=u.deg)
+                            skymodel.table.meta[patch] = pos
+                        if i == 0:
+                            skymodel.group('voronoi', patchNames=facet_names)
 
                 n_removed = len(facet_names) - len(skymodel_true_sky.getPatchNames().tolist())
                 if n_removed > 0:
@@ -542,13 +532,6 @@ class Field(object):
                     # report this to user
                     suffix = 'es' if n_removed > 1 else ''
                     self.log.info(f'Removed {n_removed} empty patch{suffix}')
-
-                # debug
-                dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-                misc.create_directory(dst_dir)
-                skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
-                skymodel_true_sky.write(skymodel_true_sky_file, clobber=True)
-                # debug
             else:
                 # Regroup by tessellating with the bright sources as the tessellation
                 # centers.
@@ -638,8 +621,7 @@ class Field(object):
 
                 # Tesselate the model
                 calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
-                source_skymodel.group('voronoi', patchNames=calibrator_names, applyBeam=applyBeam_group,
-                                      weightBySize=True)
+                source_skymodel.group('voronoi', patchNames=calibrator_names)
 
                 # Update the patch positions after the tessellation to ensure they match the
                 # ones from the meanshift grouping
@@ -651,13 +633,6 @@ class Field(object):
                 for pn in bright_patch_names:
                     if pn not in source_skymodel.getPatchNames():
                         bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
-
-                # debug
-                dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-                misc.create_directory(dst_dir)
-                skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
-                source_skymodel.write(skymodel_true_sky_file, clobber=True)
-                # debug
 
                 # Transfer patches to the true-flux sky model (source names are identical
                 # in both, but the order may be different)
