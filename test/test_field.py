@@ -59,7 +59,9 @@ class TestField(unittest.TestCase):
         self.assertEqual(self.field.xy2radec([12187.183569042127], [-12477.909993882473]), ([1.4210854715202004e-14], [0.0]))
 
     def test_chunk_observations(self):
-        self.field.chunk_observations(data_fraction=0.8)
+        for obs in self.field.full_observations:
+            obs.data_fraction = 0.8
+        self.field.chunk_observations(600.0)
         self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.90695)
 
     def test_get_obs_parameters(self):

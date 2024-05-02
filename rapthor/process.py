@@ -67,6 +67,19 @@ def run(parset_file, logging_level='info'):
             return
         log.info("Starting self calibration with a data fraction of "
                  "{0:.2f}".format(parset['selfcal_data_fraction']))
+
+        # Set the data chunking to match the longest solution interval set in
+        # the strategy
+        if field.antenna == 'LBA':
+            # For LBA data, consider all steps (given by strategy_steps) when doing
+            # the chunking, since the chunks used for selfcal must be the same
+            # as those used in the final pass. Note that selfcal_data_fraction =
+            # final_data_fraction for LBA data
+            chunk_observations(field, strategy_steps, parset['selfcal_data_fraction'])
+        else:
+            # For other (HBA) data, the chunks used for selfcal can differ from
+            # those used in the final pass, so consider only selfcal_steps here
+            chunk_observations(field, selfcal_steps, parset['selfcal_data_fraction'])
         run_steps(field, selfcal_steps)
 
     # Run a final pass if needed
@@ -82,6 +95,17 @@ def run(parset_file, logging_level='info'):
             log.info("Using a data fraction of {0:.2f}".format(parset['final_data_fraction']))
         if field.make_quv_images:
             log.info("Stokes I, Q, U, and V images will be made")
+
+        # Set the data chunking to match the longest solution interval set in
+        # the strategy
+        if field.antenna == 'LBA' and selfcal_steps:
+            # For LBA data when selfcal has been done, consider all steps (given
+            # by strategy_steps) when doing the chunking to ensure the chunks do
+            # not change from those used in selfcal
+            chunk_observations(field, strategy_steps, parset['final_data_fraction'])
+        else:
+            # For other cases, consider only final_step in the chunking
+            chunk_observations(field, [final_step], parset['final_data_fraction'])
         run_steps(field, [final_step], final=True)
 
     log.info("Rapthor has finished :)")
@@ -229,3 +253,43 @@ def do_final_pass(field, selfcal_steps, final_step):
             final_pass = True
 
     return final_pass
+
+
+def chunk_observations(field, steps, data_fraction):
+    """
+    Chunks observations in time
+
+    The resulting data fraction may differ from observation to observation
+    depending on the length of each observation.
+
+    Parameters
+    ----------
+    field : Field object
+        The Field object for this run
+    steps : list of dicts
+        List of strategy step dicts containing the processing parameters
+    data_fraction : float
+        The target data fraction
+    """
+    # Find the overall minimum duration that can be used and still satisfy the
+    # specified solution intervals
+    fast_solint = max([step['fast_timestep_sec'] for step in steps])
+    joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
+    separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
+    max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
+    max_di_timestep = field.fulljones_timestep_sec
+    min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
+
+    for obs in field.full_observations:
+        tot_time = obs.endtime - obs.starttime
+        min_fraction = min(1.0, min_time/tot_time)
+        if data_fraction < min_fraction:
+            obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                            'total time for this observation that is less than the largest '
+                            'potential calibration timestep ({1} s). The data fraction will be '
+                            'increased to {2:0.3f} to ensure the timestep requirement is '
+                            'met.'.format(data_fraction, min_time, min_fraction))
+            obs.data_fraction = min_fraction
+        else:
+            obs.data_fraction = data_fraction
+    field.chunk_observations(min_time)

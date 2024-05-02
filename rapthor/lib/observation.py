@@ -34,6 +34,7 @@ class Observation(object):
         self.log = logging.getLogger('rapthor:{}'.format(self.name))
         self.starttime = starttime
         self.endtime = endtime
+        self.data_fraction = 1.0
         self.parameters = {}
         self.scan_ms()
 
