@@ -91,7 +91,7 @@ class CWLRunner:
         else:
             self.args.extend(['--no-container'])
             self.args.extend(['--preserve-entire-environment'])
-        if self.operation.scratch_dir is not None:
+        if self.operation.scratch_dir is not None and not self.operation.use_mpi:
             # Note: --tmp-outdir-prefix is not set here, as its value depends on
             # runner/mode used
             prefix = os.path.join(self.operation.scratch_dir, self.command + '.')
@@ -100,6 +100,12 @@ class CWLRunner:
             self._create_mpi_config_file()
             self.args.extend(['--mpi-config-file', self.operation.mpi_config_file])
             self.args.extend(['--enable-ext'])
+
+            # MPI requires that --tmpdir-prefix points to a shared filesystem
+            # (so that all workers can access the files), so here we set it to
+            # the output directory
+            prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
+            self.args.extend(['--tmpdir-prefix', prefix])
 
     def teardown(self) -> None:
         """
