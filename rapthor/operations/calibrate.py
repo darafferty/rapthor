@@ -90,6 +90,12 @@ class CalibrateDD(Operation):
         solutions_per_direction_slow_joint = self.field.get_obs_parameters('solutions_per_direction_slow_joint')
         solutions_per_direction_slow_separate = self.field.get_obs_parameters('solutions_per_direction_slow_separate')
 
+        # Get the BDA (baseline-dependent averaging) parameters (slow solves only)
+        bda_maxinterval_slow_joint = self.field.get_obs_parameters('bda_maxinterval_slow_joint')
+        bda_maxinterval_slow_separate = self.field.get_obs_parameters('bda_maxinterval_slow_separate')
+        bda_timebase_slow_joint = self.field.slow_bda_max_baseline_joint_m
+        bda_timebase_slow_separate = self.field.slow_bda_max_baseline_separate_m
+
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
         output_fast_h5parm = ['fast_phase_{}.h5parm'.format(i)
@@ -205,6 +211,10 @@ class CalibrateDD(Operation):
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
+                            'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,
+                            'bda_timebase_slow_joint': bda_timebase_slow_joint,
+                            'bda_maxinterval_slow_separate': bda_maxinterval_slow_separate,
+                            'bda_timebase_slow_separate': bda_timebase_slow_separate,
                             'max_normalization_delta': max_normalization_delta,
                             'scale_normalization_delta': scale_normalization_delta,
                             'phase_center_ra': self.field.ra,

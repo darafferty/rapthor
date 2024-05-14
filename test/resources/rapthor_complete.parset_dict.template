@@ -16,6 +16,8 @@
                           'slow_freqstep_hz': 2000000.0,
                           'slow_smoothnessconstraint_joint': 4000000.0,
                           'slow_smoothnessconstraint_separate': 4000000.0,
+                          'slow_bda_max_baseline_joint_m': 10000.0,
+                          'slow_bda_max_baseline_separate_m': 10000.0,
                           'solveralgorithm': 'hybrid',
                           'solverlbfgs_dof': 200.0,
                           'solverlbfgs_iter': 4,

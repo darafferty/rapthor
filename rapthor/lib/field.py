@@ -52,6 +52,8 @@ class Field(object):
         self.flag_baseline = self.parset['flag_baseline']
         self.flag_freqrange = self.parset['flag_freqrange']
         self.flag_expr = self.parset['flag_expr']
+        self.bda_timebase_slow_joint = self.parset['calibration_specific']['slow_bda_max_baseline_joint_m']
+        self.bda_timebase_slow_separate = self.parset['calibration_specific']['slow_bda_max_baseline_separate_m']
         self.dd_interval_factor = self.parset['calibration_specific']['dd_interval_factor']
         self.h5parm_filename = self.parset['input_h5parm']
         self.fulljones_h5parm_filename = self.parset['input_fulljones_h5parm']
