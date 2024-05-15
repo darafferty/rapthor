@@ -531,7 +531,9 @@ class Field(object):
                     # One or more empty facets removed during grouping, so
                     # report this to user
                     suffix = 'es' if n_removed > 1 else ''
-                    self.log.info(f'Removed {n_removed} empty patch{suffix}')
+                    self.log.warning(f'Removed {n_removed} empty patch{suffix}. The facet '
+                                     'layout used in this cycle will therefore differ '
+                                     'from that given in the input facet layout file.')
             else:
                 # Regroup by tessellating with the bright sources as the tessellation
                 # centers.
