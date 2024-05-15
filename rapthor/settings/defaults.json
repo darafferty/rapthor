@@ -22,6 +22,7 @@
     },
     "calibration": {
         "use_included_skymodels": false,
+        "dd_interval_factor": 1,
         "llssolver": "qr",
         "maxiter": 150,
         "propagatesolutions": true,
@@ -32,7 +33,6 @@
         "tolerance": 0.005,
         "parallelbaselines": false,
         "sagecalpredict": false,
-        "dd_interval_factor": 1,
         "fast_freqstep_hz": 1000000.0,
         "fast_smoothnessconstraint": 3000000.0,
         "fast_smoothnessreffrequency": null,
@@ -40,6 +40,9 @@
         "slow_freqstep_hz": 1000000.0,
         "slow_smoothnessconstraint_joint": 3000000.0,
         "slow_smoothnessconstraint_separate": 3000000.0,
+        "fulljones_timestep_sec": 600.0,
+        "fulljones_freqstep_hz": 1000000.0,
+        "fulljones_smoothnessconstraint": 0,
         "solverlbfgs_dof": 200.0,
         "solverlbfgs_iter": 4,
         "solverlbfgs_minibatches": 1
@@ -61,6 +64,8 @@
             1,
             1
         ],
+        "make_quv_images": false,
+        "pol_combine_method": "link",
         "use_mpi": false,
         "reweight": false,
         "grid_width_ra_deg": null,
