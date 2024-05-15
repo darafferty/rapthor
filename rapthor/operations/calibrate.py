@@ -93,8 +93,8 @@ class CalibrateDD(Operation):
         # Get the BDA (baseline-dependent averaging) parameters (slow solves only)
         bda_maxinterval_slow_joint = self.field.get_obs_parameters('bda_maxinterval_slow_joint')
         bda_maxinterval_slow_separate = self.field.get_obs_parameters('bda_maxinterval_slow_separate')
-        bda_timebase_slow_joint = self.field.slow_bda_max_baseline_joint_m
-        bda_timebase_slow_separate = self.field.slow_bda_max_baseline_separate_m
+        bda_timebase_slow_joint = self.field.bda_timebase_slow_joint
+        bda_timebase_slow_separate = self.field.bda_timebase_slow_separate
 
         # Define various output filenames for the solution tables. We save some
         # as attributes since they are needed in finalize()
