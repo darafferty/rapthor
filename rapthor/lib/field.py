@@ -9,11 +9,12 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
+from rapthor.lib.facet import read_ds9_region_file
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
 import glob
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import SkyCoord, Angle
 import astropy.units as u
 from typing import List, Dict
 from collections import namedtuple
@@ -113,10 +114,10 @@ class Field(object):
         self.field_image_filename_prev = None
         self.field_image_filename = None
 
-        if not minimal:
-            # Scan MS files to get observation info
-            self.scan_observations()
+        # Scan MS files to get observation info
+        self.scan_observations()
 
+        if not minimal:
             # Scan calibration h5parm files (if any) to get solution info
             self.scan_h5parms()
 
@@ -478,131 +479,166 @@ class Field(object):
         source_skymodel.setPatchPositions(method='wmean')
         patch_dict = source_skymodel.getPatchPositions()
 
-        # debug
-        dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-        misc.create_directory(dst_dir)
-        skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_meanshift.txt')
-        source_skymodel.write(skymodel_true_sky_file, clobber=True)
-        # debug
-
         # Save the model of the bright sources only, for later subtraction before
         # imaging if needed. Note that the bright-source model (like the other predict
         # models) must be a true-sky one, not an apparent one, so we have to transfer its
         # patches to the true-sky version later
         bright_source_skymodel_apparent_sky = source_skymodel.copy()
 
-        # Regroup by tessellating with the bright sources as the tessellation
-        # centers if regroup is True
+        # Regroup the true-sky model into calibration patches
         if regroup:
-            # Do some checks
-            if target_flux is None and target_number is None:
-                raise ValueError('Either the target flux density or the target number '
-                                 'of directions must be specified when regrouping the '
-                                 'sky model.')
-            if target_flux is not None and target_flux <= 0.0:
-                raise ValueError('The target flux density cannot be less than or equal '
-                                 'to 0.')
-            if target_number is not None and target_number < 1:
-                raise ValueError('The target number of directions cannot be less than 1.')
+            if self.parset['facet_layout'] is not None:
+                # Regroup using the supplied ds9 region file of the facets
+                facets = read_ds9_region_file(self.parset['facet_layout'])
+                suffix = 'es' if len(facets) > 1 else ''
+                self.log.info(f'Read {len(facets)} patch{suffix} from supplied facet '
+                              'layout file')
+                facet_names = []
+                facet_patches_dict = {}
+                for facet in facets:
+                    facet_names.append(facet.name)
+                    facet_patches_dict.update({facet.name: [facet.ra, facet.dec]})
 
-            # Apply the distance filter (if any), keeping only patches inside the
-            # maximum distance
-            if calibrator_max_dist_deg is not None:
-                names, distances = self.get_source_distances(source_skymodel.getPatchPositions())
-                inside_ind = np.where(distances < calibrator_max_dist_deg)
-                calibrator_names = names[inside_ind]
+                if len(facet_names) > len(skymodel_true_sky):
+                    raise ValueError('The sky model has {0} sources but the input facet '
+                                     'layout file has {1} facets. There must be at least '
+                                     'as many sources in the sky model as facets in the '
+                                     'facet layout file.'.format(len(skymodel_true_sky),
+                                                                 len(facet_names)))
+
+                # Update the sky models with the new patches and group using the
+                # Voronoi algorithm. We do this by setting the "Patch" column
+                # values to a list of the patch names we want (here a simple
+                # repeating list is sufficient; it's only necessary that each
+                # patch name appear at least once) and the patch positions to
+                # those from the facet file. Grouping will then use the new
+                # patches
+                for skymodel in [skymodel_true_sky, bright_source_skymodel_apparent_sky]:
+                    patch_names = facet_names * (len(skymodel) // len(facet_names) + 1)
+                    skymodel.setColValues('Patch', patch_names[:len(skymodel)])
+                    for i in range(2):
+                        # Update the patch positions twice (before and after grouping). We
+                        # need to do it after as well since group() changes the positions
+                        for patch, pos in facet_patches_dict.items():
+                            pos[0] = Angle(pos[0], unit=u.deg)
+                            pos[1] = Angle(pos[1], unit=u.deg)
+                            skymodel.table.meta[patch] = pos
+                        if i == 0:
+                            skymodel.group('voronoi', patchNames=facet_names)
+
+                n_removed = len(facet_names) - len(skymodel_true_sky.getPatchNames().tolist())
+                if n_removed > 0:
+                    # One or more empty facets removed during grouping, so
+                    # report this to user
+                    suffix = 'es' if n_removed > 1 else ''
+                    self.log.warning(f'Removed {n_removed} empty patch{suffix}. The facet '
+                                     'layout used in this cycle will therefore differ '
+                                     'from that given in the input facet layout file.')
             else:
-                calibrator_names = source_skymodel.getPatchNames()
-            all_names = source_skymodel.getPatchNames()
-            keep_ind = np.array([i for i, name in enumerate(all_names) if name in calibrator_names])
-            calibrator_names = all_names[keep_ind]  # to ensure order matches that of fluxes
-            all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
-            fluxes = all_fluxes[keep_ind]
+                # Regroup by tessellating with the bright sources as the tessellation
+                # centers.
+                # First do some checks:
+                if target_flux is None and target_number is None:
+                    raise ValueError('Either the target flux density or the target number '
+                                     'of directions must be specified when regrouping the '
+                                     'sky model.')
+                if target_flux is not None and target_flux <= 0.0:
+                    raise ValueError('The target flux density cannot be less than or equal '
+                                     'to 0.')
+                if target_number is not None and target_number < 1:
+                    raise ValueError('The target number of directions cannot be less than 1.')
 
-            # Check if target flux can be met in at least one direction
-            total_flux = np.sum(fluxes)
-            if total_flux < target_flux:
-                raise RuntimeError('There is insufficient flux density in the model to meet '
-                                   'the target flux density. Please check the sky model '
-                                   '(in dir_working/skymodels/calibrate_{}/) for problems, '
-                                   'or lower the target flux density and/or increase the '
-                                   'maximum calibrator distance.'.format(index))
-
-            # Weight the fluxes by source size (larger sources are down weighted)
-            sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
-                                                  applyBeam=applyBeam_group)
-            sizes = sizes[keep_ind]
-            sizes[sizes < 1.0] = 1.0
-            medianSize = np.median(sizes)
-            weights = medianSize / sizes
-            weights[weights > 1.0] = 1.0
-            weights[weights < 0.5] = 0.5
-            fluxes *= weights
-
-            # Determine the flux cut to use to select the bright sources (calibrators)
-            if target_number is not None:
-                # Set target_flux so that the target_number-brightest calibrators are
-                # kept
-                if target_number >= len(fluxes):
-                    target_number = len(fluxes)
-                    target_flux_for_number = np.min(fluxes)
+                # Apply the distance filter (if any), keeping only patches inside the
+                # maximum distance
+                if calibrator_max_dist_deg is not None:
+                    names, distances = self.get_source_distances(source_skymodel.getPatchPositions())
+                    inside_ind = np.where(distances < calibrator_max_dist_deg)
+                    calibrator_names = names[inside_ind]
                 else:
-                    target_flux_for_number = np.sort(fluxes)[-target_number]
+                    calibrator_names = source_skymodel.getPatchNames()
+                all_names = source_skymodel.getPatchNames()
+                keep_ind = np.array([i for i, name in enumerate(all_names) if name in calibrator_names])
+                calibrator_names = all_names[keep_ind]  # to ensure order matches that of fluxes
+                all_fluxes = source_skymodel.getColValues('I', aggregate='sum', applyBeam=applyBeam_group)
+                fluxes = all_fluxes[keep_ind]
 
-                if target_flux is None:
-                    target_flux = target_flux_for_number
-                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
-                                  'to meet the specified target number of '
-                                  'directions ({1:.2f})'.format(target_flux, target_number))
-                else:
-                    if target_flux_for_number > target_flux and target_number < len(fluxes):
-                        # Only use the new target flux if the old value might result
-                        # in more than target_number of calibrators
-                        self.log.info('Using a target flux density of {0:.2f} Jy for '
-                                      'grouping (raised from {1:.2f} Jy to ensure that '
-                                      'the target number of {2} directions is not '
-                                      'exceeded)'.format(target_flux_for_number, target_flux, target_number))
-                        target_flux = target_flux_for_number
+                # Check if target flux can be met in at least one direction
+                total_flux = np.sum(fluxes)
+                if total_flux < target_flux:
+                    raise RuntimeError('There is insufficient flux density in the model to meet '
+                                       'the target flux density. Please check the sky model '
+                                       '(in dir_working/skymodels/calibrate_{}/) for problems, '
+                                       'or lower the target flux density and/or increase the '
+                                       'maximum calibrator distance.'.format(index))
+
+                # Weight the fluxes by source size (larger sources are down weighted)
+                sizes = source_skymodel.getPatchSizes(units='arcsec', weight=True,
+                                                      applyBeam=applyBeam_group)
+                sizes = sizes[keep_ind]
+                sizes[sizes < 1.0] = 1.0
+                medianSize = np.median(sizes)
+                weights = medianSize / sizes
+                weights[weights > 1.0] = 1.0
+                weights[weights < 0.5] = 0.5
+                fluxes *= weights
+
+                # Determine the flux cut to use to select the bright sources (calibrators)
+                if target_number is not None:
+                    # Set target_flux so that the target_number-brightest calibrators are
+                    # kept
+                    if target_number >= len(fluxes):
+                        target_number = len(fluxes)
+                        target_flux_for_number = np.min(fluxes)
                     else:
-                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
-            else:
-                self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                        target_flux_for_number = np.sort(fluxes)[-target_number]
 
-            # Check if target flux can be met for at least one source
-            #
-            # Note: the weighted fluxes are used here (with larger sources down-weighted)
-            if np.max(fluxes) < target_flux:
-                raise RuntimeError('No sources found that meet the target flux density (after '
-                                   'down-weighting larger sources by up to a factor of two). Please '
-                                   'check the sky model (in dir_working/skymodels/calibrate_{}/) '
-                                   'for problems, or lower the target flux density and/or increase '
-                                   'the maximum calibrator distance.'.format(index))
+                    if target_flux is None:
+                        target_flux = target_flux_for_number
+                        self.log.info('Using a target flux density of {0:.2f} Jy for grouping '
+                                      'to meet the specified target number of '
+                                      'directions ({1:.2f})'.format(target_flux, target_number))
+                    else:
+                        if target_flux_for_number > target_flux and target_number < len(fluxes):
+                            # Only use the new target flux if the old value might result
+                            # in more than target_number of calibrators
+                            self.log.info('Using a target flux density of {0:.2f} Jy for '
+                                          'grouping (raised from {1:.2f} Jy to ensure that '
+                                          'the target number of {2} directions is not '
+                                          'exceeded)'.format(target_flux_for_number, target_flux, target_number))
+                            target_flux = target_flux_for_number
+                        else:
+                            self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
+                else:
+                    self.log.info('Using a target flux density of {0:.2f} Jy for grouping'.format(target_flux))
 
-            # Tesselate the model
-            calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
-            source_skymodel.group('voronoi', patchNames=calibrator_names)
+                # Check if target flux can be met for at least one source
+                #
+                # Note: the weighted fluxes are used here (with larger sources down-weighted)
+                if np.max(fluxes) < target_flux:
+                    raise RuntimeError('No sources found that meet the target flux density (after '
+                                       'down-weighting larger sources by up to a factor of two). Please '
+                                       'check the sky model (in dir_working/skymodels/calibrate_{}/) '
+                                       'for problems, or lower the target flux density and/or increase '
+                                       'the maximum calibrator distance.'.format(index))
 
-            # Update the patch positions after the tessellation to ensure they match the
-            # ones from the meanshift grouping
-            source_skymodel.setPatchPositions(patchDict=patch_dict)
+                # Tesselate the model
+                calibrator_names = calibrator_names[np.where(fluxes >= target_flux)]
+                source_skymodel.group('voronoi', patchNames=calibrator_names)
 
-            # Match the bright-source sky model to the tessellated one by removing
-            # patches that are not present in the tessellated model
-            bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
-            for pn in bright_patch_names:
-                if pn not in source_skymodel.getPatchNames():
-                    bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
+                # Update the patch positions after the tessellation to ensure they match the
+                # ones from the meanshift grouping
+                source_skymodel.setPatchPositions(patchDict=patch_dict)
 
-            # debug
-            dst_dir = os.path.join(self.working_dir, 'skymodels', 'calibrate_{}'.format(index))
-            misc.create_directory(dst_dir)
-            skymodel_true_sky_file = os.path.join(dst_dir, 'skymodel_voronoi.txt')
-            source_skymodel.write(skymodel_true_sky_file, clobber=True)
-            # debug
+                # Match the bright-source sky model to the tessellated one by removing
+                # patches that are not present in the tessellated model
+                bright_patch_names = bright_source_skymodel_apparent_sky.getPatchNames()
+                for pn in bright_patch_names:
+                    if pn not in source_skymodel.getPatchNames():
+                        bright_source_skymodel_apparent_sky.remove('Patch == {}'.format(pn))
 
-            # Transfer patches to the true-flux sky model (source names are identical
-            # in both, but the order may be different)
-            self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                # Transfer patches to the true-flux sky model (source names are identical
+                # in both, but the order may be different)
+                self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
 
         # For the bright-source true-sky model, duplicate any selections made above to the
         # apparent-sky model
