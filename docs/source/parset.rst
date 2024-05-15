@@ -132,6 +132,24 @@ The available options are described below under their respective sections.
         Full path to an H5parm file with full-Jones solutions (default = None). This
         file is used if no calibration is to be done.
 
+    facet_layout
+        Full path to a text file that defines the facet layout (default = None). This file
+        must use the WSClean facet format, specified in the `WSClean documentation
+        <https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html>`_. Also note that
+        the facet centroids (the `facet point of interest
+        <https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html#adding-a-facet-point
+        -of-interest>`_) must be defined in the file as well. If a facet file is supplied,
+        calibration patches and imaging facets will be set to those specified in the file,
+        if possible, and the calibrator selection parameters specified in the strategy
+        (e.g., :term:`target_flux`) will be ignored (and therefore the patch and facet
+        layout will be held constant between cycles)
+
+        .. note::
+
+            In a given cycle, the calibration patches and imaging facets will match the
+            input facet layout unless the layout would result in one or more empty
+            calibration patches, in which case the empty patches are removed and the
+            layout of the remaining patches is set using Voronoi tessellation.
 
 .. _parset_calibration_options:
 

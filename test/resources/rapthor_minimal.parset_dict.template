@@ -45,6 +45,7 @@
  'download_initial_skymodel_radius': 5.0,
  'download_initial_skymodel_server': 'TGSS',
  'download_overwrite_skymodel': False,
+ 'facet_layout': None,
  'final_data_fraction': 1.0,
  'flag_abstime': None,
  'flag_baseline': None,

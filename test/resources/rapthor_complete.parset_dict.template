@@ -45,6 +45,7 @@
  'download_initial_skymodel_radius': 3.0,
  'download_initial_skymodel_server': 'GSM',
  'download_overwrite_skymodel': True,
+ 'facet_layout': '/my/data/facets.reg',
  'final_data_fraction': 0.8,
  'flag_abstime': ['12-May-2014/10:20:00.0..12-May-2014/10:40:00.0'],
  'flag_baseline': ['CS002HBA*'],
