@@ -112,13 +112,13 @@ class Parset:
                 self.allowed_options[section],
             )
 
-        self.settings = Parset.__config_as_dict(self.__parser)
+        self.settings = Parset.config_as_dict(self.__parser)
 
         if parset_file:
             self.settings = self.read_file(parset_file)
 
     @staticmethod
-    def __config_as_dict(parser):
+    def config_as_dict(parser):
         """
         Return the current configuration as dictionary. The key is the section name,
         and the value is a dictionary of the options in the given section.
@@ -366,7 +366,7 @@ class Parset:
             )
 
         self.__sanitize()
-        settings = Parset.__config_as_dict(self.__parser)
+        settings = Parset.config_as_dict(self.__parser)
         self.__check_and_adjust(settings)
 
         return settings
