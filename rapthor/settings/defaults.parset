@@ -86,7 +86,8 @@ use_included_skymodels = False
 
 # Maximum factor by which the direction-dependent solution intervals can be increased,
 # so that fainter calibrators get longer intervals (in the fast and slow solves only;
-# default = 1 = disabled)
+# default = 1 = disabled). Note: currently, direction-dependent solution intervals
+# cannot be used in conjunction with baseline-dependent averaging
 dd_interval_factor = 1
 
 # General solver parameters
