@@ -217,6 +217,10 @@ The available options are described below under their respective sections.
         Smoothness constraint reference distance used during fast phase calibration, in
         m (default = 0).
 
+    fast_bda_max_baseline_m
+        Maximum baseline used in baseline-dependent averaging (BDA) during the fast
+        phase calibration (default = 0). A value of 0.0 will disable the averaging.
+
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
 

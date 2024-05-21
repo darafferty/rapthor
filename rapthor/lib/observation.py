@@ -284,9 +284,9 @@ class Observation(object):
             nchunks = len(self.parameters[input_solint_keys[solve_type]])  # number of time or frequency chunks
 
             # Define the BDA (baseline-dependent averaging) max interval constraints. They
-            # are set to the slow-gain solution intervals *before* adjusting for the DD
-            # intervals below to ensure that they match the smallest interval used in the
-            # solves (since maxinterval cannot exceed solint in DDECal)
+            # are set to the solution intervals *before* adjusting for the DD intervals
+            # to ensure that they match the smallest interval used in the solves (since
+            # maxinterval cannot exceed solint in DDECal)
             self.parameters[f'bda_maxinterval_{solve_type}'] = [solint] * nchunks
 
             if solve_max_factor > 1:

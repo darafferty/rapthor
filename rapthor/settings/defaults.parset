@@ -107,6 +107,7 @@ fast_freqstep_hz = 1e6
 fast_smoothnessconstraint = 3e6
 fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
+fast_bda_max_baseline_m = 0.0
 
 # Slow solve parameters. Note that the solution intervals are set in the strategy
 slow_freqstep_hz = 1e6

@@ -129,6 +129,20 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
+  - id: bda_timebase_fast
+    label: BDA timebase for fast solve
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done in the
+      second (separate) slow-gain calibration (length = 1).
+    type: float
+
+  - id: bda_maxinterval_fast
+    label: BDA maxinterval for fast solve
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done in the fast-phase calibration (length = n_obs * n_time_chunks).
+    type: int[]
+
   - id: maxiter
     label: Maximum iterations
     doc: |
@@ -556,6 +570,10 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
+      - id: timebase
+        source: bda_timebase_fast
+      - id: maxinterval
+        source: bda_maxinterval_fast
       - id: nchan
         source: solint_fast_freqstep
       - id: directions
@@ -602,7 +620,7 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: fast_phases_h5parm

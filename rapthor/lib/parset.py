@@ -251,6 +251,7 @@ class Parset:
         options = settings["calibration"]
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
+        fast_bda_max_baseline_m = options["fast_bda_max_baseline_m"]
         slow_bda_max_baseline_joint_m = options["slow_bda_max_baseline_joint_m"]
         slow_bda_max_baseline_separate_m = options["slow_bda_max_baseline_separate_m"]
         if dd_interval_factor < 1:
@@ -264,13 +265,15 @@ class Parset:
                 "'directioniterative' solver, since dd_interval_factor > 1."
             )
             options["solveralgorithm"] = 'directioniterative'
-        if dd_interval_factor > 1 and (slow_bda_max_baseline_joint_m > 0 or
+        if dd_interval_factor > 1 and (fast_bda_max_baseline_m > 0 or
+                                       slow_bda_max_baseline_joint_m > 0 or
                                        slow_bda_max_baseline_separate_m > 0):
             log.warning(
                 "Disabling baseline-dependent averaging, since baseline-dependent "
                 "averaging cannot be used in conjunction with direction-dependent "
                 "solution intervals."
             )
+            options["fast_bda_max_baseline_m"] = 0.0
             options["slow_bda_max_baseline_joint_m"] = 0.0
             options["slow_bda_max_baseline_separate_m"] = 0.0
 
