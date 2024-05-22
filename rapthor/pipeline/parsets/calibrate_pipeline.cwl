@@ -133,7 +133,7 @@ inputs:
     label: BDA timebase for fast solve
     doc: |
       The baseline length (in meters) below which BDA time averaging is done in the
-      second (separate) slow-gain calibration (length = 1).
+      fast-phase calibration (length = 1).
     type: float
 
   - id: bda_maxinterval_fast

@@ -55,11 +55,17 @@ inputs:
       prefix: solve.nchan=
       separate: False
   - id: timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done.
     type: float
     inputBinding:
       prefix: avg.timebase=
       separate: False
   - id: maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is done.
     type: int
     inputBinding:
       prefix: avg.maxinterval=
