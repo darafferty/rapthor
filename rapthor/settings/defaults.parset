@@ -107,14 +107,14 @@ fast_freqstep_hz = 1e6
 fast_smoothnessconstraint = 3e6
 fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
-fast_bda_max_baseline_m = 0.0
+fast_bda_timebase = 0.0
 
 # Slow solve parameters. Note that the solution intervals are set in the strategy
 slow_freqstep_hz = 1e6
 slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
-slow_bda_max_baseline_joint_m = 20000.0
-slow_bda_max_baseline_separate_m = 20000.0
+slow_bda_timebase_joint = 20000.0
+slow_bda_timebase_separate = 20000.0
 
 # Full-Jones solve parameters
 fulljones_timestep_sec = 600.0

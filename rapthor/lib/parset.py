@@ -251,9 +251,9 @@ class Parset:
         options = settings["calibration"]
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
-        fast_bda_max_baseline_m = options["fast_bda_max_baseline_m"]
-        slow_bda_max_baseline_joint_m = options["slow_bda_max_baseline_joint_m"]
-        slow_bda_max_baseline_separate_m = options["slow_bda_max_baseline_separate_m"]
+        fast_bda_timebase = options["fast_bda_timebase"]
+        slow_bda_timebase_joint = options["slow_bda_timebase_joint"]
+        slow_bda_timebase_separate = options["slow_bda_timebase_separate"]
         if dd_interval_factor < 1:
             raise ValueError(
                 f"The dd_interval_factor parameter is {dd_interval_factor}; "
@@ -265,17 +265,17 @@ class Parset:
                 "'directioniterative' solver, since dd_interval_factor > 1."
             )
             options["solveralgorithm"] = 'directioniterative'
-        if dd_interval_factor > 1 and (fast_bda_max_baseline_m > 0 or
-                                       slow_bda_max_baseline_joint_m > 0 or
-                                       slow_bda_max_baseline_separate_m > 0):
+        if dd_interval_factor > 1 and (fast_bda_timebase > 0 or
+                                       slow_bda_timebase_joint > 0 or
+                                       slow_bda_timebase_separate > 0):
             log.warning(
                 "Disabling baseline-dependent averaging, since baseline-dependent "
                 "averaging cannot be used in conjunction with direction-dependent "
                 "solution intervals."
             )
-            options["fast_bda_max_baseline_m"] = 0.0
-            options["slow_bda_max_baseline_joint_m"] = 0.0
-            options["slow_bda_max_baseline_separate_m"] = 0.0
+            options["fast_bda_timebase"] = 0.0
+            options["slow_bda_timebase_joint"] = 0.0
+            options["slow_bda_timebase_separate"] = 0.0
 
         # Imaging options
         options = settings["imaging"]

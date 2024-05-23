@@ -217,9 +217,9 @@ The available options are described below under their respective sections.
         Smoothness constraint reference distance used during fast phase calibration, in
         m (default = 0).
 
-    fast_bda_max_baseline_m
+    fast_bda_timebase
         Maximum baseline used in baseline-dependent averaging (BDA) during the fast
-        phase calibration (default = 0). A value of 0.0 will disable the averaging.
+        phase calibration, in m (default = 0). A value of 0.0 will disable the averaging.
 
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
@@ -232,13 +232,13 @@ The available options are described below under their respective sections.
         Smoothness constraint bandwidth used during the second slow gain calibration,
         where separate solutions are found for each station, in Hz (default = 3e6).
 
-    slow_bda_max_baseline_joint_m
+    slow_bda_timebase_joint
         Maximum baseline used in baseline-dependent averaging (BDA) during the first slow
-        gain calibration (default = 20000). A value of 0.0 will disable the averaging.
+        gain calibration, in m (default = 20000). A value of 0.0 will disable the averaging.
 
-    slow_bda_max_baseline_separate_m
+    slow_bda_timebase_separate
         Maximum baseline used in baseline-dependent averaging (BDA) during the second slow
-        gain calibration (default = 20000). A value of 0.0 will disable the averaging.
+        gain calibration, in m (default = 20000). A value of 0.0 will disable the averaging.
 
     fulljones_timestep_sec
         Time step used during the full-Jones gain calibration, in seconds (default = 600).
