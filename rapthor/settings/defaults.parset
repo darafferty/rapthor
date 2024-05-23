@@ -86,7 +86,8 @@ use_included_skymodels = False
 
 # Maximum factor by which the direction-dependent solution intervals can be increased,
 # so that fainter calibrators get longer intervals (in the fast and slow solves only;
-# default = 1 = disabled)
+# default = 1 = disabled). Note: currently, direction-dependent solution intervals
+# cannot be used in conjunction with baseline-dependent averaging
 dd_interval_factor = 1
 
 # General solver parameters
@@ -106,11 +107,14 @@ fast_freqstep_hz = 1e6
 fast_smoothnessconstraint = 3e6
 fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
+fast_bda_timebase = 0.0
 
 # Slow solve parameters. Note that the solution intervals are set in the strategy
 slow_freqstep_hz = 1e6
 slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
+slow_bda_timebase_joint = 20000.0
+slow_bda_timebase_separate = 20000.0
 
 # Full-Jones solve parameters
 fulljones_timestep_sec = 600.0

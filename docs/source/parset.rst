@@ -192,7 +192,11 @@ The available options are described below under their respective sections.
         like 0.001.
 
     stepsigma
-        In oder to stop solving iterations when no further improvement is seen, the mean of the step reduction is compared to the standard deviation multiplied by :term:`stepsigma` factor (default = 0.1). If mean of the step reduction is lower than this value (noise dominated), solver iterations are stopped since no possible improvement can be gained.
+        In oder to stop solving iterations when no further improvement is seen, the mean
+        of the step reduction is compared to the standard deviation multiplied by
+        :term:`stepsigma` factor (default = 0.1). If mean of the step reduction is lower
+        than this value (noise dominated), solver iterations are stopped since no possible
+        improvement can be gained.
 
     tolerance
         Tolerance used to check convergence during calibration (default = 1e-3).
@@ -213,6 +217,10 @@ The available options are described below under their respective sections.
         Smoothness constraint reference distance used during fast phase calibration, in
         m (default = 0).
 
+    fast_bda_timebase
+        Maximum baseline used in baseline-dependent averaging (BDA) during the fast
+        phase calibration, in m (default = 0). A value of 0.0 will disable the averaging.
+
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
 
@@ -223,6 +231,14 @@ The available options are described below under their respective sections.
     slow_smoothnessconstraint_separate
         Smoothness constraint bandwidth used during the second slow gain calibration,
         where separate solutions are found for each station, in Hz (default = 3e6).
+
+    slow_bda_timebase_joint
+        Maximum baseline used in baseline-dependent averaging (BDA) during the first slow
+        gain calibration, in m (default = 20000). A value of 0.0 will disable the averaging.
+
+    slow_bda_timebase_separate
+        Maximum baseline used in baseline-dependent averaging (BDA) during the second slow
+        gain calibration, in m (default = 20000). A value of 0.0 will disable the averaging.
 
     fulljones_timestep_sec
         Time step used during the full-Jones gain calibration, in seconds (default = 600).

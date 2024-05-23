@@ -14,7 +14,10 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout=
-  - steps=[solve]
+  - steps=[avg,solve,null]
+  - avg.type=bdaaverager
+  - avg.minchannels=1
+  - avg.frequencybase=0.0
   - solve.type=ddecal
   - solve.mode=scalar
   - solve.usebeammodel=True
@@ -50,6 +53,22 @@ inputs:
     type: int
     inputBinding:
       prefix: solve.nchan=
+      separate: False
+  - id: timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done.
+    type: float
+    inputBinding:
+      prefix: avg.timebase=
+      separate: False
+  - id: maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is done.
+    type: int
+    inputBinding:
+      prefix: avg.maxinterval=
       separate: False
   - id: directions
     type: string[]

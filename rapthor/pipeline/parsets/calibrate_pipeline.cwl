@@ -129,6 +129,20 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
+  - id: bda_timebase_fast
+    label: BDA timebase for fast solve
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done in the
+      fast-phase calibration (length = 1).
+    type: float
+
+  - id: bda_maxinterval_fast
+    label: BDA maxinterval for fast solve
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done in the fast-phase calibration (length = n_obs * n_time_chunks).
+    type: int[]
+
   - id: maxiter
     label: Maximum iterations
     doc: |
@@ -251,6 +265,35 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
+  - id: bda_timebase_slow_joint
+    label: BDA timebase for joint solve
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done in the
+      first (joint) slow-gain calibration (length = 1).
+    type: float
+
+  - id: bda_maxinterval_slow_joint
+    label: BDA maxinterval for joint solve
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done in the first (joint) slow-gain calibration (length = n_obs * n_freq_chunks).
+    type: int[]
+
+  - id: bda_timebase_slow_separate
+    label: BDA timebase for separate solve
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done in the
+      second (separate) slow-gain calibration (length = 1).
+    type: float
+
+  - id: bda_maxinterval_slow_separate
+    label: BDA maxinterval for separate solve
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is
+      done in the second (separate) slow-gain calibration (length = n_obs *
+      n_freq_chunks).
+    type: int[]
+
   - id: freqchunk_filename_joint
     label: Filename of input MS for joint solve (frequency)
     doc: |
@@ -527,6 +570,10 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
+      - id: timebase
+        source: bda_timebase_fast
+      - id: maxinterval
+        source: bda_maxinterval_fast
       - id: nchan
         source: solint_fast_freqstep
       - id: directions
@@ -573,7 +620,7 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: fast_phases_h5parm
@@ -639,6 +686,10 @@ steps:
         source: startchan_joint
       - id: nchan
         source: nchan_joint
+      - id: timebase
+        source: bda_timebase_slow_joint
+      - id: maxinterval
+        source: bda_maxinterval_slow_joint
       - id: fast_h5parm
         source: combine_fast_phases/outh5parm
       - id: h5parm
@@ -687,7 +738,7 @@ steps:
         source: slow_antennaconstraint
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm
@@ -786,6 +837,10 @@ steps:
         source: slow_ntimes_separate
       - id: startchan
         source: startchan_separate
+      - id: timebase
+        source: bda_timebase_slow_separate
+      - id: maxinterval
+        source: bda_maxinterval_slow_separate
       - id: nchan
         source: nchan_separate
       - id: combined_h5parm
@@ -838,7 +893,7 @@ steps:
         source: slow_smoothnessconstraint_separate
       - id: numthreads
         source: max_threads
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan, solutions_per_direction]
+    scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm
