@@ -205,7 +205,7 @@ class ToilRunner(CWLRunner):
                 self.args.extend(['--tmp-outdir-prefix', prefix])
         if self.operation.coordination_dir is not None:
             self.args.extend(['--coordinationDir', self.operation.coordination_dir])
-        self.args.extend(['--clean', 'never'])  # preserves the job store for future runs
+        self.args.extend(['--stats'])  # implicitly preserves the job store for future runs
         self.args.extend(['--servicePollingInterval', '10'])
         if self.operation.debug_workflow:
             if self.operation.batch_system != 'single_machine':
