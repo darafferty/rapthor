@@ -55,13 +55,13 @@ class CWLRunner:
             mpi_config_lines = [
                 "runner: 'mpi_runner.sh'",
                 "nproc_flag: '-N'",
-                "extra_flags: ['mpirun', '--map-by', 'node']"
+                "extra_flags: ['mpirun', '-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
             ]
         else:
             mpi_config_lines = [
                 "runner: 'mpirun'",
                 "nproc_flag: '-np'",
-                "extra_flags: ['--map-by', 'node']"
+                "extra_flags: ['-pernode', '--bind-to', 'none', '-x', 'OPENBLAS_NUM_THREADS']"
             ]
             logger.warning('MPI support for non-Slurm clusters is experimental. '
                            'Please report any issues encountered.')
