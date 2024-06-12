@@ -10,7 +10,7 @@ set(${PROJECT_NAME}_sources main.cpp)
 add_executable(${PROJECT_NAME} ${${PROJECT_NAME}_sources})
 
 # link
-set(LINK_LIBRARIES idg-util idg-common idg-cpu)
+set(LINK_LIBRARIES ${LINK_LIBRARIES} idg-common idg-cpu)
 
 target_link_libraries(${PROJECT_NAME} ${LINK_LIBRARIES})
 

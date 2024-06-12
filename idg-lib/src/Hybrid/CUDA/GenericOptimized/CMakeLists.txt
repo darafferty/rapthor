@@ -16,7 +16,7 @@ set(${PROJECT_NAME}_sources GenericOptimized.cpp GenericOptimizedC.cpp
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
-target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW xtensor)
 
 # Set install
 install(FILES ${${PROJECT_NAME}_headers}

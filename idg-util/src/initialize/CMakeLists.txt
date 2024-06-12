@@ -14,6 +14,7 @@ set(${PROJECT_NAME}_sources Data.cpp init.cpp)
 # create a common library
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE xtensor)
 
 # Copy header files
 install(FILES ${${PROJECT_NAME}_headers} DESTINATION include/initialize)

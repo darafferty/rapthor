@@ -60,6 +60,7 @@ add_library(
   KernelAdderWStack.cpp
   KernelSplitterWStack.cpp
   KernelWtiling.cpp)
+target_link_libraries(${PROJECT_NAME} PRIVATE xtensor)
 
 if(NOT BUILD_WITH_MKL)
   target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)

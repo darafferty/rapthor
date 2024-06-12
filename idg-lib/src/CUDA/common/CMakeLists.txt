@@ -44,7 +44,7 @@ find_package(
   COMPONENTS system
   REQUIRED)
 
-target_link_libraries(${PROJECT_NAME} Boost::system)
+target_link_libraries(${PROJECT_NAME} PRIVATE Boost::system xtensor)
 
 install(
   FILES kernels/KernelDegridder.cu

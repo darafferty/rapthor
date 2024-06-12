@@ -75,7 +75,8 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 add_library(${PROJECT_NAME} ${${PROJECT_NAME}_headers}
                             ${${PROJECT_NAME}_sources})
-target_link_libraries(${PROJECT_NAME} ${${PROJECT_NAME}_link_libraries})
+target_link_libraries(${PROJECT_NAME} PRIVATE ${${PROJECT_NAME}_link_libraries}
+                                              xtensor)
 
 # Copy header files
 install(

@@ -11,6 +11,7 @@ set(${PROJECT_NAME}_sources Reference.cpp ReferenceC.cpp ReferenceKernels.cpp)
 # create library
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE xtensor)
 
 if(BUILD_WITH_MKL)
   target_include_directories(${PROJECT_NAME} PRIVATE ${MKL_INCLUDE_DIRS})

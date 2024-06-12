@@ -11,7 +11,7 @@ set(${PROJECT_NAME}_sources CPU.cpp InstanceCPU.cpp)
 # create library
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
-target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::FFTW xtensor)
 
 # Copy header files
 install(FILES ${${PROJECT_NAME}_headers} DESTINATION include/CPU/common)
