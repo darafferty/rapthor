@@ -38,6 +38,7 @@ set(${PROJECT_NAME}_sources
 
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE xtensor)
 
 if(BUILD_WITH_PMT)
   target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${PMT_INCLUDE_DIR})

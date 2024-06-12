@@ -16,6 +16,7 @@ set(${PROJECT_NAME}_sources Generic.cpp GenericC.cpp routines/Imaging.cpp
 # Set build target
 add_library(${PROJECT_NAME} OBJECT ${${PROJECT_NAME}_headers}
                                    ${${PROJECT_NAME}_sources})
+target_link_libraries(${PROJECT_NAME} PRIVATE xtensor)
 
 # Set install
 install(FILES ${${PROJECT_NAME}_headers} DESTINATION include/CUDA/Generic)

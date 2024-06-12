@@ -30,7 +30,7 @@ endfunction()
 
 if(BUILD_LIB_CPU)
   # set common link libraries
-  set(LINK_LIBRARIES idg-util idg-cpu)
+  set(LINK_LIBRARIES idg-util idg-cpu xtensor)
   add_subdirectory(CPU)
   # CUDA tests need to compare against CPU reference
   if(BUILD_LIB_CUDA)

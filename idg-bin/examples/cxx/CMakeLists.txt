@@ -10,7 +10,7 @@ include_directories(${IDG_BIN_UTILITY_INCLUDE_DIR})
 include_directories(common)
 
 # set common link libraries
-set(LINK_LIBRARIES idg-util)
+set(LINK_LIBRARIES idg-util xtensor)
 
 # add subfolders
 if(BUILD_LIB_CPU)

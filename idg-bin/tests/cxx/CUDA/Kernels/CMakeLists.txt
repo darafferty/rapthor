@@ -1,4 +1,6 @@
 add_library(TestFixture OBJECT TestFixture.cpp)
+target_link_libraries(TestFixture ${LINK_LIBRARIES})
+
 set(LINK_LIBRARIES ${LINK_LIBRARIES} Boost::unit_test_framework TestFixture)
 
 set(GRIDDER test-cuda-kernel-gridder.x)
