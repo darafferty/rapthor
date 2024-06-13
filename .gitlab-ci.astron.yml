@@ -90,7 +90,7 @@ test-tuning-das:
 deploy-package:
   stage: publish
   needs: ["versioning","build-package"]
-  image: $BASE_IMAGE
+  image: $BASE_IMAGE_22
   script:
     - pip3 install aptly-api-client
     - chmod -R 700 external/schaap-packaging
