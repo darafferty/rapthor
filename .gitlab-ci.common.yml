@@ -34,7 +34,8 @@ versioning:
     # Unshallowing ensures that 'git describe' works
     - git fetch --unshallow
     - echo IDG_VERSION=$(git describe --tags --dirty) > versions.env
-    - echo BASE_IMAGE=${CI_REGISTRY_IMAGE}/base:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_22_04_base) >> versions.env
+    - echo BASE_IMAGE_22=${CI_REGISTRY_IMAGE}/base_22:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_22_04_base) >> versions.env
+    - echo BASE_IMAGE_24=${CI_REGISTRY_IMAGE}/base_24:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_24_04_base) >> versions.env
     - echo INTEGRATION_IMAGE=${CI_REGISTRY_IMAGE}/integration:$(git log -n 1 --pretty=format:%H -- docker/ubuntu_22_04_integration) >> versions.env
     - echo GPU_IMAGE=${CI_REGISTRY_IMAGE}/gpu:${CI_COMMIT_SHORT_SHA} >> versions.env
     - cat versions.env
@@ -73,19 +74,32 @@ versioning:
   #    - $DOCKER_FILE
 
 # Create and push the base image to the gitlab registry, if it does not exist.
-prepare-base:
+prepare-base-22:
   extends: .prepare
   variables:
-    DOCKER_IMAGE: $BASE_IMAGE
+    DOCKER_IMAGE: $BASE_IMAGE_22
     DOCKER_FILE: ./docker/ubuntu_22_04_base
 
-# Template for jobs that depend on the optional prepare-base job.
-.needs-base:
+prepare-base-24:
+  extends: .prepare
+  variables:
+    DOCKER_IMAGE: $BASE_IMAGE_24
+    DOCKER_FILE: ./docker/ubuntu_24_04_base
+
+# Template for jobs that depend on the optional prepare-base-22 job.
+.needs-base-22:
   needs:
     - job: versioning
-    - job: prepare-base
+    - job: prepare-base-22
       optional: true
-  image: $BASE_IMAGE
+  image: $BASE_IMAGE_22
+
+.needs-base-24:
+  needs:
+    - job: versioning
+    - job: prepare-base-24
+      optional: true
+  image: $BASE_IMAGE_24
 
 # Create and push the integration image to the gitlab registry, if it does not exist.
 prepare-integration:
@@ -95,13 +109,13 @@ prepare-integration:
     DOCKER_FILE: ./docker/ubuntu_22_04_integration
 
 format:
-  extends: .needs-base
+  extends: .needs-base-22
   stage: linting
   script:
     - ./scripts/run-format.sh
 
 build-python:
-  extends: .needs-base
+  extends: .needs-base-22
   stage: build
   script:
     - mkdir build
@@ -109,8 +123,17 @@ build-python:
     - cmake -DBUILD_WITH_PYTHON=ON ..
     - make install -j4
 
-build-release:
-  extends: .needs-base
+build-release-22:
+  extends: .needs-base-22
+  stage: build
+  script:
+    - mkdir build
+    - cd build
+    - cmake ..
+    - make install -j4
+
+build-release-24:
+  extends: .needs-base-24
   stage: build
   script:
     - mkdir build
@@ -119,7 +142,7 @@ build-release:
     - make install -j4
 
 build-debug:
-  extends: .needs-base
+  extends: .needs-base-22
   stage: build
   script:
     - mkdir build
@@ -128,7 +151,7 @@ build-debug:
     - make install -j4
 
 build-package:
-  extends: .needs-base
+  extends: .needs-base-22
   stage: build
   script:
     - mkdir idg_package
@@ -151,7 +174,7 @@ build-package:
     - if: '$UPLOAD_PACKAGE'
 
 test-unit:
-  extends: .needs-base
+  extends: .needs-base-22
   stage: test
   before_script:
     # Use pytest versions <8 for compatibility with pytest-lazy-fixture.
@@ -228,7 +251,7 @@ test-integration:
 # Building documentation happens for all branches, which allows browsing.
 # Publishing documentation only happens for the master branch on the Astron repo.
 documentation-build:
-  extends: .needs-base
+  extends: .needs-base-22
   stage: documentation
   script:
     - apt update && apt install -y doxygen
