@@ -101,7 +101,7 @@ deploy-docker:
 pages:
   stage: pages
   needs: ["versioning","test-unit"]
-  image: $BASE_IMAGE
+  image: $BASE_IMAGE_22
   script:
     - echo Deploying GitLab pages to $CI_PAGES_URL/$CI_COMMIT_REF_SLUG
     - mkdir -p public/$CI_COMMIT_REF_SLUG
