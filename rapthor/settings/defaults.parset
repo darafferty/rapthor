@@ -86,18 +86,18 @@ use_included_skymodels = False
 
 # Maximum factor by which the direction-dependent solution intervals can be increased,
 # so that fainter calibrators get longer intervals (in the fast and slow solves only;
-# default = 1 = disabled). Note: currently, direction-dependent solution intervals
+# default = 3). Note: currently, direction-dependent solution intervals
 # cannot be used in conjunction with baseline-dependent averaging
-dd_interval_factor = 1
+dd_interval_factor = 3
 
 # General solver parameters
 llssolver = qr
 maxiter = 150
 propagatesolutions = True
-solveralgorithm = hybrid
+solveralgorithm = directioniterative
 onebeamperpatch = False
 stepsize = 0.02
-stepsigma = 0.1
+stepsigma = 2.0
 tolerance = 5e-3
 parallelbaselines = False
 sagecalpredict = False
@@ -170,8 +170,9 @@ mem_gb = 0
 apply_diagonal_solutions = True
 
 # The number of direction-dependent PSFs which should be fit horizontally and
-# vertically in the image (default = [1, 1] = direction-independent PSF).
-dd_psf_grid = [1, 1]
+# vertically in the image (default = [0, 0] = scale with the image size, with
+# approximately 1 PSF per square deg of imaged area)
+dd_psf_grid = [0, 0]
 
 # Make Stokes QUV images in addition to the Stokes I image (default = False).
 # If True, QUV images are made during the final imaging step, once self

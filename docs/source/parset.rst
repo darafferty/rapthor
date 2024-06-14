@@ -170,8 +170,8 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of ``directionsolve``, ``directioniterative``,
-        ``lbfgs``, or ``hybrid``; default = ``hybrid``). When using ``lbfgs``, the
-        :term:`stepsize` should be set to a small value like 0.001.
+        ``lbfgs``, or ``hybrid``; default = ``directioniterative``). When using ``lbfgs``,
+        the :term:`stepsize` should be set to a small value like 0.001.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default = ``False``)? If
@@ -194,7 +194,7 @@ The available options are described below under their respective sections.
     stepsigma
         In oder to stop solving iterations when no further improvement is seen, the mean
         of the step reduction is compared to the standard deviation multiplied by
-        :term:`stepsigma` factor (default = 0.1). If mean of the step reduction is lower
+        :term:`stepsigma` factor (default = 2.0). If mean of the step reduction is lower
         than this value (noise dominated), solver iterations are stopped since no possible
         improvement can be gained.
 
@@ -253,12 +253,12 @@ The available options are described below under their respective sections.
     dd_interval_factor
         Maximum factor by which the direction-dependent solution intervals can be
         increased, so that fainter calibrators get longer intervals (in the fast and slow
-        solves only; default = 1 = disabled). The value determines the maximum allowed
-        adjustment factor by which the solution intervals are allowed to be increased for
-        faint sources. For a given direction, the adjustment is calculated from the
-        ratio of the apparent flux density of the calibrator to the target flux density of
-        the cycle (set in the strategy) or, if a target flux density is not defined, to
-        that of the faintest calibrator in the sky model. A value of 1 disables the use of
+        solves only; default = 3). The value determines the maximum allowed adjustment
+        factor by which the solution intervals are allowed to be increased for faint
+        sources. For a given direction, the adjustment is calculated from the ratio of the
+        apparent flux density of the calibrator to the target flux density of the cycle
+        (set in the strategy) or, if a target flux density is not defined, to that of the
+        faintest calibrator in the sky model. A value of 1 disables the use of
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
 
@@ -360,7 +360,9 @@ The available options are described below under their respective sections.
 
     dd_psf_grid
         The number of direction-dependent PSFs which should be fit horizontally and
-        vertically in the image (default = ``[1, 1]`` = direction-independent PSF).
+        vertically in the image (default = ``[0, 0]`` = scale with the image size, with
+        approximately one PSF per square degree of imaged area). Set to ``[1, 1]`` to use
+        a direction-independent PSF.
 
     use_mpi
         Use MPI to distribute WSClean jobs over multiple nodes (default = ``False``)? If
