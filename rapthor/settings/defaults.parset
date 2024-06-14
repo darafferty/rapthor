@@ -113,8 +113,8 @@ fast_bda_timebase = 0.0
 slow_freqstep_hz = 1e6
 slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
-slow_bda_timebase_joint = 0.0
-slow_bda_timebase_separate = 0.0
+slow_bda_timebase_joint = 20000.0
+slow_bda_timebase_separate = 20000.0
 
 # Full-Jones solve parameters
 fulljones_timestep_sec = 600.0
