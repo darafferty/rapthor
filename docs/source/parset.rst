@@ -20,7 +20,7 @@ The available options are described below under their respective sections.
 .. note::
 
     An example parset is available `here
-    <https://git.astron.nl/RD/rapthor/-/blob/master/examples/rapthor.parset>`_.
+    <https://git.astron.nl/RD/rapthor/-/blob/master/rapthor/settings/defaults.parset>`_.
 
 .. _parset_global_options:
 
