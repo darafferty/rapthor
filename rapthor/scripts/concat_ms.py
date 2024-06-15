@@ -176,17 +176,18 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
         # We only need dummies where the difference is non-zero.
         # This will yield as many entries as in dummy_idx
         dummy_multiplier = dummy_multiplier[dummy_multiplier > 0]
-        # Select entries corresponding to the gaps
-        dummy_multiplier = dummy_multiplier[idx_idx_u]
-        # dummy_multiplier now contains the number of dummies that need to be inserted.
-        # This list needs to be flat for NumPy's insert later on.
-        dummies = [['dummy.ms'] * x for x in dummy_multiplier]
-        dummies_flat = [i for l in dummies for i in l]
-        # Generate the indices at which each dummy needs to be inserted.
-        final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
-        final_idx_flat = [i for l in final_idx for i in l]
-        # Finally insert them all at once.
-        mslist = np.insert(mslist, final_idx_flat, dummies_flat)
+        if dummy_multiplier.size != 0:
+            # Select entries corresponding to the gaps
+            dummy_multiplier = dummy_multiplier[idx_idx_u]
+            # dummy_multiplier now contains the number of dummies that need to be inserted.
+            # This list needs to be flat for NumPy's insert later on.
+            dummies = [['dummy.ms'] * x for x in dummy_multiplier]
+            dummies_flat = [i for l in dummies for i in l]
+            # Generate the indices at which each dummy needs to be inserted.
+            final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
+            final_idx_flat = [i for l in final_idx for i in l]
+            # Finally insert them all at once.
+            mslist = np.insert(mslist, final_idx_flat, dummies_flat)
 
 
     # Construct DP3 command
