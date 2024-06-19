@@ -16,7 +16,7 @@ import numpy as np
 def delete_directory(directory):
     """
     Delete a directory.
-    
+
     Parameters
     ----------
     directory : str
@@ -32,7 +32,7 @@ def delete_directory(directory):
     except OSError as e:
         if not e.errno == errno.ENOENT:
             raise e
-        
+
 
 def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False):
     """
@@ -137,7 +137,7 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     for ms in msfiles:
         # Get the frequency info
         with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
-            freq = sw.col("REF_FREQUENCY")[0]
+            freq = sw.col("CHAN_FREQ")[0][0]
             chfreqs = sw.col("CHAN_FREQ")[0]
             if first:
                 file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
