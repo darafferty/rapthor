@@ -26,10 +26,10 @@ else()
     if(POWER_ARCHITECTURE)
       # e.g. Power 8, Power 9
       include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../../external/)
-      add_compile_options("-mcpu=native")
+      add_compile_options("-mcpu=${TARGET_CPU}")
     else()
       # x86_64
-      add_compile_options("-march=native")
+      add_compile_options("-march=${TARGET_CPU}")
     endif()
   endif()
   add_compile_options("-fopenmp")
