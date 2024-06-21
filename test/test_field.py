@@ -41,7 +41,7 @@ class TestField(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        os.system('rm -r images/ logs/ pipelines/ regions/ scratch/ skymodels/ solutions/')
+        os.system('rm -r images/ logs/ pipelines/ regions/ scratch/ skymodels/ solutions/ plots/')
 
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
@@ -87,6 +87,11 @@ class TestField(unittest.TestCase):
     def test_check_selfcal_progress(self):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
+    def test_plot_field(self):
+        self.field.sector_bounds_mid_dec = 88.0  # test behavior near pole
+        self.field.plot_field(skymodel_radius=5.0)
+        self.assertTrue(os.path.exits(os.path.join('plots', 'field_coverage.png')))
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -102,6 +107,7 @@ def suite():
     suite.addTest(TestField('test_define_bright_source_sectors'))
     suite.addTest(TestField('test_find_intersecting_sources'))
     suite.addTest(TestField('test_check_selfcal_progress'))
+    suite.addTest(TestField('test_plot_field'))
     return suite
 
 
