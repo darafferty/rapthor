@@ -1085,6 +1085,12 @@ class Field(object):
         minRA, maxDec = self.xy2radec([self.sector_bounds_xy[2]], [self.sector_bounds_xy[3]])
         midRA, midDec = self.xy2radec([(self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0],
                                       [(self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0])
+        self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) /
+                                          self.wcs.wcs.cdelt[0])
+        self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) /
+                                           self.wcs.wcs.cdelt[1])
+        self.sector_bounds_mid_ra = midRA[0]
+        self.sector_bounds_mid_dec = midDec[0]
         self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA[0], minDec[0],
                                                                             minRA[0], maxDec[0])
         self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
@@ -1681,7 +1687,8 @@ class Field(object):
             self.do_predict = False
 
     def plot_field(self, skymodel_radius=0, moc=None):
-        """ Plots an overview of how the imaged field compares against the skymodel used.
+        """
+        Plots an overview of how the imaged field compares against the skymodel used.
 
         Parameters
         ----------
@@ -1691,10 +1698,10 @@ class Field(object):
             If not None, the multi-order coverage map to plot alongside the usual quantiies.
         """
         self.log.info('Plotting field coverage...')
-        size_ra = self.imaging_sectors[0].width_ra * u.deg
-        size_dec = self.imaging_sectors[0].width_dec * u.deg
-        centre_ra = self.imaging_sectors[0].ra * u.deg
-        centre_dec = self.imaging_sectors[0].dec * u.deg
+        size_ra = self.sector_bounds_width_ra * u.deg
+        size_dec = self.sector_bounds_width_dec * u.deg
+        centre_ra = self.sector_bounds_mid_ra * u.deg
+        centre_dec = self.sector_bounds_mid_dec * u.deg
 
         size_skymodel = skymodel_radius * u.deg
 
@@ -1757,7 +1764,7 @@ class Field(object):
         ax.scatter(centre_ra, centre_dec, marker='s', color='k',
                    transform=ax.get_transform('fk5'), label='Image centre')
 
-        ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
+        ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend()
         ax.grid()
         fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))
