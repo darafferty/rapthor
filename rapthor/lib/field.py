@@ -1738,12 +1738,14 @@ class Field(object):
                                               facecolor='none', linewidth=2)
             ax.add_patch(skymodel_region)
 
-        # Plot the part of the field being imaged.
-        field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2),
-                                  size_ra, size_dec, transform=ax.get_transform('fk5'),
-                                  label='Image borders', edgecolor='k', facecolor='none',
-                                  linewidth=2)
-        ax.add_patch(field_region)
+        # Plot the parts of the field being imaged.
+        for sector in self.imaging_sectors:
+            xmin, ymin, xmax, ymax = sector.poly.bounds
+            maxRA, minDec = self.xy2radec([xmin, ymin])
+            sector_region = Quadrangle((maxRA[0]*u.deg, minDec[0]*u.deg), size_ra, size_dec,
+                                       transform=ax.get_transform('fk5'), label='Image borders',
+                                       edgecolor='k', facecolor='none', linewidth=2)
+            ax.add_patch(sector_region)
 
         # Plot the observation's FWHM
         ra = centre_ra
