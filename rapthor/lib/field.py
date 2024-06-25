@@ -740,11 +740,13 @@ class Field(object):
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
-            if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
-                self.plot_field(self.parset['download_initial_skymodel_radius'],
-                                moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+                if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
+                    self.plot_field(self.parset['download_initial_skymodel_radius'],
+                                    moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+                else:
+                    self.plot_field(self.parset['download_initial_skymodel_radius'])
             else:
-                self.plot_field(self.parset['download_initial_skymodel_radius'])
+                self.plot_field()
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -1635,7 +1637,7 @@ class Field(object):
         patch : matplotlib patch object
             The patch for the field polygon
         """
-        if wcs is not None:
+        if wcs is None:
             wcs = self.wcs
         x, y = misc.radec2xy(wcs, self.ra, self.dec)
         patch = Ellipse((x, y), width=self.fwhm_ra_deg/self.wcs_pixel_scale,
@@ -1659,9 +1661,6 @@ class Field(object):
         self.log.info('Plotting field coverage...')
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
-        centre_ra = self.sector_bounds_mid_ra * u.deg
-        centre_dec = self.sector_bounds_mid_dec * u.deg
-
         size_skymodel = skymodel_radius * u.deg
 
         # Dealing with axes limits is difficult here.
@@ -1677,7 +1676,7 @@ class Field(object):
         if moc is not None:
             pmoc = mocpy.MOC.from_fits(moc)
             mocwcs = mocpy.WCS(fig, fov=fake_size*2,
-                               center=SkyCoord(centre_ra, centre_dec, frame='fk5')).w
+                               center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
             wcs = mocwcs
         else:
             wcs = self.wcs
@@ -1689,9 +1688,10 @@ class Field(object):
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
-        # Indicate the region out to which the skymodel was queried.
+        # Indicate the region out to which the skymodel was queried, centered on the
+        # center of the field
         if skymodel_radius > 0:
-            skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel,
+            skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
                                               transform=ax.get_transform('fk5'),
                                               label='Skymodel query cone', edgecolor='r',
                                               facecolor='none', linewidth=2)
@@ -1706,16 +1706,16 @@ class Field(object):
 
         # Set the plot FoV in case no MOC is given.
         if moc is None:
-            fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size,
+            fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size,
                                               transform=ax.get_transform('fk5'),
                                               edgecolor='none', facecolor='none',
                                               linewidth=0)
             ax.add_patch(fake_FoV_circle)
 
-        ax.scatter(centre_ra, centre_dec, marker='s', color='k',
-                   transform=ax.get_transform('fk5'), label='Image centre')
+        ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
+                   transform=ax.get_transform('fk5'), label='Phase center')
 
         ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
-        ax.legend()
+        ax.legend(loc='upper left')
         ax.grid()
         fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))

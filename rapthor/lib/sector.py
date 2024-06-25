@@ -478,7 +478,7 @@ class Sector(object):
         """
         vertices = self.get_vertices_radec()
 
-        if wcs is not None:
+        if wcs is None:
             wcs = self.field.wcs
         x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
         xy = np.vstack([x, y]).transpose()
