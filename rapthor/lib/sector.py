@@ -9,6 +9,7 @@ import lsmtool
 from astropy.coordinates import Angle,  SkyCoord
 import astropy.units as u
 from shapely.geometry import Polygon
+from matplotlib import patches
 import pickle
 import os
 import copy
@@ -459,6 +460,32 @@ class Sector(object):
                 f.writelines(lines)
         else:
             self.log.error('Region format not understood.')
+
+    def get_matplotlib_patch(self, wcs=None):
+        """
+        Returns a matplotlib patch for the sector polygon
+
+        Parameters
+        ----------
+        wcs : WCS object, optional
+            WCS object defining (RA, Dec) <-> (x, y) transformation. If not given,
+            the field's transformation is used
+
+        Returns
+        -------
+        patch : matplotlib patch object
+            The patch for the sector polygon
+        """
+        vertices = self.get_vertices_radec()
+
+        if wcs is not None:
+            wcs = self.wcs
+        x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
+        xy = np.vstack([x, y]).transpose()
+        patch = patches.Polygon(xy=xy, edgecolor='black', facecolor='white', label=self.name,
+                                edgecolor='k', facecolor='none', linewidth=2)
+
+        return patch
 
     def get_distance_to_obs_center(self):
         """

@@ -45,10 +45,10 @@ class Facet(object):
         self.vertices = np.array(vertices)
 
         # Convert input (RA, Dec) vertices to (x, y) polygon
-        self.wcs = make_wcs(self.ra, self.dec)
+        self.wcs = misc.make_wcs(self.ra, self.dec)
         self.polygon_ras = [radec[0] for radec in self.vertices]
         self.polygon_decs = [radec[1] for radec in self.vertices]
-        x_values, y_values = radec2xy(self.wcs, self.polygon_ras, self.polygon_decs)
+        x_values, y_values = misc.radec2xy(self.wcs, self.polygon_ras, self.polygon_decs)
         polygon_vertices = [(x, y) for x, y in zip(x_values, y_values)]
         self.polygon = Polygon(polygon_vertices)
 
@@ -58,7 +58,7 @@ class Facet(object):
                         abs(self.wcs.wcs.cdelt[0]))  # degrees
         self.x_center = xmin + (xmax - xmin)/2
         self.y_center = ymin + (ymax - ymin)/2
-        self.ra_center, self.dec_center = xy2radec(self.wcs, self.x_center, self.y_center)
+        self.ra_center, self.dec_center = misc.xy2radec(self.wcs, self.x_center, self.y_center)
 
     def set_skymodel(self, skymodel):
         """
@@ -173,7 +173,7 @@ class Facet(object):
             The patch for the facet polygon
         """
         if wcs is not None:
-            x, y = radec2xy(wcs, self.polygon_ras, self.polygon_decs)
+            x, y = misc.radec2xy(wcs, self.polygon_ras, self.polygon_decs)
         else:
             x = self.polygon.exterior.coords.xy[0]
             y = self.polygon.exterior.coords.xy[1]
@@ -207,17 +207,17 @@ class SquareFacet(Facet):
             dec = Angle(dec).to('deg').value
         ra = misc.normalize_ra(ra)
         dec = misc.normalize_dec(dec)
-        wcs = make_wcs(ra, dec)
+        wcs = misc.make_wcs(ra, dec)
 
         # Make the vertices
         xmin = wcs.wcs.crpix[0] - width / 2 / abs(wcs.wcs.cdelt[0])
         xmax = wcs.wcs.crpix[0] + width / 2 / abs(wcs.wcs.cdelt[0])
         ymin = wcs.wcs.crpix[1] - width / 2 / abs(wcs.wcs.cdelt[1])
         ymax = wcs.wcs.crpix[1] + width / 2 / abs(wcs.wcs.cdelt[1])
-        ra_llc, dec_llc = xy2radec(wcs, xmin, ymin)  # (RA, Dec) of lower-left corner
-        ra_tlc, dec_tlc = xy2radec(wcs, xmin, ymax)  # (RA, Dec) of top-left corner
-        ra_trc, dec_trc = xy2radec(wcs, xmax, ymax)  # (RA, Dec) of top-right corner
-        ra_lrc, dec_lrc = xy2radec(wcs, xmax, ymin)  # (RA, Dec) of lower-right corner
+        ra_llc, dec_llc = misc.xy2radec(wcs, xmin, ymin)  # (RA, Dec) of lower-left corner
+        ra_tlc, dec_tlc = misc.xy2radec(wcs, xmin, ymax)  # (RA, Dec) of top-left corner
+        ra_trc, dec_trc = misc.xy2radec(wcs, xmax, ymax)  # (RA, Dec) of top-right corner
+        ra_lrc, dec_lrc = misc.xy2radec(wcs, xmax, ymin)  # (RA, Dec) of lower-right corner
         vertices = [(ra_llc, dec_llc), (ra_tlc, dec_tlc), (ra_trc, dec_trc), (ra_lrc, dec_lrc)]
 
         super().__init__(name, ra, dec, vertices)
@@ -255,9 +255,9 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     if width_ra <= 0.0 or width_dec <= 0.0:
         raise ValueError('The RA/Dec width cannot be zero or less')
     wcs_pixel_scale = 20.0 / 3600.0  # 20"/pixel
-    wcs = make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
-    x_cal, y_cal = radec2xy(wcs, ra_cal, dec_cal)
-    x_mid, y_mid = radec2xy(wcs, ra_mid, dec_mid)
+    wcs = misc.make_wcs(ra_mid, dec_mid, wcs_pixel_scale)
+    x_cal, y_cal = misc.radec2xy(wcs, ra_cal, dec_cal)
+    x_mid, y_mid = misc.radec2xy(wcs, ra_mid, dec_mid)
     width_x = width_ra / wcs_pixel_scale / 2.0
     width_y = width_dec / wcs_pixel_scale / 2.0
     bounding_box = np.array([x_mid - width_x, x_mid + width_x,
@@ -268,142 +268,15 @@ def make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec):
     facet_polys = []
     for region in vor.filtered_regions:
         vertices = vor.vertices[region + [region[0]], :]
-        ra, dec = xy2radec(wcs, vertices[:, 0], vertices[:, 1])
+        ra, dec = misc.xy2radec(wcs, vertices[:, 0], vertices[:, 1])
         vertices = np.stack((ra, dec)).T
         facet_polys.append(vertices)
     facet_points = []
     for point in vor.filtered_points:
-        ra, dec = xy2radec(wcs, point[0], point[1])
+        ra, dec = misc.xy2radec(wcs, point[0], point[1])
         facet_points.append((ra, dec))
 
     return facet_points, facet_polys
-
-
-def radec2xy(wcs, ra, dec):
-    """
-    Returns x, y for input RA, Dec
-
-    Parameters
-    ----------
-    wcs : WCS object
-        WCS object defining transformation
-    ra : float, list, or numpy array
-        RA value(s) in degrees
-    dec : float, list, or numpy array
-        Dec value(s) in degrees
-
-    Returns
-    -------
-    x, y : float, list, or numpy array
-        x and y pixel values corresponding to the input RA and Dec
-        values
-    """
-    x_list = []
-    y_list = []
-    if type(ra) is list or type(ra) is np.ndarray:
-        ra_list = ra
-    else:
-        ra_list = [float(ra)]
-    if type(dec) is list or type(dec) is np.ndarray:
-        dec_list = dec
-    else:
-        dec_list = [float(dec)]
-    if len(ra_list) != len(dec_list):
-        raise ValueError('RA and Dec must be of equal length')
-
-    for ra_deg, dec_deg in zip(ra_list, dec_list):
-        ra_dec = np.array([[ra_deg, dec_deg]])
-        x_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][0])
-        y_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][1])
-
-    # Return the same type as the input
-    if type(ra) is list or type(ra) is np.ndarray:
-        x = x_list
-    else:
-        x = x_list[0]
-    if type(dec) is list or type(dec) is np.ndarray:
-        y = y_list
-    else:
-        y = y_list[0]
-    return x, y
-
-
-def xy2radec(wcs, x, y):
-    """
-    Returns RA, Dec for input x, y
-
-    Parameters
-    ----------
-    wcs : WCS object
-        WCS object defining transformation
-    x : float, list, or numpy array
-        x value(s) in pixels
-    y : float, list, or numpy array
-        y value(s) in pixels
-
-    Returns
-    -------
-    RA, Dec : float, list, or numpy array
-        RA and Dec values corresponding to the input x and y pixel
-        values
-    """
-    ra_list = []
-    dec_list = []
-    if type(x) is list or type(x) is np.ndarray:
-        x_list = x
-    else:
-        x_list = [float(x)]
-    if type(y) is list or type(y) is np.ndarray:
-        y_list = y
-    else:
-        y_list = [float(y)]
-    if len(x_list) != len(y_list):
-        raise ValueError('x and y must be of equal length')
-
-    for xp, yp in zip(x_list, y_list):
-        x_y = np.array([[xp, yp]])
-        ra_list.append(wcs.wcs_pix2world(x_y, 0)[0][0])
-        dec_list.append(wcs.wcs_pix2world(x_y, 0)[0][1])
-
-    # Return the same type as the input
-    if type(x) is list or type(x) is np.ndarray:
-        ra = ra_list
-    else:
-        ra = ra_list[0]
-    if type(y) is float or type(y) is np.ndarray:
-        dec = dec_list
-    else:
-        dec = dec_list[0]
-    return ra, dec
-
-
-def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
-    """
-    Makes simple WCS object
-
-    Parameters
-    ----------
-    ra : float
-        Reference RA in degrees
-    dec : float
-        Reference Dec in degrees
-    wcs_pixel_scale : float, optional
-        Pixel scale in degrees/pixel (default = 10"/pixel)
-
-    Returns
-    -------
-    w : astropy.wcs.WCS object
-        A simple TAN-projection WCS object for specified reference position
-    """
-    from astropy.wcs import WCS
-
-    w = WCS(naxis=2)
-    w.wcs.crpix = [1000, 1000]
-    w.wcs.cdelt = np.array([-wcs_pixel_scale, wcs_pixel_scale])
-    w.wcs.crval = [ra, dec]
-    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-    w.wcs.set_pv([(2, 1, 45.0)])
-    return w
 
 
 def in_box(cal_coords, bounding_box):
@@ -598,7 +471,7 @@ def filter_skymodel(polygon, skymodel, wcs):
     # Make list of sources
     RA = skymodel.getColValues('Ra')
     Dec = skymodel.getColValues('Dec')
-    x, y = radec2xy(wcs, RA, Dec)
+    x, y = misc.radec2xy(wcs, RA, Dec)
     x = np.array(x)
     y = np.array(y)
 
@@ -612,7 +485,7 @@ def filter_skymodel(polygon, skymodel, wcs):
         return skymodel
     RA = skymodel.getColValues('Ra')
     Dec = skymodel.getColValues('Dec')
-    x, y = radec2xy(wcs, RA, Dec)
+    x, y = misc.radec2xy(wcs, RA, Dec)
     x = np.array(x)
     y = np.array(y)
 

@@ -41,7 +41,7 @@ class TestField(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        os.system('rm -r images/ logs/ pipelines/ regions/ scratch/ skymodels/ solutions/ plots/')
+        os.system('rm -r images/ logs/ pipelines/ regions/ skymodels/ solutions/ plots/')
 
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
@@ -90,7 +90,7 @@ class TestField(unittest.TestCase):
     def test_plot_field(self):
         self.field.sector_bounds_mid_dec = 88.0  # test behavior near pole
         self.field.plot_field(skymodel_radius=5.0)
-        self.assertTrue(os.path.exits(os.path.join('plots', 'field_coverage.png')))
+        self.assertTrue(os.path.exists(os.path.join('plots', 'field_coverage.png')))
 
 
 def suite():

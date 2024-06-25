@@ -227,6 +227,133 @@ def normalize_dec(num):
     return res
 
 
+def radec2xy(wcs, ra, dec):
+    """
+    Returns x, y for input RA, Dec
+
+    Parameters
+    ----------
+    wcs : WCS object
+        WCS object defining transformation
+    ra : float, list, or numpy array
+        RA value(s) in degrees
+    dec : float, list, or numpy array
+        Dec value(s) in degrees
+
+    Returns
+    -------
+    x, y : float, list, or numpy array
+        x and y pixel values corresponding to the input RA and Dec
+        values
+    """
+    x_list = []
+    y_list = []
+    if type(ra) is list or type(ra) is np.ndarray:
+        ra_list = ra
+    else:
+        ra_list = [float(ra)]
+    if type(dec) is list or type(dec) is np.ndarray:
+        dec_list = dec
+    else:
+        dec_list = [float(dec)]
+    if len(ra_list) != len(dec_list):
+        raise ValueError('RA and Dec must be of equal length')
+
+    for ra_deg, dec_deg in zip(ra_list, dec_list):
+        ra_dec = np.array([[ra_deg, dec_deg]])
+        x_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][0])
+        y_list.append(wcs.wcs_world2pix(ra_dec, 0)[0][1])
+
+    # Return the same type as the input
+    if type(ra) is list or type(ra) is np.ndarray:
+        x = x_list
+    else:
+        x = x_list[0]
+    if type(dec) is list or type(dec) is np.ndarray:
+        y = y_list
+    else:
+        y = y_list[0]
+    return x, y
+
+
+def xy2radec(wcs, x, y):
+    """
+    Returns RA, Dec for input x, y
+
+    Parameters
+    ----------
+    wcs : WCS object
+        WCS object defining transformation
+    x : float, list, or numpy array
+        x value(s) in pixels
+    y : float, list, or numpy array
+        y value(s) in pixels
+
+    Returns
+    -------
+    RA, Dec : float, list, or numpy array
+        RA and Dec values corresponding to the input x and y pixel
+        values
+    """
+    ra_list = []
+    dec_list = []
+    if type(x) is list or type(x) is np.ndarray:
+        x_list = x
+    else:
+        x_list = [float(x)]
+    if type(y) is list or type(y) is np.ndarray:
+        y_list = y
+    else:
+        y_list = [float(y)]
+    if len(x_list) != len(y_list):
+        raise ValueError('x and y must be of equal length')
+
+    for xp, yp in zip(x_list, y_list):
+        x_y = np.array([[xp, yp]])
+        ra_list.append(wcs.wcs_pix2world(x_y, 0)[0][0])
+        dec_list.append(wcs.wcs_pix2world(x_y, 0)[0][1])
+
+    # Return the same type as the input
+    if type(x) is list or type(x) is np.ndarray:
+        ra = ra_list
+    else:
+        ra = ra_list[0]
+    if type(y) is float or type(y) is np.ndarray:
+        dec = dec_list
+    else:
+        dec = dec_list[0]
+    return ra, dec
+
+
+def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
+    """
+    Makes simple WCS object
+
+    Parameters
+    ----------
+    ra : float
+        Reference RA in degrees
+    dec : float
+        Reference Dec in degrees
+    wcs_pixel_scale : float, optional
+        Pixel scale in degrees/pixel (default = 10"/pixel)
+
+    Returns
+    -------
+    w : astropy.wcs.WCS object
+        A simple TAN-projection WCS object for specified reference position
+    """
+    from astropy.wcs import WCS
+
+    w = WCS(naxis=2)
+    w.wcs.crpix = [1000, 1000]
+    w.wcs.cdelt = np.array([-wcs_pixel_scale, wcs_pixel_scale])
+    w.wcs.crval = [ra, dec]
+    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+    w.wcs.set_pv([(2, 1, 45.0)])
+    return w
+
+
 def read_vertices(filename):
     """
     Returns facet vertices stored in input file
