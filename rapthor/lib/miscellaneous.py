@@ -318,7 +318,7 @@ def xy2radec(wcs, x, y):
         ra = ra_list
     else:
         ra = ra_list[0]
-    if type(y) is float or type(y) is np.ndarray:
+    if type(y) is list or type(y) is np.ndarray:
         dec = dec_list
     else:
         dec = dec_list[0]

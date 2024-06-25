@@ -381,7 +381,7 @@ class Sector(object):
         Determines the vertices of the sector polygon
         """
         # Define initial polygon as a rectangle
-        sx, sy = self.field.radec2xy([self.ra], [self.dec])
+        sx, sy = misc.radec2xy(self.field.wcs, [self.ra], [self.dec])
         ra_width_pix = self.width_ra / abs(self.field.wcs.wcs.cdelt[0])
         dec_width_pix = self.width_dec / abs(self.field.wcs.wcs.cdelt[1])
         x0 = sx[0] - ra_width_pix / 2.0
@@ -403,8 +403,8 @@ class Sector(object):
         """
         Return the vertices as RA, Dec for the sector boundary
         """
-        ra, dec = self.field.xy2radec(self.poly.exterior.coords.xy[0].tolist(),
-                                      self.poly.exterior.coords.xy[1].tolist())
+        ra, dec = misc.xy2radec(self.field.wcs, self.poly.exterior.coords.xy[0].tolist(),
+                                self.poly.exterior.coords.xy[1].tolist())
         vertices = [np.array(ra), np.array(dec)]
 
         return vertices
@@ -479,11 +479,11 @@ class Sector(object):
         vertices = self.get_vertices_radec()
 
         if wcs is not None:
-            wcs = self.wcs
+            wcs = self.field.wcs
         x, y = misc.radec2xy(wcs, vertices[0], vertices[1])
         xy = np.vstack([x, y]).transpose()
-        patch = patches.Polygon(xy=xy, edgecolor='black', facecolor='white', label=self.name,
-                                edgecolor='k', facecolor='none', linewidth=2)
+        patch = patches.Polygon(xy=xy, label=self.name, edgecolor='k', facecolor='none',
+                                linewidth=2)
 
         return patch
 
