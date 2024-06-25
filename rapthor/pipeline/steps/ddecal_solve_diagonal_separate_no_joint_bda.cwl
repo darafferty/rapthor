@@ -4,9 +4,9 @@ baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for diagonal gains in multiple directions simultaneously for
-  the given MS file with fast-phase corrections preapplied, using the input
-  sourcedb and h5parm. Output is the solution table in h5parm format. See
-  ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
+  the given MS file with fast-phase only corrections preapplied, using
+  the input sourcedb and h5parm. Output is the solution table in h5parm format.
+  See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
   outputs not documented below.
 
 requirements:
@@ -15,7 +15,10 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout=
-  - steps=[solve]
+  - steps=[avg,solve,null]
+  - avg.type=bdaaverager
+  - avg.minchannels=1
+  - avg.frequencybase=0.0
   - solve.type=ddecal
   - solve.mode=diagonal
   - solve.usebeammodel=True
@@ -49,7 +52,23 @@ inputs:
     inputBinding:
       prefix: msin.nchan=
       separate: False
-  - id: fast_h5parm
+  - id: timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done.
+    type: float
+    inputBinding:
+      prefix: avg.timebase=
+      separate: False
+  - id: maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is done.
+    type: int
+    inputBinding:
+      prefix: avg.maxinterval=
+      separate: False
+  - id: combined_h5parm
     label: Solution table
     doc: |
       The filename of the input solution table containing the fast-phase solutions.
@@ -170,11 +189,6 @@ inputs:
     type: float
     inputBinding:
       prefix: solve.smoothnessconstraint=
-      separate: False
-  - id: antennaconstraint
-    type: string
-    inputBinding:
-      prefix: solve.antennaconstraint=
       separate: False
   - id: numthreads
     type: int

@@ -3,11 +3,10 @@ class: CommandLineTool
 baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
-  This tool solves for diagonal gains in multiple directions simultaneously for
-  the given MS file with fast-phase corrections preapplied, using the input
-  sourcedb and h5parm. Output is the solution table in h5parm format. See
-  ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
-  outputs not documented below.
+  This tool solves for scalar complex gains in multiple directions
+  simultaneously for the given MS file, using the input sourcedb. Output is the
+  solution table in h5parm format. See ddecal_solve_scalarphase.cwl for a
+  detailed description of the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -15,13 +14,14 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout=
-  - steps=[solve]
+  - steps=[avg,solve,null]
+  - avg.type=bdaaverager
+  - avg.minchannels=1
+  - avg.frequencybase=0.0
   - solve.type=ddecal
-  - solve.mode=diagonal
+  - solve.mode=scalar
   - solve.usebeammodel=True
   - solve.beammode=array_factor
-  - solve.applycal.steps=[fastphase]
-  - solve.applycal.fastphase.correction=phase000
 
 inputs:
   - id: msin
@@ -39,25 +39,6 @@ inputs:
     inputBinding:
       prefix: msin.ntimes=
       separate: False
-  - id: startchan
-    type: int
-    inputBinding:
-      prefix: msin.startchan=
-      separate: False
-  - id: nchan
-    type: int
-    inputBinding:
-      prefix: msin.nchan=
-      separate: False
-  - id: fast_h5parm
-    label: Solution table
-    doc: |
-      The filename of the input solution table containing the fast-phase solutions.
-      These solutions are preapplied before the solve is done.
-    type: File
-    inputBinding:
-      prefix: solve.applycal.parmdb=
-      separate: False
   - id: h5parm
     type: string
     inputBinding:
@@ -68,10 +49,26 @@ inputs:
     inputBinding:
       prefix: solve.solint=
       separate: False
-  - id: solve_nchan
+  - id: nchan
     type: int
     inputBinding:
       prefix: solve.nchan=
+      separate: False
+  - id: timebase
+    label: BDA timebase
+    doc: |
+      The baseline length (in meters) below which BDA time averaging is done.
+    type: float
+    inputBinding:
+      prefix: avg.timebase=
+      separate: False
+  - id: maxinterval
+    label: BDA maxinterval
+    doc: |
+      The maximum interval duration (in time slots) over which BDA time averaging is done.
+    type: int
+    inputBinding:
+      prefix: avg.maxinterval=
       separate: False
   - id: directions
     type: string[]
@@ -171,6 +168,16 @@ inputs:
     inputBinding:
       prefix: solve.smoothnessconstraint=
       separate: False
+  - id: smoothnessreffrequency
+    type: float
+    inputBinding:
+      prefix: solve.smoothnessreffrequency=
+      separate: False
+  - id: smoothnessrefdistance
+    type: float
+    inputBinding:
+      prefix: solve.smoothnessrefdistance=
+      separate: False
   - id: antennaconstraint
     type: string
     inputBinding:
@@ -183,7 +190,7 @@ inputs:
       separate: False
 
 outputs:
-  - id: slow_gains_h5parm
+  - id: fast_phases_h5parm
     type: File
     outputBinding:
       glob: $(inputs.h5parm)

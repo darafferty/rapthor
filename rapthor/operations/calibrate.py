@@ -37,12 +37,29 @@ class CalibrateDD(Operation):
             use_facets = True
         else:
             use_facets = False
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        if self.bda_timebase_fast > 0 and all_regular:
+            use_bda_fast_solve = True
+        else:
+            use_bda_fast_solve = False
+        if self.bda_timebase_slow_joint > 0 and all_regular:
+            use_bda_slow_joint_solve = True
+        else:
+            use_bda_slow_joint_solve = False
+        if self.bda_timebase_slow_separate > 0 and all_regular:
+            use_bda_slow_separate_solve = True
+        else:
+            use_bda_slow_separate_solve = False
+
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_screens': self.field.use_screens,
                              'use_facets': use_facets,
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
+                             'use_bda_fast_solve': use_bda_fast_solve,
+                             'use_bda_slow_joint_solve': use_bda_slow_joint_solve,
+                             'use_bda_slow_separate_solve': use_bda_slow_separate_solve,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
 

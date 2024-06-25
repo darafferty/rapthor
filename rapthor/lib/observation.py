@@ -101,11 +101,30 @@ class Observation(object):
         # Get frequency info
         sw = pt.table(self.ms_filename+'::SPECTRAL_WINDOW', ack=False)
         self.referencefreq = sw.col('REF_FREQUENCY')[0]
+        self.channelfreqs = sw.col('CHAN_FREQ')[0]
         self.startfreq = np.min(sw.col('CHAN_FREQ')[0])
         self.endfreq = np.max(sw.col('CHAN_FREQ')[0])
         self.numchannels = sw.col('NUM_CHAN')[0]
+        self.channelwidths = sw.col('CHAN_WIDTH')[0]
         self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
         sw.close()
+
+        # Check that channels are evenly spaced
+        # Note: the code is based on that used in DP3
+        # (see https://git.astron.nl/RD/DP3/-/blob/master/base/DPInfo.cc)
+        self.channels_are_regular = True
+        if self.numchannels > 1:
+            freqstep0 = self.channelfreqs[1] - self.channelfreqs[0]
+            atol = 1e3  # use an absolute tolerance of 1 kHz
+            for i in range(1, self.numchannels):
+                if (
+                    (self.channelfreqs[i] - self.channelfreqs[i-1] - freqstep0 >= atol) or
+                    (self.channelwidths[i] - self.channelwidths[0] >= atol)
+                ):
+                    self.channels_are_regular = False
+        if not self.channels_are_regular:
+            self.log.warning('Irregular spacing of channel frequencies found. Baseline-'
+                             'dependent averaging (if any) will be disabled.')
 
         # Get pointing info
         obs = pt.table(self.ms_filename+'::FIELD', ack=False)
