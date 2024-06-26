@@ -1639,9 +1639,15 @@ class Field(object):
         """
         if wcs is None:
             wcs = self.wcs
+            wcs_pixel_scale = self.wcs_pixel_scale  # degrees/pixel
+        else:
+            # Take the scale (in degrees/pixel) as the average of those of the
+            # two axes
+            wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
+                               wcs.proj_plane_pixel_scales()[1].value) / 2
         x, y = misc.radec2xy(wcs, self.ra, self.dec)
-        patch = Ellipse((x, y), width=self.fwhm_ra_deg/self.wcs_pixel_scale,
-                        height=self.fwhm_dec_deg/self.wcs_pixel_scale,
+        patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
+                        height=self.fwhm_dec_deg/wcs_pixel_scale,
                         edgecolor='k', facecolor='lightgray', linestyle=':',
                         label='Pointing FWHM', linewidth=2, alpha=0.5)
 
