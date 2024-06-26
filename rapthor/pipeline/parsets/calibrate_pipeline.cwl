@@ -129,6 +129,7 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
+{% if use_bda_fast_solve %}
   - id: bda_timebase_fast
     label: BDA timebase for fast solve
     doc: |
@@ -142,6 +143,7 @@ inputs:
       The maximum interval duration (in time slots) over which BDA time averaging is
       done in the fast-phase calibration (length = n_obs * n_time_chunks).
     type: int[]
+{% endif %}
 
   - id: maxiter
     label: Maximum iterations
@@ -265,6 +267,7 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
+{% if use_bda_slow_joint_solve %}
   - id: bda_timebase_slow_joint
     label: BDA timebase for joint solve
     doc: |
@@ -278,7 +281,9 @@ inputs:
       The maximum interval duration (in time slots) over which BDA time averaging is
       done in the first (joint) slow-gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
+{% endif %}
 
+{% if use_bda_slow_separate_solve %}
   - id: bda_timebase_slow_separate
     label: BDA timebase for separate solve
     doc: |
@@ -293,6 +298,7 @@ inputs:
       done in the second (separate) slow-gain calibration (length = n_obs *
       n_freq_chunks).
     type: int[]
+{% endif %}
 
   - id: freqchunk_filename_joint
     label: Filename of input MS for joint solve (frequency)

@@ -38,15 +38,15 @@ class CalibrateDD(Operation):
         else:
             use_facets = False
         all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.bda_timebase_fast > 0 and all_regular:
+        if self.field.bda_timebase_fast > 0 and all_regular:
             use_bda_fast_solve = True
         else:
             use_bda_fast_solve = False
-        if self.bda_timebase_slow_joint > 0 and all_regular:
+        if self.field.bda_timebase_slow_joint > 0 and all_regular:
             use_bda_slow_joint_solve = True
         else:
             use_bda_slow_joint_solve = False
-        if self.bda_timebase_slow_separate > 0 and all_regular:
+        if self.field.bda_timebase_slow_separate > 0 and all_regular:
             use_bda_slow_separate_solve = True
         else:
             use_bda_slow_separate_solve = False
