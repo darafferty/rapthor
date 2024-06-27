@@ -44,7 +44,7 @@ def run(parset_file, logging_level='info'):
         op.run()
     if parset['generate_initial_skymodel']:
         field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
-        log.info("Imaging field to generate an initial sky model...")
+        log.info("Imaging full field to generate an initial sky model...")
         op = ImageInitial(field)
         op.run()
 
