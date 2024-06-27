@@ -544,8 +544,10 @@ steps:
         source: aterm_image_filenames
 {% else %}
 # start not use_screens
+{% if not apply_none %}
       - id: h5parm
         source: h5parm
+{% endif %}
 {% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
@@ -570,8 +572,10 @@ steps:
         source: apply_diagonal_solutions
 {% else %}
 # start not use_facets
+{% if not apply_none %}
       - id: central_patch_name
         source: central_patch_name
+{% endif %}
 {% endif %}
 # end use_facets / not use_facets
 {% endif %}
@@ -653,7 +657,9 @@ steps:
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
+{% if not apply_none %}
               central_patch_name,
+{% endif %}
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,

@@ -83,7 +83,8 @@ class Sector(object):
         for obs in self.observations:
             obs.set_prediction_parameters(self.name, self.patches)
 
-    def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False):
+    def set_imaging_parameters(self, do_multiscale=False, recalculate_imsize=False,
+                               imaging_parameters=None):
         """
         Sets the parameters needed for the imaging operation
 
@@ -93,15 +94,20 @@ class Sector(object):
             If True, multiscale clean is done
         recalculate_imsize : bool, optional
             If True, the image size is recalculated based on the current sector region
+        imaging_parameters : dict, optional
+            Dict of imaging parameters to use instead of those defined by the field's
+            parset
         """
-        self.cellsize_arcsec = self.field.parset['imaging_specific']['cellsize_arcsec']
+        if imaging_parameters is None:
+            imaging_parameters = self.field.parset['imaging_specific']
+        self.cellsize_arcsec = imaging_parameters['cellsize_arcsec']
         self.cellsize_deg = self.cellsize_arcsec / 3600.0
-        self.robust = self.field.parset['imaging_specific']['robust']
-        self.taper_arcsec = self.field.parset['imaging_specific']['taper_arcsec']
-        self.min_uv_lambda = self.field.parset['imaging_specific']['min_uv_lambda']
-        self.max_uv_lambda = self.field.parset['imaging_specific']['max_uv_lambda']
-        self.idg_mode = self.field.parset['imaging_specific']['idg_mode']
-        self.mem_limit_gb = self.field.parset['imaging_specific']['mem_gb']
+        self.robust = imaging_parameters['robust']
+        self.taper_arcsec = imaging_parameters['taper_arcsec']
+        self.min_uv_lambda = imaging_parameters['min_uv_lambda']
+        self.max_uv_lambda = imaging_parameters['max_uv_lambda']
+        self.idg_mode = imaging_parameters['idg_mode']
+        self.mem_limit_gb = imaging_parameters['mem_gb']
         slurm_limit_gb = self.field.parset['cluster_specific']['mem_per_node_gb']
         if slurm_limit_gb > 0:
             # Obey the Slurm limit if it's set and is more restrictive than the
@@ -116,7 +122,7 @@ class Sector(object):
         if self.mem_limit_gb == 0:
             # If no limit is set at this point, use the memory of the current machine
             self.mem_limit_gb = cluster.get_available_memory()
-        self.reweight = self.field.parset['imaging_specific']['reweight']
+        self.reweight = imaging_parameters['reweight']
         self.flag_abstime = self.field.parset['flag_abstime']
         self.flag_baseline = self.field.parset['flag_baseline']
         self.flag_freqrange = self.field.parset['flag_freqrange']
@@ -124,7 +130,7 @@ class Sector(object):
         self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
-        self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
+        self.dd_psf_grid = imaging_parameters['dd_psf_grid']
 
         # Set image size based on current sector polygon
         if recalculate_imsize or self.imsize is None:
@@ -206,7 +212,7 @@ class Sector(object):
             self.log.debug("Will do multiscale cleaning.")
 
         # Set the observation-specific parameters
-        max_peak_smearing = self.field.parset['imaging_specific']['max_peak_smearing']
+        max_peak_smearing = imaging_parameters['max_peak_smearing']
         for obs in self.observations:
             # Set imaging parameters
             obs.set_imaging_parameters(self.name, self.cellsize_arcsec, max_peak_smearing,

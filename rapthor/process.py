@@ -34,12 +34,17 @@ def run(parset_file, logging_level='info'):
     parset['logging_level'] = logging_level
     _logging.set_level(logging_level)
 
-    # Initialize field object and do concatenation if needed
+    # Initialize field object and do concatenation and generate initial sky
+    # model if needed
     field = Field(parset)
     if any([len(obs) > 1 for obs in field.epoch_observations]):
         log.info("MS files with different frequencies found for one "
                  "or more epochs. Concatenation over frequency will be done.")
         op = Concatenate(field, 1)
+        op.run()
+    if parset['generate_initial_skymodel']:
+        log.info("Imaging field to generate an initial sky model...")
+        op = ImageInitial(field)
         op.run()
 
     # Set the processing strategy

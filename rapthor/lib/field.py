@@ -127,6 +127,7 @@ class Field(object):
             # Set up imaging sectors
             self.makeWCS()
             self.define_imaging_sectors()
+            self.define_full_field_sector(radius=self.parset['generate_initial_skymodel_radius'])
 
     def scan_observations(self):
         """
@@ -1210,6 +1211,26 @@ class Field(object):
                 predict_sector.predict_skymodel.select(np.array(list(range(startind, endind))))
                 predict_sector.make_skymodel(index)
                 self.predict_sectors.append(predict_sector)
+
+    def define_full_field_sector(self, radius=None):
+        """
+        Defines the full-field imaging sector, used for generation of the initial
+        sky model
+
+        Parameters
+        ----------
+        radius : float, optional
+            Radius in degrees of region to image. If None, an area corresponding
+            to 2*FWHM is used
+        """
+        if radius is None:
+            width_ra = self.fwhm_ra_deg * 2
+            width_dec = self.fwhm_dec_deg * 2
+        else:
+            width_ra = radius * 2
+            width_dec = radius * 2
+        self.full_field_sector = Sector('full_field', self.ra, self.dec,
+                                        width_ra, width_dec, self)
 
     def find_intersecting_sources(self):
         """
