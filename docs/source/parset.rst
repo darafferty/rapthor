@@ -46,27 +46,39 @@ The available options are described below under their respective sections.
             <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
             See :doc:`preparation` for details.
 
+    generate_initial_skymodel
+        Generate an initial target sky model from the input data (default = ``True``).
+        This option is ignored if a file is specified with the :term:`input_skymodel`
+        option. When this option is activated, an image of the full field is made from the
+        input data (without doing any calibration). The initial sky model is generated
+        from the clean components as part of the imaging.
+
+    generate_initial_skymodel_radius
+        The radius out to which the sky model will be generated (default = None, which
+        results in coverage out to a width of 2 * FWHM of the primary beam).
+
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
-        (default is ``True``). This option is ignored if a file is specified with the
-        :term:`input_skymodel` option.
+        (default = ``True``). This option is ignored if a file is specified with the
+        :term:`input_skymodel` option or if generation of the initial model is activated
+        with the :term:`generate_initial_skymodel` option.
 
     download_initial_skymodel_radius
-        The radius in degrees out to which a sky model should be downloaded (default is
+        The radius in degrees out to which a sky model should be downloaded (default =
         5.0).
 
     download_initial_skymodel_server
-        Place to download the initial sky model from (default is ``TGSS``). This can
+        Place to download the initial sky model from (default = ``TGSS``). This can
         either be ``TGSS`` to use the TFIR GMRT Sky Survey, ``LOTSS`` to use the LOFAR
         Two-metre Sky Survey, or ``GSM`` to use the Global Sky Model.
 
     download_overwrite_skymodel
-        Overwrite any existing sky model with a downloaded one (default is ``False``).
+        Overwrite any existing sky model with a downloaded one (default = ``False``).
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required if automatic
-        download is disabled). If you also have a sky model with apparent flux densities,
-        specify it with the :term:`apparent_skymodel` option.
+        generation or download is disabled). If you also have a sky model with apparent
+        flux densities, specify it with the :term:`apparent_skymodel` option.
 
 	See :doc:`preparation` for more info on preparing the sky model.
 

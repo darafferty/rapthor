@@ -28,9 +28,9 @@ download_initial_skymodel_server = TGSS
 download_overwrite_skymodel = False
 
 # Full path to the input sky model file, with true-sky fluxes (required when not
-# automatically downloading). If you also have a sky model with apparent flux
-# densities, specify it with the apparent_skymodel option (note that the source
-# names must be identical in both sky models)
+# automatically generating or downloading). If you also have a sky model with
+# apparent flux densities, specify it with the apparent_skymodel option (note
+# that the source names must be identical in both sky models)
 input_skymodel = None
 apparent_skymodel = None
 
