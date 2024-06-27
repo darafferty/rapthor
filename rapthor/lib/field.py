@@ -723,7 +723,10 @@ class Field(object):
         # Except for the first iteration, use the results of the previous iteration to
         # update the sky models, etc.
         if index == 1:
-            if self.parset['download_initial_skymodel']:
+            if self.parset['generate_initial_skymodel']:
+                self.parset['input_skymodel'] = self.full_field_sector.image_skymodel_file_true_sky
+                self.parset['apparent_skymodel'] = self.full_field_sector.image_skymodel_file_apparent_sky
+            elif self.parset['download_initial_skymodel']:
                 # First time run, so get an initial sky model.
                 # Assumes we only have a single pointing centre among all MSes.
                 # If download is requested and no skymodel given in the parset we download one.
@@ -741,11 +744,11 @@ class Field(object):
                                            radius=self.parset['download_initial_skymodel_radius'],
                                            source=self.parset['download_initial_skymodel_server'],
                                            overwrite=self.parset['download_overwrite_skymodel'])
-            if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
-                self.plot_field(self.parset['download_initial_skymodel_radius'],
-                                moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
-            else:
-                self.plot_field(self.parset['download_initial_skymodel_radius'])
+                if self.parset['download_initial_skymodel_server'].lower() == 'lotss':
+                    self.plot_field(self.parset['download_initial_skymodel_radius'],
+                                    moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+                else:
+                    self.plot_field(self.parset['download_initial_skymodel_radius'])
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
