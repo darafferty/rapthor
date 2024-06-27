@@ -7,7 +7,7 @@ from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
-from rapthor.operations.image import Image
+from rapthor.operations.image import Image, ImageInitial
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
 from rapthor.lib.field import Field
@@ -43,6 +43,7 @@ def run(parset_file, logging_level='info'):
         op = Concatenate(field, 1)
         op.run()
     if parset['generate_initial_skymodel']:
+        field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
         log.info("Imaging field to generate an initial sky model...")
         op = ImageInitial(field)
         op.run()

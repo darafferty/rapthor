@@ -127,7 +127,6 @@ class Field(object):
             # Set up imaging sectors
             self.makeWCS()
             self.define_imaging_sectors()
-            self.define_full_field_sector(radius=self.parset['generate_initial_skymodel_radius'])
 
     def scan_observations(self):
         """
@@ -1231,6 +1230,11 @@ class Field(object):
             width_dec = radius * 2
         self.full_field_sector = Sector('full_field', self.ra, self.dec,
                                         width_ra, width_dec, self)
+
+        # Make sector region and vertices files
+        self.full_field_sector.make_vertices_file()
+        self.full_field_sector.make_region_file(os.path.join(self.working_dir, 'regions',
+                                                f'{self.full_field_sector.name}_region_ds9.reg'))
 
     def find_intersecting_sources(self):
         """

@@ -506,28 +506,28 @@ class ImageInitial(Operation):
                             'link_polarizations': False,
                             'join_polarizations': False,
                             'apply_amplitudes': [False],
-                            'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
-                            'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
-                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.field.imaging_sectors],
-                            'ra': [sector.ra for sector in self.field.imaging_sectors],
-                            'dec': [sector.dec for sector in self.field.imaging_sectors],
-                            'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
-                            'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.field.imaging_sectors],
+                            'channels_out': [sector.wsclean_nchannels],
+                            'deconvolution_channels': [sector.wsclean_deconvolution_channels],
+                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order],
+                            'ra': [sector.ra],
+                            'dec': [sector.dec],
+                            'wsclean_imsize': [sector.imsize],
+                            'vertices_file': [CWLFile(sector.vertices_file).to_json()],
                             'region_file': [None],
-                            'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
-                            'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
-                            'robust': [sector.robust for sector in self.field.imaging_sectors],
-                            'cellsize_deg': [sector.cellsize_deg for sector in self.field.imaging_sectors],
-                            'min_uv_lambda': [sector.min_uv_lambda for sector in self.field.imaging_sectors],
-                            'max_uv_lambda': [sector.max_uv_lambda for sector in self.field.imaging_sectors],
-                            'taper_arcsec': [sector.taper_arcsec for sector in self.field.imaging_sectors],
-                            'auto_mask': [sector.auto_mask for sector in self.field.imaging_sectors],
-                            'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
-                            'wsclean_mem': [sector.mem_limit_gb for sector in self.field.imaging_sectors],
-                            'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
+                            'wsclean_niter': [sector.wsclean_niter],
+                            'wsclean_nmiter': [sector.wsclean_nmiter],
+                            'robust': [sector.robust],
+                            'cellsize_deg': [sector.cellsize_deg],
+                            'min_uv_lambda': [sector.min_uv_lambda],
+                            'max_uv_lambda': [sector.max_uv_lambda],
+                            'taper_arcsec': [sector.taper_arcsec],
+                            'auto_mask': [5.0],
+                            'idg_mode': [sector.idg_mode],
+                            'wsclean_mem': [sector.mem_limit_gb],
+                            'threshisl': [4.0],
+                            'threshpix': [5.0],
                             'do_multiscale': [True],
-                            'dd_psf_grid': [sector.dd_psf_grid for sector in self.field.imaging_sectors],
+                            'dd_psf_grid': [sector.dd_psf_grid],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
@@ -548,17 +548,17 @@ class ImageInitial(Operation):
         """
         # Save the output FITS images and sky models. Also read the image diagnostics (rms
         # noise, etc.) derived by PyBDSF and print them to the log
-        sector = self.field.initial_imaging_sector
+        sector = self.field.full_field_sector
 
         # The output image filenames
         image_root = os.path.join(self.pipeline_working_dir, sector.name)
-        setattr(sector, "I_image_file_true_sky", f'{image_root}-MFS-image-pb.fits')
-        setattr(sector, "I_image_file_apparent_sky", f'{image_root}-MFS-image.fits')
-        setattr(sector, "I_model_file_true_sky", f'{image_root}-MFS-model-pb.fits')
-        setattr(sector, "I_residual_file_apparent_sky", f'{image_root}-MFS-residual.fits')
+        image_names = [f'{image_root}-MFS-image-pb.fits',
+                       f'{image_root}-MFS-image.fits',
+                       f'{image_root}-MFS-model-pb.fits',
+                       f'{image_root}-MFS-residual.fits']
         dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
         misc.create_directory(dst_dir)
-        for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
+        for src_filename in image_names:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             if os.path.exists(dst_filename):
                 os.remove(dst_filename)
