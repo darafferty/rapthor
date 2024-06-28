@@ -465,6 +465,8 @@ class Field(object):
         else:
             source_skymodel = skymodel_true_sky.copy()
             applyBeam_group = True
+        source_skymodel._updateGroups()  # ensure group patches are up-to-date
+        source_skymodel.setPatchPositions(method='wmean')
 
         # Make a source sky model, used for source avoidance
         if find_sources:
