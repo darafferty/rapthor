@@ -40,13 +40,16 @@ def run(parset_file):
 
     # Check each operation for started pipelines (workflows)
     # Note: the order here should match the order in which the operations were run
-    operation_list = ['concatenate', 'predict_nc', 'calibrate', 'predict_di', 'calibrate_di',
-                      'predict', 'image', 'mosaic']  # in order of execution
+    operation_list = ['initial_image', 'concatenate', 'predict_nc', 'calibrate',
+                      'predict_di', 'calibrate_di', 'predict', 'image', 'mosaic']
     while True:
         pipelines = []
         for index, step in enumerate(strategy_steps):
             for opname in operation_list:
-                operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, index+1))
+                if opname == 'initial_image':
+                    operation = os.path.join(parset['dir_working'], 'pipelines', '{0}'.format(opname))
+                else:
+                    operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, index+1))
                 if os.path.exists(operation):
                     pipelines.append(os.path.basename(operation))
 
