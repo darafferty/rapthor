@@ -46,7 +46,9 @@ def run(parset_file):
         pipelines = []
         for index, step in enumerate(strategy_steps):
             for opname in operation_list:
-                if opname == 'initial_image':
+                if index == 0 and opname == 'initial_image':
+                    # Handle the initial sky model image operation separately, as it only
+                    # occurs in the first cycle and does not include an index in its paths
                     operation = os.path.join(parset['dir_working'], 'pipelines', '{0}'.format(opname))
                 else:
                     operation = os.path.join(parset['dir_working'], 'pipelines', '{0}_{1}'.format(opname, index+1))
