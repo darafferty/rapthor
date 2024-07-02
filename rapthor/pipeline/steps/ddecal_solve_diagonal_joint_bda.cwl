@@ -5,9 +5,9 @@ label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for diagonal gains in multiple directions simultaneously for
   the given MS file with fast-phase corrections preapplied, using the input
-  sourcedb and h5parm. Output is the solution table in h5parm format. See
-  ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
-  outputs not documented below.
+  sourcedb and h5parm and baseline-dependent averaging. Output is the solution
+  table in h5parm format. See ddecal_solve_scalarphase.cwl for a detailed
+  description of any inputs and outputs not documented below.
 
 requirements:
   InlineJavascriptRequirement: {}

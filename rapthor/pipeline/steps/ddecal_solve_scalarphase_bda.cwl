@@ -5,8 +5,8 @@ id: ddecal_solve_scalarphase
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for scalar phases in multiple directions simultaneously
-  for the given MS file, using the input sourcedb. Output is the solution
-  table in h5parm format.
+  for the given MS file, using the input sourcedb and baseline-dependent
+  averaging. Output is the solution table in h5parm format.
 
 requirements:
   - class: InlineJavascriptRequirement
