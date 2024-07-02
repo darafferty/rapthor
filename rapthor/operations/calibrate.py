@@ -37,19 +37,6 @@ class CalibrateDD(Operation):
             use_facets = True
         else:
             use_facets = False
-        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
-        if self.field.bda_timebase_fast > 0 and all_regular:
-            use_bda_fast_solve = True
-        else:
-            use_bda_fast_solve = False
-        if self.field.bda_timebase_slow_joint > 0 and all_regular:
-            use_bda_slow_joint_solve = True
-        else:
-            use_bda_slow_joint_solve = False
-        if self.field.bda_timebase_slow_separate > 0 and all_regular:
-            use_bda_slow_separate_solve = True
-        else:
-            use_bda_slow_separate_solve = False
 
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'use_screens': self.field.use_screens,
@@ -57,9 +44,6 @@ class CalibrateDD(Operation):
                              'do_slowgain_solve': self.field.do_slowgain_solve,
                              'do_joint_solve': do_joint_solve,
                              'use_scalarphase': self.field.use_scalarphase,
-                             'use_bda_fast_solve': use_bda_fast_solve,
-                             'use_bda_slow_joint_solve': use_bda_slow_joint_solve,
-                             'use_bda_slow_separate_solve': use_bda_slow_separate_solve,
                              'apply_diagonal_solutions': self.field.apply_diagonal_solutions,
                              'max_cores': max_cores}
 
@@ -196,6 +180,23 @@ class CalibrateDD(Operation):
         # Set the type of screen to make
         screen_type = self.field.screen_type
 
+        # Set the DDECal steps depending on whether baseline-dependent averaging is
+        # activated (and supported) or not. If BDA is used, an "null" step is also
+        # added to prevent the writing of the BDA data
+        all_regular = all([obs.channels_are_regular for obs in self.field.observations])
+        if self.field.bda_timebase_fast > 0 and all_regular:
+            dp3_steps_fast = '[avg,solve,null]'
+        else:
+            dp3_steps_fast = '[solve]'
+        if self.field.bda_timebase_slow_joint > 0 and all_regular:
+            dp3_steps_slow_joint = '[avg,solve,null]'
+        else:
+            dp3_steps_slow_joint = '[solve]'
+        if self.field.bda_timebase_slow_separate > 0 and all_regular:
+            dp3_steps_slow_separate = '[avg,solve,null]'
+        else:
+            dp3_steps_slow_separate = '[solve]'
+
         self.input_parms = {'timechunk_filename': CWLDir(timechunk_filename).to_json(),
                             'freqchunk_filename_joint': CWLDir(freqchunk_filename_joint).to_json(),
                             'freqchunk_filename_separate': CWLDir(freqchunk_filename_separate).to_json(),
@@ -230,6 +231,9 @@ class CalibrateDD(Operation):
                             'fast_smoothnessrefdistance': fast_smoothnessrefdistance,
                             'slow_smoothnessconstraint_joint': slow_smoothnessconstraint_joint,
                             'slow_smoothnessconstraint_separate': slow_smoothnessconstraint_separate,
+                            'dp3_steps_fast': dp3_steps_fast,
+                            'dp3_steps_slow_joint': dp3_steps_slow_joint,
+                            'dp3_steps_slow_separate': dp3_steps_slow_separate,
                             'bda_maxinterval_fast': bda_maxinterval_fast,
                             'bda_timebase_fast': bda_timebase_fast,
                             'bda_maxinterval_slow_joint': bda_maxinterval_slow_joint,

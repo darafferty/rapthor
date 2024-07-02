@@ -129,7 +129,12 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
-{% if use_bda_fast_solve %}
+  - id: dp3_steps_fast
+    label: Steps for fast solve
+    doc: |
+      The list of DP3 steps to use in the fast-phase calibration (length = 1).
+    type: string
+
   - id: bda_timebase_fast
     label: BDA timebase for fast solve
     doc: |
@@ -143,7 +148,6 @@ inputs:
       The maximum interval duration (in time slots) over which BDA time averaging is
       done in the fast-phase calibration (length = n_obs * n_time_chunks).
     type: int[]
-{% endif %}
 
   - id: maxiter
     label: Maximum iterations
@@ -267,7 +271,13 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
-{% if use_bda_slow_joint_solve %}
+  - id: dp3_steps_slow_joint
+    label: Steps for joint solve
+    doc: |
+      The list of DP3 steps to use in the first (joint) slow-gain calibration
+      (length = 1).
+    type: string
+
   - id: bda_timebase_slow_joint
     label: BDA timebase for joint solve
     doc: |
@@ -281,9 +291,14 @@ inputs:
       The maximum interval duration (in time slots) over which BDA time averaging is
       done in the first (joint) slow-gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
-{% endif %}
 
-{% if use_bda_slow_separate_solve %}
+  - id: dp3_steps_slow_separate
+    label: Steps for separate solve
+    doc: |
+      The list of DP3 steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
+
   - id: bda_timebase_slow_separate
     label: BDA timebase for separate solve
     doc: |
@@ -298,7 +313,6 @@ inputs:
       done in the second (separate) slow-gain calibration (length = n_obs *
       n_freq_chunks).
     type: int[]
-{% endif %}
 
   - id: freqchunk_filename_joint
     label: Filename of input MS for joint solve (frequency)
@@ -555,17 +569,9 @@ steps:
       timescales (< 1 minute), using the input MS files and sourcedb. These
       corrections are used to correct primarily for ionospheric effects.
 {% if use_scalarphase %}
-{% if use_bda_fast_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase_bda.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalarphase.cwl
-{% endif %}
-{% else %}
-{% if use_bda_fast_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar_bda.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_scalar.cwl
-{% endif %}
 {% endif %}
 {% if max_cores is not none %}
     hints:
@@ -584,12 +590,12 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
-{% if use_bda_fast_solve %}
+      - id: steps
+        source: dp3_steps_fast
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
         source: bda_maxinterval_fast
-{% endif %}
       - id: nchan
         source: solint_fast_freqstep
       - id: directions
@@ -636,11 +642,7 @@ steps:
         source: fast_antennaconstraint
       - id: numthreads
         source: max_threads
-{% if use_bda_fast_solve %}
     scatter: [msin, starttime, ntimes, h5parm, solint, nchan, maxinterval, smoothnessreffrequency, solutions_per_direction]
-{% else %}
-    scatter: [msin, starttime, ntimes, h5parm, solint, nchan, smoothnessreffrequency, solutions_per_direction]
-{% endif %}
     scatterMethod: dotproduct
     out:
       - id: fast_phases_h5parm
@@ -688,11 +690,7 @@ steps:
       corrections are used to correct primarily for beam errors. The fast-
       phase solutions are preapplied and all stations are constrained to
       have the same (joint) solutions.
-{% if use_bda_slow_joint_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_joint_bda.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_joint.cwl
-{% endif %}
 {% if max_cores is not none %}
     hints:
       ResourceRequirement:
@@ -710,12 +708,12 @@ steps:
         source: startchan_joint
       - id: nchan
         source: nchan_joint
-{% if use_bda_slow_joint_solve %}
+      - id: steps
+        source: dp3_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
         source: bda_maxinterval_slow_joint
-{% endif %}
       - id: fast_h5parm
         source: combine_fast_phases/outh5parm
       - id: h5parm
@@ -764,11 +762,7 @@ steps:
         source: slow_antennaconstraint
       - id: numthreads
         source: max_threads
-{% if use_bda_slow_joint_solve %}
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
-{% else %}
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan, solutions_per_direction]
-{% endif %}
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm
@@ -848,17 +842,9 @@ steps:
       and stations are solve for separately (so different stations are free
       to have different solutions).
 {% if do_joint_solve %}
-{% if use_bda_slow_separate_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_bda.cwl
-{% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate.cwl
-{% endif %}
-{% else %}
-{% if use_bda_slow_separate_solve %}
-    run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_no_joint_bda.cwl
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/ddecal_solve_diagonal_separate_no_joint.cwl
-{% endif %}
 {% endif %}
 {% if max_cores is not none %}
     hints:
@@ -875,12 +861,12 @@ steps:
         source: slow_ntimes_separate
       - id: startchan
         source: startchan_separate
-{% if use_bda_slow_separate_solve %}
+      - id: steps
+        source: dp3_steps_slow_separate
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval
         source: bda_maxinterval_slow_separate
-{% endif %}
       - id: nchan
         source: nchan_separate
       - id: combined_h5parm
@@ -933,11 +919,7 @@ steps:
         source: slow_smoothnessconstraint_separate
       - id: numthreads
         source: max_threads
-{% if use_bda_slow_separate_solve %}
     scatter: [msin, starttime, ntimes, startchan, nchan, maxinterval, h5parm, solint, solve_nchan, solutions_per_direction]
-{% else %}
-    scatter: [msin, starttime, ntimes, startchan, nchan, h5parm, solint, solve_nchan, solutions_per_direction]
-{% endif %}
     scatterMethod: dotproduct
     out:
       - id: slow_gains_h5parm

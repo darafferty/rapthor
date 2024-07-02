@@ -4,9 +4,10 @@ baseCommand: [DP3]
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for scalar complex gains in multiple directions
-  simultaneously for the given MS file, using the input sourcedb. Output is the
-  solution table in h5parm format. See ddecal_solve_scalarphase.cwl for a
-  detailed description of the inputs and outputs.
+  simultaneously for the given MS file, using the input sourcedb and
+  (optionally) baseline-dependent averaging. Output is the solution table in
+  h5parm format. See ddecal_solve_scalarphase.cwl for a detailed description of
+  the inputs and outputs.
 
 requirements:
   InlineJavascriptRequirement: {}
@@ -14,7 +15,6 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout=
-  - steps=[solve]
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
@@ -53,6 +53,21 @@ inputs:
     type: int
     inputBinding:
       prefix: solve.nchan=
+      separate: False
+  - id: steps
+    type: string
+    inputBinding:
+      prefix: steps=
+      separate: False
+  - id: timebase
+    type: float
+    inputBinding:
+      prefix: avg.timebase=
+      separate: False
+  - id: maxinterval
+    type: int
+    inputBinding:
+      prefix: avg.maxinterval=
       separate: False
   - id: directions
     type: string[]
