@@ -109,7 +109,10 @@ class Observation(object):
         self.channelwidth = sw.col('CHAN_WIDTH')[0][0]
         sw.close()
 
-        # Check that channels are evenly spaced
+        # Check that the channels are evenly spaced, as the use of baseline-dependent
+        # averaging (BDA) during calibration requires it. If the channels are not evenly
+        # spaced, BDA will not be used in DDECal steps even if activated in the parset
+        #
         # Note: the code is based on that used in DP3
         # (see https://git.astron.nl/RD/DP3/-/blob/master/base/DPInfo.cc)
         self.channels_are_regular = True
