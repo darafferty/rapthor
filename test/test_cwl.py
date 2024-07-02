@@ -71,6 +71,9 @@ def test_concatenate_workflow(
 @pytest.mark.parametrize("do_joint_solve", (False, True))
 @pytest.mark.parametrize("use_scalarphase", (False, True))
 @pytest.mark.parametrize("apply_diagonal_solutions", (False, True))
+@pytest.mark.parametrize("use_bda_fast_solve", (False, True))
+@pytest.mark.parametrize("use_bda_slow_joint_solve", (False, True))
+@pytest.mark.parametrize("use_bda_slow_separate_solve", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 def test_calibrate_workflow(
     tmp_path,
@@ -80,6 +83,9 @@ def test_calibrate_workflow(
     do_joint_solve,
     use_scalarphase,
     apply_diagonal_solutions,
+    use_bda_fast_solve,
+    use_bda_slow_joint_solve,
+    use_bda_slow_separate_solve,
     max_cores,
 ):
     """
@@ -96,6 +102,9 @@ def test_calibrate_workflow(
         "do_joint_solve": do_joint_solve,
         "use_scalarphase": use_scalarphase,
         "apply_diagonal_solutions": apply_diagonal_solutions,
+        "use_bda_fast_solve": use_bda_fast_solve,
+        "use_bda_slow_joint_solve": use_bda_slow_joint_solve,
+        "use_bda_slow_separate_solve": use_bda_slow_separate_solve,
         "max_cores": max_cores,
     }
     generate_and_validate(tmp_path, operation, parms, templ)
