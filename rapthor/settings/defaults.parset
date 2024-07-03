@@ -11,10 +11,11 @@ input_ms = None
 
 # Generate an initial target sky model (default = True). This option is ignored
 # if input_skymodel is specified. The radius out to which the sky model will be
-# generated (default results in coverage of 2 * FWHM of the primary beam) can
-# also be specified
+# generated (default results in coverage of 2 * FWHM of the primary beam) and the
+# fraction of data to use for this step can also be specified
 generate_initial_skymodel = True
 generate_initial_skymodel_radius = None
+generate_initial_skymodel_data_fraction = 0.2
 
 # Automatically download a target sky model (default = True). This option will
 # have no effect if input_skymodel is specified or if generate_initial_skymodel

@@ -57,6 +57,11 @@ The available options are described below under their respective sections.
         The radius out to which the sky model will be generated (default = None, which
         results in coverage out to a width of 2 * FWHM of the primary beam).
 
+    generate_initial_skymodel_data_fraction
+        Fraction of data to use during the generation of the initial sky model (default =
+        0.2). If less than one, the input data are divided by time into chunks that sum to
+        the requested fraction, spaced out evenly over the full time range.
+
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
         (default = ``True``). This option is ignored if a file is specified with the

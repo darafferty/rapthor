@@ -45,6 +45,7 @@ def run(parset_file, logging_level='info'):
     if parset['generate_initial_skymodel']:
         field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
         log.info("Imaging full field to generate an initial sky model...")
+        chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
         op = ImageInitial(field)
         op.run()
 
@@ -279,22 +280,33 @@ def chunk_observations(field, steps, data_fraction):
     """
     # Find the overall minimum duration that can be used and still satisfy the
     # specified solution intervals
-    fast_solint = max([step['fast_timestep_sec'] for step in steps])
-    joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
-    separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
-    max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
-    max_di_timestep = field.fulljones_timestep_sec
-    min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
+    if steps:
+        fast_solint = max([step['fast_timestep_sec'] for step in steps])
+        joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
+        separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
+        max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
+        max_di_timestep = field.fulljones_timestep_sec
+        min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
+    else:
+        # If no strategy steps are given, use a standard minimum time
+        min_time = 600
 
     for obs in field.full_observations:
         tot_time = obs.endtime - obs.starttime
         min_fraction = min(1.0, min_time/tot_time)
         if data_fraction < min_fraction:
-            obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                            'total time for this observation that is less than the largest '
-                            'potential calibration timestep ({1} s). The data fraction will be '
-                            'increased to {2:0.3f} to ensure the timestep requirement is '
-                            'met.'.format(data_fraction, min_time, min_fraction))
+            if steps:
+                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                'total time for this observation that is less than the largest '
+                                'potential calibration timestep ({1} s). The data fraction will be '
+                                'increased to {2:0.3f} to ensure the timestep requirement is '
+                                'met.'.format(data_fraction, min_time, min_fraction))
+            else:
+                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                'total time for this observation that is less than {1} s. '
+                                'The data fraction will be increased to {2:0.3f} to ensure this '
+                                'time requirement is met.'.format(data_fraction, min_time,
+                                                                  min_fraction))
             obs.data_fraction = min_fraction
         else:
             obs.data_fraction = data_fraction
