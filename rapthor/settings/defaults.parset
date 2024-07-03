@@ -101,6 +101,7 @@ stepsigma = 2.0
 tolerance = 5e-3
 parallelbaselines = False
 sagecalpredict = False
+usedualvisibilities = True
 
 # Fast solve parameters. Note that the solution intervals are set in the strategy
 fast_freqstep_hz = 1e6

@@ -13,6 +13,7 @@
                           'parallelbaselines': True,
                           'propagatesolutions': False,
                           'sagecalpredict': True,
+                          'usedualvisibilities': False,
                           'dd_interval_factor': 1,
                           'slow_freqstep_hz': 2000000.0,
                           'slow_smoothnessconstraint_joint': 4000000.0,

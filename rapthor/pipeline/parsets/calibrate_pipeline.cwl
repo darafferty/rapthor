@@ -202,6 +202,11 @@ inputs:
       Flag that enables model computation using SAGECal.
     type: boolean
 
+  - id: usedualvisibilities
+    doc: |
+      Flag that enables the dual visibilites option in the solves.
+    type: boolean
+
   - id: stepsize
     label: Solver step size
     doc: |
@@ -602,6 +607,8 @@ steps:
         source: parallelbaselines
       - id: sagecalpredict
         source: sagecalpredict
+      - id: usedualvisibilities
+        source: usedualvisibilities
       - id: stepsize
         source: stepsize
       - id: stepsigma
@@ -724,6 +731,8 @@ steps:
         source: parallelbaselines
       - id: sagecalpredict
         source: sagecalpredict
+      - id: usedualvisibilities
+        source: usedualvisibilities
       - id: stepsize
         source: stepsize
       - id: stepsigma
@@ -881,6 +890,8 @@ steps:
         source: parallelbaselines
       - id: sagecalpredict
         source: sagecalpredict
+      - id: usedualvisibilities
+        source: usedualvisibilities
       - id: stepsize
         source: stepsize
       - id: stepsigma

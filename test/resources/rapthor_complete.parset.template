@@ -31,6 +31,7 @@ stepsize = 0.2
 tolerance = 1e-2
 parallelbaselines = True
 sagecalpredict = True
+usedualvisibilities = False
 fast_freqstep_hz = 1e5
 fast_smoothnessconstraint = 3e5
 fast_smoothnessreffrequency = 1e5

@@ -157,6 +157,7 @@ class CalibrateDD(Operation):
         solverlbfgs_dof = self.field.solverlbfgs_dof
         solverlbfgs_iter = self.field.solverlbfgs_iter
         solverlbfgs_minibatches = self.field.solverlbfgs_minibatches
+        usedualvisibilities = self.field.usedualvisibilities
 
         # Get the size of the imaging area (for use in making the a-term images)
         sector_bounds_deg = '{}'.format(self.field.sector_bounds_deg)
@@ -234,6 +235,7 @@ class CalibrateDD(Operation):
                             'uvlambdamin': uvlambdamin,
                             'parallelbaselines': parallelbaselines,
                             'sagecalpredict': sagecalpredict,
+                            'usedualvisibilities': usedualvisibilities,
                             'sector_bounds_deg': sector_bounds_deg,
                             'sector_bounds_mid_deg': sector_bounds_mid_deg,
                             'split_outh5parm': split_outh5parm,

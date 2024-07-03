@@ -276,6 +276,12 @@ class Parset:
             options["fast_bda_timebase"] = 0.0
             options["slow_bda_timebase_joint"] = 0.0
             options["slow_bda_timebase_separate"] = 0.0
+        if options["usedualvisibilities"] and options["solveralgorithm"] != 'directioniterative':
+            log.warning(
+                f"Switching from the '{solveralgorithm}' solver to the "
+                "'directioniterative' solver, since usedualvisibilities is activated."
+            )
+            options["solveralgorithm"] = 'directioniterative'
 
         # Imaging options
         options = settings["imaging"]

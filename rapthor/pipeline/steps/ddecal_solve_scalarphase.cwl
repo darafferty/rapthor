@@ -211,6 +211,16 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
+  - id: usedualvisibilities
+    label: Use dual visibilities
+    doc: |
+      Flag that enables the dual visibilities option.
+    type: boolean
+    inputBinding:
+      prefix: solve.usedualvisibilities=
+      valueFrom: "$(self ? 'True': 'False')"
+      separate: False
+
   - id: stepsize
     label: Solver step size
     doc: |
