@@ -58,7 +58,6 @@ class Concatenate(Operation):
         # Update the field object to use the new, concatenated MS file(s)
         self.field.ms_filenames = self.final_filenames
         self.field.scan_observations()
-        self.field.chunk_observations(self.field.parset['selfcal_data_fraction'])
 
         # Finally call finalize() in the parent class
         super().finalize()

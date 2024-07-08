@@ -5,8 +5,8 @@ id: ddecal_solve_scalarphase
 label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for scalar phases in multiple directions simultaneously
-  for the given MS file, using the input sourcedb. Output is the solution
-  table in h5parm format.
+  for the given MS file, using the input sourcedb and (optionally)
+  baseline-dependent averaging. Output is the solution table in h5parm format.
 
 requirements:
   - class: InlineJavascriptRequirement
@@ -14,7 +14,6 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout=
-  - steps=[avg,solve,null]
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
@@ -76,6 +75,15 @@ inputs:
     type: int
     inputBinding:
       prefix: solve.nchan=
+      separate: False
+
+  - id: steps
+    label: Processing steps
+    doc: |
+      The list of processing steps to preform
+    type: string
+    inputBinding:
+      prefix: steps=
       separate: False
 
   - id: timebase

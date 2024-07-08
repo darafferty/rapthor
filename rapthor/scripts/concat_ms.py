@@ -16,7 +16,7 @@ import numpy as np
 def delete_directory(directory):
     """
     Delete a directory.
-    
+
     Parameters
     ----------
     directory : str
@@ -32,7 +32,7 @@ def delete_directory(directory):
     except OSError as e:
         if not e.errno == errno.ENOENT:
             raise e
-        
+
 
 def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False):
     """
@@ -137,7 +137,7 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     for ms in msfiles:
         # Get the frequency info
         with pt.table(ms + "::SPECTRAL_WINDOW", ack=False) as sw:
-            freq = sw.col("REF_FREQUENCY")[0]
+            freq = sw.col("CHAN_FREQ")[0][0]
             chfreqs = sw.col("CHAN_FREQ")[0]
             if first:
                 file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
@@ -176,17 +176,18 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
         # We only need dummies where the difference is non-zero.
         # This will yield as many entries as in dummy_idx
         dummy_multiplier = dummy_multiplier[dummy_multiplier > 0]
-        # Select entries corresponding to the gaps
-        dummy_multiplier = dummy_multiplier[idx_idx_u]
-        # dummy_multiplier now contains the number of dummies that need to be inserted.
-        # This list needs to be flat for NumPy's insert later on.
-        dummies = [['dummy.ms'] * x for x in dummy_multiplier]
-        dummies_flat = [i for l in dummies for i in l]
-        # Generate the indices at which each dummy needs to be inserted.
-        final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
-        final_idx_flat = [i for l in final_idx for i in l]
-        # Finally insert them all at once.
-        mslist = np.insert(mslist, final_idx_flat, dummies_flat)
+        if dummy_multiplier.size != 0:
+            # Select entries corresponding to the gaps
+            dummy_multiplier = dummy_multiplier[idx_idx_u]
+            # dummy_multiplier now contains the number of dummies that need to be inserted.
+            # This list needs to be flat for NumPy's insert later on.
+            dummies = [['dummy.ms'] * x for x in dummy_multiplier]
+            dummies_flat = [i for l in dummies for i in l]
+            # Generate the indices at which each dummy needs to be inserted.
+            final_idx = [[dummy_idx_u[i]] * len(dummies[i]) for i in range(len(dummies))]
+            final_idx_flat = [i for l in final_idx for i in l]
+            # Finally insert them all at once.
+            mslist = np.insert(mslist, final_idx_flat, dummies_flat)
 
 
     # Construct DP3 command

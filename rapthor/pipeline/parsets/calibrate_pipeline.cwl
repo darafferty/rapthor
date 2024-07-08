@@ -129,6 +129,12 @@ inputs:
       The antenna constraint for the fast phase solve (length = 1).
     type: string
 
+  - id: dp3_steps_fast
+    label: Steps for fast solve
+    doc: |
+      The list of DP3 steps to use in the fast-phase calibration (length = 1).
+    type: string
+
   - id: bda_timebase_fast
     label: BDA timebase for fast solve
     doc: |
@@ -270,6 +276,13 @@ inputs:
 
 {% if do_slowgain_solve %}
 # start do_slowgain_solve
+  - id: dp3_steps_slow_joint
+    label: Steps for joint solve
+    doc: |
+      The list of DP3 steps to use in the first (joint) slow-gain calibration
+      (length = 1).
+    type: string
+
   - id: bda_timebase_slow_joint
     label: BDA timebase for joint solve
     doc: |
@@ -283,6 +296,13 @@ inputs:
       The maximum interval duration (in time slots) over which BDA time averaging is
       done in the first (joint) slow-gain calibration (length = n_obs * n_freq_chunks).
     type: int[]
+
+  - id: dp3_steps_slow_separate
+    label: Steps for separate solve
+    doc: |
+      The list of DP3 steps to use in the second (separate) slow-gain calibration
+      (length = 1).
+    type: string
 
   - id: bda_timebase_slow_separate
     label: BDA timebase for separate solve
@@ -575,6 +595,8 @@ steps:
         source: output_fast_h5parm
       - id: solint
         source: solint_fast_timestep
+      - id: steps
+        source: dp3_steps_fast
       - id: timebase
         source: bda_timebase_fast
       - id: maxinterval
@@ -693,6 +715,8 @@ steps:
         source: startchan_joint
       - id: nchan
         source: nchan_joint
+      - id: steps
+        source: dp3_steps_slow_joint
       - id: timebase
         source: bda_timebase_slow_joint
       - id: maxinterval
@@ -846,6 +870,8 @@ steps:
         source: slow_ntimes_separate
       - id: startchan
         source: startchan_separate
+      - id: steps
+        source: dp3_steps_slow_separate
       - id: timebase
         source: bda_timebase_slow_separate
       - id: maxinterval
