@@ -5,8 +5,9 @@ label: Calibrates a dataset using DDECal
 doc: |
   This tool solves for diagonal gains in multiple directions simultaneously for
   the given MS file with fast-phase and slow-gain corrections preapplied, using
-  the input sourcedb and h5parm. Output is the solution table in h5parm format.
-  See ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
+  the input sourcedb and h5parm and (optionally) baseline-dependent averaging.
+  Output is the solution table in h5parm format. See
+  ddecal_solve_scalarphase.cwl for a detailed description of any inputs and
   outputs not documented below.
 
 requirements:
@@ -15,7 +16,6 @@ requirements:
 arguments:
   - msin.datacolumn=DATA
   - msout=
-  - steps=[avg,solve,null]
   - avg.type=bdaaverager
   - avg.minchannels=1
   - avg.frequencybase=0.0
@@ -53,18 +53,17 @@ inputs:
     inputBinding:
       prefix: msin.nchan=
       separate: False
+  - id: steps
+    type: string
+    inputBinding:
+      prefix: steps=
+      separate: False
   - id: timebase
-    label: BDA timebase
-    doc: |
-      The baseline length (in meters) below which BDA time averaging is done.
     type: float
     inputBinding:
       prefix: avg.timebase=
       separate: False
   - id: maxinterval
-    label: BDA maxinterval
-    doc: |
-      The maximum interval duration (in time slots) over which BDA time averaging is done.
     type: int
     inputBinding:
       prefix: avg.maxinterval=
