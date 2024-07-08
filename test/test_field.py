@@ -47,6 +47,9 @@ class TestField(unittest.TestCase):
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
 
+    def test_regular_frequency_spacing(self):
+        self.assertTrue(all([obs.channels_are_regular for obs in self.field.observations]))
+
     def test_imaging_sectors(self):
         self.assertEqual(self.field.sector_bounds_deg, '[258.558431;57.961675;259.103519;56.885818]')
 
@@ -97,6 +100,7 @@ class TestField(unittest.TestCase):
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestField('test_scan_observations'))
+    suite.addTest(TestField('test_regular_frequency_spacing'))
     suite.addTest(TestField('test_imaging_sectors'))
     suite.addTest(TestField('test_outlier_sectors'))
     suite.addTest(TestField('test_radec2xy'))
