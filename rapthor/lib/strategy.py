@@ -107,6 +107,13 @@ def set_selfcal_strategy(field):
         List of strategy parameter dicts, with selfcal cycles first and the final cycle as
         the last entry
     """
+    # Set flag that determines if the phase-only solve cycles will be done
+    # Note: currently, this flag depends only on whether an initial sky model was
+    # generated from the input data or not, as other starting models (such as those from
+    # the TGSS or LoTSS) have been found to be too poor to start amplitude calibration
+    # immediately. Other criteria can be added in future if deemed useful
+    do_phase_only_solves = not field.parset['generate_initial_skymodel']
+
     strategy_steps = []
 
     min_selfcal_loops = 4
@@ -116,15 +123,15 @@ def set_selfcal_strategy(field):
 
         strategy_steps[i]['do_calibrate'] = True
         if i == 0:
-            strategy_steps[i]['do_slowgain_solve'] = False
+            strategy_steps[i]['do_slowgain_solve'] = not do_phase_only_solves
             strategy_steps[i]['peel_outliers'] = True
         elif i == 1:
-            strategy_steps[i]['do_slowgain_solve'] = False
+            strategy_steps[i]['do_slowgain_solve'] = not do_phase_only_solves
             strategy_steps[i]['peel_outliers'] = False
         else:
             strategy_steps[i]['do_slowgain_solve'] = True
             strategy_steps[i]['peel_outliers'] = False
-        if i == 2 and field.antenna == 'HBA':
+        if i == 2 and field.antenna == 'HBA' and do_phase_only_solves:
             strategy_steps[i]['solve_min_uv_lambda'] = 2000
         else:
             strategy_steps[i]['solve_min_uv_lambda'] = 150
@@ -159,12 +166,12 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['slow_timestep_separate_sec'] = 600.0
 
         strategy_steps[i]['do_image'] = True
-        if i < 2:
+        if i < 2 and do_phase_only_solves:
             strategy_steps[i]['auto_mask'] = 5.0
             strategy_steps[i]['threshisl'] = 4.0
             strategy_steps[i]['threshpix'] = 5.0
             strategy_steps[i]['max_nmiter'] = 8
-        elif i == 2:
+        elif (i == 2 and do_phase_only_solves) or (i == 0 and not do_phase_only_solves):
             strategy_steps[i]['auto_mask'] = 4.0
             strategy_steps[i]['threshisl'] = 3.0
             strategy_steps[i]['threshpix'] = 5.0
@@ -175,15 +182,15 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['threshpix'] = 5.0
             strategy_steps[i]['max_nmiter'] = 12
 
-        if i == 0:
+        if i == 0 and do_phase_only_solves:
             strategy_steps[i]['target_flux'] = 0.6
             strategy_steps[i]['max_directions'] = 20
             strategy_steps[i]['max_distance'] = 3.0
-        elif i == 1:
+        elif i == 1 and do_phase_only_solves:
             strategy_steps[i]['target_flux'] = 0.4
             strategy_steps[i]['max_directions'] = 30
             strategy_steps[i]['max_distance'] = 3.0
-        elif i == 2:
+        elif (i == 2 and do_phase_only_solves) or (i == 0 and not do_phase_only_solves):
             strategy_steps[i]['target_flux'] = 0.3
             strategy_steps[i]['max_directions'] = 40
             strategy_steps[i]['max_distance'] = 3.5

@@ -1,8 +1,10 @@
 """
-Script that defines the default user processing strategy for HBA data.
-Specifying this file as the calibration strategy in the Rapthor parset causes
-default Rapthor to use the default calibration behaviour, which is equal to
-specifying no specific calibration strategy.
+Script that defines the default user processing strategy for HBA data when the
+initial sky model is assumed to be of insufficient quality to begin amplitude
+calibration directly (e.g., it is downloaded from a catalog). Specifying this
+file as the calibration strategy in the Rapthor parset causes default Rapthor to
+use the default calibration behaviour, which is equal to specifying no specific
+calibration strategy.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.

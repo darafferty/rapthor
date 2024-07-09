@@ -34,19 +34,12 @@ def run(parset_file, logging_level='info'):
     parset['logging_level'] = logging_level
     _logging.set_level(logging_level)
 
-    # Initialize field object and do concatenation and generate initial sky
-    # model if needed
+    # Initialize field object and do concatenation if needed
     field = Field(parset)
     if any([len(obs) > 1 for obs in field.epoch_observations]):
         log.info("MS files with different frequencies found for one "
                  "or more epochs. Concatenation over frequency will be done.")
         op = Concatenate(field, 1)
-        op.run()
-    if parset['generate_initial_skymodel']:
-        field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
-        log.info("Imaging full field to generate an initial sky model...")
-        chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
-        op = ImageInitial(field)
         op.run()
 
     # Set the processing strategy
@@ -58,6 +51,18 @@ def run(parset_file, logging_level='info'):
         log.warning("The strategy '{}' does not define any processing steps. No "
                     "processing can be done.".format(parset['strategy']))
         return
+
+    # Generate an initial sky model from the input data if needed
+    if parset['generate_initial_skymodel']:
+        if not any([step['do_calibrate'] for step in strategy_steps]):
+            log.warning("Generation of an initial sky model has been activated "
+                        "but the strategy '{}' does not contain any calibration "
+                        "steps.".format(parset['strategy']))
+        field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
+        log.info("Imaging full field to generate an initial sky model...")
+        chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
+        op = ImageInitial(field)
+        op.run()
 
     # Run the self calibration
     if selfcal_steps:
