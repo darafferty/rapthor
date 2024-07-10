@@ -219,14 +219,14 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
-  - id: usedualvisibilities
-    label: Use dual visibilities
+  - id: datause
+    label: Datause parameter
     doc: |
-      Flag that enables the dual visibilities option.
-    type: boolean
+      The datause parameter that determines how the visibilies are used in
+      the solves.
+    type: string
     inputBinding:
-      prefix: solve.usedualvisibilities=
-      valueFrom: "$(self ? 'True': 'False')"
+      prefix: solve.datause=
       separate: False
 
   - id: stepsize

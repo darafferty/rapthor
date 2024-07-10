@@ -208,10 +208,10 @@ inputs:
       Flag that enables model computation using SAGECal.
     type: boolean
 
-  - id: usedualvisibilities
+  - id: fast_datause
     doc: |
-      Flag that enables the dual visibilites option in the solves.
-    type: boolean
+      DDECal datause option for the fast-phase calibration (length = 1).
+    type: string
 
   - id: stepsize
     label: Solver step size
@@ -281,6 +281,11 @@ inputs:
     doc: |
       The list of DP3 steps to use in the first (joint) slow-gain calibration
       (length = 1).
+    type: string
+
+  - id: slow_datause
+    doc: |
+      DDECal datause option for the slow-gain calibration (length = 1).
     type: string
 
   - id: bda_timebase_slow_joint
@@ -629,8 +634,8 @@ steps:
         source: parallelbaselines
       - id: sagecalpredict
         source: sagecalpredict
-      - id: usedualvisibilities
-        source: usedualvisibilities
+      - id: datause
+        source: fast_datause
       - id: stepsize
         source: stepsize
       - id: stepsigma
@@ -755,8 +760,8 @@ steps:
         source: parallelbaselines
       - id: sagecalpredict
         source: sagecalpredict
-      - id: usedualvisibilities
-        source: usedualvisibilities
+      - id: datause
+        source: slow_datause
       - id: stepsize
         source: stepsize
       - id: stepsigma
@@ -916,8 +921,8 @@ steps:
         source: parallelbaselines
       - id: sagecalpredict
         source: sagecalpredict
-      - id: usedualvisibilities
-        source: usedualvisibilities
+      - id: datause
+        source: slow_datause
       - id: stepsize
         source: stepsize
       - id: stepsigma

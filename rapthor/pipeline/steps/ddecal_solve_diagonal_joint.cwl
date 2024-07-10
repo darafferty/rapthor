@@ -163,11 +163,10 @@ inputs:
       prefix: solve.sagecalpredict=
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
-  - id: usedualvisibilities
-    type: boolean
+  - id: datause
+    type: string
     inputBinding:
-      prefix: solve.usedualvisibilities=
-      valueFrom: "$(self ? 'True': 'False')"
+      prefix: solve.datause=
       separate: False
   - id: stepsize
     type: float

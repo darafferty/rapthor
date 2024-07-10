@@ -84,10 +84,10 @@ facet_layout = None
 # PB_FWHM of the field center, include it in the calibration (default = False)
 use_included_skymodels = False
 
-# Maximum factor by which the direction-dependent solution intervals can be increased,
-# so that fainter calibrators get longer intervals (in the fast and slow solves only;
-# default = 3). Note: currently, direction-dependent solution intervals
-# cannot be used in conjunction with baseline-dependent averaging
+# Maximum factor by which the direction-dependent solution intervals can be
+# increased, so that fainter calibrators get longer intervals (in the fast and
+# slow solves only; default = 3). Note: currently, direction-dependent solution
+# intervals cannot be used in conjunction with baseline-dependent averaging
 dd_interval_factor = 3
 
 # General solver parameters
@@ -101,7 +101,8 @@ stepsigma = 2.0
 tolerance = 5e-3
 parallelbaselines = False
 sagecalpredict = False
-usedualvisibilities = True
+fast_datause = single
+slow_datause = dual
 
 # Fast solve parameters. Note that the solution intervals are set in the strategy
 fast_freqstep_hz = 1e6

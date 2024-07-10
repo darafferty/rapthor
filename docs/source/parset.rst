@@ -187,16 +187,33 @@ The available options are described below under their respective sections.
         Use SAGECal for model calculation, both in predict and calibration (default =
         ``False``).
 
-    usedualvisibilities
-        Use only the diagonal (i.e., XX and YY) visibilities in the fast-phase and slow-gain
-        solves (default = ``True``); full-Jones solves are not affected by this setting.
-        Activating this option improves the speed of the solves and lowers the memory
+    fast_datause
+        This parameter sets the visibilities mode used during the fast-phase solves  (one
+        of ``single``, ``dual``, or ``full``; default = ``single``). If set to ``single``,
+        the XX and YY visibilities are averaged together to a single (Stokes I)
+        visibility. If set to ``dual``, only the XX and YY visibilities are used (YX and
+        XY are not used). If set to ``full``, all visibilities are used. Activating the
+        ``single`` or ``dual`` mode improves the speed of the solves and lowers the memory
         usage during solving.
 
         .. note::
 
             Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
-            when using the dual visibilities option. If dual visibilities are activated
+            when using ``single`` or ``dual`` modes. If one of these modes is activated
+            and a different solver is specified, the solver will be automatically switched
+            to the ``directioniterative`` one.
+
+    slow_datause
+        This parameter sets the the visibilities used during the slow-gain solves  (one
+        of ``dual`` or ``full``; default = ``dual``). If set to ``dual``, only the XX and
+        YY visibilities are used (YX and XY are not used). If set to ``full``, all
+        visibilities are used. Activating the ``dual`` mode improves the speed of the
+        solves and lowers the memory usage during solving.
+
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using the ``dual`` mode. If this modes is activated
             and a different solver is specified, the solver will be automatically switched
             to the ``directioniterative`` one.
 
@@ -206,7 +223,7 @@ The available options are described below under their respective sections.
         like 0.001.
 
     stepsigma
-        In oder to stop solving iterations when no further improvement is seen, the mean
+        In order to stop solving iterations when no further improvement is seen, the mean
         of the step reduction is compared to the standard deviation multiplied by
         :term:`stepsigma` factor (default = 2.0). If mean of the step reduction is lower
         than this value (noise dominated), solver iterations are stopped since no possible
