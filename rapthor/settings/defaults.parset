@@ -101,8 +101,6 @@ stepsigma = 2.0
 tolerance = 5e-3
 parallelbaselines = False
 sagecalpredict = False
-fast_datause = single
-slow_datause = dual
 
 # Fast solve parameters. Note that the solution intervals are set in the strategy
 fast_freqstep_hz = 1e6
@@ -110,6 +108,7 @@ fast_smoothnessconstraint = 3e6
 fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
 fast_bda_timebase = 0.0
+fast_datause = single
 
 # Slow solve parameters. Note that the solution intervals are set in the strategy
 slow_freqstep_hz = 1e6
@@ -117,6 +116,7 @@ slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
 slow_bda_timebase_joint = 0.0
 slow_bda_timebase_separate = 0.0
+slow_datause = dual
 
 # Full-Jones solve parameters
 fulljones_timestep_sec = 600.0
