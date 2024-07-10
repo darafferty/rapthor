@@ -21,7 +21,7 @@
                           'slow_bda_timebase_joint': 10000.0,
                           'slow_bda_timebase_separate': 10000.0,
                           'slow_datause': 'full',
-                          'solveralgorithm': 'hybrid',
+                          'solveralgorithm': 'directioniterative',
                           'solverlbfgs_dof': 200.0,
                           'solverlbfgs_iter': 4,
                           'solverlbfgs_minibatches': 1,
