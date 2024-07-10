@@ -82,13 +82,20 @@ inputs:
     type: boolean
     inputBinding:
       prefix: -multiscale
-  - id: apply_diagonal_solutions
-    label: Apply diagonal solutions
+  - id: scalar_visibilities
+    label: Use scalar visibilities
     doc: |
-      Apply diagonal (separate XX and YY) solutions.
+      Use only scalar (Stokes I) visibilities.
     type: boolean
     inputBinding:
-      prefix: -diagonal-solutions
+      prefix: -scalar-visibilities
+  - id: diagonal_visibilities
+    label: Use diagonal visibilities
+    doc: |
+      Use only diagonal (XX and YY) visibilities.
+    type: boolean
+    inputBinding:
+      prefix: -diagonal-visibilities
   - id: save_source_list
     type: boolean
     inputBinding:
