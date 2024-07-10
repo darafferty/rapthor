@@ -47,7 +47,7 @@ dependencies = [
     "reproject",
     "requests",
     "Rtree",
-    "scipy",
+    "scipy<1.14",  # temporary work-around CI failure, requires fix in LoSoTo
     "shapely",
     "toil[cwl]>=5.10",
 ]
