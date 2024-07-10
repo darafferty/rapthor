@@ -23,7 +23,7 @@ generate_initial_skymodel_data_fraction = 0.2
 # (default is 5 degrees) and the service from which a sky model should be
 # downloaded (default is TGSS) can be specified, as can the option to overwrite
 # an existing sky model with the downloaded one
-download_initial_skymodel = True
+download_initial_skymodel = False
 download_initial_skymodel_radius = 5.0
 download_initial_skymodel_server = TGSS
 download_overwrite_skymodel = False
