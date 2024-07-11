@@ -2,6 +2,7 @@
 
 Setting the processing strategy
 ===============================
+
 The steps used during a Rapthor run are defined though the choice of a processing
 strategy. The processing strategy is set with the :term:`strategy` parameter of the
 Rapthor parset. The options for this parameter are described below:
