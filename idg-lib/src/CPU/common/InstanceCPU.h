@@ -108,6 +108,38 @@ class InstanceCPU : public KernelsInstance {
       std::complex<float>*phasors
   virtual void run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS){};
 
+#define KERNEL_COST_ARGUMENTS                                               \
+  const unsigned int nr_subgrids, const unsigned int nr_polarizations,      \
+      const unsigned long grid_size, const unsigned int subgrid_size,       \
+      const float image_size, const float w_step_in_lambda,                 \
+      const float *__restrict__ shift, const unsigned int max_nr_timesteps, \
+      const unsigned int nr_channels, const unsigned int nr_terms,          \
+      const unsigned int nr_stations, const unsigned int nr_time_slots,     \
+      const idg::UVW<float>*uvw, const float *wavenumbers,                  \
+      std::complex<float>*visibilities, const float *weights,               \
+      const std::complex<float>*aterms,                                     \
+      const std::complex<float>*aterm_derivatives,                          \
+      const unsigned int *aterm_indices, const idg::Metadata *metadata,     \
+      const std::complex<float>*subgrid, const std::complex<float>*phasors, \
+      double *residual
+  virtual void run_calc_cost(KERNEL_COST_ARGUMENTS){};
+
+#define KERNEL_GRADIENT_ARGUMENTS                                           \
+  const unsigned int nr_subgrids, const unsigned int nr_polarizations,      \
+      const unsigned long grid_size, const unsigned int subgrid_size,       \
+      const float image_size, const float w_step_in_lambda,                 \
+      const float *__restrict__ shift, const unsigned int max_nr_timesteps, \
+      const unsigned int nr_channels, const unsigned int nr_terms,          \
+      const unsigned int nr_stations, const unsigned int nr_time_slots,     \
+      const idg::UVW<float>*uvw, const float *wavenumbers,                  \
+      std::complex<float>*visibilities, const float *weights,               \
+      const std::complex<float>*aterms,                                     \
+      const std::complex<float>*aterm_derivatives,                          \
+      const unsigned int *aterm_indices, const idg::Metadata *metadata,     \
+      const std::complex<float>*subgrid, const std::complex<float>*phasors, \
+      double *gradient
+  virtual void run_calc_gradient(KERNEL_GRADIENT_ARGUMENTS){};
+
   /*
    * W-Stacking
    */

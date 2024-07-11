@@ -111,6 +111,10 @@ if(BUILD_LIB_CPU)
   endif()
   target_link_libraries(idg-cpu PUBLIC ${LINK_LIBRARIES})
 
+  if(LIBDIRAC_FOUND)
+    target_link_libraries(idg-cpu PUBLIC ${LIBDIRAC_LINK_LIBRARIES})
+  endif()
+
   set_target_properties(idg-cpu PROPERTIES PUBLIC_HEADER idg-cpu.h)
 
   install(

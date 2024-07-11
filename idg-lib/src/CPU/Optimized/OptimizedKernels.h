@@ -37,6 +37,9 @@ class OptimizedKernels : public InstanceCPU {
 
   virtual void run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS) override;
 
+  virtual void run_calc_cost(KERNEL_COST_ARGUMENTS) override;
+  virtual void run_calc_gradient(KERNEL_GRADIENT_ARGUMENTS) override;
+
   /*
    * W-Stacking
    */

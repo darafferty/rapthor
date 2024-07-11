@@ -9,6 +9,8 @@ install(
         idgcaldpstep_scalar.py
         idgcaldpstep_phase_only.py
         idgcaldpstep_phase_only_bfgs.py
+        idgcaldpstep_phase_only_dirac.py
+        lbfgsb.py
         idgcaldpstep_rapthor.py
         basisfunctions.py
         idgcalutils.py

@@ -460,6 +460,127 @@ class Proxy(object):
             gradient,
             residual)
 
+    def calc_cost(self, antenna_nr, aterms, aterm_derivatives, residual):
+        """
+        Compute residual per time slot 
+        for a given antenna, aterms and aterm_derivatives
+
+        :param antenna_nr: int
+        :param aterms: np.ndarray(
+                shape=(nr_channel_blocks, nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
+                dtype = np.complex64)
+        :param aterm_derivatives: np.ndarray(
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, subgrid_size, subgrid_size, 4),
+                dtype = np.complex64)
+        :param residual: np.ndarray(
+                shape=shape=(nr_channel_blocks, ),
+                dtype = np.float64)
+
+        Update step for calibration. Computes residual for the current working point.
+        This call is forwarded to C++ member function :cpp:func:`idg::proxy::Proxy::calibrate_update`.
+        """
+        nr_channel_blocks = aterms.shape[0]
+        nr_timeslots = aterms.shape[1]
+        nr_antennas = aterms.shape[2]
+        subgrid_size = aterms.shape[3]
+        nr_terms = aterm_derivatives.shape[2]
+        nr_correlations = 4
+
+        self.lib.Proxy_calc_cost.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_uint,               #unsigned int antenna_nr
+            ctypes.c_uint,               #unsigned int nr_channel_blocks
+            ctypes.c_uint,               #unsigned int subgrid_size
+            ctypes.c_uint,               #unsigned int nr_antennas
+            ctypes.c_uint,               #unsigned int nr_timeslots
+            ctypes.c_uint,               #unsigned int nr_terms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_channel_blocks, nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
+            np.ctypeslib.ndpointer(
+                dtype=np.float64,
+                shape=(nr_channel_blocks, ),
+                flags='C_CONTIGUOUS'),   #double* residual
+            ]
+
+        self.lib.Proxy_calc_cost(
+            self.obj,
+            antenna_nr,
+            nr_channel_blocks,
+            subgrid_size,
+            nr_antennas,
+            nr_timeslots,
+            nr_terms,
+            aterms,
+            aterm_derivatives,
+            residual)
+
+    def calc_gradient(self, antenna_nr, aterms, aterm_derivatives, gradient):
+        """
+        Compute  gradient per time slot 
+        for a given antenna, aterms and aterm_derivatives
+
+        :param antenna_nr: int
+        :param aterms: np.ndarray(
+                shape=(nr_channel_blocks, nr_timeslots, nr_stations, subgrid_size, subgrid_size, 4),
+                dtype = np.complex64)
+        :param aterm_derivatives: np.ndarray(
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, subgrid_size, subgrid_size, 4),
+                dtype = np.complex64)
+        :param gradient: np.ndarray(
+                shape=shape=(nr_channel_blocks, nr_timeslots, nr_terms),,
+                dtype = np.float64)
+
+        Update step for calibration. Computes Hessian, gradient and residual for the current working point.
+        This call is forwarded to C++ member function :cpp:func:`idg::proxy::Proxy::ccalc_gradient`.
+        """
+        nr_channel_blocks = aterms.shape[0]
+        nr_timeslots = aterms.shape[1]
+        nr_antennas = aterms.shape[2]
+        subgrid_size = aterms.shape[3]
+        nr_terms = gradient.shape[2]
+        nr_correlations = 4
+
+        self.lib.Proxy_calc_gradient.argtypes = [
+            ctypes.c_void_p,             #Proxy* p,
+            ctypes.c_uint,               #unsigned int antenna_nr
+            ctypes.c_uint,               #unsigned int nr_channel_blocks
+            ctypes.c_uint,               #unsigned int subgrid_size
+            ctypes.c_uint,               #unsigned int nr_antennas
+            ctypes.c_uint,               #unsigned int nr_timeslots
+            ctypes.c_uint,               #unsigned int nr_terms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_channel_blocks, nr_timeslots, nr_antennas, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterms
+            np.ctypeslib.ndpointer(
+                dtype=np.complex64,
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms, subgrid_size, subgrid_size, nr_correlations),
+                flags='C_CONTIGUOUS'),   #std::complex<float>* aterm_derivatives
+            np.ctypeslib.ndpointer(
+                dtype=np.float64,
+                shape=(nr_channel_blocks, nr_timeslots, nr_terms),
+                flags='C_CONTIGUOUS'),   #double* gradient
+            ]
+
+        self.lib.Proxy_calc_gradient(
+            self.obj,
+            antenna_nr,
+            nr_channel_blocks,
+            subgrid_size,
+            nr_antennas,
+            nr_timeslots,
+            nr_terms,
+            aterms,
+            aterm_derivatives,
+            gradient)
+
+
     def calibrate_finish(self):
         """
         Finish calibration, freeing internal buffers

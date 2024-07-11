@@ -95,6 +95,20 @@ class CPU : public Proxy {
       aocommon::xt::Span<double, 3>& gradient,
       aocommon::xt::Span<double, 1>& residual) override;
 
+  virtual void do_calc_cost(
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 1>& residual) override;
+
+  virtual void do_calc_gradient(
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 3>& gradient) override;
+
   void do_calibrate_finish() override;
 
   void do_transform(DomainAtoDomainB direction) override;
