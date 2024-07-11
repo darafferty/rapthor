@@ -51,7 +51,8 @@ The available options are described below under their respective sections.
         This option is ignored if a file is specified with the :term:`input_skymodel`
         option. When this option is activated, an image of the full field is made from the
         input data (without doing any calibration). The initial sky model is generated
-        from the clean components as part of the imaging.
+        from the clean components as part of this imaging and will be located in
+        the ``dir_working/skymodels/initial_image`` directory.
 
     generate_initial_skymodel_radius
         The radius out to which the sky model will be generated (default = None, which
@@ -66,7 +67,10 @@ The available options are described below under their respective sections.
         Download the initial sky model automatically instead of using a user-provided one
         (default = ``True``). This option is ignored if a file is specified with the
         :term:`input_skymodel` option or if generation of the initial model is activated
-        with the :term:`generate_initial_skymodel` option.
+        with the :term:`generate_initial_skymodel` option. The downloaded sky model will
+        be named ``dir_working/skymodels/initial_skymodel_{catalog}.txt``, where
+        ``{catalog}`` is the name of the catalog server specified by the
+        :term:`download_initial_skymodel_server` option.
 
     download_initial_skymodel_radius
         The radius in degrees out to which a sky model should be downloaded (default =

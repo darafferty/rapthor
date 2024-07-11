@@ -312,7 +312,7 @@ class Image(Operation):
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             misc.create_directory(dst_dir)
-            diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, '*.pdf'))
+            diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
                 if os.path.exists(dst_filename):
@@ -579,7 +579,7 @@ class ImageInitial(Operation):
         # The astrometry and photometry plots
         dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
         misc.create_directory(dst_dir)
-        diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, '*.pdf'))
+        diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
         for src_filename in diagnostic_plots:
             dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
             if os.path.exists(dst_filename):
