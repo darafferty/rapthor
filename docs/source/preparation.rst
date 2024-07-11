@@ -15,7 +15,7 @@ Sky model
 
 Manual sky model input
 ~~~~~~~~~~~~~~~~~~~~~~
-If self calibration is to be done (see :ref:`rapthor_strategy` for information about setting the processing strategy), Rapthor requires an initial model to start the calibration of the first iteration (after the first iteration, Rapthor will use the model that is the result of the previous iteration). If such a model is available, it can be specified using the :term:`input_skymodel` option in the parset. Typically, however, an initial model is not available, in which case Rapthor can either generate the model (recommended) or download one. See below for more information on these options.
+If self calibration is to be done (see :ref:`rapthor_strategy` for information about defining a processing strategy), Rapthor requires an initial model to start the calibration of the first iteration (after the first iteration, Rapthor will use the model that is the result of the previous iteration). If such a model is available, it can be specified using the :term:`input_skymodel` option in the parset. Typically, however, an initial model is not available, in which case Rapthor can either generate the model (recommended) or download one. See below for more information on these options.
 
 
 .. _auto_sky_generation:
@@ -26,9 +26,9 @@ If an initial sky model is unavailable, Rapthor can generate the sky model autom
 
 This method will usually result in a higher-quality sky model than can be obtained through downloading a model from a catalog. Additionally, although the generation of the model typically requires much more time than the download, the higher quality of the model means that many of the early self calibration cycles can be skipped, resulting in overall less time being required for a full reduction.
 
-    .. note::
+.. note::
 
-        The default "selfcal" strategy will skip the phase-only self calibration cycles if automatic sky model generation is used.
+    The default "selfcal" strategy will skip the phase-only self calibration cycles if automatic sky model generation is used. See :ref:`rapthor_strategy` for details.
 
 
 .. _auto_sky_download:

@@ -126,9 +126,7 @@ Primary products:
 
             If an initial sky model was generated from the input data (see :term:`generate_initial_skymodel`), then there will be two sky model files in ``skymodels/initial_image`` (an apparent-sky model and a true-sky model). These models are used as input for the first cycle of calibration.
 
-    * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is
-      the image sector number (only if the :term:`save_visibilities` parameter is set to
-      ``True``):
+    * In ``visibilities/image_X/sector_Y``, where ``X`` is the cycle number and ``Y`` is the image sector number (only if the :term:`save_visibilities` parameter is set to ``True``):
         * ``*.ms`` - measurement sets used as input to WSClean for imaging. Depending on
           the value of :term:`dde_method`, some or all of the calibration solutions may be
           preapplied: a value of "none" will preapply all solutions, whereas values of
