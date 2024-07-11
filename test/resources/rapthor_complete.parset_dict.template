@@ -87,7 +87,7 @@
  'input_h5parm': '/my/data/dirdependent.h5',
  'input_fulljones_h5parm': '/my/data/fulljones.h5',
  'input_ms': ['${input_ms}'],
- 'input_skymodel': '/my/data/skymodel.txt',
+ 'input_skymodel': None,
  'mss': ['${input_ms}'],
  'regroup_input_skymodel': False,
  'selfcal_data_fraction': 0.4,
