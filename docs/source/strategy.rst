@@ -66,7 +66,7 @@ cycle.
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/custom_calibration_strategy.
     py>`_. A file that duplicates the default self calibration strategy is available `here
     <https://git.astron.nl/RD/rapthor/-/blob/master/examples/default_calibration_strategy.
-    py>`_.
+    py>`__.
 
 .. note::
 
