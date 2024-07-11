@@ -1,14 +1,40 @@
 .. _rapthor_strategy:
 
+Setting the processing strategy
+===============================
+The steps used during a Rapthor run are defined though the choice of a processing
+strategy. The processing strategy is set with the :term:`strategy` parameter of the
+Rapthor parset. The options for this parameter are described below:
+
+``strategy = selfcal`` (the default)
+    This strategy performs self calibration on the full field. It generally involves up to
+    two cycles of phase-only calibration followed by up to 6 cycles of phase and amplitude
+    calibration until convergence is obtained.
+
+    .. note::
+
+        If an initial sky model is automatically generated from the data (see
+        :ref:`auto_sky_generation`), the phase-only cycles are skipped.
+
+``strategy = image``
+    This strategy performs imaging only; no calibration is done. As such, a file
+    containing the direction-dependent corrections must be supplied via the
+    :term:`input_h5parm` option in the parset.
+
+``strategy = /path/to/custom_strategy.py``
+    By giving the path to a strategy file, the user can define a custom processing
+    strategy. See below for details of how to make this file.
+
+
 Defining a custom processing strategy
 =====================================
 
-The default processing strategy is designed to perform full self calibration of
-a typical LOFAR dataset. However, depending on the field and the aims of the
-reduction, the default strategy may not be optimal. A custom processing strategy
-can be supplied by specifying the full path to a strategy file in the
-:term:`strategy` entry of the Rapthor parset. The strategy file is a Python file
-with the following structure:
+Rapthor includes two predefined processing strategies (one designed for self calibration
+of a typical LOFAR dataset and one for imaging only). However, depending on the field and
+the aims of the reduction, the default strategy may not be suitable. A custom processing
+strategy can be supplied by specifying the full path to a strategy file in the
+:term:`strategy` entry of the Rapthor parset. The strategy file is a Python file with the
+following structure:
 
 .. code-block::
 
@@ -42,6 +68,11 @@ dictionary stores the processing parameters for that cycle.
     used to specify parameters specific to the final iteration (which is performed after
     self calibration finishes). In the default self calibration strategy, the parameters
     for the final iteration are set to those of the last cycle of selfcal.
+
+.. note::
+
+    If no self calibration is to be done, only a single processing cycle will be done.
+    Therefore, ``strategy_steps`` should have only a single entry.
 
 The following processing parameters can be set for each cycle:
 

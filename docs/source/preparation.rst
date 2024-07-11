@@ -15,8 +15,24 @@ Sky model
 
 Manual sky model input
 ~~~~~~~~~~~~~~~~~~~~~~
-Rapthor requires an initial model that is used during the first iteration. After the first iteration, Rapthor will use the model that is the result of the previous iteration. There are several ways to create a model, but if no model is available, we recommend creating one from TGSS. To make a TGSS model, go to https://tgssadr.strw.leidenuniv.nl/, and under "LOFAR Sky Model Creator" fill in the field's coordinates. For radius, 5 degrees can be used. The other default settings are fine (cut off at 0.3 Jy, and Deconvolve Beam: yes).
+If self calibration is to be done (see :ref:`rapthor_strategy` for information about setting the processing strategy), Rapthor requires an initial model to start the calibration of the first iteration (after the first iteration, Rapthor will use the model that is the result of the previous iteration). If such a model is available, it can be specified using the :term:`input_skymodel` option in the parset. Typically, however, an initial model is not available, in which case Rapthor can either generate the model (recommended) or download one. See below for more information on these options.
+
+
+.. _auto_sky_generation:
+
+Automatic sky model generation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If an initial sky model is unavailable, Rapthor can generate the sky model automatically from the input data. The generation can be activated by setting :term:`generate_initial_skymodel` to ``True`` in the parset. Rapthor will then image the full field and generate the initial model from the resulting clean components.
+
+This method will usually result in a higher-quality sky model than can be obtained through downloading a model from a catalog. Additionally, although the generation of the model typically requires much more time than the download, the higher quality of the model means that many of the early self calibration cycles can be skipped, resulting in overall less time being required for a full reduction.
+
+    .. note::
+
+        The default "selfcal" strategy will skip the phase-only self calibration cycles if automatic sky model generation is used.
+
+
+.. _auto_sky_download:
 
 Automatic sky model download
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Rapthor can also download a suitable sky model automatically. If ``download_initial_skymodel`` is set to ``True`` in the parset, rapthor will use the additional ``download_initial_skymodel_radius`` and ``download_initial_skymodel_server`` to download a sky model out to the given radius from the given source. See :ref:`rapthor_parset` for more explanation about these parameters.
+Rapthor can also download a suitable sky model automatically. If :term:`download_initial_skymodel` is set to ``True`` in the parset, rapthor will use the additional :term:`download_initial_skymodel_radius` and :term:`download_initial_skymodel_server` to download a sky model out to the given radius from the given source. See :ref:`rapthor_parset` for more explanation about these parameters.

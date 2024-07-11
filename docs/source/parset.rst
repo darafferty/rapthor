@@ -102,7 +102,8 @@ The available options are described below under their respective sections.
     strategy
         Name of processing strategy to use (default = ``selfcal``). A custom strategy can
         be used by giving instead the full path to the strategy file. See
-        :ref:`rapthor_strategy` for details on making a custom strategy file.
+        :ref:`rapthor_strategy` for details on the available predefined strategies and on
+        making a custom strategy file.
 
     selfcal_data_fraction
         Fraction of data to use (default = 0.2). If less than one, the input data are
