@@ -17,7 +17,7 @@ generate_initial_skymodel = True
 generate_initial_skymodel_radius = None
 generate_initial_skymodel_data_fraction = 0.2
 
-# Automatically download a target sky model (default = True). This option will
+# Automatically download a target sky model (default = False). This option will
 # have no effect if input_skymodel is specified or if generate_initial_skymodel
 # is activated. The radius out to which a sky model should be downloaded
 # (default is 5 degrees) and the service from which a sky model should be

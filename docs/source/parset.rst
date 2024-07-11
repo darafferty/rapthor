@@ -65,7 +65,7 @@ The available options are described below under their respective sections.
 
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
-        (default = ``True``). This option is ignored if a file is specified with the
+        (default = ``False``). This option is ignored if a file is specified with the
         :term:`input_skymodel` option or if generation of the initial model is activated
         with the :term:`generate_initial_skymodel` option. The downloaded sky model will
         be named ``dir_working/skymodels/initial_skymodel_{catalog}.txt``, where
