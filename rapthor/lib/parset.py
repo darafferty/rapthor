@@ -499,10 +499,6 @@ def parset_read(parset_file, use_log_file=True):
                     "because sky model download has been requested."
                 )
         else:
-            log.error(
-                "No input sky model file given and neither generation nor download of "
-                "sky model requested. Exiting..."
-            )
             raise RuntimeError(
                 "No input sky model file given and neither generation nor download of "
                 "sky model requested."
