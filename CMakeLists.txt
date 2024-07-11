@@ -146,6 +146,27 @@ if(BUILD_WITH_PYTHON)
   endif()
 endif()
 
+set(LIBDIRAC_PREFIX
+    ""
+    CACHE FILEPATH "Path to libdirac install root")
+if(NOT "${LIBDIRAC_PREFIX}" STREQUAL "")
+  #Find pkg-config and try to find libdirac (only if -DLIBDIRAC_PREFIX given)
+  find_package(PkgConfig REQUIRED)
+  # Set search path to install directory of libdirac
+  set(ENV{PKG_CONFIG_PATH} "${LIBDIRAC_PREFIX}/lib/pkgconfig")
+  pkg_search_module(LIBDIRAC libdirac>=0.8.1)
+endif()
+if(LIBDIRAC_FOUND)
+  message(STATUS "Found libdirac: ${LIBDIRAC_INCLUDE_DIRS}")
+  include_directories(${LIBDIRAC_INCLUDE_DIRS})
+  add_definitions(-DHAVE_LIBDIRAC)
+else()
+  message(
+    STATUS
+      "Libdirac NOT found; LBFGS solve algorithm not available. Set LIBDIRAC_PREFIX to enable."
+  )
+endif()
+
 if(BUILD_TESTING)
   find_package(
     Boost

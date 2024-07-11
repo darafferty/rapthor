@@ -196,6 +196,22 @@ void Proxy_calibrate_update(struct Proxy* p, const unsigned int antenna_nr,
                             float complex* aterm_derivatives, double* hessian,
                             double* gradient, double* residual);
 
+void Proxy_calc_cost(struct Proxy* p, const unsigned int antenna_nr,
+                     const unsigned int nr_channel_blocks,
+                     const unsigned int subgrid_size,
+                     const unsigned int nr_stations,
+                     const unsigned int nr_time_slots,
+                     const unsigned int nr_terms, float complex* aterms,
+                     float complex* aterm_derivatives, double* residual);
+
+void Proxy_calc_gradient(struct Proxy* p, const unsigned int antenna_nr,
+                         const unsigned int nr_channel_blocks,
+                         const unsigned int subgrid_size,
+                         const unsigned int nr_stations,
+                         const unsigned int nr_time_slots,
+                         const unsigned int nr_terms, float complex* aterms,
+                         float complex* aterm_derivatives, double* gradient);
+
 /**
  * Finish  calibration, free internal buffers
  *

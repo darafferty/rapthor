@@ -27,6 +27,10 @@ void kernel_calibrate(KERNEL_CALIBRATE_ARGUMENTS);
 
 void kernel_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS);
 
+void kernel_calc_cost(KERNEL_COST_ARGUMENTS);
+
+void kernel_calc_gradient(KERNEL_GRADIENT_ARGUMENTS);
+
 /*
  * W-Stacking
  */

@@ -208,6 +208,20 @@ class Proxy {
       aocommon::xt::Span<double, 3>& gradient,
       aocommon::xt::Span<double, 1>& residual);
 
+  void calc_cost(
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 1>& residual);
+
+  void calc_gradient(
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 3>& gradient);
+
   /**
    * @brief Clean up after calibration cycle.
    */
@@ -422,6 +436,25 @@ class Proxy {
       aocommon::xt::Span<double, 1>& residual) {
     throw std::runtime_error(
         "do_calibrate_update is not implemented by this proxy");
+  }
+
+  virtual void do_calc_cost(
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 1>& residual) {
+    throw std::runtime_error("do_calc_cost is not implemented by this proxy");
+  }
+
+  virtual void do_calc_gradient(
+      const int antenna_nr,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+          aterm_derivatives,
+      aocommon::xt::Span<double, 3>& gradient) {
+    throw std::runtime_error(
+        "do_calc_gradient is not implemented by this proxy");
   }
 
   virtual void do_calibrate_finish() {}

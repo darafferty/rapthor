@@ -57,7 +57,7 @@ for proxy_module in ["CPU", "CUDA", "HybridCUDA"]:
     try:
         globals()[proxy_module] = importlib.import_module("." + proxy_module, __name__)
     except ModuleNotFoundError as e:
-        print("Error: %s" % e)
+        print("Error (or Warning): %s" % e)
     except OSError as e:
         handle_error(proxy_module, e)
 

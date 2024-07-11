@@ -9,7 +9,7 @@
 
 #include "CPU.h"
 
-//#define DEBUG_COMPUTE_JOBSIZE
+// #define DEBUG_COMPUTE_JOBSIZE
 
 using namespace idg::kernel;
 
@@ -634,6 +634,152 @@ void CPU::do_calibrate_update(
       nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
       aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
       subgrids_ptr, phasors_ptr, hessian_ptr, gradient_ptr, residual_ptr);
+
+  // Performance reporting
+  const size_t current_nr_subgrids = nr_subgrids;
+  const size_t current_nr_timesteps =
+      m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
+  const size_t current_nr_visibilities = current_nr_timesteps * nr_channels;
+  get_report()->update_total(current_nr_subgrids, current_nr_timesteps,
+                             current_nr_visibilities);
+}
+
+void CPU::do_calc_cost(
+    const int antenna_nr,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+        aterm_derivatives,
+    aocommon::xt::Span<double, 1>& residual) {
+  if (m_calibrate_state.plans.empty()) {
+    throw std::runtime_error("Calibration was not initialized. Can not update");
+  }
+
+  // Arguments
+  const size_t nr_subgrids =
+      m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+  const size_t nr_channels = m_calibrate_state.wavenumbers.Span().size();
+  const size_t nr_terms = aterm_derivatives.shape(2);
+  const size_t subgrid_size = aterms.shape(4);
+  assert(subgrid_size == aterms.shape(3));
+  const size_t nr_stations = aterms.shape(2);
+  const size_t nr_timeslots = aterms.shape(1);
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = grid_size * m_cache_state.cell_size;
+  const float w_step = m_cache_state.w_step;
+
+  // Performance measurement
+  if (antenna_nr == 0) {
+    get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
+  }
+
+  // Data pointers
+  float* shift_ptr = m_cache_state.shift.data();
+  float* wavenumbers_ptr = m_calibrate_state.wavenumbers.Span().data();
+  const std::complex<float>* aterm_ptr =
+      reinterpret_cast<const std::complex<float>*>(aterms.data());
+  const std::complex<float>* aterm_derivative_ptr =
+      reinterpret_cast<const std::complex<float>*>(aterm_derivatives.data());
+  const unsigned int* aterm_idx_ptr =
+      m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
+  const Metadata* metadata_ptr =
+      m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
+  UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
+  std::complex<float>* visibilities_ptr =
+      reinterpret_cast<std::complex<float>*>(
+          &m_calibrate_state.visibilities.Span()(antenna_nr, 0, 0, 0, 0, 0));
+  float* weights_ptr =
+      &m_calibrate_state.weights.Span()(antenna_nr, 0, 0, 0, 0, 0);
+  std::complex<float>* subgrids_ptr =
+      m_calibrate_state.subgrids[antenna_nr].Span().data();
+  std::complex<float>* phasors_ptr =
+      m_calibrate_state.phasors[antenna_nr].Span().data();
+  double* residual_ptr = residual.data();
+
+  const size_t max_nr_timesteps =
+      m_calibrate_state.max_nr_timesteps[antenna_nr];
+
+  // Run calibration update step
+  m_kernels->run_calc_cost(
+      nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+      w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_stations,
+      nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
+      aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
+      subgrids_ptr, phasors_ptr, residual_ptr);
+
+  // Performance reporting
+  const size_t current_nr_subgrids = nr_subgrids;
+  const size_t current_nr_timesteps =
+      m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
+  const size_t current_nr_visibilities = current_nr_timesteps * nr_channels;
+  get_report()->update_total(current_nr_subgrids, current_nr_timesteps,
+                             current_nr_visibilities);
+}
+
+void CPU::do_calc_gradient(
+    const int antenna_nr,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+        aterm_derivatives,
+    aocommon::xt::Span<double, 3>& gradient) {
+  if (m_calibrate_state.plans.empty()) {
+    throw std::runtime_error("Calibration was not initialized. Can not update");
+  }
+
+  // Arguments
+  const size_t nr_subgrids =
+      m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+  const size_t nr_channels = m_calibrate_state.wavenumbers.Span().size();
+  const size_t nr_terms = aterm_derivatives.shape(2);
+  const size_t subgrid_size = aterms.shape(4);
+  assert(subgrid_size == aterms.shape(3));
+  const size_t nr_stations = aterms.shape(2);
+  const size_t nr_timeslots = aterms.shape(1);
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = grid_size * m_cache_state.cell_size;
+  const float w_step = m_cache_state.w_step;
+
+  // Performance measurement
+  if (antenna_nr == 0) {
+    get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
+  }
+
+  // Data pointers
+  float* shift_ptr = m_cache_state.shift.data();
+  float* wavenumbers_ptr = m_calibrate_state.wavenumbers.Span().data();
+  const std::complex<float>* aterm_ptr =
+      reinterpret_cast<const std::complex<float>*>(aterms.data());
+  const std::complex<float>* aterm_derivative_ptr =
+      reinterpret_cast<const std::complex<float>*>(aterm_derivatives.data());
+  const unsigned int* aterm_idx_ptr =
+      m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
+  const Metadata* metadata_ptr =
+      m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
+  UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
+  std::complex<float>* visibilities_ptr =
+      reinterpret_cast<std::complex<float>*>(
+          &m_calibrate_state.visibilities.Span()(antenna_nr, 0, 0, 0, 0, 0));
+  float* weights_ptr =
+      &m_calibrate_state.weights.Span()(antenna_nr, 0, 0, 0, 0, 0);
+  std::complex<float>* subgrids_ptr =
+      m_calibrate_state.subgrids[antenna_nr].Span().data();
+  std::complex<float>* phasors_ptr =
+      m_calibrate_state.phasors[antenna_nr].Span().data();
+  double* gradient_ptr = gradient.data();
+
+  const size_t max_nr_timesteps =
+      m_calibrate_state.max_nr_timesteps[antenna_nr];
+
+  // Run calibration update step
+  m_kernels->run_calc_gradient(
+      nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+      w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_stations,
+      nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
+      aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
+      subgrids_ptr, phasors_ptr, gradient_ptr);
 
   // Performance reporting
   const size_t current_nr_subgrids = nr_subgrids;

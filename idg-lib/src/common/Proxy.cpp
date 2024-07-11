@@ -241,6 +241,24 @@ void Proxy::calibrate_update(
                       residual);
 }
 
+void Proxy::calc_cost(
+    const int antenna_nr,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+        aterm_derivatives,
+    aocommon::xt::Span<double, 1>& residual) {
+  do_calc_cost(antenna_nr, aterms, aterm_derivatives, residual);
+}
+
+void Proxy::calc_gradient(
+    const int antenna_nr,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
+    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
+        aterm_derivatives,
+    aocommon::xt::Span<double, 3>& gradient) {
+  do_calc_gradient(antenna_nr, aterms, aterm_derivatives, gradient);
+}
+
 void Proxy::calibrate_finish() { do_calibrate_finish(); }
 
 void Proxy::set_avg_aterm_correction(
