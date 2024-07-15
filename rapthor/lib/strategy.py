@@ -186,11 +186,11 @@ def set_selfcal_strategy(field):
             strategy_steps[i]['target_flux'] = 0.6
             strategy_steps[i]['max_directions'] = 20
             strategy_steps[i]['max_distance'] = 3.0
-        elif i == 1 and do_phase_only_solves:
+        elif i == 1 and do_phase_only_solves or (i == 0 and not do_phase_only_solves):
             strategy_steps[i]['target_flux'] = 0.4
             strategy_steps[i]['max_directions'] = 30
             strategy_steps[i]['max_distance'] = 3.0
-        elif (i == 2 and do_phase_only_solves) or (i == 0 and not do_phase_only_solves):
+        elif (i == 2 and do_phase_only_solves) or (i == 1 and not do_phase_only_solves):
             strategy_steps[i]['target_flux'] = 0.3
             strategy_steps[i]['max_directions'] = 40
             strategy_steps[i]['max_distance'] = 3.5
