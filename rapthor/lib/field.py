@@ -23,7 +23,6 @@ matplotlib.use('Agg')
 from matplotlib.patches import Ellipse
 from matplotlib.pyplot import figure
 from astropy.visualization.wcsaxes import SphericalCircle
-from astropy.visualization.wcsaxes import Quadrangle
 import mocpy
 from losoto.h5parm import h5parm
 
@@ -1033,7 +1032,7 @@ class Field(object):
                 nsectors_dec = 1
                 width_ra = image_width_ra
                 width_dec = image_width_dec
-                center_x, center_y = self.radec2xy([image_ra], [image_dec])
+                center_x, center_y = misc.radec2xy(self.wcs, [image_ra], [image_dec])
                 x = np.array([center_x])
                 y = np.array([center_y])
             else:
@@ -1042,7 +1041,7 @@ class Field(object):
                 width_dec = image_width_dec / nsectors_dec
                 width_x = width_ra / abs(self.wcs.wcs.cdelt[0])
                 width_y = width_dec / abs(self.wcs.wcs.cdelt[1])
-                center_x, center_y = self.radec2xy([image_ra], [image_dec])
+                center_x, center_y = misc.radec2xy(self.wcs, [image_ra], [image_dec])
                 min_x = center_x - width_x / 2.0 * (nsectors_ra - 1)
                 max_x = center_x + width_x / 2.0 * (nsectors_ra - 1)
                 min_y = center_y - width_y / 2.0 * (nsectors_dec - 1)
@@ -1060,8 +1059,8 @@ class Field(object):
                             nsectors_ra > 2 and nsectors_dec > 2):
                         continue
                     name = 'sector_{0}'.format(n)
-                    ra, dec = self.xy2radec([x[j, i]], [y[j, i]])
-                    self.imaging_sectors.append(Sector(name, ra[0], dec[0], width_ra, width_dec, self))
+                    ra, dec = misc.xy2radec(self.wcs, x[j, i], y[j, i])
+                    self.imaging_sectors.append(Sector(name, ra, dec, width_ra, width_dec, self))
                     n += 1
             if len(self.imaging_sectors) == 1:
                 self.log.info('Using 1 imaging sector')
@@ -1081,13 +1080,19 @@ class Field(object):
         # mask images from previous iterations may be used)
         all_sectors = MultiPolygon([sector.poly_padded for sector in self.imaging_sectors])
         self.sector_bounds_xy = all_sectors.bounds
-        maxRA, minDec = self.xy2radec([self.sector_bounds_xy[0]], [self.sector_bounds_xy[1]])
-        minRA, maxDec = self.xy2radec([self.sector_bounds_xy[2]], [self.sector_bounds_xy[3]])
-        midRA, midDec = self.xy2radec([(self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0],
-                                      [(self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0])
-        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA[0], minDec[0],
-                                                                            minRA[0], maxDec[0])
-        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA[0], midDec[0])
+        maxRA, minDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[0], self.sector_bounds_xy[1])
+        minRA, maxDec = misc.xy2radec(self.wcs, self.sector_bounds_xy[2], self.sector_bounds_xy[3])
+        midRA, midDec = misc.xy2radec(self.wcs, (self.sector_bounds_xy[0]+self.sector_bounds_xy[2])/2.0,
+                                      (self.sector_bounds_xy[1]+self.sector_bounds_xy[3])/2.0)
+        self.sector_bounds_width_ra = abs((self.sector_bounds_xy[0] - self.sector_bounds_xy[2]) *
+                                          self.wcs.wcs.cdelt[0])
+        self.sector_bounds_width_dec = abs((self.sector_bounds_xy[3] - self.sector_bounds_xy[1]) *
+                                           self.wcs.wcs.cdelt[1])
+        self.sector_bounds_mid_ra = midRA
+        self.sector_bounds_mid_dec = midDec
+        self.sector_bounds_deg = '[{0:.6f};{1:.6f};{2:.6f};{3:.6f}]'.format(maxRA, minDec,
+                                                                            minRA, maxDec)
+        self.sector_bounds_mid_deg = '[{0:.6f};{1:.6f}]'.format(midRA, midDec)
 
     def define_outlier_sectors(self, index):
         """
@@ -1248,7 +1253,7 @@ class Field(object):
         idx = rtree.index.Index()
         skymodel = self.source_skymodel
         RA, Dec = skymodel.getPatchPositions(asArray=True)
-        x, y = self.radec2xy(RA, Dec)
+        x, y = misc.radec2xy(self.wcs, RA, Dec)
         sizes = skymodel.getPatchSizes(units='degree')
         minsize = 1  # minimum allowed source size in pixels
         sizes = [max(minsize, s/2.0/self.wcs_pixel_scale) for s in sizes]  # radii in pixels
@@ -1378,77 +1383,12 @@ class Field(object):
         non_calibrator_skymodel.select(keep_ind, force=True)
         return non_calibrator_skymodel
 
-    def radec2xy(self, RA, Dec):
-        """
-        Returns x, y for input RA, Dec
-
-        Parameters
-        ----------
-        RA : list
-            List of RA values in degrees
-        Dec : list
-            List of Dec values in degrees
-
-        Returns
-        -------
-        x, y : list, list
-            Lists of x and y pixel values corresponding to the input RA and Dec
-            values
-        """
-        x = []
-        y = []
-
-        for ra_deg, dec_deg in zip(RA, Dec):
-            ra_dec = np.array([[ra_deg, dec_deg]])
-            x.append(self.wcs.wcs_world2pix(ra_dec, 0)[0][0])
-            y.append(self.wcs.wcs_world2pix(ra_dec, 0)[0][1])
-        return x, y
-
-    def xy2radec(self, x, y):
-        """
-        Returns input RA, Dec for input x, y
-
-        Parameters
-        ----------
-        x : list
-            List of x values in pixels
-        y : list
-            List of y values in pixels
-
-        Returns
-        -------
-        RA, Dec : list, list
-            Lists of RA and Dec values corresponding to the input x and y pixel
-            values
-        """
-        RA = []
-        Dec = []
-
-        for xp, yp in zip(x, y):
-            x_y = np.array([[xp, yp]])
-            RA.append(self.wcs.wcs_pix2world(x_y, 0)[0][0])
-            Dec.append(self.wcs.wcs_pix2world(x_y, 0)[0][1])
-        return RA, Dec
-
     def makeWCS(self):
         """
         Makes simple WCS object
-
-        Returns
-        -------
-        w : astropy.wcs.WCS object
-            A simple TAN-projection WCS object for specified reference position
         """
-        from astropy.wcs import WCS
-
         self.wcs_pixel_scale = 10.0 / 3600.0  # degrees/pixel (= 10"/pixel)
-        w = WCS(naxis=2)
-        w.wcs.crpix = [1000, 1000]
-        w.wcs.cdelt = np.array([-self.wcs_pixel_scale, self.wcs_pixel_scale])
-        w.wcs.crval = [self.ra, self.dec]
-        w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-        w.wcs.set_pv([(2, 1, 45.0)])
-        self.wcs = w
+        self.wcs = misc.make_wcs(self.ra, self.dec, self.wcs_pixel_scale)
 
     def scan_h5parms(self):
         """
@@ -1705,8 +1645,40 @@ class Field(object):
         else:
             self.do_predict = False
 
+    def get_matplotlib_patch(self, wcs=None):
+        """
+        Returns a matplotlib patch for the field primary-beam FOV polygon
+
+        Parameters
+        ----------
+        wcs : WCS object, optional
+            WCS object defining (RA, Dec) <-> (x, y) transformation. If not given,
+            the field's transformation is used
+
+        Returns
+        -------
+        patch : matplotlib patch object
+            The patch for the field polygon
+        """
+        if wcs is None:
+            wcs = self.wcs
+            wcs_pixel_scale = self.wcs_pixel_scale  # degrees/pixel
+        else:
+            # Take the scale (in degrees/pixel) as the average of those of the
+            # two axes
+            wcs_pixel_scale = (wcs.proj_plane_pixel_scales()[0].value +
+                               wcs.proj_plane_pixel_scales()[1].value) / 2
+        x, y = misc.radec2xy(wcs, self.ra, self.dec)
+        patch = Ellipse((x, y), width=self.fwhm_ra_deg/wcs_pixel_scale,
+                        height=self.fwhm_dec_deg/wcs_pixel_scale,
+                        edgecolor='k', facecolor='lightgray', linestyle=':',
+                        label='Pointing FWHM', linewidth=2, alpha=0.5)
+
+        return patch
+
     def plot_field(self, skymodel_radius=0, moc=None):
-        """ Plots an overview of how the imaged field compares against the skymodel used.
+        """
+        Plots an overview of how the imaged field compares against the skymodel used.
 
         Parameters
         ----------
@@ -1716,11 +1688,8 @@ class Field(object):
             If not None, the multi-order coverage map to plot alongside the usual quantiies.
         """
         self.log.info('Plotting field coverage...')
-        size_ra = self.imaging_sectors[0].width_ra * u.deg
-        size_dec = self.imaging_sectors[0].width_dec * u.deg
-        centre_ra = self.imaging_sectors[0].ra * u.deg
-        centre_dec = self.imaging_sectors[0].dec * u.deg
-
+        size_ra = self.sector_bounds_width_ra * u.deg
+        size_dec = self.sector_bounds_width_dec * u.deg
         size_skymodel = skymodel_radius * u.deg
 
         # Dealing with axes limits is difficult here.
@@ -1736,7 +1705,7 @@ class Field(object):
         if moc is not None:
             pmoc = mocpy.MOC.from_fits(moc)
             mocwcs = mocpy.WCS(fig, fov=fake_size*2,
-                               center=SkyCoord(centre_ra, centre_dec, frame='fk5')).w
+                               center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
             wcs = mocwcs
         else:
             wcs = self.wcs
@@ -1748,41 +1717,34 @@ class Field(object):
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
-        # Indicate the region out to which the skymodel was queried.
+        # Indicate the region out to which the skymodel was queried, centered on the
+        # center of the field
         if skymodel_radius > 0:
-            skymodel_region = SphericalCircle((centre_ra, centre_dec), size_skymodel,
+            skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
                                               transform=ax.get_transform('fk5'),
                                               label='Skymodel query cone', edgecolor='r',
                                               facecolor='none', linewidth=2)
             ax.add_patch(skymodel_region)
 
-        # Plot the part of the field being imaged.
-        field_region = Quadrangle((centre_ra - size_ra / 2, centre_dec - size_dec / 2),
-                                  size_ra, size_dec, transform=ax.get_transform('fk5'),
-                                  label='Image borders', edgecolor='k', facecolor='none',
-                                  linewidth=2)
-        ax.add_patch(field_region)
+        # Plot the parts of the field being imaged.
+        for sector in self.imaging_sectors:
+            ax.add_patch(sector.get_matplotlib_patch(wcs=wcs))
 
-        # Plot the observation's FWHM
-        ra = centre_ra
-        dec = centre_dec
-        fwhm = Ellipse((ra.value, dec.value), width=self.fwhm_ra_deg, height=self.fwhm_dec_deg,
-                       transform=ax.get_transform('fk5'), edgecolor='k', facecolor='lightgray',
-                       linestyle=':', label='Pointing FWHM', linewidth=2, alpha=0.5)
-        ax.add_patch(fwhm)
+        # Plot the observation's FWHM.
+        ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
 
         # Set the plot FoV in case no MOC is given.
         if moc is None:
-            fake_FoV_circle = SphericalCircle((centre_ra, centre_dec), fake_size,
+            fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size,
                                               transform=ax.get_transform('fk5'),
                                               edgecolor='none', facecolor='none',
                                               linewidth=0)
             ax.add_patch(fake_FoV_circle)
 
-        ax.scatter(centre_ra, centre_dec, marker='s', color='k',
-                   transform=ax.get_transform('fk5'), label='Image centre')
+        ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
+                   transform=ax.get_transform('fk5'), label='Phase center')
 
-        ax.set(xlabel='Right ascension [J2000]', ylabel='Declination [J2000]')
-        ax.legend()
+        ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
+        ax.legend(loc='upper left')
         ax.grid()
         fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))

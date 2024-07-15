@@ -7,7 +7,7 @@ from argparse import RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, read_ds9_region_file, make_wcs, radec2xy
+from rapthor.lib.facet import SquareFacet, read_ds9_region_file,
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 import casacore.tables as pt
@@ -53,7 +53,7 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
     plot_labels : bool, optional
         If True, plot the facet labels
     """
-    wcs = make_wcs(field_ra, field_dec)
+    wcs = misc.make_wcs(field_ra, field_dec)
     ra_offsets = []
     dec_offsets = []
     facet_patches = []
@@ -89,7 +89,7 @@ def plot_astrometry_offsets(facets, field_ra, field_dec, output_file, plot_label
     ax.set_title('Positional Offsets (arrows indicate direction and magnitude of correction)')
 
     # Plot the facet polygons
-    x, y = radec2xy(wcs, facet_ra, facet_dec)
+    x, y = misc.radec2xy(wcs, facet_ra, facet_dec)
     for i, patch in enumerate(facet_patches):
         ax.add_patch(patch)
         if plot_labels:
