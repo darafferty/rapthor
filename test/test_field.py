@@ -3,6 +3,7 @@ import os
 import requests
 from rapthor.lib.field import Field
 from rapthor.lib.parset import parset_read
+from rapthor.lib import miscellaneous as misc
 
 
 class TestField(unittest.TestCase):
@@ -41,7 +42,7 @@ class TestField(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        os.system('rm -r images/ logs/ pipelines/ regions/ scratch/ skymodels/ solutions/')
+        os.system('rm -r images/ logs/ pipelines/ regions/ skymodels/ solutions/ plots/')
 
     def test_scan_observations(self):
         self.assertEqual(self.field.fwhm_ra_deg, 4.500843683229519)
@@ -56,10 +57,10 @@ class TestField(unittest.TestCase):
         self.assertEqual(self.field.outlier_sectors, [])
 
     def test_radec2xy(self):
-        self.assertEqual(self.field.radec2xy([0.0], [0.0]), ([12187.183569042127], [-12477.909993882473]))
+        self.assertEqual(misc.radec2xy(self.field.wcs, 0.0, 0.0), (12187.183569042127, -12477.909993882473))
 
     def test_xy2radec(self):
-        self.assertEqual(self.field.xy2radec([12187.183569042127], [-12477.909993882473]), ([1.4210854715202004e-14], [0.0]))
+        self.assertEqual(misc.xy2radec(self.field.wcs, 12187.183569042127, -12477.909993882473), (1.4210854715202004e-14, 0.0))
 
     def test_chunk_observations(self):
         for obs in self.field.full_observations:
@@ -90,6 +91,11 @@ class TestField(unittest.TestCase):
     def test_check_selfcal_progress(self):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
+    def test_plot_field(self):
+        self.field.dec = 89.5  # test behavior near pole
+        self.field.plot_field(skymodel_radius=5.0)
+        self.assertTrue(os.path.exists(os.path.join('plots', 'field_coverage.png')))
+
 
 def suite():
     suite = unittest.TestSuite()
@@ -106,6 +112,7 @@ def suite():
     suite.addTest(TestField('test_define_bright_source_sectors'))
     suite.addTest(TestField('test_find_intersecting_sources'))
     suite.addTest(TestField('test_check_selfcal_progress'))
+    suite.addTest(TestField('test_plot_field'))
     return suite
 
 
