@@ -13,6 +13,7 @@ from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from astropy.io import fits as pyfits
 from astropy.time import Time
+from astropy.wcs import WCS
 from PIL import Image, ImageDraw
 import multiprocessing
 from math import modf, floor, ceil
@@ -225,6 +226,133 @@ def normalize_dec(num):
     res = num
 
     return res
+
+
+def radec2xy(wcs, ra, dec):
+    """
+    Returns x, y for input RA, Dec
+
+    Parameters
+    ----------
+    wcs : WCS object
+        WCS object defining transformation
+    ra : float, list, or numpy array
+        RA value(s) in degrees
+    dec : float, list, or numpy array
+        Dec value(s) in degrees
+
+    Returns
+    -------
+    x, y : float, list, or numpy array
+        x and y pixel values corresponding to the input RA and Dec
+        values
+    """
+    if type(ra) is list or type(ra) is np.ndarray:
+        ra_list = ra
+    else:
+        ra_list = [float(ra)]
+    if type(dec) is list or type(dec) is np.ndarray:
+        dec_list = dec
+    else:
+        dec_list = [float(dec)]
+    if len(ra_list) != len(dec_list):
+        raise ValueError('RA and Dec must be of equal length')
+
+    ra_dec = np.stack((ra_list, dec_list), axis=-1)
+    x_arr, y_arr = wcs.wcs_world2pix(ra_dec, 0).transpose()
+
+    # Return the same type as the input
+    if type(ra) is list:
+        x = x_arr.tolist()
+    elif type(ra) is np.ndarray:
+        x = x_arr
+    else:
+        x = x_arr[0]
+    if type(dec) is list:
+        y = y_arr.tolist()
+    elif type(dec) is np.ndarray:
+        y = y_arr
+    else:
+        y = y_arr[0]
+
+    return x, y
+
+
+def xy2radec(wcs, x, y):
+    """
+    Returns RA, Dec for input x, y
+
+    Parameters
+    ----------
+    wcs : WCS object
+        WCS object defining transformation
+    x : float, list, or numpy array
+        x value(s) in pixels
+    y : float, list, or numpy array
+        y value(s) in pixels
+
+    Returns
+    -------
+    RA, Dec : float, list, or numpy array
+        RA and Dec values corresponding to the input x and y pixel
+        values
+    """
+    if type(x) is list or type(x) is np.ndarray:
+        x_list = x
+    else:
+        x_list = [float(x)]
+    if type(y) is list or type(y) is np.ndarray:
+        y_list = y
+    else:
+        y_list = [float(y)]
+    if len(x_list) != len(y_list):
+        raise ValueError('x and y must be of equal length')
+
+    x_y = np.stack((x_list, y_list), axis=-1)
+    ra_arr, dec_arr = wcs.wcs_pix2world(x_y, 0).transpose()
+
+    # Return the same type as the input
+    if type(x) is list:
+        ra = ra_arr.tolist()
+    elif type(x) is np.ndarray:
+        ra = ra_arr
+    else:
+        ra = ra_arr[0]
+    if type(y) is list:
+        dec = dec_arr.tolist()
+    elif type(y) is np.ndarray:
+        dec = dec_arr
+    else:
+        dec = dec_arr[0]
+
+    return ra, dec
+
+
+def make_wcs(ra, dec, wcs_pixel_scale=10.0/3600.0):
+    """
+    Makes simple WCS object
+
+    Parameters
+    ----------
+    ra : float
+        Reference RA in degrees
+    dec : float
+        Reference Dec in degrees
+    wcs_pixel_scale : float, optional
+        Pixel scale in degrees/pixel (default = 10"/pixel)
+
+    Returns
+    -------
+    w : astropy.wcs.WCS object
+        A simple TAN-projection WCS object for specified reference position
+    """
+    w = WCS(naxis=2)
+    w.wcs.crpix = [1000, 1000]
+    w.wcs.cdelt = np.array([-wcs_pixel_scale, wcs_pixel_scale])
+    w.wcs.crval = [ra, dec]
+    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+
+    return w
 
 
 def read_vertices(filename):
