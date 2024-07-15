@@ -7,7 +7,7 @@ from argparse import RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
-from rapthor.lib.facet import SquareFacet, read_ds9_region_file,
+from rapthor.lib.facet import SquareFacet, read_ds9_region_file
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib.observation import Observation
 import casacore.tables as pt
