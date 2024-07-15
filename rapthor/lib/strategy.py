@@ -116,8 +116,8 @@ def set_selfcal_strategy(field):
 
     strategy_steps = []
 
-    min_selfcal_loops = 4
-    max_selfcal_loops = 8
+    min_selfcal_loops = 4 if do_phase_only_solves else 2
+    max_selfcal_loops = 8 if do_phase_only_solves else 6
     for i in range(max_selfcal_loops):
         strategy_steps.append({})
 
