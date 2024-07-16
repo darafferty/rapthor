@@ -8,6 +8,6 @@ COPY . /tmp/rapthor
 
 ARG VERSION=0.0.0
 
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${VERSION} \
     python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
     rm -rf /tmp/rapthor
