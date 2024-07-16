@@ -248,10 +248,16 @@ inputs:
       The name of the calibration solution table (length = 1).
     type: string
 
-  - id: apply_diagonal_solutions
-    label: Apply diagonal solutions
+  - id: scalar_visibilities
+    label: Use scalar visibilities
     doc: |
-      Apply diagonal (separate XX and YY) solutions (length = 1).
+      Use only scalar (Stokes I) visibilities (length = 1).
+    type: boolean
+
+  - id: diagonal_visibilities
+    label: Use diagonal visibilities
+    doc: |
+      Use only diagonal (XX and YY) visibilities (length = 1).
     type: boolean
 
   - id: parallel_gridding_threads
@@ -572,8 +578,10 @@ steps:
         source: facet_region_file
       - id: soltabs
         source: soltabs
-      - id: apply_diagonal_solutions
-        source: apply_diagonal_solutions
+      - id: scalar_visibilities
+        source: scalar_visibilities
+      - id: diagonal_visibilities
+        source: diagonal_visibilities
 {% else %}
 # start not use_facets
 {% if not apply_none %}

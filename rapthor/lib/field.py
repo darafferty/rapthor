@@ -83,6 +83,8 @@ class Field(object):
         self.use_mpi = self.parset['imaging_specific']['use_mpi']
         self.parallelbaselines = self.parset['calibration_specific']['parallelbaselines']
         self.sagecalpredict = self.parset['calibration_specific']['sagecalpredict']
+        self.fast_datause = self.parset['calibration_specific']['fast_datause']
+        self.slow_datause = self.parset['calibration_specific']['slow_datause']
         self.reweight = self.parset['imaging_specific']['reweight']
         self.do_multiscale_clean = self.parset['imaging_specific']['do_multiscale_clean']
         self.apply_diagonal_solutions = self.parset['imaging_specific']['apply_diagonal_solutions']

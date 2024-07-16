@@ -254,6 +254,19 @@ class Parset:
 
         # Calibration options
         options = settings["calibration"]
+
+        for opt, valid_values in {
+            "fast_datause": ("single", "dual", "full"),
+            "slow_datause": ("dual", "full"),
+            "solveralgorithm": ("hybrid", "lbfgs", "directioniterative", "directionsolve"),
+        }.items():
+            if options[opt] not in valid_values:
+                raise ValueError(
+                    "The option '{}' must be one of {}".format(
+                        opt, ", ".join("'{}'".format(val) for val in valid_values)
+                    )
+                )
+
         dd_interval_factor = options["dd_interval_factor"]
         solveralgorithm = options["solveralgorithm"]
         fast_bda_timebase = options["fast_bda_timebase"]
@@ -264,12 +277,12 @@ class Parset:
                 f"The dd_interval_factor parameter is {dd_interval_factor}; "
                 f"it must be >= 1"
             )
-        elif dd_interval_factor > 1 and solveralgorithm != 'directioniterative':
+        elif dd_interval_factor > 1 and solveralgorithm != "directioniterative":
             log.warning(
                 f"Switching from the '{solveralgorithm}' solver to the "
                 "'directioniterative' solver, since dd_interval_factor > 1."
             )
-            options["solveralgorithm"] = 'directioniterative'
+            options["solveralgorithm"] = "directioniterative"
         if dd_interval_factor > 1 and (fast_bda_timebase > 0 or
                                        slow_bda_timebase_joint > 0 or
                                        slow_bda_timebase_separate > 0):
@@ -281,6 +294,16 @@ class Parset:
             options["fast_bda_timebase"] = 0.0
             options["slow_bda_timebase_joint"] = 0.0
             options["slow_bda_timebase_separate"] = 0.0
+        if (
+            (options["fast_datause"] != "full" or options["slow_datause"] != "full") and
+            options["solveralgorithm"] != "directioniterative"
+        ):
+            log.warning(
+                f"Switching from the '{solveralgorithm}' solver to the "
+                "'directioniterative' solver, since single or dual visibilities "
+                "solving is activated."
+            )
+            options["solveralgorithm"] = "directioniterative"
 
         # Imaging options
         options = settings["imaging"]

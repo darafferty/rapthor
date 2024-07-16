@@ -227,16 +227,31 @@ class Image(Operation):
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if (self.field.apply_amplitudes and
-                        self.field.apply_diagonal_solutions and
-                        self.field.image_pol.lower() == 'i'):
-                    # Diagonal solutions generated and should be applied.
-                    # Note: this flag should be activated only when Stokes I alone is
-                    # imaged, as the application of diagonal solutions is already
-                    # activated when imaging multiple polarizations
-                    self.input_parms.update({'apply_diagonal_solutions': True})
+                if self.field.image_pol.lower() == 'i':
+                    # For Stokes-I-only imaging, we can take advantage of the scalar or
+                    # diagonal visibilities options in WSClean (saving I/O)
+                    if self.field.apply_amplitudes:
+                        # Diagonal solutions generated during calibration
+                        if self.field.apply_diagonal_solutions:
+                            # Diagonal solutions should be used during imaging
+                            self.input_parms.update({'diagonal_visibilities': True})
+                            self.input_parms.update({'scalar_visibilities': False})
+                        else:
+                            # Diagonal solutions should not be used during imaging (they
+                            # were in fact converted to scalar solutions at the end of
+                            # calibration)
+                            self.input_parms.update({'diagonal_visibilities': False})
+                            self.input_parms.update({'scalar_visibilities': True})
+                    else:
+                        # Diagonal solutions not generated; only scalar solutions are
+                        # available
+                        self.input_parms.update({'diagonal_visibilities': False})
+                        self.input_parms.update({'scalar_visibilities': True})
                 else:
-                    self.input_parms.update({'apply_diagonal_solutions': False})
+                    # This case is of full-Stokes (IQUV) imaging, so do not use diagonal
+                    # or scalar visibilities (we need all four)
+                    self.input_parms.update({'diagonal_visibilities': False})
+                    self.input_parms.update({'scalar_visibilities': False})
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
 

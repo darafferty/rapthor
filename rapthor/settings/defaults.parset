@@ -93,20 +93,20 @@ facet_layout = None
 # PB_FWHM of the field center, include it in the calibration (default = False)
 use_included_skymodels = False
 
-# Maximum factor by which the direction-dependent solution intervals can be increased,
-# so that fainter calibrators get longer intervals (in the fast and slow solves only;
-# default = 1 = disabled). Note: currently, direction-dependent solution intervals
-# cannot be used in conjunction with baseline-dependent averaging
-dd_interval_factor = 1
+# Maximum factor by which the direction-dependent solution intervals can be
+# increased, so that fainter calibrators get longer intervals (in the fast and
+# slow solves only; default = 3). Note: currently, direction-dependent solution
+# intervals cannot be used in conjunction with baseline-dependent averaging
+dd_interval_factor = 3
 
 # General solver parameters
 llssolver = qr
 maxiter = 150
 propagatesolutions = True
-solveralgorithm = hybrid
+solveralgorithm = directioniterative
 onebeamperpatch = False
 stepsize = 0.02
-stepsigma = 0.1
+stepsigma = 2.0
 tolerance = 5e-3
 parallelbaselines = False
 sagecalpredict = False
@@ -117,13 +117,15 @@ fast_smoothnessconstraint = 3e6
 fast_smoothnessreffrequency = None
 fast_smoothnessrefdistance = 0.0
 fast_bda_timebase = 0.0
+fast_datause = single
 
 # Slow solve parameters. Note that the solution intervals are set in the strategy
 slow_freqstep_hz = 1e6
 slow_smoothnessconstraint_joint = 3e6
 slow_smoothnessconstraint_separate = 3e6
-slow_bda_timebase_joint = 20000.0
-slow_bda_timebase_separate = 20000.0
+slow_bda_timebase_joint = 0.0
+slow_bda_timebase_separate = 0.0
+slow_datause = dual
 
 # Full-Jones solve parameters
 fulljones_timestep_sec = 600.0
@@ -179,8 +181,9 @@ mem_gb = 0
 apply_diagonal_solutions = True
 
 # The number of direction-dependent PSFs which should be fit horizontally and
-# vertically in the image (default = [1, 1] = direction-independent PSF).
-dd_psf_grid = [1, 1]
+# vertically in the image (default = [0, 0] = scale with the image size, with
+# approximately 1 PSF per square deg of imaged area)
+dd_psf_grid = [0, 0]
 
 # Make Stokes QUV images in addition to the Stokes I image (default = False).
 # If True, QUV images are made during the final imaging step, once self

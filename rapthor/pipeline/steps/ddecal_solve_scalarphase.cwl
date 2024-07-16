@@ -219,6 +219,16 @@ inputs:
       valueFrom: "$(self ? 'True': 'False')"
       separate: False
 
+  - id: datause
+    label: Datause parameter
+    doc: |
+      The datause parameter that determines how the visibilies are used in
+      the solves.
+    type: string
+    inputBinding:
+      prefix: solve.datause=
+      separate: False
+
   - id: stepsize
     label: Solver step size
     doc: |
