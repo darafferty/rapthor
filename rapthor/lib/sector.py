@@ -125,7 +125,6 @@ class Sector(object):
         self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
-        self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
 
         # Set image size based on current sector polygon
         if recalculate_imsize or self.imsize is None:
@@ -160,6 +159,17 @@ class Sector(object):
         self.wsclean_imsize = "'{0} {1}'".format(self.imsize[0], self.imsize[1])
         self.log.debug('Image size is {0} x {1} pixels'.format(
                        self.imsize[0], self.imsize[1]))
+
+        # Set the direction-dependent PSF grid (defined as [# in RA, # in Dec]):
+        #   [0, 0] => scale automatically with image size
+        #   [1, 1] => direction-independent
+        #   [X, Y] => user-defined
+        self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
+        if self.dd_psf_grid == [0, 0]:
+            # Set the grid based on the image size, with ~ 1 PSF per square deg
+            # of imaged area
+            self.dd_psf_grid = [max(1, int(np.round(self.width_ra))),
+                                max(1, int(np.round(self.width_dec)))]
 
         # Set number of output channels to get ~ 4 MHz per channel equivalent at 120 MHz
         # (the maximum averaging allowed for typical dTEC values of -0.5 < dTEC < 0.5)

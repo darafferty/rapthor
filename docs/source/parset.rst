@@ -170,8 +170,8 @@ The available options are described below under their respective sections.
 
     solveralgorithm
         The algorithm used for solving (one of ``directionsolve``, ``directioniterative``,
-        ``lbfgs``, or ``hybrid``; default = ``hybrid``). When using ``lbfgs``, the
-        :term:`stepsize` should be set to a small value like 0.001.
+        ``lbfgs``, or ``hybrid``; default = ``directioniterative``). When using ``lbfgs``,
+        the :term:`stepsize` should be set to a small value like 0.001.
 
     onebeamperpatch
         Calculate the beam correction once per calibration patch (default = ``False``)? If
@@ -184,7 +184,38 @@ The available options are described below under their respective sections.
         directions (default = ``False``).
 
     sagecalpredict
-        Use SAGECal for model calculation, both in predict and calibration (default = ``False``).
+        Use SAGECal for model calculation, both in predict and calibration (default =
+        ``False``).
+
+    fast_datause
+        This parameter sets the visibilities mode used during the fast-phase solves  (one
+        of ``single``, ``dual``, or ``full``; default = ``single``). If set to ``single``,
+        the XX and YY visibilities are averaged together to a single (Stokes I)
+        visibility. If set to ``dual``, only the XX and YY visibilities are used (YX and
+        XY are not used). If set to ``full``, all visibilities are used. Activating the
+        ``single`` or ``dual`` mode improves the speed of the solves and lowers the memory
+        usage during solving.
+
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using ``single`` or ``dual`` modes. If one of these modes is activated
+            and a different solver is specified, the solver will be automatically switched
+            to the ``directioniterative`` one.
+
+    slow_datause
+        This parameter sets the the visibilities used during the slow-gain solves  (one
+        of ``dual`` or ``full``; default = ``dual``). If set to ``dual``, only the XX and
+        YY visibilities are used (YX and XY are not used). If set to ``full``, all
+        visibilities are used. Activating the ``dual`` mode improves the speed of the
+        solves and lowers the memory usage during solving.
+
+        .. note::
+
+            Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
+            when using the ``dual`` mode. If this modes is activated
+            and a different solver is specified, the solver will be automatically switched
+            to the ``directioniterative`` one.
 
     stepsize
         Size of steps used during calibration (default = 0.02). When using
@@ -192,9 +223,9 @@ The available options are described below under their respective sections.
         like 0.001.
 
     stepsigma
-        In oder to stop solving iterations when no further improvement is seen, the mean
+        In order to stop solving iterations when no further improvement is seen, the mean
         of the step reduction is compared to the standard deviation multiplied by
-        :term:`stepsigma` factor (default = 0.1). If mean of the step reduction is lower
+        :term:`stepsigma` factor (default = 2.0). If mean of the step reduction is lower
         than this value (noise dominated), solver iterations are stopped since no possible
         improvement can be gained.
 
@@ -218,8 +249,17 @@ The available options are described below under their respective sections.
         m (default = 0).
 
     fast_bda_timebase
-        Maximum baseline used in baseline-dependent averaging (BDA) during the fast
-        phase calibration, in m (default = 0). A value of 0.0 will disable the averaging.
+        Maximum baseline used in baseline-dependent averaging (BDA) during the fast-phase
+        calibration, in m (default = 0). A value of 0.0 will disable the averaging.
+        Depending on the solution time step used during the fast-phase calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
+        .. note::
+
+            Currently, BDA is not supported when using direction-dependent solution
+            intervals. If both BDA and direction-dependent solution intervals are
+            activated, BDA will be automatically deactivated.
 
     slow_freqstep_hz
         Frequency step used during slow amplitude calibration, in Hz (default = 1e6).
@@ -234,11 +274,29 @@ The available options are described below under their respective sections.
 
     slow_bda_timebase_joint
         Maximum baseline used in baseline-dependent averaging (BDA) during the first slow
-        gain calibration, in m (default = 20000). A value of 0.0 will disable the averaging.
+        gain calibration, in m (default = 0). A value of 0 will disable the averaging.
+        Depending on the solution time step used during the slow-gain calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
+        .. note::
+
+            Currently, BDA is not supported when using direction-dependent solution
+            intervals. If both BDA and direction-dependent solution intervals are
+            activated, BDA will be automatically deactivated.
 
     slow_bda_timebase_separate
         Maximum baseline used in baseline-dependent averaging (BDA) during the second slow
-        gain calibration, in m (default = 20000). A value of 0.0 will disable the averaging.
+        gain calibration, in m (default = 0). A value of 0 will disable the averaging.
+        Depending on the solution time step used during the slow-gain calibration,
+        activating this option may improve the speed of the solve and lower the memory
+        usage during solving.
+
+        .. note::
+
+            Currently, BDA is not supported when using direction-dependent solution
+            intervals. If both BDA and direction-dependent solution intervals are
+            activated, BDA will be automatically deactivated.
 
     fulljones_timestep_sec
         Time step used during the full-Jones gain calibration, in seconds (default = 600).
@@ -253,23 +311,27 @@ The available options are described below under their respective sections.
     dd_interval_factor
         Maximum factor by which the direction-dependent solution intervals can be
         increased, so that fainter calibrators get longer intervals (in the fast and slow
-        solves only; default = 1 = disabled). The value determines the maximum allowed
-        adjustment factor by which the solution intervals are allowed to be increased for
-        faint sources. For a given direction, the adjustment is calculated from the
-        ratio of the apparent flux density of the calibrator to the target flux density of
-        the cycle (set in the strategy) or, if a target flux density is not defined, to
-        that of the faintest calibrator in the sky model. A value of 1 disables the use of
+        solves only; default = 3). The value determines the maximum allowed adjustment
+        factor by which the solution intervals are allowed to be increased for faint
+        sources. For a given direction, the adjustment is calculated from the ratio of the
+        apparent flux density of the calibrator to the target flux density of the cycle
+        (set in the strategy) or, if a target flux density is not defined, to that of the
+        faintest calibrator in the sky model. A value of 1 disables the use of
         direction-dependent solution intervals; a value greater than 1 enables
         direction-dependent solution intervals.
 
         .. note::
 
             Currently, only :term:`solveralgorithm` = ``directioniterative`` is supported
-            when using direction-dependent solution intervals. The 'directioniterative'
-            solver is typically less accurate than the other directional solvers and
-            therefore may result in lower-quality solutions for a given solution interval.
-            However, the use of direction-dependent intervals will often outweigh this
-            effect, depending on the field and the settings chosen.
+            when using direction-dependent solution intervals. If direction-dependent
+            solution intervals are activated and a different solver is specified, the
+            solver will be automatically switched to the ``directioniterative`` one.
+
+        .. note::
+
+            Currently, baseline-dependent averaging (BDA) is not supported when using
+            direction-dependent solution intervals. If both BDA and direction-dependent
+            solution intervals are activated, BDA will be automatically deactivated.
 
     solverlbfgs_dof
         Degrees of freedom for the LBFGS solver (only used when :term:`solveralgorithm` =
@@ -360,7 +422,9 @@ The available options are described below under their respective sections.
 
     dd_psf_grid
         The number of direction-dependent PSFs which should be fit horizontally and
-        vertically in the image (default = ``[1, 1]`` = direction-independent PSF).
+        vertically in the image (default = ``[0, 0]`` = scale with the image size, with
+        approximately one PSF per square degree of imaged area). Set to ``[1, 1]`` to use
+        a direction-independent PSF.
 
     use_mpi
         Use MPI to distribute WSClean jobs over multiple nodes (default = ``False``)? If

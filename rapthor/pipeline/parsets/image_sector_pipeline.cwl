@@ -211,10 +211,16 @@ inputs:
       The names of the calibration solution tables (length = 1).
     type: string
 
-  - id: apply_diagonal_solutions
-    label: Apply diagonal solutions
+  - id: scalar_visibilities
+    label: Use scalar visibilities
     doc: |
-      Apply diagonal (separate XX and YY) solutions (length = 1).
+      Use only scalar (Stokes I) visibilities (length = 1).
+    type: boolean
+
+  - id: diagonal_visibilities
+    label: Use diagonal visibilities
+    doc: |
+      Use only diagonal (XX and YY) visibilities (length = 1).
     type: boolean
 
   - id: parallel_gridding_threads
@@ -644,8 +650,10 @@ steps:
         source: soltabs
       - id: region_file
         source: make_region_file/region_file
-      - id: apply_diagonal_solutions
-        source: apply_diagonal_solutions
+      - id: scalar_visibilities
+        source: scalar_visibilities
+      - id: diagonal_visibilities
+        source: diagonal_visibilities
 {% if not use_mpi %}
       - id: num_gridding_threads
         source: parallel_gridding_threads
