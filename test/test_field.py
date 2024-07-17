@@ -65,7 +65,7 @@ class TestField(unittest.TestCase):
     def test_chunk_observations(self):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.8
-        self.field.chunk_observations(600.0)
+        self.field.chunk_observations(600.0, prefer_high_el_periods=False)
         self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.90695)
 
     def test_get_obs_parameters(self):
