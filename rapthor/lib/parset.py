@@ -534,7 +534,7 @@ def parset_read(parset_file, use_log_file=True):
         if parset_dict["generate_initial_skymodel"]:
             # If sky model is given but generation requested, disable generation and use
             # the given skymodel.
-            log.info(
+            log.warning(
                 "Sky model generation requested, but user-provided sky model is present. "
                 "Disabling generation and using sky model provided by the user."
             )
@@ -542,7 +542,7 @@ def parset_read(parset_file, use_log_file=True):
         elif parset_dict["download_initial_skymodel"]:
             # If sky model is given but download requested, use the given skymodel and
             # disable download.
-            log.info(
+            log.warning(
                 "Sky model download requested, but user-provided sky model is present. "
                 "Disabling download and using sky model provided by the user."
             )

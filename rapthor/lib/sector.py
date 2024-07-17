@@ -97,7 +97,17 @@ class Sector(object):
             If True, the image size is recalculated based on the current sector region
         imaging_parameters : dict, optional
             Dict of imaging parameters to use instead of those defined by the field's
-            parset
+            parset. If supplied, the following keys are expected to be present:
+                'cellsize_arcsec': cell (pixel) size in arcsec
+                'robust': Briggs robust value
+                'taper_arcsec': taper in arcsec
+                'min_uv_lambda': minimum uv distance cut in lambda
+                'max_uv_lambda': maximum uv distance cut in lambda
+                'idg_mode': IDG processing mode
+                'mem_gb': maximum memory in GB
+                'reweight': reweighting flag
+                'dd_psf_grid': DD PSF grid
+                'max_peak_smearing': maximum allowed peak smearing
         """
         if imaging_parameters is None:
             imaging_parameters = self.field.parset['imaging_specific']

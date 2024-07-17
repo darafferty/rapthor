@@ -1,10 +1,8 @@
 """
 Script that defines the default user processing strategy for HBA data when the
-initial sky model is assumed to be of insufficient quality to begin amplitude
-calibration directly (e.g., it is downloaded from a catalog). Specifying this
-file as the calibration strategy in the Rapthor parset causes default Rapthor to
-use the default calibration behaviour, which is equal to specifying no specific
-calibration strategy.
+initial sky model is generated from the input data. Specifying this file as the
+calibration strategy in the Rapthor parset causes default Rapthor to use the default
+calibration behaviour, which is equal to specifying no specific calibration strategy.
 
 This file is provided to base custom strategies from. See the documentation for
 detailed information on each parameter.
@@ -15,29 +13,21 @@ max_selfcal_loops = 8
 for i in range(max_selfcal_loops):
     strategy_steps.append({})
 
-    # Here we set the calibration strategy so that two cycles of phase-only
-    # calibration are done (outliers -- sources that lie outside of imaged
-    # regions -- are peeled in the first cycle). Starting with the third cycle,
-    # slow-gain calibration is also done. The minimum uv distance used in the
-    # solves is set to 150 lambda, except for the first slow-gain cycle where it
-    # is often beneficial to exclude short baselines. Lastly, the maximum
+    # Here we set the calibration strategy. We specify that outliers -- sources
+    # that lie outside of imaged regions -- are peeled in the first cycle only
+    # and that slow-gain calibration is done in every cycle. The minimum uv
+    # distance used in the solves is set to 150 lambda. Lastly, the maximum
     # allowed difference from unity in the normalized amplitude solutions (per
     # station) is set to 0.3, to allow for small adjustments to the station
     # calibration (done in LINC).
     strategy_steps[i]['do_calibrate'] = True
     if i == 0:
-        strategy_steps[i]['do_slowgain_solve'] = False
+        strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = True
-    elif i == 1:
-        strategy_steps[i]['do_slowgain_solve'] = False
-        strategy_steps[i]['peel_outliers'] = False
     else:
         strategy_steps[i]['do_slowgain_solve'] = True
         strategy_steps[i]['peel_outliers'] = False
-    if i == 2 and field.antenna == 'HBA':
-        strategy_steps[i]['solve_min_uv_lambda'] = 2000
-    else:
-        strategy_steps[i]['solve_min_uv_lambda'] = 150
+    strategy_steps[i]['solve_min_uv_lambda'] = 150
     strategy_steps[i]['peel_bright_sources'] = False
     strategy_steps[i]['do_fulljones_solve'] = False
     strategy_steps[i]['max_normalization_delta'] = 0.3
@@ -56,12 +46,7 @@ for i in range(max_selfcal_loops):
     # of major iterations allowed during imaging is raised to allow deeper
     # cleaning in the later cycles
     strategy_steps[i]['do_image'] = True
-    if i < 2:
-        strategy_steps[i]['auto_mask'] = 5.0
-        strategy_steps[i]['threshisl'] = 4.0
-        strategy_steps[i]['threshpix'] = 5.0
-        strategy_steps[i]['max_nmiter'] = 8
-    elif i == 2:
+    if i == 0:
         strategy_steps[i]['auto_mask'] = 4.0
         strategy_steps[i]['threshisl'] = 3.0
         strategy_steps[i]['threshpix'] = 5.0
@@ -79,15 +64,11 @@ for i in range(max_selfcal_loops):
     # grow unnecessarily large. We also limit the distance from the phase center
     # that calibrators can have to exclude distant sources
     if i == 0:
-        strategy_steps[i]['target_flux'] = 0.6
-        strategy_steps[i]['max_directions'] = 20
+        strategy_steps[i]['target_flux'] = 0.3
+        strategy_steps[i]['max_directions'] = 40
         strategy_steps[i]['max_distance'] = 3.0
     elif i == 1:
-        strategy_steps[i]['target_flux'] = 0.4
-        strategy_steps[i]['max_directions'] = 30
-        strategy_steps[i]['max_distance'] = 3.0
-    elif i == 2:
-        strategy_steps[i]['target_flux'] = 0.3
+        strategy_steps[i]['target_flux'] = 0.25
         strategy_steps[i]['max_directions'] = 40
         strategy_steps[i]['max_distance'] = 3.5
     else:

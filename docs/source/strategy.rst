@@ -22,7 +22,11 @@ Rapthor parset. The options for this parameter are described below:
 ``strategy = image``
     This strategy performs imaging only; no calibration is done. As such, a file
     containing the direction-dependent corrections must be supplied via the
-    :term:`input_h5parm` option in the parset.
+    :term:`input_h5parm` option in the parset. This strategy should be selected
+    only when a full self-calibration has already been done. It is useful, for
+    example, for reimaging the data at a different resolution. It can also be
+    used to generate calibrated visibilities for a given source or sources (see
+    :term:`save_visibilities`).
 
 ``strategy = /path/to/custom_strategy.py``
     By giving the path to a strategy file, the user can define a custom processing
