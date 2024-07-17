@@ -242,11 +242,12 @@ class Field(object):
         mintime : float
             Minimum time in sec for a chunk
         prefer_high_el_periods : bool, optional
-            Prefer periods for which the elevation is in the 80% highest values for a
+            Prefer periods for which the elevation is in the highest 80% of values for a
             given observation. This option is useful for removing periods of lower
             signal-to-noise (e.g., due to being at lower elevations where ionospheric
-            activity can increase and sensitivity decrease). It will also tend to
-            distribute the chunks around the more sensitive times, near transit
+            activity can increase and sensitivity decrease). If the requested mintime is
+            larger than the total time of the high-elevation period for a given
+            observation, then the full observation is used instead
         """
         # Set the chunk size so that it is at least mintime
         self.observations = []
