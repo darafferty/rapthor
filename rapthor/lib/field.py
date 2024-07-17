@@ -252,17 +252,12 @@ class Field(object):
         # Set the chunk size so that it is at least mintime
         self.observations = []
         for obs in self.full_observations:
-            if prefer_high_el_periods:
-                tottime = obs.high_el_endtime - obs.high_el_starttime
-                if mintime/tottime < 1:
-                    target_starttime = obs.high_el_starttime
-                    target_endtime = obs.high_el_endtime
-                else:
-                    target_starttime = obs.starttime
-                    target_endtime = obs.endtime
-            else:
-                target_starttime = obs.starttime
-                target_endtime = obs.endtime
+            target_starttime = obs.starttime
+            target_endtime = obs.endtime
+            if prefer_high_el_periods and (mintime < obs.high_el_endtime - obs.high_el_starttime):
+                # Use high-elevation period for chunking
+                target_starttime = obs.high_el_starttime
+                target_endtime = obs.high_el_endtime
             tottime = target_endtime - target_starttime
 
             nchunks = max(1, int(np.floor(obs.data_fraction / (mintime / tottime))))
@@ -282,9 +277,9 @@ class Field(object):
                 starttimes = np.arange(target_starttime, target_endtime, steptime)
                 endtimes = np.arange(target_starttime+mintime, target_endtime+mintime, steptime)
                 for starttime, endtime in zip(starttimes, endtimes):
-                    if endtime > obs.endtime:
-                        starttime = obs.endtime - mintime
-                        endtime = obs.endtime
+                    if endtime > target_endtime:
+                        starttime = target_endtime - mintime
+                        endtime = target_endtime
                     self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                          endtime=endtime))
 
