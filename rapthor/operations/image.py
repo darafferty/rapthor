@@ -389,11 +389,11 @@ class ImageInitial(Operation):
         # model generation
         imaging_parameters = self.field.parset['imaging_specific'].copy()
         imaging_parameters['cellsize_arcsec'] = 1.5
-        imaging_parameters['robust'] = -1.5,
-        imaging_parameters['taper_arcsec'] = 0.0,
-        imaging_parameters['min_uv_lambda'] = 0.0,
-        imaging_parameters['max_uv_lambda'] = 1e6,
-        imaging_parameters['reweight'] = False,
+        imaging_parameters['robust'] = -1.5
+        imaging_parameters['taper_arcsec'] = 0.0
+        imaging_parameters['min_uv_lambda'] = 0.0
+        imaging_parameters['max_uv_lambda'] = 1e6
+        imaging_parameters['reweight'] = False
         imaging_parameters['dd_psf_grid'] = [1, 1]
         sector.max_nmiter = 12
         sector.set_imaging_parameters(do_multiscale=True, imaging_parameters=imaging_parameters)
