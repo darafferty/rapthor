@@ -37,8 +37,8 @@ dependencies = [
     "importlib-metadata; python_version<'3.8'",
     "importlib-resources; python_version<'3.9'",
     "jinja2",
-    "losoto",
-    "lsmtool @ git+https://git.astron.nl/RD/LSMTool@5635971c249915984a80f0e0a634a1d932273a5d",
+    "losoto>=2.4.3",
+    "lsmtool>=1.6",
     "matplotlib",
     "mocpy",
     "numpy<2",
@@ -47,7 +47,7 @@ dependencies = [
     "reproject",
     "requests",
     "Rtree",
-    "scipy<1.14",  # temporary work-around CI failure, requires fix in LoSoTo
+    "scipy",
     "shapely",
     "toil[cwl]>=5.10",
 ]
