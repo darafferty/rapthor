@@ -148,10 +148,20 @@ class Observation(object):
                              'are supported at this time)')
         ant.close()
 
-        # Find mean elevation and FOV
+        # Find mean elevation and time range for periods where the elevation
+        # falls below the lowest 20% of all values
         el_values = pt.taql("SELECT mscal.azel1()[1] AS el from "
                             + self.ms_filename + " limit ::10000").getcol("el")
         self.mean_el_rad = np.mean(el_values)
+        el_sorted = np.sort(el_values)
+        times = pt.taql("select TIME from "
+                        + self.ms_filename + ".ms limit ::10000").getcol("TIME")
+        indices = np.where(el_values < el_sorted[int(len(el_values)/5)])[0]
+        diff = indices[1:] - indices[:-1]
+        starttime_index = indices[diff.tolist().index(max(diff))]
+        endtime_index = indices[diff.tolist().index(max(diff)) + 1]
+        self.high_el_starttime = times[starttime_index]
+        self.high_el_endtime = times[endtime_index]
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
                                    target_fast_timestep, target_slow_timestep_joint,

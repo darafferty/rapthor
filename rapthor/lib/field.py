@@ -226,7 +226,7 @@ class Field(object):
         mid_index = np.argmin(np.abs(np.array(times)-mid_time))
         self.beam_ms_filename = self.full_observations[mid_index].ms_filename
 
-    def chunk_observations(self, mintime):
+    def chunk_observations(self, mintime, prefer_high_el_periods=True):
         """
         Break observations into smaller time chunks if desired
 
@@ -241,16 +241,34 @@ class Field(object):
         ----------
         mintime : float
             Minimum time in sec for a chunk
+        prefer_high_el_periods : bool, optional
+            Prefer periods for which the elevation is in the 80% highest values for a
+            given observation. This option is useful for removing periods of lower
+            signal-to-noise (e.g., due to being at lower elevations where ionospheric
+            activity can increase and sensitivity decrease). It will also tend to
+            distribute the chunks around the more sensitive times, near transit
         """
         # Set the chunk size so that it is at least mintime
         self.observations = []
         for obs in self.full_observations:
-            tottime = obs.endtime - obs.starttime
+            if prefer_high_el_periods:
+                tottime = obs.high_el_endtime - obs.high_el_starttime
+                if mintime/tottime < 1:
+                    target_starttime = obs.high_el_starttime
+                    target_endtime = obs.high_el_endtime
+                else:
+                    target_starttime = obs.starttime
+                    target_endtime = obs.endtime
+            else:
+                target_starttime = obs.starttime
+                target_endtime = obs.endtime
+            tottime = target_endtime - target_starttime
+
             nchunks = max(1, int(np.floor(obs.data_fraction / (mintime / tottime))))
             if nchunks == 1:
                 # Center the chunk around the midpoint (which is generally the most
                 # sensitive, near transit)
-                midpoint = obs.starttime + tottime / 2
+                midpoint = target_starttime + tottime / 2
                 chunktime = min(tottime, max(mintime, obs.data_fraction*tottime))
                 if chunktime < tottime:
                     self.observations.append(Observation(obs.ms_filename,
@@ -260,8 +278,8 @@ class Field(object):
                     self.observations.append(obs)
             else:
                 steptime = mintime * (tottime / mintime - nchunks) / nchunks + mintime
-                starttimes = np.arange(obs.starttime, obs.endtime, steptime)
-                endtimes = np.arange(obs.starttime+mintime, obs.endtime+mintime, steptime)
+                starttimes = np.arange(target_starttime, target_endtime, steptime)
+                endtimes = np.arange(target_starttime+mintime, target_endtime+mintime, steptime)
                 for starttime, endtime in zip(starttimes, endtimes):
                     if endtime > obs.endtime:
                         starttime = obs.endtime - mintime
