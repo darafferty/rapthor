@@ -318,7 +318,9 @@ class Image(Operation):
                 for ms_filename in ms_filenames:
                     src_filename = os.path.join(self.pipeline_working_dir, ms_filename)
                     dst_filename = os.path.join(dst_dir, ms_filename)
-                    shutil.copytree(src_filename, dst_filename, dirs_exist_ok=True)
+                    if os.path.exists(dst_filename):
+                        shutil.rmtree(dst_filename)
+                    shutil.copytree(src_filename, dst_filename)
 
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
