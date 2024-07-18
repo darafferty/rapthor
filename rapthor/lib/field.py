@@ -318,8 +318,13 @@ class Field(object):
                 else:
                     self.observations.append(obs)
 
-        # Update the copies stored in the imaging sectors
-        for sector in self.imaging_sectors:
+        # Update the copies stored in the imaging sectors (including the full-field
+        # sector, used to make the initial sky model). Other (non-imaging) sectors do not
+        # need to be updated
+        sectors_to_update = self.imaging_sectors
+        if hasattr(self, 'full_field_sector'):
+            sectors_to_update.append(self.full_field_sector)
+        for sector in sectors_to_update:
             sector.observations = []
             for obs in self.observations:
                 cobs = obs.copy()
