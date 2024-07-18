@@ -166,9 +166,10 @@ class Observation(object):
         indices = np.where(el_values < el_cut_lowest_20percent)[0]
         if len(indices) > 1:
             # At least two elements are needed for the start and end time check. The check
-            # assumes that the (unsorted) elevation values either increase smoothly to a
-            # maximum and then decrease with time or they simply increase or decrease
-            # monotonically. Any other behavior would be unphysical so is not considered
+            # assumes that the elevation either increases smoothly to a maximum and then
+            # decreases with time or that it simply increases (or decreases)
+            # monotonically. Any other behavior would be unphysical and so is not
+            # considered
             diff = indices[1:] - indices[:-1]
             if np.all(diff == 1):
                 # No gap found, so determine whether the low elevation points are at the
@@ -183,12 +184,13 @@ class Observation(object):
                     endtime_index = indices[0]
             else:
                 # Gap found, trim both start and end. As noted above, we assume there
-                # is only a single gap (period of higher elevations)
+                # is only a single gap (due to a period of higher elevations)
                 starttime_index = indices[diff.tolist().index(max(diff))]
                 endtime_index = indices[diff.tolist().index(max(diff)) + 1]
             self.high_el_starttime = times[starttime_index]
             self.high_el_endtime = times[endtime_index]
         else:
+            # Too few times (or none) at lower elevations, so just ignore them
             self.high_el_starttime = self.starttime
             self.high_el_endtime = self.endtime
 

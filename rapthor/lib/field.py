@@ -254,18 +254,22 @@ class Field(object):
         for obs in self.full_observations:
             target_starttime = obs.starttime
             target_endtime = obs.endtime
+            data_fraction = obs.data_fraction
             if prefer_high_el_periods and (mintime < obs.high_el_endtime - obs.high_el_starttime):
-                # Use high-elevation period for chunking
+                # Use high-elevation period for chunking. We increase the data fraction
+                # to account for the decreased total observation time so that the
+                # amount of data used is kept the same
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
+                data_fraction *= (obs.endtime - obs.starttime) / (target_endtime - target_starttime)
             tottime = target_endtime - target_starttime
 
-            nchunks = max(1, int(np.floor(obs.data_fraction / (mintime / tottime))))
+            nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))
             if nchunks == 1:
                 # Center the chunk around the midpoint (which is generally the most
                 # sensitive, near transit)
                 midpoint = target_starttime + tottime / 2
-                chunktime = min(tottime, max(mintime, obs.data_fraction*tottime))
+                chunktime = min(tottime, max(mintime, data_fraction*tottime))
                 if chunktime < tottime:
                     self.observations.append(Observation(obs.ms_filename,
                                                          starttime=midpoint-chunktime/2,
