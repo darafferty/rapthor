@@ -170,7 +170,7 @@ class Observation(object):
             # maximum and then decrease with time or they simply increase or decrease
             # monotonically. Any other behavior would be unphysical so is not considered
             diff = indices[1:] - indices[:-1]
-            if np.all(diff == max(diff)):
+            if np.all(diff == 1):
                 # No gap found, so determine whether the low elevation points are at the
                 # start or the end
                 if indices[-1] < len(el_values)/2:
@@ -182,7 +182,8 @@ class Observation(object):
                     starttime_index = 0
                     endtime_index = indices[0]
             else:
-                # Gap found, trim both start and end
+                # Gap found, trim both start and end. As noted above, we assume there
+                # is only a single gap (period of higher elevations)
                 starttime_index = indices[diff.tolist().index(max(diff))]
                 endtime_index = indices[diff.tolist().index(max(diff)) + 1]
             self.high_el_starttime = times[starttime_index]
