@@ -155,7 +155,7 @@ class Observation(object):
         self.mean_el_rad = np.mean(el_values)
         el_sorted = np.sort(el_values)
         times = pt.taql("select TIME from "
-                        + self.ms_filename + ".ms limit ::10000").getcol("TIME")
+                        + self.ms_filename + " limit ::10000").getcol("TIME")
         indices = np.where(el_values < el_sorted[int(len(el_values)/5)])[0]
         diff = indices[1:] - indices[:-1]
         starttime_index = indices[diff.tolist().index(max(diff))]
