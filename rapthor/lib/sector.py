@@ -180,7 +180,7 @@ class Sector(object):
         #   [0, 0] => scale automatically with image size
         #   [1, 1] => direction-independent
         #   [X, Y] => user-defined
-        self.dd_psf_grid = self.field.parset['imaging_specific']['dd_psf_grid']
+        self.dd_psf_grid = imaging_parameters['dd_psf_grid']
         if self.dd_psf_grid == [0, 0]:
             # Set the grid based on the image size, with ~ 1 PSF per square deg
             # of imaged area

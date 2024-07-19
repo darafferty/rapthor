@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 as builder
+FROM ubuntu:22.04 as builder
 
 # This Dockerfile builds a Docker image for the Rapthor pipeline
 # and all its dependencies.
@@ -159,7 +159,7 @@ RUN python3 -m pip install -r requirements.txt
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:20.04 as runner
+FROM ubuntu:22.04 as runner
 
 COPY --from=builder /usr/local /usr/local
 

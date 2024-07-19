@@ -1,4 +1,4 @@
-FROM ubuntu:20.04 as builder
+FROM ubuntu:22.04 as builder
 
 # This Dockerfile builds a Docker image for the Rapthor pipeline
 # and all its dependencies.
@@ -147,7 +147,7 @@ RUN python3 -m pip install -r requirements.txt
 # The image will now be rebuilt without adding the sources, in order to
 # reduce the size of the image.
 #---------------------------------------------------------------------------
-FROM ubuntu:20.04 as runner
+FROM ubuntu:22.04 as runner
 
 COPY --from=builder /usr/local /usr/local
 
@@ -212,6 +212,6 @@ RUN aoflagger --version && \
 # Note: VERSION should be provided as build argument.
 ARG VERSION=0.0.0
 COPY . /tmp/rapthor
-RUN SETUPTOOLS_SCM_PRETEND_VERSION=${VERSION} \
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${VERSION} \
     python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
 RUN rm -rf /tmp/*
