@@ -321,7 +321,7 @@ class Field(object):
         # Update the copies stored in the imaging sectors (including the full-field
         # sector, used to make the initial sky model). Other (non-imaging) sectors do not
         # need to be updated
-        sectors_to_update = self.imaging_sectors
+        sectors_to_update = self.imaging_sectors[:]  # don't alter original with append below
         if hasattr(self, 'full_field_sector'):
             sectors_to_update.append(self.full_field_sector)
         for sector in sectors_to_update:
