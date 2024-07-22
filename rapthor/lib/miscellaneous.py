@@ -151,10 +151,12 @@ def download_skymodel(ra, dec, skymodel_path, radius=5.0, overwrite=False, sourc
 
         if retry:
             if tries == max_tries:
+                logger.error('Attempt #{0:d} to download {1} sky model failed.'.format(tries, source))
                 raise IOError('Download of {0} sky model failed after {1} attempts.'.format(source, max_tries))
             else:
+                suffix = 's' if max_tries - tries > 1 else ''
                 logger.error('Attempt #{0:d} to download {1} sky model failed. Attempting '
-                             '{2:d} more times.'.format(tries, source, max_tries - tries))
+                             '{2:d} more time{3}.'.format(tries, source, max_tries - tries, suffix))
                 time.sleep(5)
 
     if not os.path.isfile(skymodel_path):

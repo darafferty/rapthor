@@ -46,27 +46,49 @@ The available options are described below under their respective sections.
             <https://linc.readthedocs.io/>`_ pipeline can be directly used with Rapthor.
             See :doc:`preparation` for details.
 
+    generate_initial_skymodel
+        Generate an initial target sky model from the input data (default = ``True``).
+        This option is ignored if a file is specified with the :term:`input_skymodel`
+        option. When this option is activated, an image of the full field is made from the
+        input data (without doing any calibration). The initial sky model is generated
+        from the clean components as part of this imaging and will be located in
+        the ``dir_working/skymodels/initial_image`` directory.
+
+    generate_initial_skymodel_radius
+        The radius out to which the sky model will be generated (default = None, which
+        results in coverage out to a width of 2 * FWHM of the primary beam at the mean
+        frequency and mean elevation of the observations).
+
+    generate_initial_skymodel_data_fraction
+        Fraction of data to use during the generation of the initial sky model (default =
+        0.2). If less than one, the input data are divided by time into chunks that sum to
+        the requested fraction, spaced out evenly over the full time range.
+
     download_initial_skymodel
         Download the initial sky model automatically instead of using a user-provided one
-        (default is ``True``). This option is ignored if a file is specified with the
-        :term:`input_skymodel` option.
+        (default = ``False``). This option is ignored if a file is specified with the
+        :term:`input_skymodel` option or if generation of the initial model is activated
+        with the :term:`generate_initial_skymodel` option. The downloaded sky model will
+        be named ``dir_working/skymodels/initial_skymodel_{catalog}.txt``, where
+        ``{catalog}`` is the name of the catalog server specified by the
+        :term:`download_initial_skymodel_server` option.
 
     download_initial_skymodel_radius
-        The radius in degrees out to which a sky model should be downloaded (default is
+        The radius in degrees out to which a sky model should be downloaded (default =
         5.0).
 
     download_initial_skymodel_server
-        Place to download the initial sky model from (default is ``TGSS``). This can
+        Place to download the initial sky model from (default = ``TGSS``). This can
         either be ``TGSS`` to use the TFIR GMRT Sky Survey, ``LOTSS`` to use the LOFAR
         Two-metre Sky Survey, or ``GSM`` to use the Global Sky Model.
 
     download_overwrite_skymodel
-        Overwrite any existing sky model with a downloaded one (default is ``False``).
+        Overwrite any existing sky model with a downloaded one (default = ``False``).
 
     input_skymodel
         Full path to the input sky model file, with true-sky fluxes (required if automatic
-        download is disabled). If you also have a sky model with apparent flux densities,
-        specify it with the :term:`apparent_skymodel` option.
+        generation or download is disabled). If you also have a sky model with apparent
+        flux densities, specify it with the :term:`apparent_skymodel` option.
 
 	See :doc:`preparation` for more info on preparing the sky model.
 
@@ -81,7 +103,8 @@ The available options are described below under their respective sections.
     strategy
         Name of processing strategy to use (default = ``selfcal``). A custom strategy can
         be used by giving instead the full path to the strategy file. See
-        :ref:`rapthor_strategy` for details on making a custom strategy file.
+        :ref:`rapthor_strategy` for details on the available predefined strategies and on
+        making a custom strategy file.
 
     selfcal_data_fraction
         Fraction of data to use (default = 0.2). If less than one, the input data are

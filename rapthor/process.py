@@ -7,7 +7,7 @@ from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
-from rapthor.operations.image import Image
+from rapthor.operations.image import Image, ImageInitial
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
 from rapthor.lib.field import Field
@@ -51,6 +51,18 @@ def run(parset_file, logging_level='info'):
         log.warning("The strategy '{}' does not define any processing steps. No "
                     "processing can be done.".format(parset['strategy']))
         return
+
+    # Generate an initial sky model from the input data if needed
+    if parset['generate_initial_skymodel']:
+        if not any([step['do_calibrate'] for step in strategy_steps]):
+            log.warning("Generation of an initial sky model has been activated "
+                        "but the strategy '{}' does not contain any calibration "
+                        "steps.".format(parset['strategy']))
+        field.define_full_field_sector(radius=parset['generate_initial_skymodel_radius'])
+        log.info("Imaging full field to generate an initial sky model...")
+        chunk_observations(field, [], parset['generate_initial_skymodel_data_fraction'])
+        op = ImageInitial(field)
+        op.run()
 
     # Run the self calibration
     if selfcal_steps:
@@ -273,22 +285,33 @@ def chunk_observations(field, steps, data_fraction):
     """
     # Find the overall minimum duration that can be used and still satisfy the
     # specified solution intervals
-    fast_solint = max([step['fast_timestep_sec'] for step in steps])
-    joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
-    separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
-    max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
-    max_di_timestep = field.fulljones_timestep_sec
-    min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
+    if steps:
+        fast_solint = max([step['fast_timestep_sec'] for step in steps])
+        joint_solint = max([step['slow_timestep_joint_sec'] for step in steps])
+        separate_solint = max([step['slow_timestep_separate_sec'] for step in steps])
+        max_dd_timestep = max(fast_solint, joint_solint, separate_solint)
+        max_di_timestep = field.fulljones_timestep_sec
+        min_time = max(max_dd_timestep * field.dd_interval_factor, max_di_timestep)
+    else:
+        # If no strategy steps are given, use a standard minimum time
+        min_time = 600
 
     for obs in field.full_observations:
         tot_time = obs.endtime - obs.starttime
         min_fraction = min(1.0, min_time/tot_time)
         if data_fraction < min_fraction:
-            obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
-                            'total time for this observation that is less than the largest '
-                            'potential calibration timestep ({1} s). The data fraction will be '
-                            'increased to {2:0.3f} to ensure the timestep requirement is '
-                            'met.'.format(data_fraction, min_time, min_fraction))
+            if steps:
+                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                'total time for this observation that is less than the largest '
+                                'potential calibration timestep ({1} s). The data fraction will be '
+                                'increased to {2:0.3f} to ensure the timestep requirement is '
+                                'met.'.format(data_fraction, min_time, min_fraction))
+            else:
+                obs.log.warning('The specified value of data_fraction ({0:0.3f}) results in a '
+                                'total time for this observation that is less than {1} s. '
+                                'The data fraction will be increased to {2:0.3f} to ensure this '
+                                'time requirement is met.'.format(data_fraction, min_time,
+                                                                  min_fraction))
             obs.data_fraction = min_fraction
         else:
             obs.data_fraction = data_fraction

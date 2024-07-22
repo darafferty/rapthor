@@ -1,11 +1,14 @@
 [global]
 dir_working = ${dir_working}
 input_ms = [${input_ms}]
-download_initial_skymodel = True
+generate_initial_skymodel = True
+generate_initial_skymodel_radius = 1.0
+generate_initial_skymodel_data_fraction = 0.5
+download_initial_skymodel = False
 download_initial_skymodel_radius = 3.0
 download_initial_skymodel_server = GSM
 download_overwrite_skymodel = True
-input_skymodel = /my/data/skymodel.txt
+input_skymodel = None
 apparent_skymodel = /my/data/apparent_skymodel.txt
 regroup_input_skymodel = False
 strategy = selfcal

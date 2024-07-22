@@ -181,12 +181,14 @@ inputs:
 
 {% else %}
 # start not use_screens
+{% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the calibration solutions (length =
       1).
     type: File
+{% endif %}
 
 {% if apply_fulljones %}
   - id: fulljones_h5parm
@@ -267,11 +269,13 @@ inputs:
 {% else %}
 # start not use_facets
 
+{% if not apply_none %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central patch of the sector (length = n_sectors).
     type: string[]
+{% endif %}
 {% endif %}
 # end use_facets / not use_facets
 
@@ -550,8 +554,10 @@ steps:
         source: aterm_image_filenames
 {% else %}
 # start not use_screens
+{% if not apply_none %}
       - id: h5parm
         source: h5parm
+{% endif %}
 {% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
@@ -578,8 +584,10 @@ steps:
         source: diagonal_visibilities
 {% else %}
 # start not use_facets
+{% if not apply_none %}
       - id: central_patch_name
         source: central_patch_name
+{% endif %}
 {% endif %}
 # end use_facets / not use_facets
 {% endif %}
@@ -661,7 +669,9 @@ steps:
 {% if use_facets %}
               ra_mid, dec_mid, width_ra, width_dec, facet_region_file,
 {% else %}
+{% if not apply_none %}
               central_patch_name,
+{% endif %}
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,

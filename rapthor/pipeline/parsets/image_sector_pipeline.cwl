@@ -149,12 +149,14 @@ inputs:
 {% else %}
 # start not use_screens
 
+{% if not apply_none %}
   - id: h5parm
     label: Filename of h5parm
     doc: |
       The filename of the h5parm file with the direction-dependent calibration
       solutions (length = 1).
     type: File
+{% endif %}
 
 {% if apply_fulljones %}
   - id: fulljones_h5parm
@@ -232,11 +234,13 @@ inputs:
 {% else %}
 # start not use_facets
 
+{% if not apply_none %}
   - id: central_patch_name
     label: Name of central patch
     doc: |
       The name of the central-most patch of the sector (length = 1).
     type: string
+{% endif %}
 {% endif %}
 # end use_facets / not use_facets
 
@@ -459,6 +463,9 @@ steps:
 
 {% else %}
 # start not use_screens and not use_facets
+{% if apply_none %}
+    run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_no_cal.cwl
+{% else %}
 {% if apply_amplitudes %}
 {% if apply_fulljones %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_fulljones.cwl
@@ -467,6 +474,7 @@ steps:
 {% endif %}
 {% else %}
     run: {{ rapthor_pipeline_dir }}/steps/prepare_imaging_data_no_dde_phase_only.cwl
+{% endif %}
 {% endif %}
 
 {% endif %}
@@ -504,14 +512,18 @@ steps:
 {% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% else %}
+{% if not apply_none %}
       - id: h5parm
         source: h5parm
+{% endif %}
 {% if apply_fulljones %}
       - id: fulljones_h5parm
         source: fulljones_h5parm
 {% endif %}
+{% if not apply_none %}
       - id: central_patch_name
         source: central_patch_name
+{% endif %}
     scatter: [msin, msout, starttime, ntimes, freqstep, timestep]
 {% endif %}
     scatterMethod: dotproduct

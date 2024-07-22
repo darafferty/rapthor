@@ -1,5 +1,5 @@
 """
-Module that holds the Image class
+Module that holds the Image classes
 """
 import os
 import json
@@ -43,6 +43,7 @@ class Image(Operation):
             save_source_list = False
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
+                             'apply_none': False,
                              'apply_amplitudes': self.field.apply_amplitudes,
                              'use_screens': self.field.use_screens,
                              'apply_fulljones': self.field.apply_fulljones,
@@ -263,6 +264,8 @@ class Image(Operation):
         # noise, etc.) derived by PyBDSF and print them to the log. The images are not
         # copied to the final location here, as this is done after mosaicking (if needed)
         # by the mosaic operation
+        self.field.lofar_to_true_flux_ratio = 1.0  # reset values for this cycle
+        self.field.lofar_to_true_flux_std = 0.0
         for sector in self.field.imaging_sectors:
             # The output image filenames
             image_root = os.path.join(self.pipeline_working_dir, sector.name)
@@ -295,8 +298,6 @@ class Image(Operation):
                 misc.create_directory(dst_dir)
                 for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
                     dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                    if os.path.exists(dst_filename):
-                        os.remove(dst_filename)
                     shutil.copy(src_filename, dst_filename)
 
             # The output ds9 region file, if made
@@ -306,8 +307,6 @@ class Image(Operation):
                 region_filename = '{}_facets_ds9.reg'.format(sector.name)
                 src_filename = os.path.join(self.pipeline_working_dir, region_filename)
                 dst_filename = os.path.join(dst_dir, region_filename)
-                if os.path.exists(dst_filename):
-                    os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
 
             # The imaging visibilities
@@ -326,11 +325,9 @@ class Image(Operation):
             # The astrometry and photometry plots
             dst_dir = os.path.join(self.parset['dir_working'], 'plots', 'image_{}'.format(self.index))
             misc.create_directory(dst_dir)
-            diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, '*.pdf'))
+            diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
             for src_filename in diagnostic_plots:
                 dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
-                if os.path.exists(dst_filename):
-                    os.remove(dst_filename)
                 shutil.copy(src_filename, dst_filename)
 
             # Read in the image diagnostics and log a summary of them
@@ -338,82 +335,302 @@ class Image(Operation):
             with open(diagnostics_file, 'r') as f:
                 diagnostics_dict = json.load(f)
             sector.diagnostics.append(diagnostics_dict)
-            try:
-                theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
-                min_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_true_sky']*1e6)
-                median_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_true_sky']*1e6)
-                dynr_true_sky = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_true_sky'])
-                min_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_flat_noise']*1e6)
-                median_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_flat_noise']*1e6)
-                dynr_flat_noise = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_flat_noise'])
-                nsources = '{0}'.format(diagnostics_dict['nsources'])
-                freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
-                beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
-                                                                      diagnostics_dict['beam_fwhm'][1]*3600,
-                                                                      diagnostics_dict['beam_fwhm'][2])
-                unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
-                self.log.info('Diagnostics for {}:'.format(sector.name))
-                self.log.info('    Min RMS noise = {0} (non-PB-corrected), '
-                              '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
-                                                                             theoretical_rms))
-                self.log.info('    Median RMS noise = {0} (non-PB-corrected), '
-                              '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
-                self.log.info('    Dynamic range = {0} (non-PB-corrected), '
-                              '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
-                self.log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
-                self.log.info('    Reference frequency = {}'.format(freq))
-                self.log.info('    Beam = {}'.format(beam))
-                self.log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
-
-                # Log the estimates of the global flux ratio and astrometry offsets.
-                # If the required keys are not present, then there were not enough
-                # sources for a reliable estimate to be made so report 'N/A' (not
-                # available)
-                #
-                # Note: the reported error is not allowed to fall below 10% for
-                # the flux ratio and 0.5" for the astrometry, as these are the
-                # realistic minimum uncertainties in these values
-                self.field.lofar_to_true_flux_ratio = 1.0
-                self.field.lofar_to_true_flux_std = 0.0
-                for survey in ['TGSS', 'NVSS', 'LOTSS']:
-                    if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
-                        ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
-                        stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
-                        self.log.info(f'    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}')
-                        if (self.field.lofar_to_true_flux_std == 0.0 or
-                                diagnostics_dict[f'stdClippedRatio_{survey}'] < self.field.lofar_to_true_flux_std):
-                            # Save the ratio with the lowest scatter for later use
-                            self.field.lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
-                            self.field.lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
-                    else:
-                        self.log.info(f'    LOFAR/{survey} flux ratio = N/A')
-                if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
-                    raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
-                    stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
-                    self.log.info('    LOFAR-PanSTARRS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
-                else:
-                    self.log.info('    LOFAR-PanSTARRS RA offset = N/A')
-                if 'meanClippedDecOffsetDeg' in diagnostics_dict and 'stdClippedDecOffsetDeg' in diagnostics_dict:
-                    decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
-                    stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
-                    self.log.info('    LOFAR-PanSTARRS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
-                else:
-                    self.log.info('    LOFAR-PanSTARRS Dec offset = N/A')
-            except KeyError:
-                self.log.warn('One or more of the expected image diagnostics is unavailable '
-                              'for {}. Logging of diagnostics skipped.'.format(sector.name))
-                req_keys = ['theoretical_rms', 'min_rms_flat_noise', 'median_rms_flat_noise',
-                            'dynamic_range_global_flat_noise', 'min_rms_true_sky',
-                            'median_rms_true_sky', 'dynamic_range_global_true_sky',
-                            'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
-                            'meanClippedRatio_TGSS', 'stdClippedRatio_TGSS',
-                            'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
-                            'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
-                missing_keys = []
-                for key in req_keys:
-                    if key not in diagnostics_dict:
-                        missing_keys.append(key)
-                self.log.debug('Keys missing from the diagnostics dict: {}.'.format(', '.join(missing_keys)))
+            ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
+            if self.field.lofar_to_true_flux_std == 0.0 or std < self.field.lofar_to_true_flux_std:
+                # Save the ratio with the lowest scatter for later use
+                self.field.lofar_to_true_flux_ratio = ratio
+                self.field.lofar_to_true_flux_std = std
 
         # Finally call finalize() in the parent class
         super().finalize()
+
+
+class ImageInitial(Operation):
+    """
+    Operation to image the field to generate an initial sky model
+    """
+    def __init__(self, field):
+        super().__init__(field, name='initial_image')
+
+        # Set the template filenames
+        self.pipeline_parset_template = 'image_pipeline.cwl'
+        self.subpipeline_parset_template = 'image_sector_pipeline.cwl'
+
+    def set_parset_parameters(self):
+        """
+        Define parameters needed for the CWL workflow template
+        """
+        if self.batch_system == 'slurm':
+            # For some reason, setting coresMax ResourceRequirement hints does
+            # not work with SLURM
+            max_cores = None
+        else:
+            max_cores = self.field.parset['cluster_specific']['max_cores']
+        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
+                             'pipeline_working_dir': self.pipeline_working_dir,
+                             'apply_none': True,
+                             'apply_amplitudes': False,
+                             'use_screens': False,
+                             'apply_fulljones': False,
+                             'use_facets': False,
+                             'save_source_list': True,
+                             'peel_bright_sources': False,
+                             'max_cores': max_cores,
+                             'use_mpi': self.field.use_mpi,
+                             'toil_version': self.toil_major_version}
+
+    def set_input_parameters(self):
+        """
+        Define the CWL workflow inputs
+        """
+        nsectors = 1
+        sector = self.field.full_field_sector
+
+        # Set the imaging parameters for the sector. We override a few parameters that
+        # might be set in the parset to ensure they are optimal for the initial sky
+        # model generation
+        imaging_parameters = self.field.parset['imaging_specific'].copy()
+        imaging_parameters['cellsize_arcsec'] = 1.5
+        imaging_parameters['robust'] = -1.5
+        imaging_parameters['taper_arcsec'] = 0.0
+        imaging_parameters['min_uv_lambda'] = 0.0
+        imaging_parameters['max_uv_lambda'] = 1e6
+        imaging_parameters['reweight'] = False
+        imaging_parameters['dd_psf_grid'] = [1, 1]
+        sector.max_nmiter = 12
+        sector.set_imaging_parameters(do_multiscale=True, imaging_parameters=imaging_parameters)
+        image_root = [sector.name]
+
+        # Set input MS filenames
+        obs_filename = [sector.get_obs_parameters('ms_filename')]
+
+        # Set output MS filenames for step that prepares the data for WSClean
+        prepare_filename = [sector.get_obs_parameters('ms_prep_filename')]
+        concat_filename = [image_root[-1] + '_concat.ms']
+
+        # Set other parameters
+        mask_filename = [image_root[-1] + '_mask.fits']
+        image_freqstep = [sector.get_obs_parameters('image_freqstep')]
+        image_timestep = [sector.get_obs_parameters('image_timestep')]
+        sector_starttime = []
+        sector_ntimes = []
+        for obs in self.field.observations:
+            sector_starttime.append(misc.convert_mjd2mvt(obs.starttime))
+            sector_ntimes.append(obs.numsamples)
+        starttime = [sector_starttime]
+        ntimes = [sector_ntimes]
+        phasecenter = ["'[{0}deg, {1}deg]'".format(sector.ra, sector.dec)]
+        if self.scratch_dir is None:
+            dir_local = [self.pipeline_working_dir]
+        else:
+            dir_local = [self.scratch_dir]
+
+        self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
+                            'prepare_filename': prepare_filename,
+                            'concat_filename': concat_filename,
+                            'previous_mask_filename': [None],
+                            'mask_filename': mask_filename,
+                            'starttime': starttime,
+                            'ntimes': ntimes,
+                            'image_freqstep': image_freqstep,
+                            'image_timestep': image_timestep,
+                            'phasecenter': phasecenter,
+                            'image_name': image_root,
+                            'dir_local': dir_local,
+                            'pol': 'i',
+                            'save_source_list': True,
+                            'link_polarizations': False,
+                            'join_polarizations': False,
+                            'apply_amplitudes': [False],
+                            'channels_out': [sector.wsclean_nchannels],
+                            'deconvolution_channels': [sector.wsclean_deconvolution_channels],
+                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order],
+                            'ra': [sector.ra],
+                            'dec': [sector.dec],
+                            'wsclean_imsize': [sector.imsize],
+                            'vertices_file': [CWLFile(sector.vertices_file).to_json()],
+                            'region_file': [None],
+                            'wsclean_niter': [sector.wsclean_niter],
+                            'wsclean_nmiter': [sector.wsclean_nmiter],
+                            'robust': [sector.robust],
+                            'cellsize_deg': [sector.cellsize_deg],
+                            'min_uv_lambda': [sector.min_uv_lambda],
+                            'max_uv_lambda': [sector.max_uv_lambda],
+                            'taper_arcsec': [sector.taper_arcsec],
+                            'auto_mask': [5.0],
+                            'idg_mode': [sector.idg_mode],
+                            'wsclean_mem': [sector.mem_limit_gb],
+                            'threshisl': [4.0],
+                            'threshpix': [5.0],
+                            'do_multiscale': [True],
+                            'dd_psf_grid': [sector.dd_psf_grid],
+                            'max_threads': self.field.parset['cluster_specific']['max_threads'],
+                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
+
+        if self.field.use_mpi:
+            # Set number of nodes to allocate to each imaging subworkflow. We subtract
+            # one node because Toil must use one node for its job, which in turn calls
+            # salloc to reserve the nodes for the MPI job
+            self.use_mpi = True
+            nnodes = self.parset['cluster_specific']['max_nodes']
+            nsubpipes = min(nsectors, nnodes)
+            nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
+            self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
+            self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
+
+    def finalize(self):
+        """
+        Finalize this operation
+        """
+        # Save the output FITS images and sky models. Also read the image diagnostics (rms
+        # noise, etc.) derived by PyBDSF and print them to the log
+        sector = self.field.full_field_sector
+
+        # The output image filenames
+        image_root = os.path.join(self.pipeline_working_dir, sector.name)
+        image_names = [f'{image_root}-MFS-image-pb.fits',
+                       f'{image_root}-MFS-image.fits',
+                       f'{image_root}-MFS-model-pb.fits',
+                       f'{image_root}-MFS-residual.fits']
+        dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+        misc.create_directory(dst_dir)
+        for src_filename in image_names:
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
+
+        # The output sky models, both true sky and apparent sky (the filenames are
+        # defined in the rapthor/scripts/filter_skymodel.py file)
+        sector.image_skymodel_file_true_sky = image_root + '.true_sky.txt'
+        sector.image_skymodel_file_apparent_sky = image_root + '.apparent_sky.txt'
+        dst_dir = os.path.join(self.parset['dir_working'], 'skymodels', self.name)
+        misc.create_directory(dst_dir)
+        for src_filename in [sector.image_skymodel_file_true_sky, sector.image_skymodel_file_apparent_sky]:
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
+
+        # The astrometry and photometry plots
+        dst_dir = os.path.join(self.parset['dir_working'], 'plots', self.name)
+        misc.create_directory(dst_dir)
+        diagnostic_plots = glob.glob(os.path.join(self.pipeline_working_dir, f'{sector.name}*.pdf'))
+        for src_filename in diagnostic_plots:
+            dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+            shutil.copy(src_filename, dst_filename)
+
+        # Read in the image diagnostics and log a summary of them
+        diagnostics_file = image_root + '.image_diagnostics.json'
+        with open(diagnostics_file, 'r') as f:
+            diagnostics_dict = json.load(f)
+        sector.diagnostics.append(diagnostics_dict)
+        ratio, std = report_sector_diagnostics(sector.name, diagnostics_dict, self.log)
+        self.field.lofar_to_true_flux_ratio = ratio
+        self.field.lofar_to_true_flux_std = std
+
+        # Finally call finalize() in the parent class
+        super().finalize()
+
+
+def report_sector_diagnostics(sector_name, diagnostics_dict, log):
+    """
+    Report the sector's image diagnostics
+
+    Parameters
+    ----------
+    sector_name : str
+        The name of the sector.
+    diagnostics_dict : dict
+        The dict containing the diagnostics. A check is mode for the required keys;
+        if any is not present, the report is skipped.
+    log : logging.Logger object
+        The logger to use for the report.
+
+    Returns
+    -------
+    lofar_to_true_flux_ratio : float
+        Mean ratio of the LOFAR flux densities to the "true" ones. The true flux
+        densities are assumed to be from one of the TGSS, NVSS, or LoTSS surveys.
+        If ratios from multiple surveys are present, the one with the lowest scatter
+        is returned
+    lofar_to_true_flux_std : float
+        Stdev of the ratio of the LOFAR flux densities to the "true" ones
+    """
+    try:
+        theoretical_rms = '{0:.1f} uJy/beam'.format(diagnostics_dict['theoretical_rms']*1e6)
+        min_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_true_sky']*1e6)
+        median_rms_true_sky = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_true_sky']*1e6)
+        dynr_true_sky = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_true_sky'])
+        min_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['min_rms_flat_noise']*1e6)
+        median_rms_flat_noise = '{0:.1f} uJy/beam'.format(diagnostics_dict['median_rms_flat_noise']*1e6)
+        dynr_flat_noise = '{0:.2g}'.format(diagnostics_dict['dynamic_range_global_flat_noise'])
+        nsources = '{0}'.format(diagnostics_dict['nsources'])
+        freq = '{0:.1f} MHz'.format(diagnostics_dict['freq']/1e6)
+        beam = '{0:.1f}" x {1:.1f}", PA = {2:.1f} deg'.format(diagnostics_dict['beam_fwhm'][0]*3600,
+                                                              diagnostics_dict['beam_fwhm'][1]*3600,
+                                                              diagnostics_dict['beam_fwhm'][2])
+        unflagged_data_fraction = '{0:.2f}'.format(diagnostics_dict['unflagged_data_fraction'])
+        log.info('Diagnostics for {}:'.format(sector_name))
+        log.info('    Min RMS noise = {0} (non-PB-corrected), '
+                 '{1} (PB-corrected), {2} (theoretical)'.format(min_rms_flat_noise, min_rms_true_sky,
+                                                                theoretical_rms))
+        log.info('    Median RMS noise = {0} (non-PB-corrected), '
+                 '{1} (PB-corrected)'.format(median_rms_flat_noise, median_rms_true_sky))
+        log.info('    Dynamic range = {0} (non-PB-corrected), '
+                 '{1} (PB-corrected)'.format(dynr_flat_noise, dynr_true_sky))
+        log.info('    Number of sources found by PyBDSF = {}'.format(nsources))
+        log.info('    Reference frequency = {}'.format(freq))
+        log.info('    Beam = {}'.format(beam))
+        log.info('    Fraction of unflagged data = {}'.format(unflagged_data_fraction))
+
+        # Log the estimates of the global flux ratio and astrometry offsets.
+        # If the required keys are not present, then there were not enough
+        # sources for a reliable estimate to be made so report 'N/A' (not
+        # available)
+        #
+        # Note: the reported error is not allowed to fall below 10% for
+        # the flux ratio and 0.5" for the astrometry, as these are the
+        # realistic minimum uncertainties in these values
+        lofar_to_true_flux_ratio = 1.0
+        lofar_to_true_flux_std = 0.0
+        for survey in ['TGSS', 'NVSS', 'LOTSS']:
+            if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
+                ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
+                stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
+                log.info(f'    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}')
+                if (lofar_to_true_flux_std == 0.0 or
+                        diagnostics_dict[f'stdClippedRatio_{survey}'] < lofar_to_true_flux_std):
+                    # Save the ratio with the lowest scatter for later use
+                    lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
+                    lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
+            else:
+                log.info(f'    LOFAR/{survey} flux ratio = N/A')
+        if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
+            raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
+            stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))
+            log.info('    LOFAR-PanSTARRS RA offset = {0} +/- {1}'.format(raoff, stdraoff))
+        else:
+            log.info('    LOFAR-PanSTARRS RA offset = N/A')
+        if 'meanClippedDecOffsetDeg' in diagnostics_dict and 'stdClippedDecOffsetDeg' in diagnostics_dict:
+            decoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedDecOffsetDeg']*3600)
+            stddecoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedDecOffsetDeg']*3600))
+            log.info('    LOFAR-PanSTARRS Dec offset = {0} +/- {1}'.format(decoff, stddecoff))
+        else:
+            log.info('    LOFAR-PanSTARRS Dec offset = N/A')
+
+        return (lofar_to_true_flux_ratio, lofar_to_true_flux_std)
+
+    except KeyError:
+        log.warn('One or more of the expected image diagnostics is unavailable '
+                 'for {}. Logging of diagnostics skipped.'.format(sector_name))
+        req_keys = ['theoretical_rms', 'min_rms_flat_noise', 'median_rms_flat_noise',
+                    'dynamic_range_global_flat_noise', 'min_rms_true_sky',
+                    'median_rms_true_sky', 'dynamic_range_global_true_sky',
+                    'nsources', 'freq', 'beam_fwhm', 'unflagged_data_fraction',
+                    'meanClippedRatio_TGSS', 'stdClippedRatio_TGSS',
+                    'meanClippedRAOffsetDeg', 'stdClippedRAOffsetDeg',
+                    'meanClippedDecOffsetDeg', 'stdClippedDecOffsetDeg']
+        missing_keys = []
+        for key in req_keys:
+            if key not in diagnostics_dict:
+                missing_keys.append(key)
+        log.debug('Keys missing from the diagnostics dict: {}.'.format(', '.join(missing_keys)))
+
+        return (1.0, 0.0)

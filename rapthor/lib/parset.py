@@ -246,6 +246,11 @@ class Parset:
                         f"Flag selection '{flag}' was specified but does not "
                         f"appear in 'flag_expr'"
                     )
+        if options["generate_initial_skymodel"] and options["download_initial_skymodel"]:
+            raise ValueError(
+                "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "
+                "activated. Only one of these options can be active."
+            )
 
         # Calibration options
         options = settings["calibration"]
@@ -493,50 +498,54 @@ def parset_read(parset_file, use_log_file=True):
     suffix = 's' if len(parset_dict["mss"]) > 1 else ''
     log.info("Working on {0} input MS file{1}".format(len(parset_dict["mss"]), suffix))
 
-    # Make sure the initial skymodel is present
+    # Make sure the initial sky model is present or, if not, that generation or download
+    # is requested
     if not parset_dict["input_skymodel"]:
-        if parset_dict["download_initial_skymodel"]:
+        if parset_dict["generate_initial_skymodel"]:
             log.info(
-                "No input sky model file given and download requested. "
-                "Will automatically download skymodel."
-            )
-            parset_dict.update(
-                {
-                    "input_skymodel": os.path.join(
-                        parset_dict["dir_working"], "skymodels", "initial_skymodel.txt"
-                    )
-                }
+                "No input sky model file given and generation requested. "
+                "Will automatically generate sky model from input data."
             )
             if parset_dict["apparent_skymodel"]:
                 log.info(
-                    "Ignoring apparent_skymodel, "
-                    "because skymodel download has been requested."
+                    "The input apparent sky model will not be used "
+                    "because sky model generation has been requested."
                 )
-                parset_dict["apparent_skymodel"] = None
-        else:
-            log.error(
-                "No input sky model file given and no download requested. Exiting..."
-            )
-            raise RuntimeError(
-                "No input sky model file given and no download requested."
-            )
-    elif (parset_dict["input_skymodel"]) and parset_dict["download_initial_skymodel"]:
-        if not parset_dict["download_overwrite_skymodel"]:
-            # If download is requested, ignore the given skymodel.
+        elif parset_dict["download_initial_skymodel"]:
             log.info(
-                "Skymodel download requested, but user-provided skymodel is present. "
-                "Disabling download and using skymodel provided by the user."
+                "No input sky model file given and download requested. "
+                "Will automatically download sky model."
+            )
+            if parset_dict["apparent_skymodel"]:
+                log.info(
+                    "The input apparent sky model will not be used "
+                    "because sky model download has been requested."
+                )
+        else:
+            raise RuntimeError(
+                "No input sky model file given and neither generation nor download of "
+                "sky model requested."
+            )
+    else:
+        if not os.path.exists(parset_dict["input_skymodel"]):
+            raise FileNotFoundError(
+                'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
+            )
+        if parset_dict["generate_initial_skymodel"]:
+            # If sky model is given but generation requested, disable generation and use
+            # the given skymodel.
+            log.warning(
+                "Sky model generation requested, but user-provided sky model is present. "
+                "Disabling generation and using sky model provided by the user."
+            )
+            parset_dict["generate_initial_skymodel"] = False
+        elif parset_dict["download_initial_skymodel"]:
+            # If sky model is given but download requested, use the given skymodel and
+            # disable download.
+            log.warning(
+                "Sky model download requested, but user-provided sky model is present. "
+                "Disabling download and using sky model provided by the user."
             )
             parset_dict["download_initial_skymodel"] = False
-        else:
-            log.info(
-                "User-provided skymodel is present, but download_overwrite_skymodel "
-                "is True. Overwriting user-supplied skymodel with downloaded one."
-            )
-            parset_dict["download_initial_skymodel"] = True
-    elif not os.path.exists(parset_dict["input_skymodel"]):
-        raise FileNotFoundError(
-            'Input sky model file "{}" not found.'.format(parset_dict["input_skymodel"])
-        )
 
     return parset_dict

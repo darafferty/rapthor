@@ -18,12 +18,14 @@ arguments:
   - -no-update-model-required
   - -local-rms
   - -join-channels
-  - -use-idg
-  - -grid-with-beam
-  - -use-differential-lofar-beam
+  - -apply-primary-beam
   - -log-time
+  - valueFrom: 'wgridder'
+    prefix: -gridder
   - valueFrom: '$(runtime.tmpdir)'
     prefix: -temp-dir
+  - valueFrom: '2048'
+    prefix: -parallel-deconvolution
   - valueFrom: '0.85'
     prefix: -mgain
   - valueFrom: '0.8'
