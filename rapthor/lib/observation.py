@@ -163,30 +163,40 @@ class Observation(object):
         times = times[time_indices]
         el_values = el_values[time_indices]
         el_cut_lowest_20percent = el_sorted_low_to_high[int(len(el_values)/5)]
-        indices = np.where(el_values < el_cut_lowest_20percent)[0]
-        if len(indices) > 1:
+        low_indices = np.where(el_values < el_cut_lowest_20percent)[0]
+        if len(low_indices) > 1:
             # At least two elements are needed for the start and end time check. The check
             # assumes that the elevation either increases smoothly to a maximum and then
             # decreases with time or that it simply increases (or decreases)
-            # monotonically. Any other behavior would be unphysical and so is not
-            # considered
-            diff = indices[1:] - indices[:-1]
+            # monotonically. These cases should cover almost all observations. For any
+            # other behavior, just fall back to the untrimmed time
+            diff = low_indices[1:] - low_indices[:-1]
+            low_at_start = low_indices[0] == 0  # first elevation is low
+            low_at_end = low_indices[-1] == len(el_values) - 1  # last elevation is low
+            starttime_index = 0
+            endtime_index = -1
             if np.all(diff == 1):
-                # No gap found, so determine whether the low elevation points are at the
-                # start or the end
-                if indices[-1] < len(el_values)/2:
+                # No gap found (so a single continuous period of low elevations)
+                if low_at_start:
                     # Trim the start
-                    starttime_index = indices[-1]
+                    starttime_index = low_indices[-1]
                     endtime_index = -1
-                else:
+                elif low_at_end:
                     # Trim the end
                     starttime_index = 0
-                    endtime_index = indices[0]
-            else:
-                # Gap found, trim both start and end. As noted above, we assume there
-                # is only a single gap (due to a period of higher elevations)
-                starttime_index = indices[diff.tolist().index(max(diff))]
-                endtime_index = indices[diff.tolist().index(max(diff)) + 1]
+                    endtime_index = low_indices[0]
+            elif len(np.where(diff != 1)[0]) == 1 and low_at_start and low_at_end:
+                # Single gap found (with low elevations at start and end, due to a period
+                # of higher elevations in between), so trim both start and end
+                #
+                # Note: low_indices will look something like:
+                #   array([  0,   1,   2,   3,   4,   5,   6,   7,   8,   9, 637, 638,
+                #          639, 640, 641, 642, 643, 644, 645, 646, 647])
+                # and diff like:
+                #   array([  1,   1,   1,   1,   1,   1,   1,   1,   1, 545,   1,   1,
+                #            1,   1,   1,   1,   1,   1,   1,   1])
+                starttime_index = low_indices[diff.tolist().index(max(diff))]
+                endtime_index = low_indices[diff.tolist().index(max(diff)) + 1]
             self.high_el_starttime = times[starttime_index]
             self.high_el_endtime = times[endtime_index]
         else:
