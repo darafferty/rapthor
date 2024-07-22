@@ -647,7 +647,12 @@ class Field(object):
 
                 # Transfer patches to the true-flux sky model (source names are identical
                 # in both, but the order may be different)
-                self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+
+                # Rename the patches so that the numbering starts at high Dec, high RA
+                # and increases with RA then Dec
+                for model in [source_skymodel, skymodel_true_sky, bright_source_skymodel_apparent_sky]:
+                    misc.rename_skymodel_patches(model)
 
         # For the bright-source true-sky model, duplicate any selections made above to the
         # apparent-sky model
@@ -664,11 +669,11 @@ class Field(object):
         # later use
         if regroup:
             # Transfer from the apparent-flux sky model (regrouped above)
-            self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+            misc.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
         else:
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
-            self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
+            misc.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
@@ -902,51 +907,6 @@ class Field(object):
             sector.calibration_skymodel = None
             sector.predict_skymodel = None
             sector.field.source_skymodel = None
-
-    def transfer_patches(self, from_skymodel, to_skymodel, patch_dict=None):
-        """
-        Transfers the patches defined in from_skymodel to to_skymodel.
-
-        Parameters
-        ----------
-        from_skymodel : sky model
-            Sky model from which to transfer patches
-        to_skymodel : sky model
-            Sky model to which to transfer patches
-        patch_dict : dict, optional
-            Dict of patch positions
-
-        Returns
-        -------
-        to_skymodel : sky model
-            Sky model with patches matching those of from_skymodel
-        """
-        names_from = from_skymodel.getColValues('Name').tolist()
-        names_to = to_skymodel.getColValues('Name').tolist()
-
-        if 'Patch' not in to_skymodel.table.colnames:
-            self.log.debug('to_skymodel does not have Patch column, adding it')
-            to_skymodel.group('single')
-
-        if set(names_from) == set(names_to):
-            # Both sky models have the same sources, so use indexing
-            ind_ss = np.argsort(names_from)
-            ind_ts = np.argsort(names_to)
-            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-            to_skymodel._updateGroups()
-        elif set(names_to).issubset(set(names_from)):
-            # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
-            for ind_ts, name in enumerate(names_to):
-                ind_ss = names_from.index(name)
-                to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-        else:
-            # Skymodels don't match, raise error
-            raise ValueError('Cannot transfer patches since from_skymodel does not contain '
-                             'all the sources in to_skymodel')
-
-        if patch_dict is not None:
-            to_skymodel.setPatchPositions(patchDict=patch_dict)
-        return to_skymodel
 
     def get_source_distances(self, source_dict: Dict[str, List[float]]):
         """
