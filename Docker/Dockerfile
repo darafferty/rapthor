@@ -165,32 +165,32 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         casacore-tools \
-        libarmadillo9 \
         libatkmm-1.6-1v5 \
-        libboost-date-time1.71.0 \
-        libboost-filesystem1.71.0 \
-        libboost-program-options1.71.0 \
+        libblas3 \
+        libboost-filesystem1.74.0 \
+        libboost-program-options1.74.0 \
         libcairomm-1.0-1v5 \
-        libcasa-casa4 \
-        libcasa-fits4 \
-        libcasa-measures4 \
-        libcasa-ms4 \
-        libcasa-scimath4 \
-        libcasa-tables4 \
-        libcfitsio8 \
+        libcasa-casa6 \
+        libcasa-fits6 \
+        libcasa-measures6 \
+        libcasa-ms6 \
+        libcasa-scimath6 \
+        libcasa-tables6 \
+        libcfitsio9 \
         libfftw3-double3 \
         libfftw3-single3 \
+        libglib2.0-0 \
         libglibmm-2.4-1v5 \
         libgomp1 \
-        libgsl23 \
+        libgsl27 \
         libgtkmm-3.0-1v5 \
-        libhdf5-103 \
-        libhdf5-cpp-103 \
+        libhdf5-103-1 \
+        libhdf5-cpp-103-1 \
         liblapack3 \
         liblua5.3-0 \
         libpangomm-1.4-1v5 \
         libpng16-16 \
-        libpython3.8 \
+        libpython3.10 \
         libsigc++-2.0-0v5 \
         libstdc++6 \
         nodejs \
