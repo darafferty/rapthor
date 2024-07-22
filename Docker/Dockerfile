@@ -3,7 +3,9 @@ FROM ubuntu:22.04 as builder
 # This Dockerfile builds a Docker image for the Rapthor pipeline
 # and all its dependencies.
 
-ARG PORTABLE=TRUE
+# By default, build non-portable code, for the oldest CPU that supports AVX2
+ARG PORTABLE=FALSE
+ARG TARGET_CPU=haswell
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -51,6 +53,7 @@ RUN cmake \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/idg \
     -B/src/idg/build \
     -G Ninja
@@ -65,6 +68,7 @@ RUN cmake \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/EveryBeam \
     -B/src/EveryBeam/build \
     -G Ninja
@@ -75,6 +79,7 @@ RUN git shallow-clone https://github.com/aroffringa/dysco.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/dysco \
     -B/src/dysco/build \
     -G Ninja
@@ -85,6 +90,7 @@ RUN git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/aoflagger \
     -B/src/aoflagger/build \
     -G Ninja
@@ -96,6 +102,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/wsclean \
     -B/src/wsclean/build \
     -G Ninja
@@ -117,6 +124,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -DLIBDIRAC_PREFIX=/usr/ \
     -H/src/DP3 \
     -B/src/DP3/build \
