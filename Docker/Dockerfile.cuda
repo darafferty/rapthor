@@ -3,7 +3,9 @@ FROM ubuntu:22.04 as builder
 # This Dockerfile builds a Docker image for the Rapthor pipeline
 # and all its dependencies.
 
-ARG PORTABLE=TRUE
+# By default, build non-portable code, for the oldest CPU that supports AVX2
+ARG PORTABLE=FALSE
+ARG TARGET_CPU=haswell
 
 # Install all build-time dependencies
 RUN export DEBIAN_FRONTEND=noninteractive && \
@@ -30,14 +32,14 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
         libgtkmm-3.0-dev \
         libhdf5-serial-dev \
         liblua5.3-dev \
+        libnvidia-ml-dev \
         libpng-dev \
         ninja-build \
+        nvidia-cuda-dev \
+        nvidia-cuda-toolkit \
         pybind11-dev \
         python3-dev \
         wcslib-dev \
-        nvidia-cuda-dev \
-        nvidia-cuda-toolkit \
-        libcublas10 libcusolver10 libnvidia-ml-dev \
         wget
 
 # Prepare the environment for installing the Rapthor source dependencies.
@@ -54,6 +56,7 @@ RUN cmake \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/idg \
     -B/src/idg/build \
     -G Ninja
@@ -68,6 +71,7 @@ RUN cmake \
     -DBUILD_WITH_PYTHON=OFF \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/EveryBeam \
     -B/src/EveryBeam/build \
     -G Ninja
@@ -78,6 +82,7 @@ RUN git shallow-clone https://github.com/aroffringa/dysco.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/dysco \
     -B/src/dysco/build \
     -G Ninja
@@ -88,6 +93,7 @@ RUN git shallow-clone https://gitlab.com/aroffringa/aoflagger.git
 RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/aoflagger \
     -B/src/aoflagger/build \
     -G Ninja
@@ -99,6 +105,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -H/src/wsclean \
     -B/src/wsclean/build \
     -G Ninja
@@ -114,9 +121,8 @@ RUN cmake \
     -DHAVE_CUDA=ON \
     -DNUM_GPU=1 \
     -DCUDA_NVCC_FLAGS="-gencode arch=compute_75,code=sm_75 -O3" \
-    -DCMAKE_CXX_COMPILER=g++-8 -DCMAKE_C_COMPILER=gcc-8 \
-    -DCMAKE_CXX_FLAGS='-g -O3 -Wall -fPIC' \
-    -DCMAKE_C_FLAGS='-g -O3 -Wall -fPIC' \
+    -DCMAKE_C_FLAGS="-fPIC" \
+    -DCMAKE_CXX_FLAGS="-fPIC" \
     -H/src/sagecal \
     -B/src/sagecal/build \
     -G Ninja
@@ -128,6 +134,7 @@ RUN cmake \
     -DCMAKE_BUILD_TYPE:STRING=Release \
     -DBUILD_TESTING=OFF \
     -DPORTABLE=${PORTABLE} \
+    -DTARGET_CPU=${TARGET_CPU} \
     -DLIBDIRAC_PREFIX=/usr/ \
     -DHAVE_CUDA=ON \
     -H/src/DP3 \
@@ -169,39 +176,37 @@ RUN export DEBIAN_FRONTEND=noninteractive && \
     apt-get install -y --no-install-recommends \
         ca-certificates \
         casacore-tools \
-        libarmadillo9 \
         libatkmm-1.6-1v5 \
-        libboost-date-time1.71.0 \
-        libboost-filesystem1.71.0 \
-        libboost-program-options1.71.0 \
+        libblas3 \
+        libboost-filesystem1.74.0 \
+        libboost-program-options1.74.0 \
         libcairomm-1.0-1v5 \
-        libcasa-casa4 \
-        libcasa-fits4 \
-        libcasa-measures4 \
-        libcasa-ms4 \
-        libcasa-scimath4 \
-        libcasa-tables4 \
-        libcfitsio8 \
+        libcasa-casa6 \
+        libcasa-fits6 \
+        libcasa-measures6 \
+        libcasa-ms6 \
+        libcasa-scimath6 \
+        libcasa-tables6 \
+        libcfitsio9 \
         libfftw3-double3 \
         libfftw3-single3 \
         libglibmm-2.4-1v5 \
         libgomp1 \
-        libgsl23 \
+        libgsl27 \
         libgtkmm-3.0-1v5 \
-        libhdf5-103 \
-        libhdf5-cpp-103 \
+        libhdf5-103-1 \
+        libhdf5-cpp-103-1 \
         liblapack3 \
         liblua5.3-0 \
+        libnvidia-compute-535 \
         libpangomm-1.4-1v5 \
         libpng16-16 \
-        libpython3.8 \
+        libpython3.10 \
         libsigc++-2.0-0v5 \
         libstdc++6 \
         nodejs \
         python3 \
         python3-distutils \
-        nvidia-cuda-toolkit \
-        libcublas10 libcusolver10 libnvidia-ml-dev \
         wget
 
 RUN rm -rf /var/lib/apt/lists/*
@@ -222,7 +227,10 @@ RUN aoflagger --version && \
     DP3 --version && \
     wsclean --version
 
-# Install current version of Rapthor
+# Install current version of Rapthor.
+# Note: VERSION should be provided as build argument.
+ARG VERSION=0.0.0
 COPY . /tmp/rapthor
-RUN python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
+RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${VERSION} \
+    python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
 RUN rm -rf /tmp/*
