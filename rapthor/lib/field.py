@@ -261,7 +261,8 @@ class Field(object):
                 # amount of data used is kept the same
                 target_starttime = obs.high_el_starttime
                 target_endtime = obs.high_el_endtime
-                data_fraction *= (obs.endtime - obs.starttime) / (target_endtime - target_starttime)
+                data_fraction = min(1, data_fraction * (obs.endtime - obs.starttime) /
+                                    (target_endtime - target_starttime))
             tottime = target_endtime - target_starttime
 
             nchunks = max(1, int(np.floor(data_fraction / (mintime / tottime))))

@@ -156,34 +156,27 @@ class Observation(object):
         el_values = pt.taql("SELECT mscal.azel1()[1] AS el from "
                             + self.ms_filename + " limit ::10000").getcol("el")
         self.mean_el_rad = np.mean(el_values)
-        el_sorted_low_to_high = np.sort(el_values)
         times = pt.taql("select TIME from "
                         + self.ms_filename + " limit ::10000").getcol("TIME")
-        time_indices = np.argsort(times)
-        times = times[time_indices]
-        el_values = el_values[time_indices]
-        el_cut_lowest_20percent = el_sorted_low_to_high[int(len(el_values)/5)]
-        low_indices = np.where(el_values < el_cut_lowest_20percent)[0]
+        low_indices = np.sort(el_values.argpartition(len(el_values)//5)[:len(el_values)//5])
         if len(low_indices) > 1:
             # At least two elements are needed for the start and end time check. The check
             # assumes that the elevation either increases smoothly to a maximum and then
             # decreases with time or that it simply increases (or decreases)
             # monotonically. These cases should cover almost all observations. For any
             # other behavior, just fall back to the untrimmed time
-            diff = low_indices[1:] - low_indices[:-1]
+            diff = np.diff(low_indices)
             low_at_start = low_indices[0] == 0  # first elevation is low
             low_at_end = low_indices[-1] == len(el_values) - 1  # last elevation is low
-            starttime_index = 0
-            endtime_index = -1
+            starttime_index = 0  # default to no trim at start
+            endtime_index = -1  # default to no trim at end
             if np.all(diff == 1):
                 # No gap found (so a single continuous period of low elevations)
                 if low_at_start:
                     # Trim the start
                     starttime_index = low_indices[-1]
-                    endtime_index = -1
                 elif low_at_end:
                     # Trim the end
-                    starttime_index = 0
                     endtime_index = low_indices[0]
             elif len(np.where(diff != 1)[0]) == 1 and low_at_start and low_at_end:
                 # Single gap found (with low elevations at start and end, due to a period
@@ -195,8 +188,8 @@ class Observation(object):
                 # and diff like:
                 #   array([  1,   1,   1,   1,   1,   1,   1,   1,   1, 545,   1,   1,
                 #            1,   1,   1,   1,   1,   1,   1,   1])
-                starttime_index = low_indices[diff.tolist().index(max(diff))]
-                endtime_index = low_indices[diff.tolist().index(max(diff)) + 1]
+                starttime_index = low_indices[np.argmax(diff)]
+                endtime_index = low_indices[np.argmax(diff) + 1]
             self.high_el_starttime = times[starttime_index]
             self.high_el_endtime = times[endtime_index]
         else:
