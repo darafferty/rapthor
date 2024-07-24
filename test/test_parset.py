@@ -3,6 +3,7 @@ This module contains tests for the module `rapthor.lib.parset`
 """
 
 import ast
+import mock
 import os
 import string
 import tempfile
