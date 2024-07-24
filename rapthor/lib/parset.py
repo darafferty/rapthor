@@ -5,11 +5,11 @@ import ast
 import configparser
 import glob
 import logging
-import multiprocessing
 import os
 import sys
 
 import astropy.coordinates
+import rapthor.lib.miscellaneous as misc
 from rapthor._logging import set_log_file
 
 if (sys.version_info.major, sys.version_info.minor) < (3, 9):
@@ -352,7 +352,7 @@ class Parset:
                     )
                 )
 
-        cpu_count = multiprocessing.cpu_count()
+        cpu_count = misc.nproc()
         if not options["cpus_per_task"]:
             options["cpus_per_task"] = cpu_count
 
