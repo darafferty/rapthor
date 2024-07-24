@@ -406,7 +406,7 @@ class KLScreen(Screen):
         """
         ncpu = self.ncpu
         if ncpu == 0:
-            ncpu = multiprocessing.cpu_count()
+            ncpu = misc.nproc()
 
         # Make a test array and find its memory usage
         ximsize = int(self.width_ra / cellsize_deg)  # pix
