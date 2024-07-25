@@ -133,7 +133,7 @@ class TestParset(unittest.TestCase):
             parset_read(self.parset.name)
 
     # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
-    @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
+    @mock.patch("rapthor.lib.parset.misc.nproc", return_value=8)
     def test_default_parset_contents(self, cpu_count):
         self.maxDiff = None
         with open(self.parset.name, "w") as f:
@@ -153,7 +153,7 @@ class TestParset(unittest.TestCase):
         self.assertEqual(parset, ref_parset)
 
     # Fix value of `cpu_count`, because `parset_read` does some smart things with it.
-    @mock.patch("rapthor.lib.parset.multiprocessing.cpu_count", return_value=8)
+    @mock.patch("rapthor.lib.parset.misc.nproc", return_value=8)
     def test_complete_parset_contents(self, cpu_count):
         self.maxDiff = None
         with open(self.parset.name, "w") as f:

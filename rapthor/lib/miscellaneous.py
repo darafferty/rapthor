@@ -976,6 +976,16 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
     return num_flagged / num_all
 
 
+def nproc():
+    """
+    Return the number of CPU cores _available_ to the current process, similar
+    to what the Linux `nproc` command does. This can be less than the total
+    number of CPU cores in the machine, which is returned by, e.g.,
+    `multiprocessing.cpu_count()`
+    """
+    return len(os.sched_getaffinity(0))
+
+
 class multiprocManager(object):
 
     class multiThread(multiprocessing.Process):
@@ -1011,7 +1021,7 @@ class multiprocManager(object):
         and it will be linked to the output queue
         """
         if procs == 0:
-            procs = multiprocessing.cpu_count()
+            procs = nproc()
         self.procs = procs
         self._threads = []
         self.inQueue = multiprocessing.JoinableQueue()
