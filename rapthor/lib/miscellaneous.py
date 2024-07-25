@@ -1105,6 +1105,16 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
     return out_skymodel
 
 
+def nproc():
+    """
+    Return the number of CPU cores _available_ to the current process, similar
+    to what the Linux `nproc` command does. This can be less than the total
+    number of CPU cores in the machine, which is returned by, e.g.,
+    `multiprocessing.cpu_count()`
+    """
+    return len(os.sched_getaffinity(0))
+
+
 class multiprocManager(object):
 
     class multiThread(multiprocessing.Process):
@@ -1140,7 +1150,7 @@ class multiprocManager(object):
         and it will be linked to the output queue
         """
         if procs == 0:
-            procs = multiprocessing.cpu_count()
+            procs = nproc()
         self.procs = procs
         self._threads = []
         self.inQueue = multiprocessing.JoinableQueue()
