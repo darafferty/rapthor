@@ -159,8 +159,8 @@ class Observation(object):
         times = pt.taql("select TIME from "
                         + self.ms_filename + " limit ::10000").getcol("TIME")
         low_indices = np.sort(el_values.argpartition(len(el_values)//5)[:len(el_values)//5])
-        if len(low_indices) > 1:
-            # At least two elements are needed for the start and end time check. The check
+        if len(low_indices):
+            # At least one element is needed for the start and end time check. The check
             # assumes that the elevation either increases smoothly to a maximum and then
             # decreases with time or that it simply increases (or decreases)
             # monotonically. These cases should cover almost all observations. For any
