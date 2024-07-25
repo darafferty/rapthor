@@ -283,8 +283,10 @@ class Field(object):
                 endtimes = np.arange(target_starttime+mintime, target_endtime+mintime, steptime)
                 for starttime, endtime in zip(starttimes, endtimes):
                     if endtime > target_endtime:
-                        starttime = target_endtime - mintime
                         endtime = target_endtime
+                        if endtime - starttime < mintime / 2:
+                            # Skip this chunk if too short
+                            continue
                     self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                          endtime=endtime))
 
