@@ -758,7 +758,7 @@ class Field(object):
 
             # Plot the field overview showing the initial sky-model coverage
             self.log.info('Plotting field overview with initial sky-model coverage...')
-            self.plot_overview('initial_field_overview.png', show_skymodel_coverage=True,
+            self.plot_overview('initial_field_overview.png', show_intial_coverage=True,
                                moc=moc)
 
             self.make_skymodels(self.parset['input_skymodel'],
@@ -1652,7 +1652,7 @@ class Field(object):
 
         return patch
 
-    def plot_overview(self, output_filename, show_skymodel_coverage=False,
+    def plot_overview(self, output_filename, show_intial_coverage=False,
                       show_calibration_patches=False, moc=None):
         """
         Plots an overview of the field, with optional intial sky-model coverage
@@ -1662,17 +1662,17 @@ class Field(object):
         ----------
         output_filename : str
             Base filename of ouput file, to be output to 'dir_working/plots/'
-        show_skymodel_coverage : bool, optional
+        show_intial_coverage : bool, optional
             If True, plot the intial sky-model coverage
         show_calibration_patches : bool, optional
             If True, plot the calibration patches
         moc : str or None, optional
             If not None, the multi-order coverage map to plot alongside the usual
-            quantiies. Only shown if show_skymodel_coverage = True
+            quantiies. Only shown if show_intial_coverage = True
         """
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
-        if not hasattr(self.calibration_skymodel):
+        if show_intial_coverage:
             if self.parset['generate_initial_skymodel']:
                 skymodel_radius = max(self.full_field_sector.width_ra,
                                       self.full_field_sector.width_dec) / 2
@@ -1681,6 +1681,8 @@ class Field(object):
             else:
                 # User-supplied sky model (unknown coverage)
                 skymodel_radius = 0
+        else:
+            skymodel_radius = 0
         size_skymodel = skymodel_radius * u.deg
 
         # Dealing with axes limits is difficult here.
@@ -1704,13 +1706,13 @@ class Field(object):
         ax = fig.add_subplot(111, projection=wcs)
 
         # If a MOC is provided, also plot that.
-        if pmoc is not None and show_skymodel_coverage:
+        if pmoc is not None and show_intial_coverage:
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
         # Indicate the region out to which the initial sky model extends, centered on the
         # center of the field
-        if skymodel_radius > 0 and show_skymodel_coverage:
+        if skymodel_radius > 0 and show_intial_coverage:
             if self.parset['generate_initial_skymodel']:
                 skymodel_region = self.full_field_sector.get_matplotlib_patch(wcs=wcs)
                 skymodel_region.set_edgecolor('b')
