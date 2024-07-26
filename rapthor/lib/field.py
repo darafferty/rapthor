@@ -1715,15 +1715,36 @@ class Field(object):
         if skymodel_radius > 0 and show_intial_coverage:
             if self.parset['generate_initial_skymodel']:
                 skymodel_region = self.full_field_sector.get_matplotlib_patch(wcs=wcs)
-                skymodel_region.set_edgecolor('b')
-                skymodel_region.set_facecolor('lightblue')
-                skymodel_region.set_alpha(0.5)
+                skymodel_region.set(edgecolor='b', facecolor='lightblue', alpha=0.5,
+                                    label='Initial sky model coverage')
             elif self.parset['download_initial_skymodel']:
                 skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
                                                   transform=ax.get_transform('fk5'),
-                                                  label='Skymodel query cone', edgecolor='b',
+                                                  label='Initial sky model query cone', edgecolor='b',
                                                   facecolor='lightblue', linewidth=2, alpha=0.5)
             ax.add_patch(skymodel_region)
+
+        # Plot the calibration patches (facets)
+        if show_calibration_patches:
+            # The sector bounds define the limits of the calibration model, so use them
+            # when generating the facets
+            facets = read_skymodel(self.calibration_skymodel_file,
+                                   self.sector_bounds_mid_ra,
+                                   self.sector_bounds_mid_dec,
+                                   self.sector_bounds_width_ra,
+                                   self.sector_bounds_width_dec)
+            for i, facet in enumerate(facets):
+                facet_patch = facet.get_matplotlib_patch(wcs=wcs)
+                if i == 0:
+                    # Set the label only on the first facet to avoid multiple
+                    # lines in the legend
+                    facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5,
+                                    label='Calibration facets')
+                else:
+                    facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5)
+                ax.add_patch(facet_patch)
+                x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
+                ax.annotate(facet.name, (x, y), va='top', ha='center')
 
         # Plot the parts of the field being imaged. We use a different linestyle for each
         # sector to help distinguish them (up to four sectors; more that this should be
@@ -1732,20 +1753,8 @@ class Field(object):
         for i, sector in enumerate(self.imaging_sectors):
             sector_patch = sector.get_matplotlib_patch(wcs=wcs)
             linestyle = linestyles[i] if i < len(linestyles) else linestyles[-1]
-            sector_patch.set_linestyle(linestyle)
+            sector_patch.set(linestyle=linestyle, label=f'Image sector {sector.name}')
             ax.add_patch(sector_patch)
-
-        # Plot the calibration patches (facets)
-        if show_calibration_patches:
-            # The sector bounds define the limits of the calibration model, so use them
-            # when generating the facets
-            facets = read_skymodel(self.calibration_skymodel,
-                                   self.sector_bounds_mid_ra,
-                                   self.sector_bounds_mid_dec,
-                                   self.sector_bounds_width_ra,
-                                   self.sector_bounds_width_dec)
-            for facet in facets:
-                ax.add_patch(facet.get_matplotlib_patch(wcs=wcs))
 
         # Plot the observation's FWHM.
         ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
