@@ -739,10 +739,10 @@ class Field(object):
             #
             # Note: the flags for generating or downloading the sky model are checked
             # and adjusted, if needed, during the reading of the parset
+            moc = None  # default to no multi-order coverage map (which is, for now, LoTSS only)
             if self.parset['generate_initial_skymodel']:
                 self.parset['input_skymodel'] = self.full_field_sector.image_skymodel_file_true_sky
                 self.parset['apparent_skymodel'] = self.full_field_sector.image_skymodel_file_apparent_sky
-                moc = None
             elif self.parset['download_initial_skymodel']:
                 catalog = self.parset['download_initial_skymodel_server'].lower()
                 self.parset['input_skymodel'] = os.path.join(self.working_dir, 'skymodels',
@@ -755,8 +755,6 @@ class Field(object):
                                        overwrite=self.parset['download_overwrite_skymodel'])
                 if catalog == 'lotss':
                     moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
-                else:
-                    moc = None
 
             # Plot the field overview showing the initial sky-model coverage
             self.log.info('Plotting field overview with initial sky-model coverage...')
