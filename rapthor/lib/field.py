@@ -9,7 +9,7 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
-from rapthor.lib.facet import read_ds9_region_file
+from rapthor.lib.facet import read_ds9_region_file, read_skymodel
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
@@ -742,6 +742,8 @@ class Field(object):
             if self.parset['generate_initial_skymodel']:
                 self.parset['input_skymodel'] = self.full_field_sector.image_skymodel_file_true_sky
                 self.parset['apparent_skymodel'] = self.full_field_sector.image_skymodel_file_apparent_sky
+                self.log.info('Plotting field coverage...')
+                self.plot_overview(skymodel_radius=self.parset['generate_initial_skymodel_radius'])
             elif self.parset['download_initial_skymodel']:
                 catalog = self.parset['download_initial_skymodel_server'].lower()
                 self.parset['input_skymodel'] = os.path.join(self.working_dir, 'skymodels',
@@ -752,11 +754,12 @@ class Field(object):
                                        radius=self.parset['download_initial_skymodel_radius'],
                                        source=self.parset['download_initial_skymodel_server'],
                                        overwrite=self.parset['download_overwrite_skymodel'])
+                self.log.info('Plotting field coverage...')
                 if catalog == 'lotss':
-                    self.plot_field(self.parset['download_initial_skymodel_radius'],
-                                    moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+                    self.plot_overview(skymodel_radius=self.parset['download_initial_skymodel_radius'],
+                                       moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
                 else:
-                    self.plot_field(self.parset['download_initial_skymodel_radius'])
+                    self.plot_overview(skymodel_radius=self.parset['download_initial_skymodel_radius'])
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -854,6 +857,11 @@ class Field(object):
                                 regroup=regroup, find_sources=False, target_flux=target_flux,
                                 target_number=target_number, calibrator_max_dist_deg=calibrator_max_dist_deg,
                                 index=index)
+
+            # Plot an overview of the field for this cycle
+            self.log.info('Plotting calibration patches...')
+            self.plot_overview(self, show_skymodel_coverage=False, show_calibration_patches=True,
+                               output_filename=f'field_overview_{index}.png')
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging operations
@@ -1643,18 +1651,31 @@ class Field(object):
 
         return patch
 
-    def plot_field(self, skymodel_radius=0, moc=None):
+    def plot_overview(self, show_skymodel_coverage=True, show_calibration_patches=False,
+                      skymodel_radius=0, moc=None, output_filename=None):
         """
-        Plots an overview of how the imaged field compares against the skymodel used.
+        Plots an overview of the field, with optional sky model coverage and calibration
+        facets
 
         Parameters
         ----------
-        skymodel_radius : float
-            Radius in degrees out to which the skymodel catalogue was queried.
-        moc : str or None
-            If not None, the multi-order coverage map to plot alongside the usual quantiies.
+        show_skymodel_coverage : bool, optional
+            If True, plot the sky model coverage
+        show_calibration_patches : bool, optional
+            If True, plot the calibration patches
+        skymodel_radius : float, optional
+            Radius in degrees out to which the skymodel catalogue was queried or
+            generated
+        moc : str or None, optional
+            If not None, the multi-order coverage map to plot alongside the usual
+            quantiies. Only shown if show_skymodel_coverage = True
+        output_filename : str, optional
+            Filename of ouput file, to be output to 'dir_working/plots/'. If not
+            given, 'field_overview.png' is used
         """
-        self.log.info('Plotting field coverage...')
+        if output_filename is None:
+            output_filename = 'field_overview.png'
+
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
         size_skymodel = skymodel_radius * u.deg
@@ -1680,13 +1701,13 @@ class Field(object):
         ax = fig.add_subplot(111, projection=wcs)
 
         # If a MOC is provided, also plot that.
-        if pmoc is not None:
+        if pmoc is not None and show_skymodel_coverage:
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
-        # Indicate the region out to which the skymodel was queried, centered on the
+        # Indicate the region out to which the skymodel extends, centered on the
         # center of the field
-        if skymodel_radius > 0:
+        if skymodel_radius > 0 and show_skymodel_coverage:
             skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
                                               transform=ax.get_transform('fk5'),
                                               label='Skymodel query cone', edgecolor='r',
@@ -1696,6 +1717,18 @@ class Field(object):
         # Plot the parts of the field being imaged.
         for sector in self.imaging_sectors:
             ax.add_patch(sector.get_matplotlib_patch(wcs=wcs))
+
+        # Plot the calibration patches (facets)
+        if show_calibration_patches:
+            # The sector bounds define the limits of the calibration model, so use them
+            # when generating the facets
+            facets = read_skymodel(self.calibration_skymodel,
+                                   self.sector_bounds_mid_ra,
+                                   self.sector_bounds_mid_dec,
+                                   self.sector_bounds_width_ra,
+                                   self.sector_bounds_width_dec)
+            for facet in facets:
+                ax.add_patch(facet.get_matplotlib_patch(wcs=wcs))
 
         # Plot the observation's FWHM.
         ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
@@ -1714,4 +1747,4 @@ class Field(object):
         ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend(loc='upper left')
         ax.grid()
-        fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))
+        fig.savefig(os.path.join(self.working_dir, 'plots', output_filename))
