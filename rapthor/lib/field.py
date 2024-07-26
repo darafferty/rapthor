@@ -742,8 +742,7 @@ class Field(object):
             if self.parset['generate_initial_skymodel']:
                 self.parset['input_skymodel'] = self.full_field_sector.image_skymodel_file_true_sky
                 self.parset['apparent_skymodel'] = self.full_field_sector.image_skymodel_file_apparent_sky
-                self.log.info('Plotting field coverage...')
-                self.plot_overview(skymodel_radius=self.parset['generate_initial_skymodel_radius'])
+                moc = None
             elif self.parset['download_initial_skymodel']:
                 catalog = self.parset['download_initial_skymodel_server'].lower()
                 self.parset['input_skymodel'] = os.path.join(self.working_dir, 'skymodels',
@@ -754,12 +753,16 @@ class Field(object):
                                        radius=self.parset['download_initial_skymodel_radius'],
                                        source=self.parset['download_initial_skymodel_server'],
                                        overwrite=self.parset['download_overwrite_skymodel'])
-                self.log.info('Plotting field coverage...')
                 if catalog == 'lotss':
-                    self.plot_overview(skymodel_radius=self.parset['download_initial_skymodel_radius'],
-                                       moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
+                    moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
                 else:
-                    self.plot_overview(skymodel_radius=self.parset['download_initial_skymodel_radius'])
+                    moc = None
+
+            # Plot the field overview showing the initial sky-model coverage
+            self.log.info('Plotting field overview with initial sky-model coverage...')
+            self.plot_overview('initial_field_overview.png', show_skymodel_coverage=True,
+                               moc=moc)
+
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -858,10 +861,10 @@ class Field(object):
                                 target_number=target_number, calibrator_max_dist_deg=calibrator_max_dist_deg,
                                 index=index)
 
-            # Plot an overview of the field for this cycle
-            self.log.info('Plotting calibration patches...')
-            self.plot_overview(self, show_skymodel_coverage=False, show_calibration_patches=True,
-                               output_filename=f'field_overview_{index}.png')
+        # Plot an overview of the field for this cycle, showing the calibration facets
+        # (patches)
+        self.log.info('Plotting field overview with calibration patches...')
+        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True)
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging operations
@@ -1651,37 +1654,39 @@ class Field(object):
 
         return patch
 
-    def plot_overview(self, show_skymodel_coverage=True, show_calibration_patches=False,
-                      skymodel_radius=0, moc=None, output_filename=None):
+    def plot_overview(self, output_filename, show_skymodel_coverage=False,
+                      show_calibration_patches=False, moc=None):
         """
-        Plots an overview of the field, with optional sky-model coverage and calibration
-        facets shown
+        Plots an overview of the field, with optional intial sky-model coverage
+        and calibration facets shown
 
         Parameters
         ----------
+        output_filename : str
+            Base filename of ouput file, to be output to 'dir_working/plots/'
         show_skymodel_coverage : bool, optional
-            If True, plot the sky model coverage
+            If True, plot the intial sky-model coverage
         show_calibration_patches : bool, optional
             If True, plot the calibration patches
-        skymodel_radius : float, optional
-            Radius in degrees out to which the skymodel catalogue was queried or
-            generated
         moc : str or None, optional
             If not None, the multi-order coverage map to plot alongside the usual
             quantiies. Only shown if show_skymodel_coverage = True
-        output_filename : str, optional
-            Filename of ouput file, to be output to 'dir_working/plots/'. If not
-            given, 'field_overview.png' is used
         """
-        if output_filename is None:
-            output_filename = 'field_overview.png'
-
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
+        if not hasattr(self.calibration_skymodel):
+            if self.parset['generate_initial_skymodel']:
+                skymodel_radius = max(self.full_field_sector.width_ra,
+                                      self.full_field_sector.width_dec) / 2
+            elif self.parset['download_initial_skymodel']:
+                skymodel_radius = self.parset['download_initial_skymodel_radius']
+            else:
+                # User-supplied sky model (unknown coverage)
+                skymodel_radius = 0
         size_skymodel = skymodel_radius * u.deg
 
         # Dealing with axes limits is difficult here.
-        # Find the biggest size we plot and then set teh FoV either through the MOC
+        # Find the biggest size we plot and then set the FoV either through the MOC
         # or by plotting an invisible circle.
         fake_size = size_ra if size_ra > size_dec else size_dec
         fake_size = size_skymodel if size_skymodel > fake_size else fake_size
@@ -1705,18 +1710,30 @@ class Field(object):
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
-        # Indicate the region out to which the skymodel extends, centered on the
+        # Indicate the region out to which the initial sky model extends, centered on the
         # center of the field
         if skymodel_radius > 0 and show_skymodel_coverage:
-            skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
-                                              transform=ax.get_transform('fk5'),
-                                              label='Skymodel query cone', edgecolor='r',
-                                              facecolor='none', linewidth=2)
+            if self.parset['generate_initial_skymodel']:
+                skymodel_region = self.full_field_sector.get_matplotlib_patch(wcs=wcs)
+                skymodel_region.set_edgecolor('b')
+                skymodel_region.set_facecolor('lightblue')
+                skymodel_region.set_alpha(0.5)
+            elif self.parset['download_initial_skymodel']:
+                skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
+                                                  transform=ax.get_transform('fk5'),
+                                                  label='Skymodel query cone', edgecolor='b',
+                                                  facecolor='lightblue', linewidth=2, alpha=0.5)
             ax.add_patch(skymodel_region)
 
-        # Plot the parts of the field being imaged.
-        for sector in self.imaging_sectors:
-            ax.add_patch(sector.get_matplotlib_patch(wcs=wcs))
+        # Plot the parts of the field being imaged. We use a different linestyle for each
+        # sector to help distinguish them (up to four sectors; more that this should be
+        # very rare)
+        linestyles = ["solid", "dotted", "dashed", "dashdot"]
+        for i, sector in enumerate(self.imaging_sectors):
+            sector_patch = sector.get_matplotlib_patch(wcs=wcs)
+            linestyle = linestyles[i] if i < len(linestyles) else linestyles[-1]
+            sector_patch.set_linestyle(linestyle)
+            ax.add_patch(sector_patch)
 
         # Plot the calibration patches (facets)
         if show_calibration_patches:

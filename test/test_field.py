@@ -93,8 +93,8 @@ class TestField(unittest.TestCase):
 
     def test_plot_overview(self):
         self.field.dec = 89.5  # test behavior near pole
-        self.field.plot_overview(skymodel_radius=5.0)
-        self.assertTrue(os.path.exists(os.path.join('plots', 'field_coverage.png')))
+        self.field.plot_overview('initial_field_overview.png')
+        self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
 
 
 def suite():
