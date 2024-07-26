@@ -65,7 +65,13 @@ class TestField(unittest.TestCase):
     def test_chunk_observations(self):
         for obs in self.field.full_observations:
             obs.data_fraction = 0.8
-        self.field.chunk_observations(600.0)
+        self.field.chunk_observations(600.0, prefer_high_el_periods=False)
+        self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.90695)
+
+    def test_chunk_observations_high_el(self):
+        for obs in self.field.full_observations:
+            obs.data_fraction = 0.2
+        self.field.chunk_observations(600.0, prefer_high_el_periods=True)
         self.assertEqual(self.field.imaging_sectors[0].observations[0].starttime, 4871282392.90695)
 
     def test_get_obs_parameters(self):
@@ -106,6 +112,7 @@ def suite():
     suite.addTest(TestField('test_radec2xy'))
     suite.addTest(TestField('test_xy2radec'))
     suite.addTest(TestField('test_chunk_observations'))
+    suite.addTest(TestField('test_chunk_observations_high_el'))
     suite.addTest(TestField('test_get_obs_parameters'))
     suite.addTest(TestField('test_define_imaging_sectors'))
     suite.addTest(TestField('test_define_outlier_sectors'))
