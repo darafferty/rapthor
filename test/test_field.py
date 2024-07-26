@@ -91,9 +91,9 @@ class TestField(unittest.TestCase):
     def test_check_selfcal_progress(self):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
-    def test_plot_field(self):
+    def test_plot_overview(self):
         self.field.dec = 89.5  # test behavior near pole
-        self.field.plot_field(skymodel_radius=5.0)
+        self.field.plot_overview(skymodel_radius=5.0)
         self.assertTrue(os.path.exists(os.path.join('plots', 'field_coverage.png')))
 
 

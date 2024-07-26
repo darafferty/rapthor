@@ -1654,8 +1654,8 @@ class Field(object):
     def plot_overview(self, show_skymodel_coverage=True, show_calibration_patches=False,
                       skymodel_radius=0, moc=None, output_filename=None):
         """
-        Plots an overview of the field, with optional sky model coverage and calibration
-        facets
+        Plots an overview of the field, with optional sky-model coverage and calibration
+        facets shown
 
         Parameters
         ----------
