@@ -286,6 +286,8 @@ class Field(object):
                         endtime = target_endtime
                         if endtime - starttime < mintime / 2:
                             # Skip this chunk if too short
+                            self.log.warning('Skipping final chunk as being too short. Fraction '
+                                             'of data used will be lower than requested.')
                             continue
                     self.observations.append(Observation(obs.ms_filename, starttime=starttime,
                                                          endtime=endtime))
