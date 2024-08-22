@@ -33,7 +33,7 @@ How can I use containers (Docker or Singularity) with Rapthor?
           compute cluster).
 
     A Docker image with the latest release of Rapthor and all its dependencies
-    is available `here <https://todo>`_.
+    is available on `Docker Hub <https://hub.docker.com/r/astronrd/rapthor>`_.
 
 How can I troubleshoot a Rapthor problem?
     If you see a message in the terminal or the main log

@@ -22,7 +22,7 @@ except ImportError:  # for python<3.8
 # -- Project information -----------------------------------------------------
 
 project = 'Rapthor'
-copyright = '2023, Team Rapthor'
+copyright = '2024, Team Rapthor'
 author = 'Team Rapthor'
 
 # The full version, including alpha/beta/rc tags.
