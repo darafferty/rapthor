@@ -50,6 +50,6 @@ if __name__ == '__main__':
         try:
             # Run the processing
             process.run(parset_file, logging_level=logging_level)
-        except Exception as err:
+        except Exception as e:
             log = logging.getLogger('rapthor')
-            log.critical(str(err))
+            log.critical(e)
