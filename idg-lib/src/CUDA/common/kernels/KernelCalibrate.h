@@ -78,11 +78,10 @@ class KernelCalibrateGradient : public CompiledKernel {
                int nr_terms, cu::DeviceMemory& d_uvw,
                cu::DeviceMemory& d_wavenumbers,
                cu::DeviceMemory& d_visibilities, cu::DeviceMemory& d_weights,
-               cu::DeviceMemory& d_aterm, cu::DeviceMemory& d_aterm_derivatives,
-               cu::DeviceMemory& d_aterm_indices, cu::DeviceMemory& d_metadata,
-               cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_sums,
-               cu::DeviceMemory& d_lmnp, cu::DeviceMemory& d_gradient,
-               cu::DeviceMemory& d_residual);
+               cu::DeviceMemory& d_aterm, cu::DeviceMemory& d_aterm_indices,
+               cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid,
+               cu::DeviceMemory& d_sums, cu::DeviceMemory& d_lmnp,
+               cu::DeviceMemory& d_gradient, cu::DeviceMemory& d_residual);
 
   static constexpr unsigned kBlockSizeX = 128;
 };

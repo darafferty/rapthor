@@ -129,10 +129,10 @@ void KernelCalibrateGradient::enqueue(
     int current_nr_terms, int nr_terms, cu::DeviceMemory& d_uvw,
     cu::DeviceMemory& d_wavenumbers, cu::DeviceMemory& d_visibilities,
     cu::DeviceMemory& d_weights, cu::DeviceMemory& d_aterm,
-    cu::DeviceMemory& d_aterm_derivatives, cu::DeviceMemory& d_aterm_indices,
-    cu::DeviceMemory& d_metadata, cu::DeviceMemory& d_subgrid,
-    cu::DeviceMemory& d_sums, cu::DeviceMemory& d_lmnp,
-    cu::DeviceMemory& d_gradient, cu::DeviceMemory& d_residual) {
+    cu::DeviceMemory& d_aterm_indices, cu::DeviceMemory& d_metadata,
+    cu::DeviceMemory& d_subgrid, cu::DeviceMemory& d_sums,
+    cu::DeviceMemory& d_lmnp, cu::DeviceMemory& d_gradient,
+    cu::DeviceMemory& d_residual) {
   setArg(0, nr_polarizations);
   setArg(1, subgrid_size);
   setArg(2, image_size);
@@ -147,14 +147,13 @@ void KernelCalibrateGradient::enqueue(
   setArg(11, d_visibilities);
   setArg(12, d_weights);
   setArg(13, d_aterm);
-  setArg(14, d_aterm_derivatives);
-  setArg(15, d_aterm_indices);
-  setArg(16, d_metadata);
-  setArg(17, d_subgrid);
-  setArg(18, d_sums);
-  setArg(19, d_lmnp);
-  setArg(20, d_gradient);
-  setArg(21, d_residual);
+  setArg(14, d_aterm_indices);
+  setArg(15, d_metadata);
+  setArg(16, d_subgrid);
+  setArg(17, d_sums);
+  setArg(18, d_lmnp);
+  setArg(19, d_gradient);
+  setArg(20, d_residual);
 
   Grid grid(nr_subgrids);
   Block block(KernelCalibrateSums::kBlockSizeX);
