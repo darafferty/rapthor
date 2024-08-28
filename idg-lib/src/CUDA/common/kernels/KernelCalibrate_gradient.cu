@@ -24,11 +24,10 @@ __global__ void kernel_calibrate_gradient(
     const float2*       __restrict__ visibilities,
     const float*        __restrict__ weights,
     const float2*       __restrict__ aterm,
-    const float2*       __restrict__ aterm_derivatives,
     const unsigned int* __restrict__ aterm_indices,
     const Metadata*     __restrict__ metadata,
     const float2*       __restrict__ subgrid,
-    const float2*       __restrict__ sums,
+    const float2*       __restrict__ sums, // derivatives of the visibilities
     const float4*       __restrict__ lmnp,
           double*       __restrict__ gradient,
           double*       __restrict__ residual_sum)
@@ -183,14 +182,16 @@ __global__ void kernel_calibrate_gradient(
                 const float scale = 1.0f / nr_pixels;
                 for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
                     unsigned int vis_idx = index_visibility(nr_polarizations, nr_channels, time_idx_global, chan_idx_local, pol);
-                    residual[pol] = visibilities[vis_idx] - (sum[pol] * scale);
+                    const float2 model_visibility = sum[pol] * scale;
+                    residual[pol] = visibilities[vis_idx] - model_visibility;
                     residual_weighted[pol] = residual[pol] * weights[vis_idx];
 
                     // Compute gradient update
                     for (unsigned int term_nr = 0; term_nr < current_nr_terms; term_nr++) {
                         unsigned int sum_idx = index_sums(4, total_nr_timesteps, nr_channels, term_nr, pol, time_idx_global, chan_idx_local);
-                        update[term_nr] += residual_weighted[pol].x * sums[sum_idx].x;
-                        update[term_nr] += residual_weighted[pol].y * sums[sum_idx].y;
+                        const float2 visibility_derivative = sums[sum_idx];
+                        update[term_nr] += residual_weighted[pol].x * visibility_derivative.x;
+                        update[term_nr] += residual_weighted[pol].y * visibility_derivative.y;
                     } // end for term
 
                     // Compute residual_sum update

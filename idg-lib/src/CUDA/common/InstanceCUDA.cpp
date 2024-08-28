@@ -268,8 +268,8 @@ void InstanceCUDA::launch_calibrate(
           nr_subgrids, nr_polarizations, subgrid_size, image_size,
           total_nr_timesteps, nr_channels, nr_stations, term_offset_y,
           current_nr_terms_y, nr_terms, d_uvw, d_wavenumbers, d_visibilities,
-          d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices, d_metadata,
-          d_subgrid, d_sums1, d_lmnp, d_gradient, d_residual);
+          d_weights, d_aterm, d_aterm_indices, d_metadata, d_subgrid, d_sums1,
+          d_lmnp, d_gradient, d_residual);
     }
 
     // Compute hessian (diagonal)
@@ -300,8 +300,8 @@ void InstanceCUDA::launch_calibrate(
             nr_subgrids, nr_polarizations, subgrid_size, image_size,
             total_nr_timesteps, nr_channels, nr_stations, term_offset_x,
             current_nr_terms_x, nr_terms, d_uvw, d_wavenumbers, d_visibilities,
-            d_weights, d_aterm, d_aterm_derivatives, d_aterm_indices,
-            d_metadata, d_subgrid, d_sums2, d_lmnp, d_gradient, d_residual);
+            d_weights, d_aterm, d_aterm_indices, d_metadata, d_subgrid, d_sums2,
+            d_lmnp, d_gradient, d_residual);
       }
 
       // Compute hessian (horizontal offset)
