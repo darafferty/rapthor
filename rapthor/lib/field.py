@@ -1685,28 +1685,23 @@ class Field(object):
             skymodel_radius = 0
         size_skymodel = skymodel_radius * u.deg
 
-        # Dealing with axes limits is difficult here.
-        # Find the biggest size we plot and then set the FoV either through the MOC
-        # or by plotting an invisible circle.
+        # Find the minimum size in degrees for the plot (can be overridden by
+        # a MOC if given)
         fake_size = size_ra if size_ra > size_dec else size_dec
         fake_size = size_skymodel if size_skymodel > fake_size else fake_size
-        fake_size *= 1.2
 
+        # Make the figure and subplot with the appropriate WCS projection
         fig = figure(figsize=(8, 8), dpi=300)
-        # If a MOC is provided we need to deal with the WCS differently
-        pmoc = None
         if moc is not None:
             pmoc = mocpy.MOC.from_fits(moc)
-            mocwcs = mocpy.WCS(fig, fov=fake_size*2,
-                               center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
-            wcs = mocwcs
+            wcs = mocpy.WCS(fig, fov=fake_size*2,
+                            center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
         else:
             wcs = self.wcs
-
         ax = fig.add_subplot(111, projection=wcs)
 
-        # If a MOC is provided, also plot that.
-        if pmoc is not None and show_intial_coverage:
+        # Plot the MOC if provided
+        if moc is not None and show_intial_coverage:
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
@@ -1747,31 +1742,34 @@ class Field(object):
                 facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
                 ax.add_patch(facet_patch)
                 x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
-                ax.annotate(facet.name, (x, y), va='top', ha='center', fontsize='small')
+                ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
+                            color='b', backgroundcolor='w')
 
         # Plot the imaging sectors
         for i, sector in enumerate(self.imaging_sectors):
             sector_patch = sector.get_matplotlib_patch(wcs=wcs)
-            label = 'Image sectors' if i == 0 else None  # first only to avoid multiple lines in legend
+            label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
             sector_patch.set(label=label)
             ax.add_patch(sector_patch)
             x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
-            ax.annotate(sector.name, (x, y), va='top', ha='center')
+            ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
 
-        # Plot the observation's FWHM
+        # Plot the observation's FWHM and phase center
         if show_intial_coverage:
+            # Plot the primary beam FWHM
             ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
 
-        # Set the plot FoV in case no MOC is given
-        if moc is None:
-            fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size,
-                                              transform=ax.get_transform('fk5'),
-                                              edgecolor='none', facecolor='none',
-                                              linewidth=0)
-            ax.add_patch(fake_FoV_circle)
+            # Plot the phase center
+            ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
+                       transform=ax.get_transform('fk5'), label='Phase center')
 
-        ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
-                   transform=ax.get_transform('fk5'), label='Phase center')
+        # Set the minimum plot FoV by adding an invisible circle of diameter fake_size. The
+        # final FoV will be set by either this circle or the MOC (if given)
+        fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size/2,
+                                          transform=ax.get_transform('fk5'),
+                                          edgecolor='none', facecolor='none',
+                                          linewidth=0)
+        ax.add_patch(fake_FoV_circle)
 
         ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend(loc='upper left')
