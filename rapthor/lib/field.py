@@ -1728,38 +1728,41 @@ class Field(object):
         if show_calibration_patches:
             # The sector bounds define the limits of the calibration model, so use them
             # when generating the facets
+            #
+            # Note: we need the bounds for the unpadded sector polygons, so we do not
+            # use self.sector_bounds_width_ra and self.sector_bounds_width_dec as they
+            # were calculated for the padded polygons
+            all_sectors = MultiPolygon([sector.poly for sector in self.imaging_sectors])
+            bounds_xy = all_sectors.bounds  # pix
+            bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
+            bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
             facets = read_skymodel(self.calibration_skymodel_file,
                                    self.sector_bounds_mid_ra,
                                    self.sector_bounds_mid_dec,
-                                   self.sector_bounds_width_ra,
-                                   self.sector_bounds_width_dec)
+                                   bounds_width_ra,
+                                   bounds_width_dec)
             for i, facet in enumerate(facets):
                 facet_patch = facet.get_matplotlib_patch(wcs=wcs)
-                if i == 0:
-                    # Set the label only on the first facet to avoid multiple
-                    # lines in the legend
-                    facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5,
-                                    label='Calibration facets')
-                else:
-                    facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5)
+                label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
+                facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
                 ax.add_patch(facet_patch)
                 x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
-                ax.annotate(facet.name, (x, y), va='top', ha='center')
+                ax.annotate(facet.name, (x, y), va='top', ha='center', fontsize='small')
 
-        # Plot the parts of the field being imaged. We use a different linestyle for each
-        # sector to help distinguish them (up to four sectors; more that this should be
-        # very rare)
-        linestyles = ["solid", "dotted", "dashed", "dashdot"]
+        # Plot the imaging sectors
         for i, sector in enumerate(self.imaging_sectors):
             sector_patch = sector.get_matplotlib_patch(wcs=wcs)
-            linestyle = linestyles[i] if i < len(linestyles) else linestyles[-1]
-            sector_patch.set(linestyle=linestyle, label=f'Image sector {sector.name}')
+            label = 'Image sectors' if i == 0 else None  # first only to avoid multiple lines in legend
+            sector_patch.set(label=label)
             ax.add_patch(sector_patch)
+            x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
+            ax.annotate(sector.name, (x, y), va='top', ha='center')
 
-        # Plot the observation's FWHM.
-        ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
+        # Plot the observation's FWHM
+        if show_intial_coverage:
+            ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
 
-        # Set the plot FoV in case no MOC is given.
+        # Set the plot FoV in case no MOC is given
         if moc is None:
             fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size,
                                               transform=ax.get_transform('fk5'),
