@@ -1663,7 +1663,9 @@ class Field(object):
         output_filename : str
             Base filename of ouput file, to be output to 'dir_working/plots/'
         show_intial_coverage : bool, optional
-            If True, plot the intial sky-model coverage
+            If True, plot the intial sky-model coverage. The plot will be centered
+            on the center of the field. If False, the plot will be centered on the
+            center of the imaging region(s)
         show_calibration_patches : bool, optional
             If True, plot the calibration patches
         moc : str or None, optional
@@ -1705,8 +1707,8 @@ class Field(object):
             pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
                       label='Skymodel MOC', alpha=0.5)
 
-        # Indicate the region out to which the initial sky model extends, centered on the
-        # center of the field
+        # Indicate the region out to which the initial sky model extends,
+        # centered on the center of the field
         if skymodel_radius > 0 and show_intial_coverage:
             if self.parset['generate_initial_skymodel']:
                 skymodel_region = self.full_field_sector.get_matplotlib_patch(wcs=wcs)
@@ -1763,9 +1765,16 @@ class Field(object):
             ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
                        transform=ax.get_transform('fk5'), label='Phase center')
 
-        # Set the minimum plot FoV by adding an invisible circle of diameter fake_size. The
-        # final FoV will be set by either this circle or the MOC (if given)
-        fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size/2,
+        # Set the minimum plot FoV by adding an invisible point and circle. The
+        # final FoV will be set either by this circle or the MOC (if given)
+        if show_intial_coverage:
+            ra = self.ra*u.deg
+            dec = self.dec*u.deg
+        else:
+            ra = self.sector_bounds_mid_ra*u.deg
+            dec = self.sector_bounds_mid_dec*u.deg
+        ax.scatter(ra, dec, color='none', transform=ax.get_transform('fk5'))
+        fake_FoV_circle = SphericalCircle((ra, dec), fake_size/2,
                                           transform=ax.get_transform('fk5'),
                                           edgecolor='none', facecolor='none',
                                           linewidth=0)
