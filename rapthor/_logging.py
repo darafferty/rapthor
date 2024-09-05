@@ -23,11 +23,9 @@ def add_coloring_to_emit_ansi(fn):
         else:
             color = '\x1b[0m'   # normal
         if isinstance(args[0].msg, Exception):
-            # For exceptions, add the class name (e.g., "KeyError") to the
-            # logged message. Also strip single quotes from the error message
-            # to avoid things like: "KeyError: 'missing_key'"
+            # For exceptions, add the class name to the logged message.
             args[0].msg = "{0}: {1}".format(args[0].msg.__class__.__name__,
-                                            str(args[0].msg).strip("'"))
+                                            args[0].msg)
         args[0].msg = color + args[0].msg + '\x1b[0m'
         return fn(*args)
     return new

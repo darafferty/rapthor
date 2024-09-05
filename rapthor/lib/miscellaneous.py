@@ -845,8 +845,8 @@ def calc_theoretical_noise(obs_list, w_factor=1.5):
     the total unflagged fraction is also returned.
 
     Note: the calculations follow those of SKA Memo 113 (see
-    http://www.skatelescope.org/uploaded/59513_113_Memo_Nijboer.pdf) and
-    assume no tapering. International stations are not included.
+    https://arxiv.org/abs/1308.4267) and assume no tapering.
+    International stations are not included.
 
     Parameters
     ----------

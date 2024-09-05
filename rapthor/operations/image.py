@@ -9,6 +9,7 @@ import glob
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
+import numpy as np
 
 log = logging.getLogger('rapthor:image')
 
@@ -397,7 +398,11 @@ class ImageInitial(Operation):
         imaging_parameters['max_uv_lambda'] = 1e6
         imaging_parameters['reweight'] = False
         imaging_parameters['dd_psf_grid'] = [1, 1]
-        sector.max_nmiter = 12
+        mean_data_fraction = np.mean([obs.data_fraction for obs in sector.observations])
+        # Set the max number of major iterations. Experimentation has found that it
+        # roughly scales with the sqrt of the amount of data, but don't let it fall below
+        # six or exceed 12, as these are the practical limits for proper cleaning
+        sector.max_nmiter = max(6, int(12 * np.sqrt(mean_data_fraction)))
         sector.set_imaging_parameters(do_multiscale=True, imaging_parameters=imaging_parameters)
         image_root = [sector.name]
 

@@ -148,10 +148,54 @@ class Observation(object):
                              'are supported at this time)')
         ant.close()
 
-        # Find mean elevation and FOV
+        # Find mean elevation and time range for periods where the elevation
+        # falls below the lowest 20% of all values. We sample every 10000 entries to
+        # avoid very large arrays (note that for each time slot, there is an entry for
+        # each baseline, so a typical HBA LOFAR observation would have around 1500 entries
+        # per time slot)
         el_values = pt.taql("SELECT mscal.azel1()[1] AS el from "
                             + self.ms_filename + " limit ::10000").getcol("el")
         self.mean_el_rad = np.mean(el_values)
+        times = pt.taql("select TIME from "
+                        + self.ms_filename + " limit ::10000").getcol("TIME")
+        low_indices = np.sort(el_values.argpartition(len(el_values)//5)[:len(el_values)//5])
+        if len(low_indices):
+            # At least one element is needed for the start and end time check. The check
+            # assumes that the elevation either increases smoothly to a maximum and then
+            # decreases with time or that it simply increases (or decreases)
+            # monotonically. These cases should cover almost all observations. For any
+            # other behavior, just fall back to the untrimmed time
+            diff = np.diff(low_indices)
+            low_at_start = low_indices[0] == 0  # first elevation is low
+            low_at_end = low_indices[-1] == len(el_values) - 1  # last elevation is low
+            starttime_index = 0  # default to no trim at start
+            endtime_index = -1  # default to no trim at end
+            if np.all(diff == 1):
+                # No gap found (so a single continuous period of low elevations)
+                if low_at_start:
+                    # Trim the start
+                    starttime_index = low_indices[-1]
+                elif low_at_end:
+                    # Trim the end
+                    endtime_index = low_indices[0]
+            elif len(np.where(diff != 1)[0]) == 1 and low_at_start and low_at_end:
+                # Single gap found (with low elevations at start and end, due to a period
+                # of higher elevations in between), so trim both start and end
+                #
+                # Note: low_indices will look something like:
+                #   array([  0,   1,   2,   3,   4,   5,   6,   7,   8,   9, 637, 638,
+                #          639, 640, 641, 642, 643, 644, 645, 646, 647])
+                # and diff like:
+                #   array([  1,   1,   1,   1,   1,   1,   1,   1,   1, 545,   1,   1,
+                #            1,   1,   1,   1,   1,   1,   1,   1])
+                starttime_index = low_indices[np.argmax(diff)]
+                endtime_index = low_indices[np.argmax(diff) + 1]
+            self.high_el_starttime = times[starttime_index]
+            self.high_el_endtime = times[endtime_index]
+        else:
+            # Too few times (or none) at lower elevations, so just ignore them
+            self.high_el_starttime = self.starttime
+            self.high_el_endtime = self.endtime
 
     def set_calibration_parameters(self, parset, ndir, nobs, calibrator_fluxes,
                                    target_fast_timestep, target_slow_timestep_joint,
