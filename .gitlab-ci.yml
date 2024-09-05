@@ -57,6 +57,7 @@ build-docker-base:
         docker push $BASE_IMAGE
       fi
   tags:
+    - dind
     - das6
 
 build-docker-full:
