@@ -58,6 +58,7 @@ build-docker-base:
       fi
   tags:
     - dind
+    - das6
 
 build-docker-full:
   stage: build
