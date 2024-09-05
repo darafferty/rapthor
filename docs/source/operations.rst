@@ -75,11 +75,15 @@ Diagnostics for each image are written to the main log (``dir_working/logs/rapth
     * The reference (central) frequency of the image.
     * The restoring beam size and position angle.
     * The fraction of unflagged data.
-    * An estimate of the LOFAR-to-TGSS/NVSS/LoTSS flux ratio (calculated as the mean of the measured LOFAR flux densities divided by the TGSS/NVSS/LoTSS flux densities, after sigma clipping). This ratio gives an indication of the accuracy of the overall flux scale of the image. When the reference frequency of the LOFAR image differs from that of the reference catalogs, the ratio is corrected assuming a mean source spectral index of -0.7.
+    * Estimates of the LOFAR-to-TGSS and LOFAR-to-LoTSS flux ratios (calculated as the mean of the measured LOFAR flux densities divided by the TGSS/LoTSS flux densities, after sigma clipping). This ratio gives an indication of the accuracy of the overall flux scale of the image. When the reference frequency of the LOFAR image differs from that of the reference catalogs, the ratio is corrected assuming a mean source spectral index of -0.7.
 
         .. note::
 
             This ratio should be considered as a rough estimate only. A careful analysis of the overall flux calibration of the field should be done outside of Rapthor.
+
+        .. note::
+
+            If the flux ratios from both the TGSS and LoTSS surveys are unavailable (due to, e.g., lack of coverage or too few source matches), an attempt is made to estimate the ratio using the NVSS survey (at 1.4 GHz). Note, however, that this ratio is especially uncertain due to the large extrapolation required to adjust the LOFAR and NVSS flux densities to a common frequency.
 
     * Estimates of the LOFAR-to-Pan-STARRS RA and Dec offsets (calculated as the mean of the LOFAR values minus the Pan-STARRS values, after sigma clipping). These offsets give an indication of the accuracy of the astrometry.
 
