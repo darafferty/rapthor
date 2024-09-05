@@ -45,7 +45,6 @@ build-docker-base:
   needs: ["versioning"]
   image: docker:latest
   tags:
-    - dind
     - das6
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
@@ -76,7 +75,7 @@ build-docker-full:
         .
     - docker push $FULL_IMAGE
   tags:
-    - dind
+    - das6
 
 # Builds the documentation
 build-doc:
@@ -131,7 +130,7 @@ deploy-docker:
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_COMMIT_REF_PROTECTED == "true"'
       when: always
   tags:
-    - dind
+    - das6
 
 # TODO: stage for deploying a release; this will involve in-place updating
 #       *.cwl files that contain dockerPull. We can "learn" from LINC
