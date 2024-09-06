@@ -1768,7 +1768,7 @@ class Field(object):
                 ax.add_patch(facet_patch)
                 x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
                 ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
-                            color='b', backgroundcolor='w')
+                            color='b')
 
         # Plot the imaging sectors
         for i, sector in enumerate(self.imaging_sectors):
