@@ -124,6 +124,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     true_sky_rms_filename = output_root+'.true_sky_rms.fits'
     img_true_sky.export_image(outfile=true_sky_rms_filename, img_type='rms', clobber=True)
     nsources = img_true_sky.nsrc
+    ra, dec = img_true_sky.pix2sky((img_true_sky.shape[-2]/2.0, img_true_sky.shape[-1]/2.0))
 
     # Run PyBDSF again on the flat-noise image and save the RMS map for later
     # use in the image diagnostics step
@@ -145,7 +146,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     if img_true_sky.nisl > 0 and os.path.exists(true_sky_skymodel):
         maskfile = true_sky_image + '.mask'
         img_true_sky.export_image(outfile=maskfile, clobber=True, img_type='island_mask')
-        ra, dec = img_true_sky.pix2sky((img_true_sky.shape[-2]/2.0, img_true_sky.shape[-1]/2.0))
         del img_true_sky  # helps reduce memory usage
 
         # Construct polygon needed to trim the mask to the sector
