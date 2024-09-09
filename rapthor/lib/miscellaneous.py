@@ -976,9 +976,9 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
     return num_flagged / num_all
 
 
-def transfer_patches(from_skymodel, to_skymodel, patch_dict=None, inplace=True):
+def transfer_patches(from_skymodel, to_skymodel, patch_dict=None):
     """
-    Transfers the patches defined in from_skymodel to to_skymodel.
+    Transfers the patches defined in from_skymodel to to_skymodel
 
     Parameters
     ----------
@@ -988,49 +988,38 @@ def transfer_patches(from_skymodel, to_skymodel, patch_dict=None, inplace=True):
         Sky model to which to transfer patches
     patch_dict : dict, optional
         Dict of patch positions
-    inplace : bool, optional
-        If True, update the input to_skymodel in place. If False, a copy is made
-        and to_skymodel is not altered
-
-    Returns
-    -------
-    out_skymodel : LSMTool skymodel.SkyModel object
-        Sky model with patches matching those of from_skymodel
     """
     if not from_skymodel.hasPatches:
         raise ValueError('Cannot transfer patches since from_skymodel is not grouped '
                          'into patches.')
-    out_skymodel = to_skymodel if inplace else to_skymodel.copy()
     names_from = from_skymodel.getColValues('Name').tolist()
     names_to = to_skymodel.getColValues('Name').tolist()
 
-    if not out_skymodel.hasPatches:
-        out_skymodel.group('single')
+    if not to_skymodel.hasPatches:
+        to_skymodel.group('single')
 
     if set(names_from) == set(names_to):
         # Both sky models have the same sources, so use indexing
         ind_ss = np.argsort(names_from)
         ind_ts = np.argsort(names_to)
-        out_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-        out_skymodel._updateGroups()
+        to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+        to_skymodel._updateGroups()
     elif set(names_to).issubset(set(names_from)):
         # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
         for ind_ts, name in enumerate(names_to):
             ind_ss = names_from.index(name)
-            out_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
     else:
         # Skymodels don't match, raise error
         raise ValueError('Cannot transfer patches since from_skymodel does not contain '
                          'all the sources in to_skymodel')
 
     if patch_dict is not None:
-        out_skymodel.setPatchPositions(patchDict=patch_dict)
-
-    return out_skymodel
+        to_skymodel.setPatchPositions(patchDict=patch_dict)
 
 
 def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to_low',
-                            start_index=1, dec_bin_width=2.0, inplace=True):
+                            dec_bin_width=2.0):
     """
     Rename the patches in the input sky model according to the given scheme
 
@@ -1051,19 +1040,10 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
         Same as order_dec, but for RA
     dec_bin_width : float, optional
         Bin width in degrees for the Dec values
-    inplace : bool, optional
-        If True, update the input sky model in place. If False, a copy is made
-        and the input sky model is not altered
-
-    Returns
-    -------
-    out_skymodel : LSMTool skymodel.SkyModel object
-        Model with renamed patches
     """
     if not skymodel.hasPatches:
         raise ValueError('Cannot rename patches since the input skymodel is not grouped '
                          'into patches.')
-    out_skymodel = skymodel if inplace else skymodel.copy()
     patch_positions = skymodel.getPatchPositions()
     patch_names = []
     patch_ras = []
@@ -1083,7 +1063,7 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
     # Run through the bins, sorting by RA and renaming the patches
     # accordingly
     patch_index = 1
-    patch_col = out_skymodel.getColValues('Patch')
+    patch_col = skymodel.getColValues('Patch')
     patch_dict = {}
     for bin_index in range(1, len(dec_bins)):
         # Sort by RA (high to low)
@@ -1097,12 +1077,10 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
         for old_name in names:
             new_name = f'Patch_{patch_index}'
             patch_dict[new_name] = patch_positions[old_name]
-            patch_col[out_skymodel.getRowIndex(old_name)] = new_name
+            patch_col[skymodel.getRowIndex(old_name)] = new_name
             patch_index += 1
-    out_skymodel.setColValues('Patch', patch_col)
-    out_skymodel.setPatchPositions(patch_dict)
-
-    return out_skymodel
+    skymodel.setColValues('Patch', patch_col)
+    skymodel.setPatchPositions(patch_dict)
 
 
 def nproc():
