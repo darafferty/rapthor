@@ -231,12 +231,10 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
                 print(f'Using "{backup_survey}" as the backup survey catalog for the '
                       'photometry check')
                 comparison_surveys.append(backup_survey)
-        comparison_skymodels_survey_names = []
         for survey in comparison_surveys:
             try:
                 comparison_skymodels.append(lsmtool.load(survey, VOPosition=[obs.ra, obs.dec],
                                                          VORadius=5.0))
-                comparison_skymodels_survey_names.append(survey)
             except OSError:
                 # Comparison catalog not downloaded successfully
                 print(f'A problem occurred when downloading the {survey} catalog '
@@ -255,6 +253,21 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
     photometry_diagnostics = {}
     for i, s_comp_photometry in enumerate(comparison_skymodels):
         survey = comparison_surveys[i].strip().upper()
+
+        # Check if we're dealing with the backup survey and use it only if none
+        # of the other surveys succeeded (the backup survey is always appended
+        # to the end of comparison_surveys, so the other comparisons will have
+        # been attempted if this point is reached)
+        if survey == backup_survey:
+            if len(successful_surveys):
+                # Backup not needed, so skip further processing for it
+                continue
+            else:
+                # Backup needed
+                print(f'The backup survey catalog "{backup_survey}" will be used for '
+                      'the photometry check, as the queries for all other survey catalogs '
+                      'were unsuccessful')
+
         if survey == 'LOTSS':
             # For LoTSS catalog, use total flux from Gaussian fits as it
             # matches the method used for the LoTSS catalog (and the resolution
@@ -287,23 +300,6 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         for plot in other_plots:
             if os.path.exists(f'{plot}.pdf'):
                 os.remove(f'{plot}.pdf')
-
-        # Skip saving of the backup catalog result if at least one other catalog was
-        # successfully queried
-        if backup_survey is not None and survey == backup_survey:
-            # The backup survey is always appended to the end of comparison_surveys,
-            # so the other comparisons will have been attempted if this point is reached
-            if len(successful_surveys) == 1:
-                print(f'The backup survey catalog "{backup_survey}" will be used for '
-                      'the photometry check, as the queries for all other survey catalogs '
-                      'were unsuccessful')
-            else:
-                # Backup survey not needed, so clean up the plots and skip further
-                # processing for it
-                for plot in photometry_plots:
-                    if os.path.exists(f'{plot}_{survey}.pdf'):
-                        os.remove(f'{plot}_{survey}.pdf')
-                continue
 
         # Save the diagnostics for the comparison
         photometry_diagnostics.update({f'meanRatio_{survey}': result['meanRatio'],

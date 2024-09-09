@@ -673,7 +673,7 @@ class Field(object):
                 misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
 
                 # Rename the patches so that the numbering starts at high Dec, high RA
-                # and decreases with RA then Dec
+                # and increases as RA and Dec decrease (i.e., from top-left to bottom-right)
                 for model in [source_skymodel, skymodel_true_sky, bright_source_skymodel_apparent_sky]:
                     misc.rename_skymodel_patches(model)
 
