@@ -488,7 +488,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
         # because some patches in the sky model may not appear in the facet list if
         # they lie outside the bounding box
         facet_coord = SkyCoord(ra=facet_point[0]*u.degree, dec=facet_point[1]*u.degree)
-        patch_coords = SkyCoord(ra=ra_cal, dec=dec_cal)
+        patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
         separations = facet_coord.separation(patch_coords)
         facet_names.append(np.array(name_cal)[np.argmin(separations)])
 
