@@ -102,13 +102,13 @@ class TestField(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join('plots', 'field_overview_1.png')))
 
     def test_plot_overview_initial(self):
-        self.field.plot_overview('initial_field_overview.png', show_intial_coverage=True)
+        self.field.plot_overview('initial_field_overview.png', show_initial_coverage=True)
         self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
         os.system('rm plots/initial_field_overview.png')
 
     def test_plot_overview_initial_near_pole(self):
         self.field.dec = 89.5  # test behavior near pole
-        self.field.plot_overview('initial_field_overview.png', show_intial_coverage=True)
+        self.field.plot_overview('initial_field_overview.png', show_initial_coverage=True)
         self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
         os.system('rm plots/initial_field_overview.png')
 
