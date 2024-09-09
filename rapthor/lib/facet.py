@@ -6,7 +6,8 @@ import scipy.spatial
 from shapely.geometry import Point, Polygon
 from shapely.prepared import prep
 from PIL import Image, ImageDraw
-from astropy.coordinates import Angle
+from astropy.coordinates import SkyCoord, Angle
+import astropy.units as u
 import ast
 import logging
 from rapthor.lib import miscellaneous as misc
@@ -482,12 +483,14 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
     facet_points, facet_polys = make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
     facet_names = []
     for facet_point in facet_points:
-        # For each facet, match the correct name. Some patches in the sky model may have
-        # been filtered out if they lie outside the bounding box
-        for ra, dec, name in zip(ra_cal, dec_cal, name_cal):
-            if misc.approx_equal(ra, facet_point[0], tol=1e-6) and misc.approx_equal(dec, facet_point[1], tol=1e-6):
-                facet_names.append(name)
-                break
+        # For each facet, match the correct patch name (i.e., the name of the
+        # patch closest to the facet reference point). This step is needed
+        # because some patches in the sky model may not appear in the facet list if
+        # they lie outside the bounding box
+        facet_coord = SkyCoord(ra=facet_point[0]*u.degree, dec=facet_point[1]*u.degree)
+        patch_coords = SkyCoord(ra=ra_cal, dec=dec_cal)
+        separations = facet_coord.separation(patch_coords)
+        facet_names.append(np.array(name_cal)[np.argmin(separations)])
 
     # Create the facets
     facets = []
