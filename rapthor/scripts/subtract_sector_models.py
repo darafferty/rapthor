@@ -47,7 +47,7 @@ def get_nchunks(msin, nsectors, fraction=1.0, reweight=False, compressed=False):
     return nchunks
 
 
-def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
+def main(msin, model_list, msin_column='DATA', model_column='DATA',
          out_column='DATA', nr_outliers=0, nr_bright=0, use_compression=False,
          peel_outliers=False, peel_bright=False, reweight=True, starttime=None,
          solint_sec=None, solint_hz=None, weights_colname="CAL_WEIGHT",
@@ -60,7 +60,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     ----------
     msin : str
         Name of MS file from which subtraction will be done
-    msmod_list: list
+    model_list: list
         List of model data MS filenames
     msin_column : str, optional
         Name of input column
@@ -117,7 +117,6 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     uvcut = [uvcut_min, uvcut_max]
     phaseonly = misc.string2bool(phaseonly)
     reweight = misc.string2bool(reweight)
-    model_list = misc.string2list(msmod_list)
 
     # Get the model data filenames, filtering any that do not have the right start time
     if starttime is not None:
@@ -699,7 +698,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     try:
-        main(args.msin, args.msmod, msin_column=args.msin_column,
+        main(args.msin, misc.string2list(args.msmod), msin_column=args.msin_column,
              model_column=args.model_column, out_column=args.out_column,
              nr_outliers=args.nr_outliers, nr_bright=args.nr_bright,
              use_compression=args.use_compression, peel_outliers=args.peel_outliers,

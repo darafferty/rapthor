@@ -91,9 +91,6 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         rmsbox = eval(rmsbox)
     if isinstance(rmsbox_bright, str):
         rmsbox_bright = eval(rmsbox_bright)
-    adaptive_rmsbox = misc.string2bool(adaptive_rmsbox)
-    if isinstance(beamMS, str):
-        beamMS = misc.string2list(beamMS)
 
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
     # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
@@ -262,7 +259,7 @@ if __name__ == '__main__':
     parser.add_argument('true_sky_skymodel', help='Filename of input true-sky sky model')
     parser.add_argument('output_root', help='Root of output files')
     parser.add_argument('vertices_file', help='Filename of vertices file')
-    parser.add_argument('beamMS', help='MS filename to use for beam attenuation')
+    parser.add_argument('beamMS', help='MS filename(s) to use for beam attenuation')
     parser.add_argument('--bright_true_sky_skymodel', help='Filename of input bright-source true-sky sky model',
                         type=str, default=None)
     parser.add_argument('--threshisl', help='Island threshold', type=float, default=3.0)
@@ -276,7 +273,9 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.flat_noise_image, args.true_sky_image, args.true_sky_skymodel, args.output_root,
-         args.vertices_file, args.beamMS, bright_true_sky_skymodel=args.bright_true_sky_skymodel,
+         args.vertices_file, misc.string2list(args.beamMS),
+         bright_true_sky_skymodel=args.bright_true_sky_skymodel,
          threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
-         rmsbox_bright=args.rmsbox_bright, adaptive_rmsbox=args.adaptive_rmsbox,
+         rmsbox_bright=args.rmsbox_bright,
+         adaptive_rmsbox=misc.string2bool(args.adaptive_rmsbox),
          ncores=args.ncores)
