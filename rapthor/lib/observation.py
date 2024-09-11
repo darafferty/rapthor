@@ -298,8 +298,10 @@ class Observation(object):
         # different solutions. Therefore, for consistency and reproducability, we force
         # the chunks to be 12 MHz each (with potentially a smaller one at the
         # high-frequency end of the bandwidth). Note: the 12 MHz chunk size is the
-        # largest that allows the most demanding solve to fit comfortably into 196 GB of
-        # memory
+        # largest that allows the most demanding solve to fit comfortably into 192 GB of
+        # memory (the minimum recommended for running Rapthor), assuming the default
+        # values for used for the relevant calibration parameters (e.g., baseline-
+        # dependent averaging is enabled, etc.)
         #
         # For simplicity, we do this process for all potential types of gain solve, even
         # if they are not all required by the current strategy
