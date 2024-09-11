@@ -478,6 +478,7 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
         dec = misc.normalize_dec(v[1].value)
         ra_cal.append(ra)
         dec_cal.append(dec)
+    patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
 
     # Do the tessellation
     facet_points, facet_polys = make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
@@ -488,7 +489,6 @@ def read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec):
         # because some patches in the sky model may not appear in the facet list if
         # they lie outside the bounding box
         facet_coord = SkyCoord(ra=facet_point[0]*u.degree, dec=facet_point[1]*u.degree)
-        patch_coords = SkyCoord(ra=np.array(ra_cal)*u.degree, dec=np.array(dec_cal)*u.degree)
         separations = facet_coord.separation(patch_coords)
         facet_names.append(np.array(name_cal)[np.argmin(separations)])
 
