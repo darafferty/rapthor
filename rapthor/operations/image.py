@@ -595,18 +595,29 @@ def report_sector_diagnostics(sector_name, diagnostics_dict, log):
         # realistic minimum uncertainties in these values
         lofar_to_true_flux_ratio = 1.0
         lofar_to_true_flux_std = 0.0
-        for survey in ['TGSS', 'NVSS', 'LOTSS']:
-            if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
-                ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
-                stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
-                log.info(f'    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}')
-                if (lofar_to_true_flux_std == 0.0 or
-                        diagnostics_dict[f'stdClippedRatio_{survey}'] < lofar_to_true_flux_std):
-                    # Save the ratio with the lowest scatter for later use
-                    lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
-                    lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
-            else:
-                log.info(f'    LOFAR/{survey} flux ratio = N/A')
+        missing_surveys = []
+        for survey in ['TGSS', 'LOTSS', 'NVSS']:
+            if survey in ['TGSS', 'LOTSS'] or (survey == 'NVSS' and missing_surveys == ['TGSS', 'LOTSS']):
+                # Always report TGSS and LoTSS values when available, but only
+                # report NVSS values if both the TGSS and LoTSS comparisons failed (the
+                # NVSS ones can be highly uncertain due to the large extrapolation needed).
+                # We add the warning below for NVSS
+                warn_text = ' (warning: may be highly uncertain due to large extrapolation)' if survey == 'NVSS' else ''
+                if f'meanClippedRatio_{survey}' in diagnostics_dict and f'stdClippedRatio_{survey}' in diagnostics_dict:
+                    ratio = '{0:.1f}'.format(diagnostics_dict[f'meanClippedRatio_{survey}'])
+                    stdratio = '{0:.1f}'.format(max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}']))
+                    log.info(f'    LOFAR/{survey} flux ratio = {ratio} +/- {stdratio}{warn_text}')
+
+                    if ((lofar_to_true_flux_std == 0.0 or
+                            diagnostics_dict[f'stdClippedRatio_{survey}'] < lofar_to_true_flux_std) and
+                            survey != 'NVSS'):
+                        # Save the ratio with the lowest scatter (excluding NVSS
+                        # estimate) for later use
+                        lofar_to_true_flux_ratio = diagnostics_dict[f'meanClippedRatio_{survey}']
+                        lofar_to_true_flux_std = max(0.1, diagnostics_dict[f'stdClippedRatio_{survey}'])
+                else:
+                    missing_surveys.append(survey)
+                    log.info(f'    LOFAR/{survey} flux ratio = N/A')
         if 'meanClippedRAOffsetDeg' in diagnostics_dict and 'stdClippedRAOffsetDeg' in diagnostics_dict:
             raoff = '{0:.1f}"'.format(diagnostics_dict['meanClippedRAOffsetDeg']*3600)
             stdraoff = '{0:.1f}"'.format(max(0.5, diagnostics_dict['stdClippedRAOffsetDeg']*3600))

@@ -97,10 +97,20 @@ class TestField(unittest.TestCase):
     def test_check_selfcal_progress(self):
         self.assertEqual(self.field.check_selfcal_progress(), (False, False, False))
 
-    def test_plot_field(self):
+    def test_plot_overview_patches(self):
+        self.field.plot_overview('field_overview_1.png', show_calibration_patches=True)
+        self.assertTrue(os.path.exists(os.path.join('plots', 'field_overview_1.png')))
+
+    def test_plot_overview_initial(self):
+        self.field.plot_overview('initial_field_overview.png', show_initial_coverage=True)
+        self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
+        os.system('rm plots/initial_field_overview.png')
+
+    def test_plot_overview_initial_near_pole(self):
         self.field.dec = 89.5  # test behavior near pole
-        self.field.plot_field(skymodel_radius=5.0)
-        self.assertTrue(os.path.exists(os.path.join('plots', 'field_coverage.png')))
+        self.field.plot_overview('initial_field_overview.png', show_initial_coverage=True)
+        self.assertTrue(os.path.exists(os.path.join('plots', 'initial_field_overview.png')))
+        os.system('rm plots/initial_field_overview.png')
 
 
 def suite():
@@ -119,7 +129,9 @@ def suite():
     suite.addTest(TestField('test_define_bright_source_sectors'))
     suite.addTest(TestField('test_find_intersecting_sources'))
     suite.addTest(TestField('test_check_selfcal_progress'))
-    suite.addTest(TestField('test_plot_field'))
+    suite.addTest(TestField('test_plot_overview_patches'))
+    suite.addTest(TestField('test_plot_overview_initial'))
+    suite.addTest(TestField('test_plot_overview_initial_near_pole'))
     return suite
 
 

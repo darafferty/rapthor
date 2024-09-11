@@ -145,7 +145,7 @@ def fits_to_makesourcedb(catalog, reference_freq, flux_colname='Isl_Total_flux')
 
 
 def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=None,
-                     comparison_surveys=None):
+                     comparison_surveys=['TGSS', 'LOTSS'], backup_survey='NVSS'):
     """
     Calculate and plot various photometry diagnostics
 
@@ -164,11 +164,16 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         comparison (in makesourcedb format). If not given (or if it cannot be loaded),
         models are downloaded from the surveys defined by comparison_surveys
     comparison_surveys : list, optional
-        A list giving the names of surveys to use for the photometry comparison
-        (each must be one of the VO services supported by LSMTool: see
+        A list giving the names of surveys to use for the photometry comparison when
+        a sky model is not supplied with the comparison_skymodel argument
+        (each name must be one of the VO services supported by LSMTool: see
         https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
-        the supported services). If not given, the list is set to
-        ['TGSS', 'NVSS', 'LOTSS']
+        the supported services)
+    backup_survey : str, optional
+        Survey name to use if the queries fail for all surveys given by
+        comparison_surveys (as with comparison_surveys, the survey name must be
+        one of the VO services supported by LSMTool). Ideally, a survey with
+        full sky coverage should be used for this purpose. Set to None to disable
 
     Returns
     -------
@@ -176,9 +181,6 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         Photometry diagnostics. An empty dict is returned if the comparison could
         not be done successfully
     """
-    if comparison_surveys is None:
-        comparison_surveys = ['TGSS', 'NVSS', 'LOTSS']
-
     # Load and filter the input PyBDSF FITS catalog as needed for the photometry check
     # Sources are filtered to keep only those that:
     #   - lie within the FWHM of the primary beam (to exclude sources with
@@ -214,8 +216,21 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
             print('Comparison sky model could not be loaded. Error was: {}. Trying to '
                   'download sky model(s) instead...'.format(e))
     if not comparison_skymodels:
-        # Download sky model(s) given by comparison_surveys around the
-        # phase center, using a 5-deg radius to ensure the field is fully covered
+        # Download sky model(s) given by comparison_surveys around the phase
+        # center, using a 5-deg radius to ensure the field is fully covered
+        if not comparison_surveys:
+            print('A comparison sky model is not available and a list of comparison surveys '
+                  'was not supplied. Skipping photometry check...')
+            return {}
+        if backup_survey is not None:
+            if backup_survey in comparison_surveys:
+                print(f'The backup survey "{backup_survey}" is already included in  '
+                      'comparison_surveys. Disabling the backup')
+                backup_survey = None
+            else:
+                print(f'Using "{backup_survey}" as the backup survey catalog for the '
+                      'photometry check')
+                comparison_surveys.append(backup_survey)
         for survey in comparison_surveys:
             try:
                 comparison_skymodels.append(lsmtool.load(survey, VOPosition=[obs.ra, obs.dec],
@@ -226,10 +241,33 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
                       'for use in the photometry check. Skipping this survey...')
 
     # Convert the filtered catalog to a minimal sky model for use with LSMTool
-    # and do the comparison for each survey
+    # and do the comparison for each survey.
+    #
+    # Note: LSMTool makes the plots with the same root filenames for each
+    # (successful) comparison, so we need to rename them appropriately before
+    # continuing to the next survey
+    photometry_plots = ['flux_ratio_vs_distance', 'flux_ratio_vs_flux',
+                        'flux_ratio_sky']
+    other_plots = ['positional_offsets_sky']  # other plots not related to photometry check
+    successful_surveys = []
     photometry_diagnostics = {}
     for i, s_comp_photometry in enumerate(comparison_skymodels):
         survey = comparison_surveys[i].strip().upper()
+
+        # Check if we're dealing with the backup survey and use it only if none
+        # of the other surveys succeeded (the backup survey is always appended
+        # to the end of comparison_surveys, so the other comparisons will have
+        # been attempted if this point is reached)
+        if survey == backup_survey:
+            if len(successful_surveys):
+                # Backup not needed, so skip further processing for it
+                continue
+            else:
+                # Backup needed
+                print(f'The backup survey catalog "{backup_survey}" will be used for '
+                      'the photometry check, as the queries for all other survey catalogs '
+                      'were unsuccessful')
+
         if survey == 'LOTSS':
             # For LoTSS catalog, use total flux from Gaussian fits as it
             # matches the method used for the LoTSS catalog (and the resolution
@@ -252,23 +290,22 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
             print(f'The photometry check with the {survey} catalog could not '
                   'be done due to insufficient matches. Skipping this survey...')
             continue
+        else:
+            successful_surveys.append(survey)
+
+        # Append survey name to the diagnostic plots generated by LSMTool and remove
+        # other, unneeded plots
+        for plot in photometry_plots:
+            os.rename(f'{plot}.pdf', f'{plot}_{survey}.pdf')
+        for plot in other_plots:
+            if os.path.exists(f'{plot}.pdf'):
+                os.remove(f'{plot}.pdf')
 
         # Save the diagnostics for the comparison
         photometry_diagnostics.update({f'meanRatio_{survey}': result['meanRatio'],
                                        f'stdRatio_{survey}': result['stdRatio'],
                                        f'meanClippedRatio_{survey}': result['meanClippedRatio'],
                                        f'stdClippedRatio_{survey}': result['stdClippedRatio']})
-
-        # Append survey name to the diagnostic plots generated by LSMTool
-        photometry_plots = ['flux_ratio_vs_distance', 'flux_ratio_vs_flux',
-                            'flux_ratio_sky']
-        for plot in photometry_plots:
-            src_filename = plot + '.pdf'
-            dst_filename = plot + f'_{survey}.pdf'
-            if os.path.exists(dst_filename):
-                os.remove(dst_filename)
-            if os.path.exists(src_filename):
-                shutil.copy(src_filename, dst_filename)
 
     return photometry_diagnostics
 
@@ -402,7 +439,7 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
 def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_image,
          input_catalog, input_skymodel, obs_ms, diagnostics_file, output_root,
          facet_region_file=None, photometry_comparison_skymodel=None,
-         photometry_comparison_surveys=None,
+         photometry_comparison_surveys=['TGSS', 'LOTSS'], photometry_backup_survey='NVSS',
          astrometry_comparison_skymodel=None, min_number=5):
     """
     Calculate various image diagnostics
@@ -441,7 +478,12 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
         (each must be one of the VO services supported by LSMTool: see
         https://lsmtool.readthedocs.io/en/latest/lsmtool.html#lsmtool.load for
         the supported services). If not given, the list is set to
-        ['TGSS', 'NVSS', 'LOTSS']
+        ['TGSS', 'LOTSS']
+    photometry_backup_survey : str, optional
+        Survey name to use if the queries fail for all surveys given by
+        comparison_surveys (as with comparison_surveys, the survey name must be
+        one of the VO services supported by LSMTool). Ideally, a survey with
+        full sky coverage should be used for this purpose
     astrometry_comparison_skymodel : str, optional
         Filename of the sky model to use for the astrometry comparison (in
         makesourcedb format). If not given, a Pan-STARRS model is downloaded
@@ -499,7 +541,8 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
     # Do the photometry check and update the ouput dict
     result = check_photometry(obs_list[beam_ind], input_catalog, img_true_sky.freq,
                               min_number, comparison_skymodel=photometry_comparison_skymodel,
-                              comparison_surveys=photometry_comparison_surveys)
+                              comparison_surveys=photometry_comparison_surveys,
+                              backup_survey=photometry_backup_survey)
     cwl_output.update(result)
 
     # Do the astrometry check and update the ouput dict
@@ -538,7 +581,9 @@ if __name__ == '__main__':
     parser.add_argument('--facet_region_file', help='Filename of ds9 facet region file', type=str, default=None)
     parser.add_argument('--photometry_comparison_skymodel', help='Filename of photometry sky model', type=str, default=None)
     parser.add_argument('--photometry_comparison_surveys', help='List of photometry surveys to use when '
-                        'photometry_comparison_skymodel is not given', type=list, default=None)
+                        'photometry_comparison_skymodel is not given', type=list, default=['TGSS', 'LOTSS'])
+    parser.add_argument('--photometry_backup_survey', help='Name of photometry survey to use as backup '
+                        'if all queries to photometry_comparison_surveys fail', type=str, default='NVSS')
     parser.add_argument('--astrometry_comparison_skymodel', help='Filename of astrometry sky model', type=str, default=None)
     parser.add_argument('--min_number', help='Minimum number of sources for diagnostics', type=int, default=5)
 
@@ -546,5 +591,5 @@ if __name__ == '__main__':
     main(args.flat_noise_image, args.flat_noise_rms_image, args.true_sky_image, args.true_sky_rms_image,
          args.input_catalog, args.input_skymodel, args.obs_ms, args.diagnostics_file, args.output_root,
          facet_region_file=args.facet_region_file, photometry_comparison_skymodel=args.photometry_comparison_skymodel,
-         photometry_comparison_surveys=args.photometry_comparison_surveys,
+         photometry_comparison_surveys=args.photometry_comparison_surveys, photometry_backup_survey=args.photometry_backup_survey,
          astrometry_comparison_skymodel=args.astrometry_comparison_skymodel, min_number=args.min_number)

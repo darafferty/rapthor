@@ -9,7 +9,7 @@ import lsmtool.skymodel
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.observation import Observation
 from rapthor.lib.sector import Sector
-from rapthor.lib.facet import read_ds9_region_file
+from rapthor.lib.facet import read_ds9_region_file, read_skymodel
 from shapely.geometry import Point, Polygon, MultiPolygon
 from astropy.table import vstack
 import rtree.index
@@ -670,7 +670,12 @@ class Field(object):
 
                 # Transfer patches to the true-flux sky model (source names are identical
                 # in both, but the order may be different)
-                self.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+                misc.transfer_patches(source_skymodel, skymodel_true_sky, patch_dict=patch_dict)
+
+                # Rename the patches so that the numbering starts at high Dec, high RA
+                # and increases as RA and Dec decrease (i.e., from top-left to bottom-right)
+                for model in [source_skymodel, skymodel_true_sky, bright_source_skymodel_apparent_sky]:
+                    misc.rename_skymodel_patches(model)
 
         # For the bright-source true-sky model, duplicate any selections made above to the
         # apparent-sky model
@@ -687,11 +692,11 @@ class Field(object):
         # later use
         if regroup:
             # Transfer from the apparent-flux sky model (regrouped above)
-            self.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
+            misc.transfer_patches(bright_source_skymodel_apparent_sky, bright_source_skymodel)
         else:
             # Transfer from the true-flux sky model
             patch_dict = skymodel_true_sky.getPatchPositions()
-            self.transfer_patches(skymodel_true_sky, bright_source_skymodel,
+            misc.transfer_patches(skymodel_true_sky, bright_source_skymodel,
                                   patch_dict=patch_dict)
         bright_source_skymodel.write(self.calibrators_only_skymodel_file, clobber=True)
         self.calibrators_only_skymodel = bright_source_skymodel.copy()
@@ -757,6 +762,7 @@ class Field(object):
             #
             # Note: the flags for generating or downloading the sky model are checked
             # and adjusted, if needed, during the reading of the parset
+            moc = None  # default to no multi-order coverage map (which is, for now, LoTSS only)
             if self.parset['generate_initial_skymodel']:
                 self.parset['input_skymodel'] = self.full_field_sector.image_skymodel_file_true_sky
                 self.parset['apparent_skymodel'] = self.full_field_sector.image_skymodel_file_apparent_sky
@@ -771,10 +777,13 @@ class Field(object):
                                        source=self.parset['download_initial_skymodel_server'],
                                        overwrite=self.parset['download_overwrite_skymodel'])
                 if catalog == 'lotss':
-                    self.plot_field(self.parset['download_initial_skymodel_radius'],
-                                    moc=os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc'))
-                else:
-                    self.plot_field(self.parset['download_initial_skymodel_radius'])
+                    moc = os.path.join(self.working_dir, 'skymodels', 'dr2-moc.moc')
+
+            # Plot the field overview showing the initial sky-model coverage
+            self.log.info('Plotting field overview with initial sky-model coverage...')
+            self.plot_overview('initial_field_overview.png', show_initial_coverage=True,
+                               moc=moc)
+
             self.make_skymodels(self.parset['input_skymodel'],
                                 skymodel_apparent_sky=self.parset['apparent_skymodel'],
                                 regroup=self.parset['regroup_input_skymodel'],
@@ -873,6 +882,11 @@ class Field(object):
                                 target_number=target_number, calibrator_max_dist_deg=calibrator_max_dist_deg,
                                 index=index)
 
+        # Plot an overview of the field for this cycle, showing the calibration facets
+        # (patches)
+        self.log.info('Plotting field overview with calibration patches...')
+        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True)
+
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging operations
         self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
@@ -925,51 +939,6 @@ class Field(object):
             sector.calibration_skymodel = None
             sector.predict_skymodel = None
             sector.field.source_skymodel = None
-
-    def transfer_patches(self, from_skymodel, to_skymodel, patch_dict=None):
-        """
-        Transfers the patches defined in from_skymodel to to_skymodel.
-
-        Parameters
-        ----------
-        from_skymodel : sky model
-            Sky model from which to transfer patches
-        to_skymodel : sky model
-            Sky model to which to transfer patches
-        patch_dict : dict, optional
-            Dict of patch positions
-
-        Returns
-        -------
-        to_skymodel : sky model
-            Sky model with patches matching those of from_skymodel
-        """
-        names_from = from_skymodel.getColValues('Name').tolist()
-        names_to = to_skymodel.getColValues('Name').tolist()
-
-        if 'Patch' not in to_skymodel.table.colnames:
-            self.log.debug('to_skymodel does not have Patch column, adding it')
-            to_skymodel.group('single')
-
-        if set(names_from) == set(names_to):
-            # Both sky models have the same sources, so use indexing
-            ind_ss = np.argsort(names_from)
-            ind_ts = np.argsort(names_to)
-            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-            to_skymodel._updateGroups()
-        elif set(names_to).issubset(set(names_from)):
-            # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
-            for ind_ts, name in enumerate(names_to):
-                ind_ss = names_from.index(name)
-                to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
-        else:
-            # Skymodels don't match, raise error
-            raise ValueError('Cannot transfer patches since from_skymodel does not contain '
-                             'all the sources in to_skymodel')
-
-        if patch_dict is not None:
-            to_skymodel.setPatchPositions(patchDict=patch_dict)
-        return to_skymodel
 
     def get_source_distances(self, source_dict: Dict[str, List[float]]):
         """
@@ -1706,75 +1675,138 @@ class Field(object):
 
         return patch
 
-    def plot_field(self, skymodel_radius=0, moc=None):
+    def plot_overview(self, output_filename, show_initial_coverage=False,
+                      show_calibration_patches=False, moc=None):
         """
-        Plots an overview of how the imaged field compares against the skymodel used.
+        Plots an overview of the field, with optional intial sky-model coverage
+        and calibration facets shown
 
         Parameters
         ----------
-        skymodel_radius : float
-            Radius in degrees out to which the skymodel catalogue was queried.
-        moc : str or None
-            If not None, the multi-order coverage map to plot alongside the usual quantiies.
+        output_filename : str
+            Base filename of ouput file, to be output to 'dir_working/plots/'
+        show_initial_coverage : bool, optional
+            If True, plot the intial sky-model coverage. The plot will be centered
+            on the center of the field. If False, the plot will be centered on the
+            center of the imaging region(s)
+        show_calibration_patches : bool, optional
+            If True, plot the calibration patches
+        moc : str or None, optional
+            If not None, the multi-order coverage map to plot alongside the usual
+            quantiies. Only shown if show_initial_coverage = True
         """
-        self.log.info('Plotting field coverage...')
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
+        if show_initial_coverage:
+            if self.parset['generate_initial_skymodel']:
+                skymodel_radius = max(self.full_field_sector.width_ra,
+                                      self.full_field_sector.width_dec) / 2
+            elif self.parset['download_initial_skymodel']:
+                skymodel_radius = self.parset['download_initial_skymodel_radius']
+            else:
+                # User-supplied sky model (unknown coverage)
+                skymodel_radius = 0
+        else:
+            skymodel_radius = 0
         size_skymodel = skymodel_radius * u.deg
 
-        # Dealing with axes limits is difficult here.
-        # Find the biggest size we plot and then set teh FoV either through the MOC
-        # or by plotting an invisible circle.
+        # Find the minimum size in degrees for the plot (can be overridden by
+        # a MOC if given)
         fake_size = size_ra if size_ra > size_dec else size_dec
         fake_size = size_skymodel if size_skymodel > fake_size else fake_size
-        fake_size *= 1.2
 
+        # Make the figure and subplot with the appropriate WCS projection
         fig = figure(figsize=(8, 8), dpi=300)
-        # If a MOC is provided we need to deal with the WCS differently
-        pmoc = None
         if moc is not None:
             pmoc = mocpy.MOC.from_fits(moc)
-            mocwcs = mocpy.WCS(fig, fov=fake_size*2,
-                               center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
-            wcs = mocwcs
+            wcs = mocpy.WCS(fig, fov=fake_size*2,
+                            center=SkyCoord(self.ra*u.deg, self.dec*u.deg, frame='fk5')).w
         else:
             wcs = self.wcs
-
         ax = fig.add_subplot(111, projection=wcs)
 
-        # If a MOC is provided, also plot that.
-        if pmoc is not None:
-            pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
-                      label='Skymodel MOC', alpha=0.5)
+        # Plot the MOC and initial sky model area
+        if show_initial_coverage:
+            if moc is not None:
+                pmoc.fill(ax=ax, wcs=wcs, linewidth=2, edgecolor='b', facecolor='lightblue',
+                          label='Skymodel MOC', alpha=0.5)
 
-        # Indicate the region out to which the skymodel was queried, centered on the
-        # center of the field
-        if skymodel_radius > 0:
-            skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
-                                              transform=ax.get_transform('fk5'),
-                                              label='Skymodel query cone', edgecolor='r',
-                                              facecolor='none', linewidth=2)
-            ax.add_patch(skymodel_region)
+            # If sky model was generated or downloaded, indicate the region out
+            # to which the initial sky model extends, centered on the field
+            if skymodel_radius > 0:
+                # Nonzero radius implies model was either generated or downloaded (see
+                # above)
+                if self.parset['generate_initial_skymodel']:
+                    skymodel_region = self.full_field_sector.get_matplotlib_patch(wcs=wcs)
+                    skymodel_region.set(edgecolor='b', facecolor='lightblue', alpha=0.5,
+                                        label='Initial sky model coverage')
+                elif self.parset['download_initial_skymodel']:
+                    skymodel_region = SphericalCircle((self.ra*u.deg, self.dec*u.deg), size_skymodel,
+                                                      transform=ax.get_transform('fk5'),
+                                                      label='Initial sky model query cone', edgecolor='b',
+                                                      facecolor='lightblue', linewidth=2, alpha=0.5)
+                ax.add_patch(skymodel_region)
 
-        # Plot the parts of the field being imaged.
-        for sector in self.imaging_sectors:
-            ax.add_patch(sector.get_matplotlib_patch(wcs=wcs))
+        # Plot the calibration patches (facets)
+        if show_calibration_patches:
+            # The sector bounds define the limits of the calibration model, so use them
+            # when generating the facets
+            #
+            # Note: we need the bounds for the unpadded sector polygons, so we do not
+            # use self.sector_bounds_width_ra and self.sector_bounds_width_dec as they
+            # were calculated for the padded polygons
+            all_sectors = MultiPolygon([sector.poly for sector in self.imaging_sectors])
+            bounds_xy = all_sectors.bounds  # pix
+            bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
+            bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
+            facets = read_skymodel(self.calibration_skymodel_file,
+                                   self.sector_bounds_mid_ra,
+                                   self.sector_bounds_mid_dec,
+                                   bounds_width_ra,
+                                   bounds_width_dec)
+            for i, facet in enumerate(facets):
+                facet_patch = facet.get_matplotlib_patch(wcs=wcs)
+                label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
+                facet_patch.set(edgecolor='b', facecolor='lightblue', alpha=0.5, label=label)
+                ax.add_patch(facet_patch)
+                x, y = misc.radec2xy(wcs, facet.ra, facet.dec)
+                ax.annotate(facet.name, (x, y), va='center', ha='center', fontsize='small',
+                            color='b')
 
-        # Plot the observation's FWHM.
-        ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
+        # Plot the imaging sectors
+        for i, sector in enumerate(self.imaging_sectors):
+            sector_patch = sector.get_matplotlib_patch(wcs=wcs)
+            label = 'Imaging sectors' if i == 0 else None  # first only to avoid multiple lines in legend
+            sector_patch.set(label=label)
+            ax.add_patch(sector_patch)
+            x, y = misc.radec2xy(wcs, sector.ra, sector.dec+sector.width_dec/2)  # center-top
+            ax.annotate(sector.name, (x, y), va='bottom', ha='center', fontsize='large')
 
-        # Set the plot FoV in case no MOC is given.
-        if moc is None:
-            fake_FoV_circle = SphericalCircle((self.ra*u.deg, self.dec*u.deg), fake_size,
-                                              transform=ax.get_transform('fk5'),
-                                              edgecolor='none', facecolor='none',
-                                              linewidth=0)
-            ax.add_patch(fake_FoV_circle)
+        # Plot the observation's FWHM and phase center
+        if show_initial_coverage:
+            # Plot the primary beam FWHM
+            ax.add_patch(self.get_matplotlib_patch(wcs=wcs))
 
-        ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
-                   transform=ax.get_transform('fk5'), label='Phase center')
+            # Plot the phase center
+            ax.scatter(self.ra*u.deg, self.dec*u.deg, marker='s', color='k',
+                       transform=ax.get_transform('fk5'), label='Phase center')
+
+        # Set the minimum plot FoV by adding an invisible point and circle. The
+        # final FoV will be set either by this circle or the MOC (if given)
+        if show_initial_coverage:
+            ra = self.ra*u.deg
+            dec = self.dec*u.deg
+        else:
+            ra = self.sector_bounds_mid_ra*u.deg
+            dec = self.sector_bounds_mid_dec*u.deg
+        ax.scatter(ra, dec, color='none', transform=ax.get_transform('fk5'))
+        fake_FoV_circle = SphericalCircle((ra, dec), fake_size/2,
+                                          transform=ax.get_transform('fk5'),
+                                          edgecolor='none', facecolor='none',
+                                          linewidth=0)
+        ax.add_patch(fake_FoV_circle)
 
         ax.set(xlabel='Right Ascension [J2000]', ylabel='Declination [J2000]')
         ax.legend(loc='upper left')
         ax.grid()
-        fig.savefig(os.path.join(self.working_dir, 'plots', 'field_coverage.png'))
+        fig.savefig(os.path.join(self.working_dir, 'plots', output_filename))

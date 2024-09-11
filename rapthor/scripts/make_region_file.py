@@ -4,9 +4,7 @@ Script to make a ds9 region file for use with WSClean and faceting
 """
 import argparse
 from argparse import RawTextHelpFormatter
-from rapthor.lib import facet
-from rapthor.lib import miscellaneous as misc
-import lsmtool
+from rapthor.lib.facet import make_ds9_region_file, read_skymodel
 
 
 def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
@@ -28,36 +26,11 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
     region_file : str
         Filename of output ds9 region file
     """
-    # Set the position of the calibration patches to those of
-    # the input sky model
-    skymod = lsmtool.load(skymodel)
-    source_dict = skymod.getPatchPositions()
-    name_cal = []
-    ra_cal = []
-    dec_cal = []
-    for k, v in source_dict.items():
-        name_cal.append(k)
-        # Make sure RA is between [0, 360) deg and Dec between [-90, 90]
-        ra = misc.normalize_ra(v[0].value)
-        dec = misc.normalize_dec(v[1].value)
-        ra_cal.append(ra)
-        dec_cal.append(dec)
-
-    # Do the tessellation
-    facet_points, facet_polys = facet.make_facet_polygons(ra_cal, dec_cal, ra_mid, dec_mid, width_ra, width_dec)
-    facet_names = []
-    for facet_point in facet_points:
-        # For each facet, match the correct name. Some patches in the sky model may have
-        # been filtered out if they lie outside the bounding box
-        for ra, dec, name in zip(ra_cal, dec_cal, name_cal):
-            if misc.approx_equal(ra, facet_point[0], tol=1e-6) and misc.approx_equal(dec, facet_point[1], tol=1e-6):
-                # Note: some versions of ds9 have problems when there are certain characters
-                # ('_' and '-' are the two known so far) in any of the names, so remove them
-                facet_names.append(name.replace('_', '').replace('-', ''))
-                break
+    # Read the facets from the input sky model
+    facets = read_skymodel(skymodel, ra_mid, dec_mid, width_ra, width_dec)
 
     # Make the ds9 region file
-    facet.make_ds9_region_file(facet_points, facet_polys, region_file, names=facet_names)
+    make_ds9_region_file(facets, region_file)
 
 
 if __name__ == '__main__':
