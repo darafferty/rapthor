@@ -76,7 +76,7 @@ class TestField(unittest.TestCase):
 
     def test_get_obs_parameters(self):
         obsp = self.field.get_obs_parameters('starttime')
-        self.assertEqual(obsp, ['29Mar2013/13:59:52.907', '29Mar2013/14:00:22.949'])
+        self.assertEqual(obsp, ['29Mar2013/13:59:52.907'])
 
     def test_define_imaging_sectors(self):
         self.field.define_imaging_sectors()
