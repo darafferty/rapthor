@@ -236,6 +236,9 @@ class Observation(object):
         # Find solution intervals for fast-phase solve. The solve is split into time
         # chunks instead of frequency chunks, since continuous frequency coverage is
         # desirable to recover the expected smooth, TEC-like behavior (phase ~ nu^-1)
+        #
+        # Note: we don't explicitly check that the resulting solution intervals fit
+        # within the observation's size, as this is handled by DP3
         solint_fast_timestep = max(1, int(round(target_fast_timestep / round(self.timepersample)) * solve_max_factor))
         solint_fast_freqstep = max(1, self.get_nearest_freqstep(target_fast_freqstep / self.channelwidth))
 
@@ -281,6 +284,9 @@ class Observation(object):
         # Find solution intervals for the gain solves. In contrast to the fast-phase
         # solve, the gain solves are split into frequency chunks, since continuous
         # frequency coverage is not needed
+        #
+        # Note: as with the fast-phase solve, we don't explicitly check that the resulting
+        # solution intervals fit within the observation's size, as this is handled by DP3
         solint_slow_timestep_joint = max(1, int(round(target_slow_timestep_joint / round(self.timepersample)) * solve_max_factor))
         solint_slow_timestep_separate = max(1, int(round(target_slow_timestep_separate / round(self.timepersample)) * solve_max_factor))
         solint_slow_freqstep = max(1, self.get_nearest_freqstep(target_slow_freqstep / self.channelwidth))
@@ -317,6 +323,7 @@ class Observation(object):
                     # For other data, use the primary MS files
                     freqchunk_filename = self.ms_filename
 
+            # Divide up the bandwidth if needed
             samplesperchunk = int(round(target_chunksize / self.channelwidth))
             freqchunksize = samplesperchunk * self.channelwidth  # Hz
             if (self.endfreq-self.startfreq) > freqchunksize:
@@ -327,6 +334,8 @@ class Observation(object):
             setattr(self, f'nfreqchunks_{solve_type}', nfreqchunks)
             self.log.debug('Using {0} frequency chunk{1} for the {2} gain '
                            'calibration (if done)'.format(nfreqchunks, "s" if nfreqchunks > 1 else "", solve_type))
+
+            # Save the parameters
             self.parameters[f'freqchunk_filename_{solve_type}'] = [freqchunk_filename] * nfreqchunks
             self.parameters[f'startchan_{solve_type}'] = [samplesperchunk * i for i in range(nfreqchunks)]
             self.parameters[f'nchan_{solve_type}'] = [samplesperchunk] * nfreqchunks
@@ -353,7 +362,7 @@ class Observation(object):
             # are set to the solution intervals *before* adjusting for the DD intervals
             # to ensure that they match the smallest interval used in the solves (since
             # maxinterval cannot exceed solint in DDECal)
-            self.parameters[f'bda_maxinterval_{solve_type}'] = [solint / solve_max_factor] * nchunks
+            self.parameters[f'bda_maxinterval_{solve_type}'] = [max(1, int(solint / solve_max_factor))] * nchunks
 
             if solve_max_factor > 1:
                 # Find the initial estimate for the number of solutions, relative to that
