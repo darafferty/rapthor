@@ -296,16 +296,16 @@ class Observation(object):
         # Determine how many calibration chunks to make. Due to the use of frequency
         # smoothing during the solves, different chunk sizes can result in (slightly)
         # different solutions. Therefore, for consistency and reproducability, we force
-        # the chunks to be 12 MHz each (with potentially a smaller one at the
-        # high-frequency end of the bandwidth). Note: the 12 MHz chunk size is the
-        # largest that allows the most demanding solve to fit comfortably into 192 GB of
+        # the chunks to be 8 MHz each (with potentially a smaller one at the
+        # high-frequency end of the bandwidth). Note: the 8 MHz chunk size is the
+        # largest that allows the most demanding solve to fit into 192 GB of
         # memory (the minimum recommended for running Rapthor), assuming the default
         # values for used for the relevant calibration parameters (e.g., baseline-
-        # dependent averaging is enabled, etc.)
+        # dependent averaging is enabled, etc.) and 50 directions
         #
         # For simplicity, we do this process for all potential types of gain solve, even
         # if they are not all required by the current strategy
-        target_chunksize = 12e6  # Hz
+        target_chunksize = 8e6  # Hz
         solint_timesteps = {'joint': solint_slow_timestep_joint,
                             'separate': solint_slow_timestep_separate,
                             'fulljones': solint_timestep_fulljones}
