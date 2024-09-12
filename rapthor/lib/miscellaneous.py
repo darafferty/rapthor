@@ -976,6 +976,113 @@ def get_flagged_solution_fraction(h5file, solsetname='sol000'):
     return num_flagged / num_all
 
 
+def transfer_patches(from_skymodel, to_skymodel, patch_dict=None):
+    """
+    Transfers the patches defined in from_skymodel to to_skymodel
+
+    Parameters
+    ----------
+    from_skymodel : LSMTool skymodel.SkyModel object
+        Sky model from which to transfer patches
+    to_skymodel : LSMTool skymodel.SkyModel object
+        Sky model to which to transfer patches
+    patch_dict : dict, optional
+        Dict of patch positions
+    """
+    if not from_skymodel.hasPatches:
+        raise ValueError('Cannot transfer patches since from_skymodel is not grouped '
+                         'into patches.')
+    names_from = from_skymodel.getColValues('Name').tolist()
+    names_to = to_skymodel.getColValues('Name').tolist()
+
+    if not to_skymodel.hasPatches:
+        to_skymodel.group('single')
+
+    if set(names_from) == set(names_to):
+        # Both sky models have the same sources, so use indexing
+        ind_ss = np.argsort(names_from)
+        ind_ts = np.argsort(names_to)
+        to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+        to_skymodel._updateGroups()
+    elif set(names_to).issubset(set(names_from)):
+        # The to_skymodel is a subset of from_skymodel, so use slower matching algorithm
+        for ind_ts, name in enumerate(names_to):
+            ind_ss = names_from.index(name)
+            to_skymodel.table['Patch'][ind_ts] = from_skymodel.table['Patch'][ind_ss]
+    else:
+        # Skymodels don't match, raise error
+        raise ValueError('Cannot transfer patches since from_skymodel does not contain '
+                         'all the sources in to_skymodel')
+
+    if patch_dict is not None:
+        to_skymodel.setPatchPositions(patchDict=patch_dict)
+
+
+def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to_low',
+                            dec_bin_width=2.0):
+    """
+    Rename the patches in the input sky model according to the given scheme
+
+    Note: the patches are first binned by Dec and then sorted by RA within each bin.
+    The patch names start from "Patch_1" and increase first by RA and then by Dec, ordered
+    either with increasing or decreasing RA and Dec as given by the order_dec and order_ra
+    args
+
+    Parameters
+    ----------
+    skymodel : LSMTool skymodel.SkyModel object
+        Input sky model
+    order_dec : str, optional
+        The scheme to use for ordering:
+            - 'high_to_low': patches increase with decreasing Dec
+            - 'low_to_high': patches increase with increasing Dec
+    order_ra : str, optional
+        Same as order_dec, but for RA
+    dec_bin_width : float, optional
+        Bin width in degrees for the Dec values
+    """
+    if not skymodel.hasPatches:
+        raise ValueError('Cannot rename patches since the input skymodel is not grouped '
+                         'into patches.')
+    patch_positions = skymodel.getPatchPositions()
+    patch_names = []
+    patch_ras = []
+    patch_decs = []
+    for name, position in patch_positions.items():
+        patch_names.append(name)
+        patch_ras.append(position[0].value)
+        patch_decs.append(position[1].value)
+
+    # Make bins in Dec, ordered from low to high
+    dec_bins = np.linspace(min(patch_decs)-0.1, max(patch_decs)+0.1,
+                           num=int(max(patch_decs)-min(patch_decs))+1)
+    if order_dec == 'high_to_low':
+        dec_bins = dec_bins[::-1]
+    bin_members = np.digitize(patch_decs, dec_bins)
+
+    # Run through the bins, sorting by RA and renaming the patches
+    # accordingly
+    patch_index = 1
+    patch_col = skymodel.getColValues('Patch')
+    patch_dict = {}
+    for bin_index in range(1, len(dec_bins)):
+        # Sort by RA (high to low)
+        in_bin = np.where(bin_members == bin_index)
+        ras = np.array(patch_ras)[in_bin]
+        names = np.array(patch_names)[in_bin][np.argsort(ras)]  # ordered from low to high
+        if order_ra == 'high_to_low':
+            names = names[::-1]
+
+        # Rename the patches in the model's table metadata
+        for old_name in names:
+            new_name = f'Patch_{patch_index}'
+            patch_dict[new_name] = patch_positions[old_name]
+            patch_col[skymodel.getRowIndex(old_name)] = new_name
+            patch_index += 1
+    skymodel.setColValues('Patch', patch_col)
+    skymodel.setPatchPositions(patch_dict)
+
+
 def nproc():
     """
     Return the number of CPU cores _available_ to the current process, similar
