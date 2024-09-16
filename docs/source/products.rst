@@ -15,7 +15,7 @@ Rapthor produces the following output inside the working directory:
     Directory containing intermediate files of each operation's CWL workflow. Once a run has finished successfully, this directory can be removed.
 
 ``plots/``
-    Directory containing the PNG plots of the calibration solutions and images. See :ref:`calibrate` for a detailed description of the plots.
+    Directory containing the PNG plots of the calibration solutions and images. See :ref:`calibrate` and :ref:`image` for a detailed description of the plots.
 
 ``regions/``
     Directory containing ds9 region files. These regions define the imaged areas and the facet layout (if used).

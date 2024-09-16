@@ -171,7 +171,10 @@ class ToilRunner(CWLRunner):
         if self.operation.batch_system == 'slurm':
             self.args.extend(['--disableCaching'])
             self.args.extend(['--defaultCores', str(self.operation.cpus_per_task)])
-            self.args.extend(['--defaultMemory', self.operation.mem_per_node_gb])
+            if self.operation.mem_per_node_gb > 0:
+                self.args.extend(['--defaultMemory', f'{self.operation.mem_per_node_gb}G'])
+            else:
+                self.args.extend(['--dont_allocate_mem'])
 
             # When the slurm batch system is used, the use of --bypass-file-store
             # requires that --tmp-outdir-prefix points to a shared filesystem, so
