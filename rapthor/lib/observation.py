@@ -231,7 +231,7 @@ class Observation(object):
         target_fast_freqstep = parset['calibration_specific']['fast_freqstep_hz']
         target_slow_freqstep = parset['calibration_specific']['slow_freqstep_hz']
         target_fulljones_freqstep = parset['calibration_specific']['fulljones_freqstep_hz']
-        solve_max_factor = int(parset['calibration_specific']['dd_interval_factor'])
+        solve_max_factor = parset['calibration_specific']['dd_interval_factor']
 
         # Find solution intervals for fast-phase solve. The solve is split into time
         # chunks instead of frequency chunks, since continuous frequency coverage is
@@ -300,7 +300,7 @@ class Observation(object):
         # high-frequency end of the bandwidth). Note: the 8 MHz chunk size is the
         # largest that allows the most demanding solve to fit into 192 GB of
         # memory (the minimum recommended for running Rapthor), assuming the default
-        # values for used for the relevant calibration parameters (e.g., baseline-
+        # values used for the relevant calibration parameters (e.g., baseline-
         # dependent averaging is enabled, etc.) and 50 directions
         #
         # For simplicity, we do this process for all potential types of gain solve, even
@@ -328,11 +328,7 @@ class Observation(object):
             # Divide up the bandwidth if needed
             samplesperchunk = int(round(target_chunksize / self.channelwidth))
             freqchunksize = samplesperchunk * self.channelwidth  # Hz
-            if (self.endfreq-self.startfreq) > freqchunksize:
-                # Divide up the bandwidth into chunks of freqchunksize
-                nfreqchunks = int(np.ceil(self.numchannels * self.channelwidth / freqchunksize))
-            else:
-                nfreqchunks = 1
+            nfreqchunks = max(1, int(np.ceil(self.numchannels * self.channelwidth / freqchunksize)))
             setattr(self, f'nfreqchunks_{solve_type}', nfreqchunks)
             self.log.debug('Using {0} frequency chunk{1} for the {2} gain '
                            'calibration (if done)'.format(nfreqchunks, "s" if nfreqchunks > 1 else "", solve_type))
