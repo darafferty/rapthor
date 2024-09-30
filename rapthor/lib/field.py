@@ -885,7 +885,14 @@ class Field(object):
         # Plot an overview of the field for this cycle, showing the calibration facets
         # (patches)
         self.log.info('Plotting field overview with calibration patches...')
-        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True)
+        if index == 1 or final:
+            # Check the sky model bounds, as they may by differ from the sector ones
+            check_skymodel_bounds = True
+        else:
+            # Sky model bounds will always match the sector ones
+            check_skymodel_bounds = False
+        self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
+                           check_skymodel_bounds=check_skymodel_bounds)
 
         # Save the number of calibrators and their names, positions, and flux
         # densities (in Jy) for use in the calibration and imaging operations
@@ -1676,7 +1683,8 @@ class Field(object):
         return patch
 
     def plot_overview(self, output_filename, show_initial_coverage=False,
-                      show_calibration_patches=False, moc=None):
+                      show_calibration_patches=False, moc=None,
+                      check_skymodel_bounds=False):
         """
         Plots an overview of the field, with optional intial sky-model coverage
         and calibration facets shown
@@ -1694,6 +1702,9 @@ class Field(object):
         moc : str or None, optional
             If not None, the multi-order coverage map to plot alongside the usual
             quantiies. Only shown if show_initial_coverage = True
+        check_skymodel_bounds : bool, optional
+            If True (and show_calibration_patches is True), the bounds from the
+            calibration sky model are checked when calculating the faceting bounds
         """
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
@@ -1749,21 +1760,33 @@ class Field(object):
 
         # Plot the calibration patches (facets)
         if show_calibration_patches:
-            # The sector bounds define the limits of the calibration model, so use them
-            # when generating the facets
+            # Find the faceting limits defined from the sky model
+            if check_skymodel_bounds:
+                if skymodel_radius > 0:
+                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = skymodel_radius * 2  # deg
+                else:
+                    # User-supplied sky model: estimate the size from as the maximum distance
+                    # of any patch from the phase center (plus some padding)
+                    _, distances = self.get_source_distances(self.calibrator_positions)
+                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = 1.2 * np.max(distances)  # deg
+            else:
+                skymodel_bounds_width_ra = skymodel_bounds_width_dec = 0
+
+            # Find the faceting limits defined from the sector bounds
             #
             # Note: we need the bounds for the unpadded sector polygons, so we do not
             # use self.sector_bounds_width_ra and self.sector_bounds_width_dec as they
             # were calculated for the padded polygons
             all_sectors = MultiPolygon([sector.poly for sector in self.imaging_sectors])
             bounds_xy = all_sectors.bounds  # pix
-            bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
-            bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
+            sector_bounds_width_ra = abs((bounds_xy[0] - bounds_xy[2]) * wcs.wcs.cdelt[0])  # deg
+            sector_bounds_width_dec = abs((bounds_xy[3] - bounds_xy[1]) * wcs.wcs.cdelt[1])  # deg
+
             facets = read_skymodel(self.calibration_skymodel_file,
                                    self.sector_bounds_mid_ra,
                                    self.sector_bounds_mid_dec,
-                                   bounds_width_ra,
-                                   bounds_width_dec)
+                                   max(skymodel_bounds_width_ra, sector_bounds_width_ra),
+                                   max(skymodel_bounds_width_dec, sector_bounds_width_dec))
             for i, facet in enumerate(facets):
                 facet_patch = facet.get_matplotlib_patch(wcs=wcs)
                 label = 'Calibration facets' if i == 0 else None  # first only to avoid multiple lines in legend
