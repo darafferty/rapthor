@@ -1708,18 +1708,19 @@ class Field(object):
         """
         size_ra = self.sector_bounds_width_ra * u.deg
         size_dec = self.sector_bounds_width_dec * u.deg
-        if show_initial_coverage:
-            if self.parset['generate_initial_skymodel']:
-                skymodel_radius = max(self.full_field_sector.width_ra,
-                                      self.full_field_sector.width_dec) / 2
-            elif self.parset['download_initial_skymodel']:
-                skymodel_radius = self.parset['download_initial_skymodel_radius']
-            else:
-                # User-supplied sky model (unknown coverage)
-                skymodel_radius = 0
+        if self.parset['generate_initial_skymodel']:
+            initial_skymodel_radius = max(self.full_field_sector.width_ra,
+                                          self.full_field_sector.width_dec) / 2
+        elif self.parset['download_initial_skymodel']:
+            initial_skymodel_radius = self.parset['download_initial_skymodel_radius']
         else:
-            skymodel_radius = 0
-        size_skymodel = skymodel_radius * u.deg
+            # User-supplied sky model (unknown coverage)
+            initial_skymodel_radius = 0
+        if show_initial_coverage:
+            size_skymodel = initial_skymodel_radius * u.deg
+        else:
+            # Don't use the initial radius
+            size_skymodel = 0
 
         # Find the minimum size in degrees for the plot (can be overridden by
         # a MOC if given)
@@ -1744,7 +1745,7 @@ class Field(object):
 
             # If sky model was generated or downloaded, indicate the region out
             # to which the initial sky model extends, centered on the field
-            if skymodel_radius > 0:
+            if initial_skymodel_radius > 0:
                 # Nonzero radius implies model was either generated or downloaded (see
                 # above)
                 if self.parset['generate_initial_skymodel']:
@@ -1762,8 +1763,8 @@ class Field(object):
         if show_calibration_patches:
             # Find the faceting limits defined from the sky model
             if check_skymodel_bounds:
-                if skymodel_radius > 0:
-                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = skymodel_radius * 2  # deg
+                if initial_skymodel_radius > 0:
+                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = initial_skymodel_radius * 2  # deg
                 else:
                     # User-supplied sky model: estimate the size from as the maximum distance
                     # of any patch from the phase center (plus 20% padding)
