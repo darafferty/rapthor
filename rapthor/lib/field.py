@@ -882,6 +882,15 @@ class Field(object):
                                 target_number=target_number, calibrator_max_dist_deg=calibrator_max_dist_deg,
                                 index=index)
 
+        # Save the number of calibrators and their names, positions, and flux
+        # densities (in Jy) for use in the calibration and imaging operations
+        self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
+        self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
+        self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
+        self.num_patches = len(self.calibrator_patch_names)
+        suffix = 'es' if self.num_patches > 1 else ''
+        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
+
         # Plot an overview of the field for this cycle, showing the calibration facets
         # (patches)
         self.log.info('Plotting field overview with calibration patches...')
@@ -893,15 +902,6 @@ class Field(object):
             check_skymodel_bounds = False
         self.plot_overview(f'field_overview_{index}.png', show_calibration_patches=True,
                            check_skymodel_bounds=check_skymodel_bounds)
-
-        # Save the number of calibrators and their names, positions, and flux
-        # densities (in Jy) for use in the calibration and imaging operations
-        self.calibrator_patch_names = self.calibrators_only_skymodel.getPatchNames().tolist()
-        self.calibrator_fluxes = self.calibrators_only_skymodel.getColValues('I', aggregate='sum').tolist()
-        self.calibrator_positions = self.calibrators_only_skymodel.getPatchPositions()
-        self.num_patches = len(self.calibrator_patch_names)
-        suffix = 'es' if self.num_patches > 1 else ''
-        self.log.info('Using {0} calibration patch{1}'.format(self.num_patches, suffix))
 
         # Adjust sector boundaries to avoid known sources and update their sky models.
         self.adjust_sector_boundaries()
@@ -1766,9 +1766,9 @@ class Field(object):
                     skymodel_bounds_width_ra = skymodel_bounds_width_dec = skymodel_radius * 2  # deg
                 else:
                     # User-supplied sky model: estimate the size from as the maximum distance
-                    # of any patch from the phase center (plus some padding)
+                    # of any patch from the phase center (plus 20% padding)
                     _, distances = self.get_source_distances(self.calibrator_positions)
-                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = 1.2 * np.max(distances)  # deg
+                    skymodel_bounds_width_ra = skymodel_bounds_width_dec = 2 * 1.2 * np.max(distances)  # deg
             else:
                 skymodel_bounds_width_ra = skymodel_bounds_width_dec = 0
 
