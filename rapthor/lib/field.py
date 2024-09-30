@@ -1719,8 +1719,7 @@ class Field(object):
         if show_initial_coverage:
             size_skymodel = initial_skymodel_radius * u.deg
         else:
-            # Don't use the initial radius
-            size_skymodel = 0
+            size_skymodel = 0 * u.deg
 
         # Find the minimum size in degrees for the plot (can be overridden by
         # a MOC if given)
