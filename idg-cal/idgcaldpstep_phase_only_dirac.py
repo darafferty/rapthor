@@ -15,7 +15,6 @@ from idg.idgcalutils import (
 )
 from idg.idgcaldpstep_phase_only import IDGCalDPStepPhaseOnly
 import astropy.io.fits as fits
-from idg.lbfgsb import LBFGSB
 import time
 import logging
 from matplotlib import pyplot as plt
@@ -161,7 +160,6 @@ class IDGCalDPStepPhaseOnlyDirac(IDGCalDPStepPhaseOnly):
         parameters = np.zeros(
             (self.nr_channel_blocks, self.nr_stations, self.nr_parameters)
         )
-        # parameters = np.random.default_rng().uniform(-np.pi,np.pi,(self.nr_channel_blocks, self.nr_stations, self.nr_parameters))
 
         # Map parameters to orthonormal basis
         parameters = transform_parameters(
@@ -171,130 +169,58 @@ class IDGCalDPStepPhaseOnlyDirac(IDGCalDPStepPhaseOnly):
             self.nr_phase_updates,
         )
 
+        phase_basis=np.ascontiguousarray(self.Bphase,dtype=np.float64)
+        # Bphase shape: poly_coeffs x (grid x grid) x 4 (4 for 2x2 Jones mat)
+        # Note: since Bphase is post multiplited by [1,0; 0 1], 
+        # ideally only keep 1 plane, but this is not done here (but calculations will assume this)
+        # parameters: channel_blocks x stations x poly_coeffs,
+        # Note: poly_coeffs is product of phase_updates x poly_coeffs
+
+        # aterms (final shape): channel_blocks x phase_updates x  stations x (grid x grid) x corr(=4)
+        # Note: poly_coeffs is collapsed in aterms because of dot product, parameters x basis =(collapse into 1)
+        # aterms_deriv (per station, final shape): channel_blocks x  stations(=1) x poly_coeffs x  (grid x grid) x corr(=4)
+
 #################################################################################
         def lbfgs_cost_function(parameters):
 
             parameters = parameters.reshape(
                 (self.nr_channel_blocks, self.nr_stations, self.nr_parameters)
             )
-            aterm_phase = np.exp(
-                1j
-                * np.tensordot(
-                    parameters[:, :, :].reshape(
-                        (
-                            self.nr_channel_blocks,
-                            self.nr_stations,
-                            self.nr_phase_updates,
-                            self.phase_poly.nr_coeffs,
-                        )
-                    ),
-                    self.Bphase,
-                    axes=((3,), (0,)),
-                )
-            ) * np.array([1.0, 0.0, 0.0, 1.0])
+            residual = self.proxy.calc_cost(
+                parameters, phase_basis, self.nr_phase_updates, self.subgrid_size, self.phase_poly.nr_coeffs, 4)
 
-            # Transpose swaps the station and phase_update axes
-            aterms = np.swapaxes(aterm_phase, 1, 2)
-
-            aterms = apply_beam(aterms_beam, aterms)
-
-            aterms = np.ascontiguousarray(aterms.astype(idg.idgtypes.atermtype))
-
-            residual = np.zeros((self.nr_channel_blocks,), dtype=np.float64)
-
-            r = 0
-            for i in range(self.nr_stations):
-                aterm_phase = self.__compute_phase(i, parameters)
-                if aterms_beam is not None:
-                    aterm_derivatives = compute_aterm_derivatives(
-                        aterm_phase, aterms_beam[i], self.Bphase
-                    )
-                else:
-                    aterm_derivatives = compute_aterm_derivatives(
-                        aterm_phase, None, self.Bphase
-                    )
-
-                residual[:] = 0.0
-                self.proxy.calc_cost(
-                    i, aterms, aterm_derivatives, residual 
-                )
-                r += residual[0] / 2
-
-            residual = r
-
-            return residual
+            return residual[0]
 
         def lbfgs_grad_function(parameters):
 
             parameters = parameters.reshape(
                 (self.nr_channel_blocks, self.nr_stations, self.nr_parameters)
             )
-            aterm_phase = np.exp(
-                1j
-                * np.tensordot(
-                    parameters[:, :, :].reshape(
-                        (
-                            self.nr_channel_blocks,
-                            self.nr_stations,
-                            self.nr_phase_updates,
-                            self.phase_poly.nr_coeffs,
-                        )
-                    ),
-                    self.Bphase,
-                    axes=((3,), (0,)),
-                )
-            ) * np.array([1.0, 0.0, 0.0, 1.0])
 
-            # Transpose swaps the station and phase_update axes
-            aterms = np.swapaxes(aterm_phase, 1, 2)
-
-            aterms = apply_beam(aterms_beam, aterms)
-
-            aterms = np.ascontiguousarray(aterms.astype(idg.idgtypes.atermtype))
-
+            # Keep gradient same shape as the parameters
             gradient = np.zeros(
-                (self.nr_channel_blocks, self.nr_phase_updates, self.nr_parameters0),
-                dtype=np.float64,
+               (self.nr_channel_blocks, self.nr_stations, self.nr_parameters)
             )
+            self.proxy.calc_gradient(
+                parameters, phase_basis, self.nr_phase_updates, self.subgrid_size, self.phase_poly.nr_coeffs, 4, gradient)
 
-            g = []
-            for i in range(self.nr_stations):
-                aterm_phase = self.__compute_phase(i, parameters)
-                if aterms_beam is not None:
-                    aterm_derivatives = compute_aterm_derivatives(
-                        aterm_phase, aterms_beam[i], self.Bphase
-                    )
-                else:
-                    aterm_derivatives = compute_aterm_derivatives(
-                        aterm_phase, None, self.Bphase
-                    )
-
-                gradient[:] = 0.0
-                self.proxy.calc_gradient(
-                    i, aterms, aterm_derivatives, gradient
-                )
-                g.append(-2 * gradient.flatten())
-
-            # also add column dimension
-            gradient = np.expand_dims(np.concatenate(g),-1)
-
-            return gradient
+            return np.expand_dims(gradient.flatten(),-1)
 
 #################################################################################
 
-        x0 = np.expand_dims(parameters.flatten(),-1)
         # lower and upper bounds
-        x_low = np.ones(x0.shape)*(-1000.0)
-        x_high = np.ones(x0.shape)*(1000.0)
+        x_low = np.ones(parameters.shape)*(-1000.0)
+        x_high = np.ones(parameters.shape)*(1000.0)
 
-        optimizer = LBFGSB(x0, x_low, x_high, max_iter=self.max_iter)
-        result = optimizer.step(lbfgs_cost_function, lbfgs_grad_function)
 
-        logging.debug(result['residual'], result['success'])
+        nr_correlations=self.nr_correlations 
+        lbfgs_max_iter=self.max_iter
+        lbfgs_history_size=10
+        # parameters will be updated
+        residual = self.proxy.lbfgs_fit(
+          parameters, x_low, x_high, phase_basis, self.nr_phase_updates, self.subgrid_size, self.phase_poly.nr_coeffs, nr_correlations, lbfgs_max_iter, lbfgs_history_size )
+        logging.debug(residual)
 
-        parameters = result['x'].reshape(
-            (self.nr_channel_blocks, self.nr_stations, self.nr_parameters)
-        )
         parameters_polynomial = parameters.copy()
 
         # Map parameters back to original basis
@@ -324,37 +250,6 @@ class IDGCalDPStepPhaseOnlyDirac(IDGCalDPStepPhaseOnly):
             "phase_coefficients", phase_coefficients, offset_phase
         )
         self.count_process_buffer_calls += 1
-
-    def plot_residual(self, i, visibilities, weights, uvw, aterms, parameters):
-        logging.debug("plot_residual ", i)
-        visibilities_predicted = visibilities.copy()
-
-        aterms1 = aterms.copy()
-        parameters1 = parameters.copy()
-
-        residuals = []
-        x = []
-        for dx in np.linspace(-1.0, 1.0, 101):
-            parameters1[:, i] = parameters[:, i] + dx
-            x.append(parameters[:, i, 0] + dx)
-            aterms_i = self.__compute_phase(i, parameters1)
-            aterms1[:, :, i] = aterms_i
-            self.proxy.degridding(
-                self.kernel_size,
-                self.frequencies[0],
-                visibilities_predicted,
-                uvw,
-                self.baselines,
-                aterms1[0],
-                self.aterm_offsets,
-                self.taper2,
-            )
-            residuals.append(
-                np.sum(np.abs(visibilities - visibilities_predicted) ** 2 * weights)
-            )
-        plt.clf()
-        plt.plot(x, residuals)
-        plt.savefig(f"residuals{i}.png")
 
     def __compute_phase(self, i, parameters):
         """
@@ -387,42 +282,6 @@ class IDGCalDPStepPhaseOnlyDirac(IDGCalDPStepPhaseOnly):
                 axes=((2,), (0,)),
             )
         ) * np.array([1.0, 0.0, 0.0, 1.0])
-
-
-def compute_aterm_derivatives(aterm_phase, aterm_beam, B_p):
-    """
-    Compute the partial derivatives of g = exp(j*B_p*x_p):
-    - \partial g / \partial x_p = B_a * x_a * j * B_p * exp(j*B_p*x_p)
-    where x_a and x_p the unknown expansion coefficients for the phase.
-
-    Parameters
-    ----------
-    aterm_phase : np.ndarray
-        Phase tensor product B_p * x_p, should have shape (nr_phase_updates, subgrid_size, subgrid_size, nr_correlations)
-    aterm_beam : None or np.ndarray
-        Beam to apply, should have shape (subgrid_size, subgrid_size, nr_correlations)
-    B_p : np.ndarray
-        Expande (phase) basis functions, should have shape (nr_phase_coeffs, subgrid_size, subgrid_size, nr_correlations)
-
-    Returns
-    -------
-    np.ndarray
-        Column stacked derivative [\partial g/ \partial x_a, \partial g / \partial x_p]^T
-        Output has shape (nr_phase_updates, nr_coeffs, subgrid_size, subgrid_size, nr_correlations)
-        where nr_coeffs = len(x_a) + len(x_p)
-    """
-    # new-axis is introduced at "stations" axis
-
-    aterm_derivatives = (
-        1j
-        * aterm_phase[:, :, np.newaxis, :, :, :]
-        * B_p[np.newaxis, np.newaxis, :, :, :, :]
-    )
-
-    aterm_derivatives = apply_beam(aterm_beam, aterm_derivatives)
-
-    aterm_derivatives = np.ascontiguousarray(aterm_derivatives, dtype=np.complex64)
-    return aterm_derivatives
 
 
 def transform_parameters(

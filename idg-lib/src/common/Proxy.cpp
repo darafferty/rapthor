@@ -241,22 +241,41 @@ void Proxy::calibrate_update(
                       residual);
 }
 
-void Proxy::calc_cost(
-    const int antenna_nr,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-        aterm_derivatives,
-    aocommon::xt::Span<double, 1>& residual) {
-  do_calc_cost(antenna_nr, aterms, aterm_derivatives, residual);
+void Proxy::calc_cost(const int nr_channel_blocks, const int subgrid_size,
+                      const int nr_antennas, const int nr_timeslots,
+                      const int nr_terms, const int nr_correlations,
+                      aocommon::xt::Span<double, 3>& parameters,
+                      aocommon::xt::Span<double, 4>& phase_basis,
+                      aocommon::xt::Span<double, 1>& residual) {
+  do_calc_cost(nr_channel_blocks, subgrid_size, nr_antennas, nr_timeslots,
+               nr_terms, nr_correlations, parameters, phase_basis, residual);
 }
 
-void Proxy::calc_gradient(
-    const int antenna_nr,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-        aterm_derivatives,
-    aocommon::xt::Span<double, 3>& gradient) {
-  do_calc_gradient(antenna_nr, aterms, aterm_derivatives, gradient);
+void Proxy::lbfgs_fit(const int nr_channel_blocks, const int subgrid_size,
+                      const int nr_antennas, const int nr_timeslots,
+                      const int nr_terms, const int nr_correlations,
+                      const int lbfgs_max_iteations,
+                      const int lbfgs_history_size,
+                      aocommon::xt::Span<double, 3>& parameters,
+                      aocommon::xt::Span<double, 3>& parameters_lower_bound,
+                      aocommon::xt::Span<double, 3>& parameters_upper_bound,
+                      aocommon::xt::Span<double, 4>& phase_basis,
+                      aocommon::xt::Span<double, 1>& residual) {
+  do_lbfgs_fit(nr_channel_blocks, subgrid_size, nr_antennas, nr_timeslots,
+               nr_terms, nr_correlations, lbfgs_max_iteations,
+               lbfgs_history_size, parameters, parameters_lower_bound,
+               parameters_upper_bound, phase_basis, residual);
+}
+
+void Proxy::calc_gradient(const int nr_channel_blocks, const int subgrid_size,
+                          const int nr_antennas, const int nr_timeslots,
+                          const int nr_terms, const int nr_correlations,
+                          aocommon::xt::Span<double, 3>& parameters,
+                          aocommon::xt::Span<double, 4>& phase_basis,
+                          aocommon::xt::Span<double, 3>& gradient) {
+  do_calc_gradient(nr_channel_blocks, subgrid_size, nr_antennas, nr_timeslots,
+                   nr_terms, nr_correlations, parameters, phase_basis,
+                   gradient);
 }
 
 void Proxy::calibrate_finish() { do_calibrate_finish(); }

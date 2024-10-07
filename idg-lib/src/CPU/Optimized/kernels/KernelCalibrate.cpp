@@ -383,11 +383,9 @@ void kernel_calc_cost(
     const unsigned int nr_terms, const unsigned int nr_time_slots,
     const idg::UVW<float>* uvw, const float* wavenumbers,
     std::complex<float>* visibilities, const float* weights,
-    const std::complex<float>* aterms,
-    const std::complex<float>* aterm_derivatives,
-    const unsigned int* aterm_indices, const idg::Metadata* metadata,
-    const std::complex<float>* subgrid, const std::complex<float>* phasors,
-    double* residual) {
+    const std::complex<double>* aterms, const unsigned int* aterm_indices,
+    const idg::Metadata* metadata, const std::complex<float>* subgrid,
+    const std::complex<float>* phasors, double* residual) {
 #if defined(USE_LOOKUP)
   initialize_lookup();
 #endif
@@ -451,48 +449,41 @@ void kernel_calc_cost(
             int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
             // Load pixel values
-            std::complex<float> pixels[nr_polarizations];
+            std::complex<double> pixels[nr_polarizations];
             for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
               size_t src_idx = index_subgrid(nr_polarizations, subgrid_size, s,
                                              pol, y_src, x_src);
-              pixels[pol] = subgrid[src_idx];
+              pixels[pol] = std::complex<double>(subgrid[src_idx].real(),
+                                                 subgrid[src_idx].imag());
             }
 
             // Get pointer to first aterm
-            std::complex<float>* aterm1_ptr;
+            std::complex<double>* aterm1_ptr;
 
-            if (term_nr == nr_terms) {
-              unsigned int station1_idx =
-                  index_aterm(subgrid_size, nr_polarizations, nr_stations,
-                              aterm_idx_current, station1, y, x, 0);
-              aterm1_ptr = (std::complex<float>*)&aterms[station1_idx];
-            } else {
-              unsigned int station1_idx =
-                  index_aterm(subgrid_size, nr_polarizations, nr_terms,
-                              aterm_idx_current, term_nr, y, x, 0);
-              aterm1_ptr =
-                  (std::complex<float>*)&aterm_derivatives[station1_idx];
-            }
+            unsigned int station1_idx =
+                index_aterm(subgrid_size, nr_polarizations, nr_stations,
+                            aterm_idx_current, station1, y, x, 0);
+            aterm1_ptr = (std::complex<double>*)&aterms[station1_idx];
 
             // Get pointer to second aterm
             unsigned int station2_idx =
                 index_aterm(subgrid_size, nr_polarizations, nr_stations,
                             aterm_idx_current, station2, y, x, 0);
-            std::complex<float>* aterm2_ptr =
-                (std::complex<float>*)&aterms[station2_idx];
+            std::complex<double>* aterm2_ptr =
+                (std::complex<double>*)&aterms[station2_idx];
 
             // Apply aterm
             apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
 
             // Store pixels
-            pixels_xx_real[term_nr][i] = pixels[0].real();
-            pixels_xy_real[term_nr][i] = pixels[1].real();
-            pixels_yx_real[term_nr][i] = pixels[2].real();
-            pixels_yy_real[term_nr][i] = pixels[3].real();
-            pixels_xx_imag[term_nr][i] = pixels[0].imag();
-            pixels_xy_imag[term_nr][i] = pixels[1].imag();
-            pixels_yx_imag[term_nr][i] = pixels[2].imag();
-            pixels_yy_imag[term_nr][i] = pixels[3].imag();
+            pixels_xx_real[term_nr][i] = (float)pixels[0].real();
+            pixels_xy_real[term_nr][i] = (float)pixels[1].real();
+            pixels_yx_real[term_nr][i] = (float)pixels[2].real();
+            pixels_yy_real[term_nr][i] = (float)pixels[3].real();
+            pixels_xx_imag[term_nr][i] = (float)pixels[0].imag();
+            pixels_xy_imag[term_nr][i] = (float)pixels[1].imag();
+            pixels_yx_imag[term_nr][i] = (float)pixels[2].imag();
+            pixels_yy_imag[term_nr][i] = (float)pixels[3].imag();
           }  // end for terms
         }    // end for pixels
 
@@ -569,7 +560,7 @@ void kernel_calc_cost(
   for (unsigned int s = 0; s < nr_subgrids; s++) {
     *residual += residual_local[s];
   }
-}  // end kernel_cost
+}  // end kernel_calc_cost
 
 void kernel_calc_gradient(
     const unsigned int nr_subgrids, const unsigned int nr_polarizations,
@@ -580,8 +571,8 @@ void kernel_calc_gradient(
     const unsigned int nr_terms, const unsigned int nr_time_slots,
     const idg::UVW<float>* uvw, const float* wavenumbers,
     std::complex<float>* visibilities, const float* weights,
-    const std::complex<float>* aterms,
-    const std::complex<float>* aterm_derivatives,
+    const std::complex<double>* aterms,
+    const std::complex<double>* aterm_derivatives,
     const unsigned int* aterm_indices, const idg::Metadata* metadata,
     const std::complex<float>* subgrid, const std::complex<float>* phasors,
     double* gradient) {
@@ -630,6 +621,24 @@ void kernel_calc_gradient(
     float pixels_yy_imag[(nr_terms + 1)][nr_pixels]
         __attribute__((aligned((ALIGNMENT))));
 
+    // Storage for derivative
+    float pixels_xx_real_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_xy_real_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_yx_real_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_yy_real_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_xx_imag_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_xy_imag_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_yx_imag_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+    float pixels_yy_imag_der[(nr_terms + 1)][nr_pixels]
+        __attribute__((aligned((ALIGNMENT))));
+
     // Iterate all timesteps
     for (unsigned int time = 0; time < nr_timesteps; time++) {
       // Get aterm indices for current timestep
@@ -650,48 +659,73 @@ void kernel_calc_gradient(
             int y_src = (y + (subgrid_size / 2)) % subgrid_size;
 
             // Load pixel values
-            std::complex<float> pixels[nr_polarizations];
+            std::complex<double> pixels[nr_polarizations];
             for (unsigned int pol = 0; pol < nr_polarizations; pol++) {
               size_t src_idx = index_subgrid(nr_polarizations, subgrid_size, s,
                                              pol, y_src, x_src);
-              pixels[pol] = subgrid[src_idx];
+              pixels[pol] = std::complex<double>(subgrid[src_idx].real(),
+                                                 subgrid[src_idx].imag());
             }
 
             // Get pointer to first aterm
-            std::complex<float>* aterm1_ptr;
+            std::complex<double>* aterm1_ptr;
 
+            unsigned int station1_idx;
             if (term_nr == nr_terms) {
-              unsigned int station1_idx =
+              station1_idx =
                   index_aterm(subgrid_size, nr_polarizations, nr_stations,
                               aterm_idx_current, station1, y, x, 0);
-              aterm1_ptr = (std::complex<float>*)&aterms[station1_idx];
             } else {
-              unsigned int station1_idx =
+              station1_idx =
                   index_aterm(subgrid_size, nr_polarizations, nr_terms,
                               aterm_idx_current, term_nr, y, x, 0);
-              aterm1_ptr =
-                  (std::complex<float>*)&aterm_derivatives[station1_idx];
             }
+            aterm1_ptr = (std::complex<double>*)&aterms[station1_idx];
 
             // Get pointer to second aterm
-            unsigned int station2_idx =
-                index_aterm(subgrid_size, nr_polarizations, nr_stations,
-                            aterm_idx_current, station2, y, x, 0);
-            std::complex<float>* aterm2_ptr =
-                (std::complex<float>*)&aterms[station2_idx];
+            std::complex<double>* aterm2_ptr;
+            unsigned int station2_idx;
+            if (term_nr == nr_terms) {
+              station2_idx =
+                  index_aterm(subgrid_size, nr_polarizations, nr_stations,
+                              aterm_idx_current, station2, y, x, 0);
+            } else {
+              station2_idx =
+                  index_aterm(subgrid_size, nr_polarizations, nr_terms,
+                              aterm_idx_current, term_nr, y, x, 0);
+            }
+            aterm2_ptr = (std::complex<double>*)&aterms[station2_idx];
 
             // Apply aterm
             apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
 
             // Store pixels
-            pixels_xx_real[term_nr][i] = pixels[0].real();
-            pixels_xy_real[term_nr][i] = pixels[1].real();
-            pixels_yx_real[term_nr][i] = pixels[2].real();
-            pixels_yy_real[term_nr][i] = pixels[3].real();
-            pixels_xx_imag[term_nr][i] = pixels[0].imag();
-            pixels_xy_imag[term_nr][i] = pixels[1].imag();
-            pixels_yx_imag[term_nr][i] = pixels[2].imag();
-            pixels_yy_imag[term_nr][i] = pixels[3].imag();
+            pixels_xx_real[term_nr][i] = (float)pixels[0].real();
+            pixels_xy_real[term_nr][i] = (float)pixels[1].real();
+            pixels_yx_real[term_nr][i] = (float)pixels[2].real();
+            pixels_yy_real[term_nr][i] = (float)pixels[3].real();
+            pixels_xx_imag[term_nr][i] = (float)pixels[0].imag();
+            pixels_xy_imag[term_nr][i] = (float)pixels[1].imag();
+            pixels_yx_imag[term_nr][i] = (float)pixels[2].imag();
+            pixels_yy_imag[term_nr][i] = (float)pixels[3].imag();
+
+            aterm1_ptr = (std::complex<double>*)&aterms[station1_idx];
+            aterm2_ptr =
+                (std::complex<double>*)&aterm_derivatives[station2_idx];
+
+            // Apply aterm
+            apply_aterm_degridder(pixels, aterm1_ptr, aterm2_ptr);
+
+            // Store pixels derivative
+            pixels_xx_real_der[term_nr][i] = (float)pixels[0].real();
+            pixels_xy_real_der[term_nr][i] = (float)pixels[1].real();
+            pixels_yx_real_der[term_nr][i] = (float)pixels[2].real();
+            pixels_yy_real_der[term_nr][i] = (float)pixels[3].real();
+            pixels_xx_imag_der[term_nr][i] = (float)pixels[0].imag();
+            pixels_xy_imag_der[term_nr][i] = (float)pixels[1].imag();
+            pixels_yx_imag_der[term_nr][i] = (float)pixels[2].imag();
+            pixels_yy_imag_der[term_nr][i] = (float)pixels[3].imag();
+
           }  // end for terms
         }    // end for pixels
 
@@ -747,6 +781,26 @@ void kernel_calc_gradient(
               visibilities[vis_idx].real() - sums_real[pol][nr_terms];
           visibility_res_imag[pol] =
               visibilities[vis_idx].imag() - sums_imag[pol][nr_terms];
+        }
+
+        // Re-use sums_real to store derivative
+        for (unsigned int term_nr = 0; term_nr < (nr_terms + 1); term_nr++) {
+          std::complex<float> sum[nr_polarizations]
+              __attribute__((aligned(ALIGNMENT)));
+
+          compute_reduction(
+              nr_pixels, pixels_xx_real_der[term_nr],
+              pixels_xy_real_der[term_nr], pixels_yx_real_der[term_nr],
+              pixels_yy_real_der[term_nr], pixels_xx_imag_der[term_nr],
+              pixels_xy_imag_der[term_nr], pixels_yx_imag_der[term_nr],
+              pixels_yy_imag_der[term_nr], phasor_real, phasor_imag, sum);
+
+          // Store and scale sums
+          const float scale = 1.0f / nr_pixels;
+          for (unsigned pol = 0; pol < nr_polarizations; pol++) {
+            sums_real[pol][term_nr] = sum[pol].real() * scale;
+            sums_imag[pol][term_nr] = sum[pol].imag() * scale;
+          }
         }
 
         // Update local residual and gradient

@@ -123,11 +123,11 @@ void OptimizedKernels::run_calibrate_phasor(KERNEL_CALIBRATE_PHASOR_ARGUMENTS) {
 void OptimizedKernels::run_calc_cost(KERNEL_COST_ARGUMENTS) {
   pmt::State states[2];
   states[0] = power_meter_->Read();
-  kernel_calc_cost(
-      nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
-      w_step_in_lambda, shift, max_nr_timesteps, nr_channels, nr_stations,
-      nr_terms, nr_time_slots, uvw, wavenumbers, visibilities, weights, aterms,
-      aterm_derivatives, aterm_indices, metadata, subgrid, phasors, residual);
+  kernel_calc_cost(nr_subgrids, nr_polarizations, grid_size, subgrid_size,
+                   image_size, w_step_in_lambda, shift, max_nr_timesteps,
+                   nr_channels, nr_stations, nr_terms, nr_time_slots, uvw,
+                   wavenumbers, visibilities, weights, aterms, aterm_indices,
+                   metadata, subgrid, phasors, residual);
   states[1] = power_meter_->Read();
   if (report_) {
     report_->update<Report::calibrate>(states[0], states[1]);

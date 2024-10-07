@@ -208,19 +208,29 @@ class Proxy {
       aocommon::xt::Span<double, 3>& gradient,
       aocommon::xt::Span<double, 1>& residual);
 
-  void calc_cost(
-      const int antenna_nr,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-          aterm_derivatives,
-      aocommon::xt::Span<double, 1>& residual);
+  void calc_cost(const int nr_channel_blocks, const int subgrid_size,
+                 const int nr_antennas, const int nr_timeslots,
+                 const int nr_terms, const int nr_correlations,
+                 aocommon::xt::Span<double, 3>& parameters,
+                 aocommon::xt::Span<double, 4>& phase_basis,
+                 aocommon::xt::Span<double, 1>& residual);
 
-  void calc_gradient(
-      const int antenna_nr,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-          aterm_derivatives,
-      aocommon::xt::Span<double, 3>& gradient);
+  void lbfgs_fit(const int nr_channel_blocks, const int subgrid_size,
+                 const int nr_antennas, const int nr_timeslots,
+                 const int nr_terms, const int nr_correlations,
+                 const int lbfgs_max_iteations, const int lbfgs_history_size,
+                 aocommon::xt::Span<double, 3>& parameters,
+                 aocommon::xt::Span<double, 3>& parameters_lower_bound,
+                 aocommon::xt::Span<double, 3>& parameters_upper_bound,
+                 aocommon::xt::Span<double, 4>& phase_basis,
+                 aocommon::xt::Span<double, 1>& residual);
+
+  void calc_gradient(const int nr_channel_blocks, const int subgrid_size,
+                     const int nr_antennas, const int nr_timeslots,
+                     const int nr_terms, const int nr_correlations,
+                     aocommon::xt::Span<double, 3>& parameters,
+                     aocommon::xt::Span<double, 4>& phase_basis,
+                     aocommon::xt::Span<double, 3>& gradient);
 
   /**
    * @brief Clean up after calibration cycle.
@@ -438,21 +448,34 @@ class Proxy {
         "do_calibrate_update is not implemented by this proxy");
   }
 
-  virtual void do_calc_cost(
-      const int antenna_nr,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-          aterm_derivatives,
-      aocommon::xt::Span<double, 1>& residual) {
+  virtual void do_calc_cost(const int nr_channel_blocks, const int subgrid_size,
+                            const int nr_antennas, const int nr_timeslots,
+                            const int nr_terms, const int nr_correlations,
+                            aocommon::xt::Span<double, 3>& parameters,
+                            aocommon::xt::Span<double, 4>& phase_basis,
+                            aocommon::xt::Span<double, 1>& residual) {
     throw std::runtime_error("do_calc_cost is not implemented by this proxy");
   }
 
-  virtual void do_calc_gradient(
-      const int antenna_nr,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-      const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-          aterm_derivatives,
-      aocommon::xt::Span<double, 3>& gradient) {
+  virtual void do_lbfgs_fit(
+      const int nr_channel_blocks, const int subgrid_size,
+      const int nr_antennas, const int nr_timeslots, const int nr_terms,
+      const int nr_correlations, const int lbfgs_max_iteations,
+      const int lbfgs_history_size, aocommon::xt::Span<double, 3>& parameters,
+      aocommon::xt::Span<double, 3>& parameters_lower_bound,
+      aocommon::xt::Span<double, 3>& parameters_upper_bound,
+      aocommon::xt::Span<double, 4>& phase_basis,
+      aocommon::xt::Span<double, 1>& residual) {
+    throw std::runtime_error("do_lbfgs_fit is not implemented by this proxy");
+  }
+
+  virtual void do_calc_gradient(const int nr_channel_blocks,
+                                const int subgrid_size, const int nr_antennas,
+                                const int nr_timeslots, const int nr_terms,
+                                const int nr_correlations,
+                                aocommon::xt::Span<double, 3>& parameters,
+                                aocommon::xt::Span<double, 4>& phase_basis,
+                                aocommon::xt::Span<double, 3>& gradient) {
     throw std::runtime_error(
         "do_calc_gradient is not implemented by this proxy");
   }

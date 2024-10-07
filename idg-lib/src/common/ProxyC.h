@@ -196,21 +196,30 @@ void Proxy_calibrate_update(struct Proxy* p, const unsigned int antenna_nr,
                             float complex* aterm_derivatives, double* hessian,
                             double* gradient, double* residual);
 
-void Proxy_calc_cost(struct Proxy* p, const unsigned int antenna_nr,
-                     const unsigned int nr_channel_blocks,
+void Proxy_calc_cost(struct Proxy* p, const unsigned int nr_channel_blocks,
                      const unsigned int subgrid_size,
-                     const unsigned int nr_stations,
-                     const unsigned int nr_time_slots,
-                     const unsigned int nr_terms, float complex* aterms,
-                     float complex* aterm_derivatives, double* residual);
+                     const unsigned int nr_antennas,
+                     const unsigned int nr_timeslots,
+                     const unsigned int nr_terms,
+                     const unsigned int nr_correlations, double* parameters,
+                     double* phase_basis, double* residual);
 
-void Proxy_calc_gradient(struct Proxy* p, const unsigned int antenna_nr,
-                         const unsigned int nr_channel_blocks,
+void Proxy_lbfgs_fit(
+    struct Proxy* p, const unsigned int nr_channel_blocks,
+    const unsigned int subgrid_size, const unsigned int nr_antennas,
+    const unsigned int nr_timeslots, const unsigned int nr_terms,
+    const unsigned int nr_correlations, const unsigned int lbfgs_max_iterations,
+    const unsigned int lbfgs_history_size, double* parameters,
+    double* parameters_lower_bound, double* parameters_upper_bound,
+    double* phase_basis, double* residual);
+
+void Proxy_calc_gradient(struct Proxy* p, const unsigned int nr_channel_blocks,
                          const unsigned int subgrid_size,
-                         const unsigned int nr_stations,
-                         const unsigned int nr_time_slots,
-                         const unsigned int nr_terms, float complex* aterms,
-                         float complex* aterm_derivatives, double* gradient);
+                         const unsigned int nr_antennas,
+                         const unsigned int nr_timeslots,
+                         const unsigned int nr_terms,
+                         const unsigned int nr_correlations, double* parameters,
+                         double* phase_basis, double* gradient);
 
 /**
  * Finish  calibration, free internal buffers

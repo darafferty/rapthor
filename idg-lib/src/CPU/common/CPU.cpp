@@ -5,9 +5,16 @@
 #include <memory>
 #include <climits>
 
+#include <xtensor/xview.hpp>
+
 #include "fftw3.h"
 
 #include "CPU.h"
+
+#ifdef HAVE_LIBDIRAC
+#include <Dirac.h>
+#undef complex
+#endif /* HAVE_LIBDIRAC */
 
 // #define DEBUG_COMPUTE_JOBSIZE
 
@@ -644,147 +651,681 @@ void CPU::do_calibrate_update(
                              current_nr_visibilities);
 }
 
-void CPU::do_calc_cost(
-    const int antenna_nr,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-        aterm_derivatives,
-    aocommon::xt::Span<double, 1>& residual) {
+namespace {
+
+#ifdef HAVE_LIBDIRAC
+struct lbfgs_idgcal_data {
+  const std::shared_ptr<kernel::cpu::InstanceCPU> m_kernels;
+  const aocommon::xt::Span<double, 4>& phase_basis;
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm;
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm_deriv;
+  aocommon::xt::Span<double, 4>& phase;
+  // gradient is not used in cost calculation
+  aocommon::xt::Span<double, 3>& local_gradient;
+  // following are fields in (unnamed) struct CPU::m_calibrate_state
+  std::vector<std::vector<std::unique_ptr<Plan>>>* plans;
+  size_t nr_baselines;
+  size_t nr_timesteps;
+  size_t nr_channels;
+  Tensor<float, 1>* wavenumbers;
+  Tensor<std::complex<float>, 6>* visibilities;
+  Tensor<float, 6>* weights;
+  Tensor<UVW<float>, 3>* uvw;
+  Tensor<std::pair<unsigned int, unsigned int>, 2>* baselines;
+  std::vector<Tensor<std::complex<float>, 4>>* subgrids;
+  std::vector<Tensor<std::complex<float>, 4>>* phasors;
+  std::vector<int>* max_nr_timesteps;
+  // following are fields in m_cache_state
+  size_t nr_polarizations;
+  size_t grid_size;
+  float image_size;
+  float w_step;
+  float* shift_ptr;
+  // following are from input (python) side
+  size_t nr_channel_blocks;
+  size_t subgrid_size;
+  size_t nr_antennas;
+  size_t nr_timeslots;
+  size_t nr_terms;
+  size_t nr_correlations;
+  // Note: some of the above might be duplicate/not needed - cleanup TBD
+
+  lbfgs_idgcal_data(
+      std::shared_ptr<kernel::cpu::InstanceCPU> m_kernels_,
+      aocommon::xt::Span<double, 4>& phase_basis_,
+      aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm_,
+      aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm_deriv_,
+      aocommon::xt::Span<double, 4>& phase_,
+      aocommon::xt::Span<double, 3>& local_gradient_,
+      std::vector<std::vector<std::unique_ptr<Plan>>>* plans_,
+      size_t nr_baselines_, size_t nr_timesteps_, size_t nr_channels_,
+      Tensor<float, 1>* wavenumbers_,
+      Tensor<std::complex<float>, 6>* visibilities_, Tensor<float, 6>* weights_,
+      Tensor<UVW<float>, 3>* uvw_,
+      Tensor<std::pair<unsigned int, unsigned int>, 2>* baselines_,
+      std::vector<Tensor<std::complex<float>, 4>>* subgrids_,
+      std::vector<Tensor<std::complex<float>, 4>>* phasors_,
+      std::vector<int>* max_nr_timesteps_, size_t nr_polarizations_,
+      size_t grid_size_, float image_size_, float w_step_, float* shift_ptr_,
+      size_t nr_channel_blocks_, size_t subgrid_size_, size_t nr_antennas_,
+      size_t nr_timeslots_, size_t nr_terms_, size_t nr_correlations_)
+      : m_kernels(m_kernels_),
+        phase_basis(phase_basis_),
+        aterm(aterm_),
+        aterm_deriv(aterm_deriv_),
+        phase(phase_),
+        local_gradient(local_gradient_),
+        plans(plans_),
+        nr_baselines(nr_baselines_),
+        nr_timesteps(nr_timesteps_),
+        nr_channels(nr_channels_),
+        wavenumbers(wavenumbers_),
+        visibilities(visibilities_),
+        weights(weights_),
+        uvw(uvw_),
+        baselines(baselines_),
+        subgrids(subgrids_),
+        phasors(phasors_),
+        max_nr_timesteps(max_nr_timesteps_),
+        nr_polarizations(nr_polarizations_),
+        grid_size(grid_size_),
+        image_size(image_size_),
+        w_step(w_step_),
+        shift_ptr(shift_ptr_),
+        nr_channel_blocks(nr_channel_blocks_),
+        subgrid_size(subgrid_size_),
+        nr_antennas(nr_antennas_),
+        nr_timeslots(nr_timeslots_),
+        nr_terms(nr_terms_),
+        nr_correlations(nr_correlations){};
+};
+#endif /* HAVE_LIBDIRAC */
+
+void do_calc_phase(const int nr_channel_blocks, const int subgrid_size,
+                   const int nr_antennas, const int nr_terms,
+                   aocommon::xt::Span<double, 3>& parameters,
+                   const aocommon::xt::Span<double, 4>& phase_basis,
+                   aocommon::xt::Span<double, 4>& phase) {
+  for (size_t i = 0; i < (size_t)nr_channel_blocks; i++) {
+    for (size_t j = 0; j < (size_t)nr_antennas; j++) {
+      for (size_t k = 0; k < (size_t)subgrid_size; k++) {
+#pragma omp parallel for
+        for (size_t l = 0; l < (size_t)subgrid_size; l++) {
+          double product = 0.0;
+#pragma GCC ivdep
+          for (size_t m = 0; m < (size_t)nr_terms; m++) {
+            // 0 for only using XX correlation of basis (scalar basis)
+            product += parameters(i, j, m) * phase_basis(m, k, l, 0);
+          }
+          phase(i, j, k, l) = product;
+        }
+      }
+    }
+  }
+}
+
+void do_calc_aterms(
+    const int nr_channel_blocks, const int subgrid_size, const int nr_antennas,
+    aocommon::xt::Span<double, 4>& phase,
+    aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm) {
+  for (size_t i = 0; i < (size_t)nr_channel_blocks; i++) {
+    for (size_t j = 0; j < (size_t)nr_antennas; j++) {
+      for (size_t k = 0; k < (size_t)subgrid_size; k++) {
+#pragma omp parallel for
+        for (size_t l = 0; l < (size_t)subgrid_size; l++) {
+          // 0 for having nr_phase_updates==1
+          Matrix2x2<std::complex<double>>& mat = aterm(i, 0, j, k, l);
+          double s, c;
+          sincos(phase(i, j, k, l), &s, &c);
+          // xy and yx are already set to zero
+          mat.xx.real(c);
+          mat.yy.real(c);
+          mat.xx.imag(s);
+          mat.yy.imag(s);
+        }
+      }
+    }
+  }
+}
+
+void do_calc_aterm_derivatives(
+    const int nr_channel_blocks, const int subgrid_size, const int antenna_nr,
+    const int nr_terms, const aocommon::xt::Span<double, 4>& phase_basis,
+    aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm,
+    aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm_deriv) {
+  for (size_t i = 0; i < (size_t)nr_channel_blocks; i++) {
+    for (size_t k = 0; k < (size_t)subgrid_size; k++) {
+#pragma omp parallel for
+      for (size_t l = 0; l < (size_t)subgrid_size; l++) {
+        // 0 for having nr_phase_updates==1
+        Matrix2x2<std::complex<double>>& phase_mat =
+            aterm(i, 0, antenna_nr, k, l);
+        for (size_t m = 0; m < (size_t)nr_terms; m++) {
+          // 0 for having only one antenna
+          Matrix2x2<std::complex<double>>& deriv_mat =
+              aterm_deriv(i, 0, m, k, l);
+          // scalar basis, to multiply phase_mat with a (scalar x j)
+          float basis = static_cast<float>(phase_basis(m, k, l, 0));
+          float xx_re = phase_mat.xx.real() * basis;
+          float xx_im = phase_mat.xx.imag() * basis;
+          float yy_re = phase_mat.yy.real() * basis;
+          float yy_im = phase_mat.yy.imag() * basis;
+          deriv_mat.xx.real(-xx_im);
+          deriv_mat.xx.imag(xx_re);
+          deriv_mat.yy.real(-yy_im);
+          deriv_mat.yy.imag(yy_re);
+        }
+      }
+    }
+  }
+}
+
+#ifdef HAVE_LIBDIRAC
+double lbfgs_cost_function(double* unknowns, int n_unknowns, void* extra_data) {
+  assert(extra_data);
+  const lbfgs_idgcal_data* lt =
+      reinterpret_cast<lbfgs_idgcal_data*>(extra_data);
+  assert(lt->wavenumbers);
+  assert(lt->visibilities);
+  assert(lt->weights);
+  assert(lt->uvw);
+  assert(lt->subgrids);
+  assert(lt->phasors);
+  assert(lt->max_nr_timesteps);
+  assert(lt->shift_ptr);
+  if (lt->plans->empty()) {
+    throw std::runtime_error("Calibration was not initialized. Can not update");
+  }
+
+  const std::array<size_t, 3> parameters_shape{
+      static_cast<size_t>(lt->nr_channel_blocks),
+      static_cast<size_t>(lt->nr_antennas), static_cast<size_t>(lt->nr_terms)};
+
+  aocommon::xt::Span<double, 3> parameters =
+      aocommon::xt::CreateSpan(unknowns, parameters_shape);
+
+  do_calc_phase(lt->nr_channel_blocks, lt->subgrid_size, lt->nr_antennas,
+                lt->nr_terms, parameters, lt->phase_basis, lt->phase);
+  do_calc_aterms(lt->nr_channel_blocks, lt->subgrid_size, lt->nr_antennas,
+                 lt->phase, lt->aterm);
+  const std::complex<double>* aterm_ptr =
+      reinterpret_cast<const std::complex<double>*>(lt->aterm.data());
+
+  float* wavenumbers_ptr = (*(lt->wavenumbers)).Span().data();
+  float* shift_ptr = lt->shift_ptr;
+
+  double total_residual = 0.0;
+  double residual;
+  double* residual_ptr = &residual;
+  for (size_t antenna_nr = 0; antenna_nr < lt->nr_antennas; antenna_nr++) {
+    const size_t nr_subgrids = (*(lt->plans))[antenna_nr][0]->get_nr_subgrids();
+    const unsigned int* aterm_idx_ptr =
+        (*(lt->plans))[antenna_nr][0]->get_aterm_indices_ptr();
+    const Metadata* metadata_ptr =
+        (*(lt->plans))[antenna_nr][0]->get_metadata_ptr();
+    const size_t max_nr_timesteps = (*(lt->max_nr_timesteps))[antenna_nr];
+    UVW<float>* uvw_ptr = &(*(lt->uvw)).Span()(antenna_nr, 0, 0);
+    std::complex<float>* visibilities_ptr =
+        reinterpret_cast<std::complex<float>*>(
+            &(*(lt->visibilities)).Span()(antenna_nr, 0, 0, 0, 0, 0));
+    float* weights_ptr = &(*(lt->weights)).Span()(antenna_nr, 0, 0, 0, 0, 0);
+    std::complex<float>* subgrids_ptr =
+        (*(lt->subgrids))[antenna_nr].Span().data();
+    std::complex<float>* phasors_ptr =
+        (*(lt->phasors))[antenna_nr].Span().data();
+    residual = 0.0;
+    lt->m_kernels->run_calc_cost(
+        nr_subgrids, lt->nr_polarizations, lt->grid_size, lt->subgrid_size,
+        lt->image_size, lt->w_step, shift_ptr, max_nr_timesteps,
+        lt->nr_channels, lt->nr_terms, lt->nr_antennas, lt->nr_timeslots,
+        uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr, aterm_ptr,
+        aterm_idx_ptr, metadata_ptr, subgrids_ptr, phasors_ptr, residual_ptr);
+    total_residual += residual;
+  }
+
+  return total_residual;
+}
+
+void lbfgs_grad_function(double* unknowns, double* gradient, int n_unknowns,
+                         void* extra_data) {
+  assert(extra_data);
+  const lbfgs_idgcal_data* lt =
+      reinterpret_cast<lbfgs_idgcal_data*>(extra_data);
+  assert(lt->wavenumbers);
+  assert(lt->visibilities);
+  assert(lt->weights);
+  assert(lt->uvw);
+  assert(lt->subgrids);
+  assert(lt->phasors);
+  assert(lt->max_nr_timesteps);
+  assert(lt->shift_ptr);
+  if (lt->plans->empty()) {
+    throw std::runtime_error("Calibration was not initialized. Can not update");
+  }
+
+  const std::array<size_t, 3> parameters_shape{
+      static_cast<size_t>(lt->nr_channel_blocks),
+      static_cast<size_t>(lt->nr_antennas), static_cast<size_t>(lt->nr_terms)};
+
+  aocommon::xt::Span<double, 3> parameters =
+      aocommon::xt::CreateSpan(unknowns, parameters_shape);
+  aocommon::xt::Span<double, 3> global_gradient =
+      aocommon::xt::CreateSpan(gradient, parameters_shape);
+
+  do_calc_phase(lt->nr_channel_blocks, lt->subgrid_size, lt->nr_antennas,
+                lt->nr_terms, parameters, lt->phase_basis, lt->phase);
+  do_calc_aterms(lt->nr_channel_blocks, lt->subgrid_size, lt->nr_antennas,
+                 lt->phase, lt->aterm);
+  const std::complex<double>* aterm_ptr =
+      reinterpret_cast<const std::complex<double>*>(lt->aterm.data());
+  const std::complex<double>* aterm_derivative_ptr =
+      reinterpret_cast<const std::complex<double>*>(lt->aterm_deriv.data());
+
+  float* wavenumbers_ptr = (*(lt->wavenumbers)).Span().data();
+  float* shift_ptr = lt->shift_ptr;
+
+  for (size_t antenna_nr = 0; antenna_nr < lt->nr_antennas; antenna_nr++) {
+    const size_t nr_subgrids = (*(lt->plans))[antenna_nr][0]->get_nr_subgrids();
+    const unsigned int* aterm_idx_ptr =
+        (*(lt->plans))[antenna_nr][0]->get_aterm_indices_ptr();
+    const Metadata* metadata_ptr =
+        (*(lt->plans))[antenna_nr][0]->get_metadata_ptr();
+    const size_t max_nr_timesteps = (*(lt->max_nr_timesteps))[antenna_nr];
+    UVW<float>* uvw_ptr = &(*(lt->uvw)).Span()(antenna_nr, 0, 0);
+    std::complex<float>* visibilities_ptr =
+        reinterpret_cast<std::complex<float>*>(
+            &(*(lt->visibilities)).Span()(antenna_nr, 0, 0, 0, 0, 0));
+    float* weights_ptr = &(*(lt->weights)).Span()(antenna_nr, 0, 0, 0, 0, 0);
+    std::complex<float>* subgrids_ptr =
+        (*(lt->subgrids))[antenna_nr].Span().data();
+    std::complex<float>* phasors_ptr =
+        (*(lt->phasors))[antenna_nr].Span().data();
+
+    // Update aterm_deriv for this antenna
+    memset(static_cast<void*>(lt->aterm_deriv.data()), 0,
+           sizeof(std::complex<double>) * lt->nr_channel_blocks * lt->nr_terms *
+               lt->subgrid_size * lt->subgrid_size * 4);
+
+    do_calc_aterm_derivatives(lt->nr_channel_blocks, lt->subgrid_size,
+                              antenna_nr, lt->nr_terms, lt->phase_basis,
+                              lt->aterm, lt->aterm_deriv);
+
+    double* gradient_ptr = lt->local_gradient.data();
+    lt->m_kernels->run_calc_gradient(
+        nr_subgrids, lt->nr_polarizations, lt->grid_size, lt->subgrid_size,
+        lt->image_size, lt->w_step, shift_ptr, max_nr_timesteps,
+        lt->nr_channels, lt->nr_terms, lt->nr_antennas, lt->nr_timeslots,
+        uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr, aterm_ptr,
+        aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr,
+        phasors_ptr, gradient_ptr);
+
+    for (size_t i = 0; i < global_gradient.shape(0); i++) {
+#pragma omp parallel for
+      for (size_t j = 0; j < global_gradient.shape(2); j++) {
+        global_gradient(i, antenna_nr, j) = lt->local_gradient(i, 0, j);
+      }
+    }
+  }
+}
+#endif /* HAVE_LIBDIRAC */
+
+}  // namespace
+
+// Following is obsolete, should be removed (after testing)
+void CPU::do_calc_cost(const int nr_channel_blocks, const int subgrid_size,
+                       const int nr_antennas, const int nr_timeslots,
+                       const int nr_terms, const int nr_correlations,
+                       aocommon::xt::Span<double, 3>& parameters,
+                       aocommon::xt::Span<double, 4>& phase_basis,
+                       aocommon::xt::Span<double, 1>& residual) {
   if (m_calibrate_state.plans.empty()) {
     throw std::runtime_error("Calibration was not initialized. Can not update");
   }
 
-  // Arguments
-  const size_t nr_subgrids =
-      m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+  const int ref_antenna_nr = 0;
+
+  /*
+   parameters: channel_blocks x antennas x nr_terms(coeffs), where nr_terms:
+   phase_updates x poly_coeffs
+
+   phase_basis: nr_terms(coeffs) x (grid x grid) x corr(=4), assumed to be
+   post-multiplied by [1,0; 0,1], hence will be assumed same for all 4
+   correlations
+
+   aterms (final shape): channel_blocks x phase_updates(=1) x  stations x (grid
+   x grid) x corr(=4) - last dim absorbed in mat2x2 Note: poly_coeffs is
+   collapsed in aterms because of dot product, parameters x basis =(collapse
+   into 1)
+
+   aterms_derivative (per station, final shape): channel_blocks x
+   stations(=1) x poly_coeffs x  (grid x grid) x corr(=4) - last dim absorbed in
+   mat2x2
+  */
+
+  // Extract metadata
   const size_t nr_channels = m_calibrate_state.wavenumbers.Span().size();
-  const size_t nr_terms = aterm_derivatives.shape(2);
-  const size_t subgrid_size = aterms.shape(4);
-  assert(subgrid_size == aterms.shape(3));
-  const size_t nr_stations = aterms.shape(2);
-  const size_t nr_timeslots = aterms.shape(1);
   const size_t nr_polarizations = get_grid().shape(1);
   const size_t grid_size = get_grid().shape(2);
   assert(get_grid().shape(3) == grid_size);
   const float image_size = grid_size * m_cache_state.cell_size;
   const float w_step = m_cache_state.w_step;
+  // Remainder of metadata provided by input arguments
 
-  // Performance measurement
-  if (antenna_nr == 0) {
-    get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
-  }
+  // Initialize performance measurement
+  get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
 
-  // Data pointers
+  const size_t nr_phase_updates = 1;
+  // Create aterms (per station) and aterms_deriv
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5> aterm =
+      Proxy::allocate_span<Matrix2x2<std::complex<double>>, 5>(
+          {(size_t)nr_channel_blocks, (size_t)nr_phase_updates,
+           (size_t)nr_antennas, (size_t)subgrid_size, (size_t)subgrid_size});
+  const std::complex<double>* aterm_ptr =
+      reinterpret_cast<const std::complex<double>*>(aterm.data());
+  memset(static_cast<void*>(aterm.data()), 0,
+         sizeof(std::complex<double>) * nr_channel_blocks * nr_phase_updates *
+             nr_antennas * subgrid_size * subgrid_size * 4);
+
+  // product of parameters[nr_channel_blocks,nr_antennas,0:nr_terms-1] x
+  // basis[0:nr_terms-1,grid,grid,corr] ->
+  // [nr_channel_blocks,nr_ant,1(nr_phase_updates),grid,grid,corr] ->
+  // [nr_channel_blocks,1,nr_ant,grid,grid,corr] == aterms
+
+  // create storage for phase : chan x ant x grid x grid
+  // dropping n_phase_updates(=1) and corr(phase is same for all 4 corr)
+  aocommon::xt::Span<double, 4> phase = Proxy::allocate_span<double, 4>(
+      {(size_t)nr_channel_blocks, (size_t)nr_antennas, (size_t)subgrid_size,
+       (size_t)subgrid_size});
+  do_calc_phase(nr_channel_blocks, subgrid_size, nr_antennas, nr_terms,
+                parameters, phase_basis, phase);
+
+  do_calc_aterms(nr_channel_blocks, subgrid_size, nr_antennas, phase, aterm);
+
+  // Data pointers common to all antennas
   float* shift_ptr = m_cache_state.shift.data();
   float* wavenumbers_ptr = m_calibrate_state.wavenumbers.Span().data();
-  const std::complex<float>* aterm_ptr =
-      reinterpret_cast<const std::complex<float>*>(aterms.data());
-  const std::complex<float>* aterm_derivative_ptr =
-      reinterpret_cast<const std::complex<float>*>(aterm_derivatives.data());
-  const unsigned int* aterm_idx_ptr =
-      m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
-  const Metadata* metadata_ptr =
-      m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
-  UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
-  std::complex<float>* visibilities_ptr =
-      reinterpret_cast<std::complex<float>*>(
-          &m_calibrate_state.visibilities.Span()(antenna_nr, 0, 0, 0, 0, 0));
-  float* weights_ptr =
-      &m_calibrate_state.weights.Span()(antenna_nr, 0, 0, 0, 0, 0);
-  std::complex<float>* subgrids_ptr =
-      m_calibrate_state.subgrids[antenna_nr].Span().data();
-  std::complex<float>* phasors_ptr =
-      m_calibrate_state.phasors[antenna_nr].Span().data();
   double* residual_ptr = residual.data();
 
-  const size_t max_nr_timesteps =
-      m_calibrate_state.max_nr_timesteps[antenna_nr];
+  double total_residual = 0;
+  for (size_t antenna_nr = 0; antenna_nr < (size_t)nr_antennas; antenna_nr++) {
+    const size_t nr_subgrids =
+        m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+    const unsigned int* aterm_idx_ptr =
+        m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
+    const Metadata* metadata_ptr =
+        m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
+    const size_t max_nr_timesteps =
+        m_calibrate_state.max_nr_timesteps[antenna_nr];
+    UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
+    std::complex<float>* visibilities_ptr =
+        reinterpret_cast<std::complex<float>*>(
+            &m_calibrate_state.visibilities.Span()(antenna_nr, 0, 0, 0, 0, 0));
+    float* weights_ptr =
+        &m_calibrate_state.weights.Span()(antenna_nr, 0, 0, 0, 0, 0);
+    std::complex<float>* subgrids_ptr =
+        m_calibrate_state.subgrids[antenna_nr].Span().data();
+    std::complex<float>* phasors_ptr =
+        m_calibrate_state.phasors[antenna_nr].Span().data();
 
-  // Run calibration update step
-  m_kernels->run_calc_cost(
-      nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
-      w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_stations,
-      nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
-      aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
-      subgrids_ptr, phasors_ptr, residual_ptr);
+    residual[0] = 0.0;
+    m_kernels->run_calc_cost(
+        nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+        w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_antennas,
+        nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
+        aterm_ptr, aterm_idx_ptr, metadata_ptr, subgrids_ptr, phasors_ptr,
+        residual_ptr);
+    total_residual += residual[0];
+  }
 
+  residual[0] = total_residual;
   // Performance reporting
-  const size_t current_nr_subgrids = nr_subgrids;
+  const size_t current_nr_subgrids =
+      m_calibrate_state.plans[ref_antenna_nr][0]->get_nr_subgrids();
   const size_t current_nr_timesteps =
-      m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
+      m_calibrate_state.plans[ref_antenna_nr][0]->get_nr_timesteps();
   const size_t current_nr_visibilities = current_nr_timesteps * nr_channels;
   get_report()->update_total(current_nr_subgrids, current_nr_timesteps,
                              current_nr_visibilities);
 }
 
-void CPU::do_calc_gradient(
-    const int antenna_nr,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>& aterms,
-    const aocommon::xt::Span<Matrix2x2<std::complex<float>>, 5>&
-        aterm_derivatives,
-    aocommon::xt::Span<double, 3>& gradient) {
+void CPU::do_lbfgs_fit(const int nr_channel_blocks, const int subgrid_size,
+                       const int nr_antennas, const int nr_timeslots,
+                       const int nr_terms, const int nr_correlations,
+                       const int lbfgs_max_iterations,
+                       const int lbfgs_history_size,
+                       aocommon::xt::Span<double, 3>& parameters,
+                       aocommon::xt::Span<double, 3>& parameters_lower_bound,
+                       aocommon::xt::Span<double, 3>& parameters_upper_bound,
+                       aocommon::xt::Span<double, 4>& phase_basis,
+                       aocommon::xt::Span<double, 1>& residual) {
+#ifdef HAVE_LIBDIRAC
   if (m_calibrate_state.plans.empty()) {
     throw std::runtime_error("Calibration was not initialized. Can not update");
   }
 
-  // Arguments
-  const size_t nr_subgrids =
-      m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+  const int ref_antenna_nr = 0;
+
+  /*
+   parameters: channel_blocks x antennas x nr_terms(coeffs), where nr_terms:
+   phase_updates x poly_coeffs
+
+   phase_basis: nr_terms(coeffs) x (grid x grid) x corr(=4), assumed to be
+   post-multiplied by [1,0; 0,1], hence will be assumed same for all 4
+   correlations
+
+   aterms (final shape): channel_blocks x phase_updates(=1) x  stations x (grid
+   x grid) x corr(=4) - last dim absorbed in mat2x2 Note: poly_coeffs is
+   collapsed in aterms because of dot product, parameters x basis =(collapse
+   into 1)
+
+   aterms_derivative (per station, final shape): channel_blocks x
+   stations(=1) x poly_coeffs x  (grid x grid) x corr(=4) - last dim absorbed in
+   mat2x2
+  */
+
+  // Extract metadata
   const size_t nr_channels = m_calibrate_state.wavenumbers.Span().size();
-  const size_t nr_terms = aterm_derivatives.shape(2);
-  const size_t subgrid_size = aterms.shape(4);
-  assert(subgrid_size == aterms.shape(3));
-  const size_t nr_stations = aterms.shape(2);
-  const size_t nr_timeslots = aterms.shape(1);
   const size_t nr_polarizations = get_grid().shape(1);
   const size_t grid_size = get_grid().shape(2);
   assert(get_grid().shape(3) == grid_size);
   const float image_size = grid_size * m_cache_state.cell_size;
   const float w_step = m_cache_state.w_step;
+  // Remainder of metadata provided by input arguments
 
-  // Performance measurement
-  if (antenna_nr == 0) {
-    get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
+  // Initialize performance measurement
+  get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
+
+  const size_t nr_phase_updates = 1;
+  // Create aterms (per station) and aterms_deriv
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5> aterm =
+      Proxy::allocate_span<Matrix2x2<std::complex<double>>, 5>(
+          {(size_t)nr_channel_blocks, (size_t)nr_phase_updates,
+           (size_t)nr_antennas, (size_t)subgrid_size, (size_t)subgrid_size});
+  const std::complex<double>* aterm_ptr =
+      reinterpret_cast<const std::complex<double>*>(aterm.data());
+  memset(static_cast<void*>(aterm.data()), 0,
+         sizeof(std::complex<double>) * nr_channel_blocks * nr_phase_updates *
+             nr_antennas * subgrid_size * subgrid_size * 4);
+
+  // product of parameters[nr_channel_blocks,nr_antennas,0:nr_terms-1] x
+  // basis[0:nr_terms-1,grid,grid,corr] ->
+  // [nr_channel_blocks,nr_ant,1(nr_phase_updates),grid,grid,corr] ->
+  // [nr_channel_blocks,1,nr_ant,grid,grid,corr] == aterms
+
+  // create storage for phase : chan x ant x grid x grid
+  // dropping n_phase_updates(=1) and corr(phase is same for all 4 corr)
+  aocommon::xt::Span<double, 4> phase = Proxy::allocate_span<double, 4>(
+      {(size_t)nr_channel_blocks, (size_t)nr_antennas, (size_t)subgrid_size,
+       (size_t)subgrid_size});
+
+  // 1 for one antenna
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5> aterm_deriv =
+      Proxy::allocate_span<Matrix2x2<std::complex<double>>, 5>(
+          {(size_t)nr_channel_blocks, 1, (size_t)nr_terms, (size_t)subgrid_size,
+           (size_t)subgrid_size});
+
+  // gradient storage is not used
+  aocommon::xt::Span<double, 3> local_gradient =
+      Proxy::allocate_span<double, 3>(
+          {(size_t)nr_channel_blocks, (size_t)1, (size_t)nr_terms});
+
+  lbfgs_idgcal_data lbfgs_dat(
+      m_kernels, phase_basis, aterm, aterm_deriv, phase, local_gradient,
+      &m_calibrate_state.plans, m_calibrate_state.nr_baselines,
+      m_calibrate_state.nr_timesteps, m_calibrate_state.nr_channels,
+      &m_calibrate_state.wavenumbers, &m_calibrate_state.visibilities,
+      &m_calibrate_state.weights, &m_calibrate_state.uvw,
+      &m_calibrate_state.baselines, &m_calibrate_state.subgrids,
+      &m_calibrate_state.phasors, &m_calibrate_state.max_nr_timesteps,
+      nr_polarizations, grid_size, image_size, w_step,
+      m_cache_state.shift.data(), (size_t)nr_channel_blocks,
+      (size_t)subgrid_size, (size_t)nr_antennas, (size_t)nr_timeslots,
+      (size_t)nr_terms, (size_t)nr_correlations);
+
+  int n_solutions = parameters.size();
+  lbfgsb_fit(lbfgs_cost_function, lbfgs_grad_function, parameters.data(),
+             parameters_lower_bound.data(), parameters_upper_bound.data(),
+             n_solutions, lbfgs_max_iterations, lbfgs_history_size,
+             (void*)&lbfgs_dat, nullptr);
+
+  // calculate residual
+  residual[0] =
+      lbfgs_cost_function(parameters.data(), n_solutions, (void*)&lbfgs_dat);
+  // Performance reporting
+  const size_t current_nr_subgrids =
+      m_calibrate_state.plans[ref_antenna_nr][0]->get_nr_subgrids();
+  const size_t current_nr_timesteps =
+      m_calibrate_state.plans[ref_antenna_nr][0]->get_nr_timesteps();
+  const size_t current_nr_visibilities = current_nr_timesteps * nr_channels;
+  get_report()->update_total(current_nr_subgrids, current_nr_timesteps,
+                             current_nr_visibilities);
+
+#endif /* HAVE_LIBDIRAC */
+}
+
+// Following is obsolete, should be removed (after testing)
+void CPU::do_calc_gradient(const int nr_channel_blocks, const int subgrid_size,
+                           const int nr_antennas, const int nr_timeslots,
+                           const int nr_terms, const int nr_correlations,
+                           aocommon::xt::Span<double, 3>& parameters,
+                           aocommon::xt::Span<double, 4>& phase_basis,
+                           aocommon::xt::Span<double, 3>& gradient) {
+  if (m_calibrate_state.plans.empty()) {
+    throw std::runtime_error("Calibration was not initialized. Can not update");
   }
 
-  // Data pointers
+  const int ref_antenna_nr = 0;
+
+  // Extract metadata
+  const size_t nr_channels = m_calibrate_state.wavenumbers.Span().size();
+  const size_t nr_polarizations = get_grid().shape(1);
+  const size_t grid_size = get_grid().shape(2);
+  assert(get_grid().shape(3) == grid_size);
+  const float image_size = grid_size * m_cache_state.cell_size;
+  const float w_step = m_cache_state.w_step;
+  // Remainder of metadata provided by input arguments
+
+  // Initialize performance measurement
+  get_report()->initialize(nr_channels, subgrid_size, 0, nr_terms);
+
+  const size_t nr_phase_updates = 1;  // equal to nr_timeslots ??
+  // Create aterms (per station) and aterms_deriv
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5> aterm =
+      Proxy::allocate_span<Matrix2x2<std::complex<double>>, 5>(
+          {(size_t)nr_channel_blocks, (size_t)nr_phase_updates,
+           (size_t)nr_antennas, (size_t)subgrid_size, (size_t)subgrid_size});
+  // 1 for one antenna
+  aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5> aterm_deriv =
+      Proxy::allocate_span<Matrix2x2<std::complex<double>>, 5>(
+          {(size_t)nr_channel_blocks, 1, (size_t)nr_terms, (size_t)subgrid_size,
+           (size_t)subgrid_size});
+  const std::complex<double>* aterm_ptr =
+      reinterpret_cast<const std::complex<double>*>(aterm.data());
+  const std::complex<double>* aterm_derivative_ptr =
+      reinterpret_cast<const std::complex<double>*>(aterm_deriv.data());
+  memset(static_cast<void*>(aterm.data()), 0,
+         sizeof(std::complex<double>) * nr_channel_blocks * nr_phase_updates *
+             nr_antennas * subgrid_size * subgrid_size * 4);
+
+  // product of parameters[nr_channel_blocks,nr_antennas,0:nr_terms-1] x
+  // basis[0:nr_terms-1,grid,grid,corr] ->
+  // [nr_channel_blocks,nr_ant,1(nr_phase_updates),grid,grid,corr] ->
+  // [nr_channel_blocks,1,nr_ant,grid,grid,corr] == aterms
+
+  // create storage for phase : chan x ant x grid x grid
+  // dropping n_phase_updates(=1) and corr(phase is same for all 4 corr)
+  aocommon::xt::Span<double, 4> phase = Proxy::allocate_span<double, 4>(
+      {(size_t)nr_channel_blocks, (size_t)nr_antennas, (size_t)subgrid_size,
+       (size_t)subgrid_size});
+  do_calc_phase(nr_channel_blocks, subgrid_size, nr_antennas, nr_terms,
+                parameters, phase_basis, phase);
+
+  do_calc_aterms(nr_channel_blocks, subgrid_size, nr_antennas, phase, aterm);
+
+  // Data pointers common to all antennas
   float* shift_ptr = m_cache_state.shift.data();
   float* wavenumbers_ptr = m_calibrate_state.wavenumbers.Span().data();
-  const std::complex<float>* aterm_ptr =
-      reinterpret_cast<const std::complex<float>*>(aterms.data());
-  const std::complex<float>* aterm_derivative_ptr =
-      reinterpret_cast<const std::complex<float>*>(aterm_derivatives.data());
-  const unsigned int* aterm_idx_ptr =
-      m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
-  const Metadata* metadata_ptr =
-      m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
-  UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
-  std::complex<float>* visibilities_ptr =
-      reinterpret_cast<std::complex<float>*>(
-          &m_calibrate_state.visibilities.Span()(antenna_nr, 0, 0, 0, 0, 0));
-  float* weights_ptr =
-      &m_calibrate_state.weights.Span()(antenna_nr, 0, 0, 0, 0, 0);
-  std::complex<float>* subgrids_ptr =
-      m_calibrate_state.subgrids[antenna_nr].Span().data();
-  std::complex<float>* phasors_ptr =
-      m_calibrate_state.phasors[antenna_nr].Span().data();
-  double* gradient_ptr = gradient.data();
+  // Gradient for accumulation for one antenna
+  aocommon::xt::Span<double, 3> local_gradient =
+      Proxy::allocate_span<double, 3>(
+          {(size_t)nr_channel_blocks, (size_t)1, (size_t)nr_terms});
+  /* const std::array<size_t, 3> param_shape{
+      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_antennas),
+      static_cast<size_t>(nr_terms)};
 
-  const size_t max_nr_timesteps =
-      m_calibrate_state.max_nr_timesteps[antenna_nr];
+      const std::array<size_t, 3> gradient_shape{
+      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_timeslots),
+      static_cast<size_t>(nr_terms)};
+      */
 
-  // Run calibration update step
-  m_kernels->run_calc_gradient(
-      nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
-      w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_stations,
-      nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
-      aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
-      subgrids_ptr, phasors_ptr, gradient_ptr);
+  for (size_t antenna_nr = 0; antenna_nr < (size_t)nr_antennas; antenna_nr++) {
+    const size_t nr_subgrids =
+        m_calibrate_state.plans[antenna_nr][0]->get_nr_subgrids();
+    const unsigned int* aterm_idx_ptr =
+        m_calibrate_state.plans[antenna_nr][0]->get_aterm_indices_ptr();
+    const Metadata* metadata_ptr =
+        m_calibrate_state.plans[antenna_nr][0]->get_metadata_ptr();
+    const size_t max_nr_timesteps =
+        m_calibrate_state.max_nr_timesteps[antenna_nr];
+    UVW<float>* uvw_ptr = &m_calibrate_state.uvw.Span()(antenna_nr, 0, 0);
+    std::complex<float>* visibilities_ptr =
+        reinterpret_cast<std::complex<float>*>(
+            &m_calibrate_state.visibilities.Span()(antenna_nr, 0, 0, 0, 0, 0));
+    float* weights_ptr =
+        &m_calibrate_state.weights.Span()(antenna_nr, 0, 0, 0, 0, 0);
+    std::complex<float>* subgrids_ptr =
+        m_calibrate_state.subgrids[antenna_nr].Span().data();
+    std::complex<float>* phasors_ptr =
+        m_calibrate_state.phasors[antenna_nr].Span().data();
+
+    // Update aterm_deriv for this antenna
+    memset(static_cast<void*>(aterm_deriv.data()), 0,
+           sizeof(std::complex<double>) * nr_channel_blocks * nr_terms *
+               subgrid_size * subgrid_size * 4);
+
+    do_calc_aterm_derivatives(nr_channel_blocks, subgrid_size, antenna_nr,
+                              nr_terms, phase_basis, aterm, aterm_deriv);
+
+    double* gradient_ptr = local_gradient.data();
+    m_kernels->run_calc_gradient(
+        nr_subgrids, nr_polarizations, grid_size, subgrid_size, image_size,
+        w_step, shift_ptr, max_nr_timesteps, nr_channels, nr_terms, nr_antennas,
+        nr_timeslots, uvw_ptr, wavenumbers_ptr, visibilities_ptr, weights_ptr,
+        aterm_ptr, aterm_derivative_ptr, aterm_idx_ptr, metadata_ptr,
+        subgrids_ptr, phasors_ptr, gradient_ptr);
+
+    for (size_t i = 0; i < gradient.shape(0); i++) {
+      for (size_t j = 0; j < gradient.shape(2); j++) {
+        gradient(i, antenna_nr, j) = local_gradient(i, 0, j);
+      }
+    }
+  }
 
   // Performance reporting
-  const size_t current_nr_subgrids = nr_subgrids;
+  const size_t current_nr_subgrids =
+      m_calibrate_state.plans[ref_antenna_nr][0]->get_nr_subgrids();
   const size_t current_nr_timesteps =
-      m_calibrate_state.plans[antenna_nr][0]->get_nr_timesteps();
+      m_calibrate_state.plans[ref_antenna_nr][0]->get_nr_timesteps();
   const size_t current_nr_visibilities = current_nr_timesteps * nr_channels;
   get_report()->update_total(current_nr_subgrids, current_nr_timesteps,
                              current_nr_visibilities);
