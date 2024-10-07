@@ -21,6 +21,7 @@ arguments:
   - predict.applycal.steps=[fastphase]
   - predict.applycal.fastphase.correction=phase000
   - predict.usebeammodel=True
+  - predict.beam_interval=120
   - predict.beammode=array_factor
   - msout.storagemanager=Dysco
   - msout.storagemanager.databitrate=0
