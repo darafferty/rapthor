@@ -100,9 +100,9 @@ class LBFGSB():
             y=g-g_old
             s=self.x-x_old
 
-            print(f'iter {n_iter} cost {f:.3e} grad norm {np.linalg.norm(g):.3e}')
+            print(f'iter {n_iter} cost {f} grad norm {np.linalg.norm(g)}')
 
-            curv=abs(s.transpose() @ y)
+            curv=(s.transpose() @ y)
             if (curv<self.eps):
                 print('Warning: negative curvature detected, skipping update')
                 n_iter+=1

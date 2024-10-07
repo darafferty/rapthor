@@ -232,66 +232,88 @@ void Proxy_calibrate_update(
                   gradient_span, residual_span);
 }
 
-void Proxy_calc_cost(struct Proxy* p, const unsigned int antenna_nr,
-                     const unsigned int nr_channel_blocks,
+void Proxy_calc_cost(struct Proxy* p, const unsigned int nr_channel_blocks,
                      const unsigned int subgrid_size,
                      const unsigned int nr_antennas,
                      const unsigned int nr_timeslots,
-                     const unsigned int nr_terms, std::complex<float>* aterms,
-                     std::complex<float>* aterm_derivatives, double* residual) {
-  const std::array<size_t, 5> aterms_shape{
-      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_timeslots),
-      static_cast<size_t>(nr_antennas), static_cast<size_t>(subgrid_size),
-      static_cast<size_t>(subgrid_size)};
-  const std::array<size_t, 5> aterm_derivatives_shape{
-      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_timeslots),
+                     const unsigned int nr_terms,
+                     const unsigned int nr_correlations, double* parameters,
+                     double* phase_basis, double* residual) {
+  const std::array<size_t, 3> param_shape{
+      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_antennas),
+      static_cast<size_t>(nr_terms)};
+  const std::array<size_t, 4> phase_basis_shape{
       static_cast<size_t>(nr_terms), static_cast<size_t>(subgrid_size),
-      static_cast<size_t>(subgrid_size)};
-  const std::array<size_t, 1> residual_shape{
-      static_cast<size_t>(nr_channel_blocks)};
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(nr_correlations)};
+  const std::array<size_t, 1> residual_shape{static_cast<size_t>(1)};
 
-  auto aterms_span = aocommon::xt::CreateSpan(
-      reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
-      aterms_shape);
-  auto aterm_derivatives_span = aocommon::xt::CreateSpan(
-      reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives),
-      aterm_derivatives_shape);
+  auto param_span = aocommon::xt::CreateSpan(parameters, param_shape);
   auto residual_span = aocommon::xt::CreateSpan(residual, residual_shape);
+  auto phase_basis_span =
+      aocommon::xt::CreateSpan(phase_basis, phase_basis_shape);
 
   ExitOnException(&idg::proxy::Proxy::calc_cost,
-                  reinterpret_cast<idg::proxy::Proxy*>(p), antenna_nr,
-                  aterms_span, aterm_derivatives_span, residual_span);
+                  reinterpret_cast<idg::proxy::Proxy*>(p), nr_channel_blocks,
+                  subgrid_size, nr_antennas, nr_timeslots, nr_terms,
+                  nr_correlations, param_span, phase_basis_span, residual_span);
 }
 
-void Proxy_calc_gradient(
-    struct Proxy* p, const unsigned int antenna_nr,
-    const unsigned int nr_channel_blocks, const unsigned int subgrid_size,
-    const unsigned int nr_antennas, const unsigned int nr_timeslots,
-    const unsigned int nr_terms, std::complex<float>* aterms,
-    std::complex<float>* aterm_derivatives, double* gradient) {
-  const std::array<size_t, 5> aterms_shape{
-      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_timeslots),
-      static_cast<size_t>(nr_antennas), static_cast<size_t>(subgrid_size),
-      static_cast<size_t>(subgrid_size)};
-  const std::array<size_t, 5> aterm_derivatives_shape{
-      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_timeslots),
-      static_cast<size_t>(nr_terms), static_cast<size_t>(subgrid_size),
-      static_cast<size_t>(subgrid_size)};
-  const std::array<size_t, 3> gradient_shape{
-      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_timeslots),
+void Proxy_lbfgs_fit(
+    struct Proxy* p, const unsigned int nr_channel_blocks,
+    const unsigned int subgrid_size, const unsigned int nr_antennas,
+    const unsigned int nr_timeslots, const unsigned int nr_terms,
+    const unsigned int nr_correlations, const unsigned int lbfgs_max_iterations,
+    const unsigned int lbfgs_history_size, double* parameters,
+    double* parameters_lower_bound, double* parameters_upper_bound,
+    double* phase_basis, double* residual) {
+  const std::array<size_t, 3> param_shape{
+      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_antennas),
       static_cast<size_t>(nr_terms)};
+  const std::array<size_t, 4> phase_basis_shape{
+      static_cast<size_t>(nr_terms), static_cast<size_t>(subgrid_size),
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(nr_correlations)};
+  const std::array<size_t, 1> residual_shape{static_cast<size_t>(1)};
 
-  auto aterms_span = aocommon::xt::CreateSpan(
-      reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterms),
-      aterms_shape);
-  auto aterm_derivatives_span = aocommon::xt::CreateSpan(
-      reinterpret_cast<idg::Matrix2x2<std::complex<float>>*>(aterm_derivatives),
-      aterm_derivatives_shape);
-  auto gradient_span = aocommon::xt::CreateSpan(gradient, gradient_shape);
+  auto param_span = aocommon::xt::CreateSpan(parameters, param_shape);
+  auto lower_bound_span =
+      aocommon::xt::CreateSpan(parameters_lower_bound, param_shape);
+  auto upper_bound_span =
+      aocommon::xt::CreateSpan(parameters_upper_bound, param_shape);
+  auto residual_span = aocommon::xt::CreateSpan(residual, residual_shape);
+  auto phase_basis_span =
+      aocommon::xt::CreateSpan(phase_basis, phase_basis_shape);
+
+  ExitOnException(
+      &idg::proxy::Proxy::lbfgs_fit, reinterpret_cast<idg::proxy::Proxy*>(p),
+      nr_channel_blocks, subgrid_size, nr_antennas, nr_timeslots, nr_terms,
+      nr_correlations, lbfgs_max_iterations, lbfgs_history_size, param_span,
+      lower_bound_span, upper_bound_span, phase_basis_span, residual_span);
+}
+
+void Proxy_calc_gradient(struct Proxy* p, const unsigned int nr_channel_blocks,
+                         const unsigned int subgrid_size,
+                         const unsigned int nr_antennas,
+                         const unsigned int nr_timeslots,
+                         const unsigned int nr_terms,
+                         const unsigned int nr_correlations, double* parameters,
+                         double* phase_basis, double* gradient) {
+  const std::array<size_t, 3> param_shape{
+      static_cast<size_t>(nr_channel_blocks), static_cast<size_t>(nr_antennas),
+      static_cast<size_t>(nr_terms)};
+  const std::array<size_t, 4> phase_basis_shape{
+      static_cast<size_t>(nr_terms), static_cast<size_t>(subgrid_size),
+      static_cast<size_t>(subgrid_size), static_cast<size_t>(nr_correlations)};
+
+  // Reuse shape for parameters and gradient
+  auto param_span = aocommon::xt::CreateSpan(parameters, param_shape);
+  auto gradient_span = aocommon::xt::CreateSpan(gradient, param_shape);
+  auto phase_basis_span =
+      aocommon::xt::CreateSpan(phase_basis, phase_basis_shape);
 
   ExitOnException(&idg::proxy::Proxy::calc_gradient,
-                  reinterpret_cast<idg::proxy::Proxy*>(p), antenna_nr,
-                  aterms_span, aterm_derivatives_span, gradient_span);
+                  reinterpret_cast<idg::proxy::Proxy*>(p), nr_channel_blocks,
+                  subgrid_size, nr_antennas, nr_timeslots, nr_terms,
+                  nr_correlations, param_span, phase_basis_span, gradient_span);
 }
 
 void Proxy_calibrate_finish(struct Proxy* p) {

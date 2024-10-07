@@ -117,11 +117,9 @@ class InstanceCPU : public KernelsInstance {
       const unsigned int nr_stations, const unsigned int nr_time_slots,     \
       const idg::UVW<float>*uvw, const float *wavenumbers,                  \
       std::complex<float>*visibilities, const float *weights,               \
-      const std::complex<float>*aterms,                                     \
-      const std::complex<float>*aterm_derivatives,                          \
-      const unsigned int *aterm_indices, const idg::Metadata *metadata,     \
-      const std::complex<float>*subgrid, const std::complex<float>*phasors, \
-      double *residual
+      const std::complex<double>*aterms, const unsigned int *aterm_indices, \
+      const idg::Metadata *metadata, const std::complex<float>*subgrid,     \
+      const std::complex<float>*phasors, double *residual
   virtual void run_calc_cost(KERNEL_COST_ARGUMENTS){};
 
 #define KERNEL_GRADIENT_ARGUMENTS                                           \
@@ -133,8 +131,8 @@ class InstanceCPU : public KernelsInstance {
       const unsigned int nr_stations, const unsigned int nr_time_slots,     \
       const idg::UVW<float>*uvw, const float *wavenumbers,                  \
       std::complex<float>*visibilities, const float *weights,               \
-      const std::complex<float>*aterms,                                     \
-      const std::complex<float>*aterm_derivatives,                          \
+      const std::complex<double>*aterms,                                    \
+      const std::complex<double>*aterm_derivatives,                         \
       const unsigned int *aterm_indices, const idg::Metadata *metadata,     \
       const std::complex<float>*subgrid, const std::complex<float>*phasors, \
       double *gradient
