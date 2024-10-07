@@ -895,7 +895,7 @@ class Field(object):
         # (patches)
         self.log.info('Plotting field overview with calibration patches...')
         if index == 1 or final:
-            # Check the sky model bounds, as they may by differ from the sector ones
+            # Check the sky model bounds, as they may differ from the sector ones
             check_skymodel_bounds = True
         else:
             # Sky model bounds will always match the sector ones
@@ -1765,7 +1765,7 @@ class Field(object):
                 if initial_skymodel_radius > 0:
                     skymodel_bounds_width_ra = skymodel_bounds_width_dec = initial_skymodel_radius * 2  # deg
                 else:
-                    # User-supplied sky model: estimate the size from as the maximum distance
+                    # User-supplied sky model: estimate the size from the maximum distance
                     # of any patch from the phase center (plus 20% padding)
                     _, distances = self.get_source_distances(self.calibrator_positions)
                     skymodel_bounds_width_ra = skymodel_bounds_width_dec = 2 * 1.2 * np.max(distances)  # deg
