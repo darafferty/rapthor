@@ -57,7 +57,7 @@ selfcal_data_fraction = 0.2
 final_data_fraction = 1.0
 
 # Flagging ranges (default = no flagging). A range of times, baselines, and
-# frequencies to flag can be specified (see the DPPP documentation for details
+# frequencies to flag can be specified (see the DP3 documentation for details
 # of the syntax). By default, the ranges are AND-ed to produce the final flags,
 # but a set expression can be specified that controls how the selections are
 # combined. Examples:

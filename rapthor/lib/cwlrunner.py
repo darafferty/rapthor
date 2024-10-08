@@ -27,7 +27,7 @@ class CWLRunner:
     """
     def __init__(self, operation: Operation) -> None:
         """
-        Initalizer
+        Initializer
         """
         self.args = []
         self.command = None
