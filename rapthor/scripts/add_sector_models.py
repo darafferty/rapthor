@@ -146,7 +146,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
     print('add_sector_models: Using {} chunk(s)'.format(nchunks))
 
     # Open output table and add output column if needed
-    msout = os.path.basename(model_list[0]).rstrip('_modeldata') + '_di.ms'
+    msout = os.path.basename(model_list[0]).removesuffix('_modeldata') + '_di.ms'
     if os.path.exists(msout):
         # File may exist from a previous iteration; delete it if so
         misc.delete_directory(msout)

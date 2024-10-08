@@ -362,7 +362,7 @@ def main(msin, model_list, msin_column='DATA', model_column='DATA',
         elif nr_bright > 0 and i == len(model_list)-nr_bright:
             # Break so we don't open output tables for the bright sources
             break
-        msout = os.path.basename(msmod).rstrip('_modeldata')
+        msout = os.path.basename(msmod).removesuffix('_modeldata')
 
         # Use subprocess to call 'cp' to ensure that the copied version has the
         # default permissions (e.g., so it's not read only)
