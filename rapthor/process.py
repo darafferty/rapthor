@@ -1,5 +1,5 @@
 """
-Module that preforms the processing
+Module that performs the processing
 """
 import logging
 from rapthor import _logging
@@ -97,7 +97,7 @@ def run(parset_file, logging_level='info'):
     # Run a final pass if needed
     if do_final_pass(field, selfcal_steps, final_step):
         if selfcal_steps:
-            # If selfcal was done, set peel_outliers to that of initial iteration, since the
+            # If selfcal was done, set peel_outliers to that of the initial iteration, since the
             # observations will be regenerated and outliers (if any) need to be peeled again
             final_step['peel_outliers'] = selfcal_steps[0]['peel_outliers']
             log.info("Starting final iteration with a data fraction of "
