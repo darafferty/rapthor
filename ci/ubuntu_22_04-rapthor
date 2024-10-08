@@ -11,3 +11,5 @@ ARG VERSION=0.0.0
 RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${VERSION} \
     python3 -m pip install --no-cache-dir --upgrade /tmp/rapthor && \
     rm -rf /tmp/rapthor
+
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam

@@ -223,3 +223,6 @@ COPY . /tmp/rapthor
 RUN SETUPTOOLS_SCM_PRETEND_VERSION_FOR_RAPTHOR=${VERSION} \
     python3 -m pip install --upgrade --no-cache-dir /tmp/rapthor
 RUN rm -rf /tmp/*
+
+# Set environment variables needed at run-time
+ENV EVERYBEAM_DATADIR=/usr/local/share/everybeam
