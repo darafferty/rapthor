@@ -22,6 +22,7 @@ arguments:
   - solve.type=ddecal
   - solve.mode=diagonal
   - solve.usebeammodel=True
+  - solve.beam_interval=120
   - solve.beammode=array_factor
   - solve.applycal.steps=[fastphase,slowamp]
   - solve.applycal.fastphase.correction=phase000

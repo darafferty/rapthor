@@ -19,6 +19,7 @@ arguments:
   - solve.type=ddecal
   - solve.mode=fulljones
   - solve.usebeammodel=True
+  - solve.beam_interval=120
   - solve.beammode=array_factor
   - solve.modeldatacolumns=[MODEL_DATA]
 
