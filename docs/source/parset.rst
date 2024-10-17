@@ -503,7 +503,14 @@ The available options are described below under their respective sections.
     batch_system
         Cluster batch system (only used when Toil is the CWL runner; default =
         ``single_machine``). Use ``single_machine`` when running on a single machine and
-        ``slurm`` to use multiple nodes of a SLURM-based cluster.
+        ``slurm`` to use multiple nodes of a Slurm-based cluster.
+        .. note::
+
+            When using the ``slurm`` batch system, additional Slurm arguments can be
+            passed to Toil by setting the ``TOIL_SLURM_ARGS`` environment variable in
+            your environment before running Rapthor. See the Toil
+            `environment variables <https://toil.readthedocs.io/en/latest/appendices/environment_vars.html>`_
+            page for details.
 
     max_nodes
         When :term:`batch_system` = ``slurm``, the maximum number of nodes of the cluster

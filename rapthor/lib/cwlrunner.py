@@ -156,9 +156,13 @@ class ToilRunner(CWLRunner):
         """
         super().__init__(operation)
         self.command = "toil-cwl-runner"
+        self.user_env_variables = os.environ.copy()
         self.toil_env_variables = {
             "TOIL_SLURM_ARGS": "--export=ALL"
         }
+        if "TOIL_SLURM_ARGS" in self.user_env_variables:
+            # Add user-defined args
+            self.toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.user_env_variables["TOIL_SLURM_ARGS"]
 
     def setup(self):
         """
@@ -225,7 +229,11 @@ class ToilRunner(CWLRunner):
         Clean up after the runner has run.
         """
         for key in self.toil_env_variables:
-            del os.environ[key]
+            if key in self.user_env_variables:
+                # If the env variable already existed, reset it to that value
+                os.environ[key] = self.user_env_variables[key]
+            else:
+                del os.environ[key]
         super().teardown()
         if not self.operation.debug_workflow:
             # Use the logs to find the temporary directory we ran in.
