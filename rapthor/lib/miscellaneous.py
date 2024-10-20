@@ -1075,7 +1075,7 @@ def rename_skymodel_patches(skymodel, order_dec='high_to_low', order_ra='high_to
 
         # Rename the patches in the model's table metadata
         for old_name in names:
-            new_name = f'Patch_{patch_index}'
+            new_name = f'Patch{patch_index}'
             patch_dict[new_name] = patch_positions[old_name]
             patch_col[skymodel.getRowIndex(old_name)] = new_name
             patch_index += 1
