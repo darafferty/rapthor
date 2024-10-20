@@ -395,7 +395,7 @@ def make_ds9_region_file(facets, outfile):
         for ra, dec in zip(RAs, Decs):
             radec_list.append('{0}, {1}'.format(ra, dec))
         lines.append('polygon({0})\n'.format(', '.join(radec_list)))
-        lines.append('point({0}, {1}) # text={2}\n'.format(facet.ra, facet.dec, facet.name))
+        lines.append('point({0}, {1}) # text={{{2}}}\n'.format(facet.ra, facet.dec, facet.name))
 
     with open(outfile, 'w') as f:
         f.writelines(lines)
