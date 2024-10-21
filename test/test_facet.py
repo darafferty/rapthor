@@ -69,10 +69,17 @@ class TestFacet(unittest.TestCase):
                 all_present = False
         self.assertTrue(all_present, msg='polys: {0}, control: {1}'.format(facet_polys_flat, facet_polys_control_flat))
 
+    def test_read_ds9_region_file(self):
+        facets = facet.read_ds9_region_file('resources/test.reg')
+        self.assertEqual(len(facets), 15)
+        self.assertEqual(facets[0].name, 'Patch_1')
+        self.assertEqual(facets[0].ra, 318.2026666666666)
+        self.assertEqual(facets[0].dec, 62.250559277777775)
 
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestFacet('test_make_facet_polygons'))
+    suite.addTest(TestFacet('test_read_ds9_region_file'))
     return suite
 
 
