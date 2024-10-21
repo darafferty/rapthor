@@ -9,7 +9,6 @@ import glob
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.operation import Operation
 from rapthor.lib.cwl import CWLFile, CWLDir
-import numpy as np
 
 log = logging.getLogger('rapthor:image')
 
