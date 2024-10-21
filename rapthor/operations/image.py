@@ -398,11 +398,7 @@ class ImageInitial(Operation):
         imaging_parameters['max_uv_lambda'] = 1e6
         imaging_parameters['reweight'] = False
         imaging_parameters['dd_psf_grid'] = [1, 1]
-        mean_data_fraction = np.mean([obs.data_fraction for obs in sector.observations])
-        # Set the max number of major iterations. Experimentation has found that it
-        # roughly scales with the sqrt of the amount of data, but don't let it fall below
-        # six or exceed 12, as these are the practical limits for proper cleaning
-        sector.max_nmiter = max(6, int(12 * np.sqrt(mean_data_fraction)))
+        sector.max_nmiter = 8  # stop at 8 major iterations, as beyond that little improvement expected
         sector.set_imaging_parameters(do_multiscale=True, imaging_parameters=imaging_parameters)
         image_root = [sector.name]
 
@@ -447,7 +443,7 @@ class ImageInitial(Operation):
                             'link_polarizations': False,
                             'join_polarizations': False,
                             'apply_amplitudes': [False],
-                            'channels_out': [sector.wsclean_nchannels],
+                            'channels_out': [min(8, sector.wsclean_nchannels)],  # ~ 4 MHz per channel but no more than 8
                             'deconvolution_channels': [sector.wsclean_deconvolution_channels],
                             'fit_spectral_pol': [sector.wsclean_spectral_poly_order],
                             'ra': [sector.ra],
