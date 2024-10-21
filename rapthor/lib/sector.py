@@ -192,7 +192,7 @@ class Sector(object):
         min_freq = np.min([obs.startfreq for obs in self.observations])
         target_bandwidth = 4e6 * min_freq / 120e6
         max_nchannels = np.max([obs.numchannels for obs in self.observations])
-        min_nchannels = 1
+        min_nchannels = 4
         tot_bandwidth = 0.0
         for obs in self.observations:
             # Find observation with largest bandwidth
