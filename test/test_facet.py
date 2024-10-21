@@ -10,7 +10,6 @@ class TestFacet(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
-        pass
 
     def test_make_facet_polygons(self):
         # Test a region that encompasses the NCP.
@@ -76,10 +75,22 @@ class TestFacet(unittest.TestCase):
         self.assertEqual(facets[0].ra, 318.2026666666666)
         self.assertEqual(facets[0].dec, 62.250559277777775)
 
+    def test_write_ds9_region_file(self):
+        facets = facet.read_ds9_region_file('resources/test.reg')
+        facet.make_ds9_region_file(facets, 'test_region_write.reg')
+        facets = facet.read_ds9_region_file('test_region_write.reg')
+        self.assertEqual(len(facets), 15)
+        self.assertEqual(facets[0].name, 'Patch_1')
+        self.assertEqual(facets[0].ra, 318.2026666666666)
+        self.assertEqual(facets[0].dec, 62.250559277777775)
+        os.system('rm test_region_write.reg')
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(TestFacet('test_make_facet_polygons'))
     suite.addTest(TestFacet('test_read_ds9_region_file'))
+    suite.addTest(TestFacet('test_write_ds9_region_file'))
     return suite
 
 
