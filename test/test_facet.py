@@ -10,6 +10,7 @@ class TestFacet(unittest.TestCase):
 
     @classmethod
     def tearDownClass(self):
+        pass
 
     def test_make_facet_polygons(self):
         # Test a region that encompasses the NCP.
