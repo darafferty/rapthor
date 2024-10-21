@@ -1,6 +1,7 @@
 import unittest
 from rapthor.lib import facet
 import numpy as np
+import os
 
 
 class TestFacet(unittest.TestCase):
