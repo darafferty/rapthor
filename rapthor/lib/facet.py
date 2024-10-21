@@ -61,6 +61,10 @@ class Facet(object):
         self.y_center = ymin + (ymax - ymin)/2
         self.ra_center, self.dec_center = misc.xy2radec(self.wcs, self.x_center, self.y_center)
 
+        # Find the centroid of the facet
+        self.ra_centroid, self.dec_centroid = misc.xy2radec(self.wcs, self.polygon.centroid[0],
+                                                            self.polygon.centroid[1])
+
     def set_skymodel(self, skymodel):
         """
         Sets the facet's sky model
@@ -418,23 +422,79 @@ def read_ds9_region_file(region_file):
     facets = []
     with open(region_file, 'r') as f:
         lines = f.readlines()
+
+    indx = 0
     for line in lines:
-        # Each facet in the region file is defined by two consecutive lines:
-        #   - the first starts with 'polygon' and gives the (RA, Dec) vertices
-        #   - the second starts with 'point' and gives the reference (RA, Dec)
-        #     and the facet name
+        # Each facet in the region file is defined by a polygon line that starts
+        # with 'polygon' and gives the (RA, Dec) vertices
+        #
+        # Each facet polygon line may be followed by a line giving the reference
+        # point that starts with 'point' and gives the reference (RA, Dec)
+        #
+        # The facet name may be set in the text property of either line
+        # (see https://wsclean.readthedocs.io/en/latest/ds9_facet_file.html)
         if line.startswith('polygon'):
+            # New facet definition begins
+            indx += 1
             vertices = ast.literal_eval(line.split('polygon')[1])
             polygon_ras = [ra for ra in vertices[::2]]
             polygon_decs = [dec for dec in vertices[1::2]]
             vertices = [(ra, dec) for ra, dec in zip(polygon_ras, polygon_decs)]
-        if line.startswith('point'):
+
+            # Make a temporary facet to get centroid and make new facet with
+            # reference point at centroid (this point may be overridden by
+            # a following 'point' line)
+            facet_tmp = Facet('temp', polygon_ras[0], polygon_decs[0], vertices)
+            ra = facet_tmp.ra_centroid
+            dec = facet_tmp.dec_centroid
+
+        elif line.startswith('point'):
+            # Facet definition continues
+            if not len(facets):
+                raise ValueError(f'Error parsing region file "{region_file}": "point" '
+                                 'line found without a preceeding "polygon" line')
+            facet_tmp = facets.pop()
+            vertices = facet_tmp.vertices
             ra, dec = ast.literal_eval(line.split('point')[1])
-            if 'text' in line:
-                name = line.split('text=')[1].strip()
-            else:
-                name = f'facet_{ra}_{dec}'
-            facets.append(Facet(name, ra, dec, vertices))
+
+        # Read the facet name, if any. The name is defined using the 'text'
+        # property. E.g.:
+        #     'polygon(309.6, 60.9, 310.4, 58.9, 309.1, 59.2) # text = {Patch_1} width = 2'
+        #     'point(0.1, 1.2) # text = {Patch_1} width = 2'
+        #
+        # Note: if a name is defined for both the facet polygon and the facet
+        # reference point, the one for the point takes precedence
+        if 'text' in line:
+            properties = line.split('#')[1]
+            parts = properties.split('=')
+            for i, part in enumerate(parts):
+                if 'text' in part:
+                    try:
+                        # The name should be defined in the next part, e.g.:
+                        #     ' text = {Patch_1} width = 2'
+                        # would split into
+                        #     [' text  ', ' {Patch_1} width', '2 ']
+                        text = parts[i+1].strip()
+                    except IndexError:
+                        raise ValueError(f'Error parsing region file "{region_file}": '
+                                         '"text" propery could not be parsed for line: '
+                                         f'{line}')
+
+                    # Now split off property, if any. E.g.:
+                    #     '{Patch_1} width'
+                    # would split into
+                    #     ['{Patch_1}', 'width']
+                    text = text.split(" ")[0]
+
+                    # Note: ds9 format allows strings to be quoted with " or ' or {}
+                    # (see https://ds9.si.edu/doc/ref/region.html#RegionProperties),
+                    # so we strip them off here
+                    facet_name = text.strip('{}"\' ')
+        else:
+            facet_name = f'facet_{indx}'
+
+        # Lastly, add the facet to the list
+        facets.append(Facet(facet_name, ra, dec, vertices))
 
     return facets
 
