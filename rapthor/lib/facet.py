@@ -62,8 +62,8 @@ class Facet(object):
         self.ra_center, self.dec_center = misc.xy2radec(self.wcs, self.x_center, self.y_center)
 
         # Find the centroid of the facet
-        self.ra_centroid, self.dec_centroid = misc.xy2radec(self.wcs, self.polygon.centroid[0],
-                                                            self.polygon.centroid[1])
+        self.ra_centroid, self.dec_centroid = misc.xy2radec(self.wcs, self.polygon.centroid.x,
+                                                            self.polygon.centroid.y)
 
     def set_skymodel(self, skymodel):
         """
@@ -456,6 +456,9 @@ def read_ds9_region_file(region_file):
             facet_tmp = facets.pop()
             vertices = facet_tmp.vertices
             ra, dec = ast.literal_eval(line.split('point')[1])
+
+        else:
+            continue
 
         # Read the facet name, if any. The name is defined using the 'text'
         # property. E.g.:
