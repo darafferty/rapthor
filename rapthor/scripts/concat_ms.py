@@ -146,8 +146,10 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
                 first = False
             else:
                 assert file_bandwidth == sw.col("TOTAL_BANDWIDTH")[0]
-                assert nchans == sw.col("CHAN_WIDTH")[0].shape[0]
                 assert chwidth == sw.col("CHAN_WIDTH")[0][0]
+                # We used to also check here the number of channels using
+                # assert nchans == sw.col("CHAN_WIDTH")[0].shape[0], but
+                # the last measurement set from LINC can have fewer channels.
             chfreqs_tmp.extend(chfreqs)
         freqs.append(freq)
 
