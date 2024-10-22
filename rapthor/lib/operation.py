@@ -2,7 +2,6 @@
 Definition of the master Operation class
 """
 import os
-import sys
 import logging
 import json
 from jinja2 import Environment, FileSystemLoader
@@ -125,7 +124,7 @@ class Operation(object):
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
 
         # Toil's coordination directory
-        self.coordination_dir  = self.parset['cluster_specific']['dir_coordination']
+        self.coordination_dir = self.parset['cluster_specific']['dir_coordination']
 
         # Get the container type
         if self.parset['cluster_specific']['use_container']:
