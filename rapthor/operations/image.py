@@ -17,8 +17,8 @@ class Image(Operation):
     """
     Operation to image a field sector
     """
-    def __init__(self, field, index):
-        super().__init__(field, name='image', index=index)
+    def __init__(self, field, index, name='image'):
+        super().__init__(field, name=name, index=index)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
@@ -55,17 +55,11 @@ class Image(Operation):
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
-            if self.dde_method == 'facets':
-                self.use_facets = True
-            else:
-                self.use_facets = False
+            self.use_facets = True if self.dde_method == 'facets' else False
+        if self.image_pol is None:
+            self.image_pol = self.field.image_pol
         if self.save_source_list is None:
-            if self.image_pol is None:
-                self.image_pol = self.field.image_pol
-            if self.image_pol.lower() == 'i':
-                self.save_source_list = True
-            else:
-                self.save_source_list = False
+            self.save_source_list = True if self.image_pol.lower() == 'i' else False
         if self.peel_bright_sources is None:
             self.peel_bright_sources = self.field.peel_bright_sources
         if self.batch_system == 'slurm':
@@ -163,7 +157,8 @@ class Image(Operation):
                 dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
-            central_patch_name.append(sector.central_patch)
+            if not self.apply_none:
+                central_patch_name.append(sector.central_patch)
 
         # Handle the polarization-related options
         link_polarizations = False
@@ -234,7 +229,7 @@ class Image(Operation):
             # aterm image files were generated. They do not need to be set separately for
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
-        else:
+        elif not self.apply_none:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
@@ -391,7 +386,7 @@ class ImageInitial(Image):
     Operation to image the field to generate an initial sky model
     """
     def __init__(self, field):
-        super().__init__(field, name='initial_image')
+        super().__init__(field, None, name='initial_image')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
@@ -409,6 +404,7 @@ class ImageInitial(Image):
         self.use_facets = False
         self.save_source_list = True
         self.peel_bright_sources = False
+        self.image_pol = 'I'
         super().set_parset_parameters()
 
     def set_input_parameters(self):
@@ -491,7 +487,7 @@ class ImageNormalize(Image):
     Operation to image for flux-scale normalization
     """
     def __init__(self, field, index):
-        super().__init__(field, name='normalize', index=index)
+        super().__init__(field, index, name='normalize')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
@@ -534,7 +530,7 @@ class ImageNormalize(Image):
         # over the sectors, weighted by stdev?
 
         # Finally call finalize() in the Operation class
-        super(Operation, self).finalize()
+        super(Image, self).finalize()
 
 
 def report_sector_diagnostics(sector_name, diagnostics_dict, log):
