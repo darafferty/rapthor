@@ -8,6 +8,10 @@ version: 2
 # Set the version of Python and other tools you might need
 build:
   os: ubuntu-20.04
+  jobs:
+    # Setuptools_scm needs an unshallow clone to get the correct version information
+    post_checkout:
+      - git fetch --unshallow
   tools:
     python: "3.8"
     # You can also specify other tool versions:
