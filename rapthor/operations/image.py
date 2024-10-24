@@ -23,11 +23,13 @@ class Image(Operation):
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
 
-        # Initialize various parameters not initialized by the base Operation class
+        # Initialize various parameters
         self.apply_none = None
         self.apply_amplitudes = None
         self.use_screens = None
         self.apply_fulljones = None
+        self.make_image_cube = None
+        self.normalize_flux_scale = None
         self.dde_method = None
         self.use_facets = None
         self.save_source_list = None
@@ -52,6 +54,10 @@ class Image(Operation):
             self.use_screens = self.field.use_screens
         if self.apply_fulljones is None:
             self.apply_fulljones = self.field.apply_fulljones
+        if self.make_image_cube is None:
+            self.make_image_cube = False
+        if self.normalize_flux_scale is None:
+            self.normalize_flux_scale = False
         if self.dde_method is None:
             self.dde_method = self.field.dde_method
         if self.use_facets is None:
@@ -72,12 +78,14 @@ class Image(Operation):
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
                              'apply_none': self.apply_none,
-                             'apply_amplitudes': self.field.apply_amplitudes,
-                             'use_screens': self.field.use_screens,
-                             'apply_fulljones': self.field.apply_fulljones,
+                             'apply_amplitudes': self.apply_amplitudes,
+                             'use_screens': self.use_screens,
+                             'apply_fulljones': self.apply_fulljones,
+                             'make_image_cube': self.make_image_cube,
+                             'normalize_flux_scale': self.normalize_flux_scale,
                              'use_facets': self.use_facets,
                              'save_source_list': self.save_source_list,
-                             'peel_bright_sources': self.field.peel_bright_sources,
+                             'peel_bright_sources': self.peel_bright_sources,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
                              'toil_version': self.toil_major_version}
@@ -500,8 +508,8 @@ class ImageNormalize(Image):
         # Set parameters as needed
         self.save_source_list = False
         self.peel_bright_sources = False
-        self.make_fits_cube = True
-        self.normalize_flux_scale = True
+        self.make_image_cube = True
+        self.normalize_flux_scale = False  # False for testing only; must be True in final version
         super().set_parset_parameters()
 
     def set_input_parameters(self):
@@ -529,7 +537,7 @@ class ImageNormalize(Image):
         # When multiple sectors are used, average the flux-scale corrections
         # over the sectors, weighted by stdev?
 
-        # Finally call finalize() in the Operation class
+        # Finally call finalize() of the Operation class
         super(Image, self).finalize()
 
 

@@ -6,9 +6,9 @@ from astropy.wcs import WCS as pywcs
 from astropy.io import fits as pyfits
 from shapely.geometry import Polygon
 import numpy as np
-import sys
 import logging
 import re
+from pathlib import Path
 
 
 class FITSImage(object):
@@ -167,7 +167,7 @@ class FITSImage(object):
         if sampling < 1:
             sampling = 1
         data = self.img_data[::sampling]  # sample array
-        data = data[ np.isfinite(data) ]
+        data = data[np.isfinite(data)]
         oldrms = 1.
         for i in range(niter):
             rms = np.nanstd(data)
@@ -176,7 +176,7 @@ class FITSImage(object):
                 logging.debug('%s: Noise: %.3f mJy/b' % (self.imagefile, self.noise*1e3))
                 return
 
-            data = data[np.abs(data)<3*rms]
+            data = data[np.abs(data) < 3*rms]
             oldrms = rms
         raise Exception('Noise estimation failed to converge.')
 
@@ -196,3 +196,141 @@ class FITSImage(object):
         self.weight_data[self.img_data == 0] = 0
         self.weight_data /= self.noise * self.scale
         self.weight_data = self.weight_data**2.0
+
+
+class FITSCube(object):
+    """
+    The FITSCube class is used for processing/manipulation of FITS image cubes
+
+    Parameters
+    ----------
+    imagefiles : list of str
+        List of filenames of the FITS channel images
+    """
+    def __init__(self, imagefiles):
+        self.imagefiles = imagefiles
+        self.name = 'FITS_cube'
+
+        self.channel_images = []
+        for imagefile in self.imagefiles:
+            self.channel_images.append(FITSImage(imagefile))
+
+        self.check_channel_images()
+        self.order_channel_images()
+        self.make_header()
+        self.make_data()
+
+    def check_channel_images(self):
+        """
+        Check the input channel images for problems
+        """
+        image_ch0 = self.channel_images[0]
+        wcs_ch0 = image_ch0.get_wcs()
+        for image in self.channel_images:
+            # Check that all channels have the same data shape
+            if image.img_data.shape != image_ch0.img_data.shape:
+                raise ValueError('Data shape for channel image {0} differs from that of '
+                                 '{1}'.format(image.imagefile, image_ch0.imagefile))
+
+            # Check that all channels have the same WCS paramters
+            image_wcs = image.get_wcs()
+            for wcs_attr in ['crpix', 'cdelt', 'crval', 'ctype']:
+                if getattr(image_wcs.wcs, wcs_attr) != getattr(wcs_ch0.wcs, wcs_attr):
+                    raise ValueError('WCS for channel image {0} differs from that of '
+                                     '{1}'.format(image.imagefile, image_ch0.imagefile))
+
+    def order_channel_images(self):
+        """
+        Order the input channel images by frequency
+        """
+        frequencies = np.array([image.freq for image in self.channel_images])
+        sort_idx = np.argsort(frequencies)
+        self.frequencies = frequencies[sort_idx]
+        self.imagefiles = np.array(self.imagefiles)[sort_idx].tolist()
+        self.channel_images = np.array(self.channel_images)[sort_idx].tolist()
+
+    def make_header(self):
+        """
+        Make the cube header
+        """
+        # Use the header from the first channel image as the template
+        self.header = self.channel_images[0].img_hdr
+
+        # Add a frequecy axis to the header
+        self.header['NAXIS'] = 3
+        self.header['NAXIS3'] = len(self.frequencies)
+        self.header['CRPIX3'] = 1
+        self.header['CDELT3'] = 1
+        self.header['CTYPE3'] = 'CHAN'
+        self.header['CRVAL3'] = 1
+
+    def make_data(self):
+        """
+        Make the cube data
+        """
+        # Set the shape to [nchannels, imsize_0, imsize_1]
+        cube_shape = [len(self.channel_images)]
+        cube_shape.extend(self.channel_images[0].shape)
+
+        self.data = np.zeros(cube_shape)
+
+        for i, image in self.channel_images:
+            self.data[i, :] = image.img_data
+
+    def write(self, filename=None):
+        """
+        Write the image cube to a FITS file
+
+        Parameters
+        ----------
+        filename : str
+            Filename of the output FITS file
+        """
+        if filename is None:
+            filename = f'{Path(self.imagefiles[0]).stem}_cube.fits'
+
+        pyfits.writeto(filename, self.data, self.header, overwrite=True)
+
+    def write_frequencies(self, filename=None):
+        """
+        Write the channel frequencies to a text file
+
+        Note: the frequencies are written one per line in Hz
+
+        Parameters
+        ----------
+        filename : str
+            Filename of the output text file
+        """
+        if filename is None:
+            filename = f'{Path(self.imagefiles[0]).stem}_frequencies.txt'
+
+        lines = []
+        for image in self.channel_images:
+            lines.append(f'{image.frequency}')
+
+        with open(filename, 'w') as f:
+            f.writelines(lines)
+
+    def write_beams(self, filename=None):
+        """
+        Write the channel beam parameters to a text file
+
+        Note: the beams are written one per line as follows:
+              (major axis, minor axis, position angle)
+              with all values being in degrees
+
+        Parameters
+        ----------
+        filename : str
+            Filename of the output text file
+        """
+        if filename is None:
+            filename = f'{Path(self.imagefiles[0]).stem}_beams.txt'
+
+        lines = []
+        for image in self.channel_images:
+            lines.append(f'{tuple(image.beam)}')
+
+        with open(filename, 'w') as f:
+            f.writelines(lines)

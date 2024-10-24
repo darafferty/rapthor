@@ -390,6 +390,23 @@ inputs:
       vertically in the image (length = 2).
     type: int[]
 
+{% if make_image_cube %}
+  - id: image_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output image cube (length = 1).
+    type: String
+{% endif %}
+
+{% if normalize_flux_scale %}
+  - id: normalize_h5parm
+    label: Filename of normalize h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalizations
+      (length = 1).
+    type: String
+{% endif %}
+
 
 outputs:
   - id: filtered_skymodel_true_sky
@@ -443,6 +460,26 @@ outputs:
   - id: sector_region_file
     outputSource:
       - make_region_file/region_file
+    type: File
+{% endif %}
+{% if make_image_cube %}
+  - id: sector_image_cube
+    outputSource:
+      - make_image_cube/image_cube
+    type: File
+  - id: sector_image_cube_beams
+    outputSource:
+      - make_image_cube/image_cube_beams
+    type: File
+  - id: sector_image_cube_frequencies
+    outputSource:
+      - make_image_cube/image_cube_frequencies
+    type: File
+{% endif %}
+{% if normalize_flux_scale %}
+  - id: sector_normalize_h5parm
+    outputSource:
+      - normalize_flux_scale/h5parm
     type: File
 {% endif %}
 
@@ -718,6 +755,7 @@ steps:
     out:
       - id: image_I_nonpb_name
       - id: image_I_pb_name
+      - id: image_I_pb_channels
       - id: images_extra
 {% if save_source_list %}
       - id: skymodel_nonpb
@@ -777,6 +815,26 @@ steps:
       - id: restored_image
 {% endif %}
 # end peel_bright_sources
+
+{% if make_image_cube %}
+# start make_image_cube
+  - id: make_image_cube
+    label: Make an image cube
+    doc: |
+      This step uses combines the channel images from WSClean
+      into an image cube.
+    run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
+    in:
+      - id: channel_images
+        source: image/image_I_pb_channels
+      - id: image_cube_name
+        source: image_cube_name
+    out:
+      - id: image_cube
+      - id: image_cube_beams
+      - id: image_cube_frequencies
+{% endif %}
+# end make_image_cube
 
   - id: filter
     label: Filter sources
@@ -857,3 +915,25 @@ steps:
       - id: diagnostics
       - id: offsets
       - id: plots
+
+{% if normalize_flux_scale %}
+# start normalize_flux_scale
+  - id: normalize_flux_scale
+    label: Normalize the flux scale
+    doc: |
+      This step determines the corrections necessary to
+      normalize the flux scale
+    run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+    in:
+      - id: image_cube
+        source: make_image_cube/image_cube
+      - id: image_cube_beams
+        source: make_image_cube/image_cube_beams
+      - id: image_cube_frequencies
+        source: make_image_cube/image_cube_frequencies
+      - id: normalize_h5parm
+        source: normalize_h5parm
+    out:
+      - id: h5parm
+{% endif %}
+# end normalize_flux_scale

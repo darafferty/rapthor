@@ -429,6 +429,23 @@ inputs:
         type: array
         items: int
 
+{% if make_image_cube %}
+  - id: image_cube_name
+    label: Filename of output image cube
+    doc: |
+      The filename of the output image cube (length = n_sectors).
+    type: String[]
+{% endif %}
+
+{% if normalize_flux_scale %}
+  - id: normalize_h5parm
+    label: Filename of normalize h5parm
+    doc: |
+      The filename of the h5parm file with the flux-scale normalizations
+      (length = n_sectors).
+    type: String[]
+{% endif %}
+
 
 outputs:
   - id: filtered_skymodel_true_sky
@@ -497,6 +514,18 @@ outputs:
     type:
       type: array
       items: File
+{% endif %}
+{% if make_image_cube %}
+  - id: sector_image_cube
+    outputSource:
+      - image_sector/sector_image_cube
+    type: File[]
+{% endif %}
+{% if normalize_flux_scale %}
+  - id: sector_normalize_h5parm
+    outputSource:
+      - image_sector/sector_normalize_h5parm
+    type: File[]
 {% endif %}
 
 
@@ -644,6 +673,14 @@ steps:
       - id: bright_skymodel_pb
         source: bright_skymodel_pb
 {% endif %}
+{% if make_image_cube %}
+      - id: image_cube_name
+        source: image_cube_name
+{% endif %}
+{% if normalize_flux_scale %}
+      - id: normalize_h5parm
+        source: normalize_h5parm
+{% endif %}
 {% if use_screens %}
 # start use_screens
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
@@ -652,6 +689,12 @@ steps:
               vertices_file, region_file,
 {% if use_mpi %}
               mpi_cpus_per_task, mpi_nnodes,
+{% endif %}
+{% if make_image_cube %}
+              image_cube_name,
+{% endif %}
+{% if normalize_flux_scale %}
+              normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
@@ -672,6 +715,12 @@ steps:
 {% if not apply_none %}
               central_patch_name,
 {% endif %}
+{% endif %}
+{% if make_image_cube %}
+              image_cube_name,
+{% endif %}
+{% if normalize_flux_scale %}
+              normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
@@ -696,4 +745,12 @@ steps:
       - id: sector_diagnostic_plots
 {% if use_facets %}
       - id: sector_region_file
+{% endif %}
+{% if make_image_cube %}
+      - id: sector_image_cube
+      - id: sector_image_cube_beams
+      - id: sector_image_cube_frequencies
+{% endif %}
+{% if normalize_flux_scale %}
+      - id: sector_normalize_h5parm
 {% endif %}
