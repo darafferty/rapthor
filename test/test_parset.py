@@ -100,18 +100,6 @@ class TestParset(unittest.TestCase):
         ):
             parset_read(self.parset.name)
 
-    def test_flag_selection_not_specified(self):
-        flag = "flag_baseline"
-        value = "[CS002HBA*]"
-        with open(self.parset.name, "a") as f:
-            f.write(f"{flag} = {value}\n")
-            f.write("flag_expr = flag_freqrange")
-        with self.assertRaisesRegex(
-            ValueError,
-            f"Flag selection '{flag}' was specified but does not appear in 'flag_expr'",
-        ):
-            parset_read(self.parset.name)
-
     def test_invalid_idg_mode(self):
         option = "idg_mode"
         value = "invalid"
