@@ -32,6 +32,7 @@ class CWLRunner:
         self.args = []
         self.command = None
         self.operation = operation
+        self.__environment = os.environ.copy()
 
     def __enter__(self) -> "CWLRunner":
         """
@@ -111,6 +112,8 @@ class CWLRunner:
         """
         Clean up after the runner has run.
         """
+        os.environ.clear()
+        os.environ.update(self.__environment)
         if self.operation.use_mpi:
             self._delete_mpi_config_file()
 
@@ -160,13 +163,13 @@ class ToilRunner(CWLRunner):
         self.toil_env_variables = {
             "TOIL_SLURM_ARGS": "--export=ALL"
         }
-        if "TOIL_SLURM_ARGS" in self.user_env_variables:
+        if "TOIL_SLURM_ARGS" in self.__environment:
             # Add user-defined args
-            self.toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.user_env_variables["TOIL_SLURM_ARGS"]
+            self.toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
 
     def setup(self):
         """
-        Prepare runner for running. Adds some additional preprations to base class.
+        Prepare runner for running. Adds some additional preparations to base class.
         """
         super().setup()
         self.args.extend(['--batchSystem', self.operation.batch_system])
@@ -228,12 +231,6 @@ class ToilRunner(CWLRunner):
         """
         Clean up after the runner has run.
         """
-        for key in self.toil_env_variables:
-            if key in self.user_env_variables:
-                # If the env variable already existed, reset it to that value
-                os.environ[key] = self.user_env_variables[key]
-            else:
-                del os.environ[key]
         super().teardown()
         if not self.operation.debug_workflow:
             # Use the logs to find the temporary directory we ran in.
