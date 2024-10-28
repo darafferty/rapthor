@@ -32,7 +32,6 @@ class CWLRunner:
         self.args = []
         self.command = None
         self.operation = operation
-        self.__environment = os.environ.copy()
 
     def __enter__(self) -> "CWLRunner":
         """
@@ -108,6 +107,10 @@ class CWLRunner:
             prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
             self.args.extend(['--tmpdir-prefix', prefix])
 
+        # Make a copy of the environment to allow changes made to it in the
+        # setup() method of derived classes to be reverted in teardown()
+        self.__environment = os.environ.copy()
+
     def teardown(self) -> None:
         """
         Clean up after the runner has run.
@@ -159,12 +162,6 @@ class ToilRunner(CWLRunner):
         """
         super().__init__(operation)
         self.command = "toil-cwl-runner"
-        self.toil_env_variables = {
-            "TOIL_SLURM_ARGS": "--export=ALL"
-        }
-        if "TOIL_SLURM_ARGS" in self.__environment:
-            # Add user-defined args
-            self.toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
 
     def setup(self):
         """
@@ -224,6 +221,17 @@ class ToilRunner(CWLRunner):
             self.args.extend(['--cleanWorkDir', 'never'])
             self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
             self.args.extend(['--logDebug'])
+
+        # Set any special environment variables
+        if self.operation.batch_system == 'slurm':
+            self.toil_env_variables = {
+                "TOIL_SLURM_ARGS": "--export=ALL"
+            }
+            if "TOIL_SLURM_ARGS" in self.__environment:
+                # Add any args already set in the existing environment
+                self.toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
+        else:
+            self.toil_env_variables = {}  # currently, there are no relevant ones for non-Slurm batch systems
         os.environ.update(self.toil_env_variables)
 
     def teardown(self):
