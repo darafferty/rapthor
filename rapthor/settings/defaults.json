@@ -15,10 +15,6 @@
         "strategy": "selfcal",
         "selfcal_data_fraction": 0.2,
         "final_data_fraction": 1.0,
-        "flag_abstime": null,
-        "flag_baseline": null,
-        "flag_freqrange": null,
-        "flag_expr": "",
         "input_h5parm": null,
         "input_fulljones_h5parm": null,
         "facet_layout": null

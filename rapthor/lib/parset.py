@@ -232,20 +232,6 @@ class Parset:
                 f"The final_data_fraction ({final_data_fraction}) "
                 f"is less than selfcal_data_fraction ({selfcal_data_fraction})"
             )
-        flag_list = [
-            key
-            for key in ("flag_abstime", "flag_baseline", "flag_freqrange")
-            if options[key]
-        ]
-        if not options["flag_expr"]:
-            options["flag_expr"] = " and ".join(flag_list)
-        else:
-            for flag in flag_list:
-                if flag not in options["flag_expr"]:
-                    raise ValueError(
-                        f"Flag selection '{flag}' was specified but does not "
-                        f"appear in 'flag_expr'"
-                    )
         if options["generate_initial_skymodel"] and options["download_initial_skymodel"]:
             raise ValueError(
                 "Both 'generate_initial_skymodel' and 'download_initial_skymodel' are "

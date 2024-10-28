@@ -56,20 +56,6 @@ strategy = selfcal
 selfcal_data_fraction = 0.2
 final_data_fraction = 1.0
 
-# Flagging ranges (default = no flagging). A range of times, baselines, and
-# frequencies to flag can be specified (see the DP3 documentation for details
-# of the syntax). By default, the ranges are AND-ed to produce the final flags,
-# but a set expression can be specified that controls how the selections are
-# combined. Examples:
-# flag_abstime = [12-Mar-2010/11:31:00.0..12-Mar-2010/11:50:00.0]
-# flag_baseline = [CS013HBA*]
-# flag_freqrange = [125.2..126.4MHz]
-# flag_expr = flag_abstime and flag_baseline and flag_freqrange
-flag_abstime = None
-flag_baseline = None
-flag_freqrange = None
-flag_expr =
-
 # Full path to an H5parm file with direction-dependent solutions (default =
 # None). This file is required if no calibration is to be done. Full-Jones
 # solutions can also be supplied. Note: the directions in the H5parm file must

@@ -116,31 +116,6 @@ The available options are described below under their respective sections.
         A final data fraction can be specified (default = 1.0) such that a final
         processing pass (i.e., after selfcal finishes) is done with a different fraction.
 
-    flag_abstime
-        Range of times to flag (default = no flagging). The syntax is that of the
-        preflagger ``abstime`` parameter (see the DP3 `documentation
-        <https://dp3.readthedocs.io/en/latest/index.html>`_ for details of the syntax).
-        E.g., ``[12-Mar-2010/11:31:00.0..12-Mar-2010/11:50:00.0]``.
-
-    flag_baseline
-        Range of baselines to flag (default = no flagging). The syntax is that of the
-        preflagger ``baseline`` parameter (see the DP3 `documentation
-        <https://dp3.readthedocs.io/en/latest/index.html>`_ for details of the syntax).
-        E.g., ``flag_baseline = [CS013HBA*]``.
-
-    flag_freqrange
-        Range of frequencies to flag (default = no flagging). The syntax is that of the
-        preflagger ``freqrange`` parameter (see the DP3 `documentation
-        <https://dp3.readthedocs.io/en/latest/index.html>`_ for details of the syntax).
-        E.g., ``flag_freqrange = [125.2..126.4MHz]``.
-
-    flag_expr
-        Expression that defines how the above flagging ranges are combined to produce the
-        final flags (default = all ranges are ``AND``-ed). The syntax is that of the
-        preflagger ``expr`` parameter (see the DP3 `documentation
-        <https://dp3.readthedocs.io/en/latest/index.html>`_ for details of the syntax).
-        E.g., ``flag_freqrange or flag_baseline``.
-
     input_h5parm
         Full path to an H5parm file with direction-dependent solutions (default = None).
         This file is used if no calibration is to be done.
