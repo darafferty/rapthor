@@ -37,7 +37,7 @@ class FITSImage(object):
 
     def find_beam(self):
         """
-        Find the primary beam headers following AIPS convenction
+        Find the primary beam headers following AIPS convention
         """
         if ('BMAJ' in self.header) and ('BMIN' in self.header) and ('PA' in self.header):
             pass
@@ -67,7 +67,9 @@ class FITSImage(object):
                     self.freq = float(self.header.get('CRVAL%i' % i))
 
     def flatten(self):
-        """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
+        """
+        Flatten a FITS image so that it becomes a 2D image
+        """
         f = pyfits.open(self.imagefile)
 
         naxis = f[0].header['NAXIS']
@@ -115,14 +117,28 @@ class FITSImage(object):
         self.median_value = float(np.nanmedian(self.img_data))
 
     def write(self, filename=None):
+        """
+        Write the image to a FITS file
+
+        Parameters
+        ----------
+        filename : str
+            Filename of the output FITS file
+        """
         if filename is None:
             filename = self.imagefile
         pyfits.writeto(filename, self.img_data, self.img_hdr, overwrite=True)
 
     def get_beam(self):
+        """
+        Return the beam for the image
+        """
         return [self.img_hdr['BMAJ'], self.img_hdr['BMIN'], self.img_hdr['BPA']]
 
     def get_wcs(self):
+        """
+        Return the WCS object for the image
+        """
         return pywcs(self.img_hdr)
 
     def blank(self, vertices_file=None):
@@ -155,11 +171,18 @@ class FITSImage(object):
 
     def calc_noise(self, niter=1000, eps=None, sampling=4):
         """
-        Return the rms of all the pixels in an image
-        niter : robust rms estimation
-        eps : convergency criterion, if None is 0.1% of initial rms
-        sampling : sampling interval to use to speed up the noise calculation (e.g.,
-                   sampling = 4 means use every forth pixel)
+        Calculate the noise (rms) of all the pixels in an image
+
+        Parameters
+        ----------
+        niter : float, optional
+            Maximum number of iterations to perform for robust rms estimation
+        eps : float, optional
+            Fractional improvement in rms used to determine convergency. If None, a
+            value of 0.1% of the initial rms is used
+        sampling : int, optional
+            Sampling interval to use to speed up the noise calculation (e.g.,
+            sampling = 4 means use every forth pixel)
         """
         if eps is None:
             eps = np.nanstd(self.img_data)*1e-3
@@ -183,7 +206,13 @@ class FITSImage(object):
     def apply_shift(self, dra, ddec):
         """
         Shift header by dra/ddec
-        dra, ddec in degree
+
+        Parameters
+        ----------
+        dra : float
+            Shift in RA in degrees
+        ddec : float
+            Shift in Dec in degrees
         """
         # correct the dra shift for np.cos(DEC*np.pi/180.) -- only in the log!
         logging.info('%s: Shift %.2f %.2f (arcsec)' % (self.imagefile, dra*3600*np.cos(self.dec*np.pi/180.), ddec*3600))
@@ -192,6 +221,9 @@ class FITSImage(object):
         self.img_hdr['CRVAL2'] += ddec
 
     def calc_weight(self):
+        """
+        Calculate the weights for the image
+        """
         self.weight_data = np.ones_like(self.img_data)
         self.weight_data[self.img_data == 0] = 0
         self.weight_data /= self.noise * self.scale
@@ -232,10 +264,11 @@ class FITSCube(object):
                 raise ValueError('Data shape for channel image {0} differs from that of '
                                  '{1}'.format(image.imagefile, image_ch0.imagefile))
 
-            # Check that all channels have the same WCS paramters
+            # Check that all channels have the same WCS parameters
             image_wcs = image.get_wcs()
             for wcs_attr in ['crpix', 'cdelt', 'crval', 'ctype']:
-                if getattr(image_wcs.wcs, wcs_attr) != getattr(wcs_ch0.wcs, wcs_attr):
+                if not np.all(np.array(getattr(image_wcs.wcs, wcs_attr)) ==
+                              np.array(getattr(wcs_ch0.wcs, wcs_attr))):
                     raise ValueError('WCS for channel image {0} differs from that of '
                                      '{1}'.format(image.imagefile, image_ch0.imagefile))
 
@@ -260,9 +293,10 @@ class FITSCube(object):
         self.header['NAXIS'] = 3
         self.header['NAXIS3'] = len(self.frequencies)
         self.header['CRPIX3'] = 1
-        self.header['CDELT3'] = 1
-        self.header['CTYPE3'] = 'CHAN'
-        self.header['CRVAL3'] = 1
+        self.header['CDELT3'] = np.diff(self.frequencies).mean().value
+        self.header['CTYPE3'] = 'FREQ'
+        self.header['CRVAL3'] = self.frequencies[0]
+        self.header["CUNIT3"] = "Hz"
 
     def make_data(self):
         """
@@ -270,11 +304,11 @@ class FITSCube(object):
         """
         # Set the shape to [nchannels, imsize_0, imsize_1]
         cube_shape = [len(self.channel_images)]
-        cube_shape.extend(self.channel_images[0].shape)
+        cube_shape.extend(self.channel_images[0].img_data.shape)
 
         self.data = np.zeros(cube_shape)
 
-        for i, image in self.channel_images:
+        for i, image in enumerate(self.channel_images):
             self.data[i, :] = image.img_data
 
     def write(self, filename=None):
@@ -305,20 +339,20 @@ class FITSCube(object):
         if filename is None:
             filename = f'{Path(self.imagefiles[0]).stem}_frequencies.txt'
 
-        lines = []
+        frequencies = []
         for image in self.channel_images:
-            lines.append(f'{image.frequency}')
+            frequencies.append(f'{image.freq}')
 
         with open(filename, 'w') as f:
-            f.writelines(lines)
+            f.writelines(', '.join(frequencies))
 
     def write_beams(self, filename=None):
         """
         Write the channel beam parameters to a text file
 
         Note: the beams are written one per line as follows:
-              (major axis, minor axis, position angle)
-              with all values being in degrees
+            (major axis, minor axis, position angle)
+        with all values being in degrees
 
         Parameters
         ----------
@@ -328,9 +362,9 @@ class FITSCube(object):
         if filename is None:
             filename = f'{Path(self.imagefiles[0]).stem}_beams.txt'
 
-        lines = []
+        beams = []
         for image in self.channel_images:
-            lines.append(f'{tuple(image.beam)}')
+            beams.append(f'{tuple(image.beam)}')
 
         with open(filename, 'w') as f:
-            f.writelines(lines)
+            f.writelines(', '.join(beams))
