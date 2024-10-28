@@ -134,10 +134,6 @@ class Sector(object):
             # If no limit is set at this point, use the memory of the current machine
             self.mem_limit_gb = cluster.get_available_memory()
         self.reweight = imaging_parameters['reweight']
-        self.flag_abstime = self.field.parset['flag_abstime']
-        self.flag_baseline = self.field.parset['flag_baseline']
-        self.flag_freqrange = self.field.parset['flag_freqrange']
-        self.flag_expr = self.field.parset['flag_expr']
         self.target_fast_timestep = self.field.fast_timestep_sec
         self.target_slow_freqstep = self.field.parset['calibration_specific']['slow_freqstep_hz']
         self.use_screens = self.field.use_screens
@@ -192,7 +188,7 @@ class Sector(object):
         min_freq = np.min([obs.startfreq for obs in self.observations])
         target_bandwidth = 4e6 * min_freq / 120e6
         max_nchannels = np.max([obs.numchannels for obs in self.observations])
-        min_nchannels = 1
+        min_nchannels = 4
         tot_bandwidth = 0.0
         for obs in self.observations:
             # Find observation with largest bandwidth
