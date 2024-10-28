@@ -159,7 +159,6 @@ class ToilRunner(CWLRunner):
         """
         super().__init__(operation)
         self.command = "toil-cwl-runner"
-        self.user_env_variables = os.environ.copy()
         self.toil_env_variables = {
             "TOIL_SLURM_ARGS": "--export=ALL"
         }
