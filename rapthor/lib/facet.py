@@ -15,6 +15,7 @@ from matplotlib import patches
 import lsmtool
 from lsmtool import tableio
 import tempfile
+import re
 
 
 class Facet(object):
@@ -452,7 +453,7 @@ def read_ds9_region_file(region_file):
             # Facet definition continues
             if not len(facets):
                 raise ValueError(f'Error parsing region file "{region_file}": "point" '
-                                 'line found without a preceeding "polygon" line')
+                                 'line found without a preceding "polygon" line')
             facet_tmp = facets.pop()
             vertices = facet_tmp.vertices
             ra, dec = ast.literal_eval(line.split('point')[1])
@@ -465,34 +466,26 @@ def read_ds9_region_file(region_file):
         #     'polygon(309.6, 60.9, 310.4, 58.9, 309.1, 59.2) # text = {Patch_1} width = 2'
         #     'point(0.1, 1.2) # text = {Patch_1} width = 2'
         #
+        # Note: ds9 format allows strings to be quoted with " or ' or {}
+        # (see https://ds9.si.edu/doc/ref/region.html#RegionProperties),
+        # so we match everything between "", '', or {}, if the line contains
+        # anything like `... # text = ...`
+        #
         # Note: if a name is defined for both the facet polygon and the facet
         # reference point, the one for the point takes precedence
         if 'text' in line:
-            properties = line.split('#')[1]
-            parts = properties.split('=')
-            for i, part in enumerate(parts):
-                if 'text' in part:
-                    try:
-                        # The name should be defined in the next part, e.g.:
-                        #     ' text = {Patch_1} width = 2'
-                        # would split into
-                        #     [' text  ', ' {Patch_1} width', '2 ']
-                        text = parts[i+1].strip()
-                    except IndexError:
-                        raise ValueError(f'Error parsing region file "{region_file}": '
-                                         '"text" propery could not be parsed for line: '
-                                         f'{line}')
+            pattern = r'^[^#]*#\s*text\s*=\s*[{"\']([^}"\']*)[}"\'].*$'
+            try:
+                facet_name = re.match(pattern, line).group(1)
+            except AttributeError:  # raised if `re.match()` returns `None`
+                raise ValueError(f'Error parsing region file "{region_file}": '
+                                 '"text" property could not be parsed for line: '
+                                 f'{line}')
 
-                    # Now split off property, if any. E.g.:
-                    #     '{Patch_1} width'
-                    # would split into
-                    #     ['{Patch_1}', 'width']
-                    text = text.split(" ")[0]
-
-                    # Note: ds9 format allows strings to be quoted with " or ' or {}
-                    # (see https://ds9.si.edu/doc/ref/region.html#RegionProperties),
-                    # so we strip them off here
-                    facet_name = text.strip('{}"\' ')
+            # Replace characters that are potentially problematic for Rapthor,
+            # DP3, etc. with an underscore
+            for invalid_char in [' ', '{', '}', '"', "'"]:
+                facet_name = facet_name.replace(invalid_char, '_')
         else:
             facet_name = f'facet_{indx}'
 
