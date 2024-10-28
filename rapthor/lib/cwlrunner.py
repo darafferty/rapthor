@@ -222,17 +222,17 @@ class ToilRunner(CWLRunner):
             self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
             self.args.extend(['--logDebug'])
 
-        # Set any special environment variables
+        # Set any Toil-specific environment variables
         if self.operation.batch_system == 'slurm':
-            self.toil_env_variables = {
+            toil_env_variables = {
                 "TOIL_SLURM_ARGS": "--export=ALL"
             }
             if "TOIL_SLURM_ARGS" in self.__environment:
                 # Add any args already set in the existing environment
-                self.toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
+                toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
         else:
-            self.toil_env_variables = {}  # currently, there are no relevant ones for non-Slurm batch systems
-        os.environ.update(self.toil_env_variables)
+            toil_env_variables = {}  # currently, there are no relevant ones for non-Slurm batch systems
+        os.environ.update(toil_env_variables)
 
     def teardown(self):
         """
