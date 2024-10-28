@@ -76,7 +76,7 @@ class TestFacet(unittest.TestCase):
         self.assertEqual(facets[0].name, 'Patch_1')
         self.assertEqual(facets[0].ra, 318.2026666666666)
         self.assertEqual(facets[0].dec, 62.250559277777775)
-        self.assertEqual(facets[1].name, 'Patch_10_with_spaces_and_both___and___quotes')
+        self.assertEqual(facets[1].name, 'Patch_10_with_spaces')
         self.assertEqual(facets[2].name, 'Patch_11')
         self.assertEqual(facets[3].name, 'Patch_12')
 
@@ -88,7 +88,7 @@ class TestFacet(unittest.TestCase):
         self.assertEqual(facets[0].name, 'Patch_1')
         self.assertEqual(facets[0].ra, 318.2026666666666)
         self.assertEqual(facets[0].dec, 62.250559277777775)
-        self.assertEqual(facets[1].name, 'Patch_10_with_spaces_and_both___and___quotes')
+        self.assertEqual(facets[1].name, 'Patch_10_with_spaces')
         self.assertEqual(facets[2].name, 'Patch_11')
         self.assertEqual(facets[3].name, 'Patch_12')
         os.system('rm test_region_write.reg')
