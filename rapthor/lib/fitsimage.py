@@ -293,7 +293,7 @@ class FITSCube(object):
         self.header['NAXIS'] = 3
         self.header['NAXIS3'] = len(self.frequencies)
         self.header['CRPIX3'] = 1
-        self.header['CDELT3'] = np.diff(self.frequencies).mean().value
+        self.header['CDELT3'] = np.diff(self.frequencies).mean()
         self.header['CTYPE3'] = 'FREQ'
         self.header['CRVAL3'] = self.frequencies[0]
         self.header["CUNIT3"] = "Hz"
@@ -329,7 +329,8 @@ class FITSCube(object):
         """
         Write the channel frequencies to a text file
 
-        Note: the frequencies are written one per line in Hz
+        Note: the frequencies are written as comma-separated values
+        in Hz
 
         Parameters
         ----------
@@ -350,9 +351,10 @@ class FITSCube(object):
         """
         Write the channel beam parameters to a text file
 
-        Note: the beams are written one per line as follows:
+        Note: each beam is written as a tuple as follows:
             (major axis, minor axis, position angle)
-        with all values being in degrees
+        with all values being in degrees. The beams are written to the
+        file as comma-separated tuples
 
         Parameters
         ----------
