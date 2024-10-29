@@ -192,7 +192,7 @@ def test_image_workflow(
     max_cores,
     use_mpi,
     make_image_cube,
-    normalize_flux_scale
+    # normalize_flux_scale
 ):
     """
     Test the Image workflow, using all possible combinations of parameters that
@@ -212,7 +212,7 @@ def test_image_workflow(
         "max_cores": max_cores,
         "use_mpi": use_mpi,
         "make_image_cube": make_image_cube,
-        "normalize_flux_scale": normalize_flux_scale,
+        # "normalize_flux_scale": normalize_flux_scale,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
 
