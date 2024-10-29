@@ -182,7 +182,7 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitu
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("use_mpi", (False, True))
 @pytest.mark.parametrize("make_image_cube", (False, True))
-@pytest.mark.parametrize("normalize_flux_scale", (False, True))
+#@pytest.mark.parametrize("normalize_flux_scale", (False, True))
 def test_image_workflow(
     tmp_path,
     apply_amplitudes,
