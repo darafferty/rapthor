@@ -434,7 +434,7 @@ inputs:
     label: Filename of output image cube
     doc: |
       The filename of the output image cube (length = n_sectors).
-    type: String[]
+    type: string[]
 {% endif %}
 
 {% if normalize_flux_scale %}
@@ -443,7 +443,7 @@ inputs:
     doc: |
       The filename of the h5parm file with the flux-scale normalizations
       (length = n_sectors).
-    type: String[]
+    type: string[]
 {% endif %}
 
 

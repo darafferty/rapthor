@@ -120,6 +120,8 @@ class Image(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
+        image_cube_name = []
+        normalize_h5parm = []
         for i, sector in enumerate(self.imaging_sectors):
             image_root.append(sector.name)
 
@@ -167,6 +169,10 @@ class Image(Operation):
                 dir_local.append(self.scratch_dir)
             if not self.apply_none:
                 central_patch_name.append(sector.central_patch)
+            if self.make_image_cube:
+                image_cube_name.append(sector.name + '_freq_cube.fits')
+            if self.normalize_flux_scale:
+                normalize_h5parm.append(sector.name + '_normalize.h5parm')
 
         # Handle the polarization-related options
         link_polarizations = False
@@ -298,6 +304,10 @@ class Image(Operation):
                     self.input_parms.update({'scalar_visibilities': False})
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
+        if self.make_image_cube:
+            self.input_parms.update({'image_cube_name': CWLFile(image_cube_name).to_json()})
+        if self.normalize_flux_scale:
+            self.input_parms.update({'normalize_h5parm': CWLFile(normalize_h5parm).to_json()})
 
     def finalize(self):
         """
@@ -510,6 +520,8 @@ class ImageNormalize(Image):
         self.peel_bright_sources = False
         self.make_image_cube = True
         self.normalize_flux_scale = False  # False for testing only; must be True in final version
+        if self.field.h5parm_filename is None:
+            self.apply_none = True
         super().set_parset_parameters()
 
     def set_input_parameters(self):

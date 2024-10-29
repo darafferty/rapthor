@@ -395,7 +395,7 @@ inputs:
     label: Filename of output image cube
     doc: |
       The filename of the output image cube (length = 1).
-    type: String
+    type: string
 {% endif %}
 
 {% if normalize_flux_scale %}
@@ -404,7 +404,7 @@ inputs:
     doc: |
       The filename of the h5parm file with the flux-scale normalizations
       (length = 1).
-    type: String
+    type: string
 {% endif %}
 
 
