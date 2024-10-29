@@ -201,7 +201,7 @@ outputs:
     outputBinding:
       glob: [$(inputs.name)-MFS-image-pb.fits, $(inputs.name)-MFS-I-image-pb.fits]
   - id: image_I_pb_channels
-    type: File
+    type: File[]
     outputBinding:
       glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-image-pb.fits]
   - id: images_extra

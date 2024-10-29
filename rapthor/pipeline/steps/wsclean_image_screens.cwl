@@ -267,7 +267,7 @@ outputs:
       constructed from the input parameter "name". Because the filename differs
       depending on the mode used (full-polarization vs. Stokes-I-only), we use two
       wildcard expressions.
-    type: File
+    type: File[]
     outputBinding:
       glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-image-pb.fits]
   - id: images_extra
