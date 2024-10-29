@@ -825,9 +825,9 @@ steps:
       into an image cube.
     run: {{ rapthor_pipeline_dir }}/steps/make_image_cube.cwl
     in:
-      - id: channel_images
+      - id: input_image_list
         source: image/image_I_pb_channels
-      - id: image_cube_name
+      - id: output_image
         source: image_cube_name
     out:
       - id: image_cube
