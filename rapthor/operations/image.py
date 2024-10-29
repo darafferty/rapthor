@@ -305,9 +305,9 @@ class Image(Operation):
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
         if self.make_image_cube:
-            self.input_parms.update({'image_cube_name': CWLFile(image_cube_name).to_json()})
+            self.input_parms.update({'image_cube_name': image_cube_name})
         if self.normalize_flux_scale:
-            self.input_parms.update({'normalize_h5parm': CWLFile(normalize_h5parm).to_json()})
+            self.input_parms.update({'normalize_h5parm': normalize_h5parm})
 
     def finalize(self):
         """
@@ -521,7 +521,10 @@ class ImageNormalize(Image):
         self.make_image_cube = True
         self.normalize_flux_scale = False  # False for testing only; must be True in final version
         if self.field.h5parm_filename is None:
+            # No calibration has yet been done, so set various flags as needed
             self.apply_none = True
+            self.use_facets = False
+            self.use_screens = False
         super().set_parset_parameters()
 
     def set_input_parameters(self):
