@@ -269,7 +269,7 @@ outputs:
       wildcard expressions.
     type: File[]
     outputBinding:
-      glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-image-pb.fits]
+      glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-I-image-pb.fits]
   - id: images_extra
     label: Extra output images
     doc: |

@@ -155,7 +155,7 @@ outputs:
   - id: image_I_pb_channels
     type: File[]
     outputBinding:
-      glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-image-pb.fits]
+      glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-I-image-pb.fits]
   - id: images_extra
     type: File[]
     outputBinding:
