@@ -48,10 +48,6 @@ class Field(object):
         self.ms_filenames = self.parset['mss']
         self.numMS = len(self.ms_filenames)
         self.data_colname = 'DATA'
-        self.flag_abstime = self.parset['flag_abstime']
-        self.flag_baseline = self.parset['flag_baseline']
-        self.flag_freqrange = self.parset['flag_freqrange']
-        self.flag_expr = self.parset['flag_expr']
         self.bda_timebase_fast = self.parset['calibration_specific']['fast_bda_timebase']
         self.bda_timebase_slow_joint = self.parset['calibration_specific']['slow_bda_timebase_joint']
         self.bda_timebase_slow_separate = self.parset['calibration_specific']['slow_bda_timebase_separate']
