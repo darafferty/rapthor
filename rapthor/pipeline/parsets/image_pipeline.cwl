@@ -520,6 +520,14 @@ outputs:
     outputSource:
       - image_sector/sector_image_cube
     type: File[]
+  - id: sector_image_cube_beams
+    outputSource:
+      - image_sector/image_cube_beams
+    type: File
+  - id: sector_image_cube_frequencies
+    outputSource:
+      - image_sector/image_cube_frequencies
+    type: File
 {% endif %}
 {% if normalize_flux_scale %}
   - id: sector_normalize_h5parm
