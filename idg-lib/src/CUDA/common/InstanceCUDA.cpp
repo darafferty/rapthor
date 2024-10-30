@@ -335,6 +335,8 @@ void InstanceCUDA::launch_grid_fft(cu::DeviceMemory& d_data, int batch,
 
 std::unique_ptr<KernelFFT> InstanceCUDA::plan_batched_fft(size_t size,
                                                           size_t batch) {
+  batch = std::max(batch, 1ul);
+
   // Amount of device memory free (with a small safety margin)
   const size_t bytes_free = get_free_memory() * 0.95;
 
