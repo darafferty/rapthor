@@ -553,9 +553,21 @@ class ImageNormalize(Image):
         """
         Finalize this operation
         """
-        # Save the output FITS cubes and flux-scale corrections h5parms
-        # When multiple sectors are used, average the flux-scale corrections
-        # over the sectors, weighted by stdev?
+        # Save the output FITS cubes and h5parms with the flux-scale corrections
+        for sector in self.imaging_sectors:
+            # The output image cube filenames
+            image_root = os.path.join(self.pipeline_working_dir, sector.name)
+            sector.I_freq_cube = f'{image_root}_freq_cube.fits'
+            dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+            misc.create_directory(dst_dir)
+            dst_filename = os.path.join(dst_dir, os.path.basename(sector.I_freq_cube))
+            shutil.copy(sector.I_freq_cube, dst_filename)
+
+            # The output beams and frequencies files
+            for suffix in ['_beams.txt', '_frequencies.txt']:
+                src_filename = sector.I_freq_cube + suffix
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                shutil.copy(src_filename, dst_filename)
 
         # Finally call finalize() of the Operation class
         super(Image, self).finalize()
