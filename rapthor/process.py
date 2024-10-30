@@ -147,6 +147,7 @@ def run_steps(field, steps, final=False):
         field.update(step, cycle_number, final=final)
 
         # Normalize the flux scale
+        field.do_normalize = False  # TODO: enable when functionality is complete
         if field.do_normalize:
             # Set the Stokes polarization to I
             field.image_pol = 'I'

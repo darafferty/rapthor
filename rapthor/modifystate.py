@@ -40,7 +40,7 @@ def run(parset_file):
 
     # Check each operation for started pipelines (workflows)
     # Note: the order here should match the order in which the operations were run
-    operation_list = ['concatenate', 'initial_image', 'predict_nc', 'calibrate',
+    operation_list = ['concatenate', 'initial_image', 'normalize', 'predict_nc', 'calibrate',
                       'predict_di', 'calibrate_di', 'predict', 'image', 'mosaic']
     while True:
         pipelines = []
