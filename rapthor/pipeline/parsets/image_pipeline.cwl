@@ -438,6 +438,12 @@ inputs:
 {% endif %}
 
 {% if normalize_flux_scale %}
+  - id: output_source_catalog
+    label: Filename of FITS source catalog
+    doc: |
+      The filename of the FITS source catalog to use for flux-scale normalizations
+      (length = n_sectors).
+    type: string[]
   - id: normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
@@ -760,5 +766,6 @@ steps:
       - id: sector_image_cube_frequencies
 {% endif %}
 {% if normalize_flux_scale %}
+      - id: output_source_catalog
       - id: sector_normalize_h5parm
 {% endif %}

@@ -399,6 +399,12 @@ inputs:
 {% endif %}
 
 {% if normalize_flux_scale %}
+  - id: output_source_catalog
+    label: Filename of FITS source catalog
+    doc: |
+      The filename of the FITS source catalog to use for flux-scale normalizations
+      (length = 1).
+    type: string
   - id: normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
@@ -918,12 +924,11 @@ steps:
 
 {% if normalize_flux_scale %}
 # start normalize_flux_scale
-  - id: normalize_flux_scale
-    label: Normalize the flux scale
+  - id: make_catalog_from_image_cube
+    label: Make a source catalog from an image cube
     doc: |
-      This step determines the corrections necessary to
-      normalize the flux scale
-    run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+      This step makes a source catalog from a FITS image cube
+    run: {{ rapthor_pipeline_dir }}/steps/make_catalog_from_image_cube.cwl
     in:
       - id: image_cube
         source: make_image_cube/image_cube
@@ -931,6 +936,20 @@ steps:
         source: make_image_cube/image_cube_beams
       - id: image_cube_frequencies
         source: make_image_cube/image_cube_frequencies
+      - id: output_catalog
+        source: output_source_catalog
+    out:
+      - id: source_catalog
+
+  - id: normalize_flux_scale
+    label: Normalize the flux scale
+    doc: |
+      This step determines the corrections necessary to
+      normalize the flux scale
+    run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+    in:
+      - id: source_catalog
+        source: make_catalog_from_image_cube/source_catalog
       - id: normalize_h5parm
         source: normalize_h5parm
     out:

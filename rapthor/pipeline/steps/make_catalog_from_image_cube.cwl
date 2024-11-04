@@ -62,7 +62,7 @@ inputs:
     type: int
     inputBinding:
       prefix: --ncores=
-      separate: False
+      separate: false
 
 outputs:
   - id: source_catalog
