@@ -107,10 +107,16 @@ class CWLRunner:
             prefix = os.path.join(self.operation.pipeline_working_dir, self.command + '.')
             self.args.extend(['--tmpdir-prefix', prefix])
 
+        # Make a copy of the environment to allow changes made to it in the
+        # setup() method of derived classes to be reverted in teardown()
+        self.__environment = os.environ.copy()
+
     def teardown(self) -> None:
         """
         Clean up after the runner has run.
         """
+        os.environ.clear()
+        os.environ.update(self.__environment)
         if self.operation.use_mpi:
             self._delete_mpi_config_file()
 
@@ -156,13 +162,10 @@ class ToilRunner(CWLRunner):
         """
         super().__init__(operation)
         self.command = "toil-cwl-runner"
-        self.toil_env_variables = {
-            "TOIL_SLURM_ARGS": "--export=ALL"
-        }
 
     def setup(self):
         """
-        Prepare runner for running. Adds some additional preprations to base class.
+        Prepare runner for running. Adds some additional preparations to base class.
         """
         super().setup()
         self.args.extend(['--batchSystem', self.operation.batch_system])
@@ -218,15 +221,23 @@ class ToilRunner(CWLRunner):
             self.args.extend(['--cleanWorkDir', 'never'])
             self.args.extend(['--debugWorker'])  # NOTE: stdout/stderr are not redirected to the log
             self.args.extend(['--logDebug'])
-        os.environ.update(self.toil_env_variables)
+
+        # Set any Toil-specific environment variables
+        if self.operation.batch_system == 'slurm':
+            toil_env_variables = {
+                "TOIL_SLURM_ARGS": "--export=ALL"
+            }
+            if "TOIL_SLURM_ARGS" in self.__environment:
+                # Add any args already set in the existing environment
+                toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
+        else:
+            toil_env_variables = {}  # currently, there are no relevant ones for non-Slurm batch systems
+        os.environ.update(toil_env_variables)
 
     def teardown(self):
         """
         Clean up after the runner has run.
         """
-        for key in self.toil_env_variables:
-            del os.environ[key]
-        super().teardown()
         if not self.operation.debug_workflow:
             # Use the logs to find the temporary directory we ran in.
             workerlogs = os.popen("grep 'Redirecting logging to' " + os.path.join(self.operation.log_dir, 'pipeline.log') + "  | awk '{print $NF}'").read()
@@ -238,6 +249,7 @@ class ToilRunner(CWLRunner):
             for t in leftover_tempdirs:
                 logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
                 shutil.rmtree(t, ignore_errors=True)
+        super().teardown()
 
 
 class CWLToolRunner(CWLRunner):
