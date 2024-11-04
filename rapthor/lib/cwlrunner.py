@@ -238,7 +238,6 @@ class ToilRunner(CWLRunner):
         """
         Clean up after the runner has run.
         """
-        super().teardown()
         if not self.operation.debug_workflow:
             # Use the logs to find the temporary directory we ran in.
             workerlogs = os.popen("grep 'Redirecting logging to' " + os.path.join(self.operation.log_dir, 'pipeline.log') + "  | awk '{print $NF}'").read()
@@ -250,6 +249,7 @@ class ToilRunner(CWLRunner):
             for t in leftover_tempdirs:
                 logger.debug('Cleaning up temporary directory {:s} of {:s}'.format(t, self.operation.name))
                 shutil.rmtree(t, ignore_errors=True)
+        super().teardown()
 
 
 class CWLToolRunner(CWLRunner):
