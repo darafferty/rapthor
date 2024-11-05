@@ -483,10 +483,14 @@ outputs:
     type: File
 {% endif %}
 {% if normalize_flux_scale %}
-  - id: sector_normalize_h5parm
+  - id: sector_source_catalog
     outputSource:
-      - normalize_flux_scale/h5parm
+      - make_catalog_from_image_cube/source_catalog
     type: File
+  # - id: sector_normalize_h5parm
+  #   outputSource:
+  #     - normalize_flux_scale/h5parm
+  #   type: File
 {% endif %}
 
 steps:
@@ -941,18 +945,18 @@ steps:
     out:
       - id: source_catalog
 
-  - id: normalize_flux_scale
-    label: Normalize the flux scale
-    doc: |
-      This step determines the corrections necessary to
-      normalize the flux scale
-    run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
-    in:
-      - id: source_catalog
-        source: make_catalog_from_image_cube/source_catalog
-      - id: normalize_h5parm
-        source: normalize_h5parm
-    out:
-      - id: h5parm
+  # - id: normalize_flux_scale
+  #   label: Normalize the flux scale
+  #   doc: |
+  #     This step determines the corrections necessary to
+  #     normalize the flux scale
+  #   run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+  #   in:
+  #     - id: source_catalog
+  #       source: make_catalog_from_image_cube/source_catalog
+  #     - id: normalize_h5parm
+  #       source: normalize_h5parm
+  #   out:
+  #     - id: h5parm
 {% endif %}
 # end normalize_flux_scale

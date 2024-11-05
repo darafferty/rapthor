@@ -536,10 +536,14 @@ outputs:
     type: File[]
 {% endif %}
 {% if normalize_flux_scale %}
-  - id: sector_normalize_h5parm
+  - id: sector_source_catalog
     outputSource:
-      - image_sector/sector_normalize_h5parm
+      - image_sector/sector_source_catalog
     type: File[]
+  # - id: sector_normalize_h5parm
+  #   outputSource:
+  #     - image_sector/sector_normalize_h5parm
+  #   type: File[]
 {% endif %}
 
 
@@ -766,6 +770,6 @@ steps:
       - id: sector_image_cube_frequencies
 {% endif %}
 {% if normalize_flux_scale %}
-      - id: output_source_catalog
-      - id: sector_normalize_h5parm
+      - id: sector_source_catalog
+      # - id: sector_normalize_h5parm
 {% endif %}
