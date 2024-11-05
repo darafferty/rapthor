@@ -262,7 +262,7 @@ class FITSCube(object):
         Check the input channel images for problems
         """
         image_ch0 = self.channel_images[0]
-        wcs_ch0 = image_ch0.get_wcs()
+        wcs_ch0 = image_ch0.get_wcs().wcs
         for channel_image in self.channel_images:
             # Check that all channels have the same data shape
             if channel_image.img_data.shape != image_ch0.img_data.shape:
@@ -270,12 +270,19 @@ class FITSCube(object):
                                  '{1}'.format(channel_image.imagefile, image_ch0.imagefile))
 
             # Check that all channels have the same WCS parameters
-            channel_image_wcs = channel_image.get_wcs()
+            channel_wcs = channel_image.get_wcs().wcs
             for wcs_attr in ['crpix', 'cdelt', 'crval', 'ctype']:
-                if not np.all(np.isclose(np.array(getattr(channel_image_wcs.wcs, wcs_attr)),
-                              np.array(getattr(wcs_ch0.wcs, wcs_attr)))):
-                    raise ValueError('WCS for channel image {0} differs from that of '
-                                     '{1}'.format(channel_image.imagefile, image_ch0.imagefile))
+                if wcs_attr == 'ctype':
+                    # Check string values
+                    values_agree = np.all(np.array(getattr(channel_wcs, wcs_attr)) ==
+                                          np.array(getattr(wcs_ch0, wcs_attr)))
+                else:
+                    # Check float values
+                    values_agree = np.all(np.isclose(np.array(getattr(channel_wcs, wcs_attr)),
+                                                     np.array(getattr(wcs_ch0, wcs_attr))))
+                if not values_agree:
+                    raise ValueError('WCS {0} value for channel image {1} differs from that of '
+                                     '{2}'.format(wcs_attr, channel_image.imagefile, image_ch0.imagefile))
 
     def order_channel_images(self):
         """
