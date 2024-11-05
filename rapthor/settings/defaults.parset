@@ -237,7 +237,7 @@ skip_corner_sectors = False
 
 [cluster]
 # Cluster batch system (default = single_machine). Use batch_system = slurm to
-# use a SLURM-based cluster
+# use a Slurm-based cluster
 batch_system = single_machine
 
 # For batch_system = slurm, the maximum number of nodes of the cluster to use at

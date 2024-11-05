@@ -16,7 +16,7 @@ class PredictDD(Operation):
     processing
     """
     def __init__(self, field, index):
-        super().__init__(field, name='predict', index=index)
+        super().__init__(field, index=index, name='predict')
 
     def set_parset_parameters(self):
         """
@@ -175,7 +175,7 @@ class PredictNC(Operation):
     Operation to predict model data for non-calibrator sources
     """
     def __init__(self, field, index):
-        super().__init__(field, name='predict_nc', index=index)
+        super().__init__(field, index=index, name='predict_nc')
 
     def set_parset_parameters(self):
         """
@@ -283,7 +283,7 @@ class PredictDI(Operation):
     Operation to predict model data for direction-independent calibration
     """
     def __init__(self, field, index):
-        super().__init__(field, name='predict_di', index=index)
+        super().__init__(field, index=index, name='predict_di')
 
     def set_parset_parameters(self):
         """

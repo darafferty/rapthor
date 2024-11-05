@@ -29,12 +29,12 @@ class Operation(object):
     ----------
     field : Field object
         Field for this operation
-    name : str, optional
-        Name of the operation
     index : int, optional
         Index of the operation
+    name : str, optional
+        Name of the operation
     """
-    def __init__(self, field, name=None, index=None):
+    def __init__(self, field, index=None, name=None):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = name.lower()

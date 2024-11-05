@@ -14,7 +14,7 @@ class Concatenate(Operation):
     Operation to concatenate MS files
     """
     def __init__(self, field, index):
-        super().__init__(field, name='concatenate', index=index)
+        super().__init__(field, index=index, name='concatenate')
 
     def set_parset_parameters(self):
         """

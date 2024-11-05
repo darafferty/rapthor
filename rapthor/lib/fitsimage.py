@@ -1,5 +1,5 @@
 """
-Definition of the FITSImage class for handling of FITS images
+Definition of classes for handling of FITS images
 """
 from rapthor.lib import miscellaneous as misc
 from astropy.wcs import WCS as pywcs
@@ -236,16 +236,21 @@ class FITSCube(object):
 
     Parameters
     ----------
-    imagefiles : list of str
-        List of filenames of the FITS channel images
+    channel_imagefiles : list of str
+        List of filenames of the FITS channel images (one frequency channel per
+        image). Note: If more than one frequency channel is present in a given
+        input image, the lowest-frequency channel is used and any other channels
+        are ignored
     """
-    def __init__(self, imagefiles):
-        self.imagefiles = imagefiles
+    def __init__(self, channel_imagefiles):
+        self.channel_imagefiles = channel_imagefiles
         self.name = 'FITS_cube'
 
         self.channel_images = []
-        for imagefile in self.imagefiles:
-            self.channel_images.append(FITSImage(imagefile))
+        for channel_imagefile in self.channel_imagefiles:
+            self.channel_images.append(FITSImage(channel_imagefile))
+        if not self.channel_images:
+            raise ValueError('No valid channel images were found')
 
         self.check_channel_images()
         self.order_channel_images()
@@ -257,29 +262,36 @@ class FITSCube(object):
         Check the input channel images for problems
         """
         image_ch0 = self.channel_images[0]
-        wcs_ch0 = image_ch0.get_wcs()
-        for image in self.channel_images:
+        wcs_ch0 = image_ch0.get_wcs().wcs
+        for channel_image in self.channel_images:
             # Check that all channels have the same data shape
-            if image.img_data.shape != image_ch0.img_data.shape:
+            if channel_image.img_data.shape != image_ch0.img_data.shape:
                 raise ValueError('Data shape for channel image {0} differs from that of '
-                                 '{1}'.format(image.imagefile, image_ch0.imagefile))
+                                 '{1}'.format(channel_image.imagefile, image_ch0.imagefile))
 
             # Check that all channels have the same WCS parameters
-            image_wcs = image.get_wcs()
+            channel_wcs = channel_image.get_wcs().wcs
             for wcs_attr in ['crpix', 'cdelt', 'crval', 'ctype']:
-                if not np.all(np.array(getattr(image_wcs.wcs, wcs_attr)) ==
-                              np.array(getattr(wcs_ch0.wcs, wcs_attr))):
-                    raise ValueError('WCS for channel image {0} differs from that of '
-                                     '{1}'.format(image.imagefile, image_ch0.imagefile))
+                if wcs_attr == 'ctype':
+                    # Check string values
+                    values_agree = np.all(np.array(getattr(channel_wcs, wcs_attr)) ==
+                                          np.array(getattr(wcs_ch0, wcs_attr)))
+                else:
+                    # Check float values
+                    values_agree = np.all(np.isclose(np.array(getattr(channel_wcs, wcs_attr)),
+                                                     np.array(getattr(wcs_ch0, wcs_attr))))
+                if not values_agree:
+                    raise ValueError('WCS {0} value for channel image {1} differs from that of '
+                                     '{2}'.format(wcs_attr, channel_image.imagefile, image_ch0.imagefile))
 
     def order_channel_images(self):
         """
         Order the input channel images by frequency
         """
-        frequencies = np.array([image.freq for image in self.channel_images])
+        frequencies = np.array([channel_image.freq for channel_image in self.channel_images])
         sort_idx = np.argsort(frequencies)
-        self.frequencies = frequencies[sort_idx]
-        self.imagefiles = np.array(self.imagefiles)[sort_idx].tolist()
+        self.channel_frequencies = frequencies[sort_idx]
+        self.channel_imagefiles = np.array(self.channel_imagefiles)[sort_idx].tolist()
         self.channel_images = np.array(self.channel_images)[sort_idx].tolist()
 
     def make_header(self):
@@ -291,11 +303,11 @@ class FITSCube(object):
 
         # Add a frequecy axis to the header
         self.header['NAXIS'] = 3
-        self.header['NAXIS3'] = len(self.frequencies)
+        self.header['NAXIS3'] = len(self.channel_frequencies)
         self.header['CRPIX3'] = 1
-        self.header['CDELT3'] = np.diff(self.frequencies).mean()
+        self.header['CDELT3'] = np.diff(self.channel_frequencies).mean()
         self.header['CTYPE3'] = 'FREQ'
-        self.header['CRVAL3'] = self.frequencies[0]
+        self.header['CRVAL3'] = self.channel_frequencies[0]
         self.header["CUNIT3"] = "Hz"
 
     def make_data(self):
@@ -308,8 +320,8 @@ class FITSCube(object):
 
         self.data = np.zeros(cube_shape)
 
-        for i, image in enumerate(self.channel_images):
-            self.data[i, :] = image.img_data
+        for i, channel_image in enumerate(self.channel_images):
+            self.data[i, :] = channel_image.img_data
 
     def write(self, filename=None):
         """
@@ -317,11 +329,13 @@ class FITSCube(object):
 
         Parameters
         ----------
-        filename : str
-            Filename of the output FITS file
+        filename : str, optional
+            Filename of the output FITS file. If None, it is made by adding the
+            suffix "_cube.fits" to the filename of the lowest-frequency input
+            channel image
         """
         if filename is None:
-            filename = f'{Path(self.imagefiles[0]).stem}_cube.fits'
+            filename = f'{Path(self.channel_imagefiles[0]).stem}_cube.fits'
 
         pyfits.writeto(filename, self.data, self.header, overwrite=True)
 
@@ -334,18 +348,17 @@ class FITSCube(object):
 
         Parameters
         ----------
-        filename : str
-            Filename of the output text file
+        filename : str, optional
+            Filename of the output text file. If None, it is made by adding the
+            suffix "_frequencies.txt" to the filename of the lowest-frequency
+            input channel image
         """
         if filename is None:
-            filename = f'{Path(self.imagefiles[0]).stem}_frequencies.txt'
-
-        frequencies = []
-        for image in self.channel_images:
-            frequencies.append(f'{image.freq}')
+            filename = f'{Path(self.channel_imagefiles[0]).stem}_frequencies.txt'
 
         with open(filename, 'w') as f:
-            f.writelines(', '.join(frequencies))
+            f.writelines(', '.join([f'{channel_frequecy}' for channel_frequecy in
+                                    self.channel_frequencies]))
 
     def write_beams(self, filename=None):
         """
@@ -358,15 +371,14 @@ class FITSCube(object):
 
         Parameters
         ----------
-        filename : str
-            Filename of the output text file
+        filename : str, optional
+            Filename of the output text file. If None, it is made by adding the
+            suffix "_beams.txt" to the filename of the lowest-frequency input
+            channel image
         """
         if filename is None:
-            filename = f'{Path(self.imagefiles[0]).stem}_beams.txt'
-
-        beams = []
-        for image in self.channel_images:
-            beams.append(f'{tuple(image.beam)}')
+            filename = f'{Path(self.channel_imagefiles[0]).stem}_beams.txt'
 
         with open(filename, 'w') as f:
-            f.writelines(', '.join(beams))
+            f.writelines(', '.join([f'{tuple(channel_image.beam)}' for channel_image in
+                                    self.channel_images]))
