@@ -357,7 +357,8 @@ class FITSCube(object):
             filename = f'{Path(self.channel_imagefiles[0]).stem}_frequencies.txt'
 
         with open(filename, 'w') as f:
-            f.writelines(', '.join(self.channel_frequencies))
+            f.writelines(', '.join([f'{channel_frequecy}' for channel_frequecy in
+                                    self.channel_frequencies]))
 
     def write_beams(self, filename=None):
         """
