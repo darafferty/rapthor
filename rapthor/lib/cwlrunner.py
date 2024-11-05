@@ -109,14 +109,14 @@ class CWLRunner:
 
         # Make a copy of the environment to allow changes made to it in the
         # setup() method of derived classes to be reverted in teardown()
-        self.__environment = os.environ.copy()
+        self._environment = os.environ.copy()
 
     def teardown(self) -> None:
         """
         Clean up after the runner has run.
         """
         os.environ.clear()
-        os.environ.update(self.__environment)
+        os.environ.update(self._environment)
         if self.operation.use_mpi:
             self._delete_mpi_config_file()
 
@@ -227,9 +227,9 @@ class ToilRunner(CWLRunner):
             toil_env_variables = {
                 "TOIL_SLURM_ARGS": "--export=ALL"
             }
-            if "TOIL_SLURM_ARGS" in self.__environment:
+            if "TOIL_SLURM_ARGS" in self._environment:
                 # Add any args already set in the existing environment
-                toil_env_variables["TOIL_SLURM_ARGS"] += " " + self.__environment["TOIL_SLURM_ARGS"]
+                toil_env_variables["TOIL_SLURM_ARGS"] += " " + self._environment["TOIL_SLURM_ARGS"]
         else:
             toil_env_variables = {}  # currently, there are no relevant ones for non-Slurm batch systems
         os.environ.update(toil_env_variables)
