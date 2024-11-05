@@ -18,7 +18,7 @@ class Image(Operation):
     Operation to image a field sector
     """
     def __init__(self, field, index, name='image'):
-        super().__init__(field, name=name, index=index)
+        super().__init__(field, index=index, name=name)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
@@ -122,7 +122,7 @@ class Image(Operation):
         central_patch_name = []
         image_cube_name = []
         normalize_h5parm = []
-        for i, sector in enumerate(self.imaging_sectors):
+        for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not

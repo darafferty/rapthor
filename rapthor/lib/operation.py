@@ -34,7 +34,7 @@ class Operation(object):
     index : int, optional
         Index of the operation
     """
-    def __init__(self, field, name=None, index=None):
+    def __init__(self, field, index=None, name=None):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = name.lower()
