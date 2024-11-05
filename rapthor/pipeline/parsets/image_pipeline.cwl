@@ -696,6 +696,8 @@ steps:
         source: image_cube_name
 {% endif %}
 {% if normalize_flux_scale %}
+      - id: output_source_catalog
+        source: output_source_catalog
       - id: normalize_h5parm
         source: normalize_h5parm
 {% endif %}
@@ -712,6 +714,7 @@ steps:
               image_cube_name,
 {% endif %}
 {% if normalize_flux_scale %}
+              output_source_catalog,
               normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
