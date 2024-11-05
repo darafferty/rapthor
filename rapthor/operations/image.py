@@ -123,7 +123,7 @@ class Image(Operation):
         image_cube_name = []
         normalize_h5parm = []
         output_source_catalog = []
-       for sector in self.imaging_sectors:
+        for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
