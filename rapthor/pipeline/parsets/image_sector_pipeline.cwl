@@ -934,14 +934,20 @@ steps:
       This step makes a source catalog from a FITS image cube
     run: {{ rapthor_pipeline_dir }}/steps/make_catalog_from_image_cube.cwl
     in:
-      - id: image_cube
+      - id: cube
         source: make_image_cube/image_cube
-      - id: image_cube_beams
+      - id: cube_beams
         source: make_image_cube/image_cube_beams
-      - id: image_cube_frequencies
+      - id: cube_frequencies
         source: make_image_cube/image_cube_frequencies
       - id: output_catalog
         source: output_source_catalog
+      - id: threshisl
+        source: threshisl
+      - id: threshpix
+        source: threshpix
+      - id: ncores
+        source: max_threads
     out:
       - id: source_catalog
 

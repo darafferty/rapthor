@@ -14,7 +14,7 @@ requirements:
         writable: true
 
 inputs:
-  - id: cube_image
+  - id: cube
     label: Detection cube
     doc: |
       The filename of the input FITS image cube used for source detection.

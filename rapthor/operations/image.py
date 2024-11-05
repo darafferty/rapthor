@@ -522,7 +522,7 @@ class ImageNormalize(Image):
         self.save_source_list = False
         self.peel_bright_sources = False
         self.make_image_cube = True
-        self.normalize_flux_scale = False  # False for testing only; must be True in final version
+        self.normalize_flux_scale = True
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
             self.apply_none = True
