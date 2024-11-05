@@ -10,7 +10,7 @@ requirements:
   - class: InlineJavascriptRequirement
   - class: InitialWorkDirRequirement
     listing:
-      - entry: $(inputs.cube_image)
+      - entry: $(inputs.cube)
         writable: true
 
 inputs:

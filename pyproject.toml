@@ -73,6 +73,7 @@ script-files = [
     "rapthor/scripts/concat_ms.py",
     "rapthor/scripts/filter_skymodel.py",
     "rapthor/scripts/make_aterm_images.py",
+    "rapthor/scripts/make_catalog_from_image_cube.py",
     "rapthor/scripts/make_image_cube.py",
     "rapthor/scripts/make_mosaic.py",
     "rapthor/scripts/make_mosaic_template.py",
