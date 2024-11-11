@@ -198,6 +198,13 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
+  - id: local_rms_strength
+    label: Local RMS strength value
+    doc: |
+      The local RMS strength value.
+    type: float
+    inputBinding:
+      prefix: -local-rms-strength
   - id: wsclean_mem
     label: Memory in GB
     doc: |

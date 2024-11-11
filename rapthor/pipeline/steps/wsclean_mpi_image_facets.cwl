@@ -139,6 +139,10 @@ inputs:
     type: float
     inputBinding:
       prefix: -taper-gaussian
+  - id: local_rms_strength
+    type: float
+    inputBinding:
+      prefix: -local-rms-strength
   - id: wsclean_mem
     type: float
     inputBinding:

@@ -80,6 +80,7 @@
                       'sector_width_ra_deg_list': [],
                       'skip_corner_sectors': False,
                       'taper_arcsec': 0.0,
+                      'local_rms_strength': 1.0,
                       'use_mpi': False},
  'input_h5parm': None,
  'input_fulljones_h5parm': None,

@@ -341,6 +341,11 @@ The available options are described below under their respective sections.
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).
 
+    local_rms_strength
+        Strength to use for the local RMS thresholding (default = 1.0). The
+        strength is applied by WSClean to the local RMS map using ``local_rms ^
+        strength``.
+
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 

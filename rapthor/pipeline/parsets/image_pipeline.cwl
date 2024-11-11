@@ -368,6 +368,12 @@ inputs:
       The WSClean taper value in arcsec (length = n_sectors).
     type: float[]
 
+  - id: local_rms_strength
+    label: RMS strength value
+    doc: |
+      The WSClean local RMS strength value (length = n_sectors).
+    type: float[]
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -620,6 +626,8 @@ steps:
         source: join_polarizations
       - id: taper_arcsec
         source: taper_arcsec
+      - id: local_rms_strength
+        source: local_rms_strength
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
@@ -655,8 +663,8 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
-              taper_arcsec, wsclean_mem, auto_mask, idg_mode, threshisl, threshpix,
-              dd_psf_grid]
+              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
+              idg_mode, threshisl, threshpix, dd_psf_grid]
 {% else %}
 # start not use_screens
     scatter: [obs_filename, prepare_filename, concat_filename, starttime, ntimes,
@@ -675,8 +683,8 @@ steps:
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
               wsclean_nmiter, robust, min_uv_lambda, max_uv_lambda, do_multiscale,
-              taper_arcsec, wsclean_mem, auto_mask, idg_mode, threshisl, threshpix,
-              dd_psf_grid]
+              taper_arcsec, local_rms_strength, wsclean_mem, auto_mask,
+              idg_mode, threshisl, threshpix, dd_psf_grid]
 {% endif %}
 # end use_screens / not use_screens
 

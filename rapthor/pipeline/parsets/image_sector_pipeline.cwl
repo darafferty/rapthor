@@ -333,6 +333,12 @@ inputs:
       The WSClean taper value in arcsec (length = 1).
     type: float
 
+  - id: local_rms_strength
+    label: Local RMS strength value
+    doc: |
+      The WSClean local RMS strength value (length = 1).
+    type: float
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -703,6 +709,8 @@ steps:
         source: fit_spectral_pol
       - id: taper_arcsec
         source: taper_arcsec
+      - id: local_rms_strength
+        source: local_rms_strength
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
