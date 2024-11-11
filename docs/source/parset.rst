@@ -517,8 +517,7 @@ The available options are described below under their respective sections.
         ``max_threads``).
 
     parallel_gridding_threads
-        Number of threads to use by WSClean during parallel gridding (default = 0 = 2/5 of
-        ``max_threads``).
+        Number of threads to use by WSClean for parallel gridding (default = 6).
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not

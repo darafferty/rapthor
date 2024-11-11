@@ -340,8 +340,6 @@ class Parset:
         max_threads = options["max_threads"]
         if not options["deconvolution_threads"]:
             options["deconvolution_threads"] = max(1, max_threads * 2 // 5)
-        if not options["parallel_gridding_threads"]:
-            options["parallel_gridding_threads"] = max(1, max_threads * 2 // 5)
 
     def read_file(self, parset_file):
         """

@@ -258,11 +258,13 @@ mem_per_node_gb = 0
 max_cores = 0
 max_threads = 0
 
-# Number of threads to use by WSClean during deconvolution and parallel gridding
-# (default = 0 = 2/5 of max_threads). Higher values will speed up imaging at the
-# expense of higher memory usage
+# Number of threads to use by WSClean during deconvolution (default = 0 = 2/5
+# of max_threads). Higher values will speed up imaging at the expense of higher
+# memory usage
 deconvolution_threads = 0
-parallel_gridding_threads = 0
+
+# Number of threads to use by WSClean for parallel gridding (default = 6)
+parallel_gridding_threads = 6
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a
