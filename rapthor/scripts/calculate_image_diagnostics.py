@@ -211,7 +211,7 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
         try:
             comparison_skymodels = [lsmtool.load(comparison_skymodel)]
             comparison_surveys = ['USER_SUPPLIED']
-        except OSError as e:
+        except (OSError, ConnectionError) as e:
             # Comparison catalog not loaded successfully
             print('Comparison sky model could not be loaded. Error was: {}. Trying to '
                   'download sky model(s) instead...'.format(e))
@@ -235,10 +235,11 @@ def check_photometry(obs, input_catalog, freq, min_number, comparison_skymodel=N
             try:
                 comparison_skymodels.append(lsmtool.load(survey, VOPosition=[obs.ra, obs.dec],
                                                          VORadius=5.0))
-            except OSError:
+            except (OSError, ConnectionError) as e:
                 # Comparison catalog not downloaded successfully
                 print(f'A problem occurred when downloading the {survey} catalog '
-                      'for use in the photometry check. Skipping this survey...')
+                      'for use in the photometry check. Error was: {}. Skipping '
+                      'this survey...'.format(e))
 
     # Convert the filtered catalog to a minimal sky model for use with LSMTool
     # and do the comparison for each survey.
@@ -382,7 +383,7 @@ def check_astrometry(obs, input_catalog, image, facet_region_file, min_number,
         try:
             s_comp_astrometry = lsmtool.load(comparison_skymodel)
             s_comp_astrometry.group('every')
-        except OSError as e:
+        except (OSError, ConnectionError) as e:
             # Comparison catalog not loaded successfully
             s_comp_astrometry = None
             print('Comparison sky model could not be loaded. Error was: {}. Trying default '
