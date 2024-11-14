@@ -514,7 +514,7 @@ The available options are described below under their respective sections.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
-        ``max_threads``).
+        ``max_threads``, but not more than 14).
 
     parallel_gridding_threads
         Number of threads to use by WSClean for parallel gridding (default = 6).
