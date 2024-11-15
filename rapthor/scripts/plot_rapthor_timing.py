@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from datetime import datetime
 
 import argparse
@@ -107,11 +108,16 @@ class MainLogParser():
     def plot(self) -> None:
         """ Create an overview plot. """
         sns.set_style("white", {'xtick.bottom': True, 'ytick.left': True})
-        cycledict = self.operations
+        # Some operations are only done once and don't have a cycle count
+        # suffix. Just add `_1` in this case to add them to the first cycle.
+        cycledict = {
+            key if key[-1].isdigit() else key + '_1': value
+            for key, value in self.operations.items()
+        }
         df = pd.DataFrame(cycledict.items(), columns=('Operation', 'Duration'))
         df['Cycle'] = ['Cycle {:d}'.format(int(x.split('_')[-1])) for x in df['Operation']]
-        df['Operation'] = [x.split('_')[0] for x in df['Operation']]
-        
+        df['Operation'] = [x.rsplit('_', 1)[0] for x in df['Operation']]
+
         fig = plt.figure(figsize=FIGSIZE)
         h = sns.histplot(df, x='Cycle', hue='Operation', weights='Duration', multiple='dodge', discrete=True, figure=fig)
         # Check how many of the 4 operations (calibrate, predict, image and mosaic) are present.

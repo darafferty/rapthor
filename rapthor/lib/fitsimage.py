@@ -318,7 +318,7 @@ class FITSCube(object):
         cube_shape = [len(self.channel_images)]
         cube_shape.extend(self.channel_images[0].img_data.shape)
 
-        self.data = np.zeros(cube_shape)
+        self.data = np.empty(cube_shape)
 
         for i, channel_image in enumerate(self.channel_images):
             self.data[i, :] = channel_image.img_data
