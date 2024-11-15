@@ -17,7 +17,7 @@ class CalibrateDD(Operation):
     Operation to perform direction-dependent (DD) calibration of the field
     """
     def __init__(self, field, index):
-        super().__init__(field, name='calibrate', index=index)
+        super().__init__(field, index=index, name='calibrate')
 
     def set_parset_parameters(self):
         """
@@ -393,7 +393,7 @@ class CalibrateDI(Operation):
     Operation to perform direction-independent (DI) calibration of the field
     """
     def __init__(self, field, index):
-        super().__init__(field, name='calibrate_di', index=index)
+        super().__init__(field, index=index, name='calibrate_di')
 
     def set_parset_parameters(self):
         """

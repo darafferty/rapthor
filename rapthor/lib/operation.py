@@ -2,7 +2,6 @@
 Definition of the master Operation class
 """
 import os
-import sys
 import logging
 import json
 from jinja2 import Environment, FileSystemLoader
@@ -30,12 +29,12 @@ class Operation(object):
     ----------
     field : Field object
         Field for this operation
-    name : str, optional
-        Name of the operation
     index : int, optional
         Index of the operation
+    name : str, optional
+        Name of the operation
     """
-    def __init__(self, field, name=None, index=None):
+    def __init__(self, field, index=None, name=None):
         self.parset = field.parset.copy()
         self.field = field
         self.rootname = name.lower()
@@ -125,7 +124,7 @@ class Operation(object):
         self.scratch_dir = self.parset['cluster_specific']['dir_local']
 
         # Toil's coordination directory
-        self.coordination_dir  = self.parset['cluster_specific']['dir_coordination']
+        self.coordination_dir = self.parset['cluster_specific']['dir_coordination']
 
         # Get the container type
         if self.parset['cluster_specific']['use_container']:

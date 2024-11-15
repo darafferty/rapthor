@@ -181,6 +181,8 @@ def test_predict_nc_workflow(tmp_path, max_cores, apply_solutions, apply_amplitu
 @pytest.mark.parametrize("peel_bright_sources", (False, True))
 @pytest.mark.parametrize("max_cores", (None, 8))
 @pytest.mark.parametrize("use_mpi", (False, True))
+@pytest.mark.parametrize("make_image_cube", (False, True))
+#@pytest.mark.parametrize("normalize_flux_scale", (False, True))
 def test_image_workflow(
     tmp_path,
     apply_amplitudes,
@@ -189,6 +191,8 @@ def test_image_workflow(
     peel_bright_sources,
     max_cores,
     use_mpi,
+    make_image_cube,
+    # normalize_flux_scale
 ):
     """
     Test the Image workflow, using all possible combinations of parameters that
@@ -207,6 +211,8 @@ def test_image_workflow(
         "peel_bright_sources": peel_bright_sources,
         "max_cores": max_cores,
         "use_mpi": use_mpi,
+        "make_image_cube": make_image_cube,
+        # "normalize_flux_scale": normalize_flux_scale,
     }
     generate_and_validate(tmp_path, operation, parms, templ, sub_templ)
 
