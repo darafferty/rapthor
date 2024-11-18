@@ -17,39 +17,75 @@ class Image(Operation):
     """
     Operation to image a field sector
     """
-    def __init__(self, field, index):
-        super().__init__(field, name='image', index=index)
+    def __init__(self, field, index, name='image'):
+        super().__init__(field, index=index, name=name)
 
         # For imaging we use a subworkflow, so we set the template filename for that here
         self.subpipeline_parset_template = '{0}_sector_pipeline.cwl'.format(self.rootname)
+
+        # Initialize various parameters
+        self.apply_none = None
+        self.apply_amplitudes = None
+        self.use_screens = None
+        self.apply_fulljones = None
+        self.make_image_cube = None
+        self.normalize_flux_scale = None
+        self.dde_method = None
+        self.use_facets = None
+        self.save_source_list = None
+        self.image_pol = None
+        self.peel_bright_sources = None
+        self.imaging_sectors = None
+        self.imaging_parameters = None
+        self.do_predict = None
+        self.do_multiscale_clean = None
+        self.pol_combine_method = None
 
     def set_parset_parameters(self):
         """
         Define parameters needed for the CWL workflow template
         """
+        # Set parameters as needed
+        if self.apply_none is None:
+            self.apply_none = False
+        if self.apply_amplitudes is None:
+            self.apply_amplitudes = self.field.apply_amplitudes
+        if self.use_screens is None:
+            self.use_screens = self.field.use_screens
+        if self.apply_fulljones is None:
+            self.apply_fulljones = self.field.apply_fulljones
+        if self.make_image_cube is None:
+            self.make_image_cube = False
+        if self.normalize_flux_scale is None:
+            self.normalize_flux_scale = False
+        if self.dde_method is None:
+            self.dde_method = self.field.dde_method
+        if self.use_facets is None:
+            self.use_facets = True if self.dde_method == 'facets' else False
+        if self.image_pol is None:
+            self.image_pol = self.field.image_pol
+        if self.save_source_list is None:
+            self.save_source_list = True if self.image_pol.lower() == 'i' else False
+        if self.peel_bright_sources is None:
+            self.peel_bright_sources = self.field.peel_bright_sources
         if self.batch_system == 'slurm':
             # For some reason, setting coresMax ResourceRequirement hints does
             # not work with SLURM
             max_cores = None
         else:
             max_cores = self.field.parset['cluster_specific']['max_cores']
-        if self.field.dde_method == 'facets':
-            use_facets = True
-        else:
-            use_facets = False
-        if self.field.image_pol.lower() == 'i':
-            save_source_list = True
-        else:
-            save_source_list = False
+
         self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
                              'pipeline_working_dir': self.pipeline_working_dir,
-                             'apply_none': False,
-                             'apply_amplitudes': self.field.apply_amplitudes,
-                             'use_screens': self.field.use_screens,
-                             'apply_fulljones': self.field.apply_fulljones,
-                             'use_facets': use_facets,
-                             'save_source_list': save_source_list,
-                             'peel_bright_sources': self.field.peel_bright_sources,
+                             'apply_none': self.apply_none,
+                             'apply_amplitudes': self.apply_amplitudes,
+                             'use_screens': self.use_screens,
+                             'apply_fulljones': self.apply_fulljones,
+                             'make_image_cube': self.make_image_cube,
+                             'normalize_flux_scale': self.normalize_flux_scale,
+                             'use_facets': self.use_facets,
+                             'save_source_list': self.save_source_list,
+                             'peel_bright_sources': self.peel_bright_sources,
                              'max_cores': max_cores,
                              'use_mpi': self.field.use_mpi,
                              'toil_version': self.toil_major_version}
@@ -58,7 +94,19 @@ class Image(Operation):
         """
         Define the CWL workflow inputs
         """
-        nsectors = len(self.field.imaging_sectors)
+        # Set parameters as needed
+        if self.imaging_sectors is None:
+            self.imaging_sectors = self.field.imaging_sectors
+        if self.imaging_parameters is None:
+            self.imaging_parameters = self.field.parset['imaging_specific'].copy()
+        if self.do_predict is None:
+            self.do_predict = self.field.do_predict
+        if self.do_multiscale_clean is None:
+            self.do_multiscale_clean = self.field.do_multiscale_clean
+        if self.pol_combine_method is None:
+            self.pol_combine_method = self.field.pol_combine_method
+
+        nsectors = len(self.imaging_sectors)
         obs_filename = []
         prepare_filename = []
         concat_filename = []
@@ -72,7 +120,9 @@ class Image(Operation):
         phasecenter = []
         image_root = []
         central_patch_name = []
-        for i, sector in enumerate(self.field.imaging_sectors):
+        image_cube_name = []
+        normalize_h5parm = []
+        for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
             # Set the imaging parameters for each imaging sector. Note the we do not
@@ -81,11 +131,11 @@ class Image(Operation):
             # Generally, this should work fine, since we do not expect large changes in
             # the size of the sector from iteration to iteration (small changes are OK,
             # given the padding we use during imaging)
-            sector.set_imaging_parameters(do_multiscale=self.field.do_multiscale_clean,
-                                          recalculate_imsize=False)
+            sector.set_imaging_parameters(self.do_multiscale_clean, recalculate_imsize=False,
+                                          imaging_parameters=self.imaging_parameters)
 
             # Set input MS filenames
-            if self.field.do_predict:
+            if self.do_predict:
                 sector_obs_filename = [obs.ms_imaging_filename for obs in sector.observations]
             else:
                 sector_obs_filename = sector.get_obs_parameters('ms_filename')
@@ -117,18 +167,18 @@ class Image(Operation):
                 dir_local.append(self.pipeline_working_dir)
             else:
                 dir_local.append(self.scratch_dir)
-            central_patch_name.append(sector.central_patch)
+            if not self.apply_none:
+                central_patch_name.append(sector.central_patch)
+            if self.make_image_cube:
+                image_cube_name.append(sector.name + '_freq_cube.fits')
+            if self.normalize_flux_scale:
+                normalize_h5parm.append(sector.name + '_normalize.h5parm')
 
         # Handle the polarization-related options
         link_polarizations = False
         join_polarizations = False
-        if self.field.image_pol.lower() == 'i':
-            # Saving the source list (clean components) is supported only when imaging
-            # Stokes I alone
-            save_source_list = True
-        else:
-            save_source_list = False
-            if self.field.pol_combine_method == 'link':
+        if self.image_pol.lower() != 'i':
+            if self.pol_combine_method == 'link':
                 # Note: link_polarizations can be of CWL type boolean or string
                 link_polarizations = 'I'
             else:
@@ -146,38 +196,38 @@ class Image(Operation):
                             'phasecenter': phasecenter,
                             'image_name': image_root,
                             'dir_local': dir_local,
-                            'pol': self.field.image_pol,
-                            'save_source_list': save_source_list,
+                            'pol': self.image_pol,
+                            'save_source_list': self.save_source_list,
                             'link_polarizations': link_polarizations,
                             'join_polarizations': join_polarizations,
-                            'apply_amplitudes': [self.field.apply_amplitudes] * nsectors,
-                            'channels_out': [sector.wsclean_nchannels for sector in self.field.imaging_sectors],
-                            'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.field.imaging_sectors],
-                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.field.imaging_sectors],
-                            'ra': [sector.ra for sector in self.field.imaging_sectors],
-                            'dec': [sector.dec for sector in self.field.imaging_sectors],
-                            'wsclean_imsize': [sector.imsize for sector in self.field.imaging_sectors],
-                            'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.field.imaging_sectors],
-                            'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.field.imaging_sectors],
-                            'wsclean_niter': [sector.wsclean_niter for sector in self.field.imaging_sectors],
-                            'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.field.imaging_sectors],
-                            'robust': [sector.robust for sector in self.field.imaging_sectors],
-                            'cellsize_deg': [sector.cellsize_deg for sector in self.field.imaging_sectors],
-                            'min_uv_lambda': [sector.min_uv_lambda for sector in self.field.imaging_sectors],
-                            'max_uv_lambda': [sector.max_uv_lambda for sector in self.field.imaging_sectors],
-                            'taper_arcsec': [sector.taper_arcsec for sector in self.field.imaging_sectors],
-                            'local_rms_strength': [sector.local_rms_strength for sector in self.field.imaging_sectors],
-                            'auto_mask': [sector.auto_mask for sector in self.field.imaging_sectors],
-                            'idg_mode': [sector.idg_mode for sector in self.field.imaging_sectors],
-                            'wsclean_mem': [sector.mem_limit_gb for sector in self.field.imaging_sectors],
-                            'threshisl': [sector.threshisl for sector in self.field.imaging_sectors],
-                            'threshpix': [sector.threshpix for sector in self.field.imaging_sectors],
-                            'do_multiscale': [sector.multiscale for sector in self.field.imaging_sectors],
-                            'dd_psf_grid': [sector.dd_psf_grid for sector in self.field.imaging_sectors],
+                            'apply_amplitudes': [self.apply_amplitudes] * nsectors,
+                            'channels_out': [sector.wsclean_nchannels for sector in self.imaging_sectors],
+                            'deconvolution_channels': [sector.wsclean_deconvolution_channels for sector in self.imaging_sectors],
+                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order for sector in self.imaging_sectors],
+                            'ra': [sector.ra for sector in self.imaging_sectors],
+                            'dec': [sector.dec for sector in self.imaging_sectors],
+                            'wsclean_imsize': [sector.imsize for sector in self.imaging_sectors],
+                            'vertices_file': [CWLFile(sector.vertices_file).to_json() for sector in self.imaging_sectors],
+                            'region_file': [None if sector.region_file is None else CWLFile(sector.region_file).to_json() for sector in self.imaging_sectors],
+                            'wsclean_niter': [sector.wsclean_niter for sector in self.imaging_sectors],
+                            'wsclean_nmiter': [sector.wsclean_nmiter for sector in self.imaging_sectors],
+                            'robust': [sector.robust for sector in self.imaging_sectors],
+                            'cellsize_deg': [sector.cellsize_deg for sector in self.imaging_sectors],
+                            'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
+                            'max_uv_lambda': [sector.max_uv_lambda for sector in self.imaging_sectors],
+                            'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
+                            'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
+                            'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
+                            'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
+                            'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
+                            'threshisl': [sector.threshisl for sector in self.imaging_sectors],
+                            'threshpix': [sector.threshpix for sector in self.imaging_sectors],
+                            'do_multiscale': [sector.multiscale for sector in self.imaging_sectors],
+                            'dd_psf_grid': [sector.dd_psf_grid for sector in self.imaging_sectors],
                             'max_threads': self.field.parset['cluster_specific']['max_threads'],
                             'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
 
-        if self.field.peel_bright_sources:
+        if self.peel_bright_sources:
             self.input_parms.update({'bright_skymodel_pb': CWLFile(self.field.bright_source_skymodel_file).to_json()})
         if self.field.use_mpi:
             # Set number of nodes to allocate to each imaging subworkflow. We subtract
@@ -189,16 +239,16 @@ class Image(Operation):
             nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
             self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
             self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
-        if self.field.use_screens:
+        if self.use_screens:
             # The following parameters were set by the preceding calibrate operation, where
             # aterm image files were generated. They do not need to be set separately for
             # each sector
             self.input_parms.update({'aterm_image_filenames': CWLFile(self.field.aterm_image_filenames).to_json()})
-        else:
+        elif not self.apply_none:
             self.input_parms.update({'h5parm': CWLFile(self.field.h5parm_filename).to_json()})
             if self.field.fulljones_h5parm_filename is not None:
                 self.input_parms.update({'fulljones_h5parm': CWLFile(self.field.fulljones_h5parm_filename).to_json()})
-            if self.field.dde_method == 'facets':
+            if self.use_facets:
                 # For faceting, we need inputs for making the ds9 facet region files
                 self.input_parms.update({'skymodel': CWLFile(self.field.calibration_skymodel_file).to_json()})
                 ra_mid = []
@@ -207,7 +257,7 @@ class Image(Operation):
                 width_dec = []
                 facet_region_file = []
                 min_width = 2 * self.field.get_calibration_radius() * 1.2
-                for sector in self.field.imaging_sectors:
+                for sector in self.imaging_sectors:
                     # Note: WSClean requires that all sources in the h5parm must have
                     # corresponding regions in the facets region file. We ensure this
                     # requirement is met by extending the regions to cover the larger of
@@ -222,16 +272,16 @@ class Image(Operation):
                 self.input_parms.update({'width_ra': width_ra})
                 self.input_parms.update({'width_dec': width_dec})
                 self.input_parms.update({'facet_region_file': facet_region_file})
-                if self.field.apply_amplitudes:
+                if self.apply_amplitudes:
                     self.input_parms.update({'soltabs': 'amplitude000,phase000'})
                 else:
                     self.input_parms.update({'soltabs': 'phase000'})
                 self.input_parms.update({'parallel_gridding_threads':
                                          self.field.parset['cluster_specific']['parallel_gridding_threads']})
-                if self.field.image_pol.lower() == 'i':
+                if self.image_pol.lower() == 'i':
                     # For Stokes-I-only imaging, we can take advantage of the scalar or
                     # diagonal visibilities options in WSClean (saving I/O)
-                    if self.field.apply_amplitudes:
+                    if self.apply_amplitudes:
                         # Diagonal solutions generated during calibration
                         if self.field.apply_diagonal_solutions:
                             # Diagonal solutions should be used during imaging
@@ -255,6 +305,10 @@ class Image(Operation):
                     self.input_parms.update({'scalar_visibilities': False})
             else:
                 self.input_parms.update({'central_patch_name': central_patch_name})
+        if self.make_image_cube:
+            self.input_parms.update({'image_cube_name': image_cube_name})
+        if self.normalize_flux_scale:
+            self.input_parms.update({'normalize_h5parm': normalize_h5parm})
 
     def finalize(self):
         """
@@ -346,12 +400,12 @@ class Image(Operation):
         super().finalize()
 
 
-class ImageInitial(Operation):
+class ImageInitial(Image):
     """
     Operation to image the field to generate an initial sky model
     """
     def __init__(self, field):
-        super().__init__(field, name='initial_image')
+        super().__init__(field, None, name='initial_image')
 
         # Set the template filenames
         self.pipeline_parset_template = 'image_pipeline.cwl'
@@ -361,124 +415,40 @@ class ImageInitial(Operation):
         """
         Define parameters needed for the CWL workflow template
         """
-        if self.batch_system == 'slurm':
-            # For some reason, setting coresMax ResourceRequirement hints does
-            # not work with SLURM
-            max_cores = None
-        else:
-            max_cores = self.field.parset['cluster_specific']['max_cores']
-        self.parset_parms = {'rapthor_pipeline_dir': self.rapthor_pipeline_dir,
-                             'pipeline_working_dir': self.pipeline_working_dir,
-                             'apply_none': True,
-                             'apply_amplitudes': False,
-                             'use_screens': False,
-                             'apply_fulljones': False,
-                             'use_facets': False,
-                             'save_source_list': True,
-                             'peel_bright_sources': False,
-                             'max_cores': max_cores,
-                             'use_mpi': self.field.use_mpi,
-                             'toil_version': self.toil_major_version}
+        # Set parameters as needed
+        self.apply_none = True
+        self.apply_amplitudes = False
+        self.use_screens = False
+        self.apply_fulljones = False
+        self.use_facets = False
+        self.save_source_list = True
+        self.peel_bright_sources = False
+        self.image_pol = 'I'
+        super().set_parset_parameters()
 
     def set_input_parameters(self):
         """
         Define the CWL workflow inputs
         """
-        nsectors = 1
-        sector = self.field.full_field_sector
-
-        # Set the imaging parameters for the sector. We override a few parameters that
-        # might be set in the parset to ensure they are optimal for the initial sky
+        # Set the imaging parameters that are optimal for the initial sky
         # model generation
-        imaging_parameters = self.field.parset['imaging_specific'].copy()
-        imaging_parameters['cellsize_arcsec'] = 1.5
-        imaging_parameters['robust'] = -1.5
-        imaging_parameters['taper_arcsec'] = 0.0
-        imaging_parameters['min_uv_lambda'] = 0.0
-        imaging_parameters['max_uv_lambda'] = 1e6
-        imaging_parameters['reweight'] = False
-        imaging_parameters['dd_psf_grid'] = [1, 1]
-        sector.max_nmiter = 8  # stop at 8 major iterations, as beyond that little improvement expected
-        sector.set_imaging_parameters(do_multiscale=True, imaging_parameters=imaging_parameters)
-        image_root = [sector.name]
-
-        # Set input MS filenames
-        obs_filename = [sector.get_obs_parameters('ms_filename')]
-
-        # Set output MS filenames for step that prepares the data for WSClean
-        prepare_filename = [sector.get_obs_parameters('ms_prep_filename')]
-        concat_filename = [image_root[-1] + '_concat.ms']
-
-        # Set other parameters
-        mask_filename = [image_root[-1] + '_mask.fits']
-        image_freqstep = [sector.get_obs_parameters('image_freqstep')]
-        image_timestep = [sector.get_obs_parameters('image_timestep')]
-        sector_starttime = []
-        sector_ntimes = []
-        for obs in self.field.observations:
-            sector_starttime.append(misc.convert_mjd2mvt(obs.starttime))
-            sector_ntimes.append(obs.numsamples)
-        starttime = [sector_starttime]
-        ntimes = [sector_ntimes]
-        phasecenter = ["'[{0}deg, {1}deg]'".format(sector.ra, sector.dec)]
-        if self.scratch_dir is None:
-            dir_local = [self.pipeline_working_dir]
-        else:
-            dir_local = [self.scratch_dir]
-
-        self.input_parms = {'obs_filename': [CWLDir(name).to_json() for name in obs_filename],
-                            'prepare_filename': prepare_filename,
-                            'concat_filename': concat_filename,
-                            'previous_mask_filename': [None],
-                            'mask_filename': mask_filename,
-                            'starttime': starttime,
-                            'ntimes': ntimes,
-                            'image_freqstep': image_freqstep,
-                            'image_timestep': image_timestep,
-                            'phasecenter': phasecenter,
-                            'image_name': image_root,
-                            'dir_local': dir_local,
-                            'pol': 'i',
-                            'save_source_list': True,
-                            'link_polarizations': False,
-                            'join_polarizations': False,
-                            'apply_amplitudes': [False],
-                            'channels_out': [min(8, sector.wsclean_nchannels)],  # ~ 4 MHz per channel but no more than 8
-                            'deconvolution_channels': [sector.wsclean_deconvolution_channels],
-                            'fit_spectral_pol': [sector.wsclean_spectral_poly_order],
-                            'ra': [sector.ra],
-                            'dec': [sector.dec],
-                            'wsclean_imsize': [sector.imsize],
-                            'vertices_file': [CWLFile(sector.vertices_file).to_json()],
-                            'region_file': [None],
-                            'wsclean_niter': [sector.wsclean_niter],
-                            'wsclean_nmiter': [sector.wsclean_nmiter],
-                            'robust': [sector.robust],
-                            'cellsize_deg': [sector.cellsize_deg],
-                            'min_uv_lambda': [sector.min_uv_lambda],
-                            'max_uv_lambda': [sector.max_uv_lambda],
-                            'taper_arcsec': [sector.taper_arcsec],
-                            'local_rms_strength': [sector.local_rms_strength],
-                            'auto_mask': [5.0],
-                            'idg_mode': [sector.idg_mode],
-                            'wsclean_mem': [sector.mem_limit_gb],
-                            'threshisl': [4.0],
-                            'threshpix': [5.0],
-                            'do_multiscale': [True],
-                            'dd_psf_grid': [sector.dd_psf_grid],
-                            'max_threads': self.field.parset['cluster_specific']['max_threads'],
-                            'deconvolution_threads': self.field.parset['cluster_specific']['deconvolution_threads']}
-
-        if self.field.use_mpi:
-            # Set number of nodes to allocate to each imaging subworkflow. We subtract
-            # one node because Toil must use one node for its job, which in turn calls
-            # salloc to reserve the nodes for the MPI job
-            self.use_mpi = True
-            nnodes = self.parset['cluster_specific']['max_nodes']
-            nsubpipes = min(nsectors, nnodes)
-            nnodes_per_subpipeline = max(1, int(nnodes / nsubpipes) - 1)
-            self.input_parms.update({'mpi_nnodes': [nnodes_per_subpipeline] * nsectors})
-            self.input_parms.update({'mpi_cpus_per_task': [self.parset['cluster_specific']['cpus_per_task']] * nsectors})
+        self.field.full_field_sector.auto_mask = 5.0
+        self.field.full_field_sector.threshisl = 4.0
+        self.field.full_field_sector.threshpix = 5.0
+        self.imaging_sectors = [self.field.full_field_sector]
+        self.imaging_parameters = self.field.parset['imaging_specific'].copy()
+        self.imaging_parameters['cellsize_arcsec'] = 1.5
+        self.imaging_parameters['robust'] = -1.5
+        self.imaging_parameters['taper_arcsec'] = 0.0
+        self.imaging_parameters['min_uv_lambda'] = 0.0
+        self.imaging_parameters['max_uv_lambda'] = 1e6
+        self.imaging_parameters['reweight'] = False
+        self.imaging_parameters['dd_psf_grid'] = [1, 1]
+        self.do_predict = False
+        self.do_multiscale_clean = True
+        self.field.full_field_sector.max_nmiter = 8
+        self.field.full_field_sector.max_wsclean_nchannels = 8
+        super().set_input_parameters()
 
     def finalize(self):
         """
@@ -527,8 +497,81 @@ class ImageInitial(Operation):
         self.field.lofar_to_true_flux_ratio = ratio
         self.field.lofar_to_true_flux_std = std
 
-        # Finally call finalize() in the parent class
-        super().finalize()
+        # Finally call finalize() of the Operation class
+        super(Image, self).finalize()
+
+
+class ImageNormalize(Image):
+    """
+    Operation to image for flux-scale normalization
+    """
+    def __init__(self, field, index):
+        super().__init__(field, index, name='normalize')
+
+        # Set the template filenames
+        self.pipeline_parset_template = 'image_pipeline.cwl'
+        self.subpipeline_parset_template = 'image_sector_pipeline.cwl'
+
+    def set_parset_parameters(self):
+        """
+        Define parameters needed for the CWL workflow template
+        """
+        # Set parameters as needed
+        self.save_source_list = False
+        self.peel_bright_sources = False
+        self.make_image_cube = True
+        self.normalize_flux_scale = False  # False for testing only; must be True in final version
+        if self.field.h5parm_filename is None:
+            # No calibration has yet been done, so set various flags as needed
+            self.apply_none = True
+            self.use_facets = False
+            self.use_screens = False
+        super().set_parset_parameters()
+
+    def set_input_parameters(self):
+        """
+        Define the CWL workflow inputs
+        """
+        # Set the imaging parameters that are optimal for the flux-scale
+        # normalization
+        self.imaging_sectors = self.field.imaging_sectors
+        for sector in self.imaging_sectors:
+            sector.auto_mask = 5.0
+            sector.threshisl = 4.0
+            sector.threshpix = 5.0
+            sector.max_nmiter = 8
+            sector.max_wsclean_nchannels = 8
+
+        self.imaging_parameters = self.field.parset['imaging_specific'].copy()
+        self.imaging_parameters['cellsize_arcsec'] = 6.0
+        self.imaging_parameters['robust'] = -0.5
+        self.imaging_parameters['taper_arcsec'] = 24.0
+        self.do_predict = False
+        self.do_multiscale_clean = False
+        super().set_input_parameters()
+
+    def finalize(self):
+        """
+        Finalize this operation
+        """
+        # Save the output FITS cubes and h5parms with the flux-scale corrections
+        for sector in self.imaging_sectors:
+            # The output image cube filenames
+            image_root = os.path.join(self.pipeline_working_dir, sector.name)
+            sector.I_freq_cube = f'{image_root}_freq_cube.fits'
+            dst_dir = os.path.join(self.parset['dir_working'], 'images', self.name)
+            misc.create_directory(dst_dir)
+            dst_filename = os.path.join(dst_dir, os.path.basename(sector.I_freq_cube))
+            shutil.copy(sector.I_freq_cube, dst_filename)
+
+            # The output beams and frequencies files
+            for suffix in ['_beams.txt', '_frequencies.txt']:
+                src_filename = sector.I_freq_cube + suffix
+                dst_filename = os.path.join(dst_dir, os.path.basename(src_filename))
+                shutil.copy(src_filename, dst_filename)
+
+        # Finally call finalize() of the Operation class
+        super(Image, self).finalize()
 
 
 def report_sector_diagnostics(sector_name, diagnostics_dict, log):

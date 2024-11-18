@@ -267,6 +267,16 @@ outputs:
     type: File
     outputBinding:
       glob: [$(inputs.name)-MFS-image-pb.fits, $(inputs.name)-MFS-I-image-pb.fits]
+  - id: image_I_pb_channels
+    label: Output PB-corrected channel images
+    doc: |
+      The filename of the output primary-beam-corrected channel images. The value is
+      constructed from the input parameter "name". Because the filename differs
+      depending on the mode used (full-polarization vs. Stokes-I-only), we use two
+      wildcard expressions.
+    type: File[]
+    outputBinding:
+      glob: [$(inputs.name)-0???-image-pb.fits, $(inputs.name)-0???-I-image-pb.fits]
   - id: images_extra
     label: Extra output images
     doc: |

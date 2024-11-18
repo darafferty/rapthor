@@ -7,7 +7,7 @@ from rapthor.lib.parset import parset_read
 from rapthor.lib.strategy import set_strategy
 from rapthor.operations.concatenate import Concatenate
 from rapthor.operations.calibrate import CalibrateDD, CalibrateDI
-from rapthor.operations.image import Image, ImageInitial
+from rapthor.operations.image import Image, ImageInitial, ImageNormalize
 from rapthor.operations.mosaic import Mosaic
 from rapthor.operations.predict import PredictDD, PredictDI, PredictNC
 from rapthor.lib.field import Field
@@ -145,6 +145,15 @@ def run_steps(field, steps, final=False):
         # Update the field object for the current step
         cycle_number = index + field.cycle_number
         field.update(step, cycle_number, final=final)
+
+        # Normalize the flux scale
+        field.do_normalize = False  # TODO: enable when functionality is complete
+        if field.do_normalize:
+            # Set the Stokes polarization to I
+            field.image_pol = 'I'
+
+            op = ImageNormalize(field, cycle_number)
+            op.run()
 
         # Calibrate
         if field.do_calibrate:

@@ -110,6 +110,8 @@ class Field(object):
         self.peel_bright_sources = False
         self.peel_non_calibrator_sources = False
         self.do_slowgain_solve = False
+        self.do_normalize = False
+        self.make_image_cube = False
         self.use_scalarphase = True
         self.field_image_filename_prev = None
         self.field_image_filename = None

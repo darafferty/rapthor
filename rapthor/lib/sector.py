@@ -55,6 +55,7 @@ class Sector(object):
         self.I_mask_file = None   # set by the Image operation
         self.image_skymodel_file_apparent_sky = None  # set by the Image operation
         self.image_skymodel_file_true_sky = None  # set by the Image operation
+        self.max_wsclean_nchannels = None  # set by the Image operation
         self.is_outlier = False
         self.is_bright_source = False
         self.is_predict = False
@@ -198,6 +199,8 @@ class Sector(object):
             if obs_bandwidth > tot_bandwidth:
                 tot_bandwidth = obs_bandwidth
         self.wsclean_nchannels = max(min_nchannels, min(max_nchannels, int(np.ceil(tot_bandwidth / target_bandwidth))))
+        if self.max_wsclean_nchannels is not None:
+            self.wsclean_nchannels = min(self.wsclean_nchannels, self.max_wsclean_nchannels)
 
         # Set number of channels to use in spectral fitting. We set this to the
         # number of channels, up to a maximum of 4 (and the fit spectral order to
@@ -304,9 +307,9 @@ class Sector(object):
             # Remove the bright sources from the sky model if they will be predicted and
             # subtracted separately (so that they aren't subtracted twice)
             if (self.field.peel_bright_sources and
-                not self.is_outlier and
-                not self.is_bright_source and
-                not self.is_predict):
+                    not self.is_outlier and
+                    not self.is_bright_source and
+                    not self.is_predict):
                 source_names = skymodel.getColValues('Name')
                 bright_source_names = self.field.bright_source_skymodel.getColValues('Name')
                 matching_ind = []

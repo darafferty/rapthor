@@ -49,7 +49,7 @@ def set_strategy(field):
 
     # Check for required parameters. If any are missing, either print a warning if the
     # parameter has a default defined or raise an error if not
-    primary_parameters = ['do_calibrate', 'do_image', 'do_check']
+    primary_parameters = ['do_calibrate', 'do_image', 'do_check']  # TODO: add 'do_normalize' when ready
     secondary_parameters = {'do_calibrate': ['do_slowgain_solve', 'do_fulljones_solve',
                                              'target_flux', 'max_directions', 'regroup_model',
                                              'max_normalization_delta', 'solve_min_uv_lambda',
@@ -120,6 +120,8 @@ def set_selfcal_strategy(field):
     max_selfcal_loops = 8 if do_phase_only_solves else 6
     for i in range(max_selfcal_loops):
         strategy_steps.append({})
+
+        # strategy_steps[i]['do_normalize'] = True  # TODO: uncomment when functionality is complete
 
         strategy_steps[i]['do_calibrate'] = True
         if i == 0:
