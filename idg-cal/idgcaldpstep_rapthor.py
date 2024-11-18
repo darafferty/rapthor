@@ -317,8 +317,9 @@ class IDGCalDPStepRapthor(IDGCalDPStepBase):
 
         # read image data, assume Stokes I
         d = fits.getdata(self.imagename)
+        # set all NaN to zero
+        d[np.isnan(d)]=0
 
-        assert not np.any(np.isnan(d))
         self.grid[0, (N - N0) // 2 : (N + N0) // 2, (N - N0) // 2 : (N + N0) // 2] = d[
             0, 0, :, :
         ] / np.outer(taper_grid0, taper_grid0)
