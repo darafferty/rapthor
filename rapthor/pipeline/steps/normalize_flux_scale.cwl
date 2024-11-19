@@ -14,7 +14,7 @@ inputs:
     label: Source catalog filename
     doc: |
       The filename of the input FITS source catalog.
-    type: string
+    type: File
     inputBinding:
       position: 1
   - id: ra
