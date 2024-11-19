@@ -19,7 +19,9 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     Parameters
     ----------
     source_catalog : str
-        Filename of of the input FITS source catalog
+        Filename of the input FITS source catalog. This catalog should be
+        created by PyBDSF from an image cube with the spectral-index mode
+        activated
     ra : float
         RA of the image center in degrees
     dec : float
