@@ -9,6 +9,7 @@ import numpy as np
 import bdsf
 from rapthor.lib import miscellaneous as misc
 import casacore.tables as pt
+import ast
 import astropy.io.ascii
 from astropy.io import fits as pyfits
 from astropy import wcs
@@ -25,8 +26,8 @@ iers.conf.auto_download = False
 def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
          vertices_file, beamMS, bright_true_sky_skymodel=None, threshisl=5.0,
          threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7),
-         adaptive_rmsbox=True, adaptive_thresh=75.0, filter_by_mask=True,
-         remove_negative=False, ncores=8):
+         adaptive_thresh=75.0, filter_by_mask=True, remove_negative=False,
+         ncores=8):
     """
     Filter the input sky model
 
@@ -74,11 +75,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         Value of rms_box PyBDSF parameter
     rmsbox_bright : tuple of floats, optional
         Value of rms_box_bright PyBDSF parameter
-    adaptive_rmsbox : bool, optional
-        Value of adaptive_rms_box PyBDSF parameter
     adaptive_thresh : float, optional
-        If adaptive_rmsbox is True, this value sets the threshold above
-        which a source will use the small rms box
+        This value sets the threshold above which a source will use the small
+        rms box
     filter_by_mask : bool, optional
         If True, filter the input sky model by the PyBDSF-derived mask,
         removing sources that lie in unmasked regions
@@ -96,10 +95,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
     # We try a number of standard paths (the same ones used in the tempfile Python
     # library)
-    try:
-        old_tmpdir = os.environ["TMPDIR"]
-    except KeyError:
-        old_tmpdir = None
+    old_tmpdir = os.getenv("TMPDIR")
     for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
         if os.path.exists(tmpdir):
             os.environ["TMPDIR"] = tmpdir
@@ -110,7 +106,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     # the image diagnostics step
     img_true_sky = bdsf.process_image(true_sky_image, mean_map='zero', rms_box=rmsbox,
                                       thresh_pix=threshpix, thresh_isl=threshisl,
-                                      thresh='hard', adaptive_rms_box=adaptive_rmsbox,
+                                      thresh='hard', adaptive_rms_box=True,
                                       adaptive_thresh=adaptive_thresh,
                                       rms_box_bright=rmsbox_bright, atrous_do=True,
                                       atrous_jmax=3, rms_map=True, quiet=True,
@@ -127,7 +123,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     # use in the image diagnostics step
     img_flat_noise = bdsf.process_image(flat_noise_image, mean_map='zero', rms_box=rmsbox,
                                         thresh_pix=threshpix, thresh_isl=threshisl,
-                                        thresh='hard', adaptive_rms_box=adaptive_rmsbox,
+                                        thresh='hard', adaptive_rms_box=True,
                                         adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                                         rms_map=True, stop_at='isl', quiet=True,
                                         ncores=ncores)
@@ -268,7 +264,7 @@ if __name__ == '__main__':
                         type=str, default='(150, 50)')
     parser.add_argument('--rmsbox_bright', help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
                         type=str, default='(35, 7)')
-    parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='True')
+    parser.add_argument('--adaptive_thresh', help='Adaptive threshold', type=float, default=75.0)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
 
     args = parser.parse_args()
@@ -276,6 +272,5 @@ if __name__ == '__main__':
          args.vertices_file, misc.string2list(args.beamMS),
          bright_true_sky_skymodel=args.bright_true_sky_skymodel,
          threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
-         rmsbox_bright=args.rmsbox_bright,
-         adaptive_rmsbox=misc.string2bool(args.adaptive_rmsbox),
+         rmsbox_bright=args.rmsbox_bright, adaptive_thresh=args.adaptive_thresh,
          ncores=args.ncores)

@@ -4,14 +4,14 @@ Script to make a source catalog from an image cube
 """
 import argparse
 from argparse import RawTextHelpFormatter
+import ast
 import bdsf
-from rapthor.lib import miscellaneous as misc
 import os
 
 
-def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=5.0,
-         threshpix=7.5, rmsbox=(150, 50), rmsbox_bright=(35, 7),
-         adaptive_rmsbox=True, adaptive_thresh=75.0, ncores=8):
+def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=3.0,
+         threshpix=5.0, rmsbox=(150, 50), rmsbox_bright=(35, 7),
+         adaptive_thresh=75.0, ncores=8):
     """
     Make a source catalog from an image cube
 
@@ -41,11 +41,9 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=5.0
         Value of rms_box PyBDSF parameter
     rmsbox_bright : tuple of floats, optional
         Value of rms_box_bright PyBDSF parameter
-    adaptive_rmsbox : bool, optional
-        Value of adaptive_rms_box PyBDSF parameter
     adaptive_thresh : float, optional
-        If adaptive_rmsbox is True, this value sets the threshold above
-        which a source will use the small rms box
+        This value sets the threshold above which a source will use the small
+        rms box
     ncores : int, optional
         Maximum number of cores to use
     """
@@ -58,10 +56,7 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=5.0
     # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
     # We try a number of standard paths (the same ones used in the tempfile Python
     # library)
-    try:
-        old_tmpdir = os.environ["TMPDIR"]
-    except KeyError:
-        old_tmpdir = None
+    old_tmpdir = os.getenv("TMPDIR")
     for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
         if os.path.exists(tmpdir):
             os.environ["TMPDIR"] = tmpdir
@@ -70,15 +65,19 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=5.0
     # Read in beams and frequencies
     with open(cube_beams, 'r') as f:
         lines = f.readlines()
+    if not lines:
+        raise RuntimeError(f'No beam parameters found in {cube_beams}')
     beams = ast.literal_eval(lines[0])
     with open(cube_frequencies, 'r') as f:
         lines = f.readlines()
+    if not lines:
+        raise RuntimeError(f'No frequencies found in {cube_frequencies}')
     frequencies = ast.literal_eval(lines[0])
 
     # Run PyBDSF on the image cube
     img = bdsf.process_image(cube_image, mean_map='zero', rms_box=rmsbox,
                              thresh_pix=threshpix, thresh_isl=threshisl,
-                             thresh='hard', adaptive_rms_box=adaptive_rmsbox,
+                             thresh='hard', adaptive_rms_box=True,
                              adaptive_thresh=adaptive_thresh,
                              rms_box_bright=rmsbox_bright, atrous_do=False,
                              rms_map=True, quiet=True,
@@ -106,12 +105,11 @@ if __name__ == '__main__':
                         type=str, default='(150, 50)')
     parser.add_argument('--rmsbox_bright', help='Rms box for bright sources, width and step (e.g., "(60, 20)")',
                         type=str, default='(35, 7)')
-    parser.add_argument('--adaptive_rmsbox', help='Use an adaptive rms box', type=str, default='True')
+    parser.add_argument('--adaptive_thresh', help='Adaptive threshold', type=float, default=75.0)
     parser.add_argument('--ncores', help='Max number of cores to use', type=int, default=8)
 
     args = parser.parse_args()
     main(args.cube_image, args.cube_beams, args.cube_frequencies, args.output_catalog,
          threshisl=args.threshisl, threshpix=args.threshpix, rmsbox=args.rmsbox,
-         rmsbox_bright=args.rmsbox_bright,
-         adaptive_rmsbox=misc.string2bool(args.adaptive_rmsbox),
+         rmsbox_bright=args.rmsbox_bright, adaptive_thresh=args.adaptive_thresh,
          ncores=args.ncores)
