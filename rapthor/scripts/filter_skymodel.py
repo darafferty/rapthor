@@ -88,9 +88,9 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
         Maximum number of cores to use
     """
     if rmsbox is not None and isinstance(rmsbox, str):
-        rmsbox = eval(rmsbox)
+        rmsbox = ast.literal_eval(rmsbox)
     if isinstance(rmsbox_bright, str):
-        rmsbox_bright = eval(rmsbox_bright)
+        rmsbox_bright = ast.literal_eval(rmsbox_bright)
 
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
     # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.

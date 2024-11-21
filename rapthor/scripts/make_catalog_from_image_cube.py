@@ -50,9 +50,9 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=5.0
         Maximum number of cores to use
     """
     if rmsbox is not None and isinstance(rmsbox, str):
-        rmsbox = eval(rmsbox)
+        rmsbox = ast.literal_eval(rmsbox)
     if isinstance(rmsbox_bright, str):
-        rmsbox_bright = eval(rmsbox_bright)
+        rmsbox_bright = ast.literal_eval(rmsbox_bright)
 
     # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
     # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
@@ -70,10 +70,10 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=5.0
     # Read in beams and frequencies
     with open(cube_beams, 'r') as f:
         lines = f.readlines()
-    beams = eval(lines[0])
+    beams = ast.literal_eval(lines[0])
     with open(cube_frequencies, 'r') as f:
         lines = f.readlines()
-    frequencies = eval(lines[0])
+    frequencies = ast.literal_eval(lines[0])
 
     # Run PyBDSF on the image cube
     img = bdsf.process_image(cube_image, mean_map='zero', rms_box=rmsbox,
