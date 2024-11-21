@@ -5,10 +5,21 @@ Script to calculate flux-scale normalization corrections
 import argparse
 from argparse import RawTextHelpFormatter
 from astropy.io import fits
-from rapthor.lib import miscellaneous as misc
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 import astropy.units as u
+import lsmtool
 import numpy as np
+from rapthor.lib import miscellaneous as misc
+import sys
+
+
+def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_frequencies, output_frequencies):
+    pass
+    # Fit the external catalog fluxes to get "true" normalizations and spectral indices
+
+    # Fit Rapthor fluxes to get observed normalizations and spectral indices
+
+    # Derive corrections per channel needed to adjust the observed SEDs to the true ones
 
 
 def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=10/3600,
@@ -42,13 +53,25 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     hdul = fits.open(source_catalog)
     data = hdul[1].data
 
+    # Find the number of frequency channels and the total bandwidth covered
+    n_chan = 0
+    while True:
+        freq_col = f'Freq_ch{n_chan+1}'
+        if freq_col in data:
+            n_chan += 1
+        else:
+            break
+    min_frequency = np.min(data['Freq_ch1'])  # Hz
+    max_frequency = np.max(data[f'Freq_ch{n_chan}'])  # Hz
+
     # Filter the sources to keep only:
     #  - sources within radius_cut degrees of phase center
     #  - sources with major axes less than major_axis_cut degrees
     #  - sources that have no neighbors within neighbor_cut degrees
-    source_ras = np.array([misc.normalize_ra(source_ra) for source_ra in data['RA']])
-    source_decs = np.array([misc.normalize_dec(source_dec) for source_dec in data['DEC']])
-    source_coords = SkyCoord(ra=source_ras*u.degree, dec=source_decs*u.degree)
+    source_coords = SkyCoord(ra=np.array([misc.normalize_ra(source_ra)
+                                          for source_ra in data['RA']])*u.degree,
+                             dec=np.array([misc.normalize_dec(source_dec)
+                                           for source_dec in data['DEC']])*u.degree)
     center_coord = SkyCoord(ra=ra*u.degree, dec=dec*u.degree)
     source_distances = np.array([sep.value for sep in center_coord.separation(source_coords)])
     _, separation, _ = match_coordinates_sky(source_coords, source_coords, nthneighbor=2)
@@ -59,9 +82,73 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     neighbor_filter = neighbor_distances > neighbor_cut
     print(f"Number of sources before applying cuts: {data['RA'].size}")
     data = data[radius_filter & major_axis_filter & neighbor_filter]
+    source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
     print(f"Number of sources after applying cuts: {data['RA'].size}")
 
-    # TODO: calculate normalizations and write final H5parm file (a dummy file is used for now)
+    # Cross match sources with external catalogs
+    survey_catalogs = []
+    surveys = ['vlssr', 'wenss']
+    frequencies = [74e6, 327e6]  # Hz
+    do_normalization = True
+    for survey, frequency in zip(surveys, frequencies):
+        # Download sky model(s), using a 5-deg radius to ensure the field is
+        # fully covered
+        try:
+            skymodel = lsmtool.load(survey, VOPosition=[ra, dec], VORadius=5.0)
+        except (OSError, ConnectionError) as e:
+            print(f'A problem occurred when downloading the {survey} catalog. '
+                  'Error was: {}. Flux normalization will be skipped.'.format(e))
+            do_normalization = False
+        if not len(skymodel):
+            print(f'No sources foundin the {survey} catalog for this field. '
+                  'Flux normalization will be skipped.')
+            do_normalization = False
+        if not do_normalization:
+            continue
+        skymodel.write(f'{survey}.fits', format='fits')
+        hdul = fits.open(f'{survey}.fits')
+        survey_data = hdul[1].data
+        survey_coords = SkyCoord(ra=np.array([misc.normalize_ra(survey_ra)
+                                              for survey_ra in survey_data['RA']])*u.degree,
+                                 dec=np.array([misc.normalize_dec(survey_dec)
+                                               for survey_dec in survey_data['DEC']])*u.degree)
+
+        # Cross match with the Rapthor sources
+        match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
+
+        # Save the flux densities
+        if survey == 'wenss':
+            flux_correction = 0.9
+        else:
+            flux_correction = 1
+        survey_catalogs.append({'survey': survey, 'flux': survey_data['I'][match_ind]*flux_correction,
+                                'frequency': frequency})
+
+    output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5)
+    if do_normalization:
+        # Make arrays of flux density vs. frequency for each source, for both
+        # the observed fluxes and the catalog fluxes, and find the corrections
+        n_sources = len(source_coords)
+        corrections = np.zeros((n_sources, len(output_frequencies)))
+        survey_frequencies = [sc['frequency'] for sc in survey_catalogs]  # Hz
+        for i in range(n_sources):
+            rapthor_fluxes = []
+            rapthor_frequencies = []
+            for ch_ind in range(n_chan):
+                if not np.isnan(data[f'Total_flux_ch{ch_ind+1}']):
+                    rapthor_fluxes.append(data[f'Total_flux_ch{ch_ind+1}'])  # Jy
+                    rapthor_frequencies.append(data[f'Freq_ch{ch_ind+1}'])  # Hz
+            survey_fluxes = [sc['flux'][i] for sc in survey_catalogs]  # Jy
+            corrections.append(fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes,
+                                              survey_frequencies, output_frequencies))
+
+        # For each output frequency, find the average correction over all sources
+        # (weighted by source flux density)
+    else:
+        avg_corrections = np.ones(len(output_frequencies))
+
+    # Write corrections to the output H5parm file as amplitude corrections
+    # (corrected data = data / amp^2)
     with open(output_h5parm, 'w') as f:
         f.writelines([''])
 
