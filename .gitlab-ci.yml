@@ -45,7 +45,7 @@ build-docker-base:
   needs: ["versioning"]
   image: docker:latest
   tags:
-    - das6
+    - dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -64,6 +64,8 @@ build-docker-full:
   stage: build
   needs: ["versioning", "build-docker-base"]
   image: docker:latest
+  tags:
+    - dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -75,8 +77,6 @@ build-docker-full:
         --tag $FULL_IMAGE
         .
     - docker push $FULL_IMAGE
-  tags:
-    - das6
 
 # Builds the documentation
 build-doc:
@@ -117,6 +117,8 @@ deploy-docker:
   stage: deploy
   needs: ["versioning", "build-docker-full", "rapthor-test"]
   image: docker:latest
+  tags:
+    - dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
@@ -131,8 +133,6 @@ deploy-docker:
     # Only run on master
     - if: '$CI_COMMIT_BRANCH == "master" && $CI_COMMIT_REF_PROTECTED == "true"'
       when: always
-  tags:
-    - das6
 
 # TODO: stage for deploying a release; this will involve in-place updating
 #       *.cwl files that contain dockerPull. We can "learn" from LINC
