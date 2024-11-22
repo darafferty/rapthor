@@ -46,7 +46,7 @@ inputs:
     label: Island threshold
     doc: |
       The PyBDSF island threshold.
-    type: float
+    type: float?
     inputBinding:
       prefix: --threshisl=
       separate: false
@@ -54,12 +54,12 @@ inputs:
     label: Pixel threshold
     doc: |
       The PyBDSF pixel threshold.
-    type: float
+    type: float?
     inputBinding:
       prefix: --threshpix=
       separate: false
   - id: ncores
-    type: int
+    type: int?
     inputBinding:
       prefix: --ncores=
       separate: false
