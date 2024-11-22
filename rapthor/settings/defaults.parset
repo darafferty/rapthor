@@ -135,7 +135,7 @@ robust = -0.5
 min_uv_lambda = 0.0
 max_uv_lambda = 1e6
 taper_arcsec = 0.0
-local_rms_strength = 1.0
+local_rms_strength = 0.7
 do_multiscale_clean = True
 
 # Method to use to correct for direction-dependent effects during imaging:
@@ -263,8 +263,9 @@ max_threads = 0
 # the expense of higher memory usage
 deconvolution_threads = 0
 
-# Number of threads to use by WSClean for parallel gridding (default = 6)
-parallel_gridding_threads = 6
+# Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5
+# of max_threads, but not more than 6)
+parallel_gridding_threads = 0
 
 # Full path to a local disk on the nodes for IO-intensive processing (default =
 # not used). The path must exist on all nodes (but does not have to be on a
