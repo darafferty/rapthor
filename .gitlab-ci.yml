@@ -44,6 +44,8 @@ build-docker-base:
   stage: build
   needs: ["versioning"]
   image: docker:latest
+  tags:
+    - dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -62,6 +64,8 @@ build-docker-full:
   stage: build
   needs: ["versioning", "build-docker-base"]
   image: docker:latest
+  tags:
+    - dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
   script:
@@ -113,6 +117,8 @@ deploy-docker:
   stage: deploy
   needs: ["versioning", "build-docker-full", "rapthor-test"]
   image: docker:latest
+  tags:
+    - dind
   before_script:
     - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - echo $DH_REGISTRY_PASSWORD | docker login -u $DH_REGISTRY_USER --password-stdin
