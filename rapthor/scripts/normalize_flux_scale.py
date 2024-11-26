@@ -11,7 +11,6 @@ import lsmtool
 import numpy as np
 from pyvo.dal import DALFormatError
 from rapthor.lib import miscellaneous as misc
-import sys
 
 
 def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_frequencies,
@@ -39,11 +38,12 @@ def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_fr
         List of corrections, one per frequency, that will result in
         observed flux density / true flux density = 1
     """
-    # TODO: Fit the external catalog fluxes to get "true" normalizations and spectral indices
+    # TODO: [RAP-791] Fit the external catalog fluxes to get "true" SED
 
-    # TODO: Fit Rapthor fluxes to get observed normalizations and spectral indices
+    # TODO: [RAP-791] Construct observed SED from Rapthor fluxes
 
-    # TODO: Derive corrections per channel needed to adjust the observed SEDs to the true ones
+    # TODO: [RAP-791] Derive corrections per frequency needed to adjust the
+    # observed SED to match the true one
     return [1.0] * len(output_frequencies)  # placeholder
 
 
@@ -75,8 +75,8 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         closer than this value are excluded from the analysis
     """
     # Read in the source catalog
-    hdul = fits.open(source_catalog)
-    data = hdul[1].data
+    with fits.open(source_catalog) as hdul:
+        data = hdul[1].data
 
     # Find the number of frequency channels and the total bandwidth covered
     n_chan = 0
@@ -131,8 +131,8 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         if not do_normalization:
             continue
         skymodel.write(f'{survey}.fits', format='fits', clobber=True)
-        hdul = fits.open(f'{survey}.fits')
-        survey_data = hdul[1].data
+        with fits.open(f'{survey}.fits') as hdul:
+            survey_data = hdul[1].data
         survey_coords = SkyCoord(ra=np.array([misc.normalize_ra(survey_ra)
                                               for survey_ra in survey_data['RA']])*u.degree,
                                  dec=np.array([misc.normalize_dec(survey_dec)
@@ -167,13 +167,14 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
             corrections[i, :] = fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes,
                                                survey_frequencies, output_frequencies)
 
-        # TODO: For each output frequency, find the average correction over all sources
+        # TODO: [RAP-791] For each output frequency, find the average correction over all sources
         # (weighted by source flux density)
         avg_corrections = np.ones(len(output_frequencies))  # placeholder
     else:
+        # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
 
-    # TODO: Write corrections to the output H5parm file as amplitude corrections
+    # TODO: [RAP-792] Write corrections to the output H5parm file as amplitude corrections
     # (corrected data = data / amp^2)
     with open(output_h5parm, 'w') as f:
         f.writelines([''])  # placeholder
