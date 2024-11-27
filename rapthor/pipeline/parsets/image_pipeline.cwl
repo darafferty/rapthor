@@ -438,6 +438,12 @@ inputs:
 {% endif %}
 
 {% if normalize_flux_scale %}
+  - id: output_source_catalog
+    label: Filename of FITS source catalog
+    doc: |
+      The filename of the FITS source catalog to use for flux-scale normalizations
+      (length = n_sectors).
+    type: string[]
   - id: normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
@@ -530,10 +536,14 @@ outputs:
     type: File[]
 {% endif %}
 {% if normalize_flux_scale %}
-  - id: sector_normalize_h5parm
+  - id: sector_source_catalog
     outputSource:
-      - image_sector/sector_normalize_h5parm
+      - image_sector/sector_source_catalog
     type: File[]
+  # - id: sector_normalize_h5parm
+  #   outputSource:
+  #     - image_sector/sector_normalize_h5parm
+  #   type: File[]
 {% endif %}
 
 
@@ -686,6 +696,8 @@ steps:
         source: image_cube_name
 {% endif %}
 {% if normalize_flux_scale %}
+      - id: output_source_catalog
+        source: output_source_catalog
       - id: normalize_h5parm
         source: normalize_h5parm
 {% endif %}
@@ -702,6 +714,7 @@ steps:
               image_cube_name,
 {% endif %}
 {% if normalize_flux_scale %}
+              output_source_catalog,
               normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
@@ -728,6 +741,7 @@ steps:
               image_cube_name,
 {% endif %}
 {% if normalize_flux_scale %}
+              output_source_catalog,
               normalize_h5parm,
 {% endif %}
               channels_out, deconvolution_channels, fit_spectral_pol, wsclean_niter,
@@ -760,5 +774,6 @@ steps:
       - id: sector_image_cube_frequencies
 {% endif %}
 {% if normalize_flux_scale %}
-      - id: sector_normalize_h5parm
+      - id: sector_source_catalog
+      # - id: sector_normalize_h5parm
 {% endif %}
