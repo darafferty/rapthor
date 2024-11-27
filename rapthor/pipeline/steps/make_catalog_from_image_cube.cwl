@@ -8,10 +8,6 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
-  - class: InitialWorkDirRequirement
-    listing:
-      - entry: $(inputs.cube)
-        writable: true
 
 inputs:
   - id: cube
