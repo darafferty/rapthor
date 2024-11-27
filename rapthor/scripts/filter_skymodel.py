@@ -16,6 +16,7 @@ from astropy import wcs
 from astropy.utils import iers
 import os
 import json
+import tempfile
 
 
 # Turn off astropy's IERS downloads to fix problems in cases where compute
@@ -91,15 +92,10 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
     if isinstance(rmsbox_bright, str):
         rmsbox_bright = ast.literal_eval(rmsbox_bright)
 
-    # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
-    # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
-    # We try a number of standard paths (the same ones used in the tempfile Python
-    # library)
-    old_tmpdir = os.getenv("TMPDIR")
-    for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
-        if os.path.exists(tmpdir):
-            os.environ["TMPDIR"] = tmpdir
-            break
+    # Try to set the TMPDIR env var to a short path (/tmp, /var/tmp, or
+    # /usr/tmp), to try to avoid hitting the length limits for socket paths
+    # (used by the mulitprocessing module) in the PyBDSF calls
+    os.environ["TMPDIR"] = tempfile.gettempdir()  # note: no effect if TMPDIR already set
 
     # Run PyBDSF first on the true-sky image to determine its properties and
     # measure source fluxes. The background RMS map is saved for later use in
@@ -110,7 +106,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                       adaptive_thresh=adaptive_thresh,
                                       rms_box_bright=rmsbox_bright, atrous_do=True,
                                       atrous_jmax=3, rms_map=True, quiet=True,
-                                      ncores=ncores)
+                                      ncores=ncores, outdir='.')
     catalog_filename = output_root+'.source_catalog.fits'
     img_true_sky.write_catalog(outfile=catalog_filename, format='fits', catalog_type='srl',
                                clobber=True)
@@ -126,14 +122,10 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
                                         thresh='hard', adaptive_rms_box=True,
                                         adaptive_thresh=adaptive_thresh, rms_box_bright=rmsbox_bright,
                                         rms_map=True, stop_at='isl', quiet=True,
-                                        ncores=ncores)
+                                        ncores=ncores, outdir='.')
     flat_noise_rms_filename = output_root+'.flat_noise_rms.fits'
     img_flat_noise.export_image(outfile=flat_noise_rms_filename, img_type='rms', clobber=True)
     del img_flat_noise  # helps reduce memory usage
-
-    # Set the TMPDIR env var back to its original value
-    if old_tmpdir is not None:
-        os.environ["TMPDIR"] = old_tmpdir
 
     emptysky = False
     if img_true_sky.nisl > 0 and os.path.exists(true_sky_skymodel):

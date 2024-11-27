@@ -7,6 +7,7 @@ from argparse import RawTextHelpFormatter
 import ast
 import bdsf
 import os
+import tempfile
 
 
 def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=3.0,
@@ -52,15 +53,10 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=3.0
     if isinstance(rmsbox_bright, str):
         rmsbox_bright = ast.literal_eval(rmsbox_bright)
 
-    # Try to set the TMPDIR evn var to a short path, to ensure we do not hit the length
-    # limits for socket paths (used by the mulitprocessing module) in the PyBDSF calls.
-    # We try a number of standard paths (the same ones used in the tempfile Python
-    # library)
-    old_tmpdir = os.getenv("TMPDIR")
-    for tmpdir in ['/tmp', '/var/tmp', '/usr/tmp']:
-        if os.path.exists(tmpdir):
-            os.environ["TMPDIR"] = tmpdir
-            break
+    # Try to set the TMPDIR env var to a short path (/tmp, /var/tmp, or
+    # /usr/tmp), to try to avoid hitting the length limits for socket paths
+    # (used by the mulitprocessing module) in the PyBDSF calls
+    os.environ["TMPDIR"] = tempfile.gettempdir()  # note: no effect if TMPDIR already set
 
     # Read in beams and frequencies
     with open(cube_beams, 'r') as f:
@@ -82,13 +78,10 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=3.0
                              rms_box_bright=rmsbox_bright, atrous_do=False,
                              rms_map=True, quiet=True,
                              spectralindex_do=True, beam_spectrum=beams,
-                             frequency_sp=frequencies, ncores=ncores)
+                             frequency_sp=frequencies, ncores=ncores,
+                             outdir='.')
     img.write_catalog(outfile=output_catalog, format='fits', catalog_type='srl',
                       incl_chan=True, clobber=True)
-
-    # Set the TMPDIR env var back to its original value
-    if old_tmpdir is not None:
-        os.environ["TMPDIR"] = old_tmpdir
 
 
 if __name__ == '__main__':
