@@ -771,7 +771,6 @@ void do_calc_aterms(
   for (size_t i = 0; i < (size_t)nr_channel_blocks; i++) {
     for (size_t j = 0; j < (size_t)nr_antennas; j++) {
       for (size_t k = 0; k < (size_t)subgrid_size; k++) {
-#pragma omp parallel for
         for (size_t l = 0; l < (size_t)subgrid_size; l++) {
           // 0 for having nr_phase_updates==1
           Matrix2x2<std::complex<double>>& mat = aterm(i, 0, j, k, l);
@@ -795,7 +794,6 @@ void do_calc_aterm_derivatives(
     aocommon::xt::Span<Matrix2x2<std::complex<double>>, 5>& aterm_deriv) {
   for (size_t i = 0; i < (size_t)nr_channel_blocks; i++) {
     for (size_t k = 0; k < (size_t)subgrid_size; k++) {
-#pragma omp parallel for
       for (size_t l = 0; l < (size_t)subgrid_size; l++) {
         // 0 for having nr_phase_updates==1
         Matrix2x2<std::complex<double>>& phase_mat =
