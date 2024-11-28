@@ -803,11 +803,11 @@ void do_calc_aterm_derivatives(
           Matrix2x2<std::complex<double>>& deriv_mat =
               aterm_deriv(i, 0, m, k, l);
           // scalar basis, to multiply phase_mat with a (scalar x j)
-          float basis = static_cast<float>(phase_basis(m, k, l, 0));
-          float xx_re = phase_mat.xx.real() * basis;
-          float xx_im = phase_mat.xx.imag() * basis;
-          float yy_re = phase_mat.yy.real() * basis;
-          float yy_im = phase_mat.yy.imag() * basis;
+          double basis = phase_basis(m, k, l, 0);
+          double xx_re = phase_mat.xx.real() * basis;
+          double xx_im = phase_mat.xx.imag() * basis;
+          double yy_re = phase_mat.yy.real() * basis;
+          double yy_im = phase_mat.yy.imag() * basis;
           deriv_mat.xx.real(-xx_im);
           deriv_mat.xx.imag(xx_re);
           deriv_mat.yy.real(-yy_im);
