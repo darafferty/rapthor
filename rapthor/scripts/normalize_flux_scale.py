@@ -9,7 +9,6 @@ from astropy.coordinates import SkyCoord, match_coordinates_sky
 import astropy.units as u
 import lsmtool
 import numpy as np
-from pyvo.dal import DALFormatError
 from rapthor.lib import miscellaneous as misc
 
 
@@ -120,7 +119,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         # fully covered
         try:
             skymodel = lsmtool.load(survey, VOPosition=[ra, dec], VORadius=5.0)
-        except (OSError, ConnectionError, DALFormatError) as e:
+        except (OSError, ConnectionError) as e:
             print(f'A problem occurred when downloading the {survey} catalog. '
                   'Error was: {}. Flux normalization will be skipped.'.format(e))
             do_normalization = False
