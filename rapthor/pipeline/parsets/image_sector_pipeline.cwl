@@ -487,10 +487,10 @@ outputs:
     outputSource:
       - make_catalog_from_image_cube/source_catalog
     type: File
-  # - id: sector_normalize_h5parm
-  #   outputSource:
-  #     - normalize_flux_scale/h5parm
-  #   type: File
+  - id: sector_normalize_h5parm
+    outputSource:
+      - normalize_flux_scale/output_h5parm
+    type: File
 {% endif %}
 
 steps:

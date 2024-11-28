@@ -540,10 +540,10 @@ outputs:
     outputSource:
       - image_sector/sector_source_catalog
     type: File[]
-  # - id: sector_normalize_h5parm
-  #   outputSource:
-  #     - image_sector/sector_normalize_h5parm
-  #   type: File[]
+  - id: sector_normalize_h5parm
+    outputSource:
+      - image_sector/sector_normalize_h5parm
+    type: File[]
 {% endif %}
 
 
