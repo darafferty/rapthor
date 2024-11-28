@@ -775,5 +775,5 @@ steps:
 {% endif %}
 {% if normalize_flux_scale %}
       - id: sector_source_catalog
-      # - id: sector_normalize_h5parm
+      - id: sector_normalize_h5parm
 {% endif %}
