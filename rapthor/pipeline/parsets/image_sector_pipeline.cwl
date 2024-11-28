@@ -968,5 +968,6 @@ steps:
         source: normalize_h5parm
     out:
       - id: output_h5parm
+
 {% endif %}
 # end normalize_flux_scale
