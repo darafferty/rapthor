@@ -14,7 +14,7 @@ from rapthor.lib import miscellaneous as misc
 def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_frequencies,
                    output_frequencies):
     """
-    Fit source SEDs to get flux-scale corrections
+    Fit source spectral energy distributions (SEDs) to get flux-scale corrections
 
     Parameters
     ----------
@@ -53,7 +53,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     Parameters
     ----------
     source_catalog : str
-        Filename of the input FITS source catalog. This catalog should be
+        Filename of the input FITS source catalog. This catalog should have been
         created by PyBDSF from an image cube with the spectral-index mode
         activated
     ra : float
@@ -84,6 +84,9 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
             n_chan += 1
         else:
             break
+    if n_chan == 0:
+        raise ValueError('No channel frequency columns were found in the input source catalog. '
+                         'Please run PyBDSF with the spectral-index mode activated.')
     min_frequency = np.nanmin(data['Freq_ch1'])  # Hz
     max_frequency = np.nanmax(data[f'Freq_ch{n_chan}'])  # Hz
 
@@ -123,7 +126,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
                   'Error was: {}. Flux normalization will be skipped.'.format(e))
             do_normalization = False
         if not len(skymodel):
-            print(f'No sources foundin the {survey} catalog for this field. '
+            print(f'No sources found in the {survey} catalog for this field. '
                   'Flux normalization will be skipped.')
             do_normalization = False
         if not do_normalization:
