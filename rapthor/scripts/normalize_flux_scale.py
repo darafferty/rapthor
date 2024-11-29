@@ -77,13 +77,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         data = hdul[1].data
 
     # Find the number of frequency channels and the total bandwidth covered
-    n_chan = 0
-    while True:
-        freq_col = f'Freq_ch{n_chan+1}'
-        if freq_col in data.columns.names:
-            n_chan += 1
-        else:
-            break
+    n_chan = len([colname for colname in data.columns.names if 'Freq_ch' in colname])
     if n_chan == 0:
         raise ValueError('No channel frequency columns were found in the input source catalog. '
                          'Please run PyBDSF with the spectral-index mode activated.')
