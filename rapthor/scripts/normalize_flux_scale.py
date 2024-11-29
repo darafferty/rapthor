@@ -2,8 +2,7 @@
 """
 Script to calculate flux-scale normalization corrections
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, match_coordinates_sky
 import astropy.units as u
@@ -182,7 +181,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
 if __name__ == '__main__':
     descriptiontext = "Calculate flux-scale normalization corrections.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('source_catalog', help='Filename of input FITS source catalog')
     parser.add_argument('ra', help='RA of image center in degrees', type=float)
     parser.add_argument('dec', help='Dec of image center in degrees', type=float)

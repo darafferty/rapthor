@@ -2,8 +2,7 @@
 """
 Script to make a-term images from solutions
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 import os
 from rapthor.lib.screen import KLScreen, VoronoiScreen
 from losoto.h5parm import h5parm
@@ -108,7 +107,7 @@ def main(h5parmfile, soltabname='phase000', screen_type='tessellated', outroot='
 if __name__ == '__main__':
     descriptiontext = "Make a-term images from solutions.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('h5parmfile', help='Filename of input h5parm')
     parser.add_argument('--soltabname', help='Name of soltab', type=str, default='phase000')
     parser.add_argument('--screen_type', help='Type of screen', type=str, default='tessellated')

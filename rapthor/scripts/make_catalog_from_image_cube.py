@@ -2,8 +2,7 @@
 """
 Script to make a source catalog from an image cube
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 import ast
 import bdsf
 import os
@@ -87,7 +86,7 @@ def main(cube_image, cube_beams, cube_frequencies, output_catalog, threshisl=3.0
 if __name__ == '__main__':
     descriptiontext = "Make a source catalog from an image cube.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('cube_image', help='Filename of input FITS image cube')
     parser.add_argument('cube_beams', help='Filename of input text file with cube beam parameters')
     parser.add_argument('cube_frequencies', help='Filename of input text file with cube frequency parameters')

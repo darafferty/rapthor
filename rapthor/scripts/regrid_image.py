@@ -2,8 +2,7 @@
 """
 Script to regrid a FITS image
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from rapthor.lib import miscellaneous as misc
 from rapthor.lib.fitsimage import FITSImage
 from reproject import reproject_interp
@@ -80,7 +79,7 @@ def main(input_image, template_image, vertices_file, output_image, skip=False):
 if __name__ == '__main__':
     descriptiontext = "Regrid an image to match a template image.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('input_image', help='Filenames of input image')
     parser.add_argument('template_image', help='Filenames of input template image')
     parser.add_argument('vertices_file', help='Filename of input vertices files')
