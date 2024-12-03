@@ -5,13 +5,15 @@ Script to calculate flux-scale normalization corrections
 from argparse import ArgumentParser, RawTextHelpFormatter
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, match_coordinates_sky
+from astropy.modeling import models, fitting
 import astropy.units as u
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
 
 
-def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_frequencies,
+def fit_source_sed(rapthor_fluxes, rapthor_frequencies, rapthor_errors,
+                   survey_fluxes, survey_frequencies, survey_errors,
                    output_frequencies):
     """
     Fit source spectral energy distributions (SEDs) to get flux-scale corrections
@@ -22,10 +24,14 @@ def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_fr
         List of Rapthor source flux densities in Jy
     rapthor_frequencies : list
         List of source frequencies in Hz for each Rapthor flux density
+    rapthor_errors : list
+        List of 1-sigma errors on the Rapthor source flux densities in Jy
     survey_fluxes : list
         List of survey source flux densities in Jy
     survey_frequencies : list
         List of source frequencies in Hz for each survey flux density
+    rapthor_errors : list
+        List of 1-sigma errors on the survey source flux densities in Jy
     output_frequencies : list
         List of output frequencies in Hz at which corrections will be
         calculated
@@ -33,16 +39,25 @@ def fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes, survey_fr
     Returns
     -------
     corrections : list
-        List of corrections, one per frequency, that will result in
-        observed flux density / true flux density = 1
+        List of corrections, one per output frequency, that will result in
+        observed flux density * correction / true flux density = 1
     """
-    # TODO: [RAP-791] Fit the external catalog fluxes to get "true" SED
+    # Use the Levenberg-Marquardt (LM) algorithm for fitting
+    fitter = fitting.LMLSQFitter()
 
-    # TODO: [RAP-791] Construct observed SED from Rapthor fluxes
+    # Fit the external survey SED
+    powerlaw_init = models.PowerLaw1D(amplitude=survey_fluxes[0], x_0=survey_frequencies[0], alpha=-1)
+    survey_fit = fitter(powerlaw_init, survey_frequencies, survey_fluxes, weights=1/survey_errors)
 
-    # TODO: [RAP-791] Derive corrections per frequency needed to adjust the
-    # observed SED to match the true one
-    return [1.0] * len(output_frequencies)  # placeholder
+    # Fit the Rapthor SED
+    powerlaw_init = models.PowerLaw1D(amplitude=rapthor_fluxes[0], x_0=rapthor_frequencies[0], alpha=-1)
+    rapthor_fit = fitter(powerlaw_init, rapthor_frequencies, rapthor_fluxes, weights=1/rapthor_errors)
+
+    # Derive corrections per frequency needed to adjust the Rapthor SED to
+    # match the survey one
+    corrections = [survey_fit(freq) / rapthor_fit(freq) for freq in output_frequencies]
+
+    return corrections
 
 
 def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=10/3600,
@@ -142,7 +157,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         else:
             flux_correction = 1
         survey_catalogs.append({'survey': survey, 'flux': survey_data['I'][match_ind]*flux_correction,
-                                'frequency': frequency})
+                                'flux_err': 0.0, 'frequency': frequency})
 
     output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5).tolist()
     if do_normalization:
@@ -153,16 +168,20 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         survey_frequencies = [sc['frequency'] for sc in survey_catalogs]  # Hz
         for i in range(n_sources):
             rapthor_fluxes = []
+            rapthor_flux_errors = []
             rapthor_frequencies = []
             for ch_ind in range(n_chan):
                 if not np.isnan(data[f'Total_flux_ch{ch_ind+1}'][i]):
                     rapthor_fluxes.append(data[f'Total_flux_ch{ch_ind+1}'][i])  # Jy
+                    rapthor_flux_errors.append(data[f'E_Total_flux_ch{ch_ind+1}'][i])  # Jy
                     rapthor_frequencies.append(data[f'Freq_ch{ch_ind+1}'][i])  # Hz
             survey_fluxes = [sc['flux'][i] for sc in survey_catalogs]  # Jy
-            corrections[i, :] = fit_source_sed(rapthor_fluxes, rapthor_frequencies, survey_fluxes,
-                                               survey_frequencies, output_frequencies)
+            survey_flux_errors = [sc['flux_err'][i] for sc in survey_catalogs]  # Jy
+            corrections[i, :] = fit_source_sed(rapthor_fluxes, rapthor_frequencies, rapthor_flux_errors,
+                                               survey_fluxes, survey_frequencies, survey_flux_errors,
+                                               output_frequencies)
 
-        # TODO: [RAP-791] For each output frequency, find the average correction over all sources
+        # For each output frequency, find the average correction over all sources
         # (weighted by source flux density)
         avg_corrections = np.ones(len(output_frequencies))  # placeholder
     else:
