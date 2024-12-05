@@ -12,56 +12,109 @@ import numpy as np
 from rapthor.lib import miscellaneous as misc
 
 
-def fit_source_sed(rapthor_fluxes, rapthor_frequencies, rapthor_errors,
-                   survey_fluxes, survey_frequencies, survey_errors,
-                   output_frequencies):
+def fit_sed(fluxes, errors, frequencies):
     """
-    Fit source spectral energy distributions (SEDs) to get flux-scale corrections
+    Fit a spectral energy distribution (SED)
 
     Parameters
     ----------
-    rapthor_fluxes : list
-        List of Rapthor source flux densities in Jy
-    rapthor_frequencies : list
-        List of source frequencies in Hz for each Rapthor flux density
-    rapthor_errors : list
-        List of 1-sigma errors on the Rapthor source flux densities in Jy
-    survey_fluxes : list
-        List of survey source flux densities in Jy
-    survey_frequencies : list
-        List of source frequencies in Hz for each survey flux density
-    rapthor_errors : list
-        List of 1-sigma errors on the survey source flux densities in Jy
-    output_frequencies : list
-        List of output frequencies in Hz at which corrections will be
+    fluxes : numpy array
+        Array of SED flux densities in Jy
+    errors : numpy array
+        Array of 1-sigma errors on the SED flux densities in Jy
+    frequencies : numpy array
+        Array of SED frequencies in Hz for each flux density
+
+    Returns
+    -------
+    sed_fit : function
+        Fit function that returns the flux density of the SED fit at a given
+        frequency in Hz
+    """
+    # Filter out zero fluxes
+    valid_ind = fluxes > 0
+    fluxes = fluxes[valid_ind]
+    errors = errors[valid_ind]
+    frequencies = frequencies[valid_ind]
+
+    # Fit the Rapthor SED
+    if len(fluxes) == 0:
+        # No fit possible, return 0
+        def sed_fit_0(freq):
+            return 0.0
+        sed_fit = sed_fit_0
+
+    elif len(fluxes) == 1:
+        # Adopt a constant SED
+        def sed_fit_1(freq):
+            return fluxes[0]
+        sed_fit = sed_fit_1
+
+    elif len(fluxes) == 2:
+        # Use simple powerlaw fit with spectral index alpha (f1 = f0 * (nu1/nu2)**alpha)
+        alpha = np.log10(fluxes[0] / fluxes[1]) / np.log10(frequencies[0] / frequencies[1])
+
+        def sed_fit_2(freq):
+            return fluxes[0] * (frequencies[0] / freq) ** alpha
+        sed_fit = sed_fit_2
+
+    else:
+        # Fit a powerlaw to the fluxes, weighted by their errors, using
+        # the Levenberg-Marquardt (LM) algorithm
+        fitter = fitting.LMLSQFitter()
+        powerlaw_init = models.PowerLaw1D(amplitude=fluxes[0], x_0=frequencies[0], alpha=-1)
+        weights = [min(1e3, 1/err) if err > 0 else 1e3 for err in errors]
+        sed_fit = fitter(powerlaw_init, frequencies, fluxes, weights=weights)
+
+    return sed_fit
+
+
+def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
+                        survey_fluxes, survey_errors, survey_frequencies,
+                        output_frequencies):
+    """
+    Fit source spectral energy distributions (SEDs) to get flux-scale
+    normalizations
+
+    Parameters
+    ----------
+    rapthor_fluxes : numpy array
+        Array of Rapthor source flux densities in Jy
+    rapthor_errors : numpy array
+        Array of 1-sigma errors on the Rapthor source flux densities in Jy
+    rapthor_frequencies : numpy array
+        Array of source frequencies in Hz for each Rapthor flux density
+    survey_fluxes : numpy array
+        Array of survey source flux densities in Jy
+    survey_errors : numpy array
+        Array of 1-sigma errors on the survey source flux densities in Jy
+    survey_frequencies : numpy array
+        Array of source frequencies in Hz for each survey flux density
+    output_frequencies : numpy array
+        Array of output frequencies in Hz at which corrections will be
         calculated
 
     Returns
     -------
-    corrections : list
-        List of corrections, one per output frequency, that will result in
+    normalizations : numpy array
+        Array of normalizations, one per output frequency, that will result in
         observed flux density * correction / true flux density = 1
     """
-    # Use the Levenberg-Marquardt (LM) algorithm for fitting
-    fitter = fitting.LMLSQFitter()
-
     # Fit the external survey SED
-    powerlaw_init = models.PowerLaw1D(amplitude=survey_fluxes[0], x_0=survey_frequencies[0], alpha=-1)
-    survey_fit = fitter(powerlaw_init, survey_frequencies, survey_fluxes, weights=1/survey_errors)
+    survey_fit = fit_sed(survey_fluxes, survey_errors, survey_frequencies)
 
     # Fit the Rapthor SED
-    powerlaw_init = models.PowerLaw1D(amplitude=rapthor_fluxes[0], x_0=rapthor_frequencies[0], alpha=-1)
-    rapthor_fit = fitter(powerlaw_init, rapthor_frequencies, rapthor_fluxes, weights=1/rapthor_errors)
+    rapthor_fit = fit_sed(rapthor_fluxes, rapthor_errors, rapthor_frequencies)
 
-    # Derive corrections per frequency needed to adjust the Rapthor SED to
+    # Derive normalizations per frequency needed to adjust the Rapthor SED to
     # match the survey one
-    corrections = [survey_fit(freq) / rapthor_fit(freq) for freq in output_frequencies]
+    normalizations = np.array([survey_fit(freq) / rapthor_fit(freq) for freq in output_frequencies])
 
-    return corrections
+    return normalizations
 
 
 def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=10/3600,
-         neighbor_cut=30/3600):
+         neighbor_cut=30/3600, spurious_match_cut=10/3600):
     """
     Calculate flux-scale normalization corrections
 
@@ -86,6 +139,10 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     neighbor_cut : float, optional
         Nearest-neighbor distance cut in degrees. Sources with neighbors
         closer than this value are excluded from the analysis
+    spurious_match_cut : float, optional
+        Distance cut in degrees for spurious matches. Sources with matches in
+        the survey catalogs with distances greater than this value are excluded
+        from the analysis
     """
     # Read in the source catalog
     with fits.open(source_catalog) as hdul:
@@ -148,18 +205,24 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
                                  dec=np.array([misc.normalize_dec(survey_dec)
                                                for survey_dec in survey_data['DEC']])*u.degree)
 
-        # Cross match with the Rapthor sources
+        # Cross match with the Rapthor sources, rejecting distant matches that
+        # are likely to be spurious (e.g., due to the true source not being
+        # present in the survey catalog)
         match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
+        match_distances = np.array([sep.value for sep in separation])
+        spurious_match_filter = match_distances > spurious_match_cut
+        survey_data['I'][match_ind][spurious_match_filter] = 0.0
 
-        # Save the flux densities
         if survey == 'wenss':
             flux_correction = 0.9
-        else:
+            flux_err = 3.6e-3  # Jy (reported average rms noise level)
+        elif survey == 'vlssr':
             flux_correction = 1
+            flux_err = 0.1  # Jy (reported average rms noise level)
         survey_catalogs.append({'survey': survey, 'flux': survey_data['I'][match_ind]*flux_correction,
-                                'flux_err': 0.0, 'frequency': frequency})
+                                'flux_err': flux_err, 'frequency': frequency})
 
-    output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5).tolist()
+    output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5)
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections
@@ -168,22 +231,26 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         survey_frequencies = [sc['frequency'] for sc in survey_catalogs]  # Hz
         for i in range(n_sources):
             rapthor_fluxes = []
-            rapthor_flux_errors = []
+            rapthor_errors = []
             rapthor_frequencies = []
             for ch_ind in range(n_chan):
                 if not np.isnan(data[f'Total_flux_ch{ch_ind+1}'][i]):
                     rapthor_fluxes.append(data[f'Total_flux_ch{ch_ind+1}'][i])  # Jy
-                    rapthor_flux_errors.append(data[f'E_Total_flux_ch{ch_ind+1}'][i])  # Jy
+                    rapthor_errors.append(data[f'E_Total_flux_ch{ch_ind+1}'][i])  # Jy
                     rapthor_frequencies.append(data[f'Freq_ch{ch_ind+1}'][i])  # Hz
-            survey_fluxes = [sc['flux'][i] for sc in survey_catalogs]  # Jy
-            survey_flux_errors = [sc['flux_err'][i] for sc in survey_catalogs]  # Jy
-            corrections[i, :] = fit_source_sed(rapthor_fluxes, rapthor_frequencies, rapthor_flux_errors,
-                                               survey_fluxes, survey_frequencies, survey_flux_errors,
-                                               output_frequencies)
+            rapthor_fluxes = np.array(rapthor_fluxes)
+            rapthor_errors = np.array(rapthor_errors)
+            rapthor_frequencies = np.array(rapthor_frequencies)
+            survey_fluxes = np.array([sc['flux'][i] for sc in survey_catalogs])  # Jy
+            survey_errors = np.array([sc['flux_err'] for sc in survey_catalogs])  # Jy
+            corrections[i, :] = find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
+                                                    survey_fluxes, survey_errors, survey_frequencies,
+                                                    output_frequencies)
 
         # For each output frequency, find the average correction over all sources
         # (weighted by source flux density)
-        avg_corrections = np.ones(len(output_frequencies))  # placeholder
+        nonzero_ind = np.where(corrections > 0)
+        avg_corrections = np.mean(corrections[nonzero_ind], axis=0)
     else:
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
