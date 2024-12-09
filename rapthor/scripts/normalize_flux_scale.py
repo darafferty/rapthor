@@ -228,7 +228,7 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         # the observed fluxes and the catalog fluxes, and find the corrections
         n_sources = len(source_coords)
         corrections = np.zeros((n_sources, len(output_frequencies)))
-        survey_frequencies = [sc['frequency'] for sc in survey_catalogs]  # Hz
+        survey_frequencies = np.array([sc['frequency'] for sc in survey_catalogs])  # Hz
         for i in range(n_sources):
             rapthor_fluxes = []
             rapthor_errors = []
