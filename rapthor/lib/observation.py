@@ -326,9 +326,15 @@ class Observation(object):
                     freqchunk_filename = self.ms_filename
 
             # Divide up the bandwidth if needed
-            samplesperchunk = int(round(target_chunksize / self.channelwidth))
-            freqchunksize = samplesperchunk * self.channelwidth  # Hz
-            nfreqchunks = max(1, int(np.ceil(self.numchannels * self.channelwidth / freqchunksize)))
+            if solve_type == 'fulljones':
+                # Don't use frequency chunking for full-Jones solves, as it is not supported
+                # when solving is done against the MODEL_DATA column
+                samplesperchunk = 0
+                nfreqchunks = 1
+            else:
+                samplesperchunk = int(round(target_chunksize / self.channelwidth))
+                freqchunksize = samplesperchunk * self.channelwidth  # Hz
+                nfreqchunks = max(1, int(np.ceil(self.numchannels * self.channelwidth / freqchunksize)))
             setattr(self, f'nfreqchunks_{solve_type}', nfreqchunks)
             self.log.debug('Using {0} frequency chunk{1} for the {2} gain '
                            'calibration (if done)'.format(nfreqchunks, "s" if nfreqchunks > 1 else "", solve_type))
