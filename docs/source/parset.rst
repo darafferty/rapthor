@@ -341,6 +341,11 @@ The available options are described below under their respective sections.
     taper_arcsec
         Taper to apply when imaging, in arcsec (default = 0).
 
+    local_rms_strength
+        Strength to use for the local RMS thresholding (default = 0.7). The
+        strength is applied by WSClean to the local RMS map using ``local_rms ^
+        strength``.
+
     do_multiscale_clean
         Use multiscale cleaning (default = ``True``)?
 
@@ -509,11 +514,11 @@ The available options are described below under their respective sections.
 
     deconvolution_threads
         Number of threads to use by WSClean during deconvolution (default = 0 = 2/5 of
-        ``max_threads``).
+        ``max_threads``, but not more than 14).
 
     parallel_gridding_threads
-        Number of threads to use by WSClean during parallel gridding (default = 0 = 2/5 of
-        ``max_threads``).
+        Number of threads to use by WSClean for parallel gridding (default = 0 = 2/5 of
+        ``max_threads``, but not more than 6).
 
     dir_local
         Full path to a local disk on the nodes for IO-intensive processing (default = not

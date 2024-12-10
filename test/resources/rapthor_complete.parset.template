@@ -53,6 +53,7 @@ robust = -0.3
 min_uv_lambda = 80.0
 max_uv_lambda = 10000.0
 taper_arcsec = 2.0
+local_rms_strength = 0.5
 do_multiscale_clean = False
 dde_method = screens
 screen_type = kl
