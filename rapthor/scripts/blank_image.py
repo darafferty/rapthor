@@ -3,15 +3,12 @@
 Script to blank regions (with zeros or NaNs) in a fits image. Can also be used to make
 a clean mask
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from rapthor.lib import miscellaneous as misc
 import logging
 import numpy as np
-import sys
 from astropy.io import fits as pyfits
 from astropy import wcs
-import os
 
 
 def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=None,
@@ -91,7 +88,7 @@ def main(output_image, input_image=None, vertices_file=None, reference_ra_deg=No
 if __name__ == '__main__':
     descriptiontext = "Blank regions of an image.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('output_image_file', help='Filename of output image')
     parser.add_argument('input_image_file', help='Filename of input image', nargs='?', default=None)
     parser.add_argument('--vertices_file', help='Filename of vertices file', type=str, default=None)

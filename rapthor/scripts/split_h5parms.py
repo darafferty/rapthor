@@ -2,8 +2,7 @@
 """
 Script to split an h5parm
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import os
 import shutil
@@ -153,7 +152,7 @@ def main(inh5parm, outh5parms, soltabname='phase000', insolset='sol000'):
 if __name__ == '__main__':
     descriptiontext = "Combine two h5parms.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('inh5parm', help='name of input h5parm')
     parser.add_argument('outh5parms', help='name of output h5parm')
     parser.add_argument('--soltabname', help='name of the soltab', type=str, default='phase000')

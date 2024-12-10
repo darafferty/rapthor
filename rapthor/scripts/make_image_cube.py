@@ -2,8 +2,7 @@
 """
 Script to make a FITS image cube
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from rapthor.lib.fitsimage import FITSCube
 from rapthor.lib import miscellaneous as misc
 
@@ -50,7 +49,7 @@ def main(input_image_filenames, output_image_filename, output_beams_filename=Non
 if __name__ == '__main__':
     descriptiontext = "Make a FITS image cube.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('input_image_filenames', help='Filenames of input channel images')
     parser.add_argument('output_image_filename', help='Filename of output image cube FITS file')
     parser.add_argument('--output_beams_filename', help='Filename of output cube beams text file',

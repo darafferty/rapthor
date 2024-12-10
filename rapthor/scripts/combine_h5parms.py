@@ -2,12 +2,10 @@
 """
 Script to combine two h5parms
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import logging
 import os
-import sys
 import numpy as np
 import scipy.interpolate as si
 from astropy.stats import circmean
@@ -640,7 +638,7 @@ def main(h5parm1, h5parm2, outh5parm, mode, solset1='sol000', solset2='sol000',
 if __name__ == '__main__':
     descriptiontext = "Combine two h5parms.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('h51', help='Filename of input h5 1')
     parser.add_argument('h52', help='Filename of input h5 2')
     parser.add_argument('outh5', help='Filename of the output h5')
@@ -652,7 +650,7 @@ if __name__ == '__main__':
 
     try:
         main(args.h51, args.h52, args.outh5, args.mode, reweight=args.reweight,
-         cal_names=args.cal_names, cal_fluxes=args.cal_fluxes)
+             cal_names=args.cal_names, cal_fluxes=args.cal_fluxes)
     except ValueError as e:
         log = logging.getLogger('rapthor:combine_h5parms')
         log.critical(e)

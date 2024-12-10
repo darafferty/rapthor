@@ -2,8 +2,7 @@
 """
 Script to filter and group a sky model with an image
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 import lsmtool
 import numpy as np
 import bdsf
@@ -241,7 +240,7 @@ def main(flat_noise_image, true_sky_image, true_sky_skymodel, output_root,
 if __name__ == '__main__':
     descriptiontext = "Filter and group a sky model with an image.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('flat_noise_image', help='Filename of input flat-noise (non-primary-beam-corrected) image')
     parser.add_argument('true_sky_image', help='Filename of input true-sky (primary-beam-corrected) image')
     parser.add_argument('true_sky_skymodel', help='Filename of input true-sky sky model')

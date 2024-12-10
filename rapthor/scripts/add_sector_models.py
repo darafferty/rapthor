@@ -2,8 +2,7 @@
 """
 Script to add sector model data
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 import casacore.tables as pt
 import logging
 import numpy as np
@@ -187,7 +186,7 @@ def main(msin, msmod_list, msin_column='DATA', model_column='DATA',
 if __name__ == '__main__':
     descriptiontext = "Add sector model data.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('msin', help='Filename of input MS data file')
     parser.add_argument('msmod', help='Filename of input MS model data file')
     parser.add_argument('--msin_column', help='Name of msin column', type=str, default='DATA')
