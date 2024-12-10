@@ -102,6 +102,7 @@ class Sector(object):
                 'cellsize_arcsec': cell (pixel) size in arcsec
                 'robust': Briggs robust value
                 'taper_arcsec': taper in arcsec
+                'local_rms_strength': local RMS strength factor
                 'min_uv_lambda': minimum uv distance cut in lambda
                 'max_uv_lambda': maximum uv distance cut in lambda
                 'idg_mode': IDG processing mode
@@ -116,6 +117,7 @@ class Sector(object):
         self.cellsize_deg = self.cellsize_arcsec / 3600.0
         self.robust = imaging_parameters['robust']
         self.taper_arcsec = imaging_parameters['taper_arcsec']
+        self.local_rms_strength = imaging_parameters['local_rms_strength']
         self.min_uv_lambda = imaging_parameters['min_uv_lambda']
         self.max_uv_lambda = imaging_parameters['max_uv_lambda']
         self.idg_mode = imaging_parameters['idg_mode']

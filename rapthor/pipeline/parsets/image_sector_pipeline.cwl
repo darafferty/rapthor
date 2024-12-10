@@ -333,6 +333,12 @@ inputs:
       The WSClean taper value in arcsec (length = 1).
     type: float
 
+  - id: local_rms_strength
+    label: Local RMS strength value
+    doc: |
+      The WSClean local RMS strength value (length = 1).
+    type: float
+
   - id: wsclean_mem
     label: Memory in GB
     doc: |
@@ -487,10 +493,10 @@ outputs:
     outputSource:
       - make_catalog_from_image_cube/source_catalog
     type: File
-  # - id: sector_normalize_h5parm
-  #   outputSource:
-  #     - normalize_flux_scale/h5parm
-  #   type: File
+  - id: sector_normalize_h5parm
+    outputSource:
+      - normalize_flux_scale/output_h5parm
+    type: File
 {% endif %}
 
 steps:
@@ -750,6 +756,8 @@ steps:
         source: fit_spectral_pol
       - id: taper_arcsec
         source: taper_arcsec
+      - id: local_rms_strength
+        source: local_rms_strength
       - id: wsclean_mem
         source: wsclean_mem
       - id: auto_mask
@@ -951,18 +959,23 @@ steps:
     out:
       - id: source_catalog
 
-  # - id: normalize_flux_scale
-  #   label: Normalize the flux scale
-  #   doc: |
-  #     This step determines the corrections necessary to
-  #     normalize the flux scale
-  #   run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
-  #   in:
-  #     - id: source_catalog
-  #       source: make_catalog_from_image_cube/source_catalog
-  #     - id: normalize_h5parm
-  #       source: normalize_h5parm
-  #   out:
-  #     - id: h5parm
+  - id: normalize_flux_scale
+    label: Normalize the flux scale
+    doc: |
+      This step determines the corrections necessary to
+      normalize the flux scale
+    run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+    in:
+      - id: source_catalog
+        source: make_catalog_from_image_cube/source_catalog
+      - id: ra
+        source: ra
+      - id: dec
+        source: dec
+      - id: normalize_h5parm
+        source: normalize_h5parm
+    out:
+      - id: output_h5parm
+
 {% endif %}
 # end normalize_flux_scale

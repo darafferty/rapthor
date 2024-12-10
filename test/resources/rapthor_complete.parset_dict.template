@@ -81,6 +81,7 @@
                       'sector_width_ra_deg_list': [0.532, 0.127],
                       'skip_corner_sectors': False,
                       'taper_arcsec': 2.0,
+                      'local_rms_strength': 0.5,
                       'use_mpi': True},
  'input_h5parm': '/my/data/dirdependent.h5',
  'input_fulljones_h5parm': '/my/data/fulljones.h5',

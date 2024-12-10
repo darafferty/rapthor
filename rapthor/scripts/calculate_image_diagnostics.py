@@ -2,8 +2,7 @@
 """
 Script to calculate various image diagnostics
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 import lsmtool
 import numpy as np
 from rapthor.lib import miscellaneous as misc
@@ -569,7 +568,7 @@ def main(flat_noise_image, flat_noise_rms_image, true_sky_image, true_sky_rms_im
 if __name__ == '__main__':
     descriptiontext = "Calculate image photometry and astrometry diagnostics.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('flat_noise_image', help='Filename of flat-noise FITS image')
     parser.add_argument('flat_noise_rms_image', help='Filename of flat-noise FITS image')
     parser.add_argument('true_sky_image', help='Filename of flat-noise FITS image')

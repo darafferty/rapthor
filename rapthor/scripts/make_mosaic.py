@@ -2,8 +2,7 @@
 """
 Script to make a mosiac from FITS images
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from rapthor.lib import miscellaneous as misc
 from astropy.io import fits as pyfits
 import numpy as np
@@ -61,7 +60,7 @@ def main(input_image_list, template_image, output_image, skip=False):
 if __name__ == '__main__':
     descriptiontext = "Make a mosaic image.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('input_image_list', help='Filenames of input image')
     parser.add_argument('template_image', help='Filename of input template image')
     parser.add_argument('output_image', help='Filename of output template image')

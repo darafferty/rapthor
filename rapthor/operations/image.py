@@ -218,6 +218,7 @@ class Image(Operation):
                             'min_uv_lambda': [sector.min_uv_lambda for sector in self.imaging_sectors],
                             'max_uv_lambda': [sector.max_uv_lambda for sector in self.imaging_sectors],
                             'taper_arcsec': [sector.taper_arcsec for sector in self.imaging_sectors],
+                            'local_rms_strength': [sector.local_rms_strength for sector in self.imaging_sectors],
                             'auto_mask': [sector.auto_mask for sector in self.imaging_sectors],
                             'idg_mode': [sector.idg_mode for sector in self.imaging_sectors],
                             'wsclean_mem': [sector.mem_limit_gb for sector in self.imaging_sectors],
