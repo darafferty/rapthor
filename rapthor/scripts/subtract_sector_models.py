@@ -2,8 +2,7 @@
 """
 Script to subtract sector model data
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 import casacore.tables as pt
 import logging
 import numpy as np
@@ -672,7 +671,7 @@ def readGainFile(gainfile, ms, nt, nchan, nbl, tarray, nAnt, msname, phaseonly, 
 if __name__ == '__main__':
     descriptiontext = "Subtract sector model data.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('msin', help='Filename of input MS data file')
     parser.add_argument('msmod', help='Filename of input MS model data file')
     parser.add_argument('--msin_column', help='Name of msin column', type=str, default='DATA')

@@ -1,25 +1,23 @@
 #!/usr/bin/env python3
 from datetime import datetime
-
-import argparse
+from argparse import ArgumentParser, RawTextHelpFormatter
 import glob
 import os
 import re
 import subprocess
-import sys
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 
 FIGSIZE = (11.7, 8.3)
 
+
 class MainLogParser():
     """ Class for parsing the main Rapthor log."""
 
     def __init__(self, rapthorlog: str) -> None:
         """ Class initialiser.
-        
+
         Args:
             rapthorlog : the main Rapthor log file.
         """
@@ -40,9 +38,9 @@ class MainLogParser():
                 The value associated with newkey.
         """
         try:
-            indict[inkey].update({newkey:newval})
+            indict[inkey].update({newkey: newval})
         except KeyError:
-            indict[inkey] = {newkey:newval}
+            indict[inkey] = {newkey: newval}
 
     def group_by_cycle(self, cycledict: dict) -> dict:
         """ Simple function to add or update a dictionary key.
@@ -50,14 +48,14 @@ class MainLogParser():
         Args:
             cycledict : dict
                 The dictionary containing steps from the rapthor log as generated in this script.
-        
+
         Returns:
             groupcycledict: dict
                 The dictionary of operations grouped by their cycle.
         """
         ncycles = 1
         for k in cycledict.keys():
-            cycle = int(k.split('_')[-1]) 
+            cycle = int(k.split('_')[-1])
             if cycle > ncycles:
                 ncycles += 1
         cycle_keys = ['cycle_{:d}'.format(i) for i in range(1, ncycles)]
@@ -66,12 +64,12 @@ class MainLogParser():
         # Assume operation names won't change
         # Rapthor does calibrate_N, predict_N, image_N, mosaic_N
         for i, k in enumerate(cycle_keys, start=1):
-            add_key(groupcycledict, 'cycle_{:d}'.format(i), 'calibrate_{:d}'.format(i), cycledict['calibrate_{:d}'.format(i)])
-            add_key(groupcycledict, 'cycle_{:d}'.format(i), 'predict_{:d}'.format(i), cycledict['predict_{:d}'.format(i)])
-            add_key(groupcycledict, 'cycle_{:d}'.format(i), 'image_{:d}'.format(i), cycledict['image_{:d}'.format(i)])
-            add_key(groupcycledict, 'cycle_{:d}'.format(i), 'mosaic_{:d}'.format(i), cycledict['mosaic_{:d}'.format(i)])
+            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'calibrate_{:d}'.format(i), cycledict['calibrate_{:d}'.format(i)])
+            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'predict_{:d}'.format(i), cycledict['predict_{:d}'.format(i)])
+            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'image_{:d}'.format(i), cycledict['image_{:d}'.format(i)])
+            self.add_key(groupcycledict, 'cycle_{:d}'.format(i), 'mosaic_{:d}'.format(i), cycledict['mosaic_{:d}'.format(i)])
         return groupcycledict
-    
+
     def process(self) -> None:
         """ Process the main log and produce an overview graph."""
         # Extract only the debug lines about timing from the log.
@@ -104,7 +102,7 @@ class MainLogParser():
                     self.operations[operation] += dec_hour
         # File is no longer needed.
         os.remove('rapthor_timing.txt')
-    
+
     def plot(self) -> None:
         """ Create an overview plot. """
         sns.set_style("white", {'xtick.bottom': True, 'ytick.left': True})
@@ -121,7 +119,7 @@ class MainLogParser():
         fig = plt.figure(figsize=FIGSIZE)
         h = sns.histplot(df, x='Cycle', hue='Operation', weights='Duration', multiple='dodge', discrete=True, figure=fig)
         # Check how many of the 4 operations (calibrate, predict, image and mosaic) are present.
-        Nops = len(pd.unique(df['Operation']))        
+        Nops = len(pd.unique(df['Operation']))
         for i in range(Nops):
             try:
                 labels = ['{:.2f}'.format(t) if t else '' for t in h.containers[i].datavalues]
@@ -138,7 +136,7 @@ class SubLogParser():
 
     def __init__(self, logdir: str, operation: str) -> None:
         """ Initialise the sub log parser.
-        
+
         Args:
             logdir : path to the logs directory of Rapthor.
             operation: the operation to be parsed (e.g. calibrate, image etc.)
@@ -147,7 +145,7 @@ class SubLogParser():
         self.files = []
         self.sub_names = []
         self.run_times = []
-        
+
         op_files = list(glob.glob(os.path.join(logdir, operation, 'CWLJob*.log')))
         if not op_files:
             raise ValueError('Could not find files named "CWLJob*.log". Pipeline was not run with Toil or all steps failed.')
@@ -155,9 +153,9 @@ class SubLogParser():
         for sublog in op_files:
             self.files.append(os.path.abspath(sublog))
             if 'subpipeline' in sublog:
-                sub_name = sublog.split('/')[-1].replace('CWLJob_subpipeline_parset.cwl.','').split('--')[0]
+                sub_name = sublog.split('/')[-1].replace('CWLJob_subpipeline_parset.cwl.', '').split('--')[0]
             elif 'pipeline' in sublog:
-                sub_name = sublog.split('/')[-1].replace('CWLJob_pipeline_parset.cwl.','').split('--')[0]
+                sub_name = sublog.split('/')[-1].replace('CWLJob_pipeline_parset.cwl.', '').split('--')[0]
             sub_name = sub_name.replace('_kind', '')
             sub_name = sub_name.replace('.cwl', '')
             self.sub_names.append(sub_name)
@@ -178,10 +176,10 @@ class SubLogParser():
     def plot(self) -> None:
         """ Create an overview graph of all the sub steps."""
         sns.set_style("white", {'xtick.bottom': True, 'ytick.left': True})
-        data = {'Subtask':self.sub_names, 'Runtime':self.get_run_times()}
+        data = {'Subtask': self.sub_names, 'Runtime': self.get_run_times()}
 
         df = pd.DataFrame.from_dict(data, orient='columns')
-        
+
         fig = plt.figure(figsize=FIGSIZE)
         if df['Runtime'].max() > 3600:
             h = sns.histplot(df, y='Subtask', weights='Runtime', discrete=True, figure=fig, log_scale=[True, False])
@@ -206,14 +204,13 @@ def make_cycle_pdfs_sublogs() -> None:
                     files.remove(f)
             cmd = ['pdfunite'] + files + [f'summary_cycle_{cycle}.pdf']
             subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-        cmd = ['pdfunite', 'rapthor_timing.pdf'] + sorted(glob.glob(f'summary_cycle_*.pdf')) + ['summary.pdf']
+        cmd = ['pdfunite', 'rapthor_timing.pdf'] + sorted(glob.glob('summary_cycle_*.pdf')) + ['summary.pdf']
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         # If we were successful, clean up the temporary plots.
         for f in glob.glob('temp_*.pdf'):
             os.remove(f)
-            os.remove(f.replace('pdf','png'))
+            os.remove(f.replace('pdf', 'png'))
     except Exception as e:
-        import traceback
         print('Concatenation failed. Is pdfunite installed?')
 
 
@@ -231,14 +228,15 @@ def main(logdir, detailed: bool = False) -> None:
             try:
                 sub = SubLogParser(os.path.abspath(logdir), op)
                 sub.plot()
-            except ValueError:  
+            except ValueError:
                 print('No appropriate log files found for {:s}; skipping.'.format(op))
         make_cycle_pdfs_sublogs()
+
 
 if __name__ == '__main__':
     descriptiontext = "Produce a break down of the rapthor logs. "
 
-    parser = argparse.ArgumentParser(description=descriptiontext)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('logdir', help='Directory where the logs are located.')
     parser.add_argument('--detailed', help='Produce a detailed overview by breaking down each operation in its substeps. Requires Toil as the chosen CWL runner.', action='store_true', required=False)
     args = parser.parse_args()

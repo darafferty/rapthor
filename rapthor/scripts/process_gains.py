@@ -2,8 +2,7 @@
 """
 Script to process gain solutions
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from losoto.h5parm import h5parm
 import numpy as np
 from rapthor.lib import miscellaneous as misc
@@ -437,7 +436,7 @@ def main(h5parmfile, solsetname='sol000', ampsoltabname='amplitude000',
 if __name__ == '__main__':
     descriptiontext = "Process gain solutions.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('h5parmfile', help='Filename of input h5parm')
     parser.add_argument('--solsetname', help='Solset name', type=str, default='sol000')
     parser.add_argument('--ampsoltabname', help='Amplitude soltab name', type=str, default='amplitude000')

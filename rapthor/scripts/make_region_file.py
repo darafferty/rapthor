@@ -2,8 +2,7 @@
 """
 Script to make a ds9 region file for use with WSClean and faceting
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from rapthor.lib.facet import make_ds9_region_file, read_skymodel
 
 
@@ -36,7 +35,7 @@ def main(skymodel, ra_mid, dec_mid, width_ra, width_dec, region_file):
 if __name__ == '__main__':
     descriptiontext = "Blank regions of an image.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('skymodel', help='Filename of input sky model')
     parser.add_argument('ra_mid', help='RA of midpoint in degrees', type=float, default=None)
     parser.add_argument('dec_mid', help='Dec of midpoint in degrees', type=float, default=None)

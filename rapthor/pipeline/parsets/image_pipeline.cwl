@@ -546,10 +546,10 @@ outputs:
     outputSource:
       - image_sector/sector_source_catalog
     type: File[]
-  # - id: sector_normalize_h5parm
-  #   outputSource:
-  #     - image_sector/sector_normalize_h5parm
-  #   type: File[]
+  - id: sector_normalize_h5parm
+    outputSource:
+      - image_sector/sector_normalize_h5parm
+    type: File[]
 {% endif %}
 
 
@@ -783,5 +783,5 @@ steps:
 {% endif %}
 {% if normalize_flux_scale %}
       - id: sector_source_catalog
-      # - id: sector_normalize_h5parm
+      - id: sector_normalize_h5parm
 {% endif %}

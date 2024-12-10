@@ -79,6 +79,7 @@ script-files = [
     "rapthor/scripts/make_mosaic_template.py",
     "rapthor/scripts/make_region_file.py",
     "rapthor/scripts/mpi_runner.sh",
+    "rapthor/scripts/normalize_flux_scale.py",
     "rapthor/scripts/process_gains.py",
     "rapthor/scripts/regrid_image.py",
     "rapthor/scripts/split_h5parms.py",

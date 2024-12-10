@@ -2,8 +2,7 @@
 """
 Script to make a template image for mosaicking
 """
-import argparse
-from argparse import RawTextHelpFormatter
+from argparse import ArgumentParser, RawTextHelpFormatter
 from rapthor.lib.fitsimage import FITSImage
 from rapthor.lib import miscellaneous as misc
 from astropy.io import fits as pyfits
@@ -90,7 +89,7 @@ def main(input_image_list, vertices_file_list, output_image, skip=False, padding
 if __name__ == '__main__':
     descriptiontext = "Make a template image for mosaicking.\n"
 
-    parser = argparse.ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
+    parser = ArgumentParser(description=descriptiontext, formatter_class=RawTextHelpFormatter)
     parser.add_argument('input_image_list', help='Filenames of input image')
     parser.add_argument('vertices_file_list', help='Filenames of input vertices files')
     parser.add_argument('output_image', help='Filename of output template image')

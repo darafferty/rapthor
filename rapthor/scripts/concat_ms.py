@@ -2,7 +2,7 @@
 """
 Script to concatenate MS files
 """
-import argparse
+from argparse import ArgumentParser, RawTextHelpFormatter
 import errno
 import os
 import shutil
@@ -111,6 +111,7 @@ def concat_ms(msfiles, output_file, concat_property="frequency", overwrite=False
         print(err, file=sys.stderr)
         return err.returncode
 
+
 def concat_freq_command(msfiles, output_file, make_dummies=True):
     """
     Construct command to concatenate files in frequency using DP3
@@ -131,7 +132,6 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
     """
     # Order the files by frequency, filling any gaps with dummy files
     first = True
-    nchans = 0
     freqs = []
     chfreqs_tmp = []
     for ms in msfiles:
@@ -141,7 +141,6 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
             chfreqs = sw.col("CHAN_FREQ")[0]
             if first:
                 file_bandwidth = sw.col("TOTAL_BANDWIDTH")[0]
-                nchans = sw.col("CHAN_WIDTH")[0].shape[0]
                 chwidth = sw.col("CHAN_WIDTH")[0][0]
                 first = False
             else:
@@ -190,7 +189,6 @@ def concat_freq_command(msfiles, output_file, make_dummies=True):
             final_idx_flat = [i for l in final_idx for i in l]
             # Finally insert them all at once.
             mslist = np.insert(mslist, final_idx_flat, dummies_flat)
-
 
     # Construct DP3 command
     cmd = [
@@ -244,8 +242,8 @@ def main():
     int : 0 if successfull; non-zero otherwise.
     """
     descriptiontext = "Concatenate Measurement Sets.\n"
-    parser = argparse.ArgumentParser(
-        description=descriptiontext, formatter_class=argparse.RawTextHelpFormatter
+    parser = ArgumentParser(
+        description=descriptiontext, formatter_class=RawTextHelpFormatter
     )
     parser.add_argument("msin", nargs="+", help="List of input Measurement Sets")
     parser.add_argument("--msout", help="Output Measurement Set", type=str, default='concat.ms')
