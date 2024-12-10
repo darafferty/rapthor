@@ -405,6 +405,12 @@ inputs:
 {% endif %}
 
 {% if normalize_flux_scale %}
+  - id: output_source_catalog
+    label: Filename of FITS source catalog
+    doc: |
+      The filename of the FITS source catalog to use for flux-scale normalizations
+      (length = 1).
+    type: string
   - id: normalize_h5parm
     label: Filename of normalize h5parm
     doc: |
@@ -483,10 +489,14 @@ outputs:
     type: File
 {% endif %}
 {% if normalize_flux_scale %}
-  - id: sector_normalize_h5parm
+  - id: sector_source_catalog
     outputSource:
-      - normalize_flux_scale/h5parm
+      - make_catalog_from_image_cube/source_catalog
     type: File
+  # - id: sector_normalize_h5parm
+  #   outputSource:
+  #     - normalize_flux_scale/h5parm
+  #   type: File
 {% endif %}
 
 steps:
@@ -926,22 +936,41 @@ steps:
 
 {% if normalize_flux_scale %}
 # start normalize_flux_scale
-  - id: normalize_flux_scale
-    label: Normalize the flux scale
+  - id: make_catalog_from_image_cube
+    label: Make a source catalog from an image cube
     doc: |
-      This step determines the corrections necessary to
-      normalize the flux scale
-    run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+      This step makes a source catalog from a FITS image cube
+    run: {{ rapthor_pipeline_dir }}/steps/make_catalog_from_image_cube.cwl
     in:
-      - id: image_cube
+      - id: cube
         source: make_image_cube/image_cube
-      - id: image_cube_beams
+      - id: cube_beams
         source: make_image_cube/image_cube_beams
-      - id: image_cube_frequencies
+      - id: cube_frequencies
         source: make_image_cube/image_cube_frequencies
-      - id: normalize_h5parm
-        source: normalize_h5parm
+      - id: output_catalog
+        source: output_source_catalog
+      - id: threshisl
+        source: threshisl
+      - id: threshpix
+        source: threshpix
+      - id: ncores
+        source: max_threads
     out:
-      - id: h5parm
+      - id: source_catalog
+
+  # - id: normalize_flux_scale
+  #   label: Normalize the flux scale
+  #   doc: |
+  #     This step determines the corrections necessary to
+  #     normalize the flux scale
+  #   run: {{ rapthor_pipeline_dir }}/steps/normalize_flux_scale.cwl
+  #   in:
+  #     - id: source_catalog
+  #       source: make_catalog_from_image_cube/source_catalog
+  #     - id: normalize_h5parm
+  #       source: normalize_h5parm
+  #   out:
+  #     - id: h5parm
 {% endif %}
 # end normalize_flux_scale

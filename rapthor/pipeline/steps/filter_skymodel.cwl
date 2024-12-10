@@ -9,12 +9,6 @@ doc: |
 
 requirements:
   - class: InlineJavascriptRequirement
-  - class: InitialWorkDirRequirement
-    listing:
-      - entry: $(inputs.flat_noise_image)
-        writable: true
-      - entry: $(inputs.true_sky_image)
-        writable: true
 
 inputs:
   - id: flat_noise_image

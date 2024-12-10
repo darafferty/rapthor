@@ -122,6 +122,7 @@ class Image(Operation):
         central_patch_name = []
         image_cube_name = []
         normalize_h5parm = []
+        output_source_catalog = []
         for sector in self.imaging_sectors:
             image_root.append(sector.name)
 
@@ -172,6 +173,7 @@ class Image(Operation):
             if self.make_image_cube:
                 image_cube_name.append(sector.name + '_freq_cube.fits')
             if self.normalize_flux_scale:
+                output_source_catalog.append(sector.name + '_source_catalog.fits')
                 normalize_h5parm.append(sector.name + '_normalize.h5parm')
 
         # Handle the polarization-related options
@@ -308,6 +310,7 @@ class Image(Operation):
         if self.make_image_cube:
             self.input_parms.update({'image_cube_name': image_cube_name})
         if self.normalize_flux_scale:
+            self.input_parms.update({'output_source_catalog': output_source_catalog})
             self.input_parms.update({'normalize_h5parm': normalize_h5parm})
 
     def finalize(self):
@@ -520,7 +523,7 @@ class ImageNormalize(Image):
         self.save_source_list = False
         self.peel_bright_sources = False
         self.make_image_cube = True
-        self.normalize_flux_scale = False  # False for testing only; must be True in final version
+        self.normalize_flux_scale = True
         if self.field.h5parm_filename is None:
             # No calibration has yet been done, so set various flags as needed
             self.apply_none = True
