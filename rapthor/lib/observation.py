@@ -327,8 +327,13 @@ class Observation(object):
 
             # Divide up the bandwidth if needed
             if solve_type == 'fulljones':
-                # Don't use frequency chunking for full-Jones solves, as it is not supported
-                # when solving is done against the MODEL_DATA column
+                # Don't use frequency chunking for full-Jones solves, as it is not
+                # supported when solving is done against the MODEL_DATA column. The
+                # chunking is disabled by setting samplesperchunk = 0, as this sets the
+                # value of nchan in the DP3 call (and nchan = 0 means all channels; see
+                # https://dp3.readthedocs.io/en/latest/steps/Input.html#msin-46-nchan).
+                # Such chunking is not needed in any case for the full-Jones solves, as it
+                # is a direction-independent solve and thus the memory usage is low
                 samplesperchunk = 0
                 nfreqchunks = 1
             else:
