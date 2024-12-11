@@ -529,6 +529,7 @@ class IDGCalDPStepPhaseOnly(IDGCalDPStepBase):
             "phase_coefficients", phase_coefficients, offset_phase
         )
         self.count_process_buffer_calls += 1
+        self.proxy.calibrate_finish()
 
     def __compute_phase(self, i, parameters):
         """
