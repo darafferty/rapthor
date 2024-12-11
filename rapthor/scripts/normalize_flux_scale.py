@@ -114,7 +114,7 @@ def find_normalizations(rapthor_fluxes, rapthor_errors, rapthor_frequencies,
 
 
 def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=30/3600,
-         neighbor_cut=30/3600, spurious_match_cut=30/3600):
+         neighbor_cut=30/3600, spurious_match_cut=30/3600, min_sources=5):
     """
     Calculate flux-scale normalization corrections
 
@@ -143,6 +143,9 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
         Distance cut in degrees for spurious matches. Sources with matches in
         the survey catalogs with distances greater than this value are excluded
         from the analysis
+    min_sources : int, optional
+        The minimum number of souces required for the normalization correction
+        calculation
     """
     # Read in the source catalog
     with fits.open(source_catalog) as hdul:
@@ -175,73 +178,78 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
     neighbor_distances = np.array([sep.value for sep in separation])
 
     # Apply the cuts
+    do_normalization = True
     radius_filter = source_distances < radius_cut
     major_axis_filter = data['DC_Maj'] < major_axis_cut
     neighbor_filter = neighbor_distances > neighbor_cut
     print(f"Number of sources before applying cuts: {data['RA'].size}")
     data = data[radius_filter & major_axis_filter & neighbor_filter]
     source_coords = source_coords[radius_filter & major_axis_filter & neighbor_filter]
-    print(f"Number of sources after applying cuts: {data['RA'].size}")
+    n_sources = len(source_coords)
+    print(f"Number of sources after applying cuts: {n_sources}")
+    if n_sources < min_sources:
+        print('Too few sources remain after applying cuts. Flux normalization will be skipped.')
+        do_normalization = False
 
     # Cross match sources with external catalogs
-    survey_catalogs = []
-    surveys = ['vlssr', 'wenss']
-    frequencies = [74e6, 327e6]  # Hz, ordered from low to high
-    do_normalization = True
-    for survey, frequency in zip(surveys, frequencies):
-        # Download sky model(s), using a 5-deg radius to ensure the field is
-        # fully covered
-        try:
-            skymodel = lsmtool.load(survey, VOPosition=[ra, dec], VORadius=5.0)
-        except (OSError, ConnectionError) as e:
-            print(f'A problem occurred when downloading the {survey} catalog. '
-                  'Error was: {}. Flux normalization will be skipped.'.format(e))
-            do_normalization = False
-        if not len(skymodel):
-            print(f'No sources found in the {survey} catalog for this field. '
-                  'Flux normalization will be skipped.')
-            do_normalization = False
-        if not do_normalization:
-            continue
-        skymodel.write(f'{survey}.fits', format='fits', clobber=True)
-        with fits.open(f'{survey}.fits') as hdul:
-            survey_data = hdul[1].data
-        survey_coords = SkyCoord(ra=np.array([misc.normalize_ra(survey_ra)
-                                              for survey_ra in survey_data['RA']])*u.degree,
-                                 dec=np.array([misc.normalize_dec(survey_dec)
-                                               for survey_dec in survey_data['DEC']])*u.degree)
+    if do_normalization:
+        survey_catalogs = []
+        surveys = ['vlssr', 'wenss']
+        frequencies = [74e6, 327e6]  # Hz, ordered from low to high
+        for survey, frequency in zip(surveys, frequencies):
+            # Download sky model(s), using a 5-deg radius to ensure the field is
+            # fully covered
+            try:
+                skymodel = lsmtool.load(survey, VOPosition=[ra, dec], VORadius=5.0)
+            except (OSError, ConnectionError) as e:
+                print(f'A problem occurred when downloading the {survey} catalog. '
+                      'Error was: {}. Flux normalization will be skipped.'.format(e))
+                do_normalization = False
+            if not len(skymodel):
+                print(f'No sources found in the {survey} catalog for this field. '
+                      'Flux normalization will be skipped.')
+                do_normalization = False
+            if not do_normalization:
+                continue
+            skymodel.write(f'{survey}.fits', format='fits', clobber=True)
+            with fits.open(f'{survey}.fits') as hdul:
+                survey_data = hdul[1].data
+            survey_coords = SkyCoord(ra=np.array([misc.normalize_ra(survey_ra)
+                                                  for survey_ra in survey_data['RA']])*u.degree,
+                                     dec=np.array([misc.normalize_dec(survey_dec)
+                                                   for survey_dec in survey_data['DEC']])*u.degree)
 
-        # Cross match the survey sources with the Rapthor sources
-        match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
+            # Cross match the survey sources with the Rapthor sources
+            match_ind, separation, _ = match_coordinates_sky(source_coords, survey_coords)
 
-        # Check each Rapthor source, rejecting distant matches that are likely to be
-        # spurious (e.g., due to the true source not being present in the survey catalog)
-        # and keeping only the closest match
-        survey_fluxes = []
-        for dist, ind in zip(separation,  match_ind):
-            all_matches_ind = np.where(match_ind == ind)[0]
-            if dist.value > np.min(separation.value[all_matches_ind]) or dist.value > spurious_match_cut:
-                # Reject match by setting its survey flux to 0 (which will be ignored
-                # during SED fitting)
-                survey_fluxes.append(0.0)
-            else:
-                survey_fluxes.append(survey_data['I'][ind])
+            # Check each Rapthor source, rejecting distant matches that are likely to be
+            # spurious (e.g., due to the true source not being present in the survey catalog)
+            # and keeping only the closest match
+            survey_fluxes = []
+            for dist, ind in zip(separation,  match_ind):
+                all_matches_ind = np.where(match_ind == ind)[0]
+                if dist.value > np.min(separation.value[all_matches_ind]) or dist.value > spurious_match_cut:
+                    # Reject match by setting its survey flux to 0 (which will be ignored
+                    # during SED fitting)
+                    survey_fluxes.append(0.0)
+                else:
+                    survey_fluxes.append(survey_data['I'][ind])
 
-        # Save the catalog details for use in SED fitting
-        if survey == 'wenss':
-            flux_correction = 0.9  # adjust to Scaife and Heald (2012) flux scale
-            flux_err = 3.6e-3  # Jy (reported average rms noise level)
-        elif survey == 'vlssr':
-            flux_correction = 1  # already on Scaife and Heald (2012) flux scale
-            flux_err = 0.1  # Jy (reported average rms noise level)
-        survey_catalogs.append({'survey': survey, 'flux': np.array(survey_fluxes)*flux_correction,
-                                'flux_err': flux_err, 'frequency': frequency})
+            # Save the catalog details for use in SED fitting
+            if survey == 'wenss':
+                flux_correction = 0.9  # adjust to Scaife and Heald (2012) flux scale
+                flux_err = 3.6e-3  # Jy (reported average rms noise level)
+            elif survey == 'vlssr':
+                flux_correction = 1  # already on Scaife and Heald (2012) flux scale
+                flux_err = 0.1  # Jy (reported average rms noise level)
+            survey_catalogs.append({'survey': survey, 'flux': np.array(survey_fluxes)*flux_correction,
+                                    'flux_err': flux_err, 'frequency': frequency})
 
+    # Fit the source SEDs
     output_frequencies = np.arange(min_frequency, max_frequency+1e5, 1e5)
     if do_normalization:
         # Make arrays of flux density vs. frequency for each source, for both
         # the observed fluxes and the catalog fluxes, and find the corrections
-        n_sources = len(source_coords)
         corrections = np.zeros((n_sources, len(output_frequencies)))
         survey_frequencies = np.array([sc['frequency'] for sc in survey_catalogs])  # Hz
         for i in range(n_sources):
@@ -264,7 +272,15 @@ def main(source_catalog, ra, dec, output_h5parm, radius_cut=3.0, major_axis_cut=
 
         # For each output frequency, find the average correction over all sources
         # (weighted by source flux density)
-        avg_corrections = np.nanmean(corrections, axis=0)
+        #
+        # Check the number of valid fits first, and if too few, skip the normalization.
+        # This check assumes that the corrections from valid fits do not contain any NaNs
+        valid_fits = np.all(~np.isnan(corrections), axis=1)
+        if np.where(valid_fits)[0].size < min_sources:
+            print('Too few sources with successful SED fits. Flux normalization will be skipped.')
+            avg_corrections = np.ones(len(output_frequencies))
+        else:
+            avg_corrections = np.nanmean(corrections, axis=0)
     else:
         # If normalization cannot be done, just set all corrections to 1
         avg_corrections = np.ones(len(output_frequencies))
@@ -287,8 +303,9 @@ if __name__ == '__main__':
     parser.add_argument('--major_axis_cut', help='Major-axis size cut in degrees', type=float, default=30/3600)
     parser.add_argument('--neighbor_cut', help='Nearest-neighbor distance cut in degrees', type=float, default=30/3600)
     parser.add_argument('--spurious_match_cut', help='Spurious match distance cut in degrees', type=float, default=30/3600)
+    parser.add_argument('--min_sources', help='Minimum number of souces required for normalization calculation', type=int, default=5)
 
     args = parser.parse_args()
     main(args.source_catalog, args.ra, args.dec, args.output_h5parm, radius_cut=args.radius_cut,
          major_axis_cut=args.major_axis_cut, neighbor_cut=args.neighbor_cut,
-         spurious_match_cut=args.spurious_match_cut)
+         spurious_match_cut=args.spurious_match_cut, min_sources=args.min_sources)
